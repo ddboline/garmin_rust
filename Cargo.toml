@@ -24,6 +24,7 @@ rusoto_s3 = "*"
 futures = "*"
 s4 = "*"
 num = "*"
+config = "*"
 
 [dependencies.avro-rs]
 version = "^0.6"

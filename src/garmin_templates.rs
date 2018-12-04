@@ -60,7 +60,7 @@ pub const MAP_TEMPLATE: &str = r#"
       }
     </style>
     <script type="text/javascript"
-      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCNWrZdA6Tz1Umw5Fu2PhIB0TJzyRh111A">
+      src="https://maps.googleapis.com/maps/api/js?key=MAPSAPIKEY">
     </script>
     <script type="text/javascript">
       function initialize() {

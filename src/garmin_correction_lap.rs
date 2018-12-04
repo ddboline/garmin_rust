@@ -241,7 +241,7 @@ pub fn add_mislabeled_times_to_corr_list(
     corr_list_map.values().map(|v| v.clone()).collect()
 }
 
-pub fn fix_corrections() {
+pub fn fix_corrections(pg_url: &str) {
     let correction_file = "garmin_corrections.avro";
     let gps_dir = "/home/ddboline/.garmin_cache/run/gps_tracks";
     let cache_dir = "/home/ddboline/.garmin_cache/run/cache";
@@ -257,7 +257,7 @@ pub fn fix_corrections() {
 
     println!("{}", corr_list.len());
 
-    let fn_unique_key_map = get_filename_start_map().expect("Failed to get filename map");
+    let fn_unique_key_map = get_filename_start_map(pg_url).expect("Failed to get filename map");
 
     println!(
         "{} {:?}",
@@ -296,9 +296,8 @@ pub fn fix_corrections() {
     dump_corr_list_to_avro(&new_corr_list, correction_file).unwrap();
 }
 
-pub fn get_filename_start_map() -> Result<HashMap<String, (String, i32)>, Error> {
-    let pgstr = "postgresql://ddboline:BQGIvkKFZPejrKvX@localhost:5432/garmin_summary";
-    let conn = Connection::connect(pgstr, TlsMode::None).unwrap();
+pub fn get_filename_start_map(pg_url: &str) -> Result<HashMap<String, (String, i32)>, Error> {
+    let conn = Connection::connect(pg_url, TlsMode::None).unwrap();
 
     let query = "
         select filename, unique_key
@@ -320,9 +319,8 @@ pub fn get_filename_start_map() -> Result<HashMap<String, (String, i32)>, Error>
     Ok(filename_start_map)
 }
 
-pub fn dump_corrections_to_db(corr_list: &Vec<GarminCorrectionLap>) {
-    let pgstr = "postgresql://ddboline:BQGIvkKFZPejrKvX@localhost:5432/garmin_summary";
-    let conn = Connection::connect(pgstr, TlsMode::None).unwrap();
+pub fn dump_corrections_to_db(pg_url: &str, corr_list: &Vec<GarminCorrectionLap>) {
+    let conn = Connection::connect(pg_url, TlsMode::None).unwrap();
 
     let query_unique_key = "SELECT unique_key FROM garmin_corrections_laps WHERE unique_key=$1";
     let query_insert = "
@@ -372,9 +370,8 @@ pub fn dump_corrections_to_db(corr_list: &Vec<GarminCorrectionLap>) {
     }
 }
 
-pub fn read_corrections_from_db() -> Result<Vec<GarminCorrectionLap>, Error> {
-    let pgstr = "postgresql://ddboline:BQGIvkKFZPejrKvX@localhost:5432/garmin_summary";
-    let conn = Connection::connect(pgstr, TlsMode::None).unwrap();
+pub fn read_corrections_from_db(pg_url: &str) -> Result<Vec<GarminCorrectionLap>, Error> {
+    let conn = Connection::connect(pg_url, TlsMode::None).unwrap();
 
     let corr_list: Vec<GarminCorrectionLap> = conn.query(
         "select id, start_time, lap_number, sport, distance, duration from garmin_corrections_laps",
@@ -394,8 +391,8 @@ pub fn read_corrections_from_db() -> Result<Vec<GarminCorrectionLap>, Error> {
     Ok(corr_list)
 }
 
-pub fn read_corrections_from_db_dump_to_avro() {
-    let corr_list = read_corrections_from_db().unwrap();
+pub fn read_corrections_from_db_dump_to_avro(pg_url: &str) {
+    let corr_list = read_corrections_from_db(pg_url).unwrap();
 
     println!("{}", corr_list.len());
 

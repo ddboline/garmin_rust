@@ -1,3 +1,5 @@
+extern crate config;
+
 use clap::{App, Arg};
 
 use crate::garmin_correction_lap;
@@ -9,6 +11,13 @@ use crate::garmin_sync;
 use crate::garmin_util;
 
 pub fn cli_garmin_proc() {
+    let settings = config::Config::new()
+        .merge(config::File::with_name("config.yml"))
+        .unwrap()
+        .clone();
+
+    let pg_url = settings.get_str("pg_url").unwrap();
+
     let matches = App::new("Garmin Rust Proc")
         .version("0.1")
         .author("Daniel Boline <ddboline@gmail.com>")
@@ -78,7 +87,7 @@ pub fn cli_garmin_proc() {
             );
         }
         false => {
-            let corr_list = garmin_correction_lap::read_corrections_from_db().unwrap();
+            let corr_list = garmin_correction_lap::read_corrections_from_db(&pg_url).unwrap();
             let corr_map = garmin_correction_lap::get_corr_list_map(&corr_list);
 
             let gsum_list = match filenames {
@@ -96,13 +105,21 @@ pub fn cli_garmin_proc() {
             };
 
             if gsum_list.len() > 0 {
-                garmin_summary::write_summary_to_postgres(&gsum_list)
+                garmin_summary::write_summary_to_postgres(&pg_url, &gsum_list)
             };
         }
     }
 }
 
 pub fn cli_garmin_report() {
+    let settings = config::Config::new()
+        .merge(config::File::with_name("config.yml"))
+        .unwrap()
+        .clone();
+
+    let pg_url = settings.get_str("pg_url").unwrap();
+    let maps_api_key = settings.get_str("maps_api_key").unwrap();
+
     let matches = App::new("Garmin Rust Report")
         .version("0.1")
         .author("Daniel Boline <ddboline@gmail.com>")
@@ -163,7 +180,7 @@ pub fn cli_garmin_report() {
         None => (),
     };
 
-    let file_list = garmin_report::get_list_of_files_from_db(&constraints).unwrap();
+    let file_list = garmin_report::get_list_of_files_from_db(&pg_url, &constraints).unwrap();
 
     match file_list.len() {
         0 => (),
@@ -179,7 +196,8 @@ pub fn cli_garmin_report() {
                 Err(_) => {
                     let gps_file = format!("{}/{}", gps_dir, file_name);
 
-                    let corr_list = garmin_correction_lap::read_corrections_from_db().unwrap();
+                    let corr_list =
+                        garmin_correction_lap::read_corrections_from_db(&pg_url).unwrap();
                     let corr_map = garmin_correction_lap::get_corr_list_map(&corr_list);
 
                     debug!("Reading gps_file: {}", &gps_file);
@@ -188,13 +206,14 @@ pub fn cli_garmin_report() {
             };
             debug!("gfile {} {}", gfile.laps.len(), gfile.points.len());
             println!("{}", garmin_report::generate_txt_report(&gfile).join("\n"));
-            garmin_report::file_report_html(&gfile).expect("Failed to generate html report");
+            garmin_report::file_report_html(&gfile, &maps_api_key)
+                .expect("Failed to generate html report");
         }
         _ => {
             debug!("{:?}", options);
             println!(
                 "{}",
-                garmin_report::create_report_query(&options, &constraints)
+                garmin_report::create_report_query(&pg_url, &options, &constraints)
             );
         }
     };

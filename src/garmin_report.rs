@@ -42,7 +42,10 @@ impl GarminReportOptions {
     }
 }
 
-pub fn get_list_of_files_from_db(constraints: &Vec<String>) -> Result<Vec<String>, Error> {
+pub fn get_list_of_files_from_db(
+    pg_url: &str,
+    constraints: &Vec<String>,
+) -> Result<Vec<String>, Error> {
     let constr = match constraints.len() {
         0 => "".to_string(),
         _ => format!("WHERE {}", constraints.join(" OR ")),
@@ -50,8 +53,7 @@ pub fn get_list_of_files_from_db(constraints: &Vec<String>) -> Result<Vec<String
 
     let query = format!("SELECT filename FROM garmin_summary {}", constr);
 
-    let pgstr = "postgresql://ddboline:BQGIvkKFZPejrKvX@localhost:5432/garmin_summary";
-    let conn = Connection::connect(pgstr, TlsMode::None).unwrap();
+    let conn = Connection::connect(pg_url, TlsMode::None).unwrap();
 
     let file_list: Vec<String> = conn.query(&query, &[])?
         .iter()
@@ -357,9 +359,12 @@ pub fn get_splits(
     split_vector
 }
 
-pub fn create_report_query(options: &GarminReportOptions, constraints: &Vec<String>) -> String {
-    let pgstr = "postgresql://ddboline:BQGIvkKFZPejrKvX@localhost:5432/garmin_summary";
-    let conn = Connection::connect(pgstr, TlsMode::None).unwrap();
+pub fn create_report_query(
+    pg_url: &str,
+    options: &GarminReportOptions,
+    constraints: &Vec<String>,
+) -> String {
+    let conn = Connection::connect(pg_url, TlsMode::None).unwrap();
 
     let sport_type_string_map = get_sport_type_string_map();
 
@@ -1000,7 +1005,7 @@ fn year_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
     result_vec
 }
 
-pub fn file_report_html(gfile: &GarminFile) -> Result<String, Error> {
+pub fn file_report_html(gfile: &GarminFile, maps_api_key: &str) -> Result<String, Error> {
     let sport = match &gfile.sport {
         Some(s) => s.clone(),
         None => "none".to_string(),
@@ -1286,6 +1291,8 @@ pub fn file_report_html(gfile: &GarminFile) -> Result<String, Error> {
                 for gf in &graphs {
                     write!(htmlfile, "{}{}{}", r#"<p><img src=""#, gf, r#""></p>"#);
                 }
+            } else if line.contains("MAPSAPIKEY") {
+                write!(htmlfile, "{}", line.replace("MAPSAPIKEY", maps_api_key));
             } else {
                 write!(htmlfile, "{}", line);
             };

@@ -1,0 +1,134 @@
+pub const GARMIN_TEMPLATE: &str = r#"
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>SPORTTITLEDATE</title>
+<meta name="generator" content="HTML::TextToHTML v2.51"/>
+</head>
+<body>
+
+<p>
+<button type="submit" onclick="send_command('prev year');"> year </button>
+HISTORYBUTTONS
+</p>
+
+<p>
+<form>
+<input type="text" name="cmd" id="garmin_cmd"/>
+<input type="button" name="submitGARMIN" value="Submit" onclick="processFormData();"/>
+</form>
+</p>
+
+<pre>
+INSERTTEXTHERE
+</pre>
+
+<script language="JavaScript" type="text/javascript">
+    function send_command( command ) {
+        var ostr = '../../../cgi-bin/control_garmin.py?cmd=' + command;
+        var xmlhttp = new XMLHttpRequest();
+        xmlhttp.open( "GET", ostr , true );
+        xmlhttp.onload = function reload_page() {
+            location.reload(true);
+        }
+        xmlhttp.send(null);
+    }
+    function processFormData() {
+        var garmin_cmd = document.getElementById( 'garmin_cmd' );
+        send_command( garmin_cmd.value );
+    }
+</script>
+
+</body>
+</html>
+"#;
+
+pub const MAP_TEMPLATE: &str = r#"
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta charset="utf-8">
+    <title>SPORTTITLEDATE</title>
+    <style>
+      html, body, #map-canvas {
+        height: 80%;
+        width: 80%;
+/*         margin: 10px; */
+/*         padding: 10px */
+      }
+    </style>
+    <script type="text/javascript"
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCNWrZdA6Tz1Umw5Fu2PhIB0TJzyRh111A">
+    </script>
+    <script type="text/javascript">
+      function initialize() {
+        var mapOptions = {
+          center: { lat: CENTRALLAT, lng: CENTRALLON},
+          zoom: ZOOMVALUE ,
+          mapTypeId: google.maps.MapTypeId.SATELLITE
+        };
+        var map = new google.maps.Map(document.getElementById('map-canvas'),
+            mapOptions);
+        var runningRouteCoordinates = [
+            INSERTMAPSEGMENTSHERE
+            ];
+        var runningRoute = new google.maps.Polyline({
+            path: runningRouteCoordinates,
+            geodesic: true,
+            strokeColor: '#FF0000',
+            strokeOpacity: 1.0,
+            strokeWeight: 2
+        });
+        runningRoute.setMap(map);
+      };
+      google.maps.event.addDomListener(window, 'load', initialize);
+    </script>
+  </head>
+  <body>
+
+<p>
+<button type="submit" onclick="send_command('prev year');"> year </button>
+HISTORYBUTTONS
+</p>
+
+<p>
+<form>
+<input type="text" name="cmd" id="garmin_cmd"/>
+<input type="button" name="submitGARMIN" value="Submit" onclick="processFormData();"/>
+</form>
+</p>
+
+<h1><center><b>SPORTTITLEDATE</b></center></h1>
+
+<div id="map-canvas"></div>
+
+<div>
+    INSERTTABLESHERE
+</div>
+
+<div>
+    INSERTOTHERIMAGESHERE
+</div>
+
+<script language="JavaScript" type="text/javascript">
+    function send_command( command ) {
+        var ostr = '../../../cgi-bin/control_garmin.py?cmd=' + command;
+        var xmlhttp = new XMLHttpRequest();
+        xmlhttp.open( "GET", ostr , true );
+        xmlhttp.onload = function reload_page() {
+            location.reload(true);
+        }
+        xmlhttp.send(null);
+    }
+    function processFormData() {
+        var garmin_cmd = document.getElementById( 'garmin_cmd' );
+        send_command( garmin_cmd.value );
+    }
+</script>
+
+</body>
+
+</html>
+"#;

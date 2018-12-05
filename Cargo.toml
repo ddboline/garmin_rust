@@ -25,6 +25,8 @@ futures = "*"
 s4 = "*"
 num = "*"
 config = "*"
+tempdir = "*"
+tempfile = "*"
 
 [dependencies.avro-rs]
 version = "^0.6"

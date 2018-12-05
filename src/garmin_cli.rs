@@ -1,8 +1,10 @@
 extern crate config;
+extern crate tempdir;
 
 use clap::{App, Arg};
 
 use std::env;
+use tempdir::TempDir;
 
 use crate::garmin_correction_lap;
 use crate::garmin_file;
@@ -213,7 +215,11 @@ pub fn cli_garmin_report() {
             };
             debug!("gfile {} {}", gfile.laps.len(), gfile.points.len());
             println!("{}", garmin_report::generate_txt_report(&gfile).join("\n"));
-            garmin_report::file_report_html(&gfile, &maps_api_key, &cache_dir)
+
+            let tempdir = TempDir::new("garmin_html").unwrap();
+            let htmlcachedir = tempdir.path().to_str().unwrap();
+
+            garmin_report::file_report_html(&gfile, &maps_api_key, &htmlcachedir)
                 .expect("Failed to generate html report");
         }
         _ => {
@@ -221,7 +227,11 @@ pub fn cli_garmin_report() {
             let txt_result = garmin_report::create_report_query(&pg_url, &options, &constraints);
 
             println!("{}", txt_result.join("\n"));
-            garmin_report::summary_report_html(&txt_result, &mut Vec::new(), &cache_dir).unwrap();
+            let tempdir = TempDir::new("garmin_html").unwrap();
+            let htmlcachedir = tempdir.path().to_str().unwrap();
+
+            garmin_report::summary_report_html(&txt_result, &mut Vec::new(), &htmlcachedir)
+                .unwrap();
         }
     };
 }

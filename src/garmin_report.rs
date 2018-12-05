@@ -1203,6 +1203,8 @@ pub fn file_report_html(
         );
     };
 
+    Exec::shell(format!("rm -rf {}/html", cache_dir)).join()?;
+
     let graphs: Vec<_> = plot_opts
         .par_iter()
         .filter_map(|options| match plot_graph(&options) {

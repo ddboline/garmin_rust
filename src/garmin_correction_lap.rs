@@ -13,7 +13,7 @@ use postgres::{Connection, TlsMode};
 
 use crate::garmin_summary;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GarminCorrectionLap {
     pub id: i32,
     pub start_time: String,
@@ -34,6 +34,31 @@ impl GarminCorrectionLap {
             duration: None,
         }
     }
+
+    pub fn with_id(mut self, id: i32) -> GarminCorrectionLap {
+        self.id = id;
+        self
+    }
+    pub fn with_start_time(mut self, start_time: &str) -> GarminCorrectionLap {
+        self.start_time = start_time.to_string();
+        self
+    }
+    pub fn with_lap_number(mut self, lap_number: i32) -> GarminCorrectionLap {
+        self.lap_number = lap_number;
+        self
+    }
+    pub fn with_sport(mut self, sport: &str) -> GarminCorrectionLap {
+        self.sport = Some(sport.to_string());
+        self
+    }
+    pub fn with_distance(mut self, distance: f64) -> GarminCorrectionLap {
+        self.distance = Some(distance);
+        self
+    }
+    pub fn with_duration(mut self, duration: f64) -> GarminCorrectionLap {
+        self.duration = Some(duration);
+        self
+    }
 }
 
 pub fn get_corr_list_map(
@@ -45,60 +70,71 @@ pub fn get_corr_list_map(
         .collect()
 }
 
-pub fn corr_list_from_json(json_filename: &str) -> Result<Vec<GarminCorrectionLap>, Error> {
-    let mut corr_list = Vec::new();
+pub fn corr_list_from_buffer(buffer: &Vec<u8>) -> Result<Vec<GarminCorrectionLap>, Error> {
+    let jsval = parse(&str::from_utf8(&buffer)?)?;
 
+    let corr_list = match &jsval {
+        JsonValue::Object(_) => jsval
+            .entries()
+            .flat_map(|(key, val)| match val {
+                JsonValue::Object(_) => val.entries()
+                    .map(|(lap, result)| match result {
+                        JsonValue::Number(_) => {
+                            let corr = GarminCorrectionLap::new()
+                                .with_start_time(&key)
+                                .with_lap_number(lap.parse()?);
+                            Ok(match result.as_f64() {
+                                Some(r) => corr.with_distance(r),
+                                None => corr,
+                            })
+                        }
+                        JsonValue::Array(arr) => {
+                            let corr = GarminCorrectionLap::new()
+                                .with_start_time(&key)
+                                .with_lap_number(lap.parse()?);
+                            let corr = match arr.get(0) {
+                                Some(x) => match x.as_f64() {
+                                    Some(r) => corr.with_distance(r),
+                                    None => corr,
+                                },
+                                None => corr,
+                            };
+                            Ok(match arr.get(1) {
+                                Some(x) => match x.as_f64() {
+                                    Some(r) => corr.with_duration(r),
+                                    None => corr,
+                                },
+                                None => corr,
+                            })
+                        }
+                        _ => Err(err_msg(format!("something unexpected {}", result))),
+                    })
+                    .collect(),
+                _ => Vec::new(),
+            })
+            .filter_map(|x| match x {
+                Ok(s) => Some(s),
+                Err(e) => {
+                    debug!("Error {}", e);
+                    None
+                }
+            })
+            .collect(),
+        _ => Vec::new(),
+    };
+
+    Ok(corr_list)
+}
+
+pub fn corr_list_from_json(json_filename: &str) -> Result<Vec<GarminCorrectionLap>, Error> {
     let mut file = File::open(json_filename)?;
 
     let mut buffer = Vec::new();
 
-    let _ = file.read_to_end(&mut buffer)?;
-
-    let jsval = parse(&str::from_utf8(&buffer)?)?;
-    match &jsval {
-        JsonValue::Object(_) => {
-            for (key, val) in jsval.entries() {
-                match val {
-                    JsonValue::Object(_) => {
-                        for (lap, result) in val.entries() {
-                            match result {
-                                JsonValue::Number(_) => {
-                                    corr_list.push(GarminCorrectionLap {
-                                        id: -1,
-                                        start_time: key.to_string(),
-                                        lap_number: lap.parse()?,
-                                        sport: None,
-                                        distance: result.as_f64(),
-                                        duration: None,
-                                    });
-                                }
-                                JsonValue::Array(arr) => {
-                                    corr_list.push(GarminCorrectionLap {
-                                        id: -1,
-                                        start_time: key.to_string(),
-                                        lap_number: lap.parse()?,
-                                        sport: None,
-                                        distance: match arr.get(0) {
-                                            Some(x) => x.as_f64(),
-                                            None => None,
-                                        },
-                                        duration: match arr.get(1) {
-                                            Some(x) => x.as_f64(),
-                                            None => None,
-                                        },
-                                    });
-                                }
-                                _ => println!("something unexpected {}", result),
-                            }
-                        }
-                    }
-                    _ => println!("{}", val),
-                }
-            }
-        }
-        _ => (),
-    };
-    Ok(corr_list)
+    match file.read_to_end(&mut buffer)? {
+        0 => Err(err_msg(format!("Zero bytes read from {}", json_filename))),
+        _ => corr_list_from_buffer(&buffer),
+    }
 }
 
 pub fn dump_corr_list_to_avro(
@@ -216,22 +252,11 @@ pub fn add_mislabeled_times_to_corr_list(
     for (sport, times_list) in mislabeled_times {
         for time in times_list {
             let new_corr = match corr_list_map.get(&(time.to_string(), 0)) {
-                Some(v) => GarminCorrectionLap {
-                    id: v.id,
-                    start_time: v.start_time.clone(),
-                    lap_number: 0,
-                    sport: Some(sport.to_string()),
-                    distance: v.distance.clone(),
-                    duration: v.duration.clone(),
-                },
-                None => GarminCorrectionLap {
-                    id: -1,
-                    start_time: time.to_string(),
-                    lap_number: 0,
-                    sport: Some(sport.to_string()),
-                    distance: None,
-                    duration: None,
-                },
+                Some(v) => v.clone().with_sport(sport),
+                None => GarminCorrectionLap::new()
+                    .with_start_time(time)
+                    .with_lap_number(0)
+                    .with_sport(sport),
             };
 
             corr_list_map.insert((time.to_string(), 0), new_corr);

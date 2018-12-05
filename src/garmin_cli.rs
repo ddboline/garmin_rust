@@ -2,6 +2,8 @@ extern crate config;
 
 use clap::{App, Arg};
 
+use std::env;
+
 use crate::garmin_correction_lap;
 use crate::garmin_file;
 use crate::garmin_parse;
@@ -11,12 +13,16 @@ use crate::garmin_sync;
 use crate::garmin_util;
 
 pub fn cli_garmin_proc() {
+    let home_dir = env::var("HOME").unwrap();
+
     let settings = config::Config::new()
         .merge(config::File::with_name("config.yml"))
         .unwrap()
         .clone();
 
     let pg_url = settings.get_str("pg_url").unwrap();
+    let gps_bucket = settings.get_str("gps_bucket").unwrap();
+    let cache_bucket = settings.get_str("cache_bucket").unwrap();
 
     let matches = App::new("Garmin Rust Proc")
         .version("0.1")
@@ -65,25 +71,26 @@ pub fn cli_garmin_proc() {
         .get_matches();
 
     let filenames = matches.values_of("filename");
-    let gps_dir = matches
-        .value_of("gps_dir")
-        .unwrap_or("/home/ddboline/.garmin_cache/run/gps_tracks");
-    let cache_dir = matches
-        .value_of("cache_dir")
-        .unwrap_or("/home/ddboline/.garmin_cache/run/cache");
+    let default_gps_dir = format!("{}/.garmin_cache/run/gps_tracks", home_dir);
+    let gps_dir = matches.value_of("gps_dir").unwrap_or(&default_gps_dir);
+    let default_cache_dir = format!("{}/.garmin_cache/run/cache", home_dir);
+    let cache_dir = matches.value_of("cache_dir").unwrap_or(&default_cache_dir);
 
     let do_sync = matches.is_present("sync");
     let do_all = matches.is_present("all");
 
     match do_sync {
         true => {
-            garmin_sync::sync_file(
-                "/home/ddboline/.garmin_cache/run/gps_tracks",
-                "garmin_scripts_gps_files_ddboline",
+            let s3_client = garmin_sync::get_s3_client();
+            garmin_sync::sync_dir(
+                format!("{}/.garmin_cache/run/gps_tracks", home_dir).as_str(),
+                &gps_bucket,
+                &s3_client,
             );
-            garmin_sync::sync_file(
-                "/home/ddboline/.garmin_cache/run/cache",
-                "garmin-scripts-cache-ddboline",
+            garmin_sync::sync_dir(
+                format!("{}/.garmin_cache/run/cache", home_dir).as_str(),
+                &cache_bucket,
+                &s3_client,
             );
         }
         false => {
@@ -206,15 +213,15 @@ pub fn cli_garmin_report() {
             };
             debug!("gfile {} {}", gfile.laps.len(), gfile.points.len());
             println!("{}", garmin_report::generate_txt_report(&gfile).join("\n"));
-            garmin_report::file_report_html(&gfile, &maps_api_key)
+            garmin_report::file_report_html(&gfile, &maps_api_key, &cache_dir)
                 .expect("Failed to generate html report");
         }
         _ => {
             debug!("{:?}", options);
-            println!(
-                "{}",
-                garmin_report::create_report_query(&pg_url, &options, &constraints)
-            );
+            let txt_result = garmin_report::create_report_query(&pg_url, &options, &constraints);
+
+            println!("{}", txt_result.join("\n"));
+            garmin_report::summary_report_html(&txt_result, &mut Vec::new(), &cache_dir).unwrap();
         }
     };
 }

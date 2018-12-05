@@ -5,12 +5,18 @@ extern crate s4;
 
 use rayon::prelude::*;
 
+use failure::Error;
+
 use crate::garmin_util::get_md5sum;
 use rusoto_core::Region;
 use rusoto_s3::{GetObjectRequest, ListObjectsV2Request, PutObjectRequest, S3, S3Client};
 use s4::S4;
 use std::collections::HashMap;
 use std::path::Path;
+
+pub fn get_s3_client() -> S3Client {
+    S3Client::new(Region::UsEast1)
+}
 
 pub fn get_list_of_keys(s3_client: &S3Client, bucket: &str) -> Vec<(String, String)> {
     let mut continuation_token = None;
@@ -57,9 +63,7 @@ pub fn get_list_of_keys(s3_client: &S3Client, bucket: &str) -> Vec<(String, Stri
     list_of_keys
 }
 
-pub fn sync_file(local_dir: &str, s3_bucket: &str) {
-    let s3_client = S3Client::new(Region::UsEast1);
-
+pub fn sync_dir(local_dir: &str, s3_bucket: &str, s3_client: &S3Client) {
     let path = Path::new(local_dir);
 
     let file_list: Vec<String> = match path.read_dir() {
@@ -101,39 +105,7 @@ pub fn sync_file(local_dir: &str, s3_bucket: &str) {
         };
         println!("file_name {}", file_name);
 
-        s3_client
-            .upload_from_file(
-                &file,
-                PutObjectRequest {
-                    acl: None,
-                    body: None,
-                    bucket: s3_bucket.to_string(),
-                    cache_control: None,
-                    content_disposition: None,
-                    content_encoding: None,
-                    content_language: None,
-                    content_length: None,
-                    content_md5: None,
-                    content_type: None,
-                    expires: None,
-                    grant_full_control: None,
-                    grant_read: None,
-                    grant_read_acp: None,
-                    grant_write_acp: None,
-                    key: file_name.to_string(),
-                    metadata: None,
-                    request_payer: None,
-                    sse_customer_algorithm: None,
-                    sse_customer_key: None,
-                    sse_customer_key_md5: None,
-                    ssekms_key_id: None,
-                    server_side_encryption: None,
-                    storage_class: None,
-                    tagging: None,
-                    website_redirect_location: None,
-                },
-            )
-            .unwrap();
+        upload_file(&file, &s3_bucket, &file_name, &s3_client).unwrap();
     }
 
     for (key, md5) in key_list {
@@ -147,31 +119,79 @@ pub fn sync_file(local_dir: &str, s3_bucket: &str) {
         let file_name = format!("{}/{}", local_dir, key);
         println!("key {} {}", s3_bucket, key);
 
-        s3_client
-            .download_to_file(
-                GetObjectRequest {
-                    bucket: s3_bucket.to_string(),
-                    if_match: None,
-                    if_modified_since: None,
-                    if_none_match: None,
-                    if_unmodified_since: None,
-                    key: key,
-                    part_number: None,
-                    range: None,
-                    request_payer: None,
-                    response_cache_control: None,
-                    response_content_disposition: None,
-                    response_content_encoding: None,
-                    response_content_language: None,
-                    response_content_type: None,
-                    response_expires: None,
-                    sse_customer_algorithm: None,
-                    sse_customer_key: None,
-                    sse_customer_key_md5: None,
-                    version_id: None,
-                },
-                file_name,
-            )
-            .unwrap();
+        download_file(&file_name, &s3_bucket, &key, &s3_client).unwrap();
     }
+}
+
+pub fn download_file(
+    local_file: &str,
+    s3_bucket: &str,
+    s3_key: &str,
+    s3_client: &S3Client,
+) -> Result<(), Error> {
+    s3_client.download_to_file(
+        GetObjectRequest {
+            bucket: s3_bucket.to_string(),
+            if_match: None,
+            if_modified_since: None,
+            if_none_match: None,
+            if_unmodified_since: None,
+            key: s3_key.to_string(),
+            part_number: None,
+            range: None,
+            request_payer: None,
+            response_cache_control: None,
+            response_content_disposition: None,
+            response_content_encoding: None,
+            response_content_language: None,
+            response_content_type: None,
+            response_expires: None,
+            sse_customer_algorithm: None,
+            sse_customer_key: None,
+            sse_customer_key_md5: None,
+            version_id: None,
+        },
+        local_file,
+    )?;
+    Ok(())
+}
+
+pub fn upload_file(
+    local_file: &str,
+    s3_bucket: &str,
+    s3_key: &str,
+    s3_client: &S3Client,
+) -> Result<(), Error> {
+    s3_client.upload_from_file(
+        &local_file,
+        PutObjectRequest {
+            acl: None,
+            body: None,
+            bucket: s3_bucket.to_string(),
+            cache_control: None,
+            content_disposition: None,
+            content_encoding: None,
+            content_language: None,
+            content_length: None,
+            content_md5: None,
+            content_type: None,
+            expires: None,
+            grant_full_control: None,
+            grant_read: None,
+            grant_read_acp: None,
+            grant_write_acp: None,
+            key: s3_key.to_string(),
+            metadata: None,
+            request_payer: None,
+            sse_customer_algorithm: None,
+            sse_customer_key: None,
+            sse_customer_key_md5: None,
+            ssekms_key_id: None,
+            server_side_encryption: None,
+            storage_class: None,
+            tagging: None,
+            website_redirect_location: None,
+        },
+    )?;
+    Ok(())
 }

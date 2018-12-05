@@ -3,6 +3,7 @@ extern crate rayon;
 use failure::Error;
 use postgres::{Connection, TlsMode};
 use std::env;
+use std::fs::create_dir_all;
 use std::fs::File;
 use std::io::prelude::*;
 
@@ -109,7 +110,7 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Vec<String> {
             ));
         }
     };
-    if gfile.total_hr_dur > 0.0 {
+    if gfile.total_hr_dur > gfile.total_hr_dis {
         tmp_str.push(format!(
             "{:.2} bpm",
             (gfile.total_hr_dur / gfile.total_hr_dis) as i32
@@ -299,7 +300,6 @@ pub fn get_splits(
     for point in &gfile.points {
         let cur_point_me = point.distance;
         let cur_point_time = point.duration_from_begin;
-        debug!("{}", &cur_point_time);
         if (cur_point_me == None) | (last_point_me == None) {
             continue;
         }
@@ -317,7 +317,7 @@ pub fn get_splits(
             let cur_split_me = cur_split_me as f64 * split_distance_in_meters;
 
             debug!(
-                "{} {} {} {} {} {} ",
+                "get splits 0 {} {} {} {} {} {} ",
                 &last_point_time,
                 &cur_point_time,
                 &cur_point_me.unwrap(),
@@ -346,7 +346,7 @@ pub fn get_splits(
                 vec![split_dist, time_val]
             };
 
-            debug!("{:?}", &tmp_vector);
+            debug!("get splits 1 {:?}", &tmp_vector);
 
             split_vector.push(tmp_vector);
 
@@ -363,7 +363,7 @@ pub fn create_report_query(
     pg_url: &str,
     options: &GarminReportOptions,
     constraints: &Vec<String>,
-) -> String {
+) -> Vec<String> {
     let conn = Connection::connect(pg_url, TlsMode::None).unwrap();
 
     let sport_type_string_map = get_sport_type_string_map();
@@ -403,7 +403,7 @@ pub fn create_report_query(
         vec!["".to_string()]
     };
 
-    result_vec.join("\n")
+    result_vec
 }
 
 fn file_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
@@ -522,7 +522,7 @@ fn file_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
                 ));
             }
         };
-        if total_hr_dur > 0.0 {
+        if total_hr_dur > total_hr_dis {
             tmp_vec.push(format!(
                 "\t {:7}",
                 format!("{} bpm", (total_hr_dur / total_hr_dis) as i32)
@@ -649,7 +649,7 @@ fn day_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
                 ));
             }
         };
-        if total_hr_dur > 0.0 {
+        if total_hr_dur > total_hr_dis {
             tmp_vec.push(format!(
                 "\t {:7}",
                 format!("{} bpm", (total_hr_dur / total_hr_dis) as i32)
@@ -759,7 +759,7 @@ fn week_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
             " {:10} \t",
             print_h_m_s(total_duration, true).unwrap()
         ));
-        if total_hr_dur > 0.0 {
+        if total_hr_dur > total_hr_dis {
             tmp_vec.push(format!(
                 " {:7} {:2}",
                 format!("{} bpm", (total_hr_dur / total_hr_dis) as i32),
@@ -873,7 +873,7 @@ fn month_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
             print_h_m_s(total_duration, true).unwrap()
         ));
 
-        if total_hr_dur > 0.0 {
+        if total_hr_dur > total_hr_dis {
             tmp_vec.push(format!(
                 " {:7} {:2}",
                 format!("{} bpm", (total_hr_dur / total_hr_dis) as i32),
@@ -985,7 +985,7 @@ fn year_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
             " {:10} \t",
             print_h_m_s(total_duration, true).unwrap()
         ));
-        if total_hr_dur > 0.0 {
+        if total_hr_dur > total_hr_dis {
             tmp_vec.push(format!(
                 " {:7} {:2}",
                 format!("{} bpm", (total_hr_dur / total_hr_dis) as i32),
@@ -1005,7 +1005,11 @@ fn year_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
     result_vec
 }
 
-pub fn file_report_html(gfile: &GarminFile, maps_api_key: &str) -> Result<String, Error> {
+pub fn file_report_html(
+    gfile: &GarminFile,
+    maps_api_key: &str,
+    cache_dir: &str,
+) -> Result<String, Error> {
     let sport = match &gfile.sport {
         Some(s) => s.clone(),
         None => "none".to_string(),
@@ -1026,7 +1030,6 @@ pub fn file_report_html(gfile: &GarminFile, maps_api_key: &str) -> Result<String
     let mut lon_vals = Vec::new();
 
     let home_dir = env::var("HOME").unwrap();
-    let cache_dir = format!("{}/.garmin_cache", home_dir);
 
     let speed_values = get_splits(&gfile, 400., "lap", true);
     let heart_rate_speed: Vec<_> = speed_values
@@ -1431,9 +1434,14 @@ fn get_file_html(gfile: &GarminFile) -> String {
         ),
     };
 
-    if (gfile.total_hr_dur > 0.0) & (gfile.total_hr_dis > 0.0) {
+    if (gfile.total_hr_dur > 0.0) & (gfile.total_hr_dis > 0.0)
+        & (gfile.total_hr_dur > gfile.total_hr_dis)
+    {
         labels.push("Heart Rate".to_string());
-        values.push(format!("{} bpm", gfile.total_hr_dur / gfile.total_hr_dis));
+        values.push(format!(
+            "{} bpm",
+            (gfile.total_hr_dur / gfile.total_hr_dis) as i32
+        ));
     };
 
     retval.push(r#"<table border="1" class="dataframe">"#.to_string());
@@ -1537,4 +1545,53 @@ fn get_html_splits(gfile: &GarminFile, split_distance_in_meters: f64, label: &st
         retval.push("</tbody></table>".to_string());
         retval.join("\n")
     }
+}
+
+pub fn summary_report_html(
+    retval: &Vec<String>,
+    cmd_args: &mut Vec<String>,
+    cache_dir: &str,
+) -> Result<(), Error> {
+    let home_dir = env::var("HOME").unwrap();
+
+    let htmlostr: Vec<_> = retval
+        .iter()
+        .map(|ent| match cmd_args.pop() {
+            Some(cmd) => format!(
+                "{}{}{}{}{}{}",
+                r#"<button type="submit" onclick="send_command('"#,
+                cmd,
+                r#");">"#,
+                cmd,
+                "</button> ",
+                ent.trim()
+            ),
+            None => ent.to_string(),
+        })
+        .collect();
+
+    let htmlostr = htmlostr.join("\n").replace("\n\n", "<br>\n");
+
+    create_dir_all(&format!("{}/html", cache_dir))?;
+
+    let mut htmlfile = File::create(&format!("{}/html/index.html", cache_dir))?;
+
+    for line in GARMIN_TEMPLATE.split("\n") {
+        if line.contains("INSERTTEXTHERE") {
+            write!(htmlfile, "{}", htmlostr);
+        } else if line.contains("SPORTTITLEDATE") {
+            let newtitle = "Garmin Summary";
+            write!(htmlfile, "{}", line.replace("SPORTTITLEDATE", newtitle));
+        } else {
+            write!(htmlfile, "{}", line);
+        }
+    }
+
+    create_dir_all(&format!("{}/html/garmin", home_dir))?;
+    Exec::shell(format!("rm -rf {}/public_html/garmin/html", home_dir)).join()?;
+    Exec::shell(format!(
+        "mv {}/html {}/public_html/garmin/",
+        cache_dir, home_dir
+    )).join()?;
+    Ok(())
 }

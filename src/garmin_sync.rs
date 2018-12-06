@@ -3,6 +3,7 @@ extern crate rayon;
 extern crate rusoto_s3;
 extern crate s4;
 
+use chrono::prelude::*;
 use rayon::prelude::*;
 
 use failure::Error;
@@ -12,13 +13,15 @@ use rusoto_core::Region;
 use rusoto_s3::{GetObjectRequest, ListObjectsV2Request, PutObjectRequest, S3, S3Client};
 use s4::S4;
 use std::collections::HashMap;
+use std::fs;
 use std::path::Path;
+use std::time::SystemTime;
 
 pub fn get_s3_client() -> S3Client {
     S3Client::new(Region::UsEast1)
 }
 
-pub fn get_list_of_keys(s3_client: &S3Client, bucket: &str) -> Vec<(String, String)> {
+pub fn get_list_of_keys(s3_client: &S3Client, bucket: &str) -> Vec<(String, String, i64)> {
     let mut continuation_token = None;
 
     let mut list_of_keys = Vec::new();
@@ -44,10 +47,13 @@ pub fn get_list_of_keys(s3_client: &S3Client, bucket: &str) -> Vec<(String, Stri
         match current_list.key_count {
             Some(0) => (),
             Some(_) => {
-                for bucket in current_list.contents.unwrap() {
+                for item in current_list.contents.unwrap() {
                     list_of_keys.push((
-                        bucket.key.unwrap(),
-                        bucket.e_tag.unwrap().trim_matches('"').to_string(),
+                        item.key.unwrap(),
+                        item.e_tag.unwrap().trim_matches('"').to_string(),
+                        DateTime::parse_from_rfc3339(&item.last_modified.unwrap())
+                            .unwrap()
+                            .timestamp(),
                     ))
                 }
             }
@@ -63,64 +69,97 @@ pub fn get_list_of_keys(s3_client: &S3Client, bucket: &str) -> Vec<(String, Stri
     list_of_keys
 }
 
-pub fn sync_dir(local_dir: &str, s3_bucket: &str, s3_client: &S3Client) {
+pub fn sync_dir(local_dir: &str, s3_bucket: &str, s3_client: &S3Client) -> Result<(), Error> {
     let path = Path::new(local_dir);
 
-    let file_list: Vec<String> = match path.read_dir() {
-        Ok(it) => it.filter_map(|dir_line| match dir_line {
+    let file_list: Vec<String> = path.read_dir()?
+        .filter_map(|dir_line| match dir_line {
             Ok(entry) => {
                 let input_file = entry.path().to_str().unwrap().to_string();
                 Some(input_file)
             }
             Err(_) => None,
-        }).collect(),
-        Err(err) => {
-            println!("{}", err);
-            Vec::new()
-        }
-    };
-    let file_list: Vec<(String, String)> = file_list
+        })
+        .collect();
+
+    let file_list: Vec<_> = file_list
         .par_iter()
         .map(|f| {
             let md5sum = get_md5sum(&f);
-            (f.to_string(), md5sum)
+
+            let modified = fs::metadata(&f)
+                .unwrap()
+                .modified()
+                .unwrap()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_secs() as i64;
+
+            (f.to_string(), md5sum, modified)
         })
         .collect();
     let file_set: HashMap<_, _> = file_list
         .iter()
-        .map(|(x, m)| (x.split("/").last().unwrap().to_string(), m.to_string()))
+        .map(|(x, m, t)| {
+            (
+                x.split("/").last().unwrap().to_string(),
+                (m.to_string(), t.clone()),
+            )
+        })
         .collect();
 
     let key_list = get_list_of_keys(&s3_client, s3_bucket);
-    let key_set: HashMap<_, _> = key_list.iter().cloned().collect();
+    let key_set: HashMap<_, _> = key_list
+        .iter()
+        .map(|(k, m, t)| (k.to_string(), (m.to_string(), t.clone())))
+        .collect();
 
-    for (file, md5) in file_list {
-        let file_name = file.split("/").last().unwrap();
-        if key_set.contains_key(file_name) {
-            let md5_ = key_set.get(file_name).unwrap().clone();
-            if md5_ != md5 {
-                println!("md5 {} {} {}", file_name, md5_, md5);
+    for (file, md5, tmod) in &file_list {
+        let file_name = file.split("/").last().unwrap().to_string();
+
+        let do_upload = if key_set.contains_key(&file_name) {
+            let (md5_, tmod_) = key_set.get(&file_name).unwrap().clone();
+            if (&md5_ != md5) & (tmod > &tmod_) {
+                println!(
+                    "upload md5 {} {} {} {} {}",
+                    file_name, md5_, md5, tmod_, tmod
+                );
+                true
+            } else {
+                false
             }
-            continue;
+        } else {
+            true
         };
-        println!("file_name {}", file_name);
 
-        upload_file(&file, &s3_bucket, &file_name, &s3_client).unwrap();
+        if do_upload {
+            println!("file_name {}", file_name);
+
+            upload_file(&file, &s3_bucket, &file_name, &s3_client)?;
+        }
     }
 
-    for (key, md5) in key_list {
-        if file_set.contains_key(&key) {
-            let md5_ = file_set.get(&key).unwrap().clone();
-            if md5_ != md5 {
-                println!("md5 {} {} {}", key, md5_, md5);
+    for (key, md5, tmod) in key_list {
+        let do_upload = if file_set.contains_key(&key) {
+            let (md5_, tmod_) = file_set.get(&key).unwrap().clone();
+            if (md5_ != md5) & (tmod > tmod_) {
+                println!("download md5 {} {} {} {} {} ", key, md5_, md5, tmod, tmod_);
+                true
+            } else {
+                false
             }
-            continue;
+        } else {
+            true
         };
-        let file_name = format!("{}/{}", local_dir, key);
-        println!("key {} {}", s3_bucket, key);
 
-        download_file(&file_name, &s3_bucket, &key, &s3_client).unwrap();
+        if do_upload {
+            let file_name = format!("{}/{}", local_dir, key);
+            println!("key {} {}", s3_bucket, key);
+
+            download_file(&file_name, &s3_bucket, &key, &s3_client)?;
+        }
     }
+    Ok(())
 }
 
 pub fn download_file(

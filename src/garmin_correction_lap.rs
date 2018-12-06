@@ -12,6 +12,7 @@ use json::{parse, JsonValue};
 use postgres::{Connection, TlsMode};
 
 use crate::garmin_summary;
+use crate::garmin_util::convert_sport_name;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GarminCorrectionLap {
@@ -48,7 +49,7 @@ impl GarminCorrectionLap {
         self
     }
     pub fn with_sport(mut self, sport: &str) -> GarminCorrectionLap {
-        self.sport = Some(sport.to_string());
+        self.sport = convert_sport_name(sport);
         self
     }
     pub fn with_distance(mut self, distance: f64) -> GarminCorrectionLap {
@@ -251,15 +252,28 @@ pub fn add_mislabeled_times_to_corr_list(
 
     for (sport, times_list) in mislabeled_times {
         for time in times_list {
-            let new_corr = match corr_list_map.get(&(time.to_string(), 0)) {
-                Some(v) => v.clone().with_sport(sport),
-                None => GarminCorrectionLap::new()
-                    .with_start_time(time)
-                    .with_lap_number(0)
-                    .with_sport(sport),
+            let lap_list: Vec<_> = corr_list_map
+                .keys()
+                .filter_map(|(t, n)| if t == time { Some(*n) } else { None })
+                .collect();
+
+            let lap_list = if lap_list.len() > 0 {
+                lap_list
+            } else {
+                vec![0]
             };
 
-            corr_list_map.insert((time.to_string(), 0), new_corr);
+            for lap_number in lap_list {
+                let new_corr = match corr_list_map.get(&(time.to_string(), lap_number)) {
+                    Some(v) => v.clone().with_sport(sport),
+                    None => GarminCorrectionLap::new()
+                        .with_start_time(time)
+                        .with_lap_number(lap_number)
+                        .with_sport(sport),
+                };
+
+                corr_list_map.insert((time.to_string(), lap_number), new_corr);
+            }
         }
     }
 

@@ -11,6 +11,18 @@ mod tests {
         assert_eq!(gc.sport, None);
         assert_eq!(gc.distance, None);
         assert_eq!(gc.duration, None);
+
+        let gc = garmin_rust::garmin_correction_lap::GarminCorrectionLap::new()
+            .with_id(5)
+            .with_lap_number(3)
+            .with_sport("running")
+            .with_distance(5.3)
+            .with_duration(6.2);
+        assert_eq!(gc.id, 5);
+        assert_eq!(gc.lap_number, 3);
+        assert_eq!(gc.sport, Some("running".to_string()));
+        assert_eq!(gc.distance, Some(5.3));
+        assert_eq!(gc.duration, Some(6.2));
     }
 
     #[test]
@@ -146,6 +158,56 @@ mod tests {
         assert_eq!(
             garmin_rust::garmin_correction_lap::read_corr_list_from_avro(&tempfilename).unwrap(),
             corr_list
+        );
+    }
+
+    #[test]
+    fn test_add_mislabeled_times_to_corr_list() {
+        let corr_list = vec![
+            garmin_rust::garmin_correction_lap::GarminCorrectionLap::new()
+                .with_start_time("2010-11-20T19:55:34Z")
+                .with_distance(10.0)
+                .with_lap_number(0),
+            garmin_rust::garmin_correction_lap::GarminCorrectionLap::new()
+                .with_start_time("2010-11-20T19:55:34Z")
+                .with_distance(5.0)
+                .with_lap_number(1),
+        ];
+
+        let corr_list =
+            garmin_rust::garmin_correction_lap::add_mislabeled_times_to_corr_list(&corr_list);
+
+        let corr_map = garmin_rust::garmin_correction_lap::get_corr_list_map(&corr_list);
+
+        println!("{:?}", corr_list);
+
+        assert_eq!(corr_list.len(), 26);
+
+        assert_eq!(
+            corr_map
+                .get(&("2010-11-20T19:55:34Z".to_string(), 0))
+                .unwrap(),
+            &garmin_rust::garmin_correction_lap::GarminCorrectionLap {
+                id: -1,
+                start_time: "2010-11-20T19:55:34Z".to_string(),
+                lap_number: 0,
+                sport: Some("biking".to_string()),
+                distance: Some(10.0),
+                duration: None
+            }
+        );
+        assert_eq!(
+            corr_map
+                .get(&("2010-11-20T19:55:34Z".to_string(), 1))
+                .unwrap(),
+            &garmin_rust::garmin_correction_lap::GarminCorrectionLap {
+                id: -1,
+                start_time: "2010-11-20T19:55:34Z".to_string(),
+                lap_number: 1,
+                sport: Some("biking".to_string()),
+                distance: Some(5.0),
+                duration: None
+            }
         );
     }
 }

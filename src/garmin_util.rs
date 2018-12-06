@@ -79,6 +79,16 @@ pub fn get_sport_type_string_map() -> HashMap<SportTypes, String> {
         .collect()
 }
 
+pub fn convert_sport_name(sport: &str) -> Option<String> {
+    let map0 = get_sport_type_map();
+    let map1 = get_sport_type_string_map();
+
+    match map0.get(sport) {
+        Some(&s) => Some(map1.get(&s).unwrap().clone()),
+        None => None,
+    }
+}
+
 pub fn convert_time_string(time_str: &str) -> Result<f64, Error> {
     let entries: Vec<_> = time_str.split(":").collect();
     let (h, m, s): (i32, i32, f64) = match entries.get(0) {

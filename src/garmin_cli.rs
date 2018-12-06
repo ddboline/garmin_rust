@@ -88,15 +88,21 @@ pub fn cli_garmin_proc() {
                 format!("{}/.garmin_cache/run/gps_tracks", home_dir).as_str(),
                 &gps_bucket,
                 &s3_client,
-            );
+            ).unwrap();
             garmin_sync::sync_dir(
                 format!("{}/.garmin_cache/run/cache", home_dir).as_str(),
                 &cache_bucket,
                 &s3_client,
-            );
+            ).unwrap();
         }
         false => {
             let corr_list = garmin_correction_lap::read_corrections_from_db(&pg_url).unwrap();
+
+            garmin_correction_lap::dump_corr_list_to_avro(
+                &corr_list,
+                &format!("{}/garmin_correction.avro", &cache_dir),
+            ).unwrap();
+
             let corr_map = garmin_correction_lap::get_corr_list_map(&corr_list);
 
             let gsum_list = match filenames {

@@ -3,7 +3,6 @@ extern crate tempdir;
 
 use clap::{App, Arg};
 
-use std::env;
 use tempdir::TempDir;
 
 use crate::garmin_correction_lap;
@@ -14,8 +13,18 @@ use crate::garmin_summary;
 use crate::garmin_sync;
 use crate::garmin_util;
 
+fn get_version_number() -> String {
+    format!(
+        "{}.{}.{}{}",
+        env!("CARGO_PKG_VERSION_MAJOR"),
+        env!("CARGO_PKG_VERSION_MINOR"),
+        env!("CARGO_PKG_VERSION_PATCH"),
+        option_env!("CARGO_PKG_VERSION_PRE").unwrap_or("")
+    )
+}
+
 pub fn cli_garmin_proc() {
-    let home_dir = env::var("HOME").unwrap();
+    let home_dir = env!("HOME");
 
     let settings = config::Config::new()
         .merge(config::File::with_name("config.yml"))
@@ -26,8 +35,14 @@ pub fn cli_garmin_proc() {
     let gps_bucket = settings.get_str("gps_bucket").unwrap();
     let cache_bucket = settings.get_str("cache_bucket").unwrap();
 
+    let default_gps_dir = format!("{}/.garmin_cache/run/gps_tracks", home_dir);
+    let default_cache_dir = format!("{}/.garmin_cache/run/cache", home_dir);
+
+    let gps_dir = settings.get_str("gps_dir").unwrap_or(default_gps_dir);
+    let cache_dir = settings.get_str("cache_dir").unwrap_or(default_cache_dir);
+
     let matches = App::new("Garmin Rust Proc")
-        .version("0.1")
+        .version(get_version_number().as_str())
         .author("Daniel Boline <ddboline@gmail.com>")
         .about("Convert GPS files to avro format, dump stuff to postgres")
         .arg(
@@ -47,22 +62,6 @@ pub fn cli_garmin_proc() {
                 .help("Convert all files in gps dir"),
         )
         .arg(
-            Arg::with_name("gps_dir")
-                .short("d")
-                .long("gps_dir")
-                .value_name("GPS_DIR")
-                .help("Convert all files in a directory")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("cache_dir")
-                .short("c")
-                .long("cache_dir")
-                .value_name("CACHE_DIR")
-                .help("Specify cache directory")
-                .takes_value(true),
-        )
-        .arg(
             Arg::with_name("sync")
                 .short("s")
                 .long("sync")
@@ -73,10 +72,6 @@ pub fn cli_garmin_proc() {
         .get_matches();
 
     let filenames = matches.values_of("filename");
-    let default_gps_dir = format!("{}/.garmin_cache/run/gps_tracks", home_dir);
-    let gps_dir = matches.value_of("gps_dir").unwrap_or(&default_gps_dir);
-    let default_cache_dir = format!("{}/.garmin_cache/run/cache", home_dir);
-    let cache_dir = matches.value_of("cache_dir").unwrap_or(&default_cache_dir);
 
     let do_sync = matches.is_present("sync");
     let do_all = matches.is_present("all");
@@ -127,6 +122,8 @@ pub fn cli_garmin_proc() {
 }
 
 pub fn cli_garmin_report() {
+    let home_dir = env!("HOME");
+
     let settings = config::Config::new()
         .merge(config::File::with_name("config.yml"))
         .unwrap()
@@ -135,35 +132,18 @@ pub fn cli_garmin_report() {
     let pg_url = settings.get_str("pg_url").unwrap();
     let maps_api_key = settings.get_str("maps_api_key").unwrap();
 
+    let default_gps_dir = format!("{}/.garmin_cache/run/gps_tracks", home_dir);
+    let default_cache_dir = format!("{}/.garmin_cache/run/cache", home_dir);
+
+    let gps_dir = settings.get_str("gps_dir").unwrap_or(default_gps_dir);
+    let cache_dir = settings.get_str("cache_dir").unwrap_or(default_cache_dir);
+
     let matches = App::new("Garmin Rust Report")
-        .version("0.1")
+        .version(get_version_number().as_str())
         .author("Daniel Boline <ddboline@gmail.com>")
         .about("Convert GPS files to avro format, dump stuff to postgres")
-        .arg(
-            Arg::with_name("gps_dir")
-                .short("d")
-                .long("gps_dir")
-                .value_name("GPS_DIR")
-                .help("Convert all files in a directory")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("cache_dir")
-                .short("c")
-                .long("cache_dir")
-                .value_name("CACHE_DIR")
-                .help("Specify cache directory")
-                .takes_value(true),
-        )
         .arg(Arg::with_name("patterns").multiple(true))
         .get_matches();
-
-    let gps_dir = matches
-        .value_of("gps_dir")
-        .unwrap_or("/home/ddboline/.garmin_cache/run/gps_tracks");
-    let cache_dir = matches
-        .value_of("cache_dir")
-        .unwrap_or("/home/ddboline/.garmin_cache/run/cache");
 
     let patterns = matches.values_of("patterns");
 

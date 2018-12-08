@@ -31,15 +31,15 @@ pub fn cli_garmin_proc() {
         .unwrap()
         .clone();
 
-    let pg_url = settings.get_str("pg_url").unwrap();
-    let gps_bucket = settings.get_str("gps_bucket").unwrap();
-    let cache_bucket = settings.get_str("cache_bucket").unwrap();
+    let pg_url = settings.get_str("PGURL").unwrap();
+    let gps_bucket = settings.get_str("GPS_BUCKET").unwrap();
+    let cache_bucket = settings.get_str("CACHE_BUCKET").unwrap();
 
     let default_gps_dir = format!("{}/.garmin_cache/run/gps_tracks", home_dir);
     let default_cache_dir = format!("{}/.garmin_cache/run/cache", home_dir);
 
-    let gps_dir = settings.get_str("gps_dir").unwrap_or(default_gps_dir);
-    let cache_dir = settings.get_str("cache_dir").unwrap_or(default_cache_dir);
+    let gps_dir = settings.get_str("GPS_DIR").unwrap_or(default_gps_dir);
+    let cache_dir = settings.get_str("CACHE_DIR").unwrap_or(default_cache_dir);
 
     let matches = App::new("Garmin Rust Proc")
         .version(get_version_number().as_str())
@@ -129,14 +129,14 @@ pub fn cli_garmin_report() {
         .unwrap()
         .clone();
 
-    let pg_url = settings.get_str("pg_url").unwrap();
-    let maps_api_key = settings.get_str("maps_api_key").unwrap();
+    let pg_url = settings.get_str("PGURL").unwrap();
+    let maps_api_key = settings.get_str("MAPS_API_KEY").unwrap();
 
     let default_gps_dir = format!("{}/.garmin_cache/run/gps_tracks", home_dir);
     let default_cache_dir = format!("{}/.garmin_cache/run/cache", home_dir);
 
-    let gps_dir = settings.get_str("gps_dir").unwrap_or(default_gps_dir);
-    let cache_dir = settings.get_str("cache_dir").unwrap_or(default_cache_dir);
+    let gps_dir = settings.get_str("GPS_DIR").unwrap_or(default_gps_dir);
+    let cache_dir = settings.get_str("CACHE_DIR").unwrap_or(default_cache_dir);
 
     let matches = App::new("Garmin Rust Report")
         .version(get_version_number().as_str())

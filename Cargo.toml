@@ -27,6 +27,7 @@ num = "*"
 config = "*"
 tempdir = "*"
 tempfile = "*"
+rocket = "*"
 
 [dependencies.avro-rs]
 version = "^0.6"
@@ -44,4 +45,9 @@ doc = false
 [[bin]]
 name = "garmin_rust_report"
 path = "src/garmin_rust_report.rs"
+doc = false
+
+[[bin]]
+name = "garmin_rust_http"
+path = "src/garmin_rust_http.rs"
 doc = false

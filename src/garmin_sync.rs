@@ -134,7 +134,7 @@ pub fn sync_dir(local_dir: &str, s3_bucket: &str, s3_client: &S3Client) -> Resul
         };
 
         if do_upload {
-            println!("file_name {}", file_name);
+            println!("upload file {}", file_name);
 
             upload_file(&file, &s3_bucket, &file_name, &s3_client)?;
         }
@@ -155,7 +155,7 @@ pub fn sync_dir(local_dir: &str, s3_bucket: &str, s3_client: &S3Client) -> Resul
 
         if do_upload {
             let file_name = format!("{}/{}", local_dir, key);
-            println!("key {} {}", s3_bucket, key);
+            println!("download {} {}", s3_bucket, key);
 
             download_file(&file_name, &s3_bucket, &key, &s3_client)?;
         }

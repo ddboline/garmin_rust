@@ -2,12 +2,7 @@ extern crate rayon;
 
 use failure::Error;
 use postgres::{Connection, TlsMode};
-use std::env;
 use std::fs::create_dir_all;
-use std::fs::File;
-use std::io::prelude::*;
-
-use subprocess::Exec;
 
 use rayon::prelude::*;
 
@@ -1034,8 +1029,6 @@ pub fn file_report_html(
     let mut lat_vals = Vec::new();
     let mut lon_vals = Vec::new();
 
-    let home_dir = env::var("HOME").unwrap();
-
     let speed_values = get_splits(&gfile, 400., "lap", true);
     let heart_rate_speed: Vec<_> = speed_values
         .iter()
@@ -1212,7 +1205,21 @@ pub fn file_report_html(
     let graphs: Vec<_> = plot_opts
         .par_iter()
         .filter_map(|options| match plot_graph(&options) {
-            Ok(x) => Some(x.trim().to_string()),
+            Ok(x) => {
+                let gf = x.trim().to_string();
+                let s3_client = get_s3_client();
+                let local_file = format!("{}/html/{}", cache_dir, gf);
+                upload_file_acl(
+                    &local_file,
+                    &http_bucket,
+                    &gf,
+                    &s3_client,
+                    Some("public-read".to_string()),
+                )
+                .unwrap();
+                let uri = format!("https://s3.amazonaws.com/{}/{}", &http_bucket, &gf);
+                Some(uri)
+            }
             Err(err) => {
                 println!("{}", err);
                 None
@@ -1294,18 +1301,7 @@ pub fn file_report_html(
                         .replace("CENTRALLON", &format!("{}", central_lon))
                 ));
             } else if line.contains("INSERTOTHERIMAGESHERE") {
-                for gf in &graphs {
-                    let s3_client = get_s3_client();
-                    let local_file = format!("{}/html/{}", cache_dir, gf);
-                    upload_file_acl(
-                        &local_file,
-                        &http_bucket,
-                        gf,
-                        &s3_client,
-                        Some("public-read".to_string()),
-                    )
-                    .unwrap();
-                    let uri = format!("https://s3.amazonaws.com/{}/{}", &http_bucket, &gf);
+                for uri in &graphs {
                     htmlvec.push(format!("{}{}{}", r#"<p><img src=""#, uri, r#""></p>"#));
                 }
             } else if line.contains("MAPSAPIKEY") {
@@ -1565,7 +1561,6 @@ fn get_html_splits(gfile: &GarminFile, split_distance_in_meters: f64, label: &st
 fn generate_url_string(
     current_line: &str,
     options: &GarminReportOptions,
-    constraints: &Vec<String>,
 ) -> String {
     let mut cmd_options = Vec::new();
 
@@ -1607,14 +1602,11 @@ pub fn summary_report_html(
     retval: &Vec<String>,
     options: &GarminReportOptions,
     cache_dir: &str,
-    constraints: &Vec<String>,
 ) -> Result<String, Error> {
-    let home_dir = env::var("HOME").unwrap();
-
     let htmlostr: Vec<_> = retval
         .iter()
         .map(|ent| {
-            let cmd = generate_url_string(&ent, &options, &constraints);
+            let cmd = generate_url_string(&ent, &options);
             format!(
                 "{}{}{}{}{}{}",
                 r#"<button type="submit" onclick="send_command('"#,

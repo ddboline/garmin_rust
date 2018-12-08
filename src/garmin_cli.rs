@@ -183,7 +183,6 @@ pub fn run_cli(options: &GarminReportOptions, constraints: &Vec<String>) -> Resu
         .clone();
 
     let pg_url = settings.get_str("PGURL").unwrap();
-    let maps_api_key = settings.get_str("MAPS_API_KEY").unwrap();
 
     let default_gps_dir = format!("{}/.garmin_cache/run/gps_tracks", home_dir);
     let default_cache_dir = format!("{}/.garmin_cache/run/cache", home_dir);
@@ -282,11 +281,10 @@ pub fn run_html(options: &GarminReportOptions, constraints: &Vec<String>) -> Res
             debug!("{:?}", options);
             let txt_result = garmin_report::create_report_query(&pg_url, &options, &constraints);
 
-            println!("{}", txt_result.join("\n"));
             let tempdir = TempDir::new("garmin_html").unwrap();
             let htmlcachedir = tempdir.path().to_str().unwrap();
 
-            garmin_report::summary_report_html(&txt_result, &options, &htmlcachedir, &constraints)
+            garmin_report::summary_report_html(&txt_result, &options, &htmlcachedir)
         }
     }
 }

@@ -7,7 +7,8 @@ mod tests {
     fn test_garmin_parse_tcx() {
         let corr_list = garmin_rust::garmin_correction_lap::corr_list_from_json(
             "tests/data/garmin_corrections.json",
-        ).unwrap();
+        )
+        .unwrap();
         let corr_map = garmin_rust::garmin_correction_lap::get_corr_list_map(&corr_list);
         let gparse = garmin_rust::garmin_parse_tcx::GarminParseTcx::new(
             "tests/data/test.tcx",
@@ -31,7 +32,8 @@ mod tests {
     fn test_garmin_parse_fit() {
         let corr_list = garmin_rust::garmin_correction_lap::corr_list_from_json(
             "tests/data/garmin_corrections.json",
-        ).unwrap();
+        )
+        .unwrap();
         let corr_map = garmin_rust::garmin_correction_lap::get_corr_list_map(&corr_list);
         let gparse = garmin_rust::garmin_parse_tcx::GarminParseTcx::new(
             "tests/data/test.fit",

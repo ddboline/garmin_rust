@@ -62,7 +62,8 @@ fn parse_xml(filename: &str) -> Result<(Vec<GarminLap>, Vec<GarminPoint>, Option
     let stream = Exec::shell(format!(
         "echo \"{}\" `garmin_dump {}` \"{}\" | xml2",
         "<root>", filename, "</root>"
-    )).stream_stdout()?;
+    ))
+    .stream_stdout()?;
 
     let reader = BufReader::new(stream);
 

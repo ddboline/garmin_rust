@@ -135,13 +135,15 @@ pub fn process_all_gps_files(
     let path = Path::new(gps_dir);
 
     let file_list: Vec<String> = match path.read_dir() {
-        Ok(it) => it.filter_map(|dir_line| match dir_line {
-            Ok(entry) => {
-                let input_file = entry.path().to_str().unwrap().to_string();
-                Some(input_file)
-            }
-            Err(_) => None,
-        }).collect(),
+        Ok(it) => it
+            .filter_map(|dir_line| match dir_line {
+                Ok(entry) => {
+                    let input_file = entry.path().to_str().unwrap().to_string();
+                    Some(input_file)
+                }
+                Err(_) => None,
+            })
+            .collect(),
         Err(err) => {
             println!("{}", err);
             Vec::new()
@@ -248,7 +250,8 @@ pub fn read_summary_from_postgres(pg_url: &str) -> Result<Vec<GarminSummary>, Er
         FROM garmin_summary
     ";
 
-    let gsum_list = conn.query(&query, &[])?
+    let gsum_list = conn
+        .query(&query, &[])?
         .iter()
         .map(|row| GarminSummary {
             filename: row.get(0),
@@ -290,7 +293,8 @@ pub fn read_summary_from_postgres_pattern(
         pattern
     );
 
-    let gsum_list = conn.query(&query, &[])?
+    let gsum_list = conn
+        .query(&query, &[])?
         .iter()
         .map(|row| GarminSummary {
             filename: row.get(0),
@@ -327,7 +331,8 @@ pub fn write_summary_to_postgres(pg_url: &str, gsum_list: &Vec<GarminSummary>) {
     let stmt_update = conn.prepare(update_query).unwrap();
 
     for gsum in gsum_list {
-        let existing = conn.query(filename_query, &[&gsum.filename])
+        let existing = conn
+            .query(filename_query, &[&gsum.filename])
             .unwrap()
             .iter()
             .len();

@@ -13,6 +13,7 @@ use rayon::prelude::*;
 
 use crate::garmin_file::GarminFile;
 use crate::garmin_lap::GarminLap;
+use crate::garmin_sync::{get_s3_client, upload_file_acl};
 use crate::garmin_templates::{GARMIN_TEMPLATE, MAP_TEMPLATE};
 use crate::garmin_util::{
     days_in_month, days_in_year, get_sport_type_map, get_sport_type_string_map, plot_graph,
@@ -56,7 +57,8 @@ pub fn get_list_of_files_from_db(
 
     let conn = Connection::connect(pg_url, TlsMode::None).unwrap();
 
-    let file_list: Vec<String> = conn.query(&query, &[])?
+    let file_list: Vec<String> = conn
+        .query(&query, &[])?
         .iter()
         .map(|row| row.get(0))
         .collect();
@@ -235,7 +237,8 @@ pub fn print_lap_string(glap: &GarminLap, sport: &SportTypes) -> String {
             print_h_m_s(
                 glap.lap_duration / (glap.lap_distance / METERS_PER_MILE),
                 false,
-            ).unwrap(),
+            )
+            .unwrap(),
         );
         outstr.push("/ mi ".to_string());
         outstr.push(print_h_m_s(glap.lap_duration / (glap.lap_distance / 1000.), false).unwrap());
@@ -273,7 +276,8 @@ pub fn print_splits(gfile: &GarminFile, split_distance_in_meters: f64, label: &s
                 print_h_m_s(
                     tim / (split_distance_in_meters / METERS_PER_MILE) * MARATHON_DISTANCE_MI,
                     true
-                ).unwrap(),
+                )
+                .unwrap(),
                 hrt
             )
         })
@@ -1009,6 +1013,7 @@ pub fn file_report_html(
     gfile: &GarminFile,
     maps_api_key: &str,
     cache_dir: &str,
+    http_bucket: &str,
 ) -> Result<String, Error> {
     let sport = match &gfile.sport {
         Some(s) => s.clone(),
@@ -1180,7 +1185,8 @@ pub fn file_report_html(
                     format!(
                         "Avg Speed {}:{:02} min/mi",
                         avg_speed_value_min, avg_speed_value_sec
-                    ).as_str(),
+                    )
+                    .as_str(),
                 )
                 .with_data(&heart_rate_speed)
                 .with_scatter()
@@ -1203,12 +1209,10 @@ pub fn file_report_html(
         );
     };
 
-    Exec::shell(format!("rm -rf {}/html", cache_dir)).join()?;
-
     let graphs: Vec<_> = plot_opts
         .par_iter()
         .filter_map(|options| match plot_graph(&options) {
-            Ok(x) => Some(x),
+            Ok(x) => Some(x.trim().to_string()),
             Err(err) => {
                 println!("{}", err);
                 None
@@ -1216,7 +1220,7 @@ pub fn file_report_html(
         })
         .collect();
 
-    let mut htmlfile = File::create(&format!("{}/html/index.html", cache_dir))?;
+    let mut htmlvec: Vec<String> = Vec::new();
 
     if (lat_vals.len() > 0) & (lon_vals.len() > 0) & (lat_vals.len() == lon_vals.len()) {
         let minlat = lat_vals.iter().map(|v| (v * 1000.0) as i32).min().unwrap() as f64 / 1000.0;
@@ -1246,100 +1250,105 @@ pub fn file_report_html(
                     titlecase(&sport),
                     gfile.begin_datetime
                 );
-                write!(htmlfile, "{}", line.replace("SPORTTITLEDATE", &newtitle));
+                htmlvec.push(format!("{}", line.replace("SPORTTITLEDATE", &newtitle)));
             } else if line.contains("ZOOMVALUE") {
                 for (zoom, thresh) in &latlon_thresholds {
                     if (latlon_min < *thresh) | (*zoom == 10) {
-                        write!(
-                            htmlfile,
+                        htmlvec.push(format!(
                             "{}",
                             line.replace("ZOOMVALUE", &format!("{}", zoom))
-                        );
+                        ));
                         break;
                     }
                 }
             } else if line.contains("INSERTTABLESHERE") {
-                write!(htmlfile, "{}\n", get_file_html(&gfile));
-                write!(
-                    htmlfile,
+                htmlvec.push(format!("{}\n", get_file_html(&gfile)));
+                htmlvec.push(format!(
                     "<br><br>{}\n",
                     get_html_splits(&gfile, METERS_PER_MILE, "mi")
-                );
-                write!(
-                    htmlfile,
+                ));
+                htmlvec.push(format!(
                     "<br><br>{}\n",
                     get_html_splits(&gfile, 5000.0, "km")
-                );
+                ));
             } else if line.contains("INSERTMAPSEGMENTSHERE") {
                 for (latv, lonv) in lat_vals.iter().zip(lon_vals.iter()) {
-                    write!(htmlfile, "new google.maps.LatLng({},{}),\n", latv, lonv);
+                    htmlvec.push(format!("new google.maps.LatLng({},{}),\n", latv, lonv));
                 }
-            } else if line.contains("MINLAT") | line.contains("MAXLAT") | line.contains("MINLON")
+            } else if line.contains("MINLAT")
+                | line.contains("MAXLAT")
+                | line.contains("MINLON")
                 | line.contains("MAXLON")
             {
-                write!(
-                    htmlfile,
+                htmlvec.push(format!(
                     "{}",
                     line.replace("MINLAT", &format!("{}", minlat))
                         .replace("MAXLAT", &format!("{}", maxlat))
                         .replace("MINLON", &format!("{}", minlon))
                         .replace("MAXLON", &format!("{}", maxlon))
-                );
+                ));
             } else if line.contains("CENTRALLAT") | line.contains("CENTRALLON") {
-                write!(
-                    htmlfile,
+                htmlvec.push(format!(
                     "{}",
                     line.replace("CENTRALLAT", &format!("{}", central_lat))
                         .replace("CENTRALLON", &format!("{}", central_lon))
-                );
+                ));
             } else if line.contains("INSERTOTHERIMAGESHERE") {
                 for gf in &graphs {
-                    write!(htmlfile, "{}{}{}", r#"<p><img src=""#, gf, r#""></p>"#);
+                    let s3_client = get_s3_client();
+                    let local_file = format!("{}/html/{}", cache_dir, gf);
+                    upload_file_acl(
+                        &local_file,
+                        &http_bucket,
+                        gf,
+                        &s3_client,
+                        Some("public-read".to_string()),
+                    )
+                    .unwrap();
+                    let uri = format!("https://s3.amazonaws.com/{}/{}", &http_bucket, &gf);
+                    htmlvec.push(format!("{}{}{}", r#"<p><img src=""#, uri, r#""></p>"#));
                 }
             } else if line.contains("MAPSAPIKEY") {
-                write!(htmlfile, "{}", line.replace("MAPSAPIKEY", maps_api_key));
+                htmlvec.push(format!("{}", line.replace("MAPSAPIKEY", maps_api_key)));
             } else {
-                write!(htmlfile, "{}", line);
+                htmlvec.push(format!("{}", line));
             };
         }
     } else {
         for line in GARMIN_TEMPLATE.split("\n") {
             if line.contains("INSERTTEXTHERE") {
-                write!(htmlfile, "{}\n", get_file_html(&gfile));
-                write!(
-                    htmlfile,
+                htmlvec.push(format!("{}\n", get_file_html(&gfile)));
+                htmlvec.push(format!(
                     "<br><br>{}\n",
                     get_html_splits(&gfile, METERS_PER_MILE, "mi")
-                );
-                write!(
-                    htmlfile,
+                ));
+                htmlvec.push(format!(
                     "<br><br>{}\n",
                     get_html_splits(&gfile, 5000.0, "km")
-                );
+                ));
             } else if line.contains("SPORTTITLEDATE") {
                 let newtitle = format!(
                     "Garmin Event {} on {}",
                     titlecase(&sport),
                     gfile.begin_datetime
                 );
-                write!(htmlfile, "{}", line.replace("SPORTTITLEDATE", &newtitle));
+                htmlvec.push(format!("{}", line.replace("SPORTTITLEDATE", &newtitle)));
             } else {
-                write!(
-                    htmlfile,
+                htmlvec.push(format!(
                     "{}",
                     line.replace("<pre>", "<div>").replace("</pre>", "</div>")
-                );
+                ));
             }
         }
     };
-
-    Exec::shell(format!("rm -rf {}/public_html/garmin/html", home_dir)).join()?;
-    Exec::shell(format!(
-        "mv {}/html {}/public_html/garmin",
-        cache_dir, home_dir
-    )).join()?;
-
-    Ok(format!("{}/html", cache_dir))
+    /*
+        Exec::shell(format!("rm -rf {}/public_html/garmin/html", home_dir)).join()?;
+        Exec::shell(format!(
+            "mv {}/html {}/public_html/garmin",
+            cache_dir, home_dir
+        )).join()?;
+    */
+    Ok(htmlvec.join("\n"))
 }
 
 fn get_file_html(gfile: &GarminFile) -> String {
@@ -1353,7 +1362,8 @@ fn get_file_html(gfile: &GarminFile) -> String {
     retval.push(r#"<table border="1" class="dataframe">"#.to_string());
     retval.push(
         r#"<thead><tr style="text-align: center;"><th>Start Time</th>
-                   <th>Sport</th></tr></thead>"#.to_string(),
+                   <th>Sport</th></tr></thead>"#
+            .to_string(),
     );
     retval.push(format!(
         "<tbody><tr style={0}text-align: center;{0}><td>{1}</td><td>{2}</td></tr></tbody>",
@@ -1436,7 +1446,8 @@ fn get_file_html(gfile: &GarminFile) -> String {
         ),
     };
 
-    if (gfile.total_hr_dur > 0.0) & (gfile.total_hr_dis > 0.0)
+    if (gfile.total_hr_dur > 0.0)
+        & (gfile.total_hr_dis > 0.0)
         & (gfile.total_hr_dur > gfile.total_hr_dis)
     {
         labels.push("Heart Rate".to_string());
@@ -1480,7 +1491,8 @@ fn get_lap_html(glap: &GarminLap, sport: &str) -> Vec<String> {
             print_h_m_s(
                 glap.lap_duration / (glap.lap_distance / METERS_PER_MILE),
                 false
-            ).unwrap()
+            )
+            .unwrap()
         ));
         values.push(format!(
             "{} / km",
@@ -1523,7 +1535,8 @@ fn get_html_splits(gfile: &GarminFile, split_distance_in_meters: f64, label: &st
                     print_h_m_s(
                         *tim / (split_distance_in_meters / METERS_PER_MILE) * MARATHON_DISTANCE_MI,
                         true,
-                    ).unwrap(),
+                    )
+                    .unwrap(),
                     format!("{} bpm", hrt),
                 ]
             })
@@ -1549,26 +1562,68 @@ fn get_html_splits(gfile: &GarminFile, split_distance_in_meters: f64, label: &st
     }
 }
 
+fn generate_url_string(
+    current_line: &str,
+    options: &GarminReportOptions,
+    constraints: &Vec<String>,
+) -> String {
+    let mut cmd_options = Vec::new();
+
+    let sport_map = get_sport_type_string_map();
+    match options.do_sport {
+        Some(s) => match sport_map.get(&s) {
+            Some(sp) => cmd_options.push(sp.clone()),
+            None => (),
+        },
+        None => (),
+    }
+
+    if options.do_year {
+        cmd_options.push("month".to_string());
+        let current_year = current_line.trim().split_whitespace().nth(0).unwrap();
+        cmd_options.push(current_year.to_string());
+    } else if options.do_month {
+        cmd_options.push("day".to_string());
+        let current_year = current_line.trim().split_whitespace().nth(0).unwrap();
+        let current_month = current_line.trim().split_whitespace().nth(1).unwrap();
+        let current_month = MONTH_NAMES
+            .iter()
+            .position(|&x| x == current_month)
+            .unwrap()
+            + 1;
+        cmd_options.push(format!("{:04}-{:02}", current_year, current_month));
+    } else if options.do_day {
+        cmd_options.push("file".to_string());
+        let current_day = current_line.trim().split_whitespace().nth(0).unwrap();
+        cmd_options.push(current_day.to_string());
+    } else if options.do_file {
+        let current_file = current_line.trim().split_whitespace().nth(0).unwrap();
+        cmd_options.push(current_file.to_string());
+    }
+    cmd_options.join(",")
+}
+
 pub fn summary_report_html(
     retval: &Vec<String>,
-    cmd_args: &mut Vec<String>,
+    options: &GarminReportOptions,
     cache_dir: &str,
-) -> Result<(), Error> {
+    constraints: &Vec<String>,
+) -> Result<String, Error> {
     let home_dir = env::var("HOME").unwrap();
 
     let htmlostr: Vec<_> = retval
         .iter()
-        .map(|ent| match cmd_args.pop() {
-            Some(cmd) => format!(
+        .map(|ent| {
+            let cmd = generate_url_string(&ent, &options, &constraints);
+            format!(
                 "{}{}{}{}{}{}",
                 r#"<button type="submit" onclick="send_command('"#,
                 cmd,
-                r#");">"#,
+                r#"');">"#,
                 cmd,
                 "</button> ",
                 ent.trim()
-            ),
-            None => ent.to_string(),
+            )
         })
         .collect();
 
@@ -1576,24 +1631,26 @@ pub fn summary_report_html(
 
     create_dir_all(&format!("{}/html", cache_dir))?;
 
-    let mut htmlfile = File::create(&format!("{}/html/index.html", cache_dir))?;
+    let mut htmlvec: Vec<String> = Vec::new();
 
     for line in GARMIN_TEMPLATE.split("\n") {
         if line.contains("INSERTTEXTHERE") {
-            write!(htmlfile, "{}", htmlostr);
+            htmlvec.push(format!("{}", htmlostr));
         } else if line.contains("SPORTTITLEDATE") {
             let newtitle = "Garmin Summary";
-            write!(htmlfile, "{}", line.replace("SPORTTITLEDATE", newtitle));
+            htmlvec.push(format!("{}", line.replace("SPORTTITLEDATE", newtitle)));
         } else {
-            write!(htmlfile, "{}", line);
+            htmlvec.push(format!("{}", line));
         }
     }
 
-    create_dir_all(&format!("{}/html/garmin", home_dir))?;
-    Exec::shell(format!("rm -rf {}/public_html/garmin/html", home_dir)).join()?;
-    Exec::shell(format!(
-        "mv {}/html {}/public_html/garmin/",
-        cache_dir, home_dir
-    )).join()?;
-    Ok(())
+    /*
+        create_dir_all(&format!("{}/html/garmin", home_dir))?;
+        Exec::shell(format!("rm -rf {}/public_html/garmin/html", home_dir)).join()?;
+        Exec::shell(format!(
+            "mv {}/html {}/public_html/garmin/",
+            cache_dir, home_dir
+        )).join()?;
+    */
+    Ok(htmlvec.join("\n"))
 }

@@ -95,9 +95,9 @@ impl GarminPoint {
     pub fn read_point_tcx(&mut self, entries: &[&str]) {
         if let Some(&v0) = entries.get(0) {
             if v0.contains("Time") {
-                self.time = convert_xml_local_time_to_utc(
-                    v0.split("=").last().expect("Malformed time"),
-                ).expect("Failed to read time");
+                self.time =
+                    convert_xml_local_time_to_utc(v0.split("=").last().expect("Malformed time"))
+                        .expect("Failed to read time");
             } else if v0.contains("Position") {
                 if let Some(&v1) = entries.get(1) {
                     if v1.contains("LatitudeDegrees") {

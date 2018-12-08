@@ -73,7 +73,8 @@ impl GarminFile {
                 {"name": "total_duration", "type": "double"},
                 {"name": "total_hr_dur", "type": "double"},
                 {"name": "total_hr_dis", "type": "double"},
-                {"name": "laps", "type": {"type": "array", "items":"#.to_string()
+                {"name": "laps", "type": {"type": "array", "items":"#
+            .to_string()
             + &GARMIN_LAP_AVRO_SCHEMA.to_string()
             + r#"}},
                 {"name": "points", "type": {"type": "array", "items": "#
@@ -131,9 +132,10 @@ pub fn get_file_type_map() -> HashMap<String, GarminFileTypes> {
         ("fit", GarminFileTypes::Fit),
         ("gpx", GarminFileTypes::Gpx),
         ("gmn", GarminFileTypes::Gmn),
-    ].iter()
-        .map(|(k, v)| (k.to_string(), v.clone()))
-        .collect()
+    ]
+    .iter()
+    .map(|(k, v)| (k.to_string(), v.clone()))
+    .collect()
 }
 
 pub fn get_reverse_file_type_map() -> HashMap<GarminFileTypes, String> {
@@ -212,16 +214,18 @@ pub fn check_cached_files() -> Vec<String> {
     let path = Path::new(cache_dir);
 
     match path.read_dir() {
-        Ok(it) => it.filter_map(|dir_line| match dir_line {
-            Ok(entry) => {
-                let input_file = entry.path().to_str().unwrap().to_string();
-                println!("{}", input_file);
-                let gfile = GarminFile::read_avro(&input_file).unwrap();
-                println!("{}", gfile.points.len());
-                Some(input_file)
-            }
-            Err(_) => None,
-        }).collect(),
+        Ok(it) => it
+            .filter_map(|dir_line| match dir_line {
+                Ok(entry) => {
+                    let input_file = entry.path().to_str().unwrap().to_string();
+                    println!("{}", input_file);
+                    let gfile = GarminFile::read_avro(&input_file).unwrap();
+                    println!("{}", gfile.points.len());
+                    Some(input_file)
+                }
+                Err(_) => None,
+            })
+            .collect(),
         Err(err) => {
             println!("{}", err);
             Vec::new()

@@ -68,7 +68,8 @@ impl GarminLap {
                 self.lap_start_string = Some(
                     convert_xml_local_time_to_utc(value).expect("Failed to parse time string"),
                 );
-                self.lap_start = self.lap_start_string
+                self.lap_start = self
+                    .lap_start_string
                     .clone()
                     .expect("Failed to parse time string");
             } else if entry.contains("duration") {

@@ -10,7 +10,7 @@ use failure::Error;
 
 use crate::garmin_util::get_md5sum;
 use rusoto_core::Region;
-use rusoto_s3::{GetObjectRequest, ListObjectsV2Request, PutObjectRequest, S3, S3Client};
+use rusoto_s3::{GetObjectRequest, ListObjectsV2Request, PutObjectRequest, S3Client, S3};
 use s4::S4;
 use std::collections::HashMap;
 use std::fs;
@@ -72,7 +72,8 @@ pub fn get_list_of_keys(s3_client: &S3Client, bucket: &str) -> Vec<(String, Stri
 pub fn sync_dir(local_dir: &str, s3_bucket: &str, s3_client: &S3Client) -> Result<(), Error> {
     let path = Path::new(local_dir);
 
-    let file_list: Vec<String> = path.read_dir()?
+    let file_list: Vec<String> = path
+        .read_dir()?
         .filter_map(|dir_line| match dir_line {
             Ok(entry) => {
                 let input_file = entry.path().to_str().unwrap().to_string();
@@ -201,10 +202,20 @@ pub fn upload_file(
     s3_key: &str,
     s3_client: &S3Client,
 ) -> Result<(), Error> {
+    upload_file_acl(local_file, s3_bucket, s3_key, s3_client, None)
+}
+
+pub fn upload_file_acl(
+    local_file: &str,
+    s3_bucket: &str,
+    s3_key: &str,
+    s3_client: &S3Client,
+    acl: Option<String>,
+) -> Result<(), Error> {
     s3_client.upload_from_file(
         &local_file,
         PutObjectRequest {
-            acl: None,
+            acl: acl,
             body: None,
             bucket: s3_bucket.to_string(),
             cache_control: None,

@@ -5,20 +5,9 @@ pub static GARMIN_TEMPLATE: &str = r#"
 <head>
 <title>SPORTTITLEDATE</title>
 <meta name="generator" content="HTML::TextToHTML v2.51"/>
+<meta http-equiv="Cache-Control" content="no-store" />
 </head>
 <body>
-
-<p>
-<button type="submit" onclick="send_command('prev year');"> year </button>
-HISTORYBUTTONS
-</p>
-
-<p>
-<form>
-<input type="text" name="cmd" id="garmin_cmd"/>
-<input type="button" name="submitGARMIN" value="Submit" onclick="processFormData();"/>
-</form>
-</p>
 
 <pre>
 INSERTTEXTHERE
@@ -26,17 +15,8 @@ INSERTTEXTHERE
 
 <script language="JavaScript" type="text/javascript">
     function send_command( command ) {
-        var ostr = '../../../cgi-bin/control_garmin.py?cmd=' + command;
-        var xmlhttp = new XMLHttpRequest();
-        xmlhttp.open( "GET", ostr , true );
-        xmlhttp.onload = function reload_page() {
-            location.reload(true);
-        }
-        xmlhttp.send(null);
-    }
-    function processFormData() {
-        var garmin_cmd = document.getElementById( 'garmin_cmd' );
-        send_command( garmin_cmd.value );
+        var ostr = '../garmin?filter=' + command;
+        location.replace(ostr);
     }
 </script>
 
@@ -50,6 +30,7 @@ pub static MAP_TEMPLATE: &str = r#"
   <head>
     <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
     <meta charset="utf-8">
+    <meta http-equiv="Cache-Control" content="no-store" />
     <title>SPORTTITLEDATE</title>
     <style>
       html, body, #map-canvas {
@@ -88,18 +69,6 @@ pub static MAP_TEMPLATE: &str = r#"
   </head>
   <body>
 
-<p>
-<button type="submit" onclick="send_command('prev year');"> year </button>
-HISTORYBUTTONS
-</p>
-
-<p>
-<form>
-<input type="text" name="cmd" id="garmin_cmd"/>
-<input type="button" name="submitGARMIN" value="Submit" onclick="processFormData();"/>
-</form>
-</p>
-
 <h1><center><b>SPORTTITLEDATE</b></center></h1>
 
 <div id="map-canvas"></div>
@@ -114,17 +83,8 @@ HISTORYBUTTONS
 
 <script language="JavaScript" type="text/javascript">
     function send_command( command ) {
-        var ostr = '../../../cgi-bin/control_garmin.py?cmd=' + command;
-        var xmlhttp = new XMLHttpRequest();
-        xmlhttp.open( "GET", ostr , true );
-        xmlhttp.onload = function reload_page() {
-            location.reload(true);
-        }
-        xmlhttp.send(null);
-    }
-    function processFormData() {
-        var garmin_cmd = document.getElementById( 'garmin_cmd' );
-        send_command( garmin_cmd.value );
+        var ostr = '../garmin?filter=' + command;
+        location.replace(ostr);
     }
 </script>
 

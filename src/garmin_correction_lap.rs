@@ -78,7 +78,8 @@ pub fn corr_list_from_buffer(buffer: &Vec<u8>) -> Result<Vec<GarminCorrectionLap
         JsonValue::Object(_) => jsval
             .entries()
             .flat_map(|(key, val)| match val {
-                JsonValue::Object(_) => val.entries()
+                JsonValue::Object(_) => val
+                    .entries()
                     .map(|(lap, result)| match result {
                         JsonValue::Number(_) => {
                             let corr = GarminCorrectionLap::new()
@@ -344,7 +345,8 @@ pub fn get_filename_start_map(pg_url: &str) -> Result<HashMap<String, (String, i
         join garmin_summary b on a.start_time = b.begin_datetime
     ";
 
-    let filename_start_map: HashMap<_, _> = conn.query(query, &[])?
+    let filename_start_map: HashMap<_, _> = conn
+        .query(query, &[])?
         .iter()
         .map(|row| {
             let filename: String = row.get(0);
@@ -379,10 +381,12 @@ pub fn dump_corrections_to_db(pg_url: &str, corr_list: &Vec<GarminCorrectionLap>
         };
         let unique_key = format!("{}_{}", corr.start_time, corr.lap_number);
 
-        if conn.query(query_unique_key, &[&unique_key])
+        if conn
+            .query(query_unique_key, &[&unique_key])
             .unwrap()
             .iter()
-            .len() == 0
+            .len()
+            == 0
         {
             stmt_insert
                 .execute(&[

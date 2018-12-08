@@ -29,7 +29,8 @@ mod tests {
     fn test_corr_list_from_json() {
         let corr_list = garmin_rust::garmin_correction_lap::corr_list_from_json(
             "tests/data/garmin_corrections.json",
-        ).unwrap();
+        )
+        .unwrap();
 
         assert_eq!(corr_list.get(0).unwrap().distance, Some(3.10685596118667));
 
@@ -56,8 +57,9 @@ mod tests {
             },
             "abcdefg": {"hijk": [0, 1, 2]}
         }
-        "#.to_string()
-            .into_bytes();
+        "#
+        .to_string()
+        .into_bytes();
 
         let corr_list =
             garmin_rust::garmin_correction_lap::corr_list_from_buffer(&json_buffer).unwrap();
@@ -142,8 +144,9 @@ mod tests {
             ]
             }
         }
-        "#.to_string()
-            .into_bytes();
+        "#
+        .to_string()
+        .into_bytes();
         let corr_list =
             garmin_rust::garmin_correction_lap::corr_list_from_buffer(&json_buffer).unwrap();
 

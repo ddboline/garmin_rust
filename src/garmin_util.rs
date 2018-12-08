@@ -56,9 +56,10 @@ pub fn get_sport_type_map() -> HashMap<String, SportTypes> {
         ("other", SportTypes::Other),
         ("snowshoeing", SportTypes::Snowshoeing),
         ("skiing", SportTypes::Skiing),
-    ].iter()
-        .map(|(k, v)| (k.to_string(), v.clone()))
-        .collect()
+    ]
+    .iter()
+    .map(|(k, v)| (k.to_string(), v.clone()))
+    .collect()
 }
 
 pub fn get_sport_type_string_map() -> HashMap<SportTypes, String> {
@@ -74,9 +75,10 @@ pub fn get_sport_type_string_map() -> HashMap<SportTypes, String> {
         (SportTypes::Other, "other"),
         (SportTypes::Snowshoeing, "snowshoeing"),
         (SportTypes::Skiing, "skiing"),
-    ].iter()
-        .map(|(k, v)| (k.clone(), v.to_string()))
-        .collect()
+    ]
+    .iter()
+    .map(|(k, v)| (k.clone(), v.to_string()))
+    .collect()
 }
 
 pub fn convert_sport_name(sport: &str) -> Option<String> {
@@ -153,10 +155,13 @@ pub fn days_in_month(year: i32, month: u32) -> i64 {
 
 pub fn expected_calories(weight: f64, pace_min_per_mile: f64, distance: f64) -> f64 {
     let cal_per_mi = weight
-        * (0.0395 + 0.00327 * (60. / pace_min_per_mile)
+        * (0.0395
+            + 0.00327 * (60. / pace_min_per_mile)
             + 0.000455 * (60. / pace_min_per_mile).pow(2.0)
-            + 0.000801 * ((weight / 154.0) * 0.425 / weight * (60. / pace_min_per_mile).pow(3.0))
-                * 60. / (60. / pace_min_per_mile));
+            + 0.000801
+                * ((weight / 154.0) * 0.425 / weight * (60. / pace_min_per_mile).pow(3.0))
+                * 60.
+                / (60. / pace_min_per_mile));
     cal_per_mi * distance
 }
 

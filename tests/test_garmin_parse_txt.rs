@@ -7,7 +7,8 @@ mod tests {
     fn test_garmin_parse_txt() {
         let corr_list = garmin_rust::garmin_correction_lap::corr_list_from_json(
             "tests/data/garmin_corrections.json",
-        ).unwrap();
+        )
+        .unwrap();
         let corr_map = garmin_rust::garmin_correction_lap::get_corr_list_map(&corr_list);
         let txt_file =
             garmin_rust::garmin_parse_txt::GarminParseTxt::new("tests/data/test.txt", &corr_map);

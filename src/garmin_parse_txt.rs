@@ -166,7 +166,8 @@ fn parse_txt(filename: &str) -> Result<(Vec<GarminLap>, Vec<GarminPoint>), Error
 fn parse_line(line: &str) -> Result<GarminLap, Error> {
     let sport_type_map = get_sport_type_map();
 
-    let entry_dict: HashMap<_, _> = line.split_whitespace()
+    let entry_dict: HashMap<_, _> = line
+        .split_whitespace()
         .filter_map(|x| {
             let entries: Vec<_> = x.split("=").collect();
             match entries.get(0) {

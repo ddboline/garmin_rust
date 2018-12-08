@@ -1558,10 +1558,7 @@ fn get_html_splits(gfile: &GarminFile, split_distance_in_meters: f64, label: &st
     }
 }
 
-fn generate_url_string(
-    current_line: &str,
-    options: &GarminReportOptions,
-) -> String {
+fn generate_url_string(current_line: &str, options: &GarminReportOptions) -> String {
     let mut cmd_options = Vec::new();
 
     let sport_map = get_sport_type_string_map();

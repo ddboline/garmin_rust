@@ -9,6 +9,10 @@ pub static GARMIN_TEMPLATE: &str = r#"
 </head>
 <body>
 
+<p>
+<button type="submit" onclick="send_command('year');"> year </button>
+</p>
+
 <pre>
 INSERTTEXTHERE
 </pre>
@@ -68,6 +72,10 @@ pub static MAP_TEMPLATE: &str = r#"
     </script>
   </head>
   <body>
+
+<p>
+<button type="submit" onclick="send_command('year');"> year </button>
+</p>
 
 <h1><center><b>SPORTTITLEDATE</b></center></h1>
 

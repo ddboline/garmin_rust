@@ -1,3 +1,5 @@
+use config::{Config, File};
+
 pub struct GarminConfig {
     pub pgurl: String,
     pub maps_api_key: String,
@@ -52,8 +54,8 @@ impl GarminConfig {
     }
 
     pub fn from_yml(mut self, filename: &str) -> GarminConfig {
-        let settings = config::Config::new()
-            .merge(config::File::with_name(filename))
+        let settings = Config::new()
+            .merge(File::with_name(filename))
             .unwrap()
             .clone();
 

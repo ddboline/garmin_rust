@@ -7,12 +7,14 @@ use tempdir::TempDir;
 
 use crate::garmin_correction_lap;
 use crate::garmin_file;
-use crate::garmin_parse;
-use crate::garmin_report;
-use crate::garmin_report::GarminReportOptions;
 use crate::garmin_summary;
 use crate::garmin_sync;
 use crate::garmin_util;
+use crate::parsers::garmin_parse;
+use crate::reports::garmin_file_report_txt::generate_txt_report;
+use crate::reports::garmin_report::{file_report_html, summary_report_html};
+use crate::reports::garmin_report_options::GarminReportOptions;
+use crate::reports::garmin_summary_report_txt::{create_report_query, get_list_of_files_from_db};
 
 fn get_version_number() -> String {
     format!(
@@ -148,7 +150,7 @@ pub fn cli_garmin_report() {
 }
 
 pub fn process_pattern(patterns: &Vec<String>) -> (GarminReportOptions, Vec<String>) {
-    let mut options = garmin_report::GarminReportOptions::new();
+    let mut options = GarminReportOptions::new();
 
     let sport_type_map = garmin_util::get_sport_type_map();
 
@@ -190,7 +192,7 @@ pub fn run_cli(options: &GarminReportOptions, constraints: &Vec<String>) -> Resu
     let gps_dir = settings.get_str("GPS_DIR").unwrap_or(default_gps_dir);
     let cache_dir = settings.get_str("CACHE_DIR").unwrap_or(default_cache_dir);
 
-    let file_list = garmin_report::get_list_of_files_from_db(&pg_url, &constraints).unwrap();
+    let file_list = get_list_of_files_from_db(&pg_url, &constraints).unwrap();
 
     match file_list.len() {
         0 => (),
@@ -215,11 +217,11 @@ pub fn run_cli(options: &GarminReportOptions, constraints: &Vec<String>) -> Resu
                 }
             };
             debug!("gfile {} {}", gfile.laps.len(), gfile.points.len());
-            println!("{}", garmin_report::generate_txt_report(&gfile).join("\n"));
+            println!("{}", generate_txt_report(&gfile).join("\n"));
         }
         _ => {
             debug!("{:?}", options);
-            let txt_result = garmin_report::create_report_query(&pg_url, &options, &constraints);
+            let txt_result = create_report_query(&pg_url, &options, &constraints);
 
             println!("{}", txt_result.join("\n"));
         }
@@ -246,7 +248,7 @@ pub fn run_html(options: &GarminReportOptions, constraints: &Vec<String>) -> Res
 
     let http_bucket = settings.get_str("HTTP_BUCKET").unwrap();
 
-    let file_list = garmin_report::get_list_of_files_from_db(&pg_url, &constraints).unwrap();
+    let file_list = get_list_of_files_from_db(&pg_url, &constraints).unwrap();
 
     match file_list.len() {
         0 => Ok("".to_string()),
@@ -275,16 +277,16 @@ pub fn run_html(options: &GarminReportOptions, constraints: &Vec<String>) -> Res
             let tempdir = TempDir::new("garmin_html").unwrap();
             let htmlcachedir = tempdir.path().to_str().unwrap();
 
-            garmin_report::file_report_html(&gfile, &maps_api_key, &htmlcachedir, &http_bucket)
+            file_report_html(&gfile, &maps_api_key, &htmlcachedir, &http_bucket)
         }
         _ => {
             debug!("{:?}", options);
-            let txt_result = garmin_report::create_report_query(&pg_url, &options, &constraints);
+            let txt_result = create_report_query(&pg_url, &options, &constraints);
 
             let tempdir = TempDir::new("garmin_html").unwrap();
             let htmlcachedir = tempdir.path().to_str().unwrap();
 
-            garmin_report::summary_report_html(&txt_result, &options, &htmlcachedir)
+            summary_report_html(&txt_result, &options, &htmlcachedir)
         }
     }
 }

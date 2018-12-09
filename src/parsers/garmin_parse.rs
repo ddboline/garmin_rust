@@ -3,9 +3,9 @@ use std::path::Path;
 
 use crate::garmin_correction_lap::GarminCorrectionLap;
 use crate::garmin_file::GarminFile;
-use crate::garmin_parse_gmn::GarminParseGmn;
-use crate::garmin_parse_tcx::GarminParseTcx;
-use crate::garmin_parse_txt::GarminParseTxt;
+use crate::parsers::garmin_parse_gmn::GarminParseGmn;
+use crate::parsers::garmin_parse_tcx::GarminParseTcx;
+use crate::parsers::garmin_parse_txt::GarminParseTxt;
 
 pub struct GarminParse {
     pub gfile: GarminFile,

@@ -19,8 +19,8 @@ use crate::garmin_correction_lap::{
     get_corr_list_map, read_corrections_from_db, GarminCorrectionLap,
 };
 use crate::garmin_file::GarminFile;
-use crate::garmin_parse::GarminParse;
 use crate::garmin_util::get_md5sum;
+use crate::parsers::garmin_parse::GarminParse;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GarminSummary {

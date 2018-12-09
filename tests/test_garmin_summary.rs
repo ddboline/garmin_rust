@@ -1,8 +1,10 @@
 #[cfg(test)]
 mod tests {
+    use garmin_rust::garmin_summary;
+
     #[test]
     fn test_garmin_file_test_display() {
-        let garmin_summary = garmin_rust::garmin_summary::GarminSummary {
+        let garmin_summary = garmin_summary::GarminSummary {
             filename: "test_file".to_string(),
             begin_datetime: "2011-05-07T15:43:07-04:00".to_string(),
             sport: "running".to_string(),

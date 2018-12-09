@@ -11,9 +11,10 @@ use crate::garmin_summary;
 use crate::garmin_sync;
 use crate::garmin_util;
 use crate::parsers::garmin_parse;
+use crate::reports::garmin_file_report_html::file_report_html;
 use crate::reports::garmin_file_report_txt::generate_txt_report;
-use crate::reports::garmin_report::{file_report_html, summary_report_html};
 use crate::reports::garmin_report_options::GarminReportOptions;
+use crate::reports::garmin_summary_report_html::summary_report_html;
 use crate::reports::garmin_summary_report_txt::{create_report_query, get_list_of_files_from_db};
 
 fn get_version_number() -> String {

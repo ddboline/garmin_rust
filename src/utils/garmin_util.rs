@@ -6,12 +6,11 @@ use num::traits::Pow;
 
 use std::io::BufRead;
 use std::io::BufReader;
-use subprocess::{Exec, Redirection};
+use subprocess::Exec;
 
 use chrono::prelude::*;
 
 use failure::{err_msg, Error};
-use std::collections::HashMap;
 
 pub const METERS_PER_MILE: f64 = 1609.344;
 pub const MARATHON_DISTANCE_M: i32 = 42195;

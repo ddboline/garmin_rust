@@ -12,7 +12,7 @@ use json::{parse, JsonValue};
 use postgres::{Connection, TlsMode};
 
 use crate::garmin_summary;
-use crate::garmin_util::convert_sport_name;
+use crate::utils::sport_types::convert_sport_name;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GarminCorrectionLap {

@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::garmin_util::{convert_time_string, convert_xml_local_time_to_utc};
+use crate::utils::garmin_util::{convert_time_string, convert_xml_local_time_to_utc};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GarminLap {

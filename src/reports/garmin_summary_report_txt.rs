@@ -3,11 +3,11 @@ extern crate rayon;
 use failure::Error;
 use postgres::{Connection, TlsMode};
 
-use crate::garmin_util::{
-    days_in_month, days_in_year, get_sport_type_string_map, print_h_m_s, METERS_PER_MILE,
-    MONTH_NAMES, WEEKDAY_NAMES,
-};
 use crate::reports::garmin_report_options::GarminReportOptions;
+use crate::utils::garmin_util::{
+    days_in_month, days_in_year, print_h_m_s, METERS_PER_MILE, MONTH_NAMES, WEEKDAY_NAMES,
+};
+use crate::utils::sport_types::get_sport_type_string_map;
 
 pub fn get_list_of_files_from_db(
     pg_url: &str,

@@ -9,7 +9,8 @@ use crate::garmin_correction_lap::GarminCorrectionLap;
 use crate::garmin_file::{apply_lap_corrections, GarminFile};
 use crate::garmin_lap::GarminLap;
 use crate::garmin_point::GarminPoint;
-use crate::garmin_util::{convert_time_string, get_sport_type_map, METERS_PER_MILE};
+use crate::utils::garmin_util::{convert_time_string, METERS_PER_MILE};
+use crate::utils::sport_types::get_sport_type_map;
 
 #[derive(Debug)]
 pub struct GarminParseTxt {

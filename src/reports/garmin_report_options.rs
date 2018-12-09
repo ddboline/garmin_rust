@@ -1,4 +1,4 @@
-use crate::garmin_util::SportTypes;
+use crate::utils::sport_types::SportTypes;
 
 #[derive(Debug, Clone)]
 pub struct GarminReportOptions {

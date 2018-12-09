@@ -15,7 +15,7 @@ use crate::garmin_correction_lap::GarminCorrectionLap;
 use crate::garmin_file::{apply_lap_corrections, GarminFile};
 use crate::garmin_lap::GarminLap;
 use crate::garmin_point::GarminPoint;
-use crate::garmin_util::get_sport_type_map;
+use crate::utils::sport_types::get_sport_type_map;
 
 #[derive(Debug)]
 pub struct GarminParseTcx {

@@ -11,6 +11,6 @@ pub mod garmin_lap;
 pub mod garmin_point;
 pub mod garmin_summary;
 pub mod garmin_sync;
-pub mod garmin_util;
 pub mod parsers;
 pub mod reports;
+pub mod utils;

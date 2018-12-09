@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::garmin_util::{convert_xml_local_time_to_utc, METERS_PER_MILE};
+use crate::utils::garmin_util::{convert_xml_local_time_to_utc, METERS_PER_MILE};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GarminPoint {

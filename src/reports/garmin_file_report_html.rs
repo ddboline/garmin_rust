@@ -7,11 +7,11 @@ use rayon::prelude::*;
 use crate::garmin_file::GarminFile;
 use crate::garmin_lap::GarminLap;
 use crate::garmin_sync::{get_s3_client, upload_file_acl};
-use crate::garmin_util::{
-    plot_graph, print_h_m_s, titlecase, PlotOpts, MARATHON_DISTANCE_MI, METERS_PER_MILE,
-};
 use crate::reports::garmin_file_report_txt::get_splits;
 use crate::reports::garmin_templates::{GARMIN_TEMPLATE, MAP_TEMPLATE};
+use crate::utils::garmin_util::{print_h_m_s, titlecase, MARATHON_DISTANCE_MI, METERS_PER_MILE};
+use crate::utils::plot_graph::plot_graph;
+use crate::utils::plot_opts::PlotOpts;
 
 pub fn file_report_html(
     gfile: &GarminFile,

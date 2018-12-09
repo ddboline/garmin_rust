@@ -8,7 +8,7 @@ use rayon::prelude::*;
 
 use failure::Error;
 
-use crate::garmin_util::get_md5sum;
+use crate::utils::garmin_util::get_md5sum;
 use rusoto_core::Region;
 use rusoto_s3::{GetObjectRequest, ListObjectsV2Request, PutObjectRequest, S3Client, S3};
 use s4::S4;

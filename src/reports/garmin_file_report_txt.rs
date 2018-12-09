@@ -2,10 +2,8 @@ extern crate rayon;
 
 use crate::garmin_file::GarminFile;
 use crate::garmin_lap::GarminLap;
-use crate::garmin_util::{
-    get_sport_type_map, get_sport_type_string_map, print_h_m_s, SportTypes, MARATHON_DISTANCE_MI,
-    METERS_PER_MILE,
-};
+use crate::utils::garmin_util::{print_h_m_s, MARATHON_DISTANCE_MI, METERS_PER_MILE};
+use crate::utils::sport_types::{get_sport_type_map, get_sport_type_string_map, SportTypes};
 
 pub fn generate_txt_report(gfile: &GarminFile) -> Vec<String> {
     let mut return_vec = vec![format!("Start time {}", gfile.filename)];

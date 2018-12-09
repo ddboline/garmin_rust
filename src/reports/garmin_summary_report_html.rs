@@ -1,9 +1,10 @@
 use failure::Error;
 use std::fs::create_dir_all;
 
-use crate::garmin_util::{get_sport_type_string_map, MONTH_NAMES};
 use crate::reports::garmin_report_options::GarminReportOptions;
 use crate::reports::garmin_templates::GARMIN_TEMPLATE;
+use crate::utils::garmin_util::MONTH_NAMES;
+use crate::utils::sport_types::get_sport_type_string_map;
 
 fn generate_url_string(current_line: &str, options: &GarminReportOptions) -> String {
     let mut cmd_options = Vec::new();

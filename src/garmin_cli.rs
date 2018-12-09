@@ -9,13 +9,13 @@ use crate::garmin_correction_lap;
 use crate::garmin_file;
 use crate::garmin_summary;
 use crate::garmin_sync;
-use crate::garmin_util;
 use crate::parsers::garmin_parse;
 use crate::reports::garmin_file_report_html::file_report_html;
 use crate::reports::garmin_file_report_txt::generate_txt_report;
 use crate::reports::garmin_report_options::GarminReportOptions;
 use crate::reports::garmin_summary_report_html::summary_report_html;
 use crate::reports::garmin_summary_report_txt::{create_report_query, get_list_of_files_from_db};
+use crate::utils::sport_types::get_sport_type_map;
 
 fn get_version_number() -> String {
     format!(
@@ -153,7 +153,7 @@ pub fn cli_garmin_report() {
 pub fn process_pattern(patterns: &Vec<String>) -> (GarminReportOptions, Vec<String>) {
     let mut options = GarminReportOptions::new();
 
-    let sport_type_map = garmin_util::get_sport_type_map();
+    let sport_type_map = get_sport_type_map();
 
     let mut constraints: Vec<String> = Vec::new();
 

@@ -75,6 +75,18 @@ fn file_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, E
     let mut result_vec = Vec::new();
     let query = format!(
         "
+        WITH a AS (
+            SELECT begin_datetime,
+                   sport,
+                   total_calories,
+                   total_distance,
+                   total_duration,
+                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dur ELSE 0.0 END AS total_hr_dur,
+                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dis ELSE 0.0 END AS total_hr_dis,
+                   number_of_items
+            FROM garmin_summary
+            {}
+        )
         SELECT
             begin_datetime as datetime,
             EXTRACT(week from cast(begin_datetime as timestamp with time zone) at time zone 'EST') as week,
@@ -86,8 +98,7 @@ fn file_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, E
             sum(total_hr_dur) as total_hr_dur,
             sum(total_hr_dis) as total_hr_dis,
             sum(number_of_items) as number_of_items
-        FROM garmin_summary
-        {}
+        FROM a
         GROUP BY sport, datetime, week, isodow
         ORDER BY sport, datetime, week, isodow
     ",
@@ -204,6 +215,18 @@ fn day_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, Er
     let mut result_vec = Vec::new();
     let query = format!(
         "
+        WITH a AS (
+            SELECT begin_datetime,
+                   sport,
+                   total_calories,
+                   total_distance,
+                   total_duration,
+                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dur ELSE 0.0 END AS total_hr_dur,
+                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dis ELSE 0.0 END AS total_hr_dis,
+                   number_of_items
+            FROM garmin_summary
+            {}
+        )
         SELECT
             CAST(CAST(CAST(begin_datetime as timestamp with time zone) at time zone 'EST' as date) as text) as date,
             EXTRACT(week from cast(begin_datetime as timestamp with time zone) at time zone 'EST') as week,
@@ -215,8 +238,7 @@ fn day_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, Er
             sum(total_hr_dur) as total_hr_dur,
             sum(total_hr_dis) as total_hr_dis,
             sum(number_of_items) as number_of_items
-        FROM garmin_summary
-        {}
+        FROM a
         GROUP BY sport, date, week, isodow
         ORDER BY sport, date, week, isodow
     ",
@@ -332,6 +354,18 @@ fn day_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, Er
 fn week_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, Error> {
     let mut result_vec = Vec::new();
     let query = format!("
+        WITH a AS (
+            SELECT begin_datetime,
+                   sport,
+                   total_calories,
+                   total_distance,
+                   total_duration,
+                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dur ELSE 0.0 END AS total_hr_dur,
+                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dis ELSE 0.0 END AS total_hr_dis,
+                   number_of_items
+            FROM garmin_summary
+            {}
+        )
         SELECT
             EXTRACT(isoyear from cast(begin_datetime as timestamp with time zone) at time zone 'EST') as year,
             EXTRACT(week from cast(begin_datetime as timestamp with time zone) at time zone 'EST') as week,
@@ -343,8 +377,7 @@ fn week_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, E
             sum(total_hr_dis) as total_hr_dis,
             sum(number_of_items) as number_of_items,
             count(distinct cast(cast(begin_datetime as timestamp with time zone) at time zone 'EST' as date)) as number_of_days
-        FROM garmin_summary
-        {}
+        FROM a
         GROUP BY sport, year, week
         ORDER BY sport, year, week
     ", constr);
@@ -449,6 +482,18 @@ fn week_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, E
 fn month_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, Error> {
     let mut result_vec = Vec::new();
     let query = format!("
+        WITH a AS (
+            SELECT begin_datetime,
+                   sport,
+                   total_calories,
+                   total_distance,
+                   total_duration,
+                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dur ELSE 0.0 END AS total_hr_dur,
+                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dis ELSE 0.0 END AS total_hr_dis,
+                   number_of_items
+            FROM garmin_summary
+            {}
+        )
         SELECT
             EXTRACT(year from cast(begin_datetime as timestamp with time zone) at time zone 'EST') as year,
             EXTRACT(month from cast(begin_datetime as timestamp with time zone) at time zone 'EST') as month,
@@ -460,8 +505,7 @@ fn month_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, 
             sum(total_hr_dis) as total_hr_dis,
             sum(number_of_items) as number_of_items,
             count(distinct cast(cast(begin_datetime as timestamp with time zone) at time zone 'EST' as date)) as number_of_days
-        FROM garmin_summary
-        {}
+        FROM a
         GROUP BY sport, year, month
         ORDER BY sport, year, month
     ", constr);
@@ -561,6 +605,18 @@ fn year_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, E
 
     let query = format!(
         "
+        WITH a AS (
+            SELECT begin_datetime,
+                   sport,
+                   total_calories,
+                   total_distance,
+                   total_duration,
+                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dur ELSE 0.0 END AS total_hr_dur,
+                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dis ELSE 0.0 END AS total_hr_dis,
+                   number_of_items
+            FROM garmin_summary
+            {}
+        )
         SELECT
             EXTRACT(year from cast(begin_datetime as timestamp with time zone) at time zone 'EST') as year,
             sport,
@@ -571,8 +627,7 @@ fn year_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, E
             sum(total_hr_dis) as total_hr_dis,
             sum(number_of_items) as number_of_items,
             count(distinct cast(cast(begin_datetime as timestamp with time zone) at time zone 'EST' as date)) as number_of_days
-        FROM garmin_summary
-        {}
+        FROM a
         GROUP BY sport, year
         ORDER BY sport, year
     ",

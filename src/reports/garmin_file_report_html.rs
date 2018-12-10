@@ -104,7 +104,7 @@ pub fn file_report_html(
     }
     if sum_time > 0.0 {
         avg_hr /= sum_time;
-        max_hr = hr_vals.iter().map(|h| *h as i64).max().unwrap() as f64;
+        max_hr = *hr_vals.iter().max_by_key(|&h| *h as i64).unwrap();
     };
 
     let mut plot_opts = Vec::new();
@@ -239,10 +239,22 @@ pub fn file_report_html(
     let mut htmlvec: Vec<String> = Vec::new();
 
     if (lat_vals.len() > 0) & (lon_vals.len() > 0) & (lat_vals.len() == lon_vals.len()) {
-        let minlat = lat_vals.iter().map(|v| (v * 1000.0) as i32).min().unwrap() as f64 / 1000.0;
-        let maxlat = lat_vals.iter().map(|v| (v * 1000.0) as i32).max().unwrap() as f64 / 1000.0;
-        let minlon = lon_vals.iter().map(|v| (v * 1000.0) as i32).min().unwrap() as f64 / 1000.0;
-        let maxlon = lon_vals.iter().map(|v| (v * 1000.0) as i32).max().unwrap() as f64 / 1000.0;
+        let minlat = lat_vals
+            .iter()
+            .min_by_key(|&v| (v * 1000.0) as i32)
+            .unwrap();
+        let maxlat = lat_vals
+            .iter()
+            .max_by_key(|&v| (v * 1000.0) as i32)
+            .unwrap();
+        let minlon = lon_vals
+            .iter()
+            .min_by_key(|&v| (v * 1000.0) as i32)
+            .unwrap();
+        let maxlon = lon_vals
+            .iter()
+            .max_by_key(|&v| (v * 1000.0) as i32)
+            .unwrap();
         let central_lat = (maxlat + minlat) / 2.0;
         let central_lon = (maxlon + minlon) / 2.0;
         let latlon_min = if (maxlat - minlat) > (maxlon - minlon) {

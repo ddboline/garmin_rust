@@ -4,11 +4,20 @@ extern crate serde_json;
 
 use subprocess::{Exec, Redirection};
 
-use failure::Error;
+use failure::{err_msg, Error};
 
 use crate::utils::plot_opts::PlotOpts;
 
 pub fn plot_graph(opts: &PlotOpts) -> Result<String, Error> {
+    if opts.data == None {
+        return Err(err_msg(format!("No data points {}", opts.name)));
+    }
+    if let Some(x) = opts.data {
+        if x.len() == 0 {
+            return Err(err_msg(format!("No data points {}", opts.name)));
+        }
+    }
+
     let command = format!(
         "garmin-plot-graph -n {} -t {} -x {} -y {} -c {} {} {}",
         opts.name,

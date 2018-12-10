@@ -50,7 +50,7 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<String>, Error> {
                 gfile.total_distance / METERS_PER_MILE,
                 gfile.total_calories,
                 print_h_m_s(gfile.total_duration, true)?,
-                mi_per_hr
+                format!("{:.2}", mi_per_hr),
             ));
         }
     };

@@ -147,9 +147,11 @@ impl GarminParseTcx {
                 new_point.duration_from_last = match i {
                     0 => 0.0,
                     _ => {
-                        let cur_time: DateTime<Utc> = DateTime::from_str(&new_point.time).unwrap();
+                        let cur_time: DateTime<Utc> = DateTime::from_str(&new_point.time)
+                            .expect("Failed to extract timestamp");
                         let last_time: DateTime<Utc> =
-                            DateTime::from_str(&point_list.get(i - 1).unwrap().time).unwrap();
+                            DateTime::from_str(&point_list.get(i - 1).unwrap().time)
+                                .expect("Failed to extract timestamp");
                         (cur_time - last_time).num_seconds() as f64
                     }
                 };

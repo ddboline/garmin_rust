@@ -41,19 +41,19 @@ pub fn convert_xml_local_time_to_utc(xml_local_time: &str) -> Result<String, Err
     Ok(local.format("%Y-%m-%dT%H:%M:%SZ").to_string())
 }
 
-pub fn get_md5sum(filename: &str) -> String {
+pub fn get_md5sum(filename: &str) -> Result<String, Error> {
     let command = format!("md5sum {}", filename);
 
-    let stream = Exec::shell(command).stream_stdout().unwrap();
+    let stream = Exec::shell(command).stream_stdout()?;
 
     let reader = BufReader::new(stream);
 
     for line in reader.lines() {
-        for entry in line.unwrap().split_whitespace() {
-            return entry.to_string();
+        for entry in line?.split_whitespace() {
+            return Ok(entry.to_string());
         }
     }
-    "".to_string()
+    Ok("".to_string())
 }
 
 pub fn print_h_m_s(second: f64, do_hours: bool) -> Result<String, Error> {

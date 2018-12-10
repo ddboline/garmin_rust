@@ -38,7 +38,7 @@ pub fn file_report_html(
     let mut lat_vals = Vec::new();
     let mut lon_vals = Vec::new();
 
-    let speed_values = get_splits(&gfile, 400., "lap", true);
+    let speed_values = get_splits(&gfile, 400., "lap", true)?;
     let heart_rate_speed: Vec<_> = speed_values
         .iter()
         .map(|v| {
@@ -55,7 +55,7 @@ pub fn file_report_html(
             (d / 4., 4. * t / 60.)
         })
         .collect();
-    let mile_split_vals = get_splits(&gfile, METERS_PER_MILE, "mi", false);
+    let mile_split_vals = get_splits(&gfile, METERS_PER_MILE, "mi", false)?;
     let mile_split_vals: Vec<_> = mile_split_vals
         .into_iter()
         .map(|v| {
@@ -281,11 +281,11 @@ pub fn file_report_html(
                 htmlvec.push(format!("{}\n", get_file_html(&gfile)));
                 htmlvec.push(format!(
                     "<br><br>{}\n",
-                    get_html_splits(&gfile, METERS_PER_MILE, "mi")
+                    get_html_splits(&gfile, METERS_PER_MILE, "mi")?
                 ));
                 htmlvec.push(format!(
                     "<br><br>{}\n",
-                    get_html_splits(&gfile, 5000.0, "km")
+                    get_html_splits(&gfile, 5000.0, "km")?
                 ));
             } else if line.contains("INSERTMAPSEGMENTSHERE") {
                 for (latv, lonv) in lat_vals.iter().zip(lon_vals.iter()) {
@@ -325,11 +325,11 @@ pub fn file_report_html(
                 htmlvec.push(format!("{}\n", get_file_html(&gfile)));
                 htmlvec.push(format!(
                     "<br><br>{}\n",
-                    get_html_splits(&gfile, METERS_PER_MILE, "mi")
+                    get_html_splits(&gfile, METERS_PER_MILE, "mi")?
                 ));
                 htmlvec.push(format!(
                     "<br><br>{}\n",
-                    get_html_splits(&gfile, 5000.0, "km")
+                    get_html_splits(&gfile, 5000.0, "km")?
                 ));
             } else if line.contains("SPORTTITLEDATE") {
                 let newtitle = format!(
@@ -504,9 +504,13 @@ fn get_lap_html(glap: &GarminLap, sport: &str) -> Vec<String> {
     values.iter().map(|v| format!("<td>{}</td>", v)).collect()
 }
 
-fn get_html_splits(gfile: &GarminFile, split_distance_in_meters: f64, label: &str) -> String {
+fn get_html_splits(
+    gfile: &GarminFile,
+    split_distance_in_meters: f64,
+    label: &str,
+) -> Result<String, Error> {
     if gfile.points.len() == 0 {
-        "".to_string()
+        Ok("".to_string())
     } else {
         let labels = vec![
             "Split",
@@ -517,7 +521,7 @@ fn get_html_splits(gfile: &GarminFile, split_distance_in_meters: f64, label: &st
             "Heart Rate",
         ];
 
-        let split_vector = get_splits(gfile, split_distance_in_meters, label, true);
+        let split_vector = get_splits(gfile, split_distance_in_meters, label, true)?;
 
         let values: Vec<_> = split_vector
             .iter()
@@ -557,6 +561,6 @@ fn get_html_splits(gfile: &GarminFile, split_distance_in_meters: f64, label: &st
             retval.push("</tr>".to_string());
         }
         retval.push("</tbody></table>".to_string());
-        retval.join("\n")
+        Ok(retval.join("\n"))
     }
 }

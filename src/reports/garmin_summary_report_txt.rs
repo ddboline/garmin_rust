@@ -7,7 +7,6 @@ use crate::reports::garmin_report_options::GarminReportOptions;
 use crate::utils::garmin_util::{
     days_in_month, days_in_year, print_h_m_s, METERS_PER_MILE, MONTH_NAMES, WEEKDAY_NAMES,
 };
-use crate::utils::sport_types::get_sport_type_string_map;
 
 pub fn get_list_of_files_from_db(
     pg_url: &str,
@@ -20,7 +19,7 @@ pub fn get_list_of_files_from_db(
 
     let query = format!("SELECT filename FROM garmin_summary {}", constr);
 
-    let conn = Connection::connect(pg_url, TlsMode::None).unwrap();
+    let conn = Connection::connect(pg_url, TlsMode::None)?;
 
     let file_list: Vec<String> = conn
         .query(&query, &[])?
@@ -34,16 +33,11 @@ pub fn create_report_query(
     pg_url: &str,
     options: &GarminReportOptions,
     constraints: &Vec<String>,
-) -> Vec<String> {
-    let conn = Connection::connect(pg_url, TlsMode::None).unwrap();
-
-    let sport_type_string_map = get_sport_type_string_map();
+) -> Result<Vec<String>, Error> {
+    let conn = Connection::connect(pg_url, TlsMode::None)?;
 
     let sport_constr = match options.do_sport {
-        Some(x) => match sport_type_string_map.get(&x) {
-            Some(s) => format!("sport = '{}'", s),
-            None => "".to_string(),
-        },
+        Some(x) => format!("sport = '{}'", x.to_string()),
         None => "".to_string(),
     };
 
@@ -61,23 +55,23 @@ pub fn create_report_query(
     debug!("{}", constr);
 
     let result_vec = if options.do_year {
-        year_summary_report(&conn, &constr)
+        year_summary_report(&conn, &constr)?
     } else if options.do_month {
-        month_summary_report(&conn, &constr)
+        month_summary_report(&conn, &constr)?
     } else if options.do_week {
-        week_summary_report(&conn, &constr)
+        week_summary_report(&conn, &constr)?
     } else if options.do_day {
-        day_summary_report(&conn, &constr)
+        day_summary_report(&conn, &constr)?
     } else if options.do_file {
-        file_summary_report(&conn, &constr)
+        file_summary_report(&conn, &constr)?
     } else {
         vec!["".to_string()]
     };
 
-    result_vec
+    Ok(result_vec)
 }
 
-fn file_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
+fn file_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, Error> {
     let mut result_vec = Vec::new();
     let query = format!(
         "
@@ -102,7 +96,7 @@ fn file_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
 
     debug!("{}", query);
 
-    for row in conn.query(&query, &[]).unwrap().iter() {
+    for row in conn.query(&query, &[])?.iter() {
         let datetime: String = row.get(0);
         let week: f64 = row.get(1);
         let dow: f64 = row.get(2);
@@ -143,14 +137,16 @@ fn file_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
                         format!("{} cal", total_calories),
                         format!(
                             "{} / mi",
-                            print_h_m_s(total_duration / (total_distance / METERS_PER_MILE), false)
-                                .unwrap()
+                            print_h_m_s(
+                                total_duration / (total_distance / METERS_PER_MILE),
+                                false
+                            )?
                         ),
                         format!(
                             "{} / km",
-                            print_h_m_s(total_duration / (total_distance / 1000.), false).unwrap()
+                            print_h_m_s(total_duration / (total_distance / 1000.), false)?
                         ),
-                        print_h_m_s(total_duration, true).unwrap()
+                        print_h_m_s(total_duration, true)?
                     ));
                 } else {
                     tmp_vec.push(format!(
@@ -161,7 +157,7 @@ fn file_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
                         format!("{} cal", total_calories),
                         format!(""),
                         format!(""),
-                        print_h_m_s(total_duration, true).unwrap()
+                        print_h_m_s(total_duration, true)?
                     ));
                 }
             }
@@ -177,7 +173,7 @@ fn file_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
                         (total_distance / METERS_PER_MILE) / (total_duration / 3600.)
                     ),
                     format!(""),
-                    print_h_m_s(total_duration, true).unwrap()
+                    print_h_m_s(total_duration, true)?
                 ));
             }
             _ => {
@@ -189,7 +185,7 @@ fn file_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
                     format!("{} cal", total_calories),
                     format!(""),
                     format!(""),
-                    print_h_m_s(total_duration, true).unwrap()
+                    print_h_m_s(total_duration, true)?
                 ));
             }
         };
@@ -201,10 +197,10 @@ fn file_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
         }
         result_vec.push(tmp_vec.join(" "));
     }
-    result_vec
+    Ok(result_vec)
 }
 
-fn day_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
+fn day_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, Error> {
     let mut result_vec = Vec::new();
     let query = format!(
         "
@@ -229,7 +225,7 @@ fn day_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
 
     debug!("{}", query);
 
-    for row in conn.query(&query, &[]).unwrap().iter() {
+    for row in conn.query(&query, &[])?.iter() {
         let date: String = row.get(0);
         let week: f64 = row.get(1);
         let dow: f64 = row.get(2);
@@ -270,14 +266,16 @@ fn day_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
                         format!("{} cal", total_calories),
                         format!(
                             "{} / mi",
-                            print_h_m_s(total_duration / (total_distance / METERS_PER_MILE), false)
-                                .unwrap()
+                            print_h_m_s(
+                                total_duration / (total_distance / METERS_PER_MILE),
+                                false
+                            )?
                         ),
                         format!(
                             "{} / km",
-                            print_h_m_s(total_duration / (total_distance / 1000.), false).unwrap()
+                            print_h_m_s(total_duration / (total_distance / 1000.), false)?
                         ),
-                        print_h_m_s(total_duration, true).unwrap()
+                        print_h_m_s(total_duration, true)?
                     ));
                 } else {
                     tmp_vec.push(format!(
@@ -288,7 +286,7 @@ fn day_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
                         format!("{} cal", total_calories),
                         format!(""),
                         format!(""),
-                        print_h_m_s(total_duration, true).unwrap()
+                        print_h_m_s(total_duration, true)?
                     ));
                 }
             }
@@ -304,7 +302,7 @@ fn day_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
                         (total_distance / METERS_PER_MILE) / (total_duration / 3600.)
                     ),
                     format!(""),
-                    print_h_m_s(total_duration, true).unwrap()
+                    print_h_m_s(total_duration, true)?
                 ));
             }
             _ => {
@@ -316,7 +314,7 @@ fn day_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
                     format!("{} cal", total_calories),
                     format!(""),
                     format!(""),
-                    print_h_m_s(total_duration, true).unwrap()
+                    print_h_m_s(total_duration, true)?
                 ));
             }
         };
@@ -328,10 +326,10 @@ fn day_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
         }
         result_vec.push(tmp_vec.join(" "));
     }
-    result_vec
+    Ok(result_vec)
 }
 
-fn week_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
+fn week_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, Error> {
     let mut result_vec = Vec::new();
     let query = format!("
         SELECT
@@ -353,7 +351,7 @@ fn week_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
 
     debug!("{}", query);
 
-    for row in conn.query(&query, &[]).unwrap().iter() {
+    for row in conn.query(&query, &[])?.iter() {
         let year: f64 = row.get(0);
         let week: f64 = row.get(1);
         let sport: String = row.get(2);
@@ -397,15 +395,17 @@ fn week_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
                         " {:10} \t",
                         format!(
                             "{} / mi",
-                            print_h_m_s(total_duration / (total_distance / METERS_PER_MILE), false)
-                                .unwrap()
+                            print_h_m_s(
+                                total_duration / (total_distance / METERS_PER_MILE),
+                                false
+                            )?
                         )
                     ));
                     tmp_vec.push(format!(
                         " {:10} \t",
                         format!(
                             "{} / km",
-                            print_h_m_s(total_duration / (total_distance / 1000.), false).unwrap()
+                            print_h_m_s(total_duration / (total_distance / 1000.), false)?
                         )
                     ));
                 } else {
@@ -426,10 +426,7 @@ fn week_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
                 tmp_vec.push(format!(" {:10} \t", ""));
             }
         }
-        tmp_vec.push(format!(
-            " {:10} \t",
-            print_h_m_s(total_duration, true).unwrap()
-        ));
+        tmp_vec.push(format!(" {:10} \t", print_h_m_s(total_duration, true)?));
         if total_hr_dur > total_hr_dis {
             tmp_vec.push(format!(
                 " {:7} {:2}",
@@ -446,10 +443,10 @@ fn week_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
 
         result_vec.push(tmp_vec.join(" "));
     }
-    result_vec
+    Ok(result_vec)
 }
 
-fn month_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
+fn month_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, Error> {
     let mut result_vec = Vec::new();
     let query = format!("
         SELECT
@@ -471,7 +468,7 @@ fn month_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
 
     debug!("{}", query);
 
-    for row in conn.query(&query, &[]).unwrap().iter() {
+    for row in conn.query(&query, &[])?.iter() {
         let year: f64 = row.get(0);
         let month: f64 = row.get(1);
         let sport: String = row.get(2);
@@ -514,15 +511,14 @@ fn month_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
                     " {:10} \t",
                     format!(
                         "{} / mi",
-                        print_h_m_s(total_duration / (total_distance / METERS_PER_MILE), false)
-                            .unwrap()
+                        print_h_m_s(total_duration / (total_distance / METERS_PER_MILE), false)?
                     )
                 ));
                 tmp_vec.push(format!(
                     " {:10} \t",
                     format!(
                         "{} / km",
-                        print_h_m_s(total_duration / (total_distance / 1000.), false).unwrap()
+                        print_h_m_s(total_duration / (total_distance / 1000.), false)?
                     )
                 ))
             }
@@ -539,10 +535,7 @@ fn month_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
                 tmp_vec.push(format!(" {:10} \t", ""));
             }
         };
-        tmp_vec.push(format!(
-            " {:10} \t",
-            print_h_m_s(total_duration, true).unwrap()
-        ));
+        tmp_vec.push(format!(" {:10} \t", print_h_m_s(total_duration, true)?));
 
         if total_hr_dur > total_hr_dis {
             tmp_vec.push(format!(
@@ -560,10 +553,10 @@ fn month_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
 
         result_vec.push(tmp_vec.join(" "));
     }
-    result_vec
+    Ok(result_vec)
 }
 
-fn year_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
+fn year_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, Error> {
     let mut result_vec = Vec::new();
 
     let query = format!(
@@ -587,7 +580,7 @@ fn year_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
     );
     debug!("{}", query);
 
-    for row in conn.query(&query, &[]).unwrap().iter() {
+    for row in conn.query(&query, &[])?.iter() {
         let year: f64 = row.get(0);
         let sport: String = row.get(1);
         let total_calories: i64 = row.get(2);
@@ -628,15 +621,14 @@ fn year_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
                     "{:10} ",
                     format!(
                         "{} / mi",
-                        print_h_m_s(total_duration / (total_distance / METERS_PER_MILE), false)
-                            .unwrap()
+                        print_h_m_s(total_duration / (total_distance / METERS_PER_MILE), false)?
                     )
                 ));
                 tmp_vec.push(format!(
                     "{:10} ",
                     format!(
                         "{} / km",
-                        print_h_m_s(total_duration / (total_distance / 1000.), false).unwrap()
+                        print_h_m_s(total_duration / (total_distance / 1000.), false)?
                     )
                 ));
             }
@@ -652,10 +644,7 @@ fn year_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
             _ => (),
         };
 
-        tmp_vec.push(format!(
-            " {:10} \t",
-            print_h_m_s(total_duration, true).unwrap()
-        ));
+        tmp_vec.push(format!(" {:10} \t", print_h_m_s(total_duration, true)?));
         if total_hr_dur > total_hr_dis {
             tmp_vec.push(format!(
                 " {:7} {:2}",
@@ -673,5 +662,5 @@ fn year_summary_report(conn: &Connection, constr: &str) -> Vec<String> {
 
         result_vec.push(tmp_vec.join(" "));
     }
-    result_vec
+    Ok(result_vec)
 }

@@ -15,6 +15,24 @@ pub enum SportTypes {
     Skiing,
 }
 
+impl SportTypes {
+    pub fn to_string(&self) -> String {
+        match self {
+            SportTypes::Running => "running".to_string(),
+            SportTypes::Biking => "biking".to_string(),
+            SportTypes::Walking => "walking".to_string(),
+            SportTypes::Ultimate => "ultimate".to_string(),
+            SportTypes::Elliptical => "elliptical".to_string(),
+            SportTypes::Stairs => "stairs".to_string(),
+            SportTypes::Lifting => "lifting".to_string(),
+            SportTypes::Swimming => "swimming".to_string(),
+            SportTypes::Other => "other".to_string(),
+            SportTypes::Snowshoeing => "snowshoeing".to_string(),
+            SportTypes::Skiing => "skiing".to_string(),
+        }
+    }
+}
+
 pub fn get_sport_type_map() -> HashMap<String, SportTypes> {
     [
         ("running", SportTypes::Running),
@@ -40,31 +58,11 @@ pub fn get_sport_type_map() -> HashMap<String, SportTypes> {
     .collect()
 }
 
-pub fn get_sport_type_string_map() -> HashMap<SportTypes, String> {
-    [
-        (SportTypes::Running, "running"),
-        (SportTypes::Biking, "biking"),
-        (SportTypes::Walking, "walking"),
-        (SportTypes::Ultimate, "ultimate"),
-        (SportTypes::Elliptical, "elliptical"),
-        (SportTypes::Stairs, "stairs"),
-        (SportTypes::Lifting, "lifting"),
-        (SportTypes::Swimming, "swimming"),
-        (SportTypes::Other, "other"),
-        (SportTypes::Snowshoeing, "snowshoeing"),
-        (SportTypes::Skiing, "skiing"),
-    ]
-    .iter()
-    .map(|(k, v)| (k.clone(), v.to_string()))
-    .collect()
-}
-
 pub fn convert_sport_name(sport: &str) -> Option<String> {
     let map0 = get_sport_type_map();
-    let map1 = get_sport_type_string_map();
 
     match map0.get(sport) {
-        Some(&s) => Some(map1.get(&s).unwrap().clone()),
+        Some(&s) => Some(s.to_string()),
         None => None,
     }
 }

@@ -21,7 +21,10 @@ pub fn get_s3_client() -> S3Client {
     S3Client::new(Region::UsEast1)
 }
 
-pub fn get_list_of_keys(s3_client: &S3Client, bucket: &str) -> Vec<(String, String, i64)> {
+pub fn get_list_of_keys(
+    s3_client: &S3Client,
+    bucket: &str,
+) -> Result<Vec<(String, String, i64)>, Error> {
     let mut continuation_token = None;
 
     let mut list_of_keys = Vec::new();
@@ -39,8 +42,7 @@ pub fn get_list_of_keys(s3_client: &S3Client, bucket: &str) -> Vec<(String, Stri
                 request_payer: None,
                 start_after: None,
             })
-            .sync()
-            .unwrap();
+            .sync()?;
 
         continuation_token = current_list.next_continuation_token.clone();
 
@@ -51,9 +53,7 @@ pub fn get_list_of_keys(s3_client: &S3Client, bucket: &str) -> Vec<(String, Stri
                     list_of_keys.push((
                         item.key.unwrap(),
                         item.e_tag.unwrap().trim_matches('"').to_string(),
-                        DateTime::parse_from_rfc3339(&item.last_modified.unwrap())
-                            .unwrap()
-                            .timestamp(),
+                        DateTime::parse_from_rfc3339(&item.last_modified.unwrap())?.timestamp(),
                     ))
                 }
             }
@@ -66,7 +66,7 @@ pub fn get_list_of_keys(s3_client: &S3Client, bucket: &str) -> Vec<(String, Stri
         };
     }
 
-    list_of_keys
+    Ok(list_of_keys)
 }
 
 pub fn sync_dir(local_dir: &str, s3_bucket: &str, s3_client: &S3Client) -> Result<(), Error> {
@@ -86,7 +86,7 @@ pub fn sync_dir(local_dir: &str, s3_bucket: &str, s3_client: &S3Client) -> Resul
     let file_list: Vec<_> = file_list
         .par_iter()
         .map(|f| {
-            let md5sum = get_md5sum(&f);
+            let md5sum = get_md5sum(&f).unwrap();
 
             let modified = fs::metadata(&f)
                 .unwrap()
@@ -109,7 +109,7 @@ pub fn sync_dir(local_dir: &str, s3_bucket: &str, s3_client: &S3Client) -> Resul
         })
         .collect();
 
-    let key_list = get_list_of_keys(&s3_client, s3_bucket);
+    let key_list = get_list_of_keys(&s3_client, s3_bucket)?;
     let key_set: HashMap<_, _> = key_list
         .iter()
         .map(|(k, m, t)| (k.to_string(), (m.to_string(), t.clone())))

@@ -28,7 +28,7 @@ fn get_version_number() -> String {
     )
 }
 
-pub fn cli_garmin_proc() {
+pub fn cli_garmin_proc() -> Result<(), Error> {
     let config = GarminConfig::new().from_yml("config.yml").from_env();
 
     let home_dir = env!("HOME");
@@ -75,23 +75,20 @@ pub fn cli_garmin_proc() {
                 format!("{}/.garmin_cache/run/gps_tracks", home_dir).as_str(),
                 &config.gps_bucket,
                 &s3_client,
-            )
-            .unwrap();
+            )?;
             garmin_sync::sync_dir(
                 format!("{}/.garmin_cache/run/cache", home_dir).as_str(),
                 &config.cache_bucket,
                 &s3_client,
-            )
-            .unwrap();
+            )?;
         }
         false => {
-            let corr_list = garmin_correction_lap::read_corrections_from_db(&config.pgurl).unwrap();
+            let corr_list = garmin_correction_lap::read_corrections_from_db(&config.pgurl)?;
 
             garmin_correction_lap::dump_corr_list_to_avro(
                 &corr_list,
                 &format!("{}/garmin_correction.avro", &config.cache_dir),
-            )
-            .unwrap();
+            )?;
 
             let corr_map = garmin_correction_lap::get_corr_list_map(&corr_list);
 
@@ -108,20 +105,21 @@ pub fn cli_garmin_proc() {
                         &config.gps_dir,
                         &config.cache_dir,
                         &corr_map,
-                    )
-                    .unwrap(),
+                    )?,
                     false => Vec::new(),
                 },
             };
 
             if gsum_list.len() > 0 {
                 garmin_summary::write_summary_to_postgres(&config.pgurl, &gsum_list)
+                    .expect("Failed to write summary")
             };
         }
     }
+    Ok(())
 }
 
-pub fn cli_garmin_report() {
+pub fn cli_garmin_report() -> Result<(), Error> {
     let matches = App::new("Garmin Rust Report")
         .version(get_version_number().as_str())
         .author("Daniel Boline <ddboline@gmail.com>")
@@ -140,7 +138,7 @@ pub fn cli_garmin_report() {
         }
     };
 
-    run_cli(&options, &constraints).unwrap()
+    run_cli(&options, &constraints)
 }
 
 pub fn process_pattern(patterns: &Vec<String>) -> (GarminReportOptions, Vec<String>) {
@@ -173,7 +171,7 @@ pub fn process_pattern(patterns: &Vec<String>) -> (GarminReportOptions, Vec<Stri
 pub fn run_cli(options: &GarminReportOptions, constraints: &Vec<String>) -> Result<(), Error> {
     let config = GarminConfig::new().from_yml("config.yml").from_env();
 
-    let file_list = get_list_of_files_from_db(&config.pgurl, &constraints).unwrap();
+    let file_list = get_list_of_files_from_db(&config.pgurl, &constraints)?;
 
     match file_list.len() {
         0 => (),
@@ -189,8 +187,7 @@ pub fn run_cli(options: &GarminReportOptions, constraints: &Vec<String>) -> Resu
                 Err(_) => {
                     let gps_file = format!("{}/{}", config.gps_dir, file_name);
 
-                    let corr_list =
-                        garmin_correction_lap::read_corrections_from_db(&config.pgurl).unwrap();
+                    let corr_list = garmin_correction_lap::read_corrections_from_db(&config.pgurl)?;
                     let corr_map = garmin_correction_lap::get_corr_list_map(&corr_list);
 
                     debug!("Reading gps_file: {}", &gps_file);
@@ -198,11 +195,11 @@ pub fn run_cli(options: &GarminReportOptions, constraints: &Vec<String>) -> Resu
                 }
             };
             debug!("gfile {} {}", gfile.laps.len(), gfile.points.len());
-            println!("{}", generate_txt_report(&gfile).join("\n"));
+            println!("{}", generate_txt_report(&gfile)?.join("\n"));
         }
         _ => {
             debug!("{:?}", options);
-            let txt_result = create_report_query(&config.pgurl, &options, &constraints);
+            let txt_result = create_report_query(&config.pgurl, &options, &constraints)?;
 
             println!("{}", txt_result.join("\n"));
         }
@@ -215,7 +212,7 @@ pub fn run_html(options: &GarminReportOptions, constraints: &Vec<String>) -> Res
 
     let http_bucket = config.http_bucket;
 
-    let file_list = get_list_of_files_from_db(&config.pgurl, &constraints).unwrap();
+    let file_list = get_list_of_files_from_db(&config.pgurl, &constraints)?;
 
     match file_list.len() {
         0 => Ok("".to_string()),
@@ -231,8 +228,7 @@ pub fn run_html(options: &GarminReportOptions, constraints: &Vec<String>) -> Res
                 Err(_) => {
                     let gps_file = format!("{}/{}", config.gps_dir, file_name);
 
-                    let corr_list =
-                        garmin_correction_lap::read_corrections_from_db(&config.pgurl).unwrap();
+                    let corr_list = garmin_correction_lap::read_corrections_from_db(&config.pgurl)?;
                     let corr_map = garmin_correction_lap::get_corr_list_map(&corr_list);
 
                     debug!("Reading gps_file: {}", &gps_file);
@@ -241,16 +237,16 @@ pub fn run_html(options: &GarminReportOptions, constraints: &Vec<String>) -> Res
             };
             debug!("gfile {} {}", gfile.laps.len(), gfile.points.len());
 
-            let tempdir = TempDir::new("garmin_html").unwrap();
+            let tempdir = TempDir::new("garmin_html")?;
             let htmlcachedir = tempdir.path().to_str().unwrap();
 
             file_report_html(&gfile, &config.maps_api_key, &htmlcachedir, &http_bucket)
         }
         _ => {
             debug!("{:?}", options);
-            let txt_result = create_report_query(&config.pgurl, &options, &constraints);
+            let txt_result = create_report_query(&config.pgurl, &options, &constraints)?;
 
-            let tempdir = TempDir::new("garmin_html").unwrap();
+            let tempdir = TempDir::new("garmin_html")?;
             let htmlcachedir = tempdir.path().to_str().unwrap();
 
             summary_report_html(&txt_result, &options, &htmlcachedir)

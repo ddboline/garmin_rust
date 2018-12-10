@@ -1,11 +1,13 @@
 extern crate rayon;
 
+use failure::Error;
+
 use crate::garmin_file::GarminFile;
 use crate::garmin_lap::GarminLap;
 use crate::utils::garmin_util::{print_h_m_s, MARATHON_DISTANCE_MI, METERS_PER_MILE};
-use crate::utils::sport_types::{get_sport_type_map, get_sport_type_string_map, SportTypes};
+use crate::utils::sport_types::{get_sport_type_map, SportTypes};
 
-pub fn generate_txt_report(gfile: &GarminFile) -> Vec<String> {
+pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<String>, Error> {
     let mut return_vec = vec![format!("Start time {}", gfile.filename)];
 
     let sport_type_map = get_sport_type_map();
@@ -18,7 +20,7 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Vec<String> {
     };
 
     for lap in &gfile.laps {
-        return_vec.push(print_lap_string(&lap, &sport_type))
+        return_vec.push(print_lap_string(&lap, &sport_type)?)
     }
 
     let mut min_mile = 0.0;
@@ -37,9 +39,9 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Vec<String> {
                 "total {:.2} mi {} calories {} time {} min/mi {} min/km",
                 gfile.total_distance / METERS_PER_MILE,
                 gfile.total_calories,
-                print_h_m_s(gfile.total_duration, true).unwrap(),
-                print_h_m_s(min_mile * 60.0, false).unwrap(),
-                print_h_m_s(min_mile * 60.0 / METERS_PER_MILE * 1000., false).unwrap()
+                print_h_m_s(gfile.total_duration, true)?,
+                print_h_m_s(min_mile * 60.0, false)?,
+                print_h_m_s(min_mile * 60.0 / METERS_PER_MILE * 1000., false)?
             ));
         }
         _ => {
@@ -47,7 +49,7 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Vec<String> {
                 "total {:.2} mi {} calories {} time {} mph",
                 gfile.total_distance / METERS_PER_MILE,
                 gfile.total_calories,
-                print_h_m_s(gfile.total_duration, true).unwrap(),
+                print_h_m_s(gfile.total_duration, true)?,
                 mi_per_hr
             ));
         }
@@ -60,9 +62,9 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Vec<String> {
     };
     return_vec.push(tmp_str.join(" "));
     return_vec.push("".to_string());
-    return_vec.push(print_splits(&gfile, METERS_PER_MILE, "mi"));
+    return_vec.push(print_splits(&gfile, METERS_PER_MILE, "mi")?);
     return_vec.push("".to_string());
-    return_vec.push(print_splits(&gfile, 5000.0, "km"));
+    return_vec.push(print_splits(&gfile, 5000.0, "km")?);
 
     let avg_hr: f64 = gfile
         .points
@@ -153,35 +155,32 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Vec<String> {
         return_vec.push(format!("vertical climb: {:.2} m", vertical_climb));
     }
 
-    return_vec
+    Ok(return_vec)
 }
 
-fn print_lap_string(glap: &GarminLap, sport: &SportTypes) -> String {
-    let sport_map = get_sport_type_string_map();
-    let sport_str = match sport_map.get(sport) {
-        Some(s) => s.clone(),
-        None => "other".to_string(),
-    };
+fn print_lap_string(glap: &GarminLap, sport: &SportTypes) -> Result<String, Error> {
+    let sport_str = sport.to_string();
+
     let mut outstr = vec![format!(
         "{} lap {} {:.2} mi {} {} calories {:.2} min",
         sport_str,
         glap.lap_number,
         glap.lap_distance / METERS_PER_MILE,
-        print_h_m_s(glap.lap_duration, true).unwrap(),
+        print_h_m_s(glap.lap_duration, true)?,
         glap.lap_calories,
         glap.lap_duration / 60.
     )];
 
     if (*sport == SportTypes::Running) & (glap.lap_distance > 0.0) {
-        outstr.push(
-            print_h_m_s(
-                glap.lap_duration / (glap.lap_distance / METERS_PER_MILE),
-                false,
-            )
-            .unwrap(),
-        );
+        outstr.push(print_h_m_s(
+            glap.lap_duration / (glap.lap_distance / METERS_PER_MILE),
+            false,
+        )?);
         outstr.push("/ mi ".to_string());
-        outstr.push(print_h_m_s(glap.lap_duration / (glap.lap_distance / 1000.), false).unwrap());
+        outstr.push(print_h_m_s(
+            glap.lap_duration / (glap.lap_distance / 1000.),
+            false,
+        )?);
         outstr.push("/ km".to_string());
     };
     if let Some(x) = glap.lap_avg_hr {
@@ -190,15 +189,19 @@ fn print_lap_string(glap: &GarminLap, sport: &SportTypes) -> String {
         }
     }
 
-    outstr.join(" ")
+    Ok(outstr.join(" "))
 }
 
-fn print_splits(gfile: &GarminFile, split_distance_in_meters: f64, label: &str) -> String {
+fn print_splits(
+    gfile: &GarminFile,
+    split_distance_in_meters: f64,
+    label: &str,
+) -> Result<String, Error> {
     if gfile.points.len() == 0 {
-        return "".to_string();
-    };
+        return Ok("".to_string());
+    }
 
-    let split_vector = get_splits(gfile, split_distance_in_meters, label, true);
+    let split_vector = get_splits(gfile, split_distance_in_meters, label, true)?;
     let retval: Vec<_> = split_vector
         .iter()
         .map(|val| {
@@ -222,7 +225,7 @@ fn print_splits(gfile: &GarminFile, split_distance_in_meters: f64, label: &str) 
             )
         })
         .collect();
-    retval.join("\n")
+    Ok(retval.join("\n"))
 }
 
 pub fn get_splits(
@@ -230,11 +233,11 @@ pub fn get_splits(
     split_distance_in_meters: f64,
     label: &str,
     do_heart_rate: bool,
-) -> Vec<Vec<f64>> {
+) -> Result<Vec<Vec<f64>>, Error> {
     if gfile.points.len() < 3 {
-        return Vec::new();
+        return Ok(Vec::new());
     };
-    let mut last_point_me = Some(0.0);
+    let mut last_point_me = 0.0;
     let mut last_point_time = 0.0;
     let mut prev_split_time = 0.0;
     let mut avg_hrt_rate = 0.0;
@@ -242,43 +245,42 @@ pub fn get_splits(
     let mut split_vector = Vec::new();
 
     for point in &gfile.points {
-        let cur_point_me = point.distance;
+        let cur_point_me = match point.distance {
+            Some(x) => x,
+            None => continue,
+        };
         let cur_point_time = point.duration_from_begin;
-        if (cur_point_me == None) | (last_point_me == None) {
-            continue;
-        }
-        if (cur_point_me.unwrap() - last_point_me.unwrap()) <= 0.0 {
+        if (cur_point_me - last_point_me) <= 0.0 {
             continue;
         }
         match point.heart_rate {
             Some(hr) => avg_hrt_rate += hr * (cur_point_time - last_point_time),
             _ => (),
         }
-        let nmiles = (cur_point_me.unwrap() / split_distance_in_meters) as i32
-            - (last_point_me.unwrap() / split_distance_in_meters) as i32;
+        let nmiles = (cur_point_me / split_distance_in_meters) as i32
+            - (last_point_me / split_distance_in_meters) as i32;
         if nmiles > 0 {
-            let cur_split_me = (cur_point_me.unwrap() / split_distance_in_meters) as i32;
+            let cur_split_me = (cur_point_me / split_distance_in_meters) as i32;
             let cur_split_me = cur_split_me as f64 * split_distance_in_meters;
 
             debug!(
                 "get splits 0 {} {} {} {} {} {} ",
                 &last_point_time,
                 &cur_point_time,
-                &cur_point_me.unwrap(),
-                &last_point_me.unwrap(),
+                &cur_point_me,
+                &last_point_me,
                 &cur_split_me,
-                &last_point_me.unwrap()
+                &last_point_me
             );
 
             let cur_split_time = last_point_time
-                + (cur_point_time - last_point_time)
-                    / (cur_point_me.unwrap() - last_point_me.unwrap())
-                    * (cur_split_me - last_point_me.unwrap());
+                + (cur_point_time - last_point_time) / (cur_point_me - last_point_me)
+                    * (cur_split_me - last_point_me);
             let time_val = cur_split_time - prev_split_time;
             let split_dist = if label == "km" {
-                cur_point_me.unwrap() / 1000.
+                cur_point_me / 1000.
             } else {
-                cur_point_me.unwrap() / split_distance_in_meters
+                cur_point_me / split_distance_in_meters
             };
             let tmp_vector = if do_heart_rate {
                 vec![
@@ -300,5 +302,5 @@ pub fn get_splits(
         last_point_me = cur_point_me;
         last_point_time = cur_point_time;
     }
-    split_vector
+    Ok(split_vector)
 }

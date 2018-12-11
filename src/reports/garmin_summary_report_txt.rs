@@ -54,7 +54,9 @@ pub fn create_report_query(
 
     debug!("{}", constr);
 
-    let result_vec = if options.do_year {
+    let result_vec = if options.do_all_sports {
+        sport_summary_report(&conn, &constr)?
+    } else if options.do_year {
         year_summary_report(&conn, &constr)?
     } else if options.do_month {
         month_summary_report(&conn, &constr)?
@@ -82,8 +84,7 @@ fn file_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, E
                    total_distance,
                    total_duration,
                    CASE WHEN total_hr_dur > 0.0 THEN total_hr_dur ELSE 0.0 END AS total_hr_dur,
-                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dis ELSE 0.0 END AS total_hr_dis,
-                   number_of_items
+                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dis ELSE 0.0 END AS total_hr_dis
             FROM garmin_summary
             {}
         )
@@ -96,8 +97,7 @@ fn file_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, E
             sum(total_distance) as total_distance,
             sum(total_duration) as total_duration,
             sum(total_hr_dur) as total_hr_dur,
-            sum(total_hr_dis) as total_hr_dis,
-            sum(number_of_items) as number_of_items
+            sum(total_hr_dis) as total_hr_dis
         FROM a
         GROUP BY sport, datetime, week, isodow
         ORDER BY sport, datetime, week, isodow
@@ -117,12 +117,11 @@ fn file_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, E
         let total_duration: f64 = row.get(6);
         let total_hr_dur: f64 = row.get(7);
         let total_hr_dis: f64 = row.get(8);
-        let number_of_items: i64 = row.get(9);
 
         let weekdayname = WEEKDAY_NAMES[dow as usize - 1];
 
         debug!(
-            "{} {} {} {} {} {} {} {} {} {}",
+            "{} {} {} {} {} {} {} {} {}",
             datetime,
             week,
             dow,
@@ -132,7 +131,6 @@ fn file_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, E
             total_duration,
             total_hr_dur,
             total_hr_dis,
-            number_of_items
         );
 
         let mut tmp_vec = Vec::new();
@@ -222,8 +220,7 @@ fn day_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, Er
                    total_distance,
                    total_duration,
                    CASE WHEN total_hr_dur > 0.0 THEN total_hr_dur ELSE 0.0 END AS total_hr_dur,
-                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dis ELSE 0.0 END AS total_hr_dis,
-                   number_of_items
+                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dis ELSE 0.0 END AS total_hr_dis
             FROM garmin_summary
             {}
         )
@@ -236,8 +233,7 @@ fn day_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, Er
             sum(total_distance) as total_distance,
             sum(total_duration) as total_duration,
             sum(total_hr_dur) as total_hr_dur,
-            sum(total_hr_dis) as total_hr_dis,
-            sum(number_of_items) as number_of_items
+            sum(total_hr_dis) as total_hr_dis
         FROM a
         GROUP BY sport, date, week, isodow
         ORDER BY sport, date, week, isodow
@@ -257,12 +253,11 @@ fn day_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, Er
         let total_duration: f64 = row.get(6);
         let total_hr_dur: f64 = row.get(7);
         let total_hr_dis: f64 = row.get(8);
-        let number_of_items: i64 = row.get(9);
 
         let weekdayname = WEEKDAY_NAMES[dow as usize - 1];
 
         debug!(
-            "{} {} {} {} {} {} {} {} {} {}",
+            "{} {} {} {} {} {} {} {} {}",
             date,
             week,
             dow,
@@ -272,7 +267,6 @@ fn day_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, Er
             total_duration,
             total_hr_dur,
             total_hr_dis,
-            number_of_items
         );
 
         let mut tmp_vec = Vec::new();
@@ -361,8 +355,7 @@ fn week_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, E
                    total_distance,
                    total_duration,
                    CASE WHEN total_hr_dur > 0.0 THEN total_hr_dur ELSE 0.0 END AS total_hr_dur,
-                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dis ELSE 0.0 END AS total_hr_dis,
-                   number_of_items
+                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dis ELSE 0.0 END AS total_hr_dis
             FROM garmin_summary
             {}
         )
@@ -374,8 +367,7 @@ fn week_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, E
             sum(total_distance) as total_distance,
             sum(total_duration) as total_duration,
             sum(total_hr_dur) as total_hr_dur,
-            sum(total_hr_dis) as total_hr_dis,
-            sum(number_of_items) as number_of_items,
+            sum(total_hr_dis) as total_hr_dis
             count(distinct cast(cast(begin_datetime as timestamp with time zone) at time zone 'EST' as date)) as number_of_days
         FROM a
         GROUP BY sport, year, week
@@ -393,8 +385,7 @@ fn week_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, E
         let total_duration: f64 = row.get(5);
         let total_hr_dur: f64 = row.get(6);
         let total_hr_dis: f64 = row.get(7);
-        let number_of_items: i64 = row.get(8);
-        let number_of_days: i64 = row.get(9);
+        let number_of_days: i64 = row.get(8);
 
         let total_days = 7;
 
@@ -408,7 +399,7 @@ fn week_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, E
             total_duration,
             total_hr_dur,
             total_hr_dis,
-            number_of_items
+            number_of_days
         );
 
         let mut tmp_vec = Vec::new();
@@ -489,8 +480,7 @@ fn month_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, 
                    total_distance,
                    total_duration,
                    CASE WHEN total_hr_dur > 0.0 THEN total_hr_dur ELSE 0.0 END AS total_hr_dur,
-                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dis ELSE 0.0 END AS total_hr_dis,
-                   number_of_items
+                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dis ELSE 0.0 END AS total_hr_dis
             FROM garmin_summary
             {}
         )
@@ -503,7 +493,6 @@ fn month_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, 
             sum(total_duration) as total_duration,
             sum(total_hr_dur) as total_hr_dur,
             sum(total_hr_dis) as total_hr_dis,
-            sum(number_of_items) as number_of_items,
             count(distinct cast(cast(begin_datetime as timestamp with time zone) at time zone 'EST' as date)) as number_of_days
         FROM a
         GROUP BY sport, year, month
@@ -521,8 +510,7 @@ fn month_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, 
         let total_duration: f64 = row.get(5);
         let total_hr_dur: f64 = row.get(6);
         let total_hr_dis: f64 = row.get(7);
-        let number_of_items: i64 = row.get(8);
-        let number_of_days: i64 = row.get(9);
+        let number_of_days: i64 = row.get(8);
 
         let total_days = days_in_month(year as i32, month as u32);
 
@@ -536,7 +524,7 @@ fn month_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, 
             total_duration,
             total_hr_dur,
             total_hr_dis,
-            number_of_items
+            number_of_days
         );
 
         let mut tmp_vec = Vec::new();
@@ -590,10 +578,107 @@ fn month_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, 
         } else {
             tmp_vec.push(format!(" {:7} {:2}", " ", " "));
         };
+
         tmp_vec.push(format!(
             "{:16}",
             format!("{} / {} days", number_of_days, total_days)
         ));
+
+        result_vec.push(tmp_vec.join(" "));
+    }
+    Ok(result_vec)
+}
+
+fn sport_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, Error> {
+    let mut result_vec = Vec::new();
+
+    let query = format!(
+        "
+        WITH a AS (
+            SELECT begin_datetime,
+                   sport,
+                   total_calories,
+                   total_distance,
+                   total_duration,
+                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dur ELSE 0.0 END AS total_hr_dur,
+                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dis ELSE 0.0 END AS total_hr_dis
+            FROM garmin_summary
+            {}
+        )
+        SELECT sport,
+               sum(total_calories) as total_calories,
+               sum(total_distance) as total_distance,
+               sum(total_duration) as total_duration,
+               sum(total_hr_dur) as total_hr_dur,
+               sum(total_hr_dis) as total_hr_dis
+        FROM a
+        GROUP BY sport
+        ORDER BY sport
+        ",
+        constr
+    );
+    debug!("{}", query);
+
+    for row in conn.query(&query, &[])?.iter() {
+        let sport: String = row.get(0);
+        let total_calories: i64 = row.get(1);
+        let total_distance: f64 = row.get(2);
+        let total_duration: f64 = row.get(3);
+        let total_hr_dur: f64 = row.get(4);
+        let total_hr_dis: f64 = row.get(5);
+
+        debug!(
+            "{} {} {} {} {} {}",
+            sport, total_calories, total_distance, total_duration, total_hr_dur, total_hr_dis
+        );
+        let mut tmp_vec = Vec::new();
+
+        tmp_vec.push(format!(
+            "{:10} \t {:10} \t {:10} \t",
+            sport,
+            format!("{:4.2} mi", total_distance / METERS_PER_MILE),
+            format!("{} cal", total_calories)
+        ));
+
+        match sport.as_str() {
+            "running" | "walking" => {
+                tmp_vec.push(format!(
+                    "{:10} ",
+                    format!(
+                        "{} / mi",
+                        print_h_m_s(total_duration / (total_distance / METERS_PER_MILE), false)?
+                    )
+                ));
+                tmp_vec.push(format!(
+                    "{:10} ",
+                    format!(
+                        "{} / km",
+                        print_h_m_s(total_duration / (total_distance / 1000.), false)?
+                    )
+                ));
+            }
+            "biking" => {
+                tmp_vec.push(format!(
+                    " {:10} \t",
+                    format!(
+                        "{:.2} mph",
+                        (total_distance / METERS_PER_MILE) / (total_duration / 60. / 60.)
+                    )
+                ));
+            }
+            _ => (),
+        };
+
+        tmp_vec.push(format!(" {:10} \t", print_h_m_s(total_duration, true)?));
+        if total_hr_dur > total_hr_dis {
+            tmp_vec.push(format!(
+                " {:7} {:2}",
+                format!("{} bpm", (total_hr_dur / total_hr_dis) as i32),
+                ""
+            ));
+        } else {
+            tmp_vec.push(format!(" {:7} {:2}", "", ""));
+        }
 
         result_vec.push(tmp_vec.join(" "));
     }
@@ -612,8 +697,7 @@ fn year_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, E
                    total_distance,
                    total_duration,
                    CASE WHEN total_hr_dur > 0.0 THEN total_hr_dur ELSE 0.0 END AS total_hr_dur,
-                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dis ELSE 0.0 END AS total_hr_dis,
-                   number_of_items
+                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dis ELSE 0.0 END AS total_hr_dis
             FROM garmin_summary
             {}
         )
@@ -625,12 +709,11 @@ fn year_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, E
             sum(total_duration) as total_duration,
             sum(total_hr_dur) as total_hr_dur,
             sum(total_hr_dis) as total_hr_dis,
-            sum(number_of_items) as number_of_items,
             count(distinct cast(cast(begin_datetime as timestamp with time zone) at time zone 'EST' as date)) as number_of_days
         FROM a
         GROUP BY sport, year
         ORDER BY sport, year
-    ",
+        ",
         constr
     );
     debug!("{}", query);
@@ -643,8 +726,7 @@ fn year_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, E
         let total_duration: f64 = row.get(4);
         let total_hr_dur: f64 = row.get(5);
         let total_hr_dis: f64 = row.get(6);
-        let number_of_items: i64 = row.get(7);
-        let number_of_days: i64 = row.get(8);
+        let number_of_days: i64 = row.get(7);
 
         let total_days = days_in_year(year as i32);
 
@@ -657,7 +739,7 @@ fn year_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, E
             total_duration,
             total_hr_dur,
             total_hr_dis,
-            number_of_items
+            number_of_days
         );
 
         let mut tmp_vec = Vec::new();

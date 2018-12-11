@@ -13,11 +13,43 @@ use crate::utils::garmin_util::{print_h_m_s, titlecase, MARATHON_DISTANCE_MI, ME
 use crate::utils::plot_graph::plot_graph;
 use crate::utils::plot_opts::PlotOpts;
 
+pub fn generate_history_buttons(history: &str) -> String {
+    let mut history_vec: Vec<String> = history.split(";").map(|s| s.to_string()).collect();
+    let mut history_buttons: Vec<String> = Vec::new();
+
+    while history_vec.len() > 0 {
+        let most_recent = history_vec.pop().unwrap_or("sport".to_string());
+        let history_str = if history_vec.len() > 0 {
+            history_vec.join(";")
+        } else {
+            "sport".to_string()
+        };
+
+        history_buttons.push(format!(
+            "{}{}{}{}{}{}{}",
+            r#"<button type="submit" onclick="send_command('filter="#,
+            most_recent,
+            r#"&history="#,
+            history_str,
+            r#"');"> "#,
+            most_recent,
+            " </button>"
+        ));
+    }
+
+    let mut reversed_history_buttons = Vec::new();
+    for b in history_buttons.into_iter().rev() {
+        reversed_history_buttons.push(b);
+    }
+    reversed_history_buttons.join("\n")
+}
+
 pub fn file_report_html(
     gfile: &GarminFile,
     maps_api_key: &str,
     cache_dir: &str,
     http_bucket: &str,
+    history: &str,
 ) -> Result<String, Error> {
     let sport = match &gfile.sport {
         Some(s) => s.clone(),
@@ -335,6 +367,12 @@ pub fn file_report_html(
                 }
             } else if line.contains("MAPSAPIKEY") {
                 htmlvec.push(format!("{}", line.replace("MAPSAPIKEY", maps_api_key)));
+            } else if line.contains("HISTORYBUTTONS") {
+                let history_button = generate_history_buttons(&history);
+                htmlvec.push(format!(
+                    "{}",
+                    line.replace("HISTORYBUTTONS", &history_button)
+                ));
             } else {
                 htmlvec.push(format!("{}", line));
             };
@@ -358,6 +396,12 @@ pub fn file_report_html(
                     gfile.begin_datetime
                 );
                 htmlvec.push(format!("{}", line.replace("SPORTTITLEDATE", &newtitle)));
+            } else if line.contains("HISTORYBUTTONS") {
+                let history_button = generate_history_buttons(&history);
+                htmlvec.push(format!(
+                    "{}",
+                    line.replace("HISTORYBUTTONS", &history_button)
+                ));
             } else {
                 htmlvec.push(format!(
                     "{}",

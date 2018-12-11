@@ -8,6 +8,7 @@ pub struct GarminReportOptions {
     pub do_day: bool,
     pub do_file: bool,
     pub do_sport: Option<SportTypes>,
+    pub do_all_sports: bool,
 }
 
 impl GarminReportOptions {
@@ -19,6 +20,7 @@ impl GarminReportOptions {
             do_day: false,
             do_file: false,
             do_sport: None,
+            do_all_sports: false,
         }
     }
 }

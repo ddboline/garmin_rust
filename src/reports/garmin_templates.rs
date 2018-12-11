@@ -10,7 +10,7 @@ pub static GARMIN_TEMPLATE: &str = r#"
 <body>
 
 <p>
-<button type="submit" onclick="send_command('year');"> year </button>
+HISTORYBUTTONS
 </p>
 
 <pre>
@@ -19,7 +19,7 @@ INSERTTEXTHERE
 
 <script language="JavaScript" type="text/javascript">
     function send_command( command ) {
-        var ostr = '../garmin?filter=' + command;
+        var ostr = '../garmin?' + command;
         location.replace(ostr);
     }
 </script>
@@ -74,7 +74,7 @@ pub static MAP_TEMPLATE: &str = r#"
   <body>
 
 <p>
-<button type="submit" onclick="send_command('year');"> year </button>
+HISTORYBUTTONS
 </p>
 
 <h1><center><b>SPORTTITLEDATE</b></center></h1>
@@ -91,7 +91,7 @@ pub static MAP_TEMPLATE: &str = r#"
 
 <script language="JavaScript" type="text/javascript">
     function send_command( command ) {
-        var ostr = '../garmin?filter=' + command;
+        var ostr = '../garmin?' + command;
         location.replace(ostr);
     }
 </script>

@@ -28,7 +28,7 @@ fn get_version_number() -> String {
     )
 }
 
-pub fn get_garmin_config() {
+pub fn get_garmin_config() -> GarminConfig {
     let home_dir = env!("HOME");
 
     GarminConfig::new()
@@ -165,6 +165,7 @@ pub fn process_pattern(patterns: &Vec<String>) -> (GarminReportOptions, Vec<Stri
             "week" => options.do_week = true,
             "day" => options.do_day = true,
             "file" => options.do_file = true,
+            "sport" => options.do_all_sports = true,
             pat => match sport_type_map.get(pat) {
                 Some(&x) => options.do_sport = Some(x),
                 None => {
@@ -221,7 +222,12 @@ pub fn run_cli(options: &GarminReportOptions, constraints: &Vec<String>) -> Resu
     Ok(())
 }
 
-pub fn run_html(options: &GarminReportOptions, constraints: &Vec<String>) -> Result<String, Error> {
+pub fn run_html(
+    options: &GarminReportOptions,
+    constraints: &Vec<String>,
+    filter: &str,
+    history: &str,
+) -> Result<String, Error> {
     let config = get_garmin_config();
 
     let pgurl = config.pgurl.unwrap();
@@ -262,6 +268,7 @@ pub fn run_html(options: &GarminReportOptions, constraints: &Vec<String>) -> Res
                 &config.maps_api_key.unwrap(),
                 &htmlcachedir,
                 &http_bucket,
+                &history,
             )
         }
         _ => {
@@ -271,7 +278,7 @@ pub fn run_html(options: &GarminReportOptions, constraints: &Vec<String>) -> Res
             let tempdir = TempDir::new("garmin_html")?;
             let htmlcachedir = tempdir.path().to_str().unwrap();
 
-            summary_report_html(&txt_result, &options, &htmlcachedir)
+            summary_report_html(&txt_result, &options, &htmlcachedir, &filter, &history)
         }
     }
 }

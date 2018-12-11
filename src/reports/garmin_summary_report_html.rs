@@ -2,6 +2,7 @@ use chrono::{Datelike, Utc};
 use failure::Error;
 use std::fs::create_dir_all;
 
+use crate::reports::garmin_file_report_html::generate_history_buttons;
 use crate::reports::garmin_report_options::GarminReportOptions;
 use crate::reports::garmin_templates::GARMIN_TEMPLATE;
 use crate::utils::garmin_util::MONTH_NAMES;
@@ -19,7 +20,15 @@ fn generate_url_string(current_line: &str, options: &GarminReportOptions) -> Str
         None => (),
     }
 
-    if options.do_year {
+    if options.do_all_sports {
+        cmd_options.push("year".to_string());
+        let current_sport = current_line
+            .trim()
+            .split_whitespace()
+            .nth(0)
+            .unwrap_or("running");
+        cmd_options.push(current_sport.to_string());
+    } else if options.do_year {
         cmd_options.push("month".to_string());
         let current_year = current_line
             .trim()
@@ -64,15 +73,23 @@ pub fn summary_report_html(
     retval: &Vec<String>,
     options: &GarminReportOptions,
     cache_dir: &str,
+    filter: &str,
+    history: &str,
 ) -> Result<String, Error> {
     let htmlostr: Vec<_> = retval
         .iter()
         .map(|ent| {
+            let mut history_vec: Vec<String> = history.split(";").map(|s| s.to_string()).collect();
+            if !history.contains(filter) {
+                history_vec.push(filter.to_string());
+            }
             let cmd = generate_url_string(&ent, &options);
             format!(
-                "{}{}{}{}{}{}",
-                r#"<button type="submit" onclick="send_command('"#,
+                "{}{}{}{}{}{}{}{}",
+                r#"<button type="submit" onclick="send_command('filter="#,
                 cmd,
+                r#"&history="#,
+                history_vec.join(";"),
                 r#"');">"#,
                 cmd,
                 "</button> ",
@@ -93,6 +110,12 @@ pub fn summary_report_html(
         } else if line.contains("SPORTTITLEDATE") {
             let newtitle = "Garmin Summary";
             htmlvec.push(format!("{}", line.replace("SPORTTITLEDATE", newtitle)));
+        } else if line.contains("HISTORYBUTTONS") {
+            let history_button = generate_history_buttons(&history);
+            htmlvec.push(format!(
+                "{}",
+                line.replace("HISTORYBUTTONS", &history_button)
+            ));
         } else {
             htmlvec.push(format!("{}", line));
         }

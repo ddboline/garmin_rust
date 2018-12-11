@@ -1,3 +1,4 @@
+#[derive(Serialize)]
 pub struct PlotOpts<'a> {
     pub name: String,
     pub title: String,
@@ -7,6 +8,7 @@ pub struct PlotOpts<'a> {
     pub marker: Option<String>,
     pub xlabel: String,
     pub ylabel: String,
+    pub http_bucket: Option<String>,
 }
 
 impl<'a> PlotOpts<'a> {
@@ -20,6 +22,7 @@ impl<'a> PlotOpts<'a> {
             marker: None,
             xlabel: "".to_string(),
             ylabel: "".to_string(),
+            http_bucket: None,
         }
     }
 
@@ -56,6 +59,11 @@ impl<'a> PlotOpts<'a> {
     pub fn with_labels(mut self, xlabel: &str, ylabel: &str) -> PlotOpts<'a> {
         self.xlabel = xlabel.to_string();
         self.ylabel = ylabel.to_string();
+        self
+    }
+
+    pub fn with_http_bucket(mut self, http_bucket: &str) -> PlotOpts<'a> {
+        self.http_bucket = Some(http_bucket.to_string());
         self
     }
 }

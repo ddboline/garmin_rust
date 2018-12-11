@@ -117,7 +117,8 @@ pub fn file_report_html(
                 .with_data(&mile_split_vals)
                 .with_marker("o")
                 .with_labels("mi", "min/mi")
-                .with_cache_dir(&cache_dir),
+                .with_cache_dir(&cache_dir)
+                .with_http_bucket(&http_bucket),
         );
     };
 
@@ -128,7 +129,8 @@ pub fn file_report_html(
                 .with_title(format!("Heart Rate {:2.2} avg {:2.2} max", avg_hr, max_hr).as_str())
                 .with_data(&hr_values)
                 .with_labels("mi", "bpm")
-                .with_cache_dir(&cache_dir),
+                .with_cache_dir(&cache_dir)
+                .with_http_bucket(&http_bucket),
         );
     };
 
@@ -139,7 +141,8 @@ pub fn file_report_html(
                 .with_title("Altitude")
                 .with_data(&alt_values)
                 .with_labels("mi", "height [m]")
-                .with_cache_dir(&cache_dir),
+                .with_cache_dir(&cache_dir)
+                .with_http_bucket(&http_bucket),
         );
     };
 
@@ -150,7 +153,8 @@ pub fn file_report_html(
                 .with_title("Speed min/mi every 1/4 mi")
                 .with_data(&speed_values)
                 .with_labels("mi", "min/mi")
-                .with_cache_dir(&cache_dir),
+                .with_cache_dir(&cache_dir)
+                .with_http_bucket(&http_bucket),
         );
 
         plot_opts.push(
@@ -159,7 +163,8 @@ pub fn file_report_html(
                 .with_title("Speed mph")
                 .with_data(&mph_speed_values)
                 .with_labels("mi", "mph")
-                .with_cache_dir(&cache_dir),
+                .with_cache_dir(&cache_dir)
+                .with_http_bucket(&http_bucket),
         );
     };
 
@@ -171,7 +176,8 @@ pub fn file_report_html(
                 .with_data(&heart_rate_speed)
                 .with_scatter()
                 .with_labels("hrt", "min/mi")
-                .with_cache_dir(&cache_dir),
+                .with_cache_dir(&cache_dir)
+                .with_http_bucket(&http_bucket),
         );
     };
 
@@ -193,7 +199,8 @@ pub fn file_report_html(
                 .with_data(&heart_rate_speed)
                 .with_scatter()
                 .with_labels("mi", "min/mi")
-                .with_cache_dir(&cache_dir),
+                .with_cache_dir(&cache_dir)
+                .with_http_bucket(&http_bucket),
         );
     };
 
@@ -207,7 +214,8 @@ pub fn file_report_html(
                 .with_data(&avg_mph_speed_values)
                 .with_scatter()
                 .with_labels("mi", "min/mi")
-                .with_cache_dir(&cache_dir),
+                .with_cache_dir(&cache_dir)
+                .with_http_bucket(&http_bucket),
         );
     };
 

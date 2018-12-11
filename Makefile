@@ -28,3 +28,6 @@ binary:
 	docker cp `cat $(cidfile)`:/garmin_rust/target/release/garmin_rust .
 	docker rm `cat $(cidfile)`
 	rm $(cidfile)
+
+install:
+	cp target/release/garmin_rust_proc target/release/garmin_rust_report target/release/garmin_rust_http /usr/bin/

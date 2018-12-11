@@ -28,8 +28,17 @@ fn get_version_number() -> String {
     )
 }
 
+pub fn get_garmin_config() {
+    let home_dir = env!("HOME");
+
+    GarminConfig::new()
+        .from_yml(&format!("{}/.config/garmin_rust/config.yml", home_dir))
+        .from_yml("config.yml")
+        .from_env()
+}
+
 pub fn cli_garmin_proc() -> Result<(), Error> {
-    let config = GarminConfig::new().from_yml("config.yml").from_env();
+    let config = get_garmin_config();
 
     let pgurl = config.pgurl.unwrap();
     let cache_dir = config.cache_dir;
@@ -170,7 +179,7 @@ pub fn process_pattern(patterns: &Vec<String>) -> (GarminReportOptions, Vec<Stri
 }
 
 pub fn run_cli(options: &GarminReportOptions, constraints: &Vec<String>) -> Result<(), Error> {
-    let config = GarminConfig::new().from_yml("config.yml").from_env();
+    let config = get_garmin_config();
 
     let pgurl = config.pgurl.unwrap();
     let cache_dir = config.cache_dir;
@@ -213,7 +222,7 @@ pub fn run_cli(options: &GarminReportOptions, constraints: &Vec<String>) -> Resu
 }
 
 pub fn run_html(options: &GarminReportOptions, constraints: &Vec<String>) -> Result<String, Error> {
-    let config = GarminConfig::new().from_yml("config.yml").from_env();
+    let config = get_garmin_config();
 
     let pgurl = config.pgurl.unwrap();
     let gps_dir = config.gps_dir;

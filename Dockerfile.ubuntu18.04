@@ -1,0 +1,13 @@
+FROM ubuntu:bionic
+MAINTAINER Daniel Boline
+
+RUN apt-get update && apt-get install -y curl pkg-config checkinstall gcc && \
+    curl https://sh.rustup.rs > rustup.sh && \
+    sh rustup.sh -y && \
+    . ~/.cargo/env
+
+WORKDIR /garmin_rust
+    
+ADD Cargo.toml /garmin_rust
+ADD src /garmin_rust/src
+ADD build_deb.sh /garmin_rust

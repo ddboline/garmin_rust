@@ -19,7 +19,7 @@ pub fn plot_graph(opts: &PlotOpts) -> Result<String, Error> {
     }
 
     let command = format!(
-        "garmin-plot-graph -n {} -t {} -x {} -y {} -c {} {} {}",
+        "garmin_rust_plot_graph.py -n {} -t {} -x {} -y {} -c {} {} {}",
         opts.name,
         format!("{}{}{}", '"', opts.title, '"'),
         format!("{}{}{}", '"', opts.xlabel, '"'),

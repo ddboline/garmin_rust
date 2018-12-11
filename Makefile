@@ -31,3 +31,4 @@ binary:
 
 install:
 	cp target/release/garmin_rust_proc target/release/garmin_rust_report target/release/garmin_rust_http /usr/bin/
+	cp python/plot_graph.py /usr/bin/garmin_rust_plot_graph.py

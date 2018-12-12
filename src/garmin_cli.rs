@@ -3,6 +3,7 @@ extern crate tempdir;
 
 use clap::{App, Arg};
 use failure::Error;
+use std::env::var;
 use tempdir::TempDir;
 
 use crate::garmin_config::GarminConfig;
@@ -29,7 +30,7 @@ fn get_version_number() -> String {
 }
 
 pub fn get_garmin_config() -> GarminConfig {
-    let home_dir = env!("HOME");
+    let home_dir = var("HOME").unwrap();
 
     GarminConfig::new()
         .from_yml(&format!("{}/.config/garmin_rust/config.yml", home_dir))
@@ -46,7 +47,7 @@ pub fn cli_garmin_proc() -> Result<(), Error> {
     let gps_bucket = config.gps_bucket.unwrap();
     let cache_bucket = config.cache_bucket.unwrap();
 
-    let home_dir = env!("HOME");
+    let home_dir = var("HOME").unwrap();
 
     let matches = App::new("Garmin Rust Proc")
         .version(get_version_number().as_str())

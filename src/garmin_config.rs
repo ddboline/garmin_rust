@@ -1,4 +1,5 @@
 use config::{Config, File};
+use std::env::var;
 
 pub struct GarminConfig {
     pub pgurl: Option<String>,
@@ -13,7 +14,7 @@ pub struct GarminConfig {
 
 impl GarminConfig {
     pub fn new() -> GarminConfig {
-        let home_dir = env!("HOME");
+        let home_dir = var("HOME").unwrap();
 
         let default_gps_dir = format!("{}/.garmin_cache/run/gps_tracks", home_dir);
         let default_cache_dir = format!("{}/.garmin_cache/run/cache", home_dir);
@@ -31,29 +32,29 @@ impl GarminConfig {
     }
 
     pub fn from_env(mut self) -> GarminConfig {
-        if let Some(pgurl) = option_env!("PGURL") {
+        if let Ok(pgurl) = var("PGURL") {
             self.pgurl = Some(pgurl.to_string())
         }
-        if let Some(maps_api_key) = option_env!("MAPS_API_KEY") {
+        if let Ok(maps_api_key) = var("MAPS_API_KEY") {
             self.maps_api_key = Some(maps_api_key.to_string())
         }
-        if let Some(gps_bucket) = option_env!("GPS_BUCKET") {
+        if let Ok(gps_bucket) = var("GPS_BUCKET") {
             self.gps_bucket = Some(gps_bucket.to_string())
         }
-        if let Some(cache_bucket) = option_env!("CACHE_BUCKET") {
+        if let Ok(cache_bucket) = var("CACHE_BUCKET") {
             self.cache_bucket = Some(cache_bucket.to_string())
         }
-        if let Some(http_bucket) = option_env!("HTTP_BUCKET") {
+        if let Ok(http_bucket) = var("HTTP_BUCKET") {
             self.http_bucket = Some(http_bucket.to_string())
         }
-        if let Some(gps_dir) = option_env!("GPS_DIR") {
+        if let Ok(gps_dir) = var("GPS_DIR") {
             self.gps_dir = gps_dir.to_string()
         }
-        if let Some(cache_dir) = option_env!("CACHE_DIR") {
+        if let Ok(cache_dir) = var("CACHE_DIR") {
             self.cache_dir = cache_dir.to_string()
         }
-        if let Some(port) = option_env!("PORT") {
-            self.port = port.parse().unwrap();
+        if let Ok(port) = var("PORT") {
+            self.port = port.parse().unwrap_or(8000);
         }
         self
     }

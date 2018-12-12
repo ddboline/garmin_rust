@@ -354,7 +354,7 @@ pub fn file_report_html(
                 ));
             } else if line.contains("INSERTMAPSEGMENTSHERE") {
                 for (latv, lonv) in lat_vals.iter().zip(lon_vals.iter()) {
-                    htmlvec.push(format!("new google.maps.LatLng({},{}),\n", latv, lonv));
+                    htmlvec.push(format!("new google.maps.LatLng({},{}),", latv, lonv));
                 }
             } else if line.contains("MINLAT")
                 | line.contains("MAXLAT")

@@ -1,13 +1,17 @@
 FROM ubuntu:bionic
 MAINTAINER Daniel Boline
 
-RUN apt-get update && apt-get install -y curl pkg-config checkinstall gcc libssl-dev && \
+RUN apt-get update && \
+    apt-get install -y curl pkg-config checkinstall gcc libssl-dev ca-certificates \
+            file build-essential autoconf automake autotools-dev libtool xutils-dev && \
+    rm -rf /var/lib/apt/lists/* && \
     curl https://sh.rustup.rs > rustup.sh && \
-    sh rustup.sh -y && \
+    sh rustup.sh -y --default-toolchain nightly && \
     . ~/.cargo/env
 
 WORKDIR /garmin_rust
 
 ADD Cargo.toml /garmin_rust
 ADD src /garmin_rust/src
-ADD build_deb.sh /garmin_rust
+ADD build_deb_docker.sh /garmin_rust
+ADD Makefile /garmin_rust

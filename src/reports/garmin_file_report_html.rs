@@ -10,7 +10,7 @@ use crate::garmin_sync::{get_s3_client, upload_file_acl};
 use crate::reports::garmin_file_report_txt::get_splits;
 use crate::reports::garmin_templates::{GARMIN_TEMPLATE, MAP_TEMPLATE};
 use crate::utils::garmin_util::{print_h_m_s, titlecase, MARATHON_DISTANCE_MI, METERS_PER_MILE};
-use crate::utils::plot_graph::plot_graph;
+use crate::utils::plot_graph::{generate_d3_plot, plot_graph};
 use crate::utils::plot_opts::PlotOpts;
 
 pub fn generate_history_buttons(history: &str) -> String {
@@ -255,18 +255,31 @@ pub fn file_report_html(
         .par_iter()
         .filter_map(|options| match plot_graph(&options) {
             Ok(x) => {
-                let gf = x.trim().to_string();
-                let s3_client = get_s3_client();
-                let local_file = format!("{}/html/{}", cache_dir, gf);
-                upload_file_acl(
-                    &local_file,
-                    &http_bucket,
-                    &gf,
-                    &s3_client,
-                    Some("public-read".to_string()),
-                )
-                .unwrap();
-                let uri = format!("https://s3.amazonaws.com/{}/{}", &http_bucket, &gf);
+                let uri = match generate_d3_plot(&options) {
+                    Ok(s) => {
+                        if s.len() == 0 {
+                            let gf = x.trim().to_string();
+                            let s3_client = get_s3_client();
+                            let local_file = format!("{}/html/{}", cache_dir, gf);
+                            upload_file_acl(
+                                &local_file,
+                                &http_bucket,
+                                &gf,
+                                &s3_client,
+                                Some("public-read".to_string()),
+                            )
+                            .unwrap();
+                            let uri = format!("https://s3.amazonaws.com/{}/{}", &http_bucket, &gf);
+                            format!("{}{}{}", r#"<p><img src=""#, uri, r#""></p>"#)
+                        } else {
+                            s
+                        }
+                    }
+                    Err(e) => {
+                        println!("{}", e);
+                        "".to_string()
+                    }
+                };
                 Some(uri)
             }
             Err(err) => {
@@ -363,7 +376,7 @@ pub fn file_report_html(
                 ));
             } else if line.contains("INSERTOTHERIMAGESHERE") {
                 for uri in &graphs {
-                    htmlvec.push(format!("{}{}{}", r#"<p><img src=""#, uri, r#""></p>"#));
+                    htmlvec.push(uri.clone());
                 }
             } else if line.contains("MAPSAPIKEY") {
                 htmlvec.push(format!("{}", line.replace("MAPSAPIKEY", maps_api_key)));

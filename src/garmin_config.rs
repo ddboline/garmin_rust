@@ -8,6 +8,7 @@ pub struct GarminConfig {
     pub http_bucket: Option<String>,
     pub gps_dir: String,
     pub cache_dir: String,
+    pub port: u32,
 }
 
 impl GarminConfig {
@@ -25,6 +26,7 @@ impl GarminConfig {
             http_bucket: None,
             gps_dir: default_gps_dir,
             cache_dir: default_cache_dir,
+            port: 8000,
         }
     }
 
@@ -49,6 +51,9 @@ impl GarminConfig {
         }
         if let Some(cache_dir) = option_env!("CACHE_DIR") {
             self.cache_dir = cache_dir.to_string()
+        }
+        if let Some(port) = option_env!("PORT") {
+            self.port = port.parse().unwrap();
         }
         self
     }
@@ -82,6 +87,9 @@ impl GarminConfig {
         };
         if let Ok(cache_dir) = settings.get_str("CACHE_DIR") {
             self.cache_dir = cache_dir.to_string()
+        };
+        if let Ok(port) = settings.get_int("PORT") {
+            self.port = port as u32
         };
         self
     }

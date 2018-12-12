@@ -1,4 +1,4 @@
-version := "0.1.1"
+version := "0.1.3"
 release := "1"
 uniq := $(shell head -c1000 /dev/urandom | sha512sum | head -c 12 ; echo ;)
 cidfile := "/tmp/.tmp.docker.$(uniq)"
@@ -18,7 +18,7 @@ cleanup:
 	rm -rf /tmp/.tmp.docker.garmin_rust
 
 package:
-	docker run --cidfile $(cidfile) build_rust:ubuntu18.04 /garmin_rust/build_deb.sh $(version) $(release)
+	docker run --cidfile $(cidfile) build_rust:ubuntu18.04 /garmin_rust/build_deb_docker.sh $(version) $(release)
 	docker cp `cat $(cidfile)`:/garmin_rust/garmin-rust_$(version)-$(release)_amd64.deb .
 	docker rm `cat $(cidfile)`
 	rm $(cidfile)

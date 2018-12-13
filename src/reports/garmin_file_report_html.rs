@@ -257,7 +257,7 @@ pub fn file_report_html(
             Err(e) => {
                 println!("{}", e);
                 None
-            },
+            }
         })
         .collect();
 

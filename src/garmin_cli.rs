@@ -77,49 +77,71 @@ pub fn cli_garmin_proc() -> Result<(), Error> {
                 .help("Sync gps_files and cache with s3")
                 .takes_value(false),
         )
+        .arg(
+            Arg::with_name("bootstrap")
+                .short("b")
+                .long("bootstrap")
+                .value_name("BOOTSTRAP")
+                .help("Bootstrap a new node")
+                .takes_value(false),
+        )
         .get_matches();
 
     let filenames = matches.values_of("filename");
 
     let do_sync = matches.is_present("sync");
     let do_all = matches.is_present("all");
+    let do_bootstrap = matches.is_present("bootstrap");
 
-    match do_sync {
-        true => {
-            let s3_client = garmin_sync::get_s3_client();
-            garmin_sync::sync_dir(&gps_dir, &gps_bucket, &s3_client)?;
-            garmin_sync::sync_dir(&cache_dir, &cache_bucket, &s3_client)?;
-            garmin_sync::sync_dir(&summary_cache, &summary_bucket, &s3_client)?;
-        }
-        false => {
-            let corr_list = garmin_correction_lap::read_corrections_from_db(&pgurl)?;
+    if do_bootstrap {
+        let s3_client = garmin_sync::get_s3_client();
+        garmin_sync::sync_dir(&gps_dir, &gps_bucket, &s3_client)?;
+        garmin_sync::sync_dir(&cache_dir, &cache_bucket, &s3_client)?;
+        garmin_sync::sync_dir(&summary_cache, &summary_bucket, &s3_client)?;
 
-            garmin_correction_lap::dump_corr_list_to_avro(
-                &corr_list,
-                &format!("{}/garmin_correction.avro", &cache_dir),
-            )?;
+        let corr_list = garmin_correction_lap::read_corr_list_from_avro(&format!(
+            "{}/garmin_correction.avro",
+            &cache_dir
+        ))?;
 
-            let corr_map = garmin_correction_lap::get_corr_list_map(&corr_list);
+        garmin_correction_lap::dump_corrections_to_db(&pgurl, &corr_list)?;
 
-            let gsum_list = match filenames {
-                Some(flist) => flist
-                    .map(|f| {
-                        println!("{}", &f);
-                        garmin_summary::process_single_gps_file(&f, &cache_dir, &corr_map).unwrap()
-                    })
-                    .collect(),
-                None => match do_all {
-                    true => garmin_summary::process_all_gps_files(&gps_dir, &cache_dir, &corr_map)?,
-                    false => Vec::new(),
-                },
-            };
+        let gsum_list = garmin_summary::read_summary_from_avro_files(&summary_cache)?;
 
-            if gsum_list.len() > 0 {
-                garmin_summary::write_summary_to_avro_files(&gsum_list, &summary_cache)?;
-                garmin_summary::write_summary_to_postgres(&pgurl, &gsum_list)?;
-            };
-        }
-    }
+        garmin_summary::write_summary_to_postgres(&pgurl, &gsum_list)?;
+    } else if do_sync {
+        let s3_client = garmin_sync::get_s3_client();
+        garmin_sync::sync_dir(&gps_dir, &gps_bucket, &s3_client)?;
+        garmin_sync::sync_dir(&cache_dir, &cache_bucket, &s3_client)?;
+        garmin_sync::sync_dir(&summary_cache, &summary_bucket, &s3_client)?;
+    } else {
+        let corr_list = garmin_correction_lap::read_corrections_from_db(&pgurl)?;
+
+        garmin_correction_lap::dump_corr_list_to_avro(
+            &corr_list,
+            &format!("{}/garmin_correction.avro", &cache_dir),
+        )?;
+
+        let corr_map = garmin_correction_lap::get_corr_list_map(&corr_list);
+
+        let gsum_list = match filenames {
+            Some(flist) => flist
+                .map(|f| {
+                    println!("{}", &f);
+                    garmin_summary::process_single_gps_file(&f, &cache_dir, &corr_map).unwrap()
+                })
+                .collect(),
+            None => match do_all {
+                true => garmin_summary::process_all_gps_files(&gps_dir, &cache_dir, &corr_map)?,
+                false => Vec::new(),
+            },
+        };
+
+        if gsum_list.len() > 0 {
+            garmin_summary::write_summary_to_avro_files(&gsum_list, &summary_cache)?;
+            garmin_summary::write_summary_to_postgres(&pgurl, &gsum_list)?;
+        };
+    };
     Ok(())
 }
 

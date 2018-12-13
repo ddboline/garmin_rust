@@ -30,7 +30,7 @@ fn get_version_number() -> String {
 }
 
 pub fn get_garmin_config() -> GarminConfig {
-    let home_dir = var("HOME").unwrap();
+    let home_dir = var("HOME").expect("No HOME directory...");
 
     GarminConfig::new()
         .from_yml(&format!("{}/.config/garmin_rust/config.yml", home_dir))
@@ -41,13 +41,13 @@ pub fn get_garmin_config() -> GarminConfig {
 pub fn cli_garmin_proc() -> Result<(), Error> {
     let config = get_garmin_config();
 
-    let pgurl = config.pgurl.unwrap();
+    let pgurl = config.pgurl.expect("No Postgres server specified (PGURL)");
     let cache_dir = config.cache_dir;
     let gps_dir = config.gps_dir;
-    let gps_bucket = config.gps_bucket.unwrap();
-    let cache_bucket = config.cache_bucket.unwrap();
-    let summary_cache = config.summary_cache.unwrap();
-    let summary_bucket = config.summary_bucket.unwrap();
+    let gps_bucket = config.gps_bucket.expect("No GPS_BUCKET specified");
+    let cache_bucket = config.cache_bucket.expect("No CACHE_BUCKET specified");
+    let summary_cache = config.summary_cache.expect("No SUMMARY_CACHE specified");
+    let summary_bucket = config.summary_bucket.expect("No SUMMARY_BUCKET specified");
 
     let matches = App::new("Garmin Rust Proc")
         .version(get_version_number().as_str())
@@ -128,7 +128,7 @@ pub fn cli_garmin_proc() -> Result<(), Error> {
             Some(flist) => flist
                 .map(|f| {
                     println!("{}", &f);
-                    garmin_summary::process_single_gps_file(&f, &cache_dir, &corr_map).unwrap()
+                    garmin_summary::process_single_gps_file(&f, &cache_dir, &corr_map).expect("Failed to process gps file")
                 })
                 .collect(),
             None => match do_all {
@@ -198,7 +198,7 @@ pub fn process_pattern(patterns: &Vec<String>) -> (GarminReportOptions, Vec<Stri
 pub fn run_cli(options: &GarminReportOptions, constraints: &Vec<String>) -> Result<(), Error> {
     let config = get_garmin_config();
 
-    let pgurl = config.pgurl.unwrap();
+    let pgurl = config.pgurl.expect("No Postgres server specified (PGURL)");
     let cache_dir = config.cache_dir;
     let gps_dir = config.gps_dir;
 
@@ -246,10 +246,10 @@ pub fn run_html(
 ) -> Result<String, Error> {
     let config = get_garmin_config();
 
-    let pgurl = config.pgurl.unwrap();
+    let pgurl = config.pgurl.expect("No Postgres server specified (PGURL)");
     let gps_dir = config.gps_dir;
 
-    let http_bucket = config.http_bucket.unwrap();
+    let http_bucket = config.http_bucket.expect("No HTTP_BUCKET specified");
 
     let file_list = get_list_of_files_from_db(&pgurl, &constraints)?;
 
@@ -277,11 +277,11 @@ pub fn run_html(
             debug!("gfile {} {}", gfile.laps.len(), gfile.points.len());
 
             let tempdir = TempDir::new("garmin_html")?;
-            let htmlcachedir = tempdir.path().to_str().unwrap();
+            let htmlcachedir = tempdir.path().to_str().expect("Path is invalid unicode somehow");
 
             file_report_html(
                 &gfile,
-                &config.maps_api_key.unwrap(),
+                &config.maps_api_key.unwrap_or("EMPTY"),
                 &htmlcachedir,
                 &http_bucket,
                 &history,
@@ -292,7 +292,7 @@ pub fn run_html(
             let txt_result = create_report_query(&pgurl, &options, &constraints)?;
 
             let tempdir = TempDir::new("garmin_html")?;
-            let htmlcachedir = tempdir.path().to_str().unwrap();
+            let htmlcachedir = tempdir.path().to_str().expect("Path is invalid unicode somehow");
 
             summary_report_html(&txt_result, &options, &htmlcachedir, &filter, &history)
         }

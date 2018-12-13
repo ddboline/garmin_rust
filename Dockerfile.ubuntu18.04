@@ -6,12 +6,12 @@ RUN apt-get update && \
             file build-essential autoconf automake autotools-dev libtool xutils-dev && \
     rm -rf /var/lib/apt/lists/* && \
     curl https://sh.rustup.rs > rustup.sh && \
-    sh rustup.sh -y --default-toolchain nightly && \
+    sh rustup.sh -y && \
     . ~/.cargo/env
 
 WORKDIR /garmin_rust
 
 ADD Cargo.toml /garmin_rust
 ADD src /garmin_rust/src
-ADD build_deb_docker.sh /garmin_rust
+ADD scripts/build_deb_docker.sh /garmin_rust
 ADD Makefile /garmin_rust

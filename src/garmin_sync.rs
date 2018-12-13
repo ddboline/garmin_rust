@@ -115,51 +115,70 @@ pub fn sync_dir(local_dir: &str, s3_bucket: &str, s3_client: &S3Client) -> Resul
         .map(|(k, m, t)| (k.to_string(), (m.to_string(), t.clone())))
         .collect();
 
-    for (file, md5, tmod) in &file_list {
-        let file_name = file.split("/").last().unwrap().to_string();
+    let results: Vec<_> = file_list
+        .par_iter()
+        .filter_map(|(file, md5, tmod)| {
+            let file_name = file.split("/").last().unwrap().to_string();
 
-        let do_upload = if key_set.contains_key(&file_name) {
-            let (md5_, tmod_) = key_set.get(&file_name).unwrap().clone();
-            if (&md5_ != md5) & (tmod > &tmod_) {
-                println!(
-                    "upload md5 {} {} {} {} {}",
-                    file_name, md5_, md5, tmod_, tmod
-                );
-                true
+            let do_upload = if key_set.contains_key(&file_name) {
+                let (md5_, tmod_) = key_set.get(&file_name).unwrap().clone();
+                if (&md5_ != md5) & (tmod > &tmod_) {
+                    println!(
+                        "upload md5 {} {} {} {} {}",
+                        file_name, md5_, md5, tmod_, tmod
+                    );
+                    true
+                } else {
+                    false
+                }
             } else {
-                false
+                true
+            };
+
+            if do_upload {
+                println!("upload file {}", file_name);
+
+                Some(upload_file(&file, &s3_bucket, &file_name, &s3_client))
+            } else {
+                None
             }
-        } else {
-            true
-        };
+        })
+        .collect();
 
-        if do_upload {
-            println!("upload file {}", file_name);
-
-            upload_file(&file, &s3_bucket, &file_name, &s3_client)?;
-        }
+    for result in results {
+        result?;
     }
 
-    for (key, md5, tmod) in key_list {
-        let do_upload = if file_set.contains_key(&key) {
-            let (md5_, tmod_) = file_set.get(&key).unwrap().clone();
-            if (md5_ != md5) & (tmod > tmod_) {
-                println!("download md5 {} {} {} {} {} ", key, md5_, md5, tmod, tmod_);
-                true
+    let results: Vec<_> = key_list
+        .par_iter()
+        .filter_map(|(key, md5, tmod)| {
+            let do_upload = if file_set.contains_key(key) {
+                let (md5_, tmod_) = file_set.get(key).unwrap().clone();
+                if (md5_ != *md5) & (*tmod > tmod_) {
+                    println!("download md5 {} {} {} {} {} ", key, md5_, md5, tmod, tmod_);
+                    true
+                } else {
+                    false
+                }
             } else {
-                false
+                true
+            };
+
+            if do_upload {
+                let file_name = format!("{}/{}", local_dir, key);
+                println!("download {} {}", s3_bucket, key);
+
+                Some(download_file(&file_name, &s3_bucket, &key, &s3_client))
+            } else {
+                None
             }
-        } else {
-            true
-        };
+        })
+        .collect();
 
-        if do_upload {
-            let file_name = format!("{}/{}", local_dir, key);
-            println!("download {} {}", s3_bucket, key);
-
-            download_file(&file_name, &s3_bucket, &key, &s3_client)?;
-        }
+    for result in results {
+        result?;
     }
+
     Ok(())
 }
 

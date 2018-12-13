@@ -203,13 +203,13 @@ pub fn dump_summary_to_avro(
     Ok(())
 }
 
-pub fn read_summary_from_avro(input_filename: &str) -> Vec<GarminSummary> {
+pub fn read_summary_from_avro(input_filename: &str) -> Result<Vec<GarminSummary>, Error> {
     let garmin_summary_avro_schema = GARMIN_SUMMARY_AVRO_SCHEMA;
-    let schema = Schema::parse_str(&garmin_summary_avro_schema).expect("Failed to parse schema");
+    let schema = Schema::parse_str(&garmin_summary_avro_schema)?;
 
-    let input_file = File::open(input_filename).expect("Failed to open file");
+    let input_file = File::open(input_filename)?;
 
-    let reader = Reader::with_schema(&schema, input_file).expect("Failed to intialize reader");
+    let reader = Reader::with_schema(&schema, input_file)?;
 
     let mut gsum_list = Vec::new();
 
@@ -217,22 +217,22 @@ pub fn read_summary_from_avro(input_filename: &str) -> Vec<GarminSummary> {
         match record {
             Ok(r) => match from_value::<GarminSummary>(&r) {
                 Ok(v) => {
-                    println!("{:?}", v);
+                    debug!("{:?}", v);
                     gsum_list.push(v);
                 }
                 Err(e) => {
-                    println!("got here 0 {:?}", e);
+                    debug!("got here 0 {:?}", e);
                     continue;
                 }
             },
             Err(e) => {
-                println!("got here 1 {:?}", e);
+                debug!("got here 1 {:?}", e);
                 continue;
             }
         };
     }
 
-    gsum_list
+    Ok(gsum_list)
 }
 
 pub fn read_summary_from_postgres(pg_url: &str) -> Result<Vec<GarminSummary>, Error> {
@@ -314,6 +314,46 @@ pub fn read_summary_from_postgres_pattern(
     Ok(gsum_list)
 }
 
+pub fn write_summary_to_avro_files(
+    gsum_list: &Vec<GarminSummary>,
+    summary_cache_dir: &str,
+) -> Result<(), Error> {
+    for gsum in gsum_list {
+        let summary_avro_fname = format!("{}/{}.summary.avro", &summary_cache_dir, &gsum.filename);
+        let single_summary = vec![gsum.clone()];
+        dump_summary_to_avro(&single_summary, &summary_avro_fname)?;
+    }
+    Ok(())
+}
+
+pub fn read_summary_from_avro_files(summary_cache_dir: &str) -> Result<Vec<GarminSummary>, Error> {
+    let path = Path::new(summary_cache_dir);
+
+    let file_list: Vec<String> = match path.read_dir() {
+        Ok(it) => it
+            .filter_map(|dir_line| match dir_line {
+                Ok(entry) => {
+                    let input_file = entry.path().to_str().unwrap().to_string();
+                    Some(input_file)
+                }
+                Err(_) => None,
+            })
+            .collect(),
+        Err(err) => {
+            println!("{}", err);
+            Vec::new()
+        }
+    };
+
+    let mut gsum_list = Vec::new();
+    for result in file_list.iter().map(|f| read_summary_from_avro(f)) {
+        for gsum in result? {
+            gsum_list.push(gsum);
+        }
+    }
+    Ok(gsum_list)
+}
+
 pub fn write_summary_to_postgres(
     pg_url: &str,
     gsum_list: &Vec<GarminSummary>,
@@ -374,7 +414,7 @@ pub fn dump_summary_from_postgres_to_avro(pg_url: &str) -> Result<(), Error> {
 
     dump_summary_to_avro(&gsum_list, "garmin_summary.avro")?;
 
-    let gsum_list = read_summary_from_avro("garmin_summary.avro");
+    let gsum_list = read_summary_from_avro("garmin_summary.avro")?;
 
     println!("{}", gsum_list.len());
     Ok(())

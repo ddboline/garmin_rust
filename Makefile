@@ -1,4 +1,4 @@
-version := "0.1.4"
+version := "0.1.5"
 release := "1"
 uniq := $(shell head -c1000 /dev/urandom | sha512sum | head -c 12 ; echo ;)
 cidfile := "/tmp/.tmp.docker.$(uniq)"
@@ -32,4 +32,3 @@ binary:
 
 install:
 	cp target/$(build_type)/garmin_rust_proc target/$(build_type)/garmin_rust_report target/$(build_type)/garmin_rust_http /usr/bin/
-	cp python/plot_graph.py /usr/bin/garmin_rust_plot_graph.py

@@ -16,7 +16,7 @@ done
 
 cat > ${HOME}/.config/garmin_rust/config.yml <<EOL
 PGURL: postgresql://$USER:$PASSWORD@localhost:5432/garmin_summary
-MAPS_API_KEY: AIzaSyCNWrZdA6Tz1Umw5Fu2PhIB0TJzyRh111A
+MAPS_API_KEY: $MAPS_API_KEY
 GPS_BUCKET: garmin_scripts_gps_files_ddboline
 CACHE_BUCKET: garmin-scripts-cache-ddboline
 HTTP_BUCKET: garmin-scripts-http-cache

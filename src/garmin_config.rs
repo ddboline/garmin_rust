@@ -10,6 +10,8 @@ pub struct GarminConfig {
     pub gps_dir: String,
     pub cache_dir: String,
     pub port: u32,
+    pub summary_cache: Option<String>,
+    pub summary_bucket: Option<String>,
 }
 
 impl GarminConfig {
@@ -28,6 +30,8 @@ impl GarminConfig {
             gps_dir: default_gps_dir,
             cache_dir: default_cache_dir,
             port: 8000,
+            summary_cache: None,
+            summary_bucket: None,
         }
     }
 
@@ -54,7 +58,13 @@ impl GarminConfig {
             self.cache_dir = cache_dir.to_string()
         }
         if let Ok(port) = var("PORT") {
-            self.port = port.parse().unwrap_or(8000);
+            self.port = port.parse().unwrap_or(8000)
+        }
+        if let Ok(summary_cache) = var("SUMMARY_CACHE") {
+            self.summary_cache = Some(summary_cache)
+        }
+        if let Ok(summary_bucket) = var("SUMMARY_BUCKET") {
+            self.summary_bucket = Some(summary_bucket)
         }
         self
     }
@@ -70,28 +80,34 @@ impl GarminConfig {
 
         if let Ok(pgurl) = settings.get_str("PGURL") {
             self.pgurl = Some(pgurl.to_string())
-        };
+        }
         if let Ok(maps_api_key) = settings.get_str("MAPS_API_KEY") {
             self.maps_api_key = Some(maps_api_key.to_string())
-        };
+        }
         if let Ok(gps_bucket) = settings.get_str("GPS_BUCKET") {
             self.gps_bucket = Some(gps_bucket.to_string())
-        };
+        }
         if let Ok(cache_bucket) = settings.get_str("CACHE_BUCKET") {
             self.cache_bucket = Some(cache_bucket.to_string())
-        };
+        }
         if let Ok(http_bucket) = settings.get_str("HTTP_BUCKET") {
             self.http_bucket = Some(http_bucket.to_string())
-        };
+        }
         if let Ok(gps_dir) = settings.get_str("GPS_DIR") {
             self.gps_dir = gps_dir.to_string()
-        };
+        }
         if let Ok(cache_dir) = settings.get_str("CACHE_DIR") {
             self.cache_dir = cache_dir.to_string()
-        };
+        }
         if let Ok(port) = settings.get_int("PORT") {
             self.port = port as u32
-        };
+        }
+        if let Ok(summary_cache) = settings.get_str("SUMMARY_CACHE") {
+            self.summary_cache = Some(summary_cache)
+        }
+        if let Ok(summary_bucket) = settings.get_str("SUMMARY_BUCKET") {
+            self.summary_bucket = Some(summary_bucket)
+        }
         self
     }
 }

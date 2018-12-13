@@ -46,8 +46,8 @@ pub fn cli_garmin_proc() -> Result<(), Error> {
     let gps_dir = config.gps_dir;
     let gps_bucket = config.gps_bucket.unwrap();
     let cache_bucket = config.cache_bucket.unwrap();
-
-    let home_dir = var("HOME").unwrap();
+    let summary_cache = config.summary_cache.unwrap();
+    let summary_bucket = config.summary_bucket.unwrap();
 
     let matches = App::new("Garmin Rust Proc")
         .version(get_version_number().as_str())
@@ -87,16 +87,9 @@ pub fn cli_garmin_proc() -> Result<(), Error> {
     match do_sync {
         true => {
             let s3_client = garmin_sync::get_s3_client();
-            garmin_sync::sync_dir(
-                format!("{}/.garmin_cache/run/gps_tracks", home_dir).as_str(),
-                &gps_bucket,
-                &s3_client,
-            )?;
-            garmin_sync::sync_dir(
-                format!("{}/.garmin_cache/run/cache", home_dir).as_str(),
-                &cache_bucket,
-                &s3_client,
-            )?;
+            garmin_sync::sync_dir(&gps_dir, &gps_bucket, &s3_client)?;
+            garmin_sync::sync_dir(&cache_dir, &cache_bucket, &s3_client)?;
+            garmin_sync::sync_dir(&summary_cache, &summary_bucket, &s3_client)?;
         }
         false => {
             let corr_list = garmin_correction_lap::read_corrections_from_db(&pgurl)?;
@@ -122,8 +115,8 @@ pub fn cli_garmin_proc() -> Result<(), Error> {
             };
 
             if gsum_list.len() > 0 {
-                garmin_summary::write_summary_to_postgres(&pgurl, &gsum_list)
-                    .expect("Failed to write summary")
+                garmin_summary::write_summary_to_avro_files(&gsum_list, &summary_cache)?;
+                garmin_summary::write_summary_to_postgres(&pgurl, &gsum_list)?;
             };
         }
     }

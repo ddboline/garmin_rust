@@ -26,3 +26,6 @@ GPS_DIR: ${HOME}/.garmin_cache/run/gps_tracks
 CACHE_DIR: ${HOME}/.garmin_cache/run/cache
 SUMMARY_CACHE: ${HOME}/.garmin_cache/run/summary_cache
 EOL
+
+psql garmin_summary < ./scripts/garmin_corrections_laps.sql
+psql garmin_summary < ./scripts/garmin_summary.sql

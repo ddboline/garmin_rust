@@ -13,7 +13,7 @@ use rayon::prelude::*;
 use std::collections::HashMap;
 use std::fmt;
 
-use postgres::{Connection, TlsMode};
+use postgres::Connection;
 
 use crate::garmin_correction_lap::{
     get_corr_list_map, read_corrections_from_db, GarminCorrectionLap,
@@ -127,14 +127,8 @@ pub fn process_single_gps_file(
     Ok(GarminSummary::new(&gfile, &md5sum))
 }
 
-pub fn process_all_gps_files(
-    gps_dir: &str,
-    cache_dir: &str,
-    corr_map: &HashMap<(String, i32), GarminCorrectionLap>,
-) -> Result<Vec<GarminSummary>, Error> {
-    let path = Path::new(gps_dir);
-
-    let file_list: Vec<String> = match path.read_dir() {
+pub fn get_file_list(path: &Path) -> Vec<String> {
+    match path.read_dir() {
         Ok(it) => it
             .filter_map(|dir_line| match dir_line {
                 Ok(entry) => {
@@ -148,7 +142,17 @@ pub fn process_all_gps_files(
             println!("{}", err);
             Vec::new()
         }
-    };
+    }
+}
+
+pub fn process_all_gps_files(
+    gps_dir: &str,
+    cache_dir: &str,
+    corr_map: &HashMap<(String, i32), GarminCorrectionLap>,
+) -> Result<Vec<GarminSummary>, Error> {
+    let path = Path::new(gps_dir);
+
+    let file_list: Vec<String> = get_file_list(&path);
 
     let gsum_list: Vec<GarminSummary> = file_list
         .par_iter()
@@ -173,11 +177,11 @@ pub fn process_all_gps_files(
     Ok(gsum_list)
 }
 
-pub fn create_summary_list(pg_url: &str) -> Result<Vec<GarminSummary>, Error> {
+pub fn create_summary_list(conn: &Connection) -> Result<Vec<GarminSummary>, Error> {
     let gps_dir = "/home/ddboline/.garmin_cache/run/gps_tracks";
     let cache_dir = "/home/ddboline/.garmin_cache/run/cache";
 
-    let corr_list = read_corrections_from_db(pg_url)?;
+    let corr_list = read_corrections_from_db(&conn)?;
 
     println!("{}", corr_list.len());
 
@@ -235,9 +239,7 @@ pub fn read_summary_from_avro(input_filename: &str) -> Result<Vec<GarminSummary>
     Ok(gsum_list)
 }
 
-pub fn read_summary_from_postgres(pg_url: &str) -> Result<Vec<GarminSummary>, Error> {
-    let conn = Connection::connect(pg_url, TlsMode::None)?;
-
+pub fn read_summary_from_postgres(conn: &Connection) -> Result<Vec<GarminSummary>, Error> {
     let query = "
         SELECT filename,
                begin_datetime,
@@ -272,11 +274,9 @@ pub fn read_summary_from_postgres(pg_url: &str) -> Result<Vec<GarminSummary>, Er
 }
 
 pub fn read_summary_from_postgres_pattern(
-    pg_url: &str,
+    conn: &Connection,
     pattern: &str,
 ) -> Result<Vec<GarminSummary>, Error> {
-    let conn = Connection::connect(pg_url, TlsMode::None)?;
-
     let query = format!(
         "
         SELECT filename,
@@ -329,21 +329,7 @@ pub fn write_summary_to_avro_files(
 pub fn read_summary_from_avro_files(summary_cache_dir: &str) -> Result<Vec<GarminSummary>, Error> {
     let path = Path::new(summary_cache_dir);
 
-    let file_list: Vec<String> = match path.read_dir() {
-        Ok(it) => it
-            .filter_map(|dir_line| match dir_line {
-                Ok(entry) => {
-                    let input_file = entry.path().to_str().unwrap().to_string();
-                    Some(input_file)
-                }
-                Err(_) => None,
-            })
-            .collect(),
-        Err(err) => {
-            println!("{}", err);
-            Vec::new()
-        }
-    };
+    let file_list: Vec<String> = get_file_list(&path);
 
     let mut gsum_list = Vec::new();
     for result in file_list.iter().map(|f| read_summary_from_avro(f)) {
@@ -354,12 +340,20 @@ pub fn read_summary_from_avro_files(summary_cache_dir: &str) -> Result<Vec<Garmi
     Ok(gsum_list)
 }
 
+pub fn get_list_of_files_from_db(conn: &Connection) -> Result<Vec<String>, Error> {
+    let filename_query = "SELECT filename FROM garmin_summary";
+
+    Ok(conn
+        .query(filename_query, &[])?
+        .iter()
+        .map(|row| row.get(0))
+        .collect())
+}
+
 pub fn write_summary_to_postgres(
-    pg_url: &str,
+    conn: &Connection,
     gsum_list: &Vec<GarminSummary>,
 ) -> Result<(), Error> {
-    let conn = Connection::connect(pg_url, TlsMode::None)?;
-
     let filename_query = "SELECT filename FROM garmin_summary WHERE filename=$1";
 
     let insert_query = "
@@ -407,8 +401,8 @@ pub fn write_summary_to_postgres(
     Ok(())
 }
 
-pub fn dump_summary_from_postgres_to_avro(pg_url: &str) -> Result<(), Error> {
-    let gsum_list = read_summary_from_postgres(&pg_url)?;
+pub fn dump_summary_from_postgres_to_avro(conn: &Connection) -> Result<(), Error> {
+    let gsum_list = read_summary_from_postgres(&conn)?;
 
     println!("{}", gsum_list.len());
 

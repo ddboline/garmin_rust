@@ -4,6 +4,7 @@ extern crate serde_json;
 
 use num::traits::Pow;
 
+use postgres::{Connection, TlsMode};
 use std::io::BufRead;
 use std::io::BufReader;
 use subprocess::Exec;
@@ -102,4 +103,26 @@ pub fn titlecase(input: &str) -> String {
         let firstchar = input[0..1].to_uppercase();
         format!("{}{}", firstchar, &input[1..input.len()])
     }
+}
+
+pub fn get_pg_conn(pg_url: &str) -> Result<Connection, Error> {
+    Ok(Connection::connect(pg_url, TlsMode::None)?)
+}
+
+pub fn get_list_of_files_from_db(
+    conn: &Connection,
+    constraints: &Vec<String>,
+) -> Result<Vec<String>, Error> {
+    let constr = match constraints.len() {
+        0 => "".to_string(),
+        _ => format!("WHERE {}", constraints.join(" OR ")),
+    };
+
+    let query = format!("SELECT filename FROM garmin_summary {}", constr);
+
+    Ok(conn
+        .query(&query, &[])?
+        .iter()
+        .map(|row| row.get(0))
+        .collect())
 }

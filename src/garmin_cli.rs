@@ -1,9 +1,13 @@
 extern crate config;
+extern crate rayon;
 extern crate tempdir;
 
 use clap::{App, Arg};
 use failure::Error;
+use rayon::prelude::*;
+use std::collections::HashSet;
 use std::env::var;
+use std::path::Path;
 use tempdir::TempDir;
 
 use crate::garmin_config::GarminConfig;
@@ -16,7 +20,8 @@ use crate::reports::garmin_file_report_html::file_report_html;
 use crate::reports::garmin_file_report_txt::generate_txt_report;
 use crate::reports::garmin_report_options::GarminReportOptions;
 use crate::reports::garmin_summary_report_html::summary_report_html;
-use crate::reports::garmin_summary_report_txt::{create_report_query, get_list_of_files_from_db};
+use crate::reports::garmin_summary_report_txt::create_report_query;
+use crate::utils::garmin_util::{get_list_of_files_from_db, get_pg_conn};
 use crate::utils::sport_types::get_sport_type_map;
 
 fn get_version_number() -> String {
@@ -93,6 +98,8 @@ pub fn cli_garmin_proc() -> Result<(), Error> {
     let do_all = matches.is_present("all");
     let do_bootstrap = matches.is_present("bootstrap");
 
+    let pg_conn = get_pg_conn(&pgurl)?;
+
     if do_bootstrap {
         let s3_client = garmin_sync::get_s3_client();
         garmin_sync::sync_dir(&gps_dir, &gps_bucket, &s3_client)?;
@@ -104,18 +111,18 @@ pub fn cli_garmin_proc() -> Result<(), Error> {
             &cache_dir
         ))?;
 
-        garmin_correction_lap::dump_corrections_to_db(&pgurl, &corr_list)?;
+        garmin_correction_lap::dump_corrections_to_db(&pg_conn, &corr_list)?;
 
         let gsum_list = garmin_summary::read_summary_from_avro_files(&summary_cache)?;
 
-        garmin_summary::write_summary_to_postgres(&pgurl, &gsum_list)?;
+        garmin_summary::write_summary_to_postgres(&pg_conn, &gsum_list)?;
     } else if do_sync {
         let s3_client = garmin_sync::get_s3_client();
         garmin_sync::sync_dir(&gps_dir, &gps_bucket, &s3_client)?;
         garmin_sync::sync_dir(&cache_dir, &cache_bucket, &s3_client)?;
         garmin_sync::sync_dir(&summary_cache, &summary_bucket, &s3_client)?;
     } else {
-        let corr_list = garmin_correction_lap::read_corrections_from_db(&pgurl)?;
+        let corr_list = garmin_correction_lap::read_corrections_from_db(&pg_conn)?;
 
         garmin_correction_lap::dump_corr_list_to_avro(
             &corr_list,
@@ -128,18 +135,45 @@ pub fn cli_garmin_proc() -> Result<(), Error> {
             Some(flist) => flist
                 .map(|f| {
                     println!("{}", &f);
-                    garmin_summary::process_single_gps_file(&f, &cache_dir, &corr_map).expect("Failed to process gps file")
+                    garmin_summary::process_single_gps_file(&f, &cache_dir, &corr_map)
+                        .expect("Failed to process gps file")
                 })
                 .collect(),
             None => match do_all {
                 true => garmin_summary::process_all_gps_files(&gps_dir, &cache_dir, &corr_map)?,
-                false => Vec::new(),
+                false => {
+                    let path = Path::new(&cache_dir);
+                    let fileset: HashSet<String> = garmin_summary::get_file_list(&path)
+                        .into_par_iter()
+                        .filter_map(|f| match f.contains("garmin_correction.avro") {
+                            true => None,
+                            false => Some(f.split("/").last().unwrap().to_string()),
+                        })
+                        .collect();
+
+                    let path = Path::new(&gps_dir);
+                    garmin_summary::get_file_list(&path)
+                        .into_par_iter()
+                        .map(|f| f.split("/").last().unwrap().to_string())
+                        .map(|f| format!("{}.avro", f))
+                        .filter(|f| !fileset.contains(f))
+                        .map(|f| {
+                            let fname = f.replace(".avro", "");
+                            format!("{}/{}", &gps_dir, &fname)
+                        })
+                        .map(|f| {
+                            println!("{}", &f);
+                            garmin_summary::process_single_gps_file(&f, &cache_dir, &corr_map)
+                                .expect("Failed to process gps file")
+                        })
+                        .collect()
+                }
             },
         };
 
         if gsum_list.len() > 0 {
             garmin_summary::write_summary_to_avro_files(&gsum_list, &summary_cache)?;
-            garmin_summary::write_summary_to_postgres(&pgurl, &gsum_list)?;
+            garmin_summary::write_summary_to_postgres(&pg_conn, &gsum_list)?;
         };
     };
     Ok(())
@@ -202,7 +236,9 @@ pub fn run_cli(options: &GarminReportOptions, constraints: &Vec<String>) -> Resu
     let cache_dir = config.cache_dir;
     let gps_dir = config.gps_dir;
 
-    let file_list = get_list_of_files_from_db(&pgurl, &constraints)?;
+    let pg_conn = get_pg_conn(&pgurl)?;
+
+    let file_list = get_list_of_files_from_db(&pg_conn, &constraints)?;
 
     match file_list.len() {
         0 => (),
@@ -218,7 +254,7 @@ pub fn run_cli(options: &GarminReportOptions, constraints: &Vec<String>) -> Resu
                 Err(_) => {
                     let gps_file = format!("{}/{}", gps_dir, file_name);
 
-                    let corr_list = garmin_correction_lap::read_corrections_from_db(&pgurl)?;
+                    let corr_list = garmin_correction_lap::read_corrections_from_db(&pg_conn)?;
                     let corr_map = garmin_correction_lap::get_corr_list_map(&corr_list);
 
                     debug!("Reading gps_file: {}", &gps_file);
@@ -230,7 +266,7 @@ pub fn run_cli(options: &GarminReportOptions, constraints: &Vec<String>) -> Resu
         }
         _ => {
             debug!("{:?}", options);
-            let txt_result = create_report_query(&pgurl, &options, &constraints)?;
+            let txt_result = create_report_query(&pg_conn, &options, &constraints)?;
 
             println!("{}", txt_result.join("\n"));
         }
@@ -251,7 +287,9 @@ pub fn run_html(
 
     let http_bucket = config.http_bucket.expect("No HTTP_BUCKET specified");
 
-    let file_list = get_list_of_files_from_db(&pgurl, &constraints)?;
+    let pg_conn = get_pg_conn(&pgurl)?;
+
+    let file_list = get_list_of_files_from_db(&pg_conn, &constraints)?;
 
     match file_list.len() {
         0 => Ok("".to_string()),
@@ -267,7 +305,7 @@ pub fn run_html(
                 Err(_) => {
                     let gps_file = format!("{}/{}", gps_dir, file_name);
 
-                    let corr_list = garmin_correction_lap::read_corrections_from_db(&pgurl)?;
+                    let corr_list = garmin_correction_lap::read_corrections_from_db(&pg_conn)?;
                     let corr_map = garmin_correction_lap::get_corr_list_map(&corr_list);
 
                     debug!("Reading gps_file: {}", &gps_file);
@@ -277,11 +315,14 @@ pub fn run_html(
             debug!("gfile {} {}", gfile.laps.len(), gfile.points.len());
 
             let tempdir = TempDir::new("garmin_html")?;
-            let htmlcachedir = tempdir.path().to_str().expect("Path is invalid unicode somehow");
+            let htmlcachedir = tempdir
+                .path()
+                .to_str()
+                .expect("Path is invalid unicode somehow");
 
             file_report_html(
                 &gfile,
-                &config.maps_api_key.unwrap_or("EMPTY"),
+                &config.maps_api_key.unwrap_or("EMPTY".to_string()),
                 &htmlcachedir,
                 &http_bucket,
                 &history,
@@ -289,10 +330,13 @@ pub fn run_html(
         }
         _ => {
             debug!("{:?}", options);
-            let txt_result = create_report_query(&pgurl, &options, &constraints)?;
+            let txt_result = create_report_query(&pg_conn, &options, &constraints)?;
 
             let tempdir = TempDir::new("garmin_html")?;
-            let htmlcachedir = tempdir.path().to_str().expect("Path is invalid unicode somehow");
+            let htmlcachedir = tempdir
+                .path()
+                .to_str()
+                .expect("Path is invalid unicode somehow");
 
             summary_report_html(&txt_result, &options, &htmlcachedir, &filter, &history)
         }

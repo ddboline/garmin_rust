@@ -1,41 +1,18 @@
 extern crate rayon;
 
 use failure::Error;
-use postgres::{Connection, TlsMode};
+use postgres::Connection;
 
 use crate::reports::garmin_report_options::GarminReportOptions;
 use crate::utils::garmin_util::{
     days_in_month, days_in_year, print_h_m_s, METERS_PER_MILE, MONTH_NAMES, WEEKDAY_NAMES,
 };
 
-pub fn get_list_of_files_from_db(
-    pg_url: &str,
-    constraints: &Vec<String>,
-) -> Result<Vec<String>, Error> {
-    let constr = match constraints.len() {
-        0 => "".to_string(),
-        _ => format!("WHERE {}", constraints.join(" OR ")),
-    };
-
-    let query = format!("SELECT filename FROM garmin_summary {}", constr);
-
-    let conn = Connection::connect(pg_url, TlsMode::None)?;
-
-    let file_list: Vec<String> = conn
-        .query(&query, &[])?
-        .iter()
-        .map(|row| row.get(0))
-        .collect();
-    Ok(file_list)
-}
-
 pub fn create_report_query(
-    pg_url: &str,
+    conn: &Connection,
     options: &GarminReportOptions,
     constraints: &Vec<String>,
 ) -> Result<Vec<String>, Error> {
-    let conn = Connection::connect(pg_url, TlsMode::None)?;
-
     let sport_constr = match options.do_sport {
         Some(x) => format!("sport = '{}'", x.to_string()),
         None => "".to_string(),

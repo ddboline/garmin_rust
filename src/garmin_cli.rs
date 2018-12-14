@@ -147,26 +147,33 @@ pub fn cli_garmin_proc() -> Result<(), Error> {
                 true => garmin_summary::process_all_gps_files(&gps_dir, &cache_dir, &corr_map)?,
                 false => {
                     let path = Path::new(&cache_dir);
-                    let fileset: HashSet<String> = garmin_summary::get_file_list(&path)
+                    let cacheset: HashSet<String> = garmin_summary::get_file_list(&path)
                         .into_par_iter()
                         .filter_map(|f| match f.contains("garmin_correction.avro") {
                             true => None,
                             false => Some(f.split("/").last().unwrap().to_string()),
                         })
                         .collect();
+                    let dbset: HashSet<String> =
+                        garmin_summary::get_list_of_files_from_db(&pg_conn)?
+                            .into_iter()
+                            .collect();
 
                     let path = Path::new(&gps_dir);
                     let proc_list: Vec<Result<_, Error>> = garmin_summary::get_file_list(&path)
                         .into_par_iter()
                         .map(|f| f.split("/").last().unwrap().to_string())
-                        .map(|f| format!("{}.avro", f))
-                        .filter(|f| !fileset.contains(f))
-                        .map(|f| {
-                            let fname = f.replace(".avro", "");
-                            format!("{}/{}", &gps_dir, &fname)
+                        .filter_map(|f| {
+                            let cachefile = format!("{}.avro", f);
+                            if dbset.contains(&f) && cacheset.contains(&cachefile) {
+                                None
+                            } else {
+                                let gps_path = format!("{}/{}", &gps_dir, &f);
+                                println!("{}", &gps_path);
+                                Some(gps_path)
+                            }
                         })
                         .map(|f| {
-                            println!("{}", &f);
                             Ok(garmin_summary::process_single_gps_file(
                                 &f, &cache_dir, &corr_map,
                             )?)

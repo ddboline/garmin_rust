@@ -123,7 +123,7 @@ pub fn sync_dir(local_dir: &str, s3_bucket: &str, s3_client: &S3Client) -> Resul
             let do_upload = if key_set.contains_key(&file_name) {
                 let (md5_, tmod_) = key_set.get(&file_name).unwrap().clone();
                 if (&md5_ != md5) & (tmod > &tmod_) {
-                    println!(
+                    debug!(
                         "upload md5 {} {} {} {} {}",
                         file_name, md5_, md5, tmod_, tmod
                     );
@@ -149,13 +149,13 @@ pub fn sync_dir(local_dir: &str, s3_bucket: &str, s3_client: &S3Client) -> Resul
         result?;
     }
 
-    let results: Vec<_> = key_list
+    let results: Vec<_> = get_list_of_keys(&s3_client, s3_bucket)?
         .par_iter()
         .filter_map(|(key, md5, tmod)| {
             let do_upload = if file_set.contains_key(key) {
                 let (md5_, tmod_) = file_set.get(key).unwrap().clone();
                 if (md5_ != *md5) & (*tmod > tmod_) {
-                    println!("download md5 {} {} {} {} {} ", key, md5_, md5, tmod, tmod_);
+                    debug!("download md5 {} {} {} {} {} ", key, md5_, md5, tmod, tmod_);
                     true
                 } else {
                     false

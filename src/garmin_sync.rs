@@ -149,7 +149,7 @@ pub fn sync_dir(local_dir: &str, s3_bucket: &str, s3_client: &S3Client) -> Resul
         result?;
     }
 
-    let results: Vec<_> = get_list_of_keys(&s3_client, s3_bucket)?
+    let results: Vec<_> = key_list
         .par_iter()
         .filter_map(|(key, md5, tmod)| {
             let do_upload = if file_set.contains_key(key) {

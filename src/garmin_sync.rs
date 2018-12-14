@@ -152,10 +152,12 @@ pub fn sync_dir(local_dir: &str, s3_bucket: &str, s3_client: &S3Client) -> Resul
     let results: Vec<_> = key_list
         .par_iter()
         .filter_map(|(key, md5, tmod)| {
-            let do_upload = if file_set.contains_key(key) {
+            let do_download = if file_set.contains_key(key) {
                 let (md5_, tmod_) = file_set.get(key).unwrap().clone();
                 if (md5_ != *md5) & (*tmod > tmod_) {
                     debug!("download md5 {} {} {} {} {} ", key, md5_, md5, tmod, tmod_);
+                    let file_name = format!("{}/{}", local_dir, key);
+                    fs::remove_file(&file_name).expect("Failed to remove existing file");
                     true
                 } else {
                     false
@@ -164,7 +166,7 @@ pub fn sync_dir(local_dir: &str, s3_bucket: &str, s3_client: &S3Client) -> Resul
                 true
             };
 
-            if do_upload {
+            if do_download {
                 let file_name = format!("{}/{}", local_dir, key);
                 println!("download {} {}", s3_bucket, key);
 

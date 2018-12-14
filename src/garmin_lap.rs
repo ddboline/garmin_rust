@@ -65,13 +65,9 @@ impl GarminLap {
             } else if entry.contains("index") {
                 self.lap_index = value.parse().unwrap_or(-1);
             } else if entry.contains("start") {
-                self.lap_start_string = Some(
-                    convert_xml_local_time_to_utc(value).expect("Failed to parse time string"),
-                );
-                self.lap_start = self
-                    .lap_start_string
-                    .clone()
-                    .expect("Failed to parse time string");
+                self.lap_start =
+                    convert_xml_local_time_to_utc(value).expect("Failed to parse time string");
+                self.lap_start_string = Some(self.lap_start.clone());
             } else if entry.contains("duration") {
                 self.lap_duration = convert_time_string(value).unwrap_or(0.0);
             } else if entry.contains("distance") {
@@ -145,6 +141,23 @@ impl GarminLap {
                 }
             }
         }
+    }
+
+    pub fn fix_lap_number(lap_list: Vec<GarminLap>) -> Vec<GarminLap> {
+        lap_list
+            .into_iter()
+            .enumerate()
+            .map(|(i, lap)| {
+                let mut new_lap = lap;
+                new_lap.lap_index = i as i32;
+                new_lap.lap_number = if new_lap.lap_number == -1 {
+                    i as i32
+                } else {
+                    new_lap.lap_number
+                };
+                new_lap
+            })
+            .collect()
     }
 }
 

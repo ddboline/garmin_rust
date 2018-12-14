@@ -1,5 +1,6 @@
 extern crate chrono;
 extern crate num;
+extern crate rayon;
 extern crate serde_json;
 
 use num::traits::Pow;
@@ -8,6 +9,9 @@ use postgres::{Connection, TlsMode};
 use std::io::BufRead;
 use std::io::BufReader;
 use subprocess::Exec;
+
+use rand::distributions::{Alphanumeric, Distribution};
+use rand::thread_rng;
 
 use chrono::prelude::*;
 
@@ -125,4 +129,17 @@ pub fn get_list_of_files_from_db(
         .iter()
         .map(|row| row.get(0))
         .collect())
+}
+
+pub fn map_result_vec<T, E>(input: Vec<Result<T, E>>) -> Result<Vec<T>, E> {
+    let mut output: Vec<T> = Vec::new();
+    for item in input {
+        output.push(item?);
+    }
+    Ok(output)
+}
+
+pub fn generate_random_string(nchar: usize) -> String {
+    let mut rng = thread_rng();
+    Alphanumeric.sample_iter(&mut rng).take(nchar).collect()
 }

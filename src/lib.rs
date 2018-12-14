@@ -4,6 +4,10 @@ extern crate serde_derive;
 #[macro_use]
 extern crate log;
 
+#[macro_use]
+extern crate postgres;
+extern crate postgres_derive;
+
 pub mod garmin_cli;
 pub mod garmin_config;
 pub mod garmin_correction_lap;

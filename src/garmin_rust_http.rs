@@ -23,14 +23,15 @@ fn garmin(request: Query<FilterRequest>) -> Result<HttpResponse, Error> {
 
     let (options, constraints) = garmin_cli::process_pattern(&filter_vec);
 
-    Ok(HttpResponse::build(StatusCode::OK)
+    let resp = HttpResponse::build(StatusCode::OK)
         .content_type("text/html; charset=utf-8")
         .body(garmin_cli::run_html(
             &options,
             &constraints,
             &filter,
             &history,
-        )?))
+        )?);
+    Ok(resp)
 }
 
 fn main() {

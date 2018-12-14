@@ -21,7 +21,7 @@ use crate::reports::garmin_file_report_txt::generate_txt_report;
 use crate::reports::garmin_report_options::GarminReportOptions;
 use crate::reports::garmin_summary_report_html::summary_report_html;
 use crate::reports::garmin_summary_report_txt::create_report_query;
-use crate::utils::garmin_util::{get_list_of_files_from_db, get_pg_conn};
+use crate::utils::garmin_util::{get_list_of_files_from_db, get_pg_conn, map_result_vec};
 use crate::utils::sport_types::get_sport_type_map;
 
 fn get_version_number() -> String {
@@ -132,13 +132,17 @@ pub fn cli_garmin_proc() -> Result<(), Error> {
         let corr_map = garmin_correction_lap::get_corr_list_map(&corr_list);
 
         let gsum_list = match filenames {
-            Some(flist) => flist
-                .map(|f| {
-                    println!("{}", &f);
-                    garmin_summary::process_single_gps_file(&f, &cache_dir, &corr_map)
-                        .expect("Failed to process gps file")
-                })
-                .collect(),
+            Some(flist) => {
+                let proc_list: Vec<Result<_, Error>> = flist
+                    .map(|f| {
+                        println!("{}", &f);
+                        Ok(garmin_summary::process_single_gps_file(
+                            &f, &cache_dir, &corr_map,
+                        )?)
+                    })
+                    .collect();
+                map_result_vec(proc_list)?
+            }
             None => match do_all {
                 true => garmin_summary::process_all_gps_files(&gps_dir, &cache_dir, &corr_map)?,
                 false => {
@@ -152,7 +156,7 @@ pub fn cli_garmin_proc() -> Result<(), Error> {
                         .collect();
 
                     let path = Path::new(&gps_dir);
-                    garmin_summary::get_file_list(&path)
+                    let proc_list: Vec<Result<_, Error>> = garmin_summary::get_file_list(&path)
                         .into_par_iter()
                         .map(|f| f.split("/").last().unwrap().to_string())
                         .map(|f| format!("{}.avro", f))
@@ -163,10 +167,12 @@ pub fn cli_garmin_proc() -> Result<(), Error> {
                         })
                         .map(|f| {
                             println!("{}", &f);
-                            garmin_summary::process_single_gps_file(&f, &cache_dir, &corr_map)
-                                .expect("Failed to process gps file")
+                            Ok(garmin_summary::process_single_gps_file(
+                                &f, &cache_dir, &corr_map,
+                            )?)
                         })
-                        .collect()
+                        .collect();
+                    map_result_vec(proc_list)?
                 }
             },
         };

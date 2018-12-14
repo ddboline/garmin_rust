@@ -1,7 +1,9 @@
 extern crate flate2;
+extern crate rand;
 extern crate rayon;
 
 use avro_rs::{from_value, Codec, Reader, Schema, Writer};
+use postgres_derive::{FromSql, ToSql};
 
 use std::path::Path;
 
@@ -10,6 +12,7 @@ use std::fs::File;
 use failure::Error;
 
 use rayon::prelude::*;
+
 use std::collections::HashMap;
 use std::fmt;
 
@@ -20,9 +23,9 @@ use crate::garmin_correction_lap::{
 };
 use crate::garmin_file::GarminFile;
 use crate::parsers::garmin_parse::GarminParse;
-use crate::utils::garmin_util::get_md5sum;
+use crate::utils::garmin_util::{generate_random_string, get_md5sum, map_result_vec};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSql, FromSql)]
 pub struct GarminSummary {
     pub filename: String,
     pub begin_datetime: String,
@@ -154,7 +157,7 @@ pub fn process_all_gps_files(
 
     let file_list: Vec<String> = get_file_list(&path);
 
-    let gsum_list: Vec<GarminSummary> = file_list
+    let gsum_result_list: Vec<Result<GarminSummary, Error>> = file_list
         .par_iter()
         .map(|input_file| {
             let cache_file = format!(
@@ -162,19 +165,18 @@ pub fn process_all_gps_files(
                 cache_dir,
                 input_file.split("/").last().unwrap()
             );
-            let md5sum = get_md5sum(&input_file).expect("Failed to generate md5sum");
+            let md5sum = get_md5sum(&input_file)?;
             let gfile = GarminParse::new(&input_file, &corr_map);
             match gfile.laps.get(0) {
                 Some(_) => (),
                 None => println!("{} {} has no laps?", &input_file, &gfile.filename),
             };
-            gfile
-                .dump_avro(&cache_file)
-                .expect("Failed to dump avro file");
-            GarminSummary::new(&gfile, &md5sum)
+            gfile.dump_avro(&cache_file)?;
+            Ok(GarminSummary::new(&gfile, &md5sum))
         })
         .collect();
-    Ok(gsum_list)
+
+    Ok(map_result_vec(gsum_result_list)?)
 }
 
 pub fn create_summary_list(conn: &Connection) -> Result<Vec<GarminSummary>, Error> {
@@ -318,11 +320,17 @@ pub fn write_summary_to_avro_files(
     gsum_list: &Vec<GarminSummary>,
     summary_cache_dir: &str,
 ) -> Result<(), Error> {
-    for gsum in gsum_list {
-        let summary_avro_fname = format!("{}/{}.summary.avro", &summary_cache_dir, &gsum.filename);
-        let single_summary = vec![gsum.clone()];
-        dump_summary_to_avro(&single_summary, &summary_avro_fname)?;
-    }
+    let results = gsum_list
+        .iter()
+        .map(|gsum| {
+            let summary_avro_fname =
+                format!("{}/{}.summary.avro", &summary_cache_dir, &gsum.filename);
+            let single_summary = vec![gsum.clone()];
+            dump_summary_to_avro(&single_summary, &summary_avro_fname)
+        })
+        .collect();
+
+    map_result_vec(results)?;
     Ok(())
 }
 
@@ -331,13 +339,15 @@ pub fn read_summary_from_avro_files(summary_cache_dir: &str) -> Result<Vec<Garmi
 
     let file_list: Vec<String> = get_file_list(&path);
 
-    let mut gsum_list = Vec::new();
-    for result in file_list.iter().map(|f| read_summary_from_avro(f)) {
-        for gsum in result? {
-            gsum_list.push(gsum);
-        }
-    }
-    Ok(gsum_list)
+    let gsum_result_list: Vec<_> = file_list
+        .par_iter()
+        .map(|f| read_summary_from_avro(f))
+        .collect();
+
+    Ok(map_result_vec(gsum_result_list)?
+        .into_iter()
+        .flatten()
+        .collect())
 }
 
 pub fn get_list_of_files_from_db(conn: &Connection) -> Result<Vec<String>, Error> {
@@ -354,50 +364,70 @@ pub fn write_summary_to_postgres(
     conn: &Connection,
     gsum_list: &Vec<GarminSummary>,
 ) -> Result<(), Error> {
-    let filename_query = "SELECT filename FROM garmin_summary WHERE filename=$1";
+    let rand_str = generate_random_string(8);
 
-    let insert_query = "
-        INSERT INTO garmin_summary (filename, begin_datetime, sport, total_calories, total_distance, total_duration, total_hr_dur, total_hr_dis, md5sum, number_of_items)
+    let temp_table_name = format!("garmin_summary_{}", rand_str);
+
+    let create_table_query = format!(
+        "CREATE TABLE {} (
+            filename text NOT NULL PRIMARY KEY,
+            begin_datetime text,
+            sport varchar(12),
+            total_calories integer,
+            total_distance double precision,
+            total_duration double precision,
+            total_hr_dur double precision,
+            total_hr_dis double precision,
+            number_of_items integer,
+            md5sum varchar(32)
+        );",
+        temp_table_name
+    );
+
+    conn.execute(&create_table_query, &[])?;
+
+    let insert_query = format!("
+        INSERT INTO {} (filename, begin_datetime, sport, total_calories, total_distance, total_duration, total_hr_dur, total_hr_dis, md5sum, number_of_items)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 1)
-    ";
+    ", temp_table_name);
 
-    let update_query = "
-        UPDATE garmin_summary SET (begin_datetime,sport,total_calories,total_distance,total_duration,total_hr_dur,total_hr_dis,md5sum,number_of_items) = ($2,$3,$4,$5,$6,$7,$8,$9,1)
-        WHERE filename=$1
-    ";
-
-    let stmt_insert = conn.prepare(insert_query)?;
-    let stmt_update = conn.prepare(update_query)?;
+    let stmt_insert = conn.prepare(&insert_query)?;
 
     for gsum in gsum_list {
-        let existing = conn.query(filename_query, &[&gsum.filename])?.iter().len();
-
-        if existing == 0 {
-            stmt_insert.execute(&[
-                &gsum.filename,
-                &gsum.begin_datetime,
-                &gsum.sport,
-                &gsum.total_calories,
-                &gsum.total_distance,
-                &gsum.total_duration,
-                &gsum.total_hr_dur,
-                &gsum.total_hr_dis,
-                &gsum.md5sum,
-            ])?;
-        } else {
-            stmt_update.execute(&[
-                &gsum.filename,
-                &gsum.begin_datetime,
-                &gsum.sport,
-                &gsum.total_calories,
-                &gsum.total_distance,
-                &gsum.total_duration,
-                &gsum.total_hr_dur,
-                &gsum.total_hr_dis,
-                &gsum.md5sum,
-            ])?;
-        };
+        stmt_insert.execute(&[
+            &gsum.filename,
+            &gsum.begin_datetime,
+            &gsum.sport,
+            &gsum.total_calories,
+            &gsum.total_distance,
+            &gsum.total_duration,
+            &gsum.total_hr_dur,
+            &gsum.total_hr_dis,
+            &gsum.md5sum,
+        ])?;
     }
+
+    let insert_query = format!("
+        INSERT INTO garmin_summary (filename, begin_datetime, sport, total_calories, total_distance, total_duration, total_hr_dur, total_hr_dis, md5sum, number_of_items)
+        SELECT b.filename, b.begin_datetime, b.sport, b.total_calories, b.total_distance, b.total_duration, b.total_hr_dur, b.total_hr_dis, b.md5sum, b.number_of_items
+        FROM {} b
+        WHERE b.filename not in (select filename from garmin_summary)
+    ", temp_table_name);
+
+    let update_query = format!("
+        UPDATE garmin_summary a
+        SET (begin_datetime,sport,total_calories,total_distance,total_duration,total_hr_dur,total_hr_dis,md5sum,number_of_items) = 
+            (b.begin_datetime,b.sport,b.total_calories,b.total_distance,b.total_duration,b.total_hr_dur,b.total_hr_dis,b.md5sum,b.number_of_items)
+        FROM {} b
+        WHERE a.filename = b.filename
+    ", temp_table_name);
+
+    let drop_table_query = format!("DROP TABLE {}", temp_table_name);
+
+    conn.execute(&insert_query, &[])?;
+    conn.execute(&update_query, &[])?;
+    conn.execute(&drop_table_query, &[])?;
+
     Ok(())
 }
 

@@ -8,9 +8,6 @@ use std::io::BufReader;
 use std::path::Path;
 use subprocess::Exec;
 
-use chrono::{DateTime, Utc};
-use std::str::FromStr;
-
 use crate::garmin_correction_lap::GarminCorrectionLap;
 use crate::garmin_file::{apply_lap_corrections, GarminFile};
 use crate::garmin_lap::GarminLap;
@@ -137,54 +134,9 @@ impl GarminParseTcx {
         lap_list.push(current_lap.clone());
         point_list.push(current_point.clone());
 
-        let mut time_from_begin = 0.0;
+        let point_list = GarminPoint::calculate_durations(&point_list);
 
-        let point_list = point_list
-            .iter()
-            .enumerate()
-            .filter_map(|(i, point)| {
-                let mut new_point = point.clone();
-                new_point.duration_from_last = match i {
-                    0 => 0.0,
-                    _ => {
-                        let cur_time: DateTime<Utc> = DateTime::from_str(&new_point.time)
-                            .expect("Failed to extract timestamp");
-                        let last_time: DateTime<Utc> =
-                            DateTime::from_str(&point_list.get(i - 1).unwrap().time)
-                                .expect("Failed to extract timestamp");
-                        (cur_time - last_time).num_seconds() as f64
-                    }
-                };
-                time_from_begin += new_point.duration_from_last;
-                new_point.duration_from_begin = time_from_begin;
-
-                match new_point.distance {
-                    Some(d) => {
-                        if d > 0.0 {
-                            Some(new_point)
-                        } else {
-                            None
-                        }
-                    }
-                    None => None,
-                }
-            })
-            .collect();
-
-        let lap_list: Vec<_> = lap_list
-            .into_iter()
-            .enumerate()
-            .map(|(i, lap)| {
-                let mut new_lap = lap;
-                new_lap.lap_index = i as i32;
-                new_lap.lap_number = if new_lap.lap_number == -1 {
-                    i as i32
-                } else {
-                    new_lap.lap_number
-                };
-                new_lap
-            })
-            .collect();
+        let lap_list: Vec<_> = GarminLap::fix_lap_number(lap_list);
 
         Ok((lap_list, point_list, sport))
     }

@@ -78,6 +78,7 @@ pub fn file_report_html(
             (*h, 4.0 * t / 60.)
         })
         .collect();
+
     let speed_values: Vec<_> = speed_values
         .into_iter()
         .map(|v| {
@@ -86,8 +87,8 @@ pub fn file_report_html(
             (d / 4., 4. * t / 60.)
         })
         .collect();
-    let mile_split_vals = get_splits(&gfile, METERS_PER_MILE, "mi", false)?;
-    let mile_split_vals: Vec<_> = mile_split_vals
+
+    let mile_split_vals: Vec<_> = get_splits(&gfile, METERS_PER_MILE, "mi", false)?
         .into_iter()
         .map(|v| {
             let d = v.get(0).unwrap();
@@ -133,6 +134,7 @@ pub fn file_report_html(
             }
         };
     }
+
     if sum_time > 0.0 {
         avg_hr /= sum_time;
         max_hr = *hr_vals.iter().max_by_key(|&h| *h as i64).unwrap();
@@ -570,10 +572,8 @@ fn get_html_splits(
             "Heart Rate",
         ];
 
-        let split_vector = get_splits(gfile, split_distance_in_meters, label, true)?;
-
-        let values: Vec<_> = split_vector
-            .iter()
+        let values: Vec<_> = get_splits(gfile, split_distance_in_meters, label, true)?
+            .into_iter()
             .map(|val| {
                 let dis = *val.get(0).unwrap() as i32;
                 let tim = val.get(1).unwrap();

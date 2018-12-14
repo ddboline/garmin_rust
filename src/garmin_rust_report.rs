@@ -5,5 +5,5 @@ use garmin_rust::garmin_cli;
 fn main() {
     env_logger::init();
 
-    garmin_cli::cli_garmin_report().unwrap();
+    garmin_cli::cli_garmin_report().expect("cli_garmin_report failed");
 }

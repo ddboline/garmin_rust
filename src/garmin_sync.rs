@@ -8,7 +8,7 @@ use rayon::prelude::*;
 
 use failure::Error;
 
-use crate::utils::garmin_util::get_md5sum;
+use crate::utils::garmin_util::{get_md5sum, map_result_vec};
 use rusoto_core::Region;
 use rusoto_s3::{GetObjectRequest, ListObjectsV2Request, PutObjectRequest, S3Client, S3};
 use s4::S4;
@@ -84,7 +84,7 @@ pub fn sync_dir(local_dir: &str, s3_bucket: &str, s3_client: &S3Client) -> Resul
         .collect();
 
     let file_list: Vec<_> = file_list
-        .par_iter()
+        .into_par_iter()
         .map(|f| {
             let md5sum = get_md5sum(&f).unwrap();
 
@@ -99,6 +99,7 @@ pub fn sync_dir(local_dir: &str, s3_bucket: &str, s3_client: &S3Client) -> Resul
             (f.to_string(), md5sum, modified)
         })
         .collect();
+
     let file_set: HashMap<_, _> = file_list
         .iter()
         .map(|(x, m, t)| {
@@ -145,9 +146,7 @@ pub fn sync_dir(local_dir: &str, s3_bucket: &str, s3_client: &S3Client) -> Resul
         })
         .collect();
 
-    for result in results {
-        result?;
-    }
+    map_result_vec(results)?;
 
     let results: Vec<_> = key_list
         .par_iter()
@@ -177,9 +176,7 @@ pub fn sync_dir(local_dir: &str, s3_bucket: &str, s3_client: &S3Client) -> Resul
         })
         .collect();
 
-    for result in results {
-        result?;
-    }
+    map_result_vec(results)?;
 
     Ok(())
 }

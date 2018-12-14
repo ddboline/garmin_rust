@@ -201,9 +201,8 @@ fn print_splits(
         return Ok("".to_string());
     }
 
-    let split_vector = get_splits(gfile, split_distance_in_meters, label, true)?;
-    let retval: Vec<_> = split_vector
-        .iter()
+    let retval: Vec<_> = get_splits(gfile, split_distance_in_meters, label, true)?
+        .into_iter()
         .map(|val| {
             let dis = *val.get(0).unwrap() as i32;
             let tim = *val.get(1).unwrap();

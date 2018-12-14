@@ -1,4 +1,6 @@
+use chrono::{DateTime, Utc};
 use std::fmt;
+use std::str::FromStr;
 
 use crate::utils::garmin_util::{convert_xml_local_time_to_utc, METERS_PER_MILE};
 
@@ -161,6 +163,42 @@ impl GarminPoint {
                 }
             }
         }
+    }
+
+    pub fn calculate_durations(point_list: &Vec<GarminPoint>) -> Vec<GarminPoint> {
+        let mut time_from_begin = 0.0;
+
+        point_list
+            .iter()
+            .enumerate()
+            .filter_map(|(i, point)| {
+                let mut new_point = point.clone();
+                new_point.duration_from_last = match i {
+                    0 => 0.0,
+                    _ => {
+                        let cur_time: DateTime<Utc> = DateTime::from_str(&new_point.time)
+                            .expect("Failed to extract timestamp");
+                        let last_time: DateTime<Utc> =
+                            DateTime::from_str(&point_list.get(i - 1).unwrap().time)
+                                .expect("Failed to extract timestamp");
+                        (cur_time - last_time).num_seconds() as f64
+                    }
+                };
+                time_from_begin += new_point.duration_from_last;
+                new_point.duration_from_begin = time_from_begin;
+
+                match new_point.distance {
+                    Some(d) => {
+                        if d > 0.0 {
+                            Some(new_point)
+                        } else {
+                            None
+                        }
+                    }
+                    None => None,
+                }
+            })
+            .collect()
     }
 }
 

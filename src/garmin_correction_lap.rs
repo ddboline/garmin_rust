@@ -1,5 +1,6 @@
 use chrono::Utc;
 use failure::{err_msg, Error};
+use postgres_derive::{FromSql, ToSql};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
@@ -14,7 +15,7 @@ use postgres::Connection;
 use crate::garmin_summary;
 use crate::utils::sport_types::convert_sport_name;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSql, FromSql)]
 pub struct GarminCorrectionLap {
     pub id: i32,
     pub start_time: String,
@@ -286,18 +287,17 @@ pub fn fix_corrections(conn: &Connection) -> Result<(), Error> {
     let gps_dir = "/home/ddboline/.garmin_cache/run/gps_tracks";
     let cache_dir = "/home/ddboline/.garmin_cache/run/cache";
 
-    let corr_list = corr_list_from_json("tests/data/garmin_corrections.json")
-        .expect("Failed to read corrections from json");
+    let corr_list = corr_list_from_json("tests/data/garmin_corrections.json")?;
 
     let corr_list = add_mislabeled_times_to_corr_list(&corr_list);
 
-    //dump_corr_list_to_avro(&corr_list, correction_file).expect("Failed to dump to avro");
+    //dump_corr_list_to_avro(&corr_list, correction_file)?;
 
-    //let corr_list = read_corr_list_from_avro(&correction_file).expect("Failed to read avro");
+    //let corr_list = read_corr_list_from_avro(&correction_file)?;
 
     println!("{}", corr_list.len());
 
-    let fn_unique_key_map = get_filename_start_map(&conn).expect("Failed to get filename map");
+    let fn_unique_key_map = get_filename_start_map(&conn)?;
 
     println!(
         "{} {:?}",
@@ -351,7 +351,7 @@ pub fn get_filename_start_map(conn: &Connection) -> Result<HashMap<String, (Stri
             let filename: String = row.get(0);
             let unique_key: String = row.get(1);
             let start_time: String = unique_key.split("_").nth(0).unwrap().to_string();
-            let lap_number: i32 = unique_key.split("_").last().unwrap().parse().unwrap();
+            let lap_number: i32 = unique_key.split("_").last().unwrap().parse().unwrap_or(0);
             (filename, (start_time, lap_number))
         })
         .collect();

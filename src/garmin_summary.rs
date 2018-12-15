@@ -143,9 +143,7 @@ impl GarminSummaryList {
     }
 
     pub fn from_vec(summary_list: Vec<GarminSummary>) -> GarminSummaryList {
-        GarminSummaryList {
-            summary_list,
-        }
+        GarminSummaryList { summary_list }
     }
 
     pub fn process_all_gps_files(

@@ -99,9 +99,7 @@ impl GarminCorrectionList {
     }
 
     pub fn from_vec(corr_list: Vec<GarminCorrectionLap>) -> GarminCorrectionList {
-        GarminCorrectionList {
-            corr_list,
-        }
+        GarminCorrectionList { corr_list }
     }
 
     pub fn get_corr_list_map(&self) -> HashMap<(String, i32), GarminCorrectionLap> {

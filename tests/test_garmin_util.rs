@@ -41,9 +41,8 @@ mod tests {
             .with_title("test title")
             .with_data(&test_data);
 
-        assert_eq!(
-            plot_graph::plot_graph(&plot_opts).unwrap(),
-            "test_plot.png\n".to_string()
+        assert!(
+            plot_graph::generate_d3_plot(&plot_opts).unwrap().contains(r#".text("test title")"#)
         );
     }
 

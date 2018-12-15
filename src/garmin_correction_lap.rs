@@ -79,6 +79,7 @@ impl GarminCorrectionLap {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub struct GarminCorrectionList {
     pub corr_list: Vec<GarminCorrectionLap>,
 }
@@ -171,7 +172,7 @@ impl GarminCorrectionList {
         }
     }
 
-    pub fn dump_corr_list_to_avro(self, output_filename: &str) -> Result<(), Error> {
+    pub fn dump_corr_list_to_avro(&self, output_filename: &str) -> Result<(), Error> {
         let garmin_file_avro_schema = GARMIN_CORRECTION_LAP_AVRO_SCHEMA;
         let schema = Schema::parse_str(&garmin_file_avro_schema)?;
 
@@ -179,7 +180,7 @@ impl GarminCorrectionList {
 
         let mut writer = Writer::with_codec(&schema, output_file, Codec::Snappy);
 
-        writer.extend_ser(self.corr_list)?;
+        writer.extend_ser(self.corr_list.clone())?;
         writer.flush()?;
 
         Ok(())

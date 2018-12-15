@@ -3,15 +3,15 @@ extern crate approx;
 
 #[cfg(test)]
 mod tests {
-    use garmin_rust::garmin_correction_lap;
+    use garmin_rust::garmin_correction_lap::GarminCorrectionList;
     use garmin_rust::parsers::garmin_parse_tcx;
 
     #[test]
     fn test_garmin_parse_tcx() {
         let corr_list =
-            garmin_correction_lap::corr_list_from_json("tests/data/garmin_corrections.json")
+            GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json")
                 .unwrap();
-        let corr_map = garmin_correction_lap::get_corr_list_map(&corr_list);
+        let corr_map = corr_list.get_corr_list_map();
         let gparse = garmin_parse_tcx::GarminParseTcx::new("tests/data/test.tcx", &corr_map, false);
         assert_eq!(gparse.gfile.filename, "test.tcx");
         assert_eq!(gparse.gfile.sport.unwrap(), "biking");
@@ -29,9 +29,9 @@ mod tests {
     #[test]
     fn test_garmin_parse_fit() {
         let corr_list =
-            garmin_correction_lap::corr_list_from_json("tests/data/garmin_corrections.json")
+            GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json")
                 .unwrap();
-        let corr_map = garmin_correction_lap::get_corr_list_map(&corr_list);
+        let corr_map = corr_list.get_corr_list_map();
         let gparse = garmin_parse_tcx::GarminParseTcx::new("tests/data/test.fit", &corr_map, true);
         assert_eq!(gparse.gfile.filename, "test.fit");
         assert_eq!(gparse.gfile.sport.unwrap(), "running");

@@ -3,16 +3,16 @@ extern crate approx;
 
 #[cfg(test)]
 mod tests {
-    use garmin_rust::garmin_correction_lap;
+    use garmin_rust::garmin_correction_lap::GarminCorrectionList;
     use garmin_rust::garmin_file;
     use garmin_rust::parsers::garmin_parse_tcx;
 
     #[test]
     fn test_garmin_file_test_avro() {
         let corr_list =
-            garmin_correction_lap::corr_list_from_json("tests/data/garmin_corrections.json")
+            GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json")
                 .unwrap();
-        let corr_map = garmin_correction_lap::get_corr_list_map(&corr_list);
+        let corr_map = corr_list.get_corr_list_map();
         let gparse = garmin_parse_tcx::GarminParseTcx::new("tests/data/test.fit", &corr_map, true);
         match gparse.gfile.dump_avro("temp.avro.gz") {
             Ok(()) => {

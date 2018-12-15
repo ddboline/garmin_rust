@@ -41,9 +41,9 @@ mod tests {
             .with_title("test title")
             .with_data(&test_data);
 
-        assert!(
-            plot_graph::generate_d3_plot(&plot_opts).unwrap().contains(r#".text("test title")"#)
-        );
+        assert!(plot_graph::generate_d3_plot(&plot_opts)
+            .unwrap()
+            .contains(r#".text("test title")"#));
     }
 
     #[test]

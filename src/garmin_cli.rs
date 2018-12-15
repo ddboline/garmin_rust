@@ -153,10 +153,9 @@ pub fn cli_garmin_proc() -> Result<(), Error> {
                             false => Some(f.split("/").last().unwrap().to_string()),
                         })
                         .collect();
-                    let dbset: HashSet<String> =
-                        get_list_of_files_from_db(&pg_conn, &vec!["".to_string()])?
-                            .into_iter()
-                            .collect();
+                    let dbset: HashSet<String> = get_list_of_files_from_db(&pg_conn, &Vec::new())?
+                        .into_iter()
+                        .collect();
 
                     let path = Path::new(&gps_dir);
                     let proc_list: Vec<Result<_, Error>> = get_file_list(&path)

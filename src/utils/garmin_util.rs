@@ -8,6 +8,7 @@ use num::traits::Pow;
 use postgres::{Connection, TlsMode};
 use std::io::BufRead;
 use std::io::BufReader;
+use std::path::Path;
 use subprocess::Exec;
 
 use rand::distributions::{Alphanumeric, Distribution};
@@ -142,4 +143,22 @@ pub fn map_result_vec<T, E>(input: Vec<Result<T, E>>) -> Result<Vec<T>, E> {
 pub fn generate_random_string(nchar: usize) -> String {
     let mut rng = thread_rng();
     Alphanumeric.sample_iter(&mut rng).take(nchar).collect()
+}
+
+pub fn get_file_list(path: &Path) -> Vec<String> {
+    match path.read_dir() {
+        Ok(it) => it
+            .filter_map(|dir_line| match dir_line {
+                Ok(entry) => {
+                    let input_file = entry.path().to_str().unwrap().to_string();
+                    Some(input_file)
+                }
+                Err(_) => None,
+            })
+            .collect(),
+        Err(err) => {
+            println!("{}", err);
+            Vec::new()
+        }
+    }
 }

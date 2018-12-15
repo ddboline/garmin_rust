@@ -18,12 +18,32 @@ use std::fmt;
 
 use postgres::Connection;
 
-use crate::garmin_correction_lap::{
-    get_corr_list_map, read_corrections_from_db, GarminCorrectionLap,
-};
+use crate::garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList};
 use crate::garmin_file::GarminFile;
 use crate::parsers::garmin_parse::GarminParse;
-use crate::utils::garmin_util::{generate_random_string, get_md5sum, map_result_vec};
+use crate::utils::garmin_util::{
+    generate_random_string, get_file_list, get_md5sum, map_result_vec,
+};
+
+pub const GARMIN_SUMMARY_AVRO_SCHEMA: &str = r#"
+    {
+        "namespace": "garmin.avro",
+        "type": "record",
+        "name": "GarminSummary",
+        "fields": [
+            {"name": "filename", "type": "string"},
+            {"name": "begin_datetime", "type": "string"},
+            {"name": "sport", "type": "string"},
+            {"name": "total_calories", "type": "int"},
+            {"name": "total_distance", "type": "double"},
+            {"name": "total_duration", "type": "double"},
+            {"name": "total_hr_dur", "type": "double"},
+            {"name": "total_hr_dis", "type": "double"},
+            {"name": "number_of_items", "type": "int"},
+            {"name": "md5sum", "type": "string"}
+        ]
+    }
+"#;
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSql, FromSql)]
 pub struct GarminSummary {
@@ -53,6 +73,22 @@ impl GarminSummary {
             number_of_items: 1,
             md5sum: md5sum.to_string(),
         }
+    }
+
+    pub fn process_single_gps_file(
+        filename: &str,
+        cache_dir: &str,
+        corr_map: &HashMap<(String, i32), GarminCorrectionLap>,
+    ) -> Result<GarminSummary, Error> {
+        let cache_file = format!("{}/{}.avro", cache_dir, filename.split("/").last().unwrap());
+        let md5sum = get_md5sum(&filename)?;
+        let gfile = GarminParse::new(&filename, &corr_map);
+        match gfile.laps.get(0) {
+            Some(_) => (),
+            None => println!("{} has no laps?", gfile.filename),
+        };
+        gfile.dump_avro(&cache_file)?;
+        Ok(GarminSummary::new(&gfile, &md5sum))
     }
 }
 
@@ -94,352 +130,305 @@ impl fmt::Display for GarminSummary {
     }
 }
 
-pub const GARMIN_SUMMARY_AVRO_SCHEMA: &str = r#"
-    {
-        "namespace": "garmin.avro",
-        "type": "record",
-        "name": "GarminSummary",
-        "fields": [
-            {"name": "filename", "type": "string"},
-            {"name": "begin_datetime", "type": "string"},
-            {"name": "sport", "type": "string"},
-            {"name": "total_calories", "type": "int"},
-            {"name": "total_distance", "type": "double"},
-            {"name": "total_duration", "type": "double"},
-            {"name": "total_hr_dur", "type": "double"},
-            {"name": "total_hr_dis", "type": "double"},
-            {"name": "number_of_items", "type": "int"},
-            {"name": "md5sum", "type": "string"}
-        ]
-    }
-"#;
-
-pub fn process_single_gps_file(
-    filename: &str,
-    cache_dir: &str,
-    corr_map: &HashMap<(String, i32), GarminCorrectionLap>,
-) -> Result<GarminSummary, Error> {
-    let cache_file = format!("{}/{}.avro", cache_dir, filename.split("/").last().unwrap());
-    let md5sum = get_md5sum(&filename)?;
-    let gfile = GarminParse::new(&filename, &corr_map);
-    match gfile.laps.get(0) {
-        Some(_) => (),
-        None => println!("{} has no laps?", gfile.filename),
-    };
-    gfile.dump_avro(&cache_file)?;
-    Ok(GarminSummary::new(&gfile, &md5sum))
+pub struct GarminSummaryList {
+    pub summary_list: Vec<GarminSummary>,
 }
 
-pub fn get_file_list(path: &Path) -> Vec<String> {
-    match path.read_dir() {
-        Ok(it) => it
-            .filter_map(|dir_line| match dir_line {
-                Ok(entry) => {
-                    let input_file = entry.path().to_str().unwrap().to_string();
-                    Some(input_file)
-                }
-                Err(_) => None,
-            })
-            .collect(),
-        Err(err) => {
-            println!("{}", err);
-            Vec::new()
+impl GarminSummaryList {
+    pub fn new() -> GarminSummaryList {
+        GarminSummaryList {
+            summary_list: Vec::new(),
         }
     }
-}
 
-pub fn process_all_gps_files(
-    gps_dir: &str,
-    cache_dir: &str,
-    corr_map: &HashMap<(String, i32), GarminCorrectionLap>,
-) -> Result<Vec<GarminSummary>, Error> {
-    let path = Path::new(gps_dir);
+    pub fn from_vec(summary_list: Vec<GarminSummary>) -> GarminSummaryList {
+        GarminSummaryList {
+            summary_list: summary_list,
+        }
+    }
 
-    let file_list: Vec<String> = get_file_list(&path);
+    pub fn process_all_gps_files(
+        gps_dir: &str,
+        cache_dir: &str,
+        corr_map: &HashMap<(String, i32), GarminCorrectionLap>,
+    ) -> Result<GarminSummaryList, Error> {
+        let path = Path::new(gps_dir);
 
-    let gsum_result_list: Vec<Result<GarminSummary, Error>> = file_list
-        .par_iter()
-        .map(|input_file| {
-            let cache_file = format!(
-                "{}/{}.avro",
-                cache_dir,
-                input_file.split("/").last().unwrap()
-            );
-            let md5sum = get_md5sum(&input_file)?;
-            let gfile = GarminParse::new(&input_file, &corr_map);
-            match gfile.laps.get(0) {
-                Some(_) => (),
-                None => println!("{} {} has no laps?", &input_file, &gfile.filename),
-            };
-            gfile.dump_avro(&cache_file)?;
-            Ok(GarminSummary::new(&gfile, &md5sum))
-        })
-        .collect();
+        let file_list: Vec<String> = get_file_list(&path);
 
-    Ok(map_result_vec(gsum_result_list)?)
-}
+        let gsum_result_list: Vec<Result<GarminSummary, Error>> = file_list
+            .par_iter()
+            .map(|input_file| {
+                let cache_file = format!(
+                    "{}/{}.avro",
+                    cache_dir,
+                    input_file.split("/").last().unwrap()
+                );
+                let md5sum = get_md5sum(&input_file)?;
+                let gfile = GarminParse::new(&input_file, &corr_map);
+                match gfile.laps.get(0) {
+                    Some(_) => (),
+                    None => println!("{} {} has no laps?", &input_file, &gfile.filename),
+                };
+                gfile.dump_avro(&cache_file)?;
+                Ok(GarminSummary::new(&gfile, &md5sum))
+            })
+            .collect();
 
-pub fn create_summary_list(conn: &Connection) -> Result<Vec<GarminSummary>, Error> {
-    let gps_dir = "/home/ddboline/.garmin_cache/run/gps_tracks";
-    let cache_dir = "/home/ddboline/.garmin_cache/run/cache";
+        Ok(GarminSummaryList::from_vec(map_result_vec(
+            gsum_result_list,
+        )?))
+    }
 
-    let corr_list = read_corrections_from_db(&conn)?;
+    pub fn create_summary_list(conn: &Connection) -> Result<GarminSummaryList, Error> {
+        let gps_dir = "/home/ddboline/.garmin_cache/run/gps_tracks";
+        let cache_dir = "/home/ddboline/.garmin_cache/run/cache";
 
-    println!("{}", corr_list.len());
+        let corr_list = GarminCorrectionList::read_corrections_from_db(&conn)?;
 
-    let corr_map = get_corr_list_map(&corr_list);
+        println!("{}", corr_list.corr_list.len());
 
-    process_all_gps_files(&gps_dir, &cache_dir, &corr_map)
-}
+        let corr_map = corr_list.get_corr_list_map();
 
-pub fn dump_summary_to_avro(
-    gsum_list: &Vec<GarminSummary>,
-    output_filename: &str,
-) -> Result<(), Error> {
-    let garmin_summary_avro_schema = GARMIN_SUMMARY_AVRO_SCHEMA;
-    let schema = Schema::parse_str(&garmin_summary_avro_schema)?;
+        GarminSummaryList::process_all_gps_files(&gps_dir, &cache_dir, &corr_map)
+    }
 
-    let output_file = File::create(output_filename)?;
+    pub fn read_summary_from_avro(input_filename: &str) -> Result<GarminSummaryList, Error> {
+        let garmin_summary_avro_schema = GARMIN_SUMMARY_AVRO_SCHEMA;
+        let schema = Schema::parse_str(&garmin_summary_avro_schema)?;
 
-    let mut writer = Writer::with_codec(&schema, output_file, Codec::Snappy);
+        let input_file = File::open(input_filename)?;
 
-    writer.extend_ser(gsum_list)?;
-    writer.flush()?;
+        let reader = Reader::with_schema(&schema, input_file)?;
 
-    Ok(())
-}
+        let mut gsum_list = Vec::new();
 
-pub fn read_summary_from_avro(input_filename: &str) -> Result<Vec<GarminSummary>, Error> {
-    let garmin_summary_avro_schema = GARMIN_SUMMARY_AVRO_SCHEMA;
-    let schema = Schema::parse_str(&garmin_summary_avro_schema)?;
-
-    let input_file = File::open(input_filename)?;
-
-    let reader = Reader::with_schema(&schema, input_file)?;
-
-    let mut gsum_list = Vec::new();
-
-    for record in reader {
-        match record {
-            Ok(r) => match from_value::<GarminSummary>(&r) {
-                Ok(v) => {
-                    debug!("{:?}", v);
-                    gsum_list.push(v);
-                }
+        for record in reader {
+            match record {
+                Ok(r) => match from_value::<GarminSummary>(&r) {
+                    Ok(v) => {
+                        debug!("{:?}", v);
+                        gsum_list.push(v);
+                    }
+                    Err(e) => {
+                        debug!("got here 0 {:?}", e);
+                        continue;
+                    }
+                },
                 Err(e) => {
-                    debug!("got here 0 {:?}", e);
+                    debug!("got here 1 {:?}", e);
                     continue;
                 }
-            },
-            Err(e) => {
-                debug!("got here 1 {:?}", e);
-                continue;
-            }
-        };
+            };
+        }
+
+        Ok(GarminSummaryList::from_vec(gsum_list))
     }
 
-    Ok(gsum_list)
-}
+    pub fn read_summary_from_postgres(conn: &Connection) -> Result<GarminSummaryList, Error> {
+        let query = "
+            SELECT filename,
+                   begin_datetime,
+                   sport,
+                   total_calories,
+                   total_distance,
+                   total_duration,
+                   total_hr_dur,
+                   total_hr_dis,
+                   number_of_items,
+                   md5sum
+            FROM garmin_summary
+        ";
 
-pub fn read_summary_from_postgres(conn: &Connection) -> Result<Vec<GarminSummary>, Error> {
-    let query = "
-        SELECT filename,
-               begin_datetime,
-               sport,
-               total_calories,
-               total_distance,
-               total_duration,
-               total_hr_dur,
-               total_hr_dis,
-               number_of_items,
-               md5sum
-        FROM garmin_summary
-    ";
-
-    let gsum_list = conn
-        .query(&query, &[])?
-        .iter()
-        .map(|row| GarminSummary {
-            filename: row.get(0),
-            begin_datetime: row.get(1),
-            sport: row.get(2),
-            total_calories: row.get(3),
-            total_distance: row.get(4),
-            total_duration: row.get(5),
-            total_hr_dur: row.get(6),
-            total_hr_dis: row.get(7),
-            number_of_items: row.get(8),
-            md5sum: row.get(9),
-        })
-        .collect();
-    Ok(gsum_list)
-}
-
-pub fn read_summary_from_postgres_pattern(
-    conn: &Connection,
-    pattern: &str,
-) -> Result<Vec<GarminSummary>, Error> {
-    let query = format!(
-        "
-        SELECT filename,
-               begin_datetime,
-               sport,
-               total_calories,
-               total_distance,
-               total_duration,
-               total_hr_dur,
-               total_hr_dis,
-               number_of_items,
-               md5sum
-        FROM garmin_summary
-        WHERE filename like '%{}%'
-    ",
-        pattern
-    );
-
-    let gsum_list = conn
-        .query(&query, &[])?
-        .iter()
-        .map(|row| GarminSummary {
-            filename: row.get(0),
-            begin_datetime: row.get(1),
-            sport: row.get(2),
-            total_calories: row.get(3),
-            total_distance: row.get(4),
-            total_duration: row.get(5),
-            total_hr_dur: row.get(6),
-            total_hr_dis: row.get(7),
-            number_of_items: row.get(8),
-            md5sum: row.get(9),
-        })
-        .collect();
-    Ok(gsum_list)
-}
-
-pub fn write_summary_to_avro_files(
-    gsum_list: &Vec<GarminSummary>,
-    summary_cache_dir: &str,
-) -> Result<(), Error> {
-    let results = gsum_list
-        .iter()
-        .map(|gsum| {
-            let summary_avro_fname =
-                format!("{}/{}.summary.avro", &summary_cache_dir, &gsum.filename);
-            let single_summary = vec![gsum.clone()];
-            dump_summary_to_avro(&single_summary, &summary_avro_fname)
-        })
-        .collect();
-
-    map_result_vec(results)?;
-    Ok(())
-}
-
-pub fn read_summary_from_avro_files(summary_cache_dir: &str) -> Result<Vec<GarminSummary>, Error> {
-    let path = Path::new(summary_cache_dir);
-
-    let file_list: Vec<String> = get_file_list(&path);
-
-    let gsum_result_list: Vec<_> = file_list
-        .par_iter()
-        .map(|f| read_summary_from_avro(f))
-        .collect();
-
-    Ok(map_result_vec(gsum_result_list)?
-        .into_iter()
-        .flatten()
-        .collect())
-}
-
-pub fn get_list_of_files_from_db(conn: &Connection) -> Result<Vec<String>, Error> {
-    let filename_query = "SELECT filename FROM garmin_summary";
-
-    Ok(conn
-        .query(filename_query, &[])?
-        .iter()
-        .map(|row| row.get(0))
-        .collect())
-}
-
-pub fn write_summary_to_postgres(
-    conn: &Connection,
-    gsum_list: &Vec<GarminSummary>,
-) -> Result<(), Error> {
-    let rand_str = generate_random_string(8);
-
-    let temp_table_name = format!("garmin_summary_{}", rand_str);
-
-    let create_table_query = format!(
-        "CREATE TABLE {} (
-            filename text NOT NULL PRIMARY KEY,
-            begin_datetime text,
-            sport varchar(12),
-            total_calories integer,
-            total_distance double precision,
-            total_duration double precision,
-            total_hr_dur double precision,
-            total_hr_dis double precision,
-            number_of_items integer,
-            md5sum varchar(32)
-        );",
-        temp_table_name
-    );
-
-    conn.execute(&create_table_query, &[])?;
-
-    let insert_query = format!("
-        INSERT INTO {} (filename, begin_datetime, sport, total_calories, total_distance, total_duration, total_hr_dur, total_hr_dis, md5sum, number_of_items)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 1)
-    ", temp_table_name);
-
-    let stmt_insert = conn.prepare(&insert_query)?;
-
-    for gsum in gsum_list {
-        stmt_insert.execute(&[
-            &gsum.filename,
-            &gsum.begin_datetime,
-            &gsum.sport,
-            &gsum.total_calories,
-            &gsum.total_distance,
-            &gsum.total_duration,
-            &gsum.total_hr_dur,
-            &gsum.total_hr_dis,
-            &gsum.md5sum,
-        ])?;
+        let gsum_list = conn
+            .query(&query, &[])?
+            .iter()
+            .map(|row| GarminSummary {
+                filename: row.get(0),
+                begin_datetime: row.get(1),
+                sport: row.get(2),
+                total_calories: row.get(3),
+                total_distance: row.get(4),
+                total_duration: row.get(5),
+                total_hr_dur: row.get(6),
+                total_hr_dis: row.get(7),
+                number_of_items: row.get(8),
+                md5sum: row.get(9),
+            })
+            .collect();
+        Ok(GarminSummaryList::from_vec(gsum_list))
     }
 
-    let insert_query = format!("
-        INSERT INTO garmin_summary (filename, begin_datetime, sport, total_calories, total_distance, total_duration, total_hr_dur, total_hr_dis, md5sum, number_of_items)
-        SELECT b.filename, b.begin_datetime, b.sport, b.total_calories, b.total_distance, b.total_duration, b.total_hr_dur, b.total_hr_dis, b.md5sum, b.number_of_items
-        FROM {} b
-        WHERE b.filename not in (select filename from garmin_summary)
-    ", temp_table_name);
+    pub fn read_summary_from_postgres_pattern(
+        conn: &Connection,
+        pattern: &str,
+    ) -> Result<GarminSummaryList, Error> {
+        let query = format!(
+            "
+            SELECT filename,
+                   begin_datetime,
+                   sport,
+                   total_calories,
+                   total_distance,
+                   total_duration,
+                   total_hr_dur,
+                   total_hr_dis,
+                   number_of_items,
+                   md5sum
+            FROM garmin_summary
+            WHERE filename like '%{}%'
+        ",
+            pattern
+        );
 
-    let update_query = format!("
-        UPDATE garmin_summary a
-        SET (begin_datetime,sport,total_calories,total_distance,total_duration,total_hr_dur,total_hr_dis,md5sum,number_of_items) = 
-            (b.begin_datetime,b.sport,b.total_calories,b.total_distance,b.total_duration,b.total_hr_dur,b.total_hr_dis,b.md5sum,b.number_of_items)
-        FROM {} b
-        WHERE a.filename = b.filename
-    ", temp_table_name);
+        let gsum_list = conn
+            .query(&query, &[])?
+            .iter()
+            .map(|row| GarminSummary {
+                filename: row.get(0),
+                begin_datetime: row.get(1),
+                sport: row.get(2),
+                total_calories: row.get(3),
+                total_distance: row.get(4),
+                total_duration: row.get(5),
+                total_hr_dur: row.get(6),
+                total_hr_dis: row.get(7),
+                number_of_items: row.get(8),
+                md5sum: row.get(9),
+            })
+            .collect();
+        Ok(GarminSummaryList::from_vec(gsum_list))
+    }
 
-    let drop_table_query = format!("DROP TABLE {}", temp_table_name);
+    pub fn dump_summary_to_avro(self, output_filename: &str) -> Result<(), Error> {
+        let garmin_summary_avro_schema = GARMIN_SUMMARY_AVRO_SCHEMA;
+        let schema = Schema::parse_str(&garmin_summary_avro_schema)?;
 
-    conn.execute(&insert_query, &[])?;
-    conn.execute(&update_query, &[])?;
-    conn.execute(&drop_table_query, &[])?;
+        let output_file = File::create(output_filename)?;
 
-    Ok(())
-}
+        let mut writer = Writer::with_codec(&schema, output_file, Codec::Snappy);
 
-pub fn dump_summary_from_postgres_to_avro(conn: &Connection) -> Result<(), Error> {
-    let gsum_list = read_summary_from_postgres(&conn)?;
+        writer.extend_ser(self.summary_list)?;
+        writer.flush()?;
 
-    println!("{}", gsum_list.len());
+        Ok(())
+    }
 
-    dump_summary_to_avro(&gsum_list, "garmin_summary.avro")?;
+    pub fn write_summary_to_avro_files(&self, summary_cache_dir: &str) -> Result<(), Error> {
+        let results = self
+            .summary_list
+            .iter()
+            .map(|gsum| {
+                let summary_avro_fname =
+                    format!("{}/{}.summary.avro", &summary_cache_dir, &gsum.filename);
+                let single_summary = GarminSummaryList::from_vec(vec![gsum.clone()]);
+                single_summary.dump_summary_to_avro(&summary_avro_fname)
+            })
+            .collect();
 
-    let gsum_list = read_summary_from_avro("garmin_summary.avro")?;
+        map_result_vec(results)?;
+        Ok(())
+    }
 
-    println!("{}", gsum_list.len());
-    Ok(())
+    pub fn read_summary_from_avro_files(
+        summary_cache_dir: &str,
+    ) -> Result<GarminSummaryList, Error> {
+        let path = Path::new(summary_cache_dir);
+
+        let file_list: Vec<String> = get_file_list(&path);
+
+        let gsum_result_list: Vec<_> = file_list
+            .par_iter()
+            .map(|f| GarminSummaryList::read_summary_from_avro(f))
+            .collect();
+
+        Ok(GarminSummaryList::from_vec(
+            map_result_vec(gsum_result_list)?
+                .into_iter()
+                .map(|g| g.summary_list)
+                .flatten()
+                .collect(),
+        ))
+    }
+
+    pub fn write_summary_to_postgres(&self, conn: &Connection) -> Result<(), Error> {
+        let rand_str = generate_random_string(8);
+
+        let temp_table_name = format!("garmin_summary_{}", rand_str);
+
+        let create_table_query = format!(
+            "CREATE TABLE {} (
+                filename text NOT NULL PRIMARY KEY,
+                begin_datetime text,
+                sport varchar(12),
+                total_calories integer,
+                total_distance double precision,
+                total_duration double precision,
+                total_hr_dur double precision,
+                total_hr_dis double precision,
+                number_of_items integer,
+                md5sum varchar(32)
+            );",
+            temp_table_name
+        );
+
+        conn.execute(&create_table_query, &[])?;
+
+        let insert_query = format!("
+            INSERT INTO {} (filename, begin_datetime, sport, total_calories, total_distance, total_duration, total_hr_dur, total_hr_dis, md5sum, number_of_items)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 1)
+        ", temp_table_name);
+
+        let stmt_insert = conn.prepare(&insert_query)?;
+
+        for gsum in &self.summary_list {
+            stmt_insert.execute(&[
+                &gsum.filename,
+                &gsum.begin_datetime,
+                &gsum.sport,
+                &gsum.total_calories,
+                &gsum.total_distance,
+                &gsum.total_duration,
+                &gsum.total_hr_dur,
+                &gsum.total_hr_dis,
+                &gsum.md5sum,
+            ])?;
+        }
+
+        let insert_query = format!("
+            INSERT INTO garmin_summary (filename, begin_datetime, sport, total_calories, total_distance, total_duration, total_hr_dur, total_hr_dis, md5sum, number_of_items)
+            SELECT b.filename, b.begin_datetime, b.sport, b.total_calories, b.total_distance, b.total_duration, b.total_hr_dur, b.total_hr_dis, b.md5sum, b.number_of_items
+            FROM {} b
+            WHERE b.filename not in (select filename from garmin_summary)
+        ", temp_table_name);
+
+        let update_query = format!("
+            UPDATE garmin_summary a
+            SET (begin_datetime,sport,total_calories,total_distance,total_duration,total_hr_dur,total_hr_dis,md5sum,number_of_items) =
+                (b.begin_datetime,b.sport,b.total_calories,b.total_distance,b.total_duration,b.total_hr_dur,b.total_hr_dis,b.md5sum,b.number_of_items)
+            FROM {} b
+            WHERE a.filename = b.filename
+        ", temp_table_name);
+
+        let drop_table_query = format!("DROP TABLE {}", temp_table_name);
+
+        conn.execute(&insert_query, &[])?;
+        conn.execute(&update_query, &[])?;
+        conn.execute(&drop_table_query, &[])?;
+
+        Ok(())
+    }
+
+    pub fn dump_summary_from_postgres_to_avro(conn: &Connection) -> Result<(), Error> {
+        let gsum_list = GarminSummaryList::read_summary_from_postgres(&conn)?;
+
+        println!("{}", gsum_list.summary_list.len());
+
+        gsum_list.dump_summary_to_avro("garmin_summary.avro")?;
+
+        let gsum_list = GarminSummaryList::read_summary_from_avro("garmin_summary.avro")?;
+
+        println!("{}", gsum_list.summary_list.len());
+        Ok(())
+    }
 }

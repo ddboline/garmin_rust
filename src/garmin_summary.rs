@@ -144,7 +144,7 @@ impl GarminSummaryList {
 
     pub fn from_vec(summary_list: Vec<GarminSummary>) -> GarminSummaryList {
         GarminSummaryList {
-            summary_list: summary_list,
+            summary_list,
         }
     }
 
@@ -160,6 +160,7 @@ impl GarminSummaryList {
         let gsum_result_list: Vec<Result<GarminSummary, Error>> = file_list
             .par_iter()
             .map(|input_file| {
+                println!("Process {}", &input_file);
                 let cache_file = format!(
                     "{}/{}.avro",
                     cache_dir,

@@ -47,7 +47,7 @@ impl GarminParseTcx {
                 filename: file_name,
                 filetype: "tcx".to_string(),
                 begin_datetime: first_lap.lap_start.clone(),
-                sport: sport,
+                sport,
                 total_calories: lap_list.iter().map(|lap| lap.lap_calories).sum(),
                 total_distance: lap_list.iter().map(|lap| lap.lap_distance).sum(),
                 total_duration: lap_list.iter().map(|lap| lap.lap_duration).sum(),

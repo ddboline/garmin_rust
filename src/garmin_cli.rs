@@ -104,24 +104,37 @@ pub fn cli_garmin_proc() -> Result<(), Error> {
 
     if do_bootstrap {
         let gsync = GarminSync::new();
+        println!("Syncing GPS files");
         gsync.sync_dir(&gps_dir, &gps_bucket)?;
+        println!("Syncing CACHE files");
         gsync.sync_dir(&cache_dir, &cache_bucket)?;
+        println!("Syncing SUMMARY files");
         gsync.sync_dir(&summary_cache, &summary_bucket)?;
 
+        println!("Read corrections from avro file");
         let corr_list = GarminCorrectionList::read_corr_list_from_avro(&format!(
             "{}/garmin_correction.avro",
             &cache_dir
         ))?;
 
+        println!("Write corrections to postgres");
         corr_list.dump_corrections_to_db(&pg_conn)?;
 
+        println!("Read summaries from avro files");
         let gsum_list = GarminSummaryList::read_summary_from_avro_files(&summary_cache)?;
 
+        println!("Write summaries to postgres");
         gsum_list.write_summary_to_postgres(&pg_conn)?;
     } else if do_sync {
         let gsync = GarminSync::new();
+
+        println!("Syncing GPS files");
         gsync.sync_dir(&gps_dir, &gps_bucket)?;
+
+        println!("Syncing CACHE files");
         gsync.sync_dir(&cache_dir, &cache_bucket)?;
+
+        println!("Syncing SUMMARY file");
         gsync.sync_dir(&summary_cache, &summary_bucket)?;
     } else {
         let corr_list = GarminCorrectionList::read_corrections_from_db(&pg_conn)?;
@@ -134,7 +147,7 @@ pub fn cli_garmin_proc() -> Result<(), Error> {
             Some(flist) => {
                 let proc_list: Vec<Result<_, Error>> = flist
                     .map(|f| {
-                        println!("{}", &f);
+                        println!("Process {}", &f);
                         Ok(GarminSummary::process_single_gps_file(
                             &f, &cache_dir, &corr_map,
                         )?)
@@ -142,15 +155,19 @@ pub fn cli_garmin_proc() -> Result<(), Error> {
                     .collect();
                 GarminSummaryList::from_vec(map_result_vec(proc_list)?)
             }
-            None => match do_all {
-                true => GarminSummaryList::process_all_gps_files(&gps_dir, &cache_dir, &corr_map)?,
-                false => {
+            None => {
+                if do_all {
+                    GarminSummaryList::process_all_gps_files(&gps_dir, &cache_dir, &corr_map)?
+                } else {
                     let path = Path::new(&cache_dir);
                     let cacheset: HashSet<String> = get_file_list(&path)
                         .into_par_iter()
-                        .filter_map(|f| match f.contains("garmin_correction.avro") {
-                            true => None,
-                            false => Some(f.split("/").last().unwrap().to_string()),
+                        .filter_map(|f| {
+                            if f.contains("garmin_correction.avro") {
+                                None
+                            } else {
+                                Some(f.split('/').last().unwrap().to_string())
+                            }
                         })
                         .collect();
                     let dbset: HashSet<String> = get_list_of_files_from_db(&pg_conn, &Vec::new())?
@@ -160,14 +177,14 @@ pub fn cli_garmin_proc() -> Result<(), Error> {
                     let path = Path::new(&gps_dir);
                     let proc_list: Vec<Result<_, Error>> = get_file_list(&path)
                         .into_par_iter()
-                        .map(|f| f.split("/").last().unwrap().to_string())
+                        .map(|f| f.split('/').last().unwrap().to_string())
                         .filter_map(|f| {
                             let cachefile = format!("{}.avro", f);
                             if dbset.contains(&f) && cacheset.contains(&cachefile) {
                                 None
                             } else {
                                 let gps_path = format!("{}/{}", &gps_dir, &f);
-                                println!("{}", &gps_path);
+                                println!("Process {}", &gps_path);
                                 Some(gps_path)
                             }
                         })
@@ -179,10 +196,10 @@ pub fn cli_garmin_proc() -> Result<(), Error> {
                         .collect();
                     GarminSummaryList::from_vec(map_result_vec(proc_list)?)
                 }
-            },
+            }
         };
 
-        if gsum_list.summary_list.len() > 0 {
+        if !gsum_list.summary_list.is_empty() {
             gsum_list.write_summary_to_avro_files(&summary_cache)?;
             gsum_list.write_summary_to_postgres(&pg_conn)?;
         };
@@ -212,7 +229,7 @@ pub fn cli_garmin_report() -> Result<(), Error> {
     run_cli(&options, &constraints)
 }
 
-pub fn process_pattern(patterns: &Vec<String>) -> (GarminReportOptions, Vec<String>) {
+pub fn process_pattern(patterns: &[String]) -> (GarminReportOptions, Vec<String>) {
     let mut options = GarminReportOptions::new();
 
     let sport_type_map = get_sport_type_map();
@@ -240,7 +257,7 @@ pub fn process_pattern(patterns: &Vec<String>) -> (GarminReportOptions, Vec<Stri
     (options, constraints)
 }
 
-pub fn run_cli(options: &GarminReportOptions, constraints: &Vec<String>) -> Result<(), Error> {
+pub fn run_cli(options: &GarminReportOptions, constraints: &[String]) -> Result<(), Error> {
     let config = get_garmin_config();
 
     let pgurl = config.pgurl.expect("No Postgres server specified (PGURL)");
@@ -287,7 +304,7 @@ pub fn run_cli(options: &GarminReportOptions, constraints: &Vec<String>) -> Resu
 
 pub fn run_html(
     options: &GarminReportOptions,
-    constraints: &Vec<String>,
+    constraints: &[String],
     filter: &str,
     history: &str,
 ) -> Result<String, Error> {
@@ -333,7 +350,7 @@ pub fn run_html(
 
             file_report_html(
                 &gfile,
-                &config.maps_api_key.unwrap_or("EMPTY".to_string()),
+                &config.maps_api_key.unwrap_or_else(|| "EMPTY".to_string()),
                 &htmlcachedir,
                 &http_bucket,
                 &history,

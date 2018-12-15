@@ -54,7 +54,7 @@ impl GarminSync {
                 .s3_client
                 .list_objects_v2(ListObjectsV2Request {
                     bucket: bucket.to_string(),
-                    continuation_token: continuation_token,
+                    continuation_token,
                     delimiter: None,
                     encoding_type: None,
                     fetch_owner: None,
@@ -255,7 +255,7 @@ impl GarminSync {
         self.s3_client.upload_from_file(
             &local_file,
             PutObjectRequest {
-                acl: acl,
+                acl,
                 body: None,
                 bucket: s3_bucket.to_string(),
                 cache_control: None,

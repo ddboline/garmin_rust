@@ -1,6 +1,8 @@
+#![allow(clippy::wrong_self_convention)]
 use config::{Config, File};
 use std::env::var;
 
+#[derive(Default)]
 pub struct GarminConfig {
     pub pgurl: Option<String>,
     pub maps_api_key: Option<String>,

@@ -1,3 +1,5 @@
+#![allow(clippy::wrong_self_convention)]
+
 use chrono::Utc;
 use failure::{err_msg, Error};
 use postgres_derive::{FromSql, ToSql};
@@ -31,7 +33,7 @@ pub const GARMIN_CORRECTION_LAP_AVRO_SCHEMA: &str = r#"
     }
 "#;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSql, FromSql)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSql, FromSql, Default)]
 pub struct GarminCorrectionLap {
     pub id: i32,
     pub start_time: String,
@@ -57,29 +59,34 @@ impl GarminCorrectionLap {
         self.id = id;
         self
     }
+
     pub fn with_start_time(mut self, start_time: &str) -> GarminCorrectionLap {
         self.start_time = start_time.to_string();
         self
     }
+
     pub fn with_lap_number(mut self, lap_number: i32) -> GarminCorrectionLap {
         self.lap_number = lap_number;
         self
     }
+
     pub fn with_sport(mut self, sport: &str) -> GarminCorrectionLap {
         self.sport = convert_sport_name(sport);
         self
     }
+
     pub fn with_distance(mut self, distance: f64) -> GarminCorrectionLap {
         self.distance = Some(distance);
         self
     }
+
     pub fn with_duration(mut self, duration: f64) -> GarminCorrectionLap {
         self.duration = Some(duration);
         self
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Default)]
 pub struct GarminCorrectionList {
     pub corr_list: Vec<GarminCorrectionLap>,
 }
@@ -93,7 +100,7 @@ impl GarminCorrectionList {
 
     pub fn from_vec(corr_list: Vec<GarminCorrectionLap>) -> GarminCorrectionList {
         GarminCorrectionList {
-            corr_list: corr_list,
+            corr_list,
         }
     }
 
@@ -104,7 +111,7 @@ impl GarminCorrectionList {
             .collect()
     }
 
-    pub fn corr_list_from_buffer(buffer: &Vec<u8>) -> Result<GarminCorrectionList, Error> {
+    pub fn corr_list_from_buffer(buffer: &[u8]) -> Result<GarminCorrectionList, Error> {
         let jsval = parse(&str::from_utf8(&buffer)?)?;
 
         let corr_list = match &jsval {
@@ -270,7 +277,7 @@ impl GarminCorrectionList {
                     .filter_map(|(t, n)| if t == time { Some(*n) } else { None })
                     .collect();
 
-                let lap_list = if lap_list.len() > 0 {
+                let lap_list = if !lap_list.is_empty() {
                     lap_list
                 } else {
                     vec![0]
@@ -290,7 +297,7 @@ impl GarminCorrectionList {
             }
         }
 
-        GarminCorrectionList::from_vec(corr_list_map.values().map(|v| v.clone()).collect())
+        GarminCorrectionList::from_vec(corr_list_map.values().cloned().collect())
     }
 
     pub fn fix_corrections(conn: &Connection) -> Result<(), Error> {
@@ -327,21 +334,20 @@ impl GarminCorrectionList {
 
         for gsum in gsum_list.summary_list {
             match fn_unique_key_map.get(&gsum.filename) {
-                Some((s, n)) => match corr_map.get(&(s.to_string(), *n)) {
-                    Some(v) => {
+                Some((s, n)) => {
+                    if let Some(v) = corr_map.get(&(s.to_string(), *n)) {
                         println!("{} {} {} {}", gsum.filename, gsum.begin_datetime, s, n);
                         let mut new_corr = v.clone();
                         new_corr.start_time = gsum.begin_datetime.clone();
                         new_corr_map.insert((s.to_string(), *n), new_corr);
                     }
-                    None => (),
-                },
+                }
                 None => continue,
             }
         }
 
         let new_corr_list =
-            GarminCorrectionList::from_vec(new_corr_map.values().map(|v| v.clone()).collect());
+            GarminCorrectionList::from_vec(new_corr_map.values().cloned().collect());
 
         println!("{}", new_corr_list.corr_list.len());
 
@@ -364,8 +370,8 @@ impl GarminCorrectionList {
             .map(|row| {
                 let filename: String = row.get(0);
                 let unique_key: String = row.get(1);
-                let start_time: String = unique_key.split("_").nth(0).unwrap().to_string();
-                let lap_number: i32 = unique_key.split("_").last().unwrap().parse().unwrap_or(0);
+                let start_time: String = unique_key.split('_').nth(0).unwrap().to_string();
+                let lap_number: i32 = unique_key.split('_').last().unwrap().parse().unwrap_or(0);
                 (filename, (start_time, lap_number))
             })
             .collect();

@@ -38,7 +38,7 @@ impl GarminParseTxt {
                 filename: file_name,
                 filetype: "txt".to_string(),
                 begin_datetime: first_lap.lap_start.clone(),
-                sport: sport,
+                sport,
                 total_calories: lap_list.iter().map(|lap| lap.lap_calories).sum(),
                 total_distance: lap_list.iter().map(|lap| lap.lap_distance).sum(),
                 total_duration: lap_list.iter().map(|lap| lap.lap_duration).sum(),
@@ -256,9 +256,9 @@ impl GarminParseTxt {
         };
 
         Ok(GarminLap {
-            lap_type: lap_type,
+            lap_type,
             lap_index: -1,
-            lap_start: lap_start,
+            lap_start,
             lap_duration: lap_dur,
             lap_distance: lap_dis,
             lap_trigger: None,
@@ -267,7 +267,7 @@ impl GarminParseTxt {
             lap_avg_hr: lap_avghr,
             lap_max_hr: None,
             lap_intensity: None,
-            lap_number: lap_number,
+            lap_number,
             lap_start_string: None,
         })
     }

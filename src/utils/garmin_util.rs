@@ -95,9 +95,9 @@ pub fn days_in_month(year: i32, month: u32) -> i64 {
 pub fn expected_calories(weight: f64, pace_min_per_mile: f64, distance: f64) -> f64 {
     let cal_per_mi = weight
         * (0.0395
-            + 0.00327 * (60. / pace_min_per_mile)
-            + 0.000455 * (60. / pace_min_per_mile).pow(2.0)
-            + 0.000801
+            + 0.003_27 * (60. / pace_min_per_mile)
+            + 0.000_455 * (60. / pace_min_per_mile).pow(2.0)
+            + 0.000_801
                 * ((weight / 154.0) * 0.425 / weight * (60. / pace_min_per_mile).pow(3.0))
                 * 60.
                 / (60. / pace_min_per_mile));

@@ -17,6 +17,7 @@ amazon:
 cleanup:
 	docker rmi `docker images | python -c "import sys; print('\n'.join(l.split()[2] for l in sys.stdin if '<none>' in l))"`
 	rm -rf /tmp/.tmp.docker.garmin_rust
+    rm Dockerfile
 
 package:
 	docker run --cidfile $(cidfile) build_rust:ubuntu18.04 /garmin_rust/build_deb_docker.sh $(version) $(release)

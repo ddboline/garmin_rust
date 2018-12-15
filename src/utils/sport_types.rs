@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt;
 
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
 pub enum SportTypes {
@@ -15,9 +16,9 @@ pub enum SportTypes {
     Skiing,
 }
 
-impl SportTypes {
-    pub fn to_string(&self) -> String {
-        match self {
+impl fmt::Display for SportTypes {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let sport_str = match self {
             SportTypes::Running => "running".to_string(),
             SportTypes::Biking => "biking".to_string(),
             SportTypes::Walking => "walking".to_string(),
@@ -29,7 +30,14 @@ impl SportTypes {
             SportTypes::Other => "other".to_string(),
             SportTypes::Snowshoeing => "snowshoeing".to_string(),
             SportTypes::Skiing => "skiing".to_string(),
-        }
+        };
+        write!(f, "{}", sport_str)
+    }
+}
+
+impl SportTypes {
+    pub fn to_string(self) -> String {
+        format!("{}", self)
     }
 }
 
@@ -54,7 +62,7 @@ pub fn get_sport_type_map() -> HashMap<String, SportTypes> {
         ("skiing", SportTypes::Skiing),
     ]
     .iter()
-    .map(|(k, v)| (k.to_string(), v.clone()))
+    .map(|(k, v)| (k.to_string(), *v))
     .collect()
 }
 

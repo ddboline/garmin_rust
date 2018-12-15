@@ -15,7 +15,7 @@ impl GarminParse {
     pub fn new(
         filename: &str,
         corr_map: &HashMap<(String, i32), GarminCorrectionLap>,
-    ) -> GarminFile {
+    ) -> GarminParse {
         let null_gfile = GarminFile {
             filename: "".to_string(),
             filetype: "".to_string(),
@@ -31,7 +31,7 @@ impl GarminParse {
         };
 
         let file_path = Path::new(&filename);
-        match file_path.extension() {
+        let gfile = match file_path.extension() {
             Some(x) => match x.to_str() {
                 Some("txt") => GarminParseTxt::new(filename, corr_map).gfile,
                 Some("fit") => GarminParseTcx::new(filename, corr_map, true).gfile,
@@ -40,6 +40,7 @@ impl GarminParse {
                 _ => null_gfile,
             },
             _ => null_gfile,
-        }
+        };
+        GarminParse { gfile }
     }
 }

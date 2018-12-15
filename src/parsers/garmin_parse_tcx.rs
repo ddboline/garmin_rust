@@ -19,6 +19,12 @@ pub struct GarminParseTcx {
     pub gfile: GarminFile,
 }
 
+struct TcxOutput {
+    lap_list: Vec<GarminLap>,
+    point_list: Vec<GarminPoint>,
+    sport: Option<String>,
+}
+
 impl GarminParseTcx {
     pub fn new(
         filename: &str,
@@ -27,13 +33,14 @@ impl GarminParseTcx {
     ) -> GarminParseTcx {
         let file_name = Path::new(&filename)
             .file_name()
-            .expect(&format!("filename {} has no path", filename))
+            .unwrap_or_else(|| panic!("filename {} has no path", filename))
             .to_os_string()
             .into_string()
-            .unwrap_or(filename.to_string());
-        let (lap_list, point_list, sport) =
+            .unwrap_or_else(|_| filename.to_string());
+        let tcx_output =
             GarminParseTcx::parse_tcx(filename, is_fit_file).expect("Failed to parse tcx");
-        let (lap_list, sport) = apply_lap_corrections(lap_list, sport, corr_map);
+        let (lap_list, sport) =
+            apply_lap_corrections(&tcx_output.lap_list, &tcx_output.sport, corr_map);
         let first_lap = lap_list.get(0).expect("No laps found");
         GarminParseTcx {
             gfile: GarminFile {
@@ -50,15 +57,12 @@ impl GarminParseTcx {
                     .sum(),
                 total_hr_dis: lap_list.iter().map(|lap| lap.lap_duration).sum(),
                 laps: lap_list,
-                points: point_list,
+                points: tcx_output.point_list,
             },
         }
     }
 
-    fn parse_tcx(
-        filename: &str,
-        is_fit_file: bool,
-    ) -> Result<(Vec<GarminLap>, Vec<GarminPoint>, Option<String>), Error> {
+    fn parse_tcx(filename: &str, is_fit_file: bool) -> Result<TcxOutput, Error> {
         let sport_type_map = get_sport_type_map();
 
         let command = if is_fit_file {
@@ -82,21 +86,23 @@ impl GarminParseTcx {
             .lines()
             .filter_map(|line| match line {
                 Ok(l) => {
-                    let entries: Vec<_> = l.split("/").collect();
+                    let entries: Vec<_> = l.split('/').collect();
                     match entries.get(4) {
                         Some(&"Lap") => match entries.get(5) {
-                            Some(&"Track") => match entries.get(6) {
-                                Some(&"Trackpoint") => match entries.get(7) {
-                                    Some(_) => {
-                                        current_point.read_point_tcx(&entries[7..entries.len()]);
+                            Some(&"Track") => {
+                                if let Some(&"Trackpoint") = entries.get(6) {
+                                    match entries.get(7) {
+                                        Some(_) => {
+                                            current_point
+                                                .read_point_tcx(&entries[7..entries.len()]);
+                                        }
+                                        None => {
+                                            point_list.push(current_point.clone());
+                                            current_point.clear();
+                                        }
                                     }
-                                    None => {
-                                        point_list.push(current_point.clone());
-                                        current_point.clear();
-                                    }
-                                },
-                                _ => (),
-                            },
+                                }
+                            }
                             Some(&entry) => {
                                 if entry.contains("StartTime") {
                                     current_lap.clear();
@@ -109,15 +115,14 @@ impl GarminParseTcx {
                         },
                         Some(&entry) => {
                             if entry.contains("Sport") {
-                                sport = match entry.split("=").last() {
+                                sport = match entry.split('=').last() {
                                     Some(val) => {
                                         let v = val.to_lowercase();
-                                        match sport_type_map.contains_key(&v) {
-                                            true => Some(v.to_string()),
-                                            false => {
-                                                println!("Non matching sport {}", val);
-                                                None
-                                            }
+                                        if sport_type_map.contains_key(&v) {
+                                            Some(v.to_string())
+                                        } else {
+                                            println!("Non matching sport {}", val);
+                                            None
                                         }
                                     }
                                     None => None,
@@ -138,6 +143,10 @@ impl GarminParseTcx {
 
         let lap_list: Vec<_> = GarminLap::fix_lap_number(lap_list);
 
-        Ok((lap_list, point_list, sport))
+        Ok(TcxOutput {
+            lap_list,
+            point_list,
+            sport,
+        })
     }
 }

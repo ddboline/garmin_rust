@@ -25,6 +25,12 @@ pub struct GarminSync {
     s3_client: S3Client,
 }
 
+impl Default for GarminSync {
+    fn default() -> GarminSync {
+        GarminSync::new()
+    }
+}
+
 impl GarminSync {
     pub fn new() -> GarminSync {
         GarminSync {
@@ -119,8 +125,8 @@ impl GarminSync {
             .iter()
             .map(|(x, m, t)| {
                 (
-                    x.split("/").last().unwrap().to_string(),
-                    (m.to_string(), t.clone()),
+                    x.split('/').last().unwrap().to_string(),
+                    (m.to_string(), *t),
                 )
             })
             .collect();
@@ -128,17 +134,18 @@ impl GarminSync {
         let key_list = self.get_list_of_keys(s3_bucket)?;
         let key_set: HashMap<_, _> = key_list
             .iter()
-            .map(|(k, m, t)| (k.to_string(), (m.to_string(), t.clone())))
+            .map(|(k, m, t)| (k.to_string(), (m.to_string(), *t)))
             .collect();
 
         let results: Vec<_> = file_list
             .par_iter()
             .filter_map(|(file, md5, tmod)| {
-                let file_name = file.split("/").last().unwrap().to_string();
+                let file_name = file.split('/').last().unwrap().to_string();
 
                 let do_upload = if key_set.contains_key(&file_name) {
-                    let (md5_, tmod_) = key_set.get(&file_name).unwrap().clone();
-                    if (&md5_ != md5) & (tmod > &tmod_) {
+                    let (md5_, tmod__) = key_set[&file_name].clone();
+                    let tmod_ = &tmod__;
+                    if (&md5_ != md5) & (tmod > tmod_) {
                         debug!(
                             "upload md5 {} {} {} {} {}",
                             file_name, md5_, md5, tmod_, tmod
@@ -167,7 +174,7 @@ impl GarminSync {
             .par_iter()
             .filter_map(|(key, md5, tmod)| {
                 let do_download = if file_set.contains_key(key) {
-                    let (md5_, tmod_) = file_set.get(key).unwrap().clone();
+                    let (md5_, tmod_) = file_set[key].clone();
                     if (md5_ != *md5) & (*tmod > tmod_) {
                         debug!("download md5 {} {} {} {} {} ", key, md5_, md5, tmod, tmod_);
                         let file_name = format!("{}/{}", local_dir, key);

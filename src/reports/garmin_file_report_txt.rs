@@ -13,14 +13,14 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<String>, Error> {
     let sport_type_map = get_sport_type_map();
     let sport_type = match &gfile.sport {
         Some(sport) => match sport_type_map.get(sport) {
-            Some(s) => s.clone(),
+            Some(s) => *s,
             None => SportTypes::Other,
         },
         None => SportTypes::Other,
     };
 
     for lap in &gfile.laps {
-        return_vec.push(print_lap_string(&lap, &sport_type)?)
+        return_vec.push(print_lap_string(&lap, sport_type)?)
     }
 
     let mut min_mile = 0.0;
@@ -115,7 +115,7 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<String>, Error> {
         avg_hr
     };
 
-    if (sum_time > 0.0) & (hr_vals.len() > 0) {
+    if (sum_time > 0.0) & !hr_vals.is_empty() {
         return_vec.push("".to_string());
         return_vec.push(format!(
             "Heart Rate {:2.2} avg {:2.2} max",
@@ -146,7 +146,7 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<String>, Error> {
         })
         .collect();
 
-    if alt_vals.len() > 0 {
+    if !alt_vals.is_empty() {
         return_vec.push(format!(
             "max altitude diff: {:.2} m",
             alt_vals.iter().map(|x| *x as i32).max().unwrap()
@@ -158,7 +158,7 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<String>, Error> {
     Ok(return_vec)
 }
 
-fn print_lap_string(glap: &GarminLap, sport: &SportTypes) -> Result<String, Error> {
+fn print_lap_string(glap: &GarminLap, sport: SportTypes) -> Result<String, Error> {
     let sport_str = sport.to_string();
 
     let mut outstr = vec![format!(
@@ -171,7 +171,7 @@ fn print_lap_string(glap: &GarminLap, sport: &SportTypes) -> Result<String, Erro
         glap.lap_duration / 60.
     )];
 
-    if (*sport == SportTypes::Running) & (glap.lap_distance > 0.0) {
+    if (sport == SportTypes::Running) & (glap.lap_distance > 0.0) {
         outstr.push(print_h_m_s(
             glap.lap_duration / (glap.lap_distance / METERS_PER_MILE),
             false,
@@ -197,15 +197,15 @@ fn print_splits(
     split_distance_in_meters: f64,
     label: &str,
 ) -> Result<String, Error> {
-    if gfile.points.len() == 0 {
+    if gfile.points.is_empty() {
         return Ok("".to_string());
     }
 
     let retval: Vec<_> = get_splits(gfile, split_distance_in_meters, label, true)?
         .into_iter()
         .map(|val| {
-            let dis = *val.get(0).unwrap() as i32;
-            let tim = *val.get(1).unwrap();
+            let dis = val[0] as i32;
+            let tim = val[1];
             let hrt = *val.get(2).unwrap_or(&0.0);
 
             format!(
@@ -252,15 +252,16 @@ pub fn get_splits(
         if (cur_point_me - last_point_me) <= 0.0 {
             continue;
         }
-        match point.heart_rate {
-            Some(hr) => avg_hrt_rate += hr * (cur_point_time - last_point_time),
-            _ => (),
-        }
+
+        if let Some(hr) = point.heart_rate {
+            avg_hrt_rate += hr * (cur_point_time - last_point_time)
+        };
+
         let nmiles = (cur_point_me / split_distance_in_meters) as i32
             - (last_point_me / split_distance_in_meters) as i32;
         if nmiles > 0 {
             let cur_split_me = (cur_point_me / split_distance_in_meters) as i32;
-            let cur_split_me = cur_split_me as f64 * split_distance_in_meters;
+            let cur_split_me = f64::from(cur_split_me) * split_distance_in_meters;
 
             debug!(
                 "get splits 0 {} {} {} {} {} {} ",
@@ -295,7 +296,7 @@ pub fn get_splits(
 
             split_vector.push(tmp_vector);
 
-            prev_split_time = cur_split_time.clone();
+            prev_split_time = cur_split_time;
             avg_hrt_rate = 0.0;
         };
         last_point_me = cur_point_me;

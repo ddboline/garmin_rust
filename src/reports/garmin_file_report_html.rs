@@ -13,12 +13,12 @@ use crate::utils::plot_graph::generate_d3_plot;
 use crate::utils::plot_opts::PlotOpts;
 
 pub fn generate_history_buttons(history: &str) -> String {
-    let mut history_vec: Vec<String> = history.split(";").map(|s| s.to_string()).collect();
+    let mut history_vec: Vec<String> = history.split(';').map(|s| s.to_string()).collect();
     let mut history_buttons: Vec<String> = Vec::new();
 
-    while history_vec.len() > 0 {
-        let most_recent = history_vec.pop().unwrap_or("sport".to_string());
-        let history_str = if history_vec.len() > 0 {
+    while !history_vec.is_empty() {
+        let most_recent = history_vec.pop().unwrap_or_else(|| "sport".to_string());
+        let history_str = if !history_vec.is_empty() {
             history_vec.join(";")
         } else {
             "sport".to_string()
@@ -43,6 +43,26 @@ pub fn generate_history_buttons(history: &str) -> String {
     reversed_history_buttons.join("\n")
 }
 
+#[derive(Default)]
+struct ReportObjects {
+    avg_hr: f64,
+    sum_time: f64,
+    max_hr: f64,
+
+    hr_vals: Vec<f64>,
+    hr_values: Vec<(f64, f64)>,
+    alt_vals: Vec<f64>,
+    alt_values: Vec<(f64, f64)>,
+    mph_speed_values: Vec<(f64, f64)>,
+    avg_speed_values: Vec<(f64, f64)>,
+    avg_mph_speed_values: Vec<(f64, f64)>,
+    lat_vals: Vec<f64>,
+    lon_vals: Vec<f64>,
+    mile_split_vals: Vec<(f64, f64)>,
+    speed_values: Vec<(f64, f64)>,
+    heart_rate_speed: Vec<(f64, f64)>,
+}
+
 pub fn file_report_html(
     gfile: &GarminFile,
     maps_api_key: &str,
@@ -55,45 +75,62 @@ pub fn file_report_html(
         None => "none".to_string(),
     };
 
-    let mut avg_hr = 0.0;
-    let mut sum_time = 0.0;
-    let mut max_hr = 0.0;
+    let report_objs = extract_report_objects_from_file(&gfile)?;
+    let plot_opts = get_plot_opts(&report_objs, &cache_dir, &http_bucket);
+    let graphs = get_graphs(&plot_opts);
 
-    let mut hr_vals = Vec::new();
-    let mut hr_values = Vec::new();
-    let mut alt_vals = Vec::new();
-    let mut alt_values = Vec::new();
-    let mut mph_speed_values = Vec::new();
-    let mut avg_speed_values = Vec::new();
-    let mut avg_mph_speed_values = Vec::new();
-    let mut lat_vals = Vec::new();
-    let mut lon_vals = Vec::new();
+    get_html_string(
+        &gfile,
+        &report_objs,
+        &graphs,
+        &sport,
+        &maps_api_key,
+        &history,
+    )
+}
+
+fn extract_report_objects_from_file(gfile: &GarminFile) -> Result<ReportObjects, Error> {
+    let mut report_objs = ReportObjects::default();
+
+    report_objs.avg_hr = 0.0;
+    report_objs.sum_time = 0.0;
+    report_objs.max_hr = 0.0;
+
+    report_objs.hr_vals = Vec::new();
+    report_objs.hr_values = Vec::new();
+    report_objs.alt_vals = Vec::new();
+    report_objs.alt_values = Vec::new();
+    report_objs.mph_speed_values = Vec::new();
+    report_objs.avg_speed_values = Vec::new();
+    report_objs.avg_mph_speed_values = Vec::new();
+    report_objs.lat_vals = Vec::new();
+    report_objs.lon_vals = Vec::new();
 
     let speed_values = get_splits(&gfile, 400., "lap", true)?;
-    let heart_rate_speed: Vec<_> = speed_values
+    report_objs.heart_rate_speed = speed_values
         .iter()
         .map(|v| {
-            let t = v.get(1).unwrap();
-            let h = v.get(2).unwrap();
-            (*h, 4.0 * t / 60.)
+            let t = v[1];
+            let h = v[2];
+            (h, 4.0 * t / 60.)
         })
         .collect();
 
-    let speed_values: Vec<_> = speed_values
+    report_objs.speed_values = speed_values
         .into_iter()
         .map(|v| {
-            let d = v.get(0).unwrap();
-            let t = v.get(1).unwrap();
+            let d = v[0];
+            let t = v[1];
             (d / 4., 4. * t / 60.)
         })
         .collect();
 
-    let mile_split_vals: Vec<_> = get_splits(&gfile, METERS_PER_MILE, "mi", false)?
+    report_objs.mile_split_vals = get_splits(&gfile, METERS_PER_MILE, "mi", false)?
         .into_iter()
         .map(|v| {
-            let d = v.get(0).unwrap();
-            let t = v.get(1).unwrap();
-            (*d, t / 60.)
+            let d = v[0];
+            let t = v[1];
+            (d, t / 60.)
         })
         .collect();
 
@@ -105,49 +142,65 @@ pub fn file_report_html(
         if xval > 0.0 {
             if let Some(hr) = point.heart_rate {
                 if hr > 0.0 {
-                    avg_hr += hr * point.duration_from_last;
-                    sum_time += point.duration_from_last;
-                    hr_vals.push(hr);
-                    hr_values.push((xval, hr));
+                    report_objs.avg_hr += hr * point.duration_from_last;
+                    report_objs.sum_time += point.duration_from_last;
+                    report_objs.hr_vals.push(hr);
+                    report_objs.hr_values.push((xval, hr));
                 }
             }
         };
         if let Some(alt) = point.altitude {
             if (alt > 0.0) & (alt < 10000.0) {
-                alt_vals.push(alt);
-                alt_values.push((xval, alt));
+                report_objs.alt_vals.push(alt);
+                report_objs.alt_values.push((xval, alt));
             }
         };
         if (point.speed_mph > 0.0) & (point.speed_mph < 20.0) {
-            mph_speed_values.push((xval, point.speed_mph));
+            report_objs.mph_speed_values.push((xval, point.speed_mph));
         };
         if (point.avg_speed_value_permi > 0.0) & (point.avg_speed_value_permi < 20.0) {
-            avg_speed_values.push((xval, point.avg_speed_value_permi));
+            report_objs
+                .avg_speed_values
+                .push((xval, point.avg_speed_value_permi));
         };
         if point.avg_speed_value_mph > 0.0 {
-            avg_mph_speed_values.push((xval, point.avg_speed_value_mph));
+            report_objs
+                .avg_mph_speed_values
+                .push((xval, point.avg_speed_value_mph));
         };
         if let Some(lat) = point.latitude {
             if let Some(lon) = point.longitude {
-                lat_vals.push(lat);
-                lon_vals.push(lon);
+                report_objs.lat_vals.push(lat);
+                report_objs.lon_vals.push(lon);
             }
         };
     }
 
-    if sum_time > 0.0 {
-        avg_hr /= sum_time;
-        max_hr = *hr_vals.iter().max_by_key(|&h| *h as i64).unwrap();
+    if report_objs.sum_time > 0.0 {
+        report_objs.avg_hr /= report_objs.sum_time;
+        report_objs.max_hr = *report_objs
+            .hr_vals
+            .iter()
+            .max_by_key(|&h| *h as i64)
+            .unwrap();
     };
 
+    Ok(report_objs)
+}
+
+fn get_plot_opts<'a>(
+    report_objs: &'a ReportObjects,
+    cache_dir: &str,
+    http_bucket: &str,
+) -> Vec<PlotOpts<'a>> {
     let mut plot_opts = Vec::new();
 
-    if mile_split_vals.len() > 0 {
+    if !report_objs.mile_split_vals.is_empty() {
         plot_opts.push(
             PlotOpts::new()
                 .with_name("mile_splits")
                 .with_title("Pace per Mile every mi")
-                .with_data(&mile_split_vals)
+                .with_data(&report_objs.mile_split_vals)
                 .with_marker("o")
                 .with_labels("mi", "min/mi")
                 .with_cache_dir(&cache_dir)
@@ -155,36 +208,42 @@ pub fn file_report_html(
         );
     };
 
-    if hr_values.len() > 0 {
+    if !report_objs.hr_values.is_empty() {
         plot_opts.push(
             PlotOpts::new()
                 .with_name("heart_rate")
-                .with_title(format!("Heart Rate {:2.2} avg {:2.2} max", avg_hr, max_hr).as_str())
-                .with_data(&hr_values)
+                .with_title(
+                    format!(
+                        "Heart Rate {:2.2} avg {:2.2} max",
+                        report_objs.avg_hr, report_objs.max_hr
+                    )
+                    .as_str(),
+                )
+                .with_data(&report_objs.hr_values)
                 .with_labels("mi", "bpm")
                 .with_cache_dir(&cache_dir)
                 .with_http_bucket(&http_bucket),
         );
     };
 
-    if alt_values.len() > 0 {
+    if !report_objs.alt_values.is_empty() {
         plot_opts.push(
             PlotOpts::new()
                 .with_name("altitude")
                 .with_title("Altitude")
-                .with_data(&alt_values)
+                .with_data(&report_objs.alt_values)
                 .with_labels("mi", "height [m]")
                 .with_cache_dir(&cache_dir)
                 .with_http_bucket(&http_bucket),
         );
     };
 
-    if speed_values.len() > 0 {
+    if !report_objs.speed_values.is_empty() {
         plot_opts.push(
             PlotOpts::new()
                 .with_name("speed_minpermi")
                 .with_title("Speed min/mi every 1/4 mi")
-                .with_data(&speed_values)
+                .with_data(&report_objs.speed_values)
                 .with_labels("mi", "min/mi")
                 .with_cache_dir(&cache_dir)
                 .with_http_bucket(&http_bucket),
@@ -194,19 +253,19 @@ pub fn file_report_html(
             PlotOpts::new()
                 .with_name("speed_mph")
                 .with_title("Speed mph")
-                .with_data(&mph_speed_values)
+                .with_data(&report_objs.mph_speed_values)
                 .with_labels("mi", "mph")
                 .with_cache_dir(&cache_dir)
                 .with_http_bucket(&http_bucket),
         );
     };
 
-    if heart_rate_speed.len() > 0 {
+    if !report_objs.heart_rate_speed.is_empty() {
         plot_opts.push(
             PlotOpts::new()
                 .with_name("heartrate_vs_speed")
                 .with_title("Speed min/mi every 1/4 mi")
-                .with_data(&heart_rate_speed)
+                .with_data(&report_objs.heart_rate_speed)
                 .with_scatter()
                 .with_labels("hrt", "min/mi")
                 .with_cache_dir(&cache_dir)
@@ -214,10 +273,11 @@ pub fn file_report_html(
         );
     };
 
-    if avg_speed_values.len() > 0 {
-        let (_, avg_speed_value) = avg_speed_values.last().unwrap();
+    if !report_objs.avg_speed_values.is_empty() {
+        let (_, avg_speed_value) = report_objs.avg_speed_values.last().unwrap();
         let avg_speed_value_min = *avg_speed_value as i32;
-        let avg_speed_value_sec = ((*avg_speed_value - avg_speed_value_min as f64) * 60.0) as i32;
+        let avg_speed_value_sec =
+            ((*avg_speed_value - f64::from(avg_speed_value_min)) * 60.0) as i32;
 
         plot_opts.push(
             PlotOpts::new()
@@ -229,7 +289,7 @@ pub fn file_report_html(
                     )
                     .as_str(),
                 )
-                .with_data(&heart_rate_speed)
+                .with_data(&report_objs.heart_rate_speed)
                 .with_scatter()
                 .with_labels("mi", "min/mi")
                 .with_cache_dir(&cache_dir)
@@ -237,14 +297,14 @@ pub fn file_report_html(
         );
     };
 
-    if avg_mph_speed_values.len() > 0 {
-        let (_, avg_mph_speed_value) = avg_mph_speed_values.last().unwrap();
+    if !report_objs.avg_mph_speed_values.is_empty() {
+        let (_, avg_mph_speed_value) = report_objs.avg_mph_speed_values.last().unwrap();
 
         plot_opts.push(
             PlotOpts::new()
                 .with_name("avg_speed_mph")
                 .with_title(format!("Avg Speed {:.2} mph", avg_mph_speed_value).as_str())
-                .with_data(&avg_mph_speed_values)
+                .with_data(&report_objs.avg_mph_speed_values)
                 .with_scatter()
                 .with_labels("mi", "min/mi")
                 .with_cache_dir(&cache_dir)
@@ -252,7 +312,11 @@ pub fn file_report_html(
         );
     };
 
-    let graphs: Vec<_> = plot_opts
+    plot_opts
+}
+
+fn get_graphs(plot_opts: &[PlotOpts]) -> Vec<String> {
+    plot_opts
         .par_iter()
         .filter_map(|options| match generate_d3_plot(&options) {
             Ok(s) => Some(s),
@@ -261,24 +325,40 @@ pub fn file_report_html(
                 None
             }
         })
-        .collect();
+        .collect()
+}
 
+fn get_html_string(
+    gfile: &GarminFile,
+    report_objs: &ReportObjects,
+    graphs: &[String],
+    sport: &str,
+    maps_api_key: &str,
+    history: &str,
+) -> Result<String, Error> {
     let mut htmlvec: Vec<String> = Vec::new();
 
-    if (lat_vals.len() > 0) & (lon_vals.len() > 0) & (lat_vals.len() == lon_vals.len()) {
-        let minlat = lat_vals
+    if !report_objs.lat_vals.is_empty()
+        & !report_objs.lon_vals.is_empty()
+        & (report_objs.lat_vals.len() == report_objs.lon_vals.len())
+    {
+        let minlat = report_objs
+            .lat_vals
             .iter()
             .min_by_key(|&v| (v * 1000.0) as i32)
             .unwrap();
-        let maxlat = lat_vals
+        let maxlat = report_objs
+            .lat_vals
             .iter()
             .max_by_key(|&v| (v * 1000.0) as i32)
             .unwrap();
-        let minlon = lon_vals
+        let minlon = report_objs
+            .lon_vals
             .iter()
             .min_by_key(|&v| (v * 1000.0) as i32)
             .unwrap();
-        let maxlon = lon_vals
+        let maxlon = report_objs
+            .lon_vals
             .iter()
             .max_by_key(|&v| (v * 1000.0) as i32)
             .unwrap();
@@ -298,21 +378,18 @@ pub fn file_report_html(
             (10, 0.4),
         ];
 
-        for line in MAP_TEMPLATE.split("\n") {
+        for line in MAP_TEMPLATE.split('\n') {
             if line.contains("SPORTTITLEDATE") {
                 let newtitle = format!(
                     "Garmin Event {} on {}",
                     titlecase(&sport),
                     gfile.begin_datetime
                 );
-                htmlvec.push(format!("{}", line.replace("SPORTTITLEDATE", &newtitle)));
+                htmlvec.push(line.replace("SPORTTITLEDATE", &newtitle).to_string());
             } else if line.contains("ZOOMVALUE") {
                 for (zoom, thresh) in &latlon_thresholds {
                     if (latlon_min < *thresh) | (*zoom == 10) {
-                        htmlvec.push(format!(
-                            "{}",
-                            line.replace("ZOOMVALUE", &format!("{}", zoom))
-                        ));
+                        htmlvec.push(line.replace("ZOOMVALUE", &format!("{}", zoom)).to_string());
                         break;
                     }
                 }
@@ -327,7 +404,7 @@ pub fn file_report_html(
                     get_html_splits(&gfile, 5000.0, "km")?
                 ));
             } else if line.contains("INSERTMAPSEGMENTSHERE") {
-                for (latv, lonv) in lat_vals.iter().zip(lon_vals.iter()) {
+                for (latv, lonv) in report_objs.lat_vals.iter().zip(report_objs.lon_vals.iter()) {
                     htmlvec.push(format!("new google.maps.LatLng({},{}),", latv, lonv));
                 }
             } else if line.contains("MINLAT")
@@ -335,37 +412,34 @@ pub fn file_report_html(
                 | line.contains("MINLON")
                 | line.contains("MAXLON")
             {
-                htmlvec.push(format!(
-                    "{}",
+                htmlvec.push(
                     line.replace("MINLAT", &format!("{}", minlat))
                         .replace("MAXLAT", &format!("{}", maxlat))
                         .replace("MINLON", &format!("{}", minlon))
                         .replace("MAXLON", &format!("{}", maxlon))
-                ));
+                        .to_string(),
+                );
             } else if line.contains("CENTRALLAT") | line.contains("CENTRALLON") {
-                htmlvec.push(format!(
-                    "{}",
-                    line.replace("CENTRALLAT", &format!("{}", central_lat))
-                        .replace("CENTRALLON", &format!("{}", central_lon))
-                ));
+                htmlvec.push(
+                    line.replace("CENTRALLAT", &central_lat.to_string())
+                        .replace("CENTRALLON", &central_lon.to_string())
+                        .to_string(),
+                );
             } else if line.contains("INSERTOTHERIMAGESHERE") {
-                for uri in &graphs {
+                for uri in graphs {
                     htmlvec.push(uri.clone());
                 }
             } else if line.contains("MAPSAPIKEY") {
-                htmlvec.push(format!("{}", line.replace("MAPSAPIKEY", maps_api_key)));
+                htmlvec.push(line.replace("MAPSAPIKEY", maps_api_key).to_string());
             } else if line.contains("HISTORYBUTTONS") {
                 let history_button = generate_history_buttons(&history);
-                htmlvec.push(format!(
-                    "{}",
-                    line.replace("HISTORYBUTTONS", &history_button)
-                ));
+                htmlvec.push(line.replace("HISTORYBUTTONS", &history_button).to_string());
             } else {
-                htmlvec.push(format!("{}", line));
+                htmlvec.push(line.to_string());
             };
         }
     } else {
-        for line in GARMIN_TEMPLATE.split("\n") {
+        for line in GARMIN_TEMPLATE.split('\n') {
             if line.contains("INSERTTEXTHERE") {
                 htmlvec.push(format!("{}\n", get_file_html(&gfile)));
                 htmlvec.push(format!(
@@ -382,18 +456,16 @@ pub fn file_report_html(
                     titlecase(&sport),
                     gfile.begin_datetime
                 );
-                htmlvec.push(format!("{}", line.replace("SPORTTITLEDATE", &newtitle)));
+                htmlvec.push(line.replace("SPORTTITLEDATE", &newtitle).to_string());
             } else if line.contains("HISTORYBUTTONS") {
                 let history_button = generate_history_buttons(&history);
-                htmlvec.push(format!(
-                    "{}",
-                    line.replace("HISTORYBUTTONS", &history_button)
-                ));
+                htmlvec.push(line.replace("HISTORYBUTTONS", &history_button).to_string());
             } else {
-                htmlvec.push(format!(
-                    "{}",
-                    line.replace("<pre>", "<div>").replace("</pre>", "</div>")
-                ));
+                htmlvec.push(
+                    line.replace("<pre>", "<div>")
+                        .replace("</pre>", "</div>")
+                        .to_string(),
+                );
             }
         }
     };
@@ -560,7 +632,7 @@ fn get_html_splits(
     split_distance_in_meters: f64,
     label: &str,
 ) -> Result<String, Error> {
-    if gfile.points.len() == 0 {
+    if gfile.points.is_empty() {
         Ok("".to_string())
     } else {
         let labels = vec![
@@ -575,17 +647,16 @@ fn get_html_splits(
         let values: Vec<_> = get_splits(gfile, split_distance_in_meters, label, true)?
             .into_iter()
             .map(|val| {
-                let dis = *val.get(0).unwrap() as i32;
-                let tim = val.get(1).unwrap();
+                let dis = val[0] as i32;
+                let tim = val[1];
                 let hrt = *val.get(2).unwrap_or(&0.0) as i32;
                 vec![
                     format!("{} {}", dis, label),
-                    print_h_m_s(*tim, true).unwrap(),
-                    print_h_m_s(*tim / (split_distance_in_meters / METERS_PER_MILE), false)
-                        .unwrap(),
-                    print_h_m_s(*tim / (split_distance_in_meters / 1000.), false).unwrap(),
+                    print_h_m_s(tim, true).unwrap(),
+                    print_h_m_s(tim / (split_distance_in_meters / METERS_PER_MILE), false).unwrap(),
+                    print_h_m_s(tim / (split_distance_in_meters / 1000.), false).unwrap(),
                     print_h_m_s(
-                        *tim / (split_distance_in_meters / METERS_PER_MILE) * MARATHON_DISTANCE_MI,
+                        tim / (split_distance_in_meters / METERS_PER_MILE) * MARATHON_DISTANCE_MI,
                         true,
                     )
                     .unwrap(),

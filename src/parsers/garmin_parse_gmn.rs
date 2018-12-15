@@ -18,6 +18,12 @@ pub struct GarminParseGmn {
     pub gfile: GarminFile,
 }
 
+struct GmnOutput {
+    lap_list: Vec<GarminLap>,
+    point_list: Vec<GarminPoint>,
+    sport: Option<String>,
+}
+
 impl GarminParseGmn {
     pub fn new(
         filename: &str,
@@ -25,13 +31,13 @@ impl GarminParseGmn {
     ) -> GarminParseGmn {
         let file_name = Path::new(&filename)
             .file_name()
-            .expect(&format!("filename {} has no path", filename))
+            .unwrap_or_else(|| panic!("filename {} has no path", filename))
             .to_os_string()
             .into_string()
-            .unwrap_or(filename.to_string());
-        let (lap_list, point_list, sport) =
-            GarminParseGmn::parse_xml(filename).expect("Failed to parse xml");
-        let (lap_list, sport) = apply_lap_corrections(lap_list, sport, corr_map);
+            .unwrap_or_else(|_| filename.to_string());
+        let gmn_output = GarminParseGmn::parse_xml(filename).expect("Failed to parse xml");
+        let (lap_list, sport) =
+            apply_lap_corrections(&gmn_output.lap_list, &gmn_output.sport, corr_map);
         let first_lap = lap_list.get(0).expect("No laps found");
         GarminParseGmn {
             gfile: GarminFile {
@@ -48,14 +54,12 @@ impl GarminParseGmn {
                     .sum(),
                 total_hr_dis: lap_list.iter().map(|lap| lap.lap_duration).sum(),
                 laps: lap_list,
-                points: point_list,
+                points: gmn_output.point_list,
             },
         }
     }
 
-    fn parse_xml(
-        filename: &str,
-    ) -> Result<(Vec<GarminLap>, Vec<GarminPoint>, Option<String>), Error> {
+    fn parse_xml(filename: &str) -> Result<GmnOutput, Error> {
         let sport_type_map = get_sport_type_map();
 
         let stream = Exec::shell(format!(
@@ -77,25 +81,25 @@ impl GarminParseGmn {
             .lines()
             .filter_map(|line| match line {
                 Ok(l) => {
-                    let entries: Vec<_> = l.split("/").collect();
+                    let entries: Vec<_> = l.split('/').collect();
                     match entries.get(2) {
-                        Some(&"run") => match entries.get(3) {
-                            Some(&entry) => {
+                        Some(&"run") => {
+                            if let Some(&entry) = entries.get(3) {
                                 if entry.contains("@sport") {
-                                    sport = match entry.split("=").last() {
-                                        Some(val) => match sport_type_map.contains_key(val) {
-                                            true => Some(val.to_string()),
-                                            false => {
+                                    sport = match entry.split('=').last() {
+                                        Some(val) => {
+                                            if sport_type_map.contains_key(val) {
+                                                Some(val.to_string())
+                                            } else {
                                                 println!("Non matching sport {}", val);
                                                 None
                                             }
-                                        },
+                                        }
                                         None => None,
                                     };
                                 }
                             }
-                            None => (),
-                        },
+                        }
                         Some(&"lap") => match entries.get(3) {
                             Some(_) => {
                                 current_lap.read_lap_xml(&entries[3..entries.len()]);
@@ -128,6 +132,10 @@ impl GarminParseGmn {
 
         let lap_list: Vec<_> = GarminLap::fix_lap_number(lap_list);
 
-        Ok((lap_list, point_list, sport))
+        Ok(GmnOutput {
+            lap_list,
+            point_list,
+            sport,
+        })
     }
 }

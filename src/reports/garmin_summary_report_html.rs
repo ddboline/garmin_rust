@@ -15,10 +15,9 @@ fn generate_url_string(current_line: &str, options: &GarminReportOptions) -> Str
 
     let mut cmd_options = Vec::new();
 
-    match options.do_sport {
-        Some(s) => cmd_options.push(s.to_string()),
-        None => (),
-    }
+    if let Some(s) = options.do_sport {
+        cmd_options.push(s.to_string())
+    };
 
     if options.do_all_sports {
         cmd_options.push("year".to_string());
@@ -70,7 +69,7 @@ fn generate_url_string(current_line: &str, options: &GarminReportOptions) -> Str
 }
 
 pub fn summary_report_html(
-    retval: &Vec<String>,
+    retval: &[String],
     options: &GarminReportOptions,
     cache_dir: &str,
     filter: &str,
@@ -79,7 +78,7 @@ pub fn summary_report_html(
     let htmlostr: Vec<_> = retval
         .iter()
         .map(|ent| {
-            let mut history_vec: Vec<String> = history.split(";").map(|s| s.to_string()).collect();
+            let mut history_vec: Vec<String> = history.split(';').map(|s| s.to_string()).collect();
             if !history.contains(filter) {
                 history_vec.push(filter.to_string());
             }
@@ -104,20 +103,17 @@ pub fn summary_report_html(
 
     let mut htmlvec: Vec<String> = Vec::new();
 
-    for line in GARMIN_TEMPLATE.split("\n") {
+    for line in GARMIN_TEMPLATE.split('\n') {
         if line.contains("INSERTTEXTHERE") {
-            htmlvec.push(format!("{}", htmlostr));
+            htmlvec.push(htmlostr.to_string());
         } else if line.contains("SPORTTITLEDATE") {
             let newtitle = "Garmin Summary";
-            htmlvec.push(format!("{}", line.replace("SPORTTITLEDATE", newtitle)));
+            htmlvec.push(line.replace("SPORTTITLEDATE", newtitle).to_string());
         } else if line.contains("HISTORYBUTTONS") {
             let history_button = generate_history_buttons(&history);
-            htmlvec.push(format!(
-                "{}",
-                line.replace("HISTORYBUTTONS", &history_button)
-            ));
+            htmlvec.push(line.replace("HISTORYBUTTONS", &history_button).to_string());
         } else {
-            htmlvec.push(format!("{}", line));
+            htmlvec.push(line.to_string());
         }
     }
 

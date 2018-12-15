@@ -45,7 +45,7 @@ pub const GARMIN_SUMMARY_AVRO_SCHEMA: &str = r#"
     }
 "#;
 
-#[derive(Debug, Clone, Serialize, Deserialize, ToSql, FromSql)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSql, FromSql, Default)]
 pub struct GarminSummary {
     pub filename: String,
     pub begin_datetime: String,
@@ -64,7 +64,7 @@ impl GarminSummary {
         GarminSummary {
             filename: gfile.filename.clone(),
             begin_datetime: gfile.begin_datetime.clone(),
-            sport: gfile.sport.clone().unwrap_or("".to_string()),
+            sport: gfile.sport.clone().unwrap_or_else(|| "".to_string()),
             total_calories: gfile.total_calories,
             total_distance: gfile.total_distance,
             total_duration: gfile.total_duration,
@@ -80,9 +80,9 @@ impl GarminSummary {
         cache_dir: &str,
         corr_map: &HashMap<(String, i32), GarminCorrectionLap>,
     ) -> Result<GarminSummary, Error> {
-        let cache_file = format!("{}/{}.avro", cache_dir, filename.split("/").last().unwrap());
+        let cache_file = format!("{}/{}.avro", cache_dir, filename.split('/').last().unwrap());
         let md5sum = get_md5sum(&filename)?;
-        let gfile = GarminParse::new(&filename, &corr_map);
+        let gfile = GarminParse::new(&filename, &corr_map).gfile;
         match gfile.laps.get(0) {
             Some(_) => (),
             None => println!("{} has no laps?", gfile.filename),
@@ -130,6 +130,7 @@ impl fmt::Display for GarminSummary {
     }
 }
 
+#[derive(Default)]
 pub struct GarminSummaryList {
     pub summary_list: Vec<GarminSummary>,
 }
@@ -162,10 +163,10 @@ impl GarminSummaryList {
                 let cache_file = format!(
                     "{}/{}.avro",
                     cache_dir,
-                    input_file.split("/").last().unwrap()
+                    input_file.split('/').last().unwrap()
                 );
                 let md5sum = get_md5sum(&input_file)?;
-                let gfile = GarminParse::new(&input_file, &corr_map);
+                let gfile = GarminParse::new(&input_file, &corr_map).gfile;
                 match gfile.laps.get(0) {
                     Some(_) => (),
                     None => println!("{} {} has no laps?", &input_file, &gfile.filename),

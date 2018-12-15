@@ -1,8 +1,8 @@
-#[derive(Serialize)]
+#[derive(Serialize, Default)]
 pub struct PlotOpts<'a> {
     pub name: String,
     pub title: String,
-    pub data: Option<&'a Vec<(f64, f64)>>,
+    pub data: Option<&'a [(f64, f64)]>,
     pub do_scatter: bool,
     pub cache_dir: String,
     pub marker: Option<String>,
@@ -36,7 +36,7 @@ impl<'a> PlotOpts<'a> {
         self
     }
 
-    pub fn with_data(mut self, data: &'a Vec<(f64, f64)>) -> PlotOpts<'a> {
+    pub fn with_data(mut self, data: &'a [(f64, f64)]) -> PlotOpts<'a> {
         self.data = Some(data);
         self
     }

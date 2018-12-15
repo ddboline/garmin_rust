@@ -11,7 +11,7 @@ use crate::utils::garmin_util::{
 pub fn create_report_query(
     conn: &Connection,
     options: &GarminReportOptions,
-    constraints: &Vec<String>,
+    constraints: &[String],
 ) -> Result<Vec<String>, Error> {
     let sport_constr = match options.do_sport {
         Some(x) => format!("sport = '{}'", x.to_string()),
@@ -141,8 +141,8 @@ fn file_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, E
                         sport,
                         format!("{:.2} mi", total_distance / METERS_PER_MILE),
                         format!("{} cal", total_calories),
-                        format!(""),
-                        format!(""),
+                        "".to_string(),
+                        "".to_string(),
                         print_h_m_s(total_duration, true)?
                     ));
                 }
@@ -158,7 +158,7 @@ fn file_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, E
                         "{:.2} mph",
                         (total_distance / METERS_PER_MILE) / (total_duration / 3600.)
                     ),
-                    format!(""),
+                    "".to_string(),
                     print_h_m_s(total_duration, true)?
                 ));
             }
@@ -169,8 +169,8 @@ fn file_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, E
                     sport,
                     format!("{:.2} mi", total_distance / METERS_PER_MILE),
                     format!("{} cal", total_calories),
-                    format!(""),
-                    format!(""),
+                    "".to_string(),
+                    "".to_string(),
                     print_h_m_s(total_duration, true)?
                 ));
             }
@@ -277,8 +277,8 @@ fn day_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, Er
                         sport,
                         format!("{:.2} mi", total_distance / METERS_PER_MILE),
                         format!("{} cal", total_calories),
-                        format!(""),
-                        format!(""),
+                        "".to_string(),
+                        "".to_string(),
                         print_h_m_s(total_duration, true)?
                     ));
                 }
@@ -294,7 +294,7 @@ fn day_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, Er
                         "{:.2} mph",
                         (total_distance / METERS_PER_MILE) / (total_duration / 3600.)
                     ),
-                    format!(""),
+                    "".to_string(),
                     print_h_m_s(total_duration, true)?
                 ));
             }
@@ -305,8 +305,8 @@ fn day_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, Er
                     sport,
                     format!("{:.2} mi", total_distance / METERS_PER_MILE),
                     format!("{} cal", total_calories),
-                    format!(""),
-                    format!(""),
+                    "".to_string(),
+                    "".to_string(),
                     print_h_m_s(total_duration, true)?
                 ));
             }

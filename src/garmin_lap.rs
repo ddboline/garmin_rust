@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::utils::garmin_util::{convert_time_string, convert_xml_local_time_to_utc};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct GarminLap {
     pub lap_type: Option<String>,
     pub lap_index: i32,
@@ -56,7 +56,7 @@ impl GarminLap {
 
     pub fn read_lap_xml(&mut self, entries: &[&str]) {
         for entry in entries {
-            let value = match entry.split("=").last() {
+            let value = match entry.split('=').last() {
                 Some(x) => x,
                 None => continue,
             };
@@ -94,7 +94,7 @@ impl GarminLap {
 
     pub fn read_lap_tcx(&mut self, entries: &[&str]) {
         if let Some(&v0) = entries.get(0) {
-            if let Some(value) = v0.split("=").last() {
+            if let Some(value) = v0.split('=').last() {
                 if v0.contains("@StartTime") {
                     self.lap_start =
                         convert_xml_local_time_to_utc(value).expect("Failed to parse time string");
@@ -117,7 +117,7 @@ impl GarminLap {
                 } else if v0.contains("AverageHeartRateBpm") {
                     if let Some(&v1) = entries.get(1) {
                         if v1.contains("Value") {
-                            self.lap_avg_hr = match v1.split("=").last() {
+                            self.lap_avg_hr = match v1.split('=').last() {
                                 Some(val) => match val.parse() {
                                     Ok(x) => Some(x),
                                     Err(_) => None,
@@ -129,7 +129,7 @@ impl GarminLap {
                 } else if v0.contains("MaximumHeartRateBpm") {
                     if let Some(&v1) = entries.get(1) {
                         if v1.contains("Value") {
-                            self.lap_max_hr = match v1.split("=").last() {
+                            self.lap_max_hr = match v1.split('=').last() {
                                 Some(val) => match val.parse() {
                                     Ok(x) => Some(x),
                                     Err(_) => None,
@@ -179,19 +179,25 @@ impl fmt::Display for GarminLap {
             "lap_start_string",
         ];
         let vals = vec![
-            self.lap_type.clone().unwrap_or("None".to_string()),
+            self.lap_type.clone().unwrap_or_else(|| "None".to_string()),
             self.lap_index.to_string(),
             self.lap_start.to_string(),
             self.lap_duration.to_string(),
             self.lap_distance.to_string(),
-            self.lap_trigger.clone().unwrap_or("None".to_string()),
+            self.lap_trigger
+                .clone()
+                .unwrap_or_else(|| "None".to_string()),
             self.lap_max_speed.unwrap_or(-1.0).to_string(),
             self.lap_calories.to_string(),
             self.lap_avg_hr.unwrap_or(-1.0).to_string(),
             self.lap_max_hr.unwrap_or(-1).to_string(),
-            self.lap_intensity.clone().unwrap_or("None".to_string()),
+            self.lap_intensity
+                .clone()
+                .unwrap_or_else(|| "None".to_string()),
             self.lap_number.to_string(),
-            self.lap_start_string.clone().unwrap_or("None".to_string()),
+            self.lap_start_string
+                .clone()
+                .unwrap_or_else(|| "None".to_string()),
         ];
         write!(
             f,

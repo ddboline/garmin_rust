@@ -3,6 +3,7 @@ extern crate flate2;
 use avro_rs::{from_value, Codec, Reader, Schema, Writer};
 use std::collections::HashMap;
 use std::fs::File;
+use std::hash::BuildHasher;
 use std::path::Path;
 
 use failure::{err_msg, Error};
@@ -104,9 +105,9 @@ impl GarminFile {
 
         let input_file = File::open(input_filename)?;
 
-        let reader = Reader::with_schema(&schema, input_file)?;
+        let mut reader = Reader::with_schema(&schema, input_file)?;
 
-        for record in reader {
+        if let Some(record) = reader.next() {
             return match from_value::<GarminFile>(&record?) {
                 Ok(v) => Ok(v),
                 Err(e) => Err(err_msg(e)),
@@ -134,7 +135,7 @@ pub fn get_file_type_map() -> HashMap<String, GarminFileTypes> {
         ("gmn", GarminFileTypes::Gmn),
     ]
     .iter()
-    .map(|(k, v)| (k.to_string(), v.clone()))
+    .map(|(k, v)| (k.to_string(), *v))
     .collect()
 }
 
@@ -145,20 +146,20 @@ pub fn get_reverse_file_type_map() -> HashMap<GarminFileTypes, String> {
         .collect()
 }
 
-pub fn apply_lap_corrections(
-    lap_list: Vec<GarminLap>,
-    sport: Option<String>,
-    corr_map: &HashMap<(String, i32), GarminCorrectionLap>,
+pub fn apply_lap_corrections<S: BuildHasher>(
+    lap_list: &[GarminLap],
+    sport: &Option<String>,
+    corr_map: &HashMap<(String, i32), GarminCorrectionLap, S>,
 ) -> (Vec<GarminLap>, Option<String>) {
     let mut new_sport = sport.clone();
     match lap_list.get(0) {
         Some(l) => {
             let lap_start = &l.lap_start.clone();
-            for lap in &lap_list {
+            for lap in lap_list {
                 debug!("lap {} dis {}", lap.lap_number, lap.lap_distance);
             }
             let new_lap_list: Vec<_> = lap_list
-                .into_iter()
+                .iter()
                 .map(|lap| {
                     let lap_number = lap.lap_number;
                     match &corr_map.get(&(lap_start.to_string(), lap_number)) {
@@ -177,9 +178,9 @@ pub fn apply_lap_corrections(
                                         "change duration {} {} {}",
                                         lap_start, lap.lap_duration, dur
                                     );
-                                    dur.clone()
+                                    *dur
                                 }
-                                None => lap.lap_duration.clone(),
+                                None => lap.lap_duration,
                             };
                             new_lap.lap_distance = match &corr.distance {
                                 Some(dis) => {
@@ -191,7 +192,7 @@ pub fn apply_lap_corrections(
                                     );
                                     dis * METERS_PER_MILE
                                 }
-                                None => lap.lap_distance.clone(),
+                                None => lap.lap_distance,
                             };
                             new_lap
                         }

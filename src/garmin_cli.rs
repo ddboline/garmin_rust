@@ -269,7 +269,7 @@ pub fn run_cli(options: &GarminReportOptions, constraints: &Vec<String>) -> Resu
                     let corr_map = corr_list.get_corr_list_map();
 
                     debug!("Reading gps_file: {}", &gps_file);
-                    garmin_parse::GarminParse::new(&gps_file, &corr_map)
+                    garmin_parse::GarminParse::new(&gps_file, &corr_map).gfile
                 }
             };
             debug!("gfile {} {}", gfile.laps.len(), gfile.points.len());
@@ -320,7 +320,7 @@ pub fn run_html(
                     let corr_map = corr_list.get_corr_list_map();
 
                     debug!("Reading gps_file: {}", &gps_file);
-                    garmin_parse::GarminParse::new(&gps_file, &corr_map)
+                    garmin_parse::GarminParse::new(&gps_file, &corr_map).gfile
                 }
             };
             debug!("gfile {} {}", gfile.laps.len(), gfile.points.len());

@@ -28,7 +28,7 @@ pub const MONTH_NAMES: [&str; 12] = [
 pub const WEEKDAY_NAMES: [&str; 7] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 pub fn convert_time_string(time_str: &str) -> Result<f64, Error> {
-    let entries: Vec<_> = time_str.split(":").collect();
+    let entries: Vec<_> = time_str.split(':').collect();
     let (h, m, s): (i32, i32, f64) = match entries.get(0) {
         Some(h) => match entries.get(1) {
             Some(m) => match entries.get(2) {
@@ -39,7 +39,7 @@ pub fn convert_time_string(time_str: &str) -> Result<f64, Error> {
         },
         None => (0, 0, 0.),
     };
-    Ok(s + 60.0 * (m as f64 + 60.0 * h as f64))
+    Ok(s + 60.0 * (f64::from(m) + 60.0 * f64::from(h)))
 }
 
 pub fn convert_xml_local_time_to_utc(xml_local_time: &str) -> Result<String, Error> {
@@ -54,12 +54,15 @@ pub fn get_md5sum(filename: &str) -> Result<String, Error> {
 
     let reader = BufReader::new(stream);
 
-    for line in reader.lines() {
-        for entry in line?.split_whitespace() {
-            return Ok(entry.to_string());
+    if let Some(line) = reader.lines().next() {
+        if let Some(entry) = line?.split_whitespace().next() {
+            Ok(entry.to_string())
+        } else {
+            Ok("".to_string())
         }
+    } else {
+        Ok("".to_string())
     }
-    Ok("".to_string())
 }
 
 pub fn print_h_m_s(second: f64, do_hours: bool) -> Result<String, Error> {
@@ -102,7 +105,7 @@ pub fn expected_calories(weight: f64, pace_min_per_mile: f64, distance: f64) -> 
 }
 
 pub fn titlecase(input: &str) -> String {
-    if input.len() == 0 {
+    if input.is_empty() {
         "".to_string()
     } else {
         let firstchar = input[0..1].to_uppercase();
@@ -116,11 +119,12 @@ pub fn get_pg_conn(pg_url: &str) -> Result<Connection, Error> {
 
 pub fn get_list_of_files_from_db(
     conn: &Connection,
-    constraints: &Vec<String>,
+    constraints: &[String],
 ) -> Result<Vec<String>, Error> {
-    let constr = match constraints.len() {
-        0 => "".to_string(),
-        _ => format!("WHERE {}", constraints.join(" OR ")),
+    let constr = if constraints.is_empty() {
+        "".to_string()
+    } else {
+        format!("WHERE {}", constraints.join(" OR "))
     };
 
     let query = format!("SELECT filename FROM garmin_summary {}", constr);

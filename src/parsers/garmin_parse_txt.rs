@@ -24,14 +24,14 @@ impl GarminParseTxt {
     ) -> GarminParseTxt {
         let file_name = Path::new(&filename)
             .file_name()
-            .expect(&format!("filename {} has no path", filename))
+            .unwrap_or_else(|| panic!("filename {} has no path", filename))
             .to_os_string()
             .into_string()
-            .unwrap_or(filename.to_string());
+            .unwrap_or_else(|_| filename.to_string());
         let (lap_list, point_list) =
             GarminParseTxt::parse_txt(filename).expect("Failed to parse txt");
         let sport = lap_list.get(0).expect("No laps found").lap_type.clone();
-        let (lap_list, sport) = apply_lap_corrections(lap_list, sport, corr_map);
+        let (lap_list, sport) = apply_lap_corrections(&lap_list, &sport, corr_map);
         let first_lap = lap_list.get(0).expect("No laps found");
         GarminParseTxt {
             gfile: GarminFile {
@@ -66,7 +66,6 @@ impl GarminParseTxt {
                 },
                 Err(_) => None,
             })
-            .into_iter()
             .enumerate()
             .map(|(i, lap)| {
                 let mut new_lap = lap;
@@ -170,7 +169,7 @@ impl GarminParseTxt {
         let entry_dict: HashMap<_, _> = line
             .split_whitespace()
             .filter_map(|x| {
-                let entries: Vec<_> = x.split("=").collect();
+                let entries: Vec<_> = x.split('=').collect();
                 match entries.get(0) {
                     Some(key) => match entries.get(1) {
                         Some(val) => Some((key.to_string(), val.trim().to_string())),
@@ -188,7 +187,7 @@ impl GarminParseTxt {
 
         let (hour, minute, second): (i32, i32, i32) = match entry_dict.get("time") {
             Some(val) => {
-                let entries: Vec<_> = val.split(":").collect();
+                let entries: Vec<_> = val.split(':').collect();
                 match entries.get(0) {
                     Some(h) => match entries.get(1) {
                         Some(m) => match entries.get(2) {
@@ -234,7 +233,7 @@ impl GarminParseTxt {
                     let _ = tmpstr.split_off(at);
                     let dis: f64 = tmpstr.parse()?;
                     dis * METERS_PER_MILE
-                } else if v.contains("m") {
+                } else if v.contains('m') {
                     let mut tmpstr = v.to_string();
                     let at = tmpstr.len() - 1;
                     let _ = tmpstr.split_off(at);

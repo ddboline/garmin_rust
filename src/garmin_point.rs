@@ -4,7 +4,7 @@ use std::str::FromStr;
 
 use crate::utils::garmin_util::{convert_xml_local_time_to_utc, METERS_PER_MILE};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct GarminPoint {
     pub time: String,
     pub latitude: Option<f64>,
@@ -58,7 +58,7 @@ impl GarminPoint {
 
     pub fn read_point_xml(&mut self, entries: &[&str]) {
         for entry in entries {
-            let val = match entry.split("=").last() {
+            let val = match entry.split('=').last() {
                 Some(x) => x,
                 None => continue,
             };
@@ -94,34 +94,38 @@ impl GarminPoint {
         }
     }
 
+    fn read_point_tcx_position(&mut self, entries: &[&str]) {
+        if let Some(&v1) = entries.get(1) {
+            if v1.contains("LatitudeDegrees") {
+                self.latitude = match v1.split('=').last() {
+                    Some(v) => match v.parse() {
+                        Ok(x) => Some(x),
+                        Err(_) => None,
+                    },
+                    None => None,
+                };
+            } else if v1.contains("LongitudeDegrees") {
+                self.longitude = match v1.split('=').last() {
+                    Some(v) => match v.parse() {
+                        Ok(x) => Some(x),
+                        Err(_) => None,
+                    },
+                    None => None,
+                };
+            }
+        }
+    }
+
     pub fn read_point_tcx(&mut self, entries: &[&str]) {
         if let Some(&v0) = entries.get(0) {
             if v0.contains("Time") {
                 self.time =
-                    convert_xml_local_time_to_utc(v0.split("=").last().expect("Malformed time"))
+                    convert_xml_local_time_to_utc(v0.split('=').last().expect("Malformed time"))
                         .expect("Failed to read time");
             } else if v0.contains("Position") {
-                if let Some(&v1) = entries.get(1) {
-                    if v1.contains("LatitudeDegrees") {
-                        self.latitude = match v1.split("=").last() {
-                            Some(v) => match v.parse() {
-                                Ok(x) => Some(x),
-                                Err(_) => None,
-                            },
-                            None => None,
-                        };
-                    } else if v1.contains("LongitudeDegrees") {
-                        self.longitude = match v1.split("=").last() {
-                            Some(v) => match v.parse() {
-                                Ok(x) => Some(x),
-                                Err(_) => None,
-                            },
-                            None => None,
-                        };
-                    }
-                }
+                self.read_point_tcx_position(&entries);
             } else if v0.contains("AltitudeMeters") {
-                self.altitude = match v0.split("=").last() {
+                self.altitude = match v0.split('=').last() {
                     Some(v) => match v.parse() {
                         Ok(x) => Some(x),
                         Err(_) => None,
@@ -129,7 +133,7 @@ impl GarminPoint {
                     None => None,
                 };
             } else if v0.contains("DistanceMeters") {
-                self.distance = match v0.split("=").last() {
+                self.distance = match v0.split('=').last() {
                     Some(v) => match v.parse() {
                         Ok(x) => Some(x),
                         Err(_) => None,
@@ -139,7 +143,7 @@ impl GarminPoint {
             } else if v0.contains("HeartRateBpm") {
                 if let Some(&v1) = entries.get(1) {
                     if v1.contains("Value") {
-                        self.heart_rate = match v1.split("=").last() {
+                        self.heart_rate = match v1.split('=').last() {
                             Some(v) => match v.parse() {
                                 Ok(x) => Some(x),
                                 Err(_) => None,
@@ -151,7 +155,7 @@ impl GarminPoint {
             } else if v0.contains("Extensions") {
                 if let Some(&v2) = entries.get(2) {
                     if v2.contains("Speed") {
-                        self.speed_mps = match v2.split("=").last() {
+                        self.speed_mps = match v2.split('=').last() {
                             Some(v) => v.parse().unwrap_or(0.0),
                             None => 0.0,
                         };
@@ -165,7 +169,7 @@ impl GarminPoint {
         }
     }
 
-    pub fn calculate_durations(point_list: &Vec<GarminPoint>) -> Vec<GarminPoint> {
+    pub fn calculate_durations(point_list: &[GarminPoint]) -> Vec<GarminPoint> {
         let mut time_from_begin = 0.0;
 
         point_list
@@ -178,9 +182,8 @@ impl GarminPoint {
                     _ => {
                         let cur_time: DateTime<Utc> = DateTime::from_str(&new_point.time)
                             .expect("Failed to extract timestamp");
-                        let last_time: DateTime<Utc> =
-                            DateTime::from_str(&point_list.get(i - 1).unwrap().time)
-                                .expect("Failed to extract timestamp");
+                        let last_time: DateTime<Utc> = DateTime::from_str(&point_list[i - 1].time)
+                            .expect("Failed to extract timestamp");
                         (cur_time - last_time).num_seconds() as f64
                     }
                 };

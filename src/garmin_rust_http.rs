@@ -16,10 +16,12 @@ struct FilterRequest {
 }
 
 fn garmin(request: Query<FilterRequest>) -> Result<HttpResponse, Error> {
-    let filter = request.filter.clone().unwrap_or("sport".to_string());
-    let history = request.history.clone().unwrap_or("sport".to_string());
+    let request = request.into_inner();
 
-    let filter_vec: Vec<String> = filter.split(",").map(|x| x.to_string()).collect();
+    let filter = request.filter.unwrap_or_else(|| "sport".to_string());
+    let history = request.history.unwrap_or_else(|| "sport".to_string());
+
+    let filter_vec: Vec<String> = filter.split(',').map(|x| x.to_string()).collect();
 
     let (options, constraints) = garmin_cli::process_pattern(&filter_vec);
 

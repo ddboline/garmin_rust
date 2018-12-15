@@ -1,6 +1,6 @@
 use crate::utils::sport_types::SportTypes;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct GarminReportOptions {
     pub do_year: bool,
     pub do_month: bool,

@@ -20,10 +20,10 @@ postgres-derive = "0.3"
 clap = "2"
 log = "0.4"
 env_logger = "0.6"
-rusoto_core = "0.36"
-rusoto_s3 = "0.36"
+rusoto_core = {version = "0.36", default_features = false, features=["rustls"]}
+rusoto_s3 = {version = "0.36", default_features = false, features=["rustls"]}
 futures = "*"
-s4 = "*"
+# s4 = "*"
 num = "*"
 config = "*"
 tempdir = "*"

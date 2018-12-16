@@ -26,7 +26,8 @@
                 "GPS_DIR": "/tmp/.garmin_cache/run/gps_tracks",
                 "CACHE_DIR": "/tmp/.garmin_cache/run/cache",
                 "SUMMARY_CACHE": "/tmp/.garmin_cache/run/summary_cache",
-                "PATH": "${PATH}:${LAMBDA_TASK_ROOT}/bin"
+                "PATH": "${PATH}:${LAMBDA_TASK_ROOT}/bin",
+                "LD_LIBRARY_PATH": "${LAMBDA_TASK_ROOT}/lib:${LD_LIBRARY_PATH}"
             }
         },
         "Role": "arn:aws:iam::281914939654:role/plot_graph_lambda_role",

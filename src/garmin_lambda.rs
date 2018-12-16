@@ -1,4 +1,5 @@
 #![allow(clippy::needless_pass_by_value)]
+extern crate garmin_rust;
 
 use std::error::Error;
 
@@ -8,6 +9,9 @@ use lambda_runtime::{error::HandlerError, lambda, Context};
 use log::{self, error};
 use serde_derive::{Deserialize, Serialize};
 use simple_logger;
+
+use garmin_rust::garmin_config::GarminConfig;
+use garmin_rust::garmin_sync::GarminSync;
 
 #[derive(Deserialize)]
 struct CustomEvent {
@@ -30,6 +34,24 @@ fn main() -> Result<(), Box<dyn Error>> {
 fn my_handler(event: CustomEvent, c: Context) -> Result<CustomOutput, HandlerError> {
     if event.file_name == "" {
         error!("Empty filename in request {}", c.aws_request_id);
+        return Err(c.new_error("Empty filename"));
+    }
+
+    let config = GarminConfig::new().from_env();
+    let gps_bucket = config.gps_bucket.expect("No GPS_BUCKET specified");
+
+    if GarminSync::new()
+        .get_list_of_keys(&gps_bucket)
+        .unwrap()
+        .iter()
+        .filter(|(k, _, _)| *k == event.file_name)
+        .count()
+        == 0
+    {
+        error!(
+            "Filename {} in request {} does not exist in gps bucket",
+            event.file_name, c.aws_request_id
+        );
         return Err(c.new_error("Empty filename"));
     }
 

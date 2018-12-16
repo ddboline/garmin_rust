@@ -35,7 +35,9 @@
         "Timeout" : 300,
         "VpcConfig" : {
           "SecurityGroupIds" : [ "sg-0d04ced67c067e1f0" ],
-          "SubnetIds" : [ "subnet-9a66cbc3" ]
+          "SubnetIds" : [
+              "subnet-9a66cbc3", "subnet-1c1f9d6b", "subnet-1e8ae224", "subnet-5bb37a70", "subnet-78eb871d",
+              "subnet-e5951de9"]
         }
       }
     }

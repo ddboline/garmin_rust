@@ -26,7 +26,7 @@ package:
 	rm $(cidfile)
 
 lambda_build:
-	docker run --cidfile $(cidfile) build_rust:amazonlinux2018.03 /garmin_rust/scripts/build_lambda.sh
+	docker run --cidfile $(cidfile) -v `pwd`/target:/garmin_rust/target build_rust:amazonlinux2018.03 /garmin_rust/scripts/build_lambda.sh
 	docker cp `cat $(cidfile)`:/garmin_rust/rust.zip .
 	docker rm `cat $(cidfile)`
 	rm $(cidfile)

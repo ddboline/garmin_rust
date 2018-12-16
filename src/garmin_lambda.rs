@@ -42,7 +42,7 @@ fn my_handler(event: CustomEvent, c: Context) -> Result<CustomOutput, HandlerErr
 
     if GarminSync::new()
         .get_list_of_keys(&gps_bucket)
-        .unwrap()
+        .expect("Failed to grab keys")
         .iter()
         .filter(|(k, _, _)| *k == event.file_name)
         .count()
@@ -60,7 +60,7 @@ fn my_handler(event: CustomEvent, c: Context) -> Result<CustomOutput, HandlerErr
     let result = Exec::shell(command)
         .stdout(Redirection::Pipe)
         .capture()
-        .unwrap()
+        .expect("Failed to capture stdout")
         .stdout_str();
 
     Ok(CustomOutput {

@@ -11,7 +11,7 @@ cp -a lambda/bin lambda/lib tmp/
 
 cd tmp/
 
-zip ../rust.zip bootstrap bin/* lib/*
+zip --symlinks ../rust.zip bootstrap bin/* lib/*
 
 cd ../
 

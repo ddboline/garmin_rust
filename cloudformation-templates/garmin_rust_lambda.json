@@ -1,0 +1,40 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+  
+  "Description" : "Garmin Rust Lambda",
+
+  "Resources" : {
+    "GarminRustLambda" : {
+      "Type" : "AWS::Lambda::Function",
+      "Properties" : {
+        "Code" : {
+          "S3Bucket": "garmin-scripts-lambda-code",
+          "S3Key" : "rust.zip"
+        },
+        "Description" : "Garmin Rust Lambda",
+        "FunctionName" : "garmin_rust_lambda",
+        "Handler" : "my_handler",
+        "MemorySize" : 128,
+        "Environment": {
+            "PGURL": "postgresql://ubuntu:P29uyWwA8uayfZc5@cloud.ddboline.net:5432/garmin_summary",
+            "MAPS_API_KEY": "AIzaSyCNWrZdA6Tz1Umw5Fu2PhIB0TJzyRh111A",
+            "GPS_BUCKET": "garmin_scripts_gps_files_ddboline",
+            "CACHE_BUCKET": "garmin-scripts-cache-ddboline",
+            "HTTP_BUCKET": "garmin-scripts-http-cache",
+            "SUMMARY_BUCKET": "garmin-scripts-summary-cache",
+            "GPS_DIR": "/tmp/.garmin_cache/run/gps_tracks",
+            "CACHE_DIR": "/tmp/.garmin_cache/run/cache",
+            "SUMMARY_CACHE": "/tmp/.garmin_cache/run/summary_cache",
+            "PATH": "${PATH}:${LAMBDA_TASK_ROOT}/bin"
+        },
+        "Role": "arn:aws:iam::281914939654:role/plot_graph_lambda_role",
+        "Runtime" : "provided",
+        "Timeout" : 300,
+        "VpcConfig" : {
+          "SecurityGroupIds" : [ "sg-0d04ced67c067e1f0" ],
+          "SubnetIds" : [ "subnet-9a66cbc3" ]
+        }
+      }
+    }
+  }
+}

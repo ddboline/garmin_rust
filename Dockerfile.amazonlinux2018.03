@@ -1,0 +1,15 @@
+FROM amazonlinux:2018.03
+MAINTAINER Daniel Boline
+
+RUN yum install -y gcc g++ openssl-devel zip libusb-devel && \
+    curl https://sh.rustup.rs > rustup.sh && \
+    sh rustup.sh -y && \
+    . ~/.cargo/env
+
+WORKDIR /garmin_rust
+
+ADD Cargo.toml /garmin_rust
+ADD src /garmin_rust/src
+ADD scripts /garmin_rust/scripts
+ADD lambda /garmin_rust/lambda
+ADD Makefile /garmin_rust

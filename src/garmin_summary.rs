@@ -109,7 +109,7 @@ impl GarminSummary {
         let corr_file = format!("{}/{}", temp_path, "garmin_correction.avro");
 
         let gsync = GarminSync::new();
-        gsync.download_file(&corr_file, &gps_bucket, "garmin_correction.avro")?;
+        gsync.download_file(&corr_file, &cache_bucket, "garmin_correction.avro")?;
 
         let corr_list = GarminCorrectionList::read_corr_list_from_avro(&corr_file)?;
         let corr_map = corr_list.get_corr_list_map();

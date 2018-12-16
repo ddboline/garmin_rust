@@ -2,7 +2,7 @@
 
 . ~/.cargo/env
 
-cargo build --release --bin bootstrap --target x86_64-unknown-linux-musl
+cargo build --release --bin bootstrap
 
 mkdir tmp
 

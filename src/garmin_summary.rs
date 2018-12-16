@@ -83,8 +83,13 @@ impl GarminSummary {
         corr_map: &HashMap<(String, i32), GarminCorrectionLap>,
     ) -> Result<GarminSummary, Error> {
         let cache_file = format!("{}/{}.avro", cache_dir, filename.split('/').last().unwrap());
+
+        println!("Get md5sum {}", filename);
         let md5sum = get_md5sum(&filename)?;
+
+        println!("Found md5sum {}, try parsing", md5sum);
         let gfile = GarminParse::new(&filename, &corr_map).gfile;
+
         match gfile.laps.get(0) {
             Some(_) => (),
             None => println!("{} has no laps?", gfile.filename),

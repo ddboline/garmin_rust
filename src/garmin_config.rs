@@ -18,7 +18,7 @@ pub struct GarminConfig {
 
 impl GarminConfig {
     pub fn new() -> GarminConfig {
-        let home_dir = var("HOME").unwrap_or("/tmp");
+        let home_dir = var("HOME").unwrap_or("/tmp".to_string());
 
         let default_gps_dir = format!("{}/.garmin_cache/run/gps_tracks", home_dir);
         let default_cache_dir = format!("{}/.garmin_cache/run/cache", home_dir);

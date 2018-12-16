@@ -11,7 +11,9 @@ use serde_derive::{Deserialize, Serialize};
 use simple_logger;
 
 use garmin_rust::garmin_config::GarminConfig;
+use garmin_rust::garmin_summary::GarminSummary;
 use garmin_rust::garmin_sync::GarminSync;
+use garmin_rust::utils::garmin_util::get_pg_conn;
 
 #[derive(Deserialize)]
 struct CustomEvent {
@@ -39,6 +41,9 @@ fn my_handler(event: CustomEvent, c: Context) -> Result<CustomOutput, HandlerErr
 
     let config = GarminConfig::new().from_env();
     let gps_bucket = config.gps_bucket.expect("No GPS_BUCKET specified");
+    let pgurl = config.pgurl.expect("No Postgres server specified (PGURL)");
+    let cache_bucket = config.cache_bucket.expect("No CACHE_BUCKET specified");
+    let summary_bucket = config.summary_bucket.expect("No SUMMARY_BUCKET specified");
 
     if GarminSync::new()
         .get_list_of_keys(&gps_bucket)
@@ -54,6 +59,16 @@ fn my_handler(event: CustomEvent, c: Context) -> Result<CustomOutput, HandlerErr
         );
         return Err(c.new_error("Empty filename"));
     }
+
+    let pg_conn = get_pg_conn(&pgurl).expect("Failed to connect to Postgres");
+    GarminSummary::process_and_upload_single_gps_file(
+        &pg_conn,
+        &event.file_name,
+        &gps_bucket,
+        &cache_bucket,
+        &summary_bucket,
+    )
+    .expect("Failed to process gps file");
 
     let command = r#"fit2tcx --help"#;
 

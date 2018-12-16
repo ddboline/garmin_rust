@@ -118,6 +118,7 @@ impl GarminSummary {
 
         gsync.download_file(&local_file, &gps_bucket, &filename)?;
 
+        debug!("Try processing file {} {}", local_file, temp_path);
         let gsum = GarminSummary::process_single_gps_file(&local_file, &temp_path, &corr_map)?;
         let gsum_list = GarminSummaryList::from_vec(vec![gsum]);
 

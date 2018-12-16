@@ -1,10 +1,12 @@
 FROM amazonlinux:2017.03
 MAINTAINER Daniel Boline
 
-RUN yum install -y gcc g++ openssl-devel zip libusb-devel && \
+RUN yum install -y gcc g++ openssl-devel zip libusb-devel \
+    glibc-static openssl-static pcre-static zlib-static && \
     curl https://sh.rustup.rs > rustup.sh && \
     sh rustup.sh -y && \
-    . ~/.cargo/env
+    . ~/.cargo/env && \
+    rustup target add x86_64-unknown-linux-musl
 
 WORKDIR /garmin_rust
 

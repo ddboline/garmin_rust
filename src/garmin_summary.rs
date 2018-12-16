@@ -4,6 +4,7 @@ extern crate rayon;
 
 use avro_rs::{from_value, Codec, Reader, Schema, Writer};
 use postgres_derive::{FromSql, ToSql};
+use tempdir::TempDir;
 
 use std::path::Path;
 
@@ -20,6 +21,7 @@ use postgres::Connection;
 
 use crate::garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList};
 use crate::garmin_file::GarminFile;
+use crate::garmin_sync::GarminSync;
 use crate::parsers::garmin_parse::GarminParse;
 use crate::utils::garmin_util::{
     generate_random_string, get_file_list, get_md5sum, map_result_vec,
@@ -89,6 +91,47 @@ impl GarminSummary {
         };
         gfile.dump_avro(&cache_file)?;
         Ok(GarminSummary::new(&gfile, &md5sum))
+    }
+
+    pub fn process_and_upload_single_gps_file(
+        pg_conn: &Connection,
+        filename: &str,
+        gps_bucket: &str,
+        cache_bucket: &str,
+        summary_bucket: &str,
+    ) -> Result<(), Error> {
+        let corr_list = GarminCorrectionList::read_corrections_from_db(&pg_conn)?;
+        let corr_map = corr_list.get_corr_list_map();
+
+        let tempdir = TempDir::new("garmin_cache")?;
+
+        let temp_path = tempdir
+            .path()
+            .to_str()
+            .expect("Path is invalid unicode somehow");
+
+        let gsync = GarminSync::new();
+
+        let local_file = format!("{}/{}", temp_path, filename);
+
+        gsync.download_file(&local_file, &gps_bucket, &filename)?;
+
+        let gsum = GarminSummary::process_single_gps_file(&local_file, &temp_path, &corr_map)?;
+        let gsum_list = GarminSummaryList::from_vec(vec![gsum]);
+
+        gsum_list.write_summary_to_avro_files(&temp_path)?;
+
+        let local_file = format!("{}/{}.avro", temp_path, filename);
+        let s3_key = format!("{}.avro", filename);
+
+        gsync.upload_file(&local_file, &cache_bucket, &s3_key)?;
+
+        let local_file = format!("{}/{}.summary.avro", temp_path, filename);
+        let s3_key = format!("{}.summary.avro", filename);
+
+        gsync.upload_file(&local_file, &summary_bucket, &s3_key)?;
+        gsum_list.write_summary_to_postgres(&pg_conn)?;
+        Ok(())
     }
 }
 

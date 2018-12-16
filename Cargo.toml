@@ -31,6 +31,8 @@ tempfile = "*"
 actix-web = "*"
 actix = "*"
 rand = "0.6"
+lambda_runtime = "*"
+simple_logger = "1.0"
 
 [dependencies.avro-rs]
 version = "^0.6"
@@ -53,4 +55,9 @@ doc = false
 [[bin]]
 name = "garmin_rust_http"
 path = "src/garmin_rust_http.rs"
+doc = false
+
+[[bin]]
+name = "bootstrap"
+path = "src/garmin_lambda.rs"
 doc = false

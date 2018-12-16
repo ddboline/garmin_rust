@@ -27,7 +27,7 @@ struct CustomOutput {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    simple_logger::init_with_level(log::Level::Warn).unwrap();
+    simple_logger::init_with_level(log::Level::Debug).unwrap();
     lambda!(my_handler);
 
     Ok(())
@@ -60,6 +60,7 @@ fn my_handler(event: CustomEvent, c: Context) -> Result<CustomOutput, HandlerErr
         return Err(c.new_error("Empty filename"));
     }
 
+    debug!("Try setting up postgres connection {}", pgurl);
     let pg_conn = get_pg_conn(&pgurl).expect("Failed to connect to Postgres");
     GarminSummary::process_and_upload_single_gps_file(
         &pg_conn,

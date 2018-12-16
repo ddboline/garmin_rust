@@ -37,6 +37,9 @@ lambda_upload:
 lambda_create:
 	aws cloudformation create-stack --stack-name garmin-rust-lambda --template-body file:///home/ddboline/setup_files/build/garmin_rust/cloudformation-templates/garmin_rust_lambda.json
 
+lambda_update:
+	aws cloudformation update-stack --stack-name garmin-rust-lambda --template-body file:///home/ddboline/setup_files/build/garmin_rust/cloudformation-templates/garmin_rust_lambda.json
+
 lambda_update_code:
 	aws lambda update-function-code --function-name garmin_rust_lambda --s3-bucket garmin-scripts-lambda-code --s3-key rust.zip
 

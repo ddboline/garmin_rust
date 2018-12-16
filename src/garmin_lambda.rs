@@ -1,4 +1,7 @@
 #![allow(clippy::needless_pass_by_value)]
+#[macro_use]
+extern crate log;
+
 extern crate garmin_rust;
 
 use std::error::Error;
@@ -6,7 +9,7 @@ use std::error::Error;
 use subprocess::{Exec, Redirection};
 
 use lambda_runtime::{error::HandlerError, lambda, Context};
-use log::{self, error};
+use log::error;
 use serde_derive::{Deserialize, Serialize};
 use simple_logger;
 

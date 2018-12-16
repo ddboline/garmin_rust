@@ -13,8 +13,8 @@ use failure::Error;
 use crate::utils::garmin_util::{get_md5sum, map_result_vec};
 use rusoto_core::Region;
 use rusoto_s3::{
-    GetObjectRequest, ListObjectsV2Request, PutObjectOutput, PutObjectRequest, S3Client,
-    StreamingBody, S3, GetObjectOutput
+    GetObjectOutput, GetObjectRequest, ListObjectsV2Request, PutObjectOutput, PutObjectRequest,
+    S3Client, StreamingBody, S3,
 };
 use std::collections::HashMap;
 use std::fs;

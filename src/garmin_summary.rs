@@ -94,15 +94,11 @@ impl GarminSummary {
     }
 
     pub fn process_and_upload_single_gps_file(
-        pg_conn: &Connection,
         filename: &str,
         gps_bucket: &str,
         cache_bucket: &str,
         summary_bucket: &str,
     ) -> Result<(), Error> {
-        let corr_list = GarminCorrectionList::read_corrections_from_db(&pg_conn)?;
-        let corr_map = corr_list.get_corr_list_map();
-
         let tempdir = TempDir::new("garmin_cache")?;
 
         let temp_path = tempdir
@@ -110,7 +106,13 @@ impl GarminSummary {
             .to_str()
             .expect("Path is invalid unicode somehow");
 
+        let corr_file = format!("{}/{}", temp_path, "garmin_correction.avro");
+
         let gsync = GarminSync::new();
+        gsync.download_file(&corr_file, &gps_bucket, "garmin_correction.avro")?;
+
+        let corr_list = GarminCorrectionList::read_corr_list_from_avro(&corr_file)?;
+        let corr_map = corr_list.get_corr_list_map();
 
         let local_file = format!("{}/{}", temp_path, filename);
 
@@ -130,7 +132,6 @@ impl GarminSummary {
         let s3_key = format!("{}.summary.avro", filename);
 
         gsync.upload_file(&local_file, &summary_bucket, &s3_key)?;
-        gsum_list.write_summary_to_postgres(&pg_conn)?;
         Ok(())
     }
 }

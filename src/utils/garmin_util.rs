@@ -6,6 +6,7 @@ extern crate serde_json;
 use num::traits::Pow;
 
 use postgres::{Connection, TlsMode};
+
 use std::io::BufRead;
 use std::io::BufReader;
 use std::path::Path;

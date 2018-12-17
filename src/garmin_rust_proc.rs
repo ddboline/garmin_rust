@@ -1,9 +1,13 @@
 extern crate env_logger;
 
-use garmin_rust::garmin_cli;
+use garmin_rust::garmin_cli::GarminCli;
 
 fn main() {
     env_logger::init();
 
-    garmin_cli::cli_garmin_proc().expect("cli_garmin_proc failed");
+    GarminCli::new()
+        .with_config()
+        .with_cli_proc()
+        .garmin_proc()
+        .expect("cli_garmin_proc failed");
 }

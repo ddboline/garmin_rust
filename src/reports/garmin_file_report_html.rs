@@ -67,7 +67,6 @@ pub fn file_report_html(
     gfile: &GarminFile,
     maps_api_key: &str,
     cache_dir: &str,
-    http_bucket: &str,
     history: &str,
 ) -> Result<String, Error> {
     let sport = match &gfile.sport {
@@ -76,7 +75,7 @@ pub fn file_report_html(
     };
 
     let report_objs = extract_report_objects_from_file(&gfile)?;
-    let plot_opts = get_plot_opts(&report_objs, &cache_dir, &http_bucket);
+    let plot_opts = get_plot_opts(&report_objs, &cache_dir);
     let graphs = get_graphs(&plot_opts);
 
     get_html_string(
@@ -188,11 +187,7 @@ fn extract_report_objects_from_file(gfile: &GarminFile) -> Result<ReportObjects,
     Ok(report_objs)
 }
 
-fn get_plot_opts<'a>(
-    report_objs: &'a ReportObjects,
-    cache_dir: &str,
-    http_bucket: &str,
-) -> Vec<PlotOpts<'a>> {
+fn get_plot_opts<'a>(report_objs: &'a ReportObjects, cache_dir: &str) -> Vec<PlotOpts<'a>> {
     let mut plot_opts = Vec::new();
 
     if !report_objs.mile_split_vals.is_empty() {
@@ -203,8 +198,7 @@ fn get_plot_opts<'a>(
                 .with_data(&report_objs.mile_split_vals)
                 .with_marker("o")
                 .with_labels("mi", "min/mi")
-                .with_cache_dir(&cache_dir)
-                .with_http_bucket(&http_bucket),
+                .with_cache_dir(&cache_dir),
         );
     };
 
@@ -221,8 +215,7 @@ fn get_plot_opts<'a>(
                 )
                 .with_data(&report_objs.hr_values)
                 .with_labels("mi", "bpm")
-                .with_cache_dir(&cache_dir)
-                .with_http_bucket(&http_bucket),
+                .with_cache_dir(&cache_dir),
         );
     };
 
@@ -233,8 +226,7 @@ fn get_plot_opts<'a>(
                 .with_title("Altitude")
                 .with_data(&report_objs.alt_values)
                 .with_labels("mi", "height [m]")
-                .with_cache_dir(&cache_dir)
-                .with_http_bucket(&http_bucket),
+                .with_cache_dir(&cache_dir),
         );
     };
 
@@ -245,8 +237,7 @@ fn get_plot_opts<'a>(
                 .with_title("Speed min/mi every 1/4 mi")
                 .with_data(&report_objs.speed_values)
                 .with_labels("mi", "min/mi")
-                .with_cache_dir(&cache_dir)
-                .with_http_bucket(&http_bucket),
+                .with_cache_dir(&cache_dir),
         );
 
         plot_opts.push(
@@ -255,8 +246,7 @@ fn get_plot_opts<'a>(
                 .with_title("Speed mph")
                 .with_data(&report_objs.mph_speed_values)
                 .with_labels("mi", "mph")
-                .with_cache_dir(&cache_dir)
-                .with_http_bucket(&http_bucket),
+                .with_cache_dir(&cache_dir),
         );
     };
 
@@ -268,8 +258,7 @@ fn get_plot_opts<'a>(
                 .with_data(&report_objs.heart_rate_speed)
                 .with_scatter()
                 .with_labels("hrt", "min/mi")
-                .with_cache_dir(&cache_dir)
-                .with_http_bucket(&http_bucket),
+                .with_cache_dir(&cache_dir),
         );
     };
 
@@ -292,8 +281,7 @@ fn get_plot_opts<'a>(
                 .with_data(&report_objs.heart_rate_speed)
                 .with_scatter()
                 .with_labels("mi", "min/mi")
-                .with_cache_dir(&cache_dir)
-                .with_http_bucket(&http_bucket),
+                .with_cache_dir(&cache_dir),
         );
     };
 
@@ -307,8 +295,7 @@ fn get_plot_opts<'a>(
                 .with_data(&report_objs.avg_mph_speed_values)
                 .with_scatter()
                 .with_labels("mi", "min/mi")
-                .with_cache_dir(&cache_dir)
-                .with_http_bucket(&http_bucket),
+                .with_cache_dir(&cache_dir),
         );
     };
 

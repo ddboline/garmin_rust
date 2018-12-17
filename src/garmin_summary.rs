@@ -116,11 +116,14 @@ impl GarminSummary {
         let gsync = GarminSync::new();
         gsync.download_file(&corr_file, &cache_bucket, "garmin_correction.avro")?;
 
+        debug!("Try downloading {}", corr_file);
         let corr_list = GarminCorrectionList::read_corr_list_from_avro(&corr_file)?;
+        debug!("Success {}", corr_list.corr_list.len());
         let corr_map = corr_list.get_corr_list_map();
 
         let local_file = format!("{}/{}", temp_path, filename);
 
+        debug!("Download file {}", local_file);
         gsync.download_file(&local_file, &gps_bucket, &filename)?;
 
         debug!("Try processing file {} {}", local_file, temp_path);

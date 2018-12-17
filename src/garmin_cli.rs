@@ -141,8 +141,6 @@ pub fn cli_garmin_proc() -> Result<(), Error> {
 
         let corr_map = corr_list.get_corr_list_map();
 
-        corr_list.dump_corr_list_to_avro(&format!("{}/garmin_correction.avro", &cache_dir))?;
-
         let gsum_list = match filenames {
             Some(flist) => {
                 let proc_list: Vec<Result<_, Error>> = flist
@@ -170,6 +168,7 @@ pub fn cli_garmin_proc() -> Result<(), Error> {
                             }
                         })
                         .collect();
+
                     let dbset: HashSet<String> = get_list_of_files_from_db(&pg_conn, &Vec::new())?
                         .into_iter()
                         .collect();
@@ -202,6 +201,7 @@ pub fn cli_garmin_proc() -> Result<(), Error> {
         if !gsum_list.summary_list.is_empty() {
             gsum_list.write_summary_to_avro_files(&summary_cache)?;
             gsum_list.write_summary_to_postgres(&pg_conn)?;
+            corr_list.dump_corr_list_to_avro(&format!("{}/garmin_correction.avro", &cache_dir))?;
         };
     };
     Ok(())

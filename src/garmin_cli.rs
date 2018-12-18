@@ -381,7 +381,13 @@ impl GarminCli {
                     .to_str()
                     .expect("Path is invalid unicode somehow");
 
-                file_report_html(&gfile, &self.config.maps_api_key, &htmlcachedir, &history)
+                file_report_html(
+                    &gfile,
+                    &self.config.maps_api_key,
+                    &htmlcachedir,
+                    &history,
+                    &self.config.gps_dir,
+                )
             }
             _ => {
                 debug!("{:?}", options);

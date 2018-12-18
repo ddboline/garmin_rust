@@ -117,6 +117,13 @@ HISTORYBUTTONS
 </form>
 </p>
 
+<p>
+<form>
+<input type="text" name="cmd" id="strava_upload"/>
+<input type="button" name="submitSTRAVA" value="Title" onclick="processStravaData();"/>
+</form>
+</p>
+
 <h1><center><b>SPORTTITLEDATE</b></center></h1>
 
 <div id="map-canvas"></div>
@@ -140,6 +147,18 @@ HISTORYBUTTONS
     function processFormData() {
         var garmin_cmd = document.getElementById( 'garmin_cmd' );
         send_command( 'filter=' + garmin_cmd.value );
+    }
+    function processStravaData() {
+        var strava_title = document.getElementById( 'strava_upload' );
+        var ostr = '../strava';
+        var data = JSON.stringify({"filename": "FILENAME", "title": strava_title.value, "activity_type": "ACTIVITYTYPE"});
+        var xmlhttp = new XMLHttpRequest();
+        xmlhttp.onload = function() {
+            location.replace(xmlhttp.responseText)
+        }
+        xmlhttp.open( "POST", ostr , true );
+        xmlhttp.setRequestHeader("Content-Type", "application/json");
+        xmlhttp.send(data);
     }
 </script>
 

@@ -9,6 +9,7 @@ use crate::garmin_lap::GarminLap;
 use crate::reports::garmin_file_report_txt::get_splits;
 use crate::reports::garmin_templates::{GARMIN_TEMPLATE, MAP_TEMPLATE};
 use crate::utils::garmin_util::{print_h_m_s, titlecase, MARATHON_DISTANCE_MI, METERS_PER_MILE};
+use crate::utils::sport_types::convert_sport_name_to_activity_type;
 use crate::utils::plot_graph::generate_d3_plot;
 use crate::utils::plot_opts::PlotOpts;
 
@@ -68,6 +69,7 @@ pub fn file_report_html(
     maps_api_key: &str,
     cache_dir: &str,
     history: &str,
+    gps_dir: &str,
 ) -> Result<String, Error> {
     let sport = match &gfile.sport {
         Some(s) => s.clone(),
@@ -85,6 +87,7 @@ pub fn file_report_html(
         &sport,
         &maps_api_key,
         &history,
+        &gps_dir,
     )
 }
 
@@ -322,6 +325,7 @@ fn get_html_string(
     sport: &str,
     maps_api_key: &str,
     history: &str,
+    gps_dir: &str,
 ) -> Result<String, Error> {
     let mut htmlvec: Vec<String> = Vec::new();
 
@@ -421,6 +425,14 @@ fn get_html_string(
             } else if line.contains("HISTORYBUTTONS") {
                 let history_button = generate_history_buttons(&history);
                 htmlvec.push(line.replace("HISTORYBUTTONS", &history_button).to_string());
+            } else if line.contains("FILENAME") | line.contains("ACTIVITYTYPE") {
+                let filename = format!("{}/{}", &gps_dir, &gfile.filename);
+                let activity_type =
+                    convert_sport_name_to_activity_type(&gfile.sport.clone().unwrap()).unwrap();
+                htmlvec.push(
+                    line.replace("FILENAME", &filename)
+                        .replace("ACTIVITYTYPE", &activity_type),
+                );
             } else {
                 htmlvec.push(line.to_string());
             };

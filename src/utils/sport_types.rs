@@ -74,3 +74,28 @@ pub fn convert_sport_name(sport: &str) -> Option<String> {
         None => None,
     }
 }
+
+pub fn get_strava_activity_type(sport_type: &SportTypes) -> String {
+    match sport_type {
+        SportTypes::Running => "run".to_string(),
+        SportTypes::Biking => "ride".to_string(),
+        SportTypes::Walking => "walk".to_string(),
+        SportTypes::Ultimate => "ultimate".to_string(),
+        SportTypes::Elliptical => "elliptical".to_string(),
+        SportTypes::Stairs => "stairs".to_string(),
+        SportTypes::Lifting => "lifting".to_string(),
+        SportTypes::Swimming => "swim".to_string(),
+        SportTypes::Other => "other".to_string(),
+        SportTypes::Snowshoeing => "snowshoe".to_string(),
+        SportTypes::Skiing => "nordicski".to_string(),
+    }
+}
+
+pub fn convert_sport_name_to_activity_type(sport: &str) -> Option<String> {
+    let map0 = get_sport_type_map();
+
+    match map0.get(sport) {
+        Some(&s) => Some(get_strava_activity_type(&s)),
+        None => None,
+    }
+}

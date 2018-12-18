@@ -3,6 +3,7 @@ extern crate subprocess;
 
 use failure::Error;
 use std::collections::HashMap;
+use std::env::var;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::path::Path;
@@ -65,10 +66,24 @@ impl GarminParseTcx {
     fn parse_tcx(filename: &str, is_fit_file: bool) -> Result<TcxOutput, Error> {
         let sport_type_map = get_sport_type_map();
 
-        let command = if is_fit_file {
-            format!("fit2tcx -i {} | xml2", filename)
-        } else {
-            format!("cat {} | xml2", filename)
+        let command = match var("LAMBDA_TASK_ROOT") {
+            Ok(_) => {
+                if is_fit_file {
+                    format!(
+                        "{}/fit2tcx -i {} | {}/xml2",
+                        r#"${LAMBDA_TASK_ROOT}/bin"#, filename, r#"${LAMBDA_TASK_ROOT}/bin"#
+                    )
+                } else {
+                    format!("cat {} | {}/xml2", filename, r#"${LAMBDA_TASK_ROOT}/bin"#)
+                }
+            }
+            Err(_) => {
+                if is_fit_file {
+                    format!("fit2tcx -i {} | xml2", filename)
+                } else {
+                    format!("cat {} | xml2", filename)
+                }
+            }
         };
 
         let stream = Exec::shell(command).stream_stdout()?;

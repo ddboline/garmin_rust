@@ -1,5 +1,6 @@
 extern crate subprocess;
 
+use std::env::var;
 use failure::Error;
 use std::collections::HashMap;
 use std::io::BufRead;
@@ -62,11 +63,18 @@ impl GarminParseGmn {
     fn parse_xml(filename: &str) -> Result<GmnOutput, Error> {
         let sport_type_map = get_sport_type_map();
 
-        let stream = Exec::shell(format!(
+        let command = match var("LAMBDA_TASK_ROOT") {
+            Ok(_) => format!(
+            "echo \"{}\" `{}/garmin_dump {}` \"{}\" | {}/xml2",
+            "<root>", r#"${LAMBDA_TASK_ROOT}/bin/"#, filename, "</root>", r#"${LAMBDA_TASK_ROOT}/bin"#
+        ),
+            Err(_) => format!(
             "echo \"{}\" `garmin_dump {}` \"{}\" | xml2",
             "<root>", filename, "</root>"
-        ))
-        .stream_stdout()?;
+        ),
+        };
+
+        let stream = Exec::shell(command).stream_stdout()?;
 
         let reader = BufReader::new(stream);
 

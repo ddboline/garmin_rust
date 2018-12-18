@@ -56,7 +56,7 @@ fn my_handler(event: CustomEvent, c: Context) -> Result<CustomOutput, HandlerErr
         return Err(c.new_error("Empty filename"));
     }
 
-    let command = r#"fit2tcx --help"#;
+    let command = r#"${LAMBDA_TASK_ROOT}/bin/fit2tcx --help"#;
 
     let result = Exec::shell(command)
         .stdout(Redirection::Pipe)

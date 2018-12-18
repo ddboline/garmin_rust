@@ -1,4 +1,4 @@
-version := "0.1.8"
+version := "0.1.9"
 release := "1"
 uniq := $(shell head -c1000 /dev/urandom | sha512sum | head -c 12 ; echo ;)
 cidfile := "/tmp/.tmp.docker.$(uniq)"
@@ -45,3 +45,4 @@ lambda_update_code:
 
 install:
 	cp target/$(build_type)/garmin_rust_proc target/$(build_type)/garmin_rust_report target/$(build_type)/garmin_rust_http /usr/bin/
+    cp python/strava_upload.py /usr/bin/strava-upload

@@ -2,6 +2,7 @@
 
 extern crate garmin_rust;
 
+use std::env::var;
 use std::error::Error;
 
 use subprocess::{Exec, Redirection};

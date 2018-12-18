@@ -56,14 +56,6 @@ fn my_handler(event: CustomEvent, c: Context) -> Result<CustomOutput, HandlerErr
         return Err(c.new_error("Empty filename"));
     }
 
-    GarminSummary::process_and_upload_single_gps_file(
-        &event.file_name,
-        &config.gps_bucket,
-        &config.cache_bucket,
-        &config.summary_bucket,
-    )
-    .expect("Failed to process gps file");
-
     let command = r#"fit2tcx --help"#;
 
     let result = Exec::shell(command)
@@ -71,6 +63,14 @@ fn my_handler(event: CustomEvent, c: Context) -> Result<CustomOutput, HandlerErr
         .capture()
         .expect("Failed to capture stdout")
         .stdout_str();
+
+    GarminSummary::process_and_upload_single_gps_file(
+        &event.file_name,
+        &config.gps_bucket,
+        &config.cache_bucket,
+        &config.summary_bucket,
+    )
+    .expect("Failed to process gps file");
 
     Ok(CustomOutput {
         message: format!("Processing, {}! {}", event.file_name, result),

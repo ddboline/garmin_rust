@@ -5,6 +5,8 @@ import os.path
 import gzip
 import requests
 
+from gevent.wsgi import WSGIServer
+
 from stravalib import Client, exc
 from tempfile import NamedTemporaryFile
 
@@ -47,8 +49,6 @@ def strava_auth_callback():
 
     cat = client.exchange_code_for_token(client_id=cid, client_secret=cs, code=code)['access_token']
 
-    print(cid, cs, cat)
-
     if not cp_.has_section('API'):
         cp_.add_section('API')
     cp_.set('API', 'CLIENT_ID', cid)
@@ -66,10 +66,6 @@ def strava_endpoint():
         '.gpx': lambda v: '<gpx' in v[:200],
         '.fit': lambda v: v[8:12] == '.FIT'
     }
-
-    print(request.json.get('filename'))
-    print(request.json.get('title'))
-    print(request.json.get('activity_type'))
 
     filename = request.json['filename']
     title = request.json['title']
@@ -95,7 +91,7 @@ def strava_endpoint():
         authorize_url = client.authorization_url(
             client_id=cid, redirect_uri='https://www.ddboline.net/strava/callback', scope=_scope)
 
-        return f'<a href="{authorize_url}" target="_blank">Link</a>', 200
+        return authorize_url, 200
 
     act = open(filename, 'rb')
 
@@ -127,7 +123,6 @@ def strava_endpoint():
         duplicate = False
     except exc.ActivityUploadFailed as e:
         words = e.args[0].split()
-        print(words)
         if words[-4:-1] == ['duplicate', 'of', 'activity']:
             activity_id = int(words[-1])
             duplicate = True
@@ -136,11 +131,11 @@ def strava_endpoint():
 
     uri = "http://strava.com/activities/{:d}".format(activity_id)
     # show results
-    if duplicate:
-        return uri, 200
-    else:
-        return uri, 200
+    return uri, 200
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=52168)
+    http_server = WSGIServer(('', 52168), app)
+    http_server.serve_forever()
+
+    # app.run(host='0.0.0.0', port=52168)

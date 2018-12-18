@@ -75,7 +75,7 @@ pub fn convert_sport_name(sport: &str) -> Option<String> {
     }
 }
 
-pub fn get_strava_activity_type(sport_type: &SportTypes) -> String {
+pub fn get_strava_activity_type(sport_type: SportTypes) -> String {
     match sport_type {
         SportTypes::Running => "run".to_string(),
         SportTypes::Biking => "ride".to_string(),
@@ -95,7 +95,7 @@ pub fn convert_sport_name_to_activity_type(sport: &str) -> Option<String> {
     let map0 = get_sport_type_map();
 
     match map0.get(sport) {
-        Some(&s) => Some(get_strava_activity_type(&s)),
+        Some(&s) => Some(get_strava_activity_type(s)),
         None => None,
     }
 }

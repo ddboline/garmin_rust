@@ -3,15 +3,12 @@ extern crate flate2;
 use avro_rs::{from_value, Codec, Reader, Schema, Writer};
 use std::collections::HashMap;
 use std::fs::File;
-use std::hash::BuildHasher;
 use std::path::Path;
 
 use failure::{err_msg, Error};
 
-use crate::garmin_correction_lap::GarminCorrectionLap;
 use crate::garmin_lap::{GarminLap, GARMIN_LAP_AVRO_SCHEMA};
 use crate::garmin_point::{GarminPoint, GARMIN_POINT_AVRO_SCHEMA};
-use crate::utils::garmin_util::METERS_PER_MILE;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct GarminFile {
@@ -144,69 +141,6 @@ pub fn get_reverse_file_type_map() -> HashMap<GarminFileTypes, String> {
         .into_iter()
         .map(|(k, v)| (v, k))
         .collect()
-}
-
-pub fn apply_lap_corrections<S: BuildHasher>(
-    lap_list: &[GarminLap],
-    sport: &Option<String>,
-    corr_map: &HashMap<(String, i32), GarminCorrectionLap, S>,
-) -> (Vec<GarminLap>, Option<String>) {
-    let mut new_sport = sport.clone();
-    match lap_list.get(0) {
-        Some(l) => {
-            let lap_start = &l.lap_start.clone();
-            for lap in lap_list {
-                debug!("lap {} dis {}", lap.lap_number, lap.lap_distance);
-            }
-            let new_lap_list: Vec<_> = lap_list
-                .iter()
-                .map(|lap| {
-                    let lap_number = lap.lap_number;
-                    match &corr_map.get(&(lap_start.to_string(), lap_number)) {
-                        Some(corr) => {
-                            let mut new_lap = lap.clone();
-                            new_sport = match &corr.sport {
-                                Some(s) => {
-                                    debug!("change sport {} {:?} {}", lap_start, lap.lap_type, s);
-                                    Some(s.clone())
-                                }
-                                None => sport.clone(),
-                            };
-                            new_lap.lap_duration = match &corr.duration {
-                                Some(dur) => {
-                                    debug!(
-                                        "change duration {} {} {}",
-                                        lap_start, lap.lap_duration, dur
-                                    );
-                                    *dur
-                                }
-                                None => lap.lap_duration,
-                            };
-                            new_lap.lap_distance = match &corr.distance {
-                                Some(dis) => {
-                                    debug!(
-                                        "change duration {} {} {}",
-                                        lap_start,
-                                        lap.lap_distance,
-                                        dis * METERS_PER_MILE
-                                    );
-                                    dis * METERS_PER_MILE
-                                }
-                                None => lap.lap_distance,
-                            };
-                            new_lap
-                        }
-                        None => lap.clone(),
-                    }
-                })
-                .collect();
-            for lap in &new_lap_list {
-                debug!("lap {} dis {}", lap.lap_number, lap.lap_distance);
-            }
-            (new_lap_list, new_sport)
-        }
-        None => (Vec::new(), new_sport),
-    }
 }
 
 pub fn check_cached_files() -> Vec<String> {

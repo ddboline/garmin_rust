@@ -5,6 +5,7 @@ use failure::{err_msg, Error};
 use postgres_derive::{FromSql, ToSql};
 use std::collections::HashMap;
 use std::fs::File;
+use std::hash::BuildHasher;
 use std::io::prelude::*;
 use std::str;
 
@@ -14,8 +15,10 @@ use json::{parse, JsonValue};
 
 use postgres::Connection;
 
+use crate::garmin_lap::GarminLap;
 use crate::garmin_summary::GarminSummaryList;
 use crate::utils::sport_types::convert_sport_name;
+use crate::utils::garmin_util::METERS_PER_MILE;
 
 pub const GARMIN_CORRECTION_LAP_AVRO_SCHEMA: &str = r#"
     {
@@ -449,5 +452,68 @@ impl GarminCorrectionList {
 
         println!("{}", corr_list.corr_list.len());
         Ok(())
+    }
+}
+
+pub fn apply_lap_corrections<S: BuildHasher>(
+    lap_list: &[GarminLap],
+    sport: &Option<String>,
+    corr_map: &HashMap<(String, i32), GarminCorrectionLap, S>,
+) -> (Vec<GarminLap>, Option<String>) {
+    let mut new_sport = sport.clone();
+    match lap_list.get(0) {
+        Some(l) => {
+            let lap_start = &l.lap_start.clone();
+            for lap in lap_list {
+                debug!("lap {} dis {}", lap.lap_number, lap.lap_distance);
+            }
+            let new_lap_list: Vec<_> = lap_list
+                .iter()
+                .map(|lap| {
+                    let lap_number = lap.lap_number;
+                    match &corr_map.get(&(lap_start.to_string(), lap_number)) {
+                        Some(corr) => {
+                            let mut new_lap = lap.clone();
+                            new_sport = match &corr.sport {
+                                Some(s) => {
+                                    debug!("change sport {} {:?} {}", lap_start, lap.lap_type, s);
+                                    Some(s.clone())
+                                }
+                                None => sport.clone(),
+                            };
+                            new_lap.lap_duration = match &corr.duration {
+                                Some(dur) => {
+                                    debug!(
+                                        "change duration {} {} {}",
+                                        lap_start, lap.lap_duration, dur
+                                    );
+                                    *dur
+                                }
+                                None => lap.lap_duration,
+                            };
+                            new_lap.lap_distance = match &corr.distance {
+                                Some(dis) => {
+                                    debug!(
+                                        "change duration {} {} {}",
+                                        lap_start,
+                                        lap.lap_distance,
+                                        dis * METERS_PER_MILE
+                                    );
+                                    dis * METERS_PER_MILE
+                                }
+                                None => lap.lap_distance,
+                            };
+                            new_lap
+                        }
+                        None => lap.clone(),
+                    }
+                })
+                .collect();
+            for lap in &new_lap_list {
+                debug!("lap {} dis {}", lap.lap_number, lap.lap_distance);
+            }
+            (new_lap_list, new_sport)
+        }
+        None => (Vec::new(), new_sport),
     }
 }

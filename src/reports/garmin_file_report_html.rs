@@ -9,9 +9,9 @@ use crate::garmin_lap::GarminLap;
 use crate::reports::garmin_file_report_txt::get_splits;
 use crate::reports::garmin_templates::{GARMIN_TEMPLATE, MAP_TEMPLATE};
 use crate::utils::garmin_util::{print_h_m_s, titlecase, MARATHON_DISTANCE_MI, METERS_PER_MILE};
-use crate::utils::sport_types::convert_sport_name_to_activity_type;
 use crate::utils::plot_graph::generate_d3_plot;
 use crate::utils::plot_opts::PlotOpts;
+use crate::utils::sport_types::convert_sport_name_to_activity_type;
 
 pub fn generate_history_buttons(history: &str) -> String {
     let mut history_vec: Vec<String> = history.split(';').map(|s| s.to_string()).collect();

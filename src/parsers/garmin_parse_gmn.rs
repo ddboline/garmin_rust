@@ -7,8 +7,8 @@ use std::io::BufReader;
 use std::path::Path;
 use subprocess::Exec;
 
-use crate::garmin_correction_lap::GarminCorrectionLap;
-use crate::garmin_file::{apply_lap_corrections, GarminFile};
+use crate::garmin_correction_lap::{apply_lap_corrections, GarminCorrectionLap};
+use crate::garmin_file::GarminFile;
 use crate::garmin_lap::GarminLap;
 use crate::garmin_point::GarminPoint;
 use crate::utils::sport_types::get_sport_type_map;

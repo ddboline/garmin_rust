@@ -16,3 +16,4 @@ ADD Cargo.toml /garmin_rust
 ADD src /garmin_rust/src
 ADD scripts /garmin_rust/scripts
 ADD Makefile /garmin_rust
+ADD python /garmin_rust/python

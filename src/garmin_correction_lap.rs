@@ -17,8 +17,8 @@ use postgres::Connection;
 
 use crate::garmin_lap::GarminLap;
 use crate::garmin_summary::GarminSummaryList;
-use crate::utils::sport_types::convert_sport_name;
 use crate::utils::garmin_util::METERS_PER_MILE;
+use crate::utils::sport_types::convert_sport_name;
 
 pub const GARMIN_CORRECTION_LAP_AVRO_SCHEMA: &str = r#"
     {

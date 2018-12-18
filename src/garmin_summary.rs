@@ -124,10 +124,25 @@ impl GarminSummary {
         let local_file = format!("{}/{}", temp_path, filename);
 
         debug!("Download file {}", local_file);
-        gsync.download_file(&local_file, &gps_bucket, &filename)?;
+        let md5sum = gsync
+            .download_file(&local_file, &gps_bucket, &filename)?
+            .trim_matches('"')
+            .to_string();
 
         debug!("Try processing file {} {}", local_file, temp_path);
-        let gsum = GarminSummary::process_single_gps_file(&local_file, &temp_path, &corr_map)?;
+
+        let cache_file = format!("{}/{}.avro", temp_path, filename.split('/').last().unwrap());
+
+        println!("Found md5sum {}, try parsing", md5sum);
+        let gfile = GarminParse::new(&filename, &corr_map).gfile;
+
+        match gfile.laps.get(0) {
+            Some(_) => (),
+            None => println!("{} has no laps?", gfile.filename),
+        };
+        gfile.dump_avro(&cache_file)?;
+        let gsum = GarminSummary::new(&gfile, &md5sum);
+
         let gsum_list = GarminSummaryList::from_vec(vec![gsum]);
 
         gsum_list.write_summary_to_avro_files(&temp_path)?;

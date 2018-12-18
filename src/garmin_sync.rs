@@ -212,32 +212,35 @@ impl GarminSync {
         local_file: &str,
         s3_bucket: &str,
         s3_key: &str,
-    ) -> Result<(), Error> {
-        self.download_to_file(
-            GetObjectRequest {
-                bucket: s3_bucket.to_string(),
-                if_match: None,
-                if_modified_since: None,
-                if_none_match: None,
-                if_unmodified_since: None,
-                key: s3_key.to_string(),
-                part_number: None,
-                range: None,
-                request_payer: None,
-                response_cache_control: None,
-                response_content_disposition: None,
-                response_content_encoding: None,
-                response_content_language: None,
-                response_content_type: None,
-                response_expires: None,
-                sse_customer_algorithm: None,
-                sse_customer_key: None,
-                sse_customer_key_md5: None,
-                version_id: None,
-            },
-            local_file,
-        )?;
-        Ok(())
+    ) -> Result<String, Error> {
+        let etag = self
+            .download_to_file(
+                GetObjectRequest {
+                    bucket: s3_bucket.to_string(),
+                    if_match: None,
+                    if_modified_since: None,
+                    if_none_match: None,
+                    if_unmodified_since: None,
+                    key: s3_key.to_string(),
+                    part_number: None,
+                    range: None,
+                    request_payer: None,
+                    response_cache_control: None,
+                    response_content_disposition: None,
+                    response_content_encoding: None,
+                    response_content_language: None,
+                    response_content_type: None,
+                    response_expires: None,
+                    sse_customer_algorithm: None,
+                    sse_customer_key: None,
+                    sse_customer_key_md5: None,
+                    version_id: None,
+                },
+                local_file,
+            )?
+            .e_tag
+            .unwrap_or_else(|| "".to_string());
+        Ok(etag)
     }
 
     fn download_to_file<F>(

@@ -13,6 +13,13 @@ pub static GARMIN_TEMPLATE: &str = r#"
 HISTORYBUTTONS
 </p>
 
+<p>
+<form>
+<input type="text" name="cmd" id="garmin_cmd"/>
+<input type="button" name="submitGARMIN" value="Submit" onclick="processFormData();"/>
+</form>
+</p>
+
 <pre>
 INSERTTEXTHERE
 </pre>
@@ -21,6 +28,10 @@ INSERTTEXTHERE
     function send_command( command ) {
         var ostr = '../garmin?' + command;
         location.replace(ostr);
+    }
+    function processFormData() {
+        var garmin_cmd = document.getElementById( 'garmin_cmd' );
+        send_command( garmin_cmd.value );
     }
 </script>
 
@@ -99,6 +110,13 @@ pub static MAP_TEMPLATE: &str = r#"
 HISTORYBUTTONS
 </p>
 
+<p>
+<form>
+<input type="text" name="cmd" id="garmin_cmd"/>
+<input type="button" name="submitGARMIN" value="Submit" onclick="processFormData();"/>
+</form>
+</p>
+
 <h1><center><b>SPORTTITLEDATE</b></center></h1>
 
 <div id="map-canvas"></div>
@@ -118,6 +136,10 @@ HISTORYBUTTONS
     function send_command( command ) {
         var ostr = '../garmin?' + command;
         location.replace(ostr);
+    }
+    function processFormData() {
+        var garmin_cmd = document.getElementById( 'garmin_cmd' );
+        send_command( garmin_cmd.value );
     }
 </script>
 

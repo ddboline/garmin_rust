@@ -109,22 +109,25 @@ def strava_upload():
             print("Could not connect to Strava API", file=stderr)
         except Exception as e:
             print("NOT AUTHORIZED %s" % e, file=stderr)
-            print(
-                "Need Strava API access token. Launching web browser to "
-                "obtain one.",
-                file=stderr)
+            print("Need Strava API access token. Launching web browser to "
+                  "obtain one.",
+                  file=stderr)
             client = Client()
-            webserver = QueryGrabber(response='<title>Strava auth code received!</title>This window can be closed.')
+            webserver = QueryGrabber(
+                response='<title>Strava auth code received!</title>This window can be closed.',
+                address=('localhost', 52168))
             _scope = 'view_private,write'
-            authorize_url = client.authorization_url(client_id=cid, redirect_uri=webserver.root_uri(), scope=_scope)
+            authorize_url = client.authorization_url(
+                client_id=cid, redirect_uri=webserver.root_uri(), scope=_scope)
             webbrowser.open_new_tab(authorize_url)
             webserver.handle_request()
-            client.access_token = cat = client.exchange_code_for_token(client_id=cid,client_secret=cs,code=webserver.received['code'])
+            client.access_token = cat = client.exchange_code_for_token(
+                client_id=cid, client_secret=cs, code=webserver.received['code'])
             cp_.add_section('API')
-            cp_.set('API','CLIENT_ID', cid)
-            cp_.set('API','CLIENT_SECRET', cs)
-            cp_.set('API','ACCESS_TOKEN', cat)
-            cp_.write(open(os.path.expanduser('~/.stravacli'),"w"))
+            cp_.set('API', 'CLIENT_ID', cid)
+            cp_.set('API', 'CLIENT_SECRET', cs)
+            cp_.set('API', 'ACCESS_TOKEN', cat)
+            cp_.write(open(os.path.expanduser('~/.stravacli'), "w"))
         else:
             if not cp_.has_section('API'):
                 cp_.add_section('API')
@@ -220,31 +223,36 @@ def strava_upload():
 
 
 class handler(BaseHTTPRequestHandler):
+
     def do_GET(self):
-        self.server.received = urlparse.parse_qs(self.path.split('?',1)[1])
+        self.server.received = urlparse.parse_qs(self.path.split('?', 1)[1])
         self.send_response(200)
         self.end_headers()
         self.wfile.write(self.server.response)
 
+
 class QueryGrabber(HTTPServer):
+
     def __init__(self, response='', address=None):
         self.received = None
         self.response = response
-        if address!=None:
+        if address != None:
             HTTPServer.__init__(self, address, handler)
         else:
-            for port in range(1024,65536):
+            for port in range(1024, 65536):
                 try:
                     HTTPServer.__init__(self, ('localhost', port), handler)
                 except socket.error as e:
-                    if e.errno!=98: # Address already in use
+                    if e.errno != 98:  # Address already in use
                         raise
                 else:
                     break
             else:
                 raise Exception('No open ports')
+
     def root_uri(self):
         return 'http://{}:{:d}'.format(*self.server_address)
+
 
 if __name__ == '__main__':
     strava_upload()

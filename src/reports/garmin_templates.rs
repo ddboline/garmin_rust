@@ -31,7 +31,7 @@ INSERTTEXTHERE
     }
     function processFormData() {
         var garmin_cmd = document.getElementById( 'garmin_cmd' );
-        send_command( garmin_cmd.value );
+        send_command( 'filter=' + garmin_cmd.value );
     }
 </script>
 
@@ -139,7 +139,7 @@ HISTORYBUTTONS
     }
     function processFormData() {
         var garmin_cmd = document.getElementById( 'garmin_cmd' );
-        send_command( garmin_cmd.value );
+        send_command( 'filter=' + garmin_cmd.value );
     }
 </script>
 

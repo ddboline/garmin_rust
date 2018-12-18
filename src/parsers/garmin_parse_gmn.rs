@@ -1,8 +1,8 @@
 extern crate subprocess;
 
-use std::env::var;
 use failure::Error;
 use std::collections::HashMap;
+use std::env::var;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::path::Path;
@@ -65,13 +65,17 @@ impl GarminParseGmn {
 
         let command = match var("LAMBDA_TASK_ROOT") {
             Ok(_) => format!(
-            "echo \"{}\" `{}/garmin_dump {}` \"{}\" | {}/xml2",
-            "<root>", r#"${LAMBDA_TASK_ROOT}/bin/"#, filename, "</root>", r#"${LAMBDA_TASK_ROOT}/bin"#
-        ),
+                "echo \"{}\" `{}/garmin_dump {}` \"{}\" | {}/xml2",
+                "<root>",
+                r#"${LAMBDA_TASK_ROOT}/bin/"#,
+                filename,
+                "</root>",
+                r#"${LAMBDA_TASK_ROOT}/bin"#
+            ),
             Err(_) => format!(
-            "echo \"{}\" `garmin_dump {}` \"{}\" | xml2",
-            "<root>", filename, "</root>"
-        ),
+                "echo \"{}\" `garmin_dump {}` \"{}\" | xml2",
+                "<root>", filename, "</root>"
+            ),
         };
 
         let stream = Exec::shell(command).stream_stdout()?;

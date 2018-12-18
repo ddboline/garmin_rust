@@ -57,6 +57,8 @@ fn my_handler(event: CustomEvent, c: Context) -> Result<CustomOutput, HandlerErr
     }
 
     let command = r#"${LAMBDA_TASK_ROOT}/bin/fit2tcx --help"#;
+    
+    println!("command is {}", command);
 
     let result = Exec::shell(command)
         .stdout(Redirection::Pipe)

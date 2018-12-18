@@ -86,6 +86,8 @@ impl GarminParseTcx {
             }
         };
 
+        debug!("command {}", command);
+
         let stream = Exec::shell(command).stream_stdout()?;
 
         let reader = BufReader::new(stream);

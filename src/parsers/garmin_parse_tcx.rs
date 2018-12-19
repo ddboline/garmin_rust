@@ -67,14 +67,11 @@ impl GarminParseTcx {
         let sport_type_map = get_sport_type_map();
 
         let command = match var("LAMBDA_TASK_ROOT") {
-            Ok(_) => {
+            Ok(x) => {
                 if is_fit_file {
-                    format!(
-                        "{}/fit2tcx -i {} | {}/xml2",
-                        r#"${LAMBDA_TASK_ROOT}/bin"#, filename, r#"${LAMBDA_TASK_ROOT}/bin"#
-                    )
+                    format!("{}/bin/fit2tcx -i {} | {}/bin/xml2", x, filename, x)
                 } else {
-                    format!("cat {} | {}/xml2", filename, r#"${LAMBDA_TASK_ROOT}/bin"#)
+                    format!("cat {} | {}/bin/xml2", filename, x)
                 }
             }
             Err(_) => {

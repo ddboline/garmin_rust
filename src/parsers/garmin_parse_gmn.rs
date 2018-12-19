@@ -64,13 +64,9 @@ impl GarminParseGmn {
         let sport_type_map = get_sport_type_map();
 
         let command = match var("LAMBDA_TASK_ROOT") {
-            Ok(_) => format!(
-                "echo \"{}\" `{}/garmin_dump {}` \"{}\" | {}/xml2",
-                "<root>",
-                r#"${LAMBDA_TASK_ROOT}/bin/"#,
-                filename,
-                "</root>",
-                r#"${LAMBDA_TASK_ROOT}/bin"#
+            Ok(x) => format!(
+                "echo \"{}\" `{}/bin/garmin_dump {}` \"{}\" | {}/bin/xml2",
+                "<root>", x, filename, "</root>", x
             ),
             Err(_) => format!(
                 "echo \"{}\" `garmin_dump {}` \"{}\" | xml2",

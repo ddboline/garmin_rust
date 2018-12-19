@@ -61,7 +61,7 @@ fn my_handler(event: CustomEvent, c: Context) -> Result<CustomOutput, HandlerErr
         Ok(x) => format!("{}/bin/fit2tcx --help", x),
         Err(_) => "fit2tcx --help".to_string(),
     };
-    
+
     println!("command is {}", command);
 
     let result = Exec::shell(command)

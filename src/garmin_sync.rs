@@ -176,12 +176,18 @@ impl GarminSync {
             .par_iter()
             .filter_map(|(key, md5, tmod)| {
                 let do_download = if file_set.contains_key(key) {
-                    let (md5_, tmod_) = file_set[key].clone();
-                    if (md5_ != *md5) & (*tmod > tmod_) {
-                        debug!("download md5 {} {} {} {} {} ", key, md5_, md5, tmod, tmod_);
+                    let tmod_ = file_set[key].clone();
+                    if *tmod > tmod_ {
                         let file_name = format!("{}/{}", local_dir, key);
-                        fs::remove_file(&file_name).expect("Failed to remove existing file");
-                        true
+                        let md5_ = get_md5sum(&file_name).unwrap();
+                        if md5_ != md5 {
+                            debug!("download md5 {} {} {} {} {} ", key, md5_, md5, tmod, tmod_);
+                            let file_name = format!("{}/{}", local_dir, key);
+                            fs::remove_file(&file_name).expect("Failed to remove existing file");
+                            true
+                        } else {
+                            false
+                        }
                     } else {
                         false
                     }

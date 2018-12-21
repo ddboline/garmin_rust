@@ -153,6 +153,8 @@ impl GarminSync {
                         } else {
                             false
                         }
+                    } else {
+                        false
                     }
                 } else {
                     true
@@ -347,4 +349,3 @@ impl GarminSync {
             .map_err(|e| e.into())
     }
 }
-

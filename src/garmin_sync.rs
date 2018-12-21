@@ -136,20 +136,23 @@ impl GarminSync {
 
         let results: Vec<_> = file_list
             .par_iter()
-            .filter_map(|(file, md5, tmod)| {
+            .filter_map(|(file, tmod)| {
                 let file_name = file.split('/').last().unwrap().to_string();
 
                 let do_upload = if key_set.contains_key(&file_name) {
                     let (md5_, tmod__) = key_set[&file_name].clone();
                     let tmod_ = &tmod__;
-                    if (&md5_ != md5) & (tmod > tmod_) {
-                        debug!(
-                            "upload md5 {} {} {} {} {}",
-                            file_name, md5_, md5, tmod_, tmod
-                        );
-                        true
-                    } else {
-                        false
+                    if tmod > tmod_ {
+                        let md5 = get_md5sum(&file)?;
+                        if &md5_ != md5 {
+                            debug!(
+                                "upload md5 {} {} {} {} {}",
+                                file_name, md5_, md5, tmod_, tmod
+                            );
+                            true
+                        } else {
+                            false
+                        }
                     }
                 } else {
                     true

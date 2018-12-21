@@ -143,7 +143,7 @@ impl GarminSync {
                     let (md5_, tmod__) = key_set[&file_name].clone();
                     let tmod_ = &tmod__;
                     if tmod > tmod_ {
-                        let md5 = get_md5sum(&file)?;
+                        let md5 = get_md5sum(&file).unwrap();
                         if &md5_ != md5 {
                             debug!(
                                 "upload md5 {} {} {} {} {}",

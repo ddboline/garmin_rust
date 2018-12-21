@@ -111,8 +111,6 @@ impl GarminSync {
         let file_list: Vec<_> = file_list
             .into_par_iter()
             .map(|f| {
-                let md5sum = get_md5sum(&f).unwrap();
-
                 let modified = fs::metadata(&f)
                     .unwrap()
                     .modified()
@@ -121,18 +119,13 @@ impl GarminSync {
                     .unwrap()
                     .as_secs() as i64;
 
-                (f.to_string(), md5sum, modified)
+                (f.to_string(), modified)
             })
             .collect();
 
         let file_set: HashMap<_, _> = file_list
             .iter()
-            .map(|(x, m, t)| {
-                (
-                    x.split('/').last().unwrap().to_string(),
-                    (m.to_string(), *t),
-                )
-            })
+            .map(|(x, t)| (x.split('/').last().unwrap().to_string(), *t))
             .collect();
 
         let key_list = self.get_list_of_keys(s3_bucket)?;

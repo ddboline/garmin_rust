@@ -180,7 +180,7 @@ impl GarminSync {
                     if *tmod > tmod_ {
                         let file_name = format!("{}/{}", local_dir, key);
                         let md5_ = get_md5sum(&file_name).unwrap();
-                        if md5_ != md5 {
+                        if &md5_ != md5 {
                             debug!("download md5 {} {} {} {} {} ", key, md5_, md5, tmod, tmod_);
                             let file_name = format!("{}/{}", local_dir, key);
                             fs::remove_file(&file_name).expect("Failed to remove existing file");

@@ -144,7 +144,7 @@ impl GarminSync {
                     let tmod_ = &tmod__;
                     if tmod > tmod_ {
                         let md5 = get_md5sum(&file).unwrap();
-                        if &md5_ != md5 {
+                        if md5_ != md5 {
                             debug!(
                                 "upload md5 {} {} {} {} {}",
                                 file_name, md5_, md5, tmod_, tmod
@@ -347,3 +347,4 @@ impl GarminSync {
             .map_err(|e| e.into())
     }
 }
+

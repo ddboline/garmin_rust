@@ -111,8 +111,6 @@ impl GarminSync {
         let file_list: Vec<_> = file_list
             .into_par_iter()
             .map(|f| {
-                let md5sum = get_md5sum(&f).unwrap();
-
                 let modified = fs::metadata(&f)
                     .unwrap()
                     .modified()
@@ -121,18 +119,13 @@ impl GarminSync {
                     .unwrap()
                     .as_secs() as i64;
 
-                (f.to_string(), md5sum, modified)
+                (f.to_string(), modified)
             })
             .collect();
 
         let file_set: HashMap<_, _> = file_list
             .iter()
-            .map(|(x, m, t)| {
-                (
-                    x.split('/').last().unwrap().to_string(),
-                    (m.to_string(), *t),
-                )
-            })
+            .map(|(x, t)| (x.split('/').last().unwrap().to_string(), *t))
             .collect();
 
         let key_list = self.get_list_of_keys(s3_bucket)?;
@@ -143,18 +136,23 @@ impl GarminSync {
 
         let results: Vec<_> = file_list
             .par_iter()
-            .filter_map(|(file, md5, tmod)| {
+            .filter_map(|(file, tmod)| {
                 let file_name = file.split('/').last().unwrap().to_string();
 
                 let do_upload = if key_set.contains_key(&file_name) {
                     let (md5_, tmod__) = key_set[&file_name].clone();
                     let tmod_ = &tmod__;
-                    if (&md5_ != md5) & (tmod > tmod_) {
-                        debug!(
-                            "upload md5 {} {} {} {} {}",
-                            file_name, md5_, md5, tmod_, tmod
-                        );
-                        true
+                    if tmod > tmod_ {
+                        let md5 = get_md5sum(&file).unwrap();
+                        if md5_ != md5 {
+                            debug!(
+                                "upload md5 {} {} {} {} {}",
+                                file_name, md5_, md5, tmod_, tmod
+                            );
+                            true
+                        } else {
+                            false
+                        }
                     } else {
                         false
                     }
@@ -178,12 +176,18 @@ impl GarminSync {
             .par_iter()
             .filter_map(|(key, md5, tmod)| {
                 let do_download = if file_set.contains_key(key) {
-                    let (md5_, tmod_) = file_set[key].clone();
-                    if (md5_ != *md5) & (*tmod > tmod_) {
-                        debug!("download md5 {} {} {} {} {} ", key, md5_, md5, tmod, tmod_);
+                    let tmod_ = file_set[key].clone();
+                    if *tmod > tmod_ {
                         let file_name = format!("{}/{}", local_dir, key);
-                        fs::remove_file(&file_name).expect("Failed to remove existing file");
-                        true
+                        let md5_ = get_md5sum(&file_name).unwrap();
+                        if &md5_ != md5 {
+                            debug!("download md5 {} {} {} {} {} ", key, md5_, md5, tmod, tmod_);
+                            let file_name = format!("{}/{}", local_dir, key);
+                            fs::remove_file(&file_name).expect("Failed to remove existing file");
+                            true
+                        } else {
+                            false
+                        }
                     } else {
                         false
                     }

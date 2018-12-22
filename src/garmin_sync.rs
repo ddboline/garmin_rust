@@ -176,7 +176,7 @@ impl GarminSync {
             .par_iter()
             .filter_map(|(key, md5, tmod)| {
                 let do_download = if file_set.contains_key(key) {
-                    let tmod_ = file_set[key].clone();
+                    let tmod_ = file_set[key];
                     if *tmod > tmod_ {
                         let file_name = format!("{}/{}", local_dir, key);
                         let md5_ = get_md5sum(&file_name).unwrap();

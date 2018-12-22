@@ -93,6 +93,9 @@ def strava_endpoint():
 
         return authorize_url, 200
 
+    if not os.path.exists(filename):
+        return "No such file %s" % filename, 400
+
     act = open(filename, 'rb')
 
     base, ext = os.path.splitext(act.name)

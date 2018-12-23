@@ -60,7 +60,8 @@ def strava_auth_callback():
     cp_.set('API', 'ACCESS_TOKEN', cat)
     cp_.write(open(os.path.expanduser('~/.stravacli'), "w"))
 
-    return '<title>Strava auth code received!</title>This window can be closed.', 200
+    return '<title>Strava auth code received!</title>This window can be closed.' \
+        '<script language="JavaScript" type="text/javascript">window.close()</script>', 200
 
 
 @app.route('/', methods=['POST'])

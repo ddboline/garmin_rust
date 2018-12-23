@@ -156,7 +156,6 @@ HISTORYBUTTONS
         xmlhttp.onload = function() {
             var win = window.open(xmlhttp.responseText, '_blank');
             win.focus()
-            location.replace(xmlhttp.responseText)
         }
         xmlhttp.open( "POST", ostr , true );
         xmlhttp.setRequestHeader("Content-Type", "application/json");

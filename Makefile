@@ -20,7 +20,7 @@ cleanup:
 	rm Dockerfile
 
 package:
-	docker run --cidfile $(cidfile) build_rust:ubuntu18.04 /garmin_rust/scripts/build_deb_docker.sh $(version) $(release)
+	docker run --cidfile $(cidfile) -v `pwd`/target:/garmin_rust/target build_rust:ubuntu18.04 /garmin_rust/scripts/build_deb_docker.sh $(version) $(release)
 	docker cp `cat $(cidfile)`:/garmin_rust/garmin-rust_$(version)-$(release)_amd64.deb .
 	docker rm `cat $(cidfile)`
 	rm $(cidfile)

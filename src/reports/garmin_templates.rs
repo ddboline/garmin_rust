@@ -154,6 +154,8 @@ HISTORYBUTTONS
         var data = JSON.stringify({"filename": "FILENAME", "title": strava_title.value, "activity_type": "ACTIVITYTYPE"});
         var xmlhttp = new XMLHttpRequest();
         xmlhttp.onload = function() {
+            var win = window.open(xmlhttp.responseText, '_blank');
+            win.focus()
             location.replace(xmlhttp.responseText)
         }
         xmlhttp.open( "POST", ostr , true );

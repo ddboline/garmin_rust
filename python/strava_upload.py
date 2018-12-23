@@ -5,7 +5,7 @@ import os.path
 import gzip
 import requests
 
-from gevent.wsgi import WSGIServer
+from gevent.pywsgi import WSGIServer
 
 from stravalib import Client, exc
 from tempfile import NamedTemporaryFile
@@ -34,6 +34,10 @@ def get_config():
         if 'access_token' in cp_.options('API'):
             cat = cp_.get('API', 'ACCESS_TOKEN')
     return cp_, cid, cs, cat
+
+@app.route('/running', methods=['GET'])
+def running():
+    return 'running', 200
 
 
 @app.route('/callback', methods=['GET'])

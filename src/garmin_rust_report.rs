@@ -1,6 +1,6 @@
 extern crate env_logger;
 
-use garmin_rust::garmin_cli::GarminCli;
+use garmin_rust::common::garmin_cli::GarminCli;
 
 fn main() {
     env_logger::init();

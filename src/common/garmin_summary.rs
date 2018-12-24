@@ -19,9 +19,9 @@ use std::fmt;
 
 use postgres::Connection;
 
-use crate::garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList};
-use crate::garmin_file::GarminFile;
-use crate::garmin_sync::GarminSync;
+use super::garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList};
+use super::garmin_file::GarminFile;
+use super::garmin_sync::GarminSync;
 use crate::parsers::garmin_parse::GarminParse;
 use crate::utils::garmin_util::{
     generate_random_string, get_file_list, get_md5sum, map_result_vec,

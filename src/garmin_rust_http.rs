@@ -7,10 +7,10 @@ use actix_web::{http::Method, http::StatusCode, server, App, HttpResponse, Json,
 
 use failure::Error;
 
-use garmin_rust::garmin_cli::GarminCli;
-use garmin_rust::garmin_config::GarminConfig;
-use garmin_rust::garmin_correction_lap::GarminCorrectionList;
-use garmin_rust::garmin_file;
+use garmin_rust::common::garmin_cli::GarminCli;
+use garmin_rust::common::garmin_config::GarminConfig;
+use garmin_rust::common::garmin_correction_lap::GarminCorrectionList;
+use garmin_rust::common::garmin_file;
 use garmin_rust::parsers::garmin_parse;
 use garmin_rust::reports::garmin_file_report_txt;
 use garmin_rust::utils::garmin_util::{get_list_of_files_from_db, get_pg_conn};

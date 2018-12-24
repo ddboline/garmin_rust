@@ -3,7 +3,7 @@ extern crate approx;
 
 #[cfg(test)]
 mod tests {
-    use garmin_rust::garmin_correction_lap::GarminCorrectionList;
+    use garmin_rust::common::garmin_correction_lap::GarminCorrectionList;
     use garmin_rust::parsers::garmin_parse_txt;
 
     #[test]

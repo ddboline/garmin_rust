@@ -7,8 +7,8 @@ use std::path::Path;
 
 use failure::{err_msg, Error};
 
-use crate::garmin_lap::{GarminLap, GARMIN_LAP_AVRO_SCHEMA};
-use crate::garmin_point::{GarminPoint, GARMIN_POINT_AVRO_SCHEMA};
+use super::garmin_lap::{GarminLap, GARMIN_LAP_AVRO_SCHEMA};
+use super::garmin_point::{GarminPoint, GARMIN_POINT_AVRO_SCHEMA};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct GarminFile {

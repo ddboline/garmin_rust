@@ -5,10 +5,10 @@ extern crate tempdir;
 use clap::{App, Arg};
 use failure::Error;
 use rayon::prelude::*;
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::Path;
 use tempdir::TempDir;
-use std::collections::HashMap;
 
 use super::garmin_config::GarminConfig;
 use super::garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList};

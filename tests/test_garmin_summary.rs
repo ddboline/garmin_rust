@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use garmin_rust::garmin_summary;
+    use garmin_rust::common::garmin_summary;
 
     #[test]
     fn test_garmin_file_test_display() {

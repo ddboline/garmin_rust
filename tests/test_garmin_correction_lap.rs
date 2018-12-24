@@ -2,7 +2,7 @@ extern crate tempfile;
 
 #[cfg(test)]
 mod tests {
-    use garmin_rust::garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList};
+    use garmin_rust::common::garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList};
 
     #[test]
     fn test_garmin_correction_lap_new() {

@@ -8,35 +8,39 @@ use std::io::BufReader;
 use std::path::Path;
 use subprocess::Exec;
 
+use super::garmin_parse::{GarminParseTrait, ParseOutput};
 use crate::common::garmin_correction_lap::{apply_lap_corrections, GarminCorrectionLap};
 use crate::common::garmin_file::GarminFile;
 use crate::common::garmin_lap::GarminLap;
 use crate::common::garmin_point::GarminPoint;
 use crate::utils::sport_types::get_sport_type_map;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct GarminParseGmn {
     pub gfile: GarminFile,
 }
 
-struct GmnOutput {
-    lap_list: Vec<GarminLap>,
-    point_list: Vec<GarminPoint>,
-    sport: Option<String>,
+impl GarminParseGmn {
+    pub fn new() -> GarminParseGmn {
+        GarminParseGmn {
+            gfile: GarminFile::new(),
+        }
+    }
 }
 
-impl GarminParseGmn {
-    pub fn new(
+impl GarminParseTrait for GarminParseGmn {
+    fn with_file(
+        self,
         filename: &str,
         corr_map: &HashMap<(String, i32), GarminCorrectionLap>,
-    ) -> GarminParseGmn {
+    ) -> Self {
         let file_name = Path::new(&filename)
             .file_name()
             .unwrap_or_else(|| panic!("filename {} has no path", filename))
             .to_os_string()
             .into_string()
             .unwrap_or_else(|_| filename.to_string());
-        let gmn_output = GarminParseGmn::parse_xml(filename).expect("Failed to parse xml");
+        let gmn_output = self.parse_file(filename).expect("Failed to parse xml");
         let (lap_list, sport) =
             apply_lap_corrections(&gmn_output.lap_list, &gmn_output.sport, corr_map);
         let first_lap = lap_list.get(0).expect("No laps found");
@@ -60,7 +64,7 @@ impl GarminParseGmn {
         }
     }
 
-    fn parse_xml(filename: &str) -> Result<GmnOutput, Error> {
+    fn parse_file(&self, filename: &str) -> Result<ParseOutput, Error> {
         let sport_type_map = get_sport_type_map();
 
         let command = match var("LAMBDA_TASK_ROOT") {
@@ -140,7 +144,7 @@ impl GarminParseGmn {
 
         let lap_list: Vec<_> = GarminLap::fix_lap_number(lap_list);
 
-        Ok(GmnOutput {
+        Ok(ParseOutput {
             lap_list,
             point_list,
             sport,

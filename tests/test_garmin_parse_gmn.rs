@@ -4,6 +4,7 @@ extern crate approx;
 #[cfg(test)]
 mod tests {
     use garmin_rust::common::garmin_correction_lap::GarminCorrectionList;
+    use garmin_rust::parsers::garmin_parse::GarminParseTrait;
     use garmin_rust::parsers::garmin_parse_gmn;
 
     #[test]
@@ -12,7 +13,8 @@ mod tests {
             GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json")
                 .unwrap();
         let corr_map = corr_list.get_corr_list_map();
-        let gparse = garmin_parse_gmn::GarminParseGmn::new("tests/data/test.gmn", &corr_map);
+        let gparse =
+            garmin_parse_gmn::GarminParseGmn::new().with_file("tests/data/test.gmn", &corr_map);
         assert_eq!(gparse.gfile.filename, "test.gmn");
         assert_eq!(gparse.gfile.sport.unwrap(), "running");
         assert_eq!(gparse.gfile.filetype, "gmn");

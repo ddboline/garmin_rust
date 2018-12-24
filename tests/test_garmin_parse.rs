@@ -12,7 +12,7 @@ mod tests {
             GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json")
                 .unwrap();
         let corr_map = corr_list.get_corr_list_map();
-        let gparse = garmin_parse::GarminParse::new("invalid.invalid", &corr_map);
+        let gparse = garmin_parse::GarminParse::new().with_file("invalid.invalid", &corr_map);
         assert_eq!(&gparse.gfile.filename, "")
     }
 
@@ -22,7 +22,7 @@ mod tests {
             GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json")
                 .unwrap();
         let corr_map = corr_list.get_corr_list_map();
-        let gparse = garmin_parse::GarminParse::new("tests/data/test.gmn", &corr_map);
+        let gparse = garmin_parse::GarminParse::new().with_file("tests/data/test.gmn", &corr_map);
         assert_eq!(gparse.gfile.filename, "test.gmn");
         assert_eq!(gparse.gfile.sport.unwrap(), "running");
         assert_eq!(gparse.gfile.filetype, "gmn");
@@ -42,7 +42,7 @@ mod tests {
             GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json")
                 .unwrap();
         let corr_map = corr_list.get_corr_list_map();
-        let gparse = garmin_parse::GarminParse::new("tests/data/test.tcx", &corr_map);
+        let gparse = garmin_parse::GarminParse::new().with_file("tests/data/test.tcx", &corr_map);
         assert_eq!(gparse.gfile.filename, "test.tcx");
         assert_eq!(gparse.gfile.sport.unwrap(), "biking");
         assert_eq!(gparse.gfile.filetype, "tcx");
@@ -62,7 +62,7 @@ mod tests {
             GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json")
                 .unwrap();
         let corr_map = corr_list.get_corr_list_map();
-        let gparse = garmin_parse::GarminParse::new("tests/data/test.fit", &corr_map);
+        let gparse = garmin_parse::GarminParse::new().with_file("tests/data/test.fit", &corr_map);
         assert_eq!(gparse.gfile.filename, "test.fit");
         assert_eq!(gparse.gfile.sport.unwrap(), "running");
         assert_eq!(gparse.gfile.filetype, "tcx");

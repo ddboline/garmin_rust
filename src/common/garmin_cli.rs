@@ -15,6 +15,7 @@ use super::garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList};
 use super::garmin_file;
 use super::garmin_summary::{GarminSummary, GarminSummaryList};
 use super::garmin_sync::GarminSync;
+use super::garmin_sync::GarminSyncTrait;
 use crate::parsers::garmin_parse;
 use crate::reports::garmin_file_report_html::file_report_html;
 use crate::reports::garmin_file_report_txt::generate_txt_report;
@@ -325,7 +326,9 @@ impl GarminCli {
                         let corr_map = corr_list.get_corr_list_map();
 
                         debug!("Reading gps_file: {}", &gps_file);
-                        garmin_parse::GarminParse::new(&gps_file, &corr_map).gfile
+                        garmin_parse::GarminParse::new()
+                            .with_file(&gps_file, &corr_map)
+                            .gfile
                     }
                 };
                 debug!("gfile {} {}", gfile.laps.len(), gfile.points.len());
@@ -370,7 +373,9 @@ impl GarminCli {
                         let corr_map = corr_list.get_corr_list_map();
 
                         debug!("Reading gps_file: {}", &gps_file);
-                        garmin_parse::GarminParse::new(&gps_file, &corr_map).gfile
+                        garmin_parse::GarminParse::new()
+                            .with_file(&gps_file, &corr_map)
+                            .gfile
                     }
                 };
                 debug!("gfile {} {}", gfile.laps.len(), gfile.points.len());

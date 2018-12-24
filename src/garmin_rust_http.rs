@@ -15,7 +15,7 @@ use garmin_rust::parsers::garmin_parse;
 use garmin_rust::reports::garmin_file_report_txt;
 use garmin_rust::utils::garmin_util::{get_list_of_files_from_db, get_pg_conn};
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 struct FilterRequest {
     filter: Option<String>,
     history: Option<String>,
@@ -53,22 +53,6 @@ struct TimeValue {
     value: f64,
 }
 
-#[derive(Serialize)]
-struct HrData {
-    hr_data: Vec<TimeValue>,
-}
-
-#[derive(Serialize)]
-struct HrPace {
-    hr: f64,
-    pace: f64,
-}
-
-#[derive(Serialize)]
-struct HrPaceList {
-    hr_pace: Vec<HrPace>,
-}
-
 fn garmin_list_gps_tracks(request: Query<FilterRequest>) -> Result<Json<GpsList>, Error> {
     let request = request.into_inner();
 
@@ -85,6 +69,11 @@ fn garmin_list_gps_tracks(request: Query<FilterRequest>) -> Result<Json<GpsList>
     Ok(Json(GpsList {
         gps_list: get_list_of_files_from_db(&pg_conn, &constraints)?,
     }))
+}
+
+#[derive(Serialize)]
+struct HrData {
+    hr_data: Vec<TimeValue>,
 }
 
 fn garmin_get_hr_data(request: Query<FilterRequest>) -> Result<Json<HrData>, Error> {
@@ -114,7 +103,9 @@ fn garmin_get_hr_data(request: Query<FilterRequest>) -> Result<Json<HrData>, Err
                     let corr_list = GarminCorrectionList::read_corrections_from_db(&pg_conn)?;
                     let corr_map = corr_list.get_corr_list_map();
 
-                    garmin_parse::GarminParse::new(&gps_file, &corr_map).gfile
+                    garmin_parse::GarminParse::new()
+                        .with_file(&gps_file, &corr_map)
+                        .gfile
                 }
             };
 
@@ -136,6 +127,17 @@ fn garmin_get_hr_data(request: Query<FilterRequest>) -> Result<Json<HrData>, Err
             hr_data: Vec::new(),
         })),
     }
+}
+
+#[derive(Serialize)]
+struct HrPace {
+    hr: f64,
+    pace: f64,
+}
+
+#[derive(Serialize)]
+struct HrPaceList {
+    hr_pace: Vec<HrPace>,
 }
 
 fn garmin_get_hr_pace(request: Query<FilterRequest>) -> Result<Json<HrPaceList>, Error> {
@@ -165,7 +167,9 @@ fn garmin_get_hr_pace(request: Query<FilterRequest>) -> Result<Json<HrPaceList>,
                     let corr_list = GarminCorrectionList::read_corrections_from_db(&pg_conn)?;
                     let corr_map = corr_list.get_corr_list_map();
 
-                    garmin_parse::GarminParse::new(&gps_file, &corr_map).gfile
+                    garmin_parse::GarminParse::new()
+                        .with_file(&gps_file, &corr_map)
+                        .gfile
                 }
             };
 

@@ -1,46 +1,77 @@
+use failure::Error;
 use std::collections::HashMap;
 use std::path::Path;
 
 use crate::common::garmin_correction_lap::GarminCorrectionLap;
 use crate::common::garmin_file::GarminFile;
+use crate::common::garmin_lap::GarminLap;
+use crate::common::garmin_point::GarminPoint;
 use crate::parsers::garmin_parse_gmn::GarminParseGmn;
 use crate::parsers::garmin_parse_tcx::GarminParseTcx;
 use crate::parsers::garmin_parse_txt::GarminParseTxt;
 
+#[derive(Default)]
 pub struct GarminParse {
     pub gfile: GarminFile,
+    pub gtype: String,
 }
 
 impl GarminParse {
-    pub fn new(
+    pub fn new() -> GarminParse {
+        GarminParse {
+            gfile: GarminFile::new(),
+            gtype: "".to_string(),
+        }
+    }
+
+    pub fn with_file(
+        self,
         filename: &str,
         corr_map: &HashMap<(String, i32), GarminCorrectionLap>,
-    ) -> GarminParse {
-        let null_gfile = GarminFile {
-            filename: "".to_string(),
-            filetype: "".to_string(),
-            begin_datetime: "".to_string(),
-            sport: None,
-            total_calories: -1,
-            total_distance: 0.0,
-            total_duration: 0.0,
-            total_hr_dur: 0.0,
-            total_hr_dis: 0.0,
-            laps: Vec::new(),
-            points: Vec::new(),
-        };
-
+    ) -> Self {
         let file_path = Path::new(&filename);
-        let gfile = match file_path.extension() {
+        match file_path.extension() {
             Some(x) => match x.to_str() {
-                Some("txt") => GarminParseTxt::new(filename, corr_map).gfile,
-                Some("fit") => GarminParseTcx::new(filename, corr_map, true).gfile,
-                Some("tcx") | Some("TCX") => GarminParseTcx::new(filename, corr_map, false).gfile,
-                Some("gmn") => GarminParseGmn::new(filename, corr_map).gfile,
-                _ => null_gfile,
+                Some("txt") => GarminParse {
+                    gfile: GarminParseTxt::new().with_file(filename, corr_map).gfile,
+                    gtype: "txt".to_string(),
+                },
+                Some("fit") => GarminParse {
+                    gfile: GarminParseTcx::new(true)
+                        .with_file(filename, corr_map)
+                        .gfile,
+                    gtype: "fit".to_string(),
+                },
+                Some("tcx") | Some("TCX") => GarminParse {
+                    gfile: GarminParseTcx::new(false)
+                        .with_file(filename, corr_map)
+                        .gfile,
+                    gtype: "tcx".to_string(),
+                },
+                Some("gmn") => GarminParse {
+                    gfile: GarminParseGmn::new().with_file(filename, corr_map).gfile,
+                    gtype: "gmn".to_string(),
+                },
+                _ => GarminParse::new(),
             },
-            _ => null_gfile,
-        };
-        GarminParse { gfile }
+            _ => GarminParse::new(),
+        }
     }
+}
+
+#[derive(Default)]
+pub struct ParseOutput {
+    pub lap_list: Vec<GarminLap>,
+    pub point_list: Vec<GarminPoint>,
+    pub sport: Option<String>,
+}
+
+pub trait GarminParseTrait {
+    fn with_file(
+        self,
+        filename: &str,
+        corr_map: &HashMap<(String, i32), GarminCorrectionLap>,
+    ) -> Self;
+
+    fn parse_file(&self, filename: &str) -> Result<ParseOutput, Error>;
 }

@@ -9,73 +9,76 @@ use std::io::BufReader;
 use std::path::Path;
 use subprocess::Exec;
 
+use super::garmin_parse::{GarminParseTrait, ParseOutput};
 use crate::common::garmin_correction_lap::{apply_lap_corrections, GarminCorrectionLap};
 use crate::common::garmin_file::GarminFile;
 use crate::common::garmin_lap::GarminLap;
 use crate::common::garmin_point::GarminPoint;
 use crate::utils::sport_types::get_sport_type_map;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct GarminParseTcx {
     pub gfile: GarminFile,
-}
-
-struct TcxOutput {
-    lap_list: Vec<GarminLap>,
-    point_list: Vec<GarminPoint>,
-    sport: Option<String>,
+    pub is_fit_file: bool,
 }
 
 impl GarminParseTcx {
-    pub fn new(
+    pub fn new(is_fit_file: bool) -> GarminParseTcx {
+        GarminParseTcx {
+            gfile: GarminFile::new(),
+            is_fit_file,
+        }
+    }
+}
+
+impl GarminParseTrait for GarminParseTcx {
+    fn with_file(
+        mut self,
         filename: &str,
         corr_map: &HashMap<(String, i32), GarminCorrectionLap>,
-        is_fit_file: bool,
-    ) -> GarminParseTcx {
+    ) -> Self {
         let file_name = Path::new(&filename)
             .file_name()
             .unwrap_or_else(|| panic!("filename {} has no path", filename))
             .to_os_string()
             .into_string()
             .unwrap_or_else(|_| filename.to_string());
-        let tcx_output =
-            GarminParseTcx::parse_tcx(filename, is_fit_file).expect("Failed to parse tcx");
+        let tcx_output = self.parse_file(filename).expect("Failed to parse tcx");
         let (lap_list, sport) =
             apply_lap_corrections(&tcx_output.lap_list, &tcx_output.sport, corr_map);
         let first_lap = lap_list.get(0).expect("No laps found");
-        GarminParseTcx {
-            gfile: GarminFile {
-                filename: file_name,
-                filetype: "tcx".to_string(),
-                begin_datetime: first_lap.lap_start.clone(),
-                sport,
-                total_calories: lap_list.iter().map(|lap| lap.lap_calories).sum(),
-                total_distance: lap_list.iter().map(|lap| lap.lap_distance).sum(),
-                total_duration: lap_list.iter().map(|lap| lap.lap_duration).sum(),
-                total_hr_dur: lap_list
-                    .iter()
-                    .map(|lap| lap.lap_avg_hr.unwrap_or(0.0) * lap.lap_duration)
-                    .sum(),
-                total_hr_dis: lap_list.iter().map(|lap| lap.lap_duration).sum(),
-                laps: lap_list,
-                points: tcx_output.point_list,
-            },
-        }
+        self.gfile = GarminFile {
+            filename: file_name,
+            filetype: "tcx".to_string(),
+            begin_datetime: first_lap.lap_start.clone(),
+            sport,
+            total_calories: lap_list.iter().map(|lap| lap.lap_calories).sum(),
+            total_distance: lap_list.iter().map(|lap| lap.lap_distance).sum(),
+            total_duration: lap_list.iter().map(|lap| lap.lap_duration).sum(),
+            total_hr_dur: lap_list
+                .iter()
+                .map(|lap| lap.lap_avg_hr.unwrap_or(0.0) * lap.lap_duration)
+                .sum(),
+            total_hr_dis: lap_list.iter().map(|lap| lap.lap_duration).sum(),
+            laps: lap_list,
+            points: tcx_output.point_list,
+        };
+        self
     }
 
-    fn parse_tcx(filename: &str, is_fit_file: bool) -> Result<TcxOutput, Error> {
+    fn parse_file(&self, filename: &str) -> Result<ParseOutput, Error> {
         let sport_type_map = get_sport_type_map();
 
         let command = match var("LAMBDA_TASK_ROOT") {
             Ok(x) => {
-                if is_fit_file {
+                if self.is_fit_file {
                     format!("{}/bin/fit2tcx -i {} | {}/bin/xml2", x, filename, x)
                 } else {
                     format!("cat {} | {}/bin/xml2", filename, x)
                 }
             }
             Err(_) => {
-                if is_fit_file {
+                if self.is_fit_file {
                     format!("fit2tcx -i {} | xml2", filename)
                 } else {
                     format!("cat {} | xml2", filename)
@@ -157,7 +160,7 @@ impl GarminParseTcx {
 
         let lap_list: Vec<_> = GarminLap::fix_lap_number(lap_list);
 
-        Ok(TcxOutput {
+        Ok(ParseOutput {
             lap_list,
             point_list,
             sport,

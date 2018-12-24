@@ -22,6 +22,7 @@ use postgres::Connection;
 use super::garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList};
 use super::garmin_file::GarminFile;
 use super::garmin_sync::GarminSync;
+use super::garmin_sync::GarminSyncTrait;
 use crate::parsers::garmin_parse::GarminParse;
 use crate::utils::garmin_util::{
     generate_random_string, get_file_list, get_md5sum, map_result_vec,
@@ -88,7 +89,7 @@ impl GarminSummary {
         let md5sum = get_md5sum(&filename)?;
 
         println!("Found md5sum {}, try parsing", md5sum);
-        let gfile = GarminParse::new(&filename, &corr_map).gfile;
+        let gfile = GarminParse::new().with_file(&filename, &corr_map).gfile;
 
         match gfile.laps.get(0) {
             Some(_) => (),
@@ -134,7 +135,7 @@ impl GarminSummary {
         let cache_file = format!("{}/{}.avro", temp_path, filename.split('/').last().unwrap());
 
         println!("Found md5sum {}, try parsing", md5sum);
-        let gfile = GarminParse::new(&filename, &corr_map).gfile;
+        let gfile = GarminParse::new().with_file(&filename, &corr_map).gfile;
 
         match gfile.laps.get(0) {
             Some(_) => (),
@@ -233,7 +234,7 @@ impl GarminSummaryList {
                     input_file.split('/').last().unwrap()
                 );
                 let md5sum = get_md5sum(&input_file)?;
-                let gfile = GarminParse::new(&input_file, &corr_map).gfile;
+                let gfile = GarminParse::new().with_file(&input_file, &corr_map).gfile;
                 match gfile.laps.get(0) {
                     Some(_) => (),
                     None => println!("{} {} has no laps?", &input_file, &gfile.filename),

@@ -5,6 +5,7 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::Path;
 
+use super::garmin_parse::{GarminParseTrait, ParseOutput};
 use crate::common::garmin_correction_lap::{apply_lap_corrections, GarminCorrectionLap};
 use crate::common::garmin_file::GarminFile;
 use crate::common::garmin_lap::GarminLap;
@@ -12,26 +13,39 @@ use crate::common::garmin_point::GarminPoint;
 use crate::utils::garmin_util::{convert_time_string, METERS_PER_MILE};
 use crate::utils::sport_types::get_sport_type_map;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct GarminParseTxt {
     pub gfile: GarminFile,
 }
 
 impl GarminParseTxt {
-    pub fn new(
+    pub fn new() -> GarminParseTxt {
+        GarminParseTxt {
+            gfile: GarminFile::new(),
+        }
+    }
+}
+
+impl GarminParseTrait for GarminParseTxt {
+    fn with_file(
+        self,
         filename: &str,
         corr_map: &HashMap<(String, i32), GarminCorrectionLap>,
-    ) -> GarminParseTxt {
+    ) -> Self {
         let file_name = Path::new(&filename)
             .file_name()
             .unwrap_or_else(|| panic!("filename {} has no path", filename))
             .to_os_string()
             .into_string()
             .unwrap_or_else(|_| filename.to_string());
-        let (lap_list, point_list) =
-            GarminParseTxt::parse_txt(filename).expect("Failed to parse txt");
-        let sport = lap_list.get(0).expect("No laps found").lap_type.clone();
-        let (lap_list, sport) = apply_lap_corrections(&lap_list, &sport, corr_map);
+        let txt_output = self.parse_file(filename).expect("Failed to parse txt");
+        let sport = txt_output
+            .lap_list
+            .get(0)
+            .expect("No laps found")
+            .lap_type
+            .clone();
+        let (lap_list, sport) = apply_lap_corrections(&txt_output.lap_list, &sport, corr_map);
         let first_lap = lap_list.get(0).expect("No laps found");
         GarminParseTxt {
             gfile: GarminFile {
@@ -48,12 +62,12 @@ impl GarminParseTxt {
                     .sum(),
                 total_hr_dis: lap_list.iter().map(|lap| lap.lap_duration).sum(),
                 laps: lap_list,
-                points: point_list,
+                points: txt_output.point_list,
             },
         }
     }
 
-    fn parse_txt(filename: &str) -> Result<(Vec<GarminLap>, Vec<GarminPoint>), Error> {
+    fn parse_file(&self, filename: &str) -> Result<ParseOutput, Error> {
         let file = File::open(filename)?;
         let reader = BufReader::new(file);
 
@@ -160,9 +174,15 @@ impl GarminParseTxt {
             )
             .collect();
 
-        Ok((lap_list, point_list))
+        Ok(ParseOutput {
+            lap_list,
+            point_list,
+            sport: None,
+        })
     }
+}
 
+impl GarminParseTxt {
     fn parse_line(line: &str) -> Result<GarminLap, Error> {
         let sport_type_map = get_sport_type_map();
 

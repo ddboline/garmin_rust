@@ -26,30 +26,79 @@ pub fn get_s3_client() -> S3Client {
     S3Client::new(Region::UsEast1)
 }
 
-pub struct GarminSync {
-    s3_client: S3Client,
+pub struct GarminSync<T: S3> {
+    s3_client: T,
 }
 
-impl Default for GarminSync {
-    fn default() -> GarminSync {
+impl Default for GarminSync<S3Client> {
+    fn default() -> GarminSync<S3Client> {
         GarminSync::new()
     }
 }
 
-impl GarminSync {
-    pub fn new() -> GarminSync {
+impl GarminSync<S3Client> {
+    pub fn new() -> GarminSync<S3Client> {
         GarminSync {
             s3_client: get_s3_client(),
         }
     }
 
-    pub fn from_client(s3client: S3Client) -> GarminSync {
+    pub fn from_client(s3client: S3Client) -> GarminSync<S3Client> {
         GarminSync {
             s3_client: s3client,
         }
     }
+}
 
-    pub fn get_list_of_keys(&self, bucket: &str) -> Result<Vec<(String, String, i64)>, Error> {
+pub trait GarminSyncTrait {
+    fn get_list_of_keys(&self, bucket: &str) -> Result<Vec<(String, String, i64)>, Error>;
+
+    fn sync_dir(&self, local_dir: &str, s3_bucket: &str) -> Result<(), Error>;
+
+    fn download_file(
+        &self,
+        local_file: &str,
+        s3_bucket: &str,
+        s3_key: &str,
+    ) -> Result<String, Error>;
+
+    fn download_to_file<F>(
+        &self,
+        source: GetObjectRequest,
+        target: F,
+    ) -> Result<GetObjectOutput, Error>
+    where
+        F: AsRef<Path>;
+
+    fn copy<W>(src: &mut StreamingBody, dest: &mut W) -> Result<(), Error>
+    where
+        W: Write;
+
+    fn upload_file(&self, local_file: &str, s3_bucket: &str, s3_key: &str) -> Result<(), Error>;
+
+    fn upload_file_acl(
+        &self,
+        local_file: &str,
+        s3_bucket: &str,
+        s3_key: &str,
+        acl: Option<String>,
+    ) -> Result<(), Error>;
+
+    fn upload_from_file<F>(
+        &self,
+        source: F,
+        target: PutObjectRequest,
+    ) -> Result<PutObjectOutput, Error>
+    where
+        F: AsRef<Path>;
+
+    fn upload<R>(&self, source: &mut R, target: PutObjectRequest) -> Result<PutObjectOutput, Error>
+    where
+        R: Read;
+}
+
+impl GarminSyncTrait for GarminSync<S3Client> {
+    fn get_list_of_keys(&self, bucket: &str) -> Result<Vec<(String, String, i64)>, Error> {
         let mut continuation_token = None;
 
         let mut list_of_keys = Vec::new();
@@ -95,7 +144,7 @@ impl GarminSync {
         Ok(list_of_keys)
     }
 
-    pub fn sync_dir(&self, local_dir: &str, s3_bucket: &str) -> Result<(), Error> {
+    fn sync_dir(&self, local_dir: &str, s3_bucket: &str) -> Result<(), Error> {
         let path = Path::new(local_dir);
 
         let file_list: Vec<String> = path
@@ -212,7 +261,7 @@ impl GarminSync {
         Ok(())
     }
 
-    pub fn download_file(
+    fn download_file(
         &self,
         local_file: &str,
         s3_bucket: &str,
@@ -278,16 +327,11 @@ impl GarminSync {
         Ok(())
     }
 
-    pub fn upload_file(
-        &self,
-        local_file: &str,
-        s3_bucket: &str,
-        s3_key: &str,
-    ) -> Result<(), Error> {
+    fn upload_file(&self, local_file: &str, s3_bucket: &str, s3_key: &str) -> Result<(), Error> {
         self.upload_file_acl(local_file, s3_bucket, s3_key, None)
     }
 
-    pub fn upload_file_acl(
+    fn upload_file_acl(
         &self,
         local_file: &str,
         s3_bucket: &str,

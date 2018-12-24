@@ -15,7 +15,7 @@ mod tests {
         let gparse = garmin_parse::GarminParse::new("invalid.invalid", &corr_map);
         assert_eq!(&gparse.gfile.filename, "")
     }
-    
+
     #[test]
     fn test_garmin_parse_gmn() {
         let corr_list =
@@ -35,7 +35,7 @@ mod tests {
         assert_abs_diff_eq!(gparse.gfile.total_hr_dur, 0.0);
         assert_abs_diff_eq!(gparse.gfile.total_hr_dis, 280.38);
     }
-    
+
     #[test]
     fn test_garmin_parse_tcx() {
         let corr_list =

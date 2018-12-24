@@ -1,11 +1,14 @@
 extern crate chrono;
 extern crate num;
+extern crate r2d2;
+extern crate r2d2_postgres;
 extern crate rayon;
 extern crate serde_json;
 
 use num::traits::Pow;
 
-use postgres::{Connection, TlsMode};
+use r2d2::Pool;
+use r2d2_postgres::{PostgresConnectionManager, TlsMode};
 
 use std::io::BufRead;
 use std::io::BufReader;
@@ -18,6 +21,8 @@ use rand::thread_rng;
 use chrono::prelude::*;
 
 use failure::{err_msg, Error};
+
+pub type PgPool = Pool<PostgresConnectionManager>;
 
 pub const METERS_PER_MILE: f64 = 1609.344;
 pub const MARATHON_DISTANCE_M: i32 = 42195;
@@ -114,12 +119,14 @@ pub fn titlecase(input: &str) -> String {
     }
 }
 
-pub fn get_pg_conn(pg_url: &str) -> Result<Connection, Error> {
-    Ok(Connection::connect(pg_url, TlsMode::None)?)
+pub fn get_pg_conn(pg_url: &str) -> Result<PgPool, Error> {
+    let manager = PostgresConnectionManager::new(pg_url, TlsMode::None)?;
+
+    Ok(Pool::new(manager)?)
 }
 
 pub fn get_list_of_files_from_db(
-    conn: &Connection,
+    pool: &PgPool,
     constraints: &[String],
 ) -> Result<Vec<String>, Error> {
     let constr = if constraints.is_empty() {
@@ -129,6 +136,8 @@ pub fn get_list_of_files_from_db(
     };
 
     let query = format!("SELECT filename FROM garmin_summary {}", constr);
+
+    let conn = pool.get()?;
 
     Ok(conn
         .query(&query, &[])?

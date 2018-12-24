@@ -1,15 +1,14 @@
 extern crate rayon;
 
 use failure::Error;
-use postgres::Connection;
 
 use crate::reports::garmin_report_options::GarminReportOptions;
 use crate::utils::garmin_util::{
-    days_in_month, days_in_year, print_h_m_s, METERS_PER_MILE, MONTH_NAMES, WEEKDAY_NAMES,
+    days_in_month, days_in_year, print_h_m_s, PgPool, METERS_PER_MILE, MONTH_NAMES, WEEKDAY_NAMES,
 };
 
 pub fn create_report_query(
-    conn: &Connection,
+    pool: &PgPool,
     options: &GarminReportOptions,
     constraints: &[String],
 ) -> Result<Vec<String>, Error> {
@@ -32,17 +31,17 @@ pub fn create_report_query(
     debug!("{}", constr);
 
     let result_vec = if options.do_all_sports {
-        sport_summary_report(&conn, &constr)?
+        sport_summary_report(&pool, &constr)?
     } else if options.do_year {
-        year_summary_report(&conn, &constr)?
+        year_summary_report(&pool, &constr)?
     } else if options.do_month {
-        month_summary_report(&conn, &constr)?
+        month_summary_report(&pool, &constr)?
     } else if options.do_week {
-        week_summary_report(&conn, &constr)?
+        week_summary_report(&pool, &constr)?
     } else if options.do_day {
-        day_summary_report(&conn, &constr)?
+        day_summary_report(&pool, &constr)?
     } else if options.do_file {
-        file_summary_report(&conn, &constr)?
+        file_summary_report(&pool, &constr)?
     } else {
         vec!["".to_string()]
     };
@@ -50,7 +49,7 @@ pub fn create_report_query(
     Ok(result_vec)
 }
 
-fn file_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, Error> {
+fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<String>, Error> {
     let mut result_vec = Vec::new();
     let query = format!(
         "
@@ -83,6 +82,8 @@ fn file_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, E
     );
 
     debug!("{}", query);
+
+    let conn = pool.get()?;
 
     for row in conn.query(&query, &[])?.iter() {
         let datetime: String = row.get(0);
@@ -186,7 +187,7 @@ fn file_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, E
     Ok(result_vec)
 }
 
-fn day_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, Error> {
+fn day_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<String>, Error> {
     let mut result_vec = Vec::new();
     let query = format!(
         "
@@ -219,6 +220,8 @@ fn day_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, Er
     );
 
     debug!("{}", query);
+
+    let conn = pool.get()?;
 
     for row in conn.query(&query, &[])?.iter() {
         let date: String = row.get(0);
@@ -322,7 +325,7 @@ fn day_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, Er
     Ok(result_vec)
 }
 
-fn week_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, Error> {
+fn week_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<String>, Error> {
     let mut result_vec = Vec::new();
     let query = format!("
         WITH a AS (
@@ -352,6 +355,8 @@ fn week_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, E
     ", constr);
 
     debug!("{}", query);
+
+    let conn = pool.get()?;
 
     for row in conn.query(&query, &[])?.iter() {
         let year: f64 = row.get(0);
@@ -447,7 +452,7 @@ fn week_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, E
     Ok(result_vec)
 }
 
-fn month_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, Error> {
+fn month_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<String>, Error> {
     let mut result_vec = Vec::new();
     let query = format!("
         WITH a AS (
@@ -477,6 +482,8 @@ fn month_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, 
     ", constr);
 
     debug!("{}", query);
+
+    let conn = pool.get()?;
 
     for row in conn.query(&query, &[])?.iter() {
         let year: f64 = row.get(0);
@@ -566,7 +573,7 @@ fn month_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, 
     Ok(result_vec)
 }
 
-fn sport_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, Error> {
+fn sport_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<String>, Error> {
     let mut result_vec = Vec::new();
 
     let query = format!(
@@ -595,6 +602,8 @@ fn sport_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, 
         constr
     );
     debug!("{}", query);
+
+    let conn = pool.get()?;
 
     for row in conn.query(&query, &[])?.iter() {
         let sport: String = row.get(0);
@@ -662,7 +671,7 @@ fn sport_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, 
     Ok(result_vec)
 }
 
-fn year_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, Error> {
+fn year_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<String>, Error> {
     let mut result_vec = Vec::new();
 
     let query = format!(
@@ -694,6 +703,8 @@ fn year_summary_report(conn: &Connection, constr: &str) -> Result<Vec<String>, E
         constr
     );
     debug!("{}", query);
+
+    let conn = pool.get()?;
 
     for row in conn.query(&query, &[])?.iter() {
         let year: f64 = row.get(0);

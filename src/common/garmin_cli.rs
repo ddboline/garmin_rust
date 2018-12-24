@@ -8,12 +8,13 @@ use rayon::prelude::*;
 use std::collections::HashSet;
 use std::path::Path;
 use tempdir::TempDir;
+use std::collections::HashMap;
 
-use crate::garmin_config::GarminConfig;
-use crate::garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList};
-use crate::garmin_file;
-use crate::garmin_summary::{GarminSummary, GarminSummaryList};
-use crate::garmin_sync::GarminSync;
+use super::garmin_config::GarminConfig;
+use super::garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList};
+use super::garmin_file;
+use super::garmin_summary::{GarminSummary, GarminSummaryList};
+use super::garmin_sync::GarminSync;
 use crate::parsers::garmin_parse;
 use crate::reports::garmin_file_report_html::file_report_html;
 use crate::reports::garmin_file_report_txt::generate_txt_report;
@@ -24,7 +25,6 @@ use crate::utils::garmin_util::{
     get_file_list, get_list_of_files_from_db, get_pg_conn, map_result_vec,
 };
 use crate::utils::sport_types::get_sport_type_map;
-use std::collections::HashMap;
 
 fn get_version_number() -> String {
     format!(

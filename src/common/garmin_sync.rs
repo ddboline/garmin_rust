@@ -10,7 +10,6 @@ use rayon::prelude::*;
 
 use failure::Error;
 
-use crate::utils::garmin_util::{get_md5sum, map_result_vec};
 use rusoto_core::Region;
 use rusoto_s3::{
     GetObjectOutput, GetObjectRequest, ListObjectsV2Request, PutObjectOutput, PutObjectRequest,
@@ -20,6 +19,8 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::time::SystemTime;
+
+use crate::utils::garmin_util::{get_md5sum, map_result_vec};
 
 pub fn get_s3_client() -> S3Client {
     S3Client::new(Region::UsEast1)

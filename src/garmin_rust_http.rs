@@ -7,8 +7,8 @@ use actix_web::{http::Method, http::StatusCode, server, App, HttpResponse, Query
 
 use failure::Error;
 
-use garmin_rust::garmin_cli::GarminCli;
-use garmin_rust::garmin_config::GarminConfig;
+use garmin_rust::common::garmin_cli::GarminCli;
+use garmin_rust::common::garmin_config::GarminConfig;
 
 #[derive(Debug, Deserialize)]
 struct FilterRequest {

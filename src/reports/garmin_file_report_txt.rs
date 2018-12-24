@@ -2,8 +2,8 @@ extern crate rayon;
 
 use failure::Error;
 
-use crate::garmin_file::GarminFile;
-use crate::garmin_lap::GarminLap;
+use crate::common::garmin_file::GarminFile;
+use crate::common::garmin_lap::GarminLap;
 use crate::utils::garmin_util::{print_h_m_s, MARATHON_DISTANCE_MI, METERS_PER_MILE};
 use crate::utils::sport_types::{get_sport_type_map, SportTypes};
 

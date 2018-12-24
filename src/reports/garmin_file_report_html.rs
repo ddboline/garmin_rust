@@ -4,8 +4,8 @@ use failure::Error;
 
 use rayon::prelude::*;
 
-use crate::garmin_file::GarminFile;
-use crate::garmin_lap::GarminLap;
+use crate::common::garmin_file::GarminFile;
+use crate::common::garmin_lap::GarminLap;
 use crate::reports::garmin_file_report_txt::get_splits;
 use crate::reports::garmin_templates::{GARMIN_TEMPLATE, MAP_TEMPLATE};
 use crate::utils::garmin_util::{print_h_m_s, titlecase, MARATHON_DISTANCE_MI, METERS_PER_MILE};

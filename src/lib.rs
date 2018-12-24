@@ -8,11 +8,6 @@ extern crate log;
 extern crate postgres;
 extern crate postgres_derive;
 
-pub mod garmin_cli;
-pub mod garmin_config;
-pub mod garmin_correction_lap;
-pub mod garmin_summary;
-pub mod garmin_sync;
 pub mod common;
 pub mod parsers;
 pub mod reports;

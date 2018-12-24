@@ -5,10 +5,10 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::Path;
 
-use crate::garmin_correction_lap::{apply_lap_corrections, GarminCorrectionLap};
-use crate::garmin_file::GarminFile;
-use crate::garmin_lap::GarminLap;
-use crate::garmin_point::GarminPoint;
+use crate::common::garmin_correction_lap::{apply_lap_corrections, GarminCorrectionLap};
+use crate::common::garmin_file::GarminFile;
+use crate::common::garmin_lap::GarminLap;
+use crate::common::garmin_point::GarminPoint;
 use crate::utils::garmin_util::{convert_time_string, METERS_PER_MILE};
 use crate::utils::sport_types::get_sport_type_map;
 

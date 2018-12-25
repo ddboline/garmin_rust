@@ -1,4 +1,3 @@
-
 use chrono::{DateTime, Utc};
 use std::fmt;
 use std::str::FromStr;
@@ -188,20 +187,18 @@ impl GarminPoint {
                 };
                 *time_from_begin += new_point.duration_from_last;
                 new_point.duration_from_begin = *time_from_begin;
-                
+
                 Some(new_point)
             })
-            .filter_map(|new_point| {
-                match new_point.distance {
-                    Some(d) => {
-                        if d > 0.0 {
-                            Some(new_point)
-                        } else {
-                            None
-                        }
+            .filter_map(|new_point| match new_point.distance {
+                Some(d) => {
+                    if d > 0.0 {
+                        Some(new_point)
+                    } else {
+                        None
                     }
-                    None => None,
                 }
+                None => None,
             })
             .collect()
     }

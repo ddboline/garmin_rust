@@ -1,3 +1,7 @@
+extern crate rayon;
+
+use rayon::prelude::*;
+
 use std::fmt;
 
 use crate::utils::garmin_util::{convert_time_string, convert_xml_local_time_to_utc};
@@ -145,7 +149,7 @@ impl GarminLap {
 
     pub fn fix_lap_number(lap_list: Vec<GarminLap>) -> Vec<GarminLap> {
         lap_list
-            .into_iter()
+            .into_par_iter()
             .enumerate()
             .map(|(i, lap)| {
                 let mut new_lap = lap;

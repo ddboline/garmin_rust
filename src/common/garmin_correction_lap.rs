@@ -452,7 +452,7 @@ impl GarminCorrectionList {
     }
 }
 
-pub fn apply_lap_corrections<S: BuildHasher>(
+pub fn apply_lap_corrections<S: BuildHasher + Sync>(
     lap_list: &[GarminLap],
     sport: &Option<String>,
     corr_map: &HashMap<(String, i32), GarminCorrectionLap, S>,

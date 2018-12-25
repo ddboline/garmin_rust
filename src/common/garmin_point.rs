@@ -1,3 +1,4 @@
+
 use chrono::{DateTime, Utc};
 use std::fmt;
 use std::str::FromStr;
@@ -170,12 +171,10 @@ impl GarminPoint {
     }
 
     pub fn calculate_durations(point_list: &[GarminPoint]) -> Vec<GarminPoint> {
-        let mut time_from_begin = 0.0;
-
         point_list
-            .iter()
+            .into_iter()
             .enumerate()
-            .filter_map(|(i, point)| {
+            .scan(0.0, |time_from_begin, (i, point)| {
                 let mut new_point = point.clone();
                 new_point.duration_from_last = match i {
                     0 => 0.0,
@@ -187,9 +186,12 @@ impl GarminPoint {
                         (cur_time - last_time).num_seconds() as f64
                     }
                 };
-                time_from_begin += new_point.duration_from_last;
-                new_point.duration_from_begin = time_from_begin;
-
+                *time_from_begin += new_point.duration_from_last;
+                new_point.duration_from_begin = *time_from_begin;
+                
+                Some(new_point)
+            })
+            .filter_map(|new_point| {
                 match new_point.distance {
                     Some(d) => {
                         if d > 0.0 {

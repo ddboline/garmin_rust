@@ -386,7 +386,7 @@ impl GarminSummaryList {
     pub fn write_summary_to_avro_files(&self, summary_cache_dir: &str) -> Result<(), Error> {
         let results = self
             .summary_list
-            .iter()
+            .par_iter()
             .map(|gsum| {
                 let summary_avro_fname =
                     format!("{}/{}.summary.avro", &summary_cache_dir, &gsum.filename);
@@ -440,7 +440,7 @@ impl GarminSummaryList {
             );",
             temp_table_name
         );
-        let conn = pool.get()?;
+        let conn = pool.clone().get()?;
 
         conn.execute(&create_table_query, &[])?;
 
@@ -449,21 +449,29 @@ impl GarminSummaryList {
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 1)
         ", temp_table_name);
 
-        let stmt_insert = conn.prepare(&insert_query)?;
+        let results: Vec<Result<u64, Error>> = self
+            .summary_list
+            .par_iter()
+            .map(|gsum| {
+                let conn = pool.clone().get()?;
+                Ok(conn.execute(
+                    &insert_query,
+                    &[
+                        &gsum.filename,
+                        &gsum.begin_datetime,
+                        &gsum.sport,
+                        &gsum.total_calories,
+                        &gsum.total_distance,
+                        &gsum.total_duration,
+                        &gsum.total_hr_dur,
+                        &gsum.total_hr_dis,
+                        &gsum.md5sum,
+                    ],
+                )?)
+            })
+            .collect();
 
-        for gsum in &self.summary_list {
-            stmt_insert.execute(&[
-                &gsum.filename,
-                &gsum.begin_datetime,
-                &gsum.sport,
-                &gsum.total_calories,
-                &gsum.total_distance,
-                &gsum.total_duration,
-                &gsum.total_hr_dur,
-                &gsum.total_hr_dis,
-                &gsum.md5sum,
-            ])?;
-        }
+        map_result_vec(results)?;
 
         let insert_query = format!("
             INSERT INTO garmin_summary (filename, begin_datetime, sport, total_calories, total_distance, total_duration, total_hr_dur, total_hr_dis, md5sum, number_of_items)

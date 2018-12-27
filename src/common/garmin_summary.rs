@@ -10,7 +10,7 @@ use std::path::Path;
 
 use std::fs::File;
 
-use failure::Error;
+use failure::{err_msg, Error};
 
 use rayon::prelude::*;
 
@@ -81,7 +81,14 @@ impl GarminSummary {
         cache_dir: &str,
         corr_map: &HashMap<(String, i32), GarminCorrectionLap>,
     ) -> Result<GarminSummary, Error> {
-        let cache_file = format!("{}/{}.avro", cache_dir, filename.split('/').last().unwrap());
+        let cache_file = format!(
+            "{}/{}.avro",
+            cache_dir,
+            filename
+                .split('/')
+                .last()
+                .ok_or_else(|| err_msg(format!("Failed to split filename {}", filename)))?
+        );
 
         println!("Get md5sum {}", filename);
         let md5sum = get_md5sum(&filename)?;
@@ -130,7 +137,14 @@ impl GarminSummary {
 
         debug!("Try processing file {} {}", local_file, temp_path);
 
-        let cache_file = format!("{}/{}.avro", temp_path, filename.split('/').last().unwrap());
+        let cache_file = format!(
+            "{}/{}.avro",
+            temp_path,
+            filename
+                .split('/')
+                .last()
+                .ok_or_else(|| err_msg(format!("Failed to split filename {}", filename)))?
+        );
 
         println!("Found md5sum {}, try parsing", md5sum);
         let gfile = GarminParse::new().with_file(&filename, &corr_map).gfile;
@@ -229,7 +243,10 @@ impl GarminSummaryList {
                 let cache_file = format!(
                     "{}/{}.avro",
                     cache_dir,
-                    input_file.split('/').last().unwrap()
+                    input_file.split('/').last().ok_or_else(|| err_msg(format!(
+                        "Failed to split input_file {}",
+                        input_file
+                    )))?
                 );
                 let md5sum = get_md5sum(&input_file)?;
                 let gfile = GarminParse::new().with_file(&input_file, &corr_map).gfile;

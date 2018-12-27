@@ -190,15 +190,15 @@ impl GarminPoint {
 
                 Some(new_point)
             })
-            .filter_map(|new_point| match new_point.distance {
+            .filter(|new_point| match new_point.distance {
                 Some(d) => {
                     if d > 0.0 {
-                        Some(new_point)
+                        true
                     } else {
-                        None
+                        false
                     }
                 }
-                None => None,
+                None => false,
             })
             .collect()
     }

@@ -191,13 +191,7 @@ impl GarminPoint {
                 Some(new_point)
             })
             .filter(|new_point| match new_point.distance {
-                Some(d) => {
-                    if d > 0.0 {
-                        true
-                    } else {
-                        false
-                    }
-                }
+                Some(d) => d > 0.0,
                 None => false,
             })
             .collect()

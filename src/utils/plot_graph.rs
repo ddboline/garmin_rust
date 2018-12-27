@@ -80,7 +80,7 @@ pub fn generate_d3_plot(opts: &PlotOpts) -> Result<String, Error> {
             .map(|((xb, yb), c)| (*xb as f64 * xstep + xmin, *yb as f64 * ystep + ymin, c))
             .collect();
 
-        SCATTERPLOTTEMPLATE
+        let js_str = SCATTERPLOTTEMPLATE
             .split('\n')
             .map(|line| {
                 if line.contains("EXAMPLETITLE") {
@@ -100,9 +100,10 @@ pub fn generate_d3_plot(opts: &PlotOpts) -> Result<String, Error> {
                 }
             })
             .collect::<Vec<_>>()
-            .join("\n")
+            .join("\n");
+        format!("<script>{}</script>", js_str)
     } else {
-        LINEPLOTTEMPLATE
+        let js_str = LINEPLOTTEMPLATE
             .split('\n')
             .map(|line| {
                 if line.contains("EXAMPLETITLE") {
@@ -118,6 +119,7 @@ pub fn generate_d3_plot(opts: &PlotOpts) -> Result<String, Error> {
                 }
             })
             .collect::<Vec<_>>()
-            .join("\n")
+            .join("\n");
+        format!("<script>{}</script>", js_str)
     })
 }

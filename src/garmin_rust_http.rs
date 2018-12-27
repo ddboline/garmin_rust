@@ -215,7 +215,7 @@ fn main() {
             })
     })
     .bind(&format!("127.0.0.1:{}", config.port))
-    .expect(&format!("Failed to bind to port {}", config.port))
+    .unwrap_or_else(|_| panic!("Failed to bind to port {}", config.port))
     .start();
 
     let _ = sys.run();

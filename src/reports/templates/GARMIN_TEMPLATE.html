@@ -1,0 +1,38 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>SPORTTITLEDATE</title>
+<meta name="generator" content="HTML::TextToHTML v2.51"/>
+<meta http-equiv="Cache-Control" content="no-store" />
+</head>
+<body>
+
+<p>
+HISTORYBUTTONS
+</p>
+
+<p>
+<form>
+<input type="text" name="cmd" id="garmin_cmd"/>
+<input type="button" name="submitGARMIN" value="Submit" onclick="processFormData();"/>
+</form>
+</p>
+
+<pre>
+INSERTTEXTHERE
+</pre>
+
+<script language="JavaScript" type="text/javascript">
+    function send_command( command ) {
+        var ostr = '../garmin?' + command;
+        location.replace(ostr);
+    }
+    function processFormData() {
+        var garmin_cmd = document.getElementById( 'garmin_cmd' );
+        send_command( 'filter=' + garmin_cmd.value );
+    }
+</script>
+
+</body>
+</html>

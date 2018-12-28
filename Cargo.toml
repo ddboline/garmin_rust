@@ -36,6 +36,9 @@ lambda_runtime = "*"
 simple_logger = "1.0"
 r2d2 = "*"
 r2d2_postgres = "*"
+dotenv = "*"
+rust_auth_server = {path = "../rust-auth-server"}
+reqwest = "*"
 
 [dependencies.avro-rs]
 version = "^0.6"

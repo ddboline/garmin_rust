@@ -1,4 +1,6 @@
 #![allow(clippy::wrong_self_convention)]
+extern crate dotenv;
+
 use config::{Config, File};
 use std::env::var;
 use std::path::Path;
@@ -109,6 +111,16 @@ impl GarminConfig {
 
     pub fn get_config() -> GarminConfig {
         let home_dir = var("HOME").expect("No HOME directory...");
+
+        let env_file = format!("{}/.config/garmin_rust/config.env", home_dir);
+
+        if Path::new(&env_file).exists() {
+            dotenv::from_path(&env_file).ok();
+        } else if Path::new("config.env").exists() {
+            dotenv::from_filename("config.env").ok();
+        } else {
+            dotenv::dotenv().ok();
+        }
 
         let conf_file = format!("{}/.config/garmin_rust/config.yml", home_dir);
 

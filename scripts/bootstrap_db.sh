@@ -1,6 +1,8 @@
 #!/bin/bash
 
 PASSWORD=`head -c1000 /dev/urandom | tr -dc [:alpha:][:digit:] | head -c 16; echo ;`
+JWT_SECRET=`head -c1000 /dev/urandom | tr -dc [:alpha:][:digit:] | head -c 32; echo ;`
+SECRET_KEY=`head -c1000 /dev/urandom | tr -dc [:alpha:][:digit:] | head -c 32; echo ;`
 
 sudo apt-get install -y postgresql
 
@@ -15,16 +17,20 @@ do
     mkdir -p $DIR;
 done
 
-cat > ${HOME}/.config/garmin_rust/config.yml <<EOL
-PGURL: postgresql://$USER:$PASSWORD@localhost:5432/garmin_summary
-MAPS_API_KEY: $MAPS_API_KEY
-GPS_BUCKET: garmin_scripts_gps_files_ddboline
-CACHE_BUCKET: garmin-scripts-cache-ddboline
-HTTP_BUCKET: garmin-scripts-http-cache
-SUMMARY_BUCKET: garmin-scripts-summary-cache
-GPS_DIR: ${HOME}/.garmin_cache/run/gps_tracks
-CACHE_DIR: ${HOME}/.garmin_cache/run/cache
-SUMMARY_CACHE: ${HOME}/.garmin_cache/run/summary_cache
+cat > ${HOME}/.config/garmin_rust/config.env <<EOL
+PGURL=postgresql://$USER:$PASSWORD@localhost:5432/garmin_summary
+MAPS_API_KEY=$MAPS_API_KEY
+GPS_BUCKET=garmin_scripts_gps_files_ddboline
+CACHE_BUCKET=garmin-scripts-cache-ddboline
+HTTP_BUCKET=garmin-scripts-http-cache
+SUMMARY_BUCKET=garmin-scripts-summary-cache
+GPS_DIR=${HOME}/.garmin_cache/run/gps_tracks
+CACHE_DIR=${HOME}/.garmin_cache/run/cache
+SUMMARY_CACHE=${HOME}/.garmin_cache/run/summary_cache
+JWT_SECRET=$JWT_SECRET
+SECRET_KEY=$SECRET_KEY
+DOMAIN=$DOMAIN
+SPARKPOST_API_KEY=$SPARKPOST_API_KEY
 EOL
 
 psql garmin_summary < ./scripts/garmin_corrections_laps.sql

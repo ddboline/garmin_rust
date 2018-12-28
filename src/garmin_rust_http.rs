@@ -2,10 +2,14 @@
 extern crate serde_derive;
 extern crate actix;
 extern crate actix_web;
+extern crate rust_auth_server;
 
+use actix_web::middleware::identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::{http::Method, http::StatusCode, server, App, HttpResponse, Json, Query};
-
+use chrono::Duration;
 use failure::Error;
+use rust_auth_server::auth_handler::LoggedUser;
+use std::env;
 
 use garmin_rust::common::garmin_cli::GarminCli;
 use garmin_rust::common::garmin_config::GarminConfig;
@@ -13,6 +17,7 @@ use garmin_rust::common::garmin_correction_lap::GarminCorrectionList;
 use garmin_rust::common::garmin_file;
 use garmin_rust::parsers::garmin_parse;
 use garmin_rust::reports::garmin_file_report_txt;
+use garmin_rust::reports::garmin_report_options::GarminReportOptions;
 use garmin_rust::utils::garmin_util::{get_list_of_files_from_db, get_pg_conn};
 
 #[derive(Deserialize)]
@@ -21,15 +26,22 @@ struct FilterRequest {
     history: Option<String>,
 }
 
-fn garmin(request: Query<FilterRequest>) -> Result<HttpResponse, Error> {
-    let request = request.into_inner();
+struct ProcPatternOutput(String, String, GarminReportOptions, Vec<String>);
 
+fn proc_pattern_wrapper(request: FilterRequest) -> ProcPatternOutput {
     let filter = request.filter.unwrap_or_else(|| "sport".to_string());
     let history = request.history.unwrap_or_else(|| "sport".to_string());
 
     let filter_vec: Vec<String> = filter.split(',').map(|x| x.to_string()).collect();
 
     let (options, constraints) = GarminCli::process_pattern(&filter_vec);
+    ProcPatternOutput(filter, history, options, constraints)
+}
+
+fn garmin(request: Query<FilterRequest>, _: LoggedUser) -> Result<HttpResponse, Error> {
+    let request = request.into_inner();
+
+    let ProcPatternOutput(filter, history, options, constraints) = proc_pattern_wrapper(request);
 
     let resp = HttpResponse::build(StatusCode::OK)
         .content_type("text/html; charset=utf-8")
@@ -56,19 +68,13 @@ struct TimeValue {
 fn garmin_list_gps_tracks(request: Query<FilterRequest>) -> Result<Json<GpsList>, Error> {
     let request = request.into_inner();
 
-    let filter = request.filter.unwrap_or_else(|| "sport".to_string());
+    let ProcPatternOutput(_, _, _, constraints) = proc_pattern_wrapper(request);
 
-    let filter_vec: Vec<String> = filter.split(',').map(|x| x.to_string()).collect();
+    let pgurl = GarminCli::new().with_config().config.pgurl;
 
-    let (_, constraints) = GarminCli::process_pattern(&filter_vec);
+    let gps_list = get_list_of_files_from_db(&get_pg_conn(&pgurl)?, &constraints)?;
 
-    let config = GarminCli::new().with_config().config;
-
-    let pg_conn = get_pg_conn(&config.pgurl)?;
-
-    Ok(Json(GpsList {
-        gps_list: get_list_of_files_from_db(&pg_conn, &constraints)?,
-    }))
+    Ok(Json(GpsList { gps_list }))
 }
 
 #[derive(Serialize)]
@@ -79,11 +85,7 @@ struct HrData {
 fn garmin_get_hr_data(request: Query<FilterRequest>) -> Result<Json<HrData>, Error> {
     let request = request.into_inner();
 
-    let filter = request.filter.unwrap_or_else(|| "sport".to_string());
-
-    let filter_vec: Vec<String> = filter.split(',').map(|x| x.to_string()).collect();
-
-    let (_, constraints) = GarminCli::process_pattern(&filter_vec);
+    let ProcPatternOutput(_, _, _, constraints) = proc_pattern_wrapper(request);
 
     let config = GarminCli::new().with_config().config;
 
@@ -143,11 +145,7 @@ struct HrPaceList {
 fn garmin_get_hr_pace(request: Query<FilterRequest>) -> Result<Json<HrPaceList>, Error> {
     let request = request.into_inner();
 
-    let filter = request.filter.unwrap_or_else(|| "sport".to_string());
-
-    let filter_vec: Vec<String> = filter.split(',').map(|x| x.to_string()).collect();
-
-    let (_, constraints) = GarminCli::process_pattern(&filter_vec);
+    let ProcPatternOutput(_, _, _, constraints) = proc_pattern_wrapper(request);
 
     let config = GarminCli::new().with_config().config;
 
@@ -200,9 +198,19 @@ fn garmin_get_hr_pace(request: Query<FilterRequest>) -> Result<Json<HrPaceList>,
 fn main() {
     let sys = actix::System::new("garmin");
     let config = GarminConfig::get_config();
+    let secret: String = std::env::var("SECRET_KEY").unwrap_or_else(|_| "0123".repeat(8));
+    let domain = env::var("DOMAIN").unwrap_or_else(|_| "localhost".to_string());
 
-    server::new(|| {
+    server::new(move || {
         App::new()
+            .middleware(IdentityService::new(
+                CookieIdentityPolicy::new(secret.as_bytes())
+                    .name("auth")
+                    .path("/")
+                    .domain(domain.as_str())
+                    .max_age(Duration::days(1))
+                    .secure(false), // this can only be true if you have https
+            ))
             .resource("/garmin", |r| r.method(Method::GET).with(garmin))
             .resource("/garmin/list_gps_tracks", |r| {
                 r.method(Method::GET).with(garmin_list_gps_tracks)
@@ -210,7 +218,7 @@ fn main() {
             .resource("/garmin/get_hr_data", |r| {
                 r.method(Method::GET).with(garmin_get_hr_data)
             })
-            .resource("/garmin/get_hr_pace", |r| {
+            .resource("/get_hr_pace", |r| {
                 r.method(Method::GET).with(garmin_get_hr_pace)
             })
     })

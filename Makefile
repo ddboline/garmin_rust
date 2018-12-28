@@ -6,12 +6,12 @@ build_type := release
 
 all:
 	cp Dockerfile.ubuntu18.04 Dockerfile
-	docker build -t build_rust:ubuntu18.04 .
+	docker build -t garmin_rust/build_rust:ubuntu18.04 .
 	rm Dockerfile
 
 amazon:
 	cp Dockerfile.amazonlinux2018.03 Dockerfile
-	docker build -t build_rust:amazonlinux2018.03 .
+	docker build -t garmin_rust/build_rust:amazonlinux2018.03 .
 	rm Dockerfile
 
 cleanup:
@@ -20,13 +20,13 @@ cleanup:
 	rm Dockerfile
 
 package:
-	docker run --cidfile $(cidfile) -v `pwd`/target:/garmin_rust/target build_rust:ubuntu18.04 /garmin_rust/scripts/build_deb_docker.sh $(version) $(release)
+	docker run --cidfile $(cidfile) -v `pwd`/target:/garmin_rust/target garmin_rust/build_rust:ubuntu18.04 /garmin_rust/scripts/build_deb_docker.sh $(version) $(release)
 	docker cp `cat $(cidfile)`:/garmin_rust/garmin-rust_$(version)-$(release)_amd64.deb .
 	docker rm `cat $(cidfile)`
 	rm $(cidfile)
 
 lambda_build:
-	docker run --cidfile $(cidfile) -v `pwd`/target:/garmin_rust/target build_rust:amazonlinux2018.03 /garmin_rust/scripts/build_lambda.sh
+	docker run --cidfile $(cidfile) -v `pwd`/target:/garmin_rust/target garmin_rust/build_rust:amazonlinux2018.03 /garmin_rust/scripts/build_lambda.sh
 	docker cp `cat $(cidfile)`:/garmin_rust/rust.zip .
 	docker rm `cat $(cidfile)`
 	rm $(cidfile)

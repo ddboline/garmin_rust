@@ -37,7 +37,7 @@ simple_logger = "1.0"
 r2d2 = "*"
 r2d2_postgres = "*"
 dotenv = "*"
-rust_auth_server = {git = "https://github.com/ddboline/rust-auth-server.git"}
+rust_auth_server = {git = "https://github.com/ddboline/rust-auth-server.git", tag="0.1.1"}
 
 [dependencies.avro-rs]
 version = "^0.6"

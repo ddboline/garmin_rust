@@ -1,4 +1,4 @@
-version := "0.1.12"
+version := "0.1.13"
 release := "1"
 uniq := $(shell head -c1000 /dev/urandom | sha512sum | head -c 12 ; echo ;)
 cidfile := "/tmp/.tmp.docker.$(uniq)"
@@ -44,5 +44,7 @@ lambda_update_code:
 	aws lambda update-function-code --function-name garmin_rust_lambda --s3-bucket garmin-scripts-lambda-code --s3-key rust.zip
 
 install:
-	cp target/$(build_type)/garmin_rust_proc target/$(build_type)/garmin_rust_report target/$(build_type)/garmin_rust_http /usr/bin/
+    cp target/$(build_type)/garmin_rust_proc /usr/bin/garmin-rust-proc
+    cp target/$(build_type)/garmin_rust_report /usr/bin/garmin-rust-report
+    cp target/$(build_type)/garmin_rust_http /usr/bin/garmin-rust-http
 	cp python/strava_upload.py /usr/bin/strava-upload

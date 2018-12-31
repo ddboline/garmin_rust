@@ -114,7 +114,9 @@ impl GarminConfig {
 
         let env_file = format!("{}/.config/garmin_rust/config.env", home_dir);
 
-        if Path::new(&env_file).exists() {
+        if Path::new("config.env").exists() {
+            dotenv::from_filename("config.env").ok();
+        } else if Path::new(&env_file).exists() {
             dotenv::from_path(&env_file).ok();
         } else if Path::new("config.env").exists() {
             dotenv::from_filename("config.env").ok();

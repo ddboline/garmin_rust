@@ -40,7 +40,7 @@ fn proc_pattern_wrapper(request: FilterRequest) -> ProcPatternOutput {
 
 fn garmin(request: Query<FilterRequest>, user: LoggedUser) -> Result<HttpResponse, Error> {
     if user.email != "ddboline@gmail.com" {
-        return Ok(HttpResponse::Unauthorized().json("Unauthorized"))
+        return Ok(HttpResponse::Unauthorized().json("Unauthorized"));
     }
 
     let request = request.into_inner();

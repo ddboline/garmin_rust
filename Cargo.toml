@@ -48,17 +48,17 @@ name = "garmin_rust"
 path = "src/lib.rs"
 
 [[bin]]
-name = "garmin_rust_proc"
+name = "garmin-rust-proc"
 path = "src/garmin_rust_proc.rs"
 doc = false
 
 [[bin]]
-name = "garmin_rust_report"
+name = "garmin-rust-report"
 path = "src/garmin_rust_report.rs"
 doc = false
 
 [[bin]]
-name = "garmin_rust_http"
+name = "garmin-rust-http"
 path = "src/garmin_rust_http.rs"
 doc = false
 

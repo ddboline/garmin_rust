@@ -127,7 +127,7 @@ def strava_endpoint():
             private=is_private,
             activity_type=activity_type)
         activity = upstat.wait()
-        activity_id = activity.id
+        activity_id = upstat.activity_id
         duplicate = False
     except exc.ActivityUploadFailed as e:
         words = e.args[0].split()

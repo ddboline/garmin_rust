@@ -44,7 +44,7 @@ lambda_update_code:
 	aws lambda update-function-code --function-name garmin_rust_lambda --s3-bucket garmin-scripts-lambda-code --s3-key rust.zip
 
 install:
-	cp target/$(build_type)/garmin_rust_proc /usr/bin/garmin-rust-proc
-	cp target/$(build_type)/garmin_rust_report /usr/bin/garmin-rust-report
-	cp target/$(build_type)/garmin_rust_http /usr/bin/garmin-rust-http
+	cp target/$(build_type)/garmin-rust-proc /usr/bin/garmin-rust-proc
+	cp target/$(build_type)/garmin-rust-report /usr/bin/garmin-rust-report
+	cp target/$(build_type)/garmin-rust-http /usr/bin/garmin-rust-http
 	cp python/strava_upload.py /usr/bin/strava-upload

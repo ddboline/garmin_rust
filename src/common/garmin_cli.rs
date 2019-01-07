@@ -101,10 +101,9 @@ impl GarminCli {
             )
             .get_matches();
 
-        self.filenames = match matches.values_of("filename") {
-            Some(f) => Some(f.map(|f| f.to_string()).collect()),
-            None => None,
-        };
+        self.filenames = matches
+            .values_of("filename")
+            .map(|f| f.map(|f| f.to_string()).collect());
 
         self.do_sync = matches.is_present("sync");
         self.do_all = matches.is_present("all");

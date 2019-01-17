@@ -1,3 +1,5 @@
+#![allow(clippy::needless_pass_by_value)]
+
 #[macro_use]
 extern crate serde_derive;
 extern crate actix;

@@ -347,7 +347,7 @@ fn week_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<String>, Error
             sum(total_distance) as total_distance,
             sum(total_duration) as total_duration,
             sum(total_hr_dur) as total_hr_dur,
-            sum(total_hr_dis) as total_hr_dis
+            sum(total_hr_dis) as total_hr_dis,
             count(distinct cast(cast(begin_datetime as timestamp with time zone) at time zone 'EST' as date)) as number_of_days
         FROM a
         GROUP BY sport, year, week

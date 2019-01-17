@@ -64,6 +64,14 @@ fn generate_url_string(current_line: &str, options: &GarminReportOptions) -> Str
     } else if options.do_file {
         let current_file = current_line.trim().split_whitespace().nth(0).unwrap_or("");
         cmd_options.push(current_file.to_string());
+    } else if options.do_week {
+        let isoyear = now.iso_week().year();
+        let isoweek = now.iso_week().week();
+        cmd_options.push("day".to_string());
+        let vals: Vec<_> = current_line.trim().split_whitespace().collect();
+        let current_year: i32 = vals[0].parse().unwrap_or(isoyear);
+        let current_week: u32 = vals[2].parse().unwrap_or(isoweek);
+        cmd_options.push(format!("{:04}w{:02}", current_year, current_week));
     }
     cmd_options.join(",")
 }

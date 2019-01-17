@@ -288,7 +288,18 @@ impl GarminCli {
                 pat => match sport_type_map.get(pat) {
                     Some(&x) => options.do_sport = Some(x),
                     None => {
-                        constraints.push(format!("begin_datetime like '%{}%'", pat));
+                        if pat.contains("w") {
+                            let vals: Vec<_> = pat.split('w').collect();
+                            if let Ok(year) = vals[0].parse::<i32>() {
+                                if let Ok(week) = vals[1].parse::<i32>() {
+                                    constraints.push(format!(
+                                        "(EXTRACT(isoyear from cast(begin_datetime as timestamp with time zone) at time zone 'EST') = {} AND
+                                        EXTRACT(week from cast(begin_datetime as timestamp with time zone) at time zone 'EST') = {})", year, week));
+                                }
+                            }
+                        } else {
+                            constraints.push(format!("begin_datetime like '%{}%'", pat));
+                        }
                         constraints.push(format!("filename like '%{}%'", pat));
                     }
                 },

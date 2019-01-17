@@ -288,7 +288,7 @@ impl GarminCli {
                 pat => match sport_type_map.get(pat) {
                     Some(&x) => options.do_sport = Some(x),
                     None => {
-                        if pat.contains("w") {
+                        if pat.contains('w') {
                             let vals: Vec<_> = pat.split('w').collect();
                             if let Ok(year) = vals[0].parse::<i32>() {
                                 if let Ok(week) = vals[1].parse::<i32>() {

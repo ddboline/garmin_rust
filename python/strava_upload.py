@@ -4,6 +4,7 @@ from __future__ import (absolute_import, division, print_function, unicode_liter
 import os.path
 import gzip
 import requests
+import time
 
 from gevent.pywsgi import WSGIServer
 
@@ -34,6 +35,7 @@ def get_config():
         if 'access_token' in cp_.options('API'):
             cat = cp_.get('API', 'ACCESS_TOKEN')
     return cp_, cid, cs, cat
+
 
 @app.route('/running', methods=['GET'])
 def running():
@@ -126,14 +128,20 @@ def strava_endpoint():
             description,
             private=is_private,
             activity_type=activity_type)
-        activity = upstat.wait()
+
+        timeout = 10
+        start = time.time()
+        while upstat.activity_id is None:
+            upstat.poll()
+            time.sleep(1.0)
+            if timeout and (time.time() - start) > timeout:
+                raise exc.TimeoutExceeded()
+
         activity_id = upstat.activity_id
-        duplicate = False
     except exc.ActivityUploadFailed as e:
         words = e.args[0].split()
         if words[-4:-1] == ['duplicate', 'of', 'activity']:
             activity_id = int(words[-1])
-            duplicate = True
         else:
             raise
 
@@ -146,4 +154,4 @@ if __name__ == '__main__':
     http_server = WSGIServer(('', 52168), app)
     http_server.serve_forever()
 
-    # app.run(host='0.0.0.0', port=52168)
+    #app.run(host='0.0.0.0', port=52168)

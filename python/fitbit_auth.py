@@ -40,10 +40,8 @@ def fitbit_auth():
         timeout=10,
     )
 
-    print(client_id, client_secret)
 
     url, state = fitbit_client[0].client.authorize_token_url()
-    print(url, state)
     return url, 200
 
 

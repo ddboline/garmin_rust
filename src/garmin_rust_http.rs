@@ -203,7 +203,7 @@ fn garmin_get_hr_pace(request: Query<FilterRequest>) -> Result<Json<HrPaceList>,
 
 fn main() {
     let sys = actix::System::new("garmin");
-    let config = GarminConfig::get_config();
+    let config = GarminConfig::get_config(None);
     let secret: String = std::env::var("SECRET_KEY").unwrap_or_else(|_| "0123".repeat(8));
     let domain = env::var("DOMAIN").unwrap_or_else(|_| "localhost".to_string());
 
@@ -224,7 +224,7 @@ fn main() {
             .resource("/garmin/get_hr_data", |r| {
                 r.method(Method::GET).with(garmin_get_hr_data)
             })
-            .resource("/get_hr_pace", |r| {
+            .resource("/garmin/get_hr_pace", |r| {
                 r.method(Method::GET).with(garmin_get_hr_pace)
             })
     })

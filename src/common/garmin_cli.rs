@@ -58,7 +58,7 @@ impl GarminCli {
     }
 
     pub fn with_config(mut self) -> GarminCli {
-        self.config = GarminConfig::get_config();
+        self.config = GarminConfig::get_config(None);
         self
     }
 

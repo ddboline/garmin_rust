@@ -1,7 +1,6 @@
 #![allow(clippy::wrong_self_convention)]
 extern crate dotenv;
 
-use config::{Config, File};
 use std::env::var;
 use std::path::Path;
 
@@ -70,49 +69,15 @@ impl GarminConfig {
         self
     }
 
-    pub fn from_yml(mut self, filename: &str) -> GarminConfig {
-        let settings = match Config::new().merge(File::with_name(filename)) {
-            Ok(c) => c.clone(),
-            Err(err) => {
-                debug!("Failed to read yml file {}, {}", filename, err);
-                Config::new()
-            }
-        };
-
-        if let Ok(pgurl) = settings.get_str("PGURL") {
-            self.pgurl = pgurl.to_string()
-        }
-        if let Ok(maps_api_key) = settings.get_str("MAPS_API_KEY") {
-            self.maps_api_key = maps_api_key.to_string()
-        }
-        if let Ok(gps_bucket) = settings.get_str("GPS_BUCKET") {
-            self.gps_bucket = gps_bucket.to_string()
-        }
-        if let Ok(cache_bucket) = settings.get_str("CACHE_BUCKET") {
-            self.cache_bucket = cache_bucket.to_string()
-        }
-        if let Ok(gps_dir) = settings.get_str("GPS_DIR") {
-            self.gps_dir = gps_dir.to_string()
-        }
-        if let Ok(cache_dir) = settings.get_str("CACHE_DIR") {
-            self.cache_dir = cache_dir.to_string()
-        }
-        if let Ok(port) = settings.get_int("PORT") {
-            self.port = port as u32
-        }
-        if let Ok(summary_cache) = settings.get_str("SUMMARY_CACHE") {
-            self.summary_cache = summary_cache
-        }
-        if let Ok(summary_bucket) = settings.get_str("SUMMARY_BUCKET") {
-            self.summary_bucket = summary_bucket
-        }
-        self
-    }
-
-    pub fn get_config() -> GarminConfig {
+    pub fn get_config(fname: Option<&str>) -> GarminConfig {
         let home_dir = var("HOME").expect("No HOME directory...");
 
-        let env_file = format!("{}/.config/garmin_rust/config.env", home_dir);
+        let default_fname = format!("{}/.config/garmin_rust/config.env", home_dir);
+
+        let env_file = match fname {
+            Some(fname) if Path::new(fname).exists() => fname.to_string(),
+            _ => default_fname,
+        };
 
         if Path::new("config.env").exists() {
             dotenv::from_filename("config.env").ok();
@@ -124,16 +89,7 @@ impl GarminConfig {
             dotenv::dotenv().ok();
         }
 
-        let conf_file = format!("{}/.config/garmin_rust/config.yml", home_dir);
-
-        let conf = if Path::new(&conf_file).exists() {
-            GarminConfig::new().from_yml(&conf_file)
-        } else if Path::new("config.yml").exists() {
-            GarminConfig::new().from_yml("config.yml")
-        } else {
-            GarminConfig::new()
-        }
-        .from_env();
+        let conf = GarminConfig::new().from_env();
 
         if &conf.pgurl == "" {
             panic!("No PGURL specified")

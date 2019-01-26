@@ -1,4 +1,5 @@
 use garmin_rust::common::garmin_cli;
+use garmin_rust::common::garmin_config;
 
 #[test]
 fn test_garmin_cli_new() {
@@ -14,7 +15,7 @@ fn test_garmin_file_test_filenames() {
     let test_config = "tests/data/test.env";
 
     let gcli = garmin_cli::GarminCli {
-        config: GarminConfig::get_config(Some(test_config)),
+        config: garmin_config::GarminConfig::get_config(Some(test_config)),
         do_sync: false,
         do_all: false,
         do_bootstrap: false,

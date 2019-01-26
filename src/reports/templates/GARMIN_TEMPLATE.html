@@ -13,7 +13,7 @@ HISTORYBUTTONS
 </p>
 
 <form>
-<input type="text" name="cmd" id="garmin_cmd"/>
+<input type="text" name="filter" id="garmin_filter"/>
 <input type="button" name="submitGARMIN" value="Submit" onclick="processFormData();"/>
 </form>
 
@@ -27,8 +27,8 @@ INSERTTEXTHERE
         location.replace(ostr);
     }
     function processFormData() {
-        var garmin_cmd = document.getElementById( 'garmin_cmd' );
-        send_command( 'filter=' + garmin_cmd.value );
+        var garmin_filter = document.getElementById( 'garmin_filter' );
+        send_command( 'filter=' + garmin_filter.value );
     }
 </script>
 

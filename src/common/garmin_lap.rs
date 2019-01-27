@@ -1,5 +1,6 @@
 extern crate rayon;
 
+use failure::Error;
 use rayon::prelude::*;
 
 use std::fmt;
@@ -58,7 +59,7 @@ impl GarminLap {
         self.lap_start_string = None;
     }
 
-    pub fn read_lap_xml(&mut self, entries: &[&str]) {
+    pub fn read_lap_xml(&mut self, entries: &[&str]) -> Result<(), Error> {
         for entry in entries {
             let value = match entry.split('=').last() {
                 Some(x) => x,
@@ -69,8 +70,7 @@ impl GarminLap {
             } else if entry.contains("index") {
                 self.lap_index = value.parse().unwrap_or(-1);
             } else if entry.contains("start") {
-                self.lap_start =
-                    convert_xml_local_time_to_utc(value).expect("Failed to parse time string");
+                self.lap_start = convert_xml_local_time_to_utc(value)?;
                 self.lap_start_string = Some(self.lap_start.clone());
             } else if entry.contains("duration") {
                 self.lap_duration = convert_time_string(value).unwrap_or(0.0);
@@ -94,14 +94,14 @@ impl GarminLap {
                 self.lap_intensity = Some(value.to_string());
             }
         }
+        Ok(())
     }
 
-    pub fn read_lap_tcx(&mut self, entries: &[&str]) {
+    pub fn read_lap_tcx(&mut self, entries: &[&str]) -> Result<(), Error> {
         if let Some(&v0) = entries.get(0) {
             if let Some(value) = v0.split('=').last() {
                 if v0.contains("@StartTime") {
-                    self.lap_start =
-                        convert_xml_local_time_to_utc(value).expect("Failed to parse time string");
+                    self.lap_start = convert_xml_local_time_to_utc(value)?;
                     self.lap_start_string = Some(self.lap_start.clone());
                 } else if v0.contains("TotalTimeSeconds") {
                     self.lap_duration = value.parse().unwrap_or(0.0);
@@ -145,6 +145,7 @@ impl GarminLap {
                 }
             }
         }
+        Ok(())
     }
 
     pub fn fix_lap_number(lap_list: Vec<GarminLap>) -> Vec<GarminLap> {

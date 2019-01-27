@@ -1,6 +1,6 @@
 extern crate subprocess;
 
-use failure::Error;
+use failure::{err_msg, Error};
 use std::collections::HashMap;
 use std::env::var;
 use std::io::BufRead;
@@ -16,52 +16,47 @@ use crate::common::garmin_point::GarminPoint;
 use crate::utils::sport_types::get_sport_type_map;
 
 #[derive(Debug, Default)]
-pub struct GarminParseGmn {
-    pub gfile: GarminFile,
-}
+pub struct GarminParseGmn {}
 
 impl GarminParseGmn {
     pub fn new() -> GarminParseGmn {
-        GarminParseGmn {
-            gfile: GarminFile::new(),
-        }
+        GarminParseGmn {}
     }
 }
 
 impl GarminParseTrait for GarminParseGmn {
     fn with_file(
-        self,
+        &self,
         filename: &str,
         corr_map: &HashMap<(String, i32), GarminCorrectionLap>,
-    ) -> Self {
+    ) -> Result<GarminFile, Error> {
         let file_name = Path::new(&filename)
             .file_name()
             .unwrap_or_else(|| panic!("filename {} has no path", filename))
             .to_os_string()
             .into_string()
             .unwrap_or_else(|_| filename.to_string());
-        let gmn_output = self.parse_file(filename).expect("Failed to parse xml");
+        let gmn_output = self.parse_file(filename)?;
         let (lap_list, sport) =
             apply_lap_corrections(&gmn_output.lap_list, &gmn_output.sport, corr_map);
-        let first_lap = lap_list.get(0).expect("No laps found");
-        GarminParseGmn {
-            gfile: GarminFile {
-                filename: file_name,
-                filetype: "gmn".to_string(),
-                begin_datetime: first_lap.lap_start.clone(),
-                sport,
-                total_calories: lap_list.iter().map(|lap| lap.lap_calories).sum(),
-                total_distance: lap_list.iter().map(|lap| lap.lap_distance).sum(),
-                total_duration: lap_list.iter().map(|lap| lap.lap_duration).sum(),
-                total_hr_dur: lap_list
-                    .iter()
-                    .map(|lap| lap.lap_avg_hr.unwrap_or(0.0) * lap.lap_duration)
-                    .sum(),
-                total_hr_dis: lap_list.iter().map(|lap| lap.lap_duration).sum(),
-                laps: lap_list,
-                points: gmn_output.point_list,
-            },
-        }
+        let first_lap = lap_list.get(0).ok_or_else(|| err_msg("No laps"))?;
+        let gfile = GarminFile {
+            filename: file_name,
+            filetype: "gmn".to_string(),
+            begin_datetime: first_lap.lap_start.clone(),
+            sport,
+            total_calories: lap_list.iter().map(|lap| lap.lap_calories).sum(),
+            total_distance: lap_list.iter().map(|lap| lap.lap_distance).sum(),
+            total_duration: lap_list.iter().map(|lap| lap.lap_duration).sum(),
+            total_hr_dur: lap_list
+                .iter()
+                .map(|lap| lap.lap_avg_hr.unwrap_or(0.0) * lap.lap_duration)
+                .sum(),
+            total_hr_dis: lap_list.iter().map(|lap| lap.lap_duration).sum(),
+            laps: lap_list,
+            points: gmn_output.point_list,
+        };
+        Ok(gfile)
     }
 
     fn parse_file(&self, filename: &str) -> Result<ParseOutput, Error> {
@@ -89,9 +84,8 @@ impl GarminParseTrait for GarminParseGmn {
         let mut point_list = Vec::new();
         let mut sport: Option<String> = None;
 
-        reader
-            .lines()
-            .filter_map(|line| match line {
+        for line in reader.lines() {
+            match line {
                 Ok(l) => {
                     let entries: Vec<_> = l.split('/').collect();
                     match entries.get(2) {
@@ -103,7 +97,6 @@ impl GarminParseTrait for GarminParseGmn {
                                             if sport_type_map.contains_key(val) {
                                                 Some(val.to_string())
                                             } else {
-                                                println!("Non matching sport {}", val);
                                                 None
                                             }
                                         }
@@ -114,7 +107,7 @@ impl GarminParseTrait for GarminParseGmn {
                         }
                         Some(&"lap") => match entries.get(3) {
                             Some(_) => {
-                                current_lap.read_lap_xml(&entries[3..entries.len()]);
+                                current_lap.read_lap_xml(&entries[3..entries.len()])?;
                             }
                             None => {
                                 lap_list.push(current_lap.clone());
@@ -123,7 +116,7 @@ impl GarminParseTrait for GarminParseGmn {
                         },
                         Some(&"point") => match entries.get(3) {
                             Some(_) => {
-                                current_point.read_point_xml(&entries[3..entries.len()]);
+                                current_point.read_point_xml(&entries[3..entries.len()])?;
                             }
                             None => {
                                 point_list.push(current_point.clone());
@@ -131,12 +124,12 @@ impl GarminParseTrait for GarminParseGmn {
                             }
                         },
                         _ => (),
-                    }
-                    Some("")
+                    };
                 }
-                Err(_) => None,
-            })
-            .for_each(drop);
+                Err(e) => return Err(err_msg(e)),
+            }
+        }
+
         lap_list.push(current_lap.clone());
         point_list.push(current_point.clone());
 

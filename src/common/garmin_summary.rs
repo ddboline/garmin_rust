@@ -94,7 +94,7 @@ impl GarminSummary {
         let md5sum = get_md5sum(&filename)?;
 
         println!("Found md5sum {}, try parsing", md5sum);
-        let gfile = GarminParse::new().with_file(&filename, &corr_map).gfile;
+        let gfile = GarminParse::new().with_file(&filename, &corr_map)?;
 
         match gfile.laps.get(0) {
             Some(_) => (),
@@ -115,7 +115,7 @@ impl GarminSummary {
         let temp_path = tempdir
             .path()
             .to_str()
-            .expect("Path is invalid unicode somehow");
+            .ok_or_else(|| err_msg("Path is invalid unicode somehow"))?;
 
         let corr_file = format!("{}/{}", temp_path, "garmin_correction.avro");
 
@@ -147,7 +147,7 @@ impl GarminSummary {
         );
 
         println!("Found md5sum {}, try parsing", md5sum);
-        let gfile = GarminParse::new().with_file(&filename, &corr_map).gfile;
+        let gfile = GarminParse::new().with_file(&filename, &corr_map)?;
 
         match gfile.laps.get(0) {
             Some(_) => (),
@@ -249,7 +249,7 @@ impl GarminSummaryList {
                     )))?
                 );
                 let md5sum = get_md5sum(&input_file)?;
-                let gfile = GarminParse::new().with_file(&input_file, &corr_map).gfile;
+                let gfile = GarminParse::new().with_file(&input_file, &corr_map)?;
                 match gfile.laps.get(0) {
                     Some(_) => (),
                     None => println!("{} {} has no laps?", &input_file, &gfile.filename),

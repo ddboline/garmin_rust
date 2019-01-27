@@ -1,4 +1,4 @@
-use failure::Error;
+use failure::{err_msg, Error};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
@@ -14,57 +14,52 @@ use crate::utils::garmin_util::{convert_time_string, METERS_PER_MILE};
 use crate::utils::sport_types::get_sport_type_map;
 
 #[derive(Debug, Default)]
-pub struct GarminParseTxt {
-    pub gfile: GarminFile,
-}
+pub struct GarminParseTxt {}
 
 impl GarminParseTxt {
     pub fn new() -> GarminParseTxt {
-        GarminParseTxt {
-            gfile: GarminFile::new(),
-        }
+        GarminParseTxt {}
     }
 }
 
 impl GarminParseTrait for GarminParseTxt {
     fn with_file(
-        self,
+        &self,
         filename: &str,
         corr_map: &HashMap<(String, i32), GarminCorrectionLap>,
-    ) -> Self {
+    ) -> Result<GarminFile, Error> {
         let file_name = Path::new(&filename)
             .file_name()
             .unwrap_or_else(|| panic!("filename {} has no path", filename))
             .to_os_string()
             .into_string()
             .unwrap_or_else(|_| filename.to_string());
-        let txt_output = self.parse_file(filename).expect("Failed to parse txt");
+        let txt_output = self.parse_file(filename)?;
         let sport = txt_output
             .lap_list
             .get(0)
-            .expect("No laps found")
+            .ok_or_else(|| err_msg("No laps"))?
             .lap_type
             .clone();
         let (lap_list, sport) = apply_lap_corrections(&txt_output.lap_list, &sport, corr_map);
-        let first_lap = lap_list.get(0).expect("No laps found");
-        GarminParseTxt {
-            gfile: GarminFile {
-                filename: file_name,
-                filetype: "txt".to_string(),
-                begin_datetime: first_lap.lap_start.clone(),
-                sport,
-                total_calories: lap_list.iter().map(|lap| lap.lap_calories).sum(),
-                total_distance: lap_list.iter().map(|lap| lap.lap_distance).sum(),
-                total_duration: lap_list.iter().map(|lap| lap.lap_duration).sum(),
-                total_hr_dur: lap_list
-                    .iter()
-                    .map(|lap| lap.lap_avg_hr.unwrap_or(0.0) * lap.lap_duration)
-                    .sum(),
-                total_hr_dis: lap_list.iter().map(|lap| lap.lap_duration).sum(),
-                laps: lap_list,
-                points: txt_output.point_list,
-            },
-        }
+        let first_lap = lap_list.get(0).ok_or_else(|| err_msg("No laps"))?;
+        let gfile = GarminFile {
+            filename: file_name,
+            filetype: "txt".to_string(),
+            begin_datetime: first_lap.lap_start.clone(),
+            sport,
+            total_calories: lap_list.iter().map(|lap| lap.lap_calories).sum(),
+            total_distance: lap_list.iter().map(|lap| lap.lap_distance).sum(),
+            total_duration: lap_list.iter().map(|lap| lap.lap_duration).sum(),
+            total_hr_dur: lap_list
+                .iter()
+                .map(|lap| lap.lap_avg_hr.unwrap_or(0.0) * lap.lap_duration)
+                .sum(),
+            total_hr_dis: lap_list.iter().map(|lap| lap.lap_duration).sum(),
+            laps: lap_list,
+            points: txt_output.point_list,
+        };
+        Ok(gfile)
     }
 
     fn parse_file(&self, filename: &str) -> Result<ParseOutput, Error> {

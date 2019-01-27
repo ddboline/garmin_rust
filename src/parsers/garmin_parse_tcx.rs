@@ -1,7 +1,7 @@
 extern crate chrono;
 extern crate subprocess;
 
-use failure::Error;
+use failure::{err_msg, Error};
 use std::collections::HashMap;
 use std::env::var;
 use std::io::BufRead;
@@ -18,36 +18,32 @@ use crate::utils::sport_types::get_sport_type_map;
 
 #[derive(Debug, Default)]
 pub struct GarminParseTcx {
-    pub gfile: GarminFile,
     pub is_fit_file: bool,
 }
 
 impl GarminParseTcx {
     pub fn new(is_fit_file: bool) -> GarminParseTcx {
-        GarminParseTcx {
-            gfile: GarminFile::new(),
-            is_fit_file,
-        }
+        GarminParseTcx { is_fit_file }
     }
 }
 
 impl GarminParseTrait for GarminParseTcx {
     fn with_file(
-        mut self,
+        &self,
         filename: &str,
         corr_map: &HashMap<(String, i32), GarminCorrectionLap>,
-    ) -> Self {
+    ) -> Result<GarminFile, Error> {
         let file_name = Path::new(&filename)
             .file_name()
             .unwrap_or_else(|| panic!("filename {} has no path", filename))
             .to_os_string()
             .into_string()
             .unwrap_or_else(|_| filename.to_string());
-        let tcx_output = self.parse_file(filename).expect("Failed to parse tcx");
+        let tcx_output = self.parse_file(filename)?;
         let (lap_list, sport) =
             apply_lap_corrections(&tcx_output.lap_list, &tcx_output.sport, corr_map);
-        let first_lap = lap_list.get(0).expect("No laps found");
-        self.gfile = GarminFile {
+        let first_lap = lap_list.get(0).ok_or_else(|| err_msg("No laps"))?;
+        let gfile = GarminFile {
             filename: file_name,
             filetype: "tcx".to_string(),
             begin_datetime: first_lap.lap_start.clone(),
@@ -63,7 +59,7 @@ impl GarminParseTrait for GarminParseTcx {
             laps: lap_list,
             points: tcx_output.point_list,
         };
-        self
+        Ok(gfile)
     }
 
     fn parse_file(&self, filename: &str) -> Result<ParseOutput, Error> {
@@ -99,9 +95,8 @@ impl GarminParseTrait for GarminParseTcx {
         let mut point_list = Vec::new();
         let mut sport: Option<String> = None;
 
-        reader
-            .lines()
-            .filter_map(|line| match line {
+        for line in reader.lines() {
+            match line {
                 Ok(l) => {
                     let entries: Vec<_> = l.split('/').collect();
                     match entries.get(4) {
@@ -111,7 +106,7 @@ impl GarminParseTrait for GarminParseTcx {
                                     match entries.get(7) {
                                         Some(_) => {
                                             current_point
-                                                .read_point_tcx(&entries[7..entries.len()]);
+                                                .read_point_tcx(&entries[7..entries.len()])?;
                                         }
                                         None => {
                                             point_list.push(current_point.clone());
@@ -124,7 +119,7 @@ impl GarminParseTrait for GarminParseTcx {
                                 if entry.contains("StartTime") {
                                     current_lap.clear();
                                 }
-                                current_lap.read_lap_tcx(&entries[5..entries.len()]);
+                                current_lap.read_lap_tcx(&entries[5..entries.len()])?;
                             }
                             None => {
                                 lap_list.push(current_lap.clone());
@@ -148,11 +143,11 @@ impl GarminParseTrait for GarminParseTcx {
                         }
                         None => (),
                     }
-                    Some("")
                 }
-                Err(_) => None,
-            })
-            .for_each(drop);
+                Err(e) => return Err(err_msg(e)),
+            }
+        }
+
         lap_list.push(current_lap.clone());
         point_list.push(current_point.clone());
 

@@ -11,9 +11,10 @@ fn test_garmin_file_test_avro() {
     let corr_list =
         GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json").unwrap();
     let corr_map = corr_list.get_corr_list_map();
-    let gparse =
-        garmin_parse_tcx::GarminParseTcx::new(true).with_file("tests/data/test.fit", &corr_map);
-    match gparse.gfile.dump_avro("temp.avro.gz") {
+    let gfile = garmin_parse_tcx::GarminParseTcx::new(true)
+        .with_file("tests/data/test.fit", &corr_map)
+        .unwrap();
+    match gfile.dump_avro("temp.avro.gz") {
         Ok(()) => {
             println!("Success");
         }
@@ -25,18 +26,18 @@ fn test_garmin_file_test_avro() {
     match garmin_file::GarminFile::read_avro("temp.avro.gz") {
         Ok(g) => {
             println!("Success");
-            assert_eq!(gparse.gfile.sport, g.sport);
-            assert_eq!(gparse.gfile.filename, g.filename);
-            assert_eq!(gparse.gfile.sport.unwrap(), g.sport.unwrap());
-            assert_eq!(gparse.gfile.filetype, g.filetype);
-            assert_eq!(gparse.gfile.begin_datetime, g.begin_datetime);
-            assert_eq!(gparse.gfile.total_calories, g.total_calories);
-            assert_eq!(gparse.gfile.laps.len(), g.laps.len());
-            assert_eq!(gparse.gfile.points.len(), g.points.len());
-            assert_abs_diff_eq!(gparse.gfile.total_distance, g.total_distance);
-            assert_abs_diff_eq!(gparse.gfile.total_duration, g.total_duration);
-            assert_abs_diff_eq!(gparse.gfile.total_hr_dur, g.total_hr_dur);
-            assert_abs_diff_eq!(gparse.gfile.total_hr_dis, g.total_hr_dis);
+            assert_eq!(gfile.sport, g.sport);
+            assert_eq!(gfile.filename, g.filename);
+            assert_eq!(gfile.sport.unwrap(), g.sport.unwrap());
+            assert_eq!(gfile.filetype, g.filetype);
+            assert_eq!(gfile.begin_datetime, g.begin_datetime);
+            assert_eq!(gfile.total_calories, g.total_calories);
+            assert_eq!(gfile.laps.len(), g.laps.len());
+            assert_eq!(gfile.points.len(), g.points.len());
+            assert_abs_diff_eq!(gfile.total_distance, g.total_distance);
+            assert_abs_diff_eq!(gfile.total_duration, g.total_duration);
+            assert_abs_diff_eq!(gfile.total_hr_dur, g.total_hr_dur);
+            assert_abs_diff_eq!(gfile.total_hr_dis, g.total_hr_dis);
         }
         Err(e) => {
             println!("{}", e);

@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use failure::{err_msg, Error};
 use std::fmt;
 use std::str::FromStr;
 
@@ -56,15 +57,14 @@ impl GarminPoint {
         self.avg_speed_value_mph = 0.0;
     }
 
-    pub fn read_point_xml(&mut self, entries: &[&str]) {
+    pub fn read_point_xml(&mut self, entries: &[&str]) -> Result<(), Error> {
         for entry in entries {
             let val = match entry.split('=').last() {
                 Some(x) => x,
                 None => continue,
             };
             if entry.contains("@time") {
-                self.time =
-                    convert_xml_local_time_to_utc(val).expect("Failed to parse time string");
+                self.time = convert_xml_local_time_to_utc(val)?;
             } else if entry.contains("@lat") {
                 self.latitude = match val.parse() {
                     Ok(x) => Some(x),
@@ -92,6 +92,7 @@ impl GarminPoint {
                 };
             }
         }
+        Ok(())
     }
 
     fn read_point_tcx_position(&mut self, entries: &[&str]) {
@@ -116,12 +117,14 @@ impl GarminPoint {
         }
     }
 
-    pub fn read_point_tcx(&mut self, entries: &[&str]) {
+    pub fn read_point_tcx(&mut self, entries: &[&str]) -> Result<(), Error> {
         if let Some(&v0) = entries.get(0) {
             if v0.contains("Time") {
-                self.time =
-                    convert_xml_local_time_to_utc(v0.split('=').last().expect("Malformed time"))
-                        .expect("Failed to read time");
+                self.time = convert_xml_local_time_to_utc(
+                    v0.split('=')
+                        .last()
+                        .ok_or_else(|| err_msg("Malformed time"))?,
+                )?;
             } else if v0.contains("Position") {
                 self.read_point_tcx_position(&entries);
             } else if v0.contains("AltitudeMeters") {
@@ -167,6 +170,7 @@ impl GarminPoint {
                 }
             }
         }
+        Ok(())
     }
 
     pub fn calculate_durations(point_list: &[GarminPoint]) -> Vec<GarminPoint> {

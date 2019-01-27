@@ -1,4 +1,4 @@
-use failure::Error;
+use failure::{err_msg, Error};
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -11,50 +11,30 @@ use crate::parsers::garmin_parse_tcx::GarminParseTcx;
 use crate::parsers::garmin_parse_txt::GarminParseTxt;
 
 #[derive(Default)]
-pub struct GarminParse {
-    pub gfile: GarminFile,
-    pub gtype: String,
-}
+pub struct GarminParse {}
 
 impl GarminParse {
     pub fn new() -> GarminParse {
-        GarminParse {
-            gfile: GarminFile::new(),
-            gtype: "".to_string(),
-        }
+        GarminParse {}
     }
 
     pub fn with_file(
-        self,
+        &self,
         filename: &str,
         corr_map: &HashMap<(String, i32), GarminCorrectionLap>,
-    ) -> Self {
+    ) -> Result<GarminFile, Error> {
         let file_path = Path::new(&filename);
         match file_path.extension() {
             Some(x) => match x.to_str() {
-                Some("txt") => GarminParse {
-                    gfile: GarminParseTxt::new().with_file(filename, corr_map).gfile,
-                    gtype: "txt".to_string(),
-                },
-                Some("fit") => GarminParse {
-                    gfile: GarminParseTcx::new(true)
-                        .with_file(filename, corr_map)
-                        .gfile,
-                    gtype: "fit".to_string(),
-                },
-                Some("tcx") | Some("TCX") => GarminParse {
-                    gfile: GarminParseTcx::new(false)
-                        .with_file(filename, corr_map)
-                        .gfile,
-                    gtype: "tcx".to_string(),
-                },
-                Some("gmn") => GarminParse {
-                    gfile: GarminParseGmn::new().with_file(filename, corr_map).gfile,
-                    gtype: "gmn".to_string(),
-                },
-                _ => GarminParse::new(),
+                Some("txt") => GarminParseTxt::new().with_file(filename, corr_map),
+                Some("fit") => GarminParseTcx::new(true).with_file(filename, corr_map),
+                Some("tcx") | Some("TCX") => {
+                    GarminParseTcx::new(false).with_file(filename, corr_map)
+                }
+                Some("gmn") => GarminParseGmn::new().with_file(filename, corr_map),
+                _ => Err(err_msg("Invalid extension")),
             },
-            _ => GarminParse::new(),
+            _ => Err(err_msg("No extension?")),
         }
     }
 }
@@ -68,10 +48,10 @@ pub struct ParseOutput {
 
 pub trait GarminParseTrait {
     fn with_file(
-        self,
+        &self,
         filename: &str,
         corr_map: &HashMap<(String, i32), GarminCorrectionLap>,
-    ) -> Self;
+    ) -> Result<GarminFile, Error>;
 
     fn parse_file(&self, filename: &str) -> Result<ParseOutput, Error>;
 }

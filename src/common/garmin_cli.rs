@@ -3,7 +3,7 @@ extern crate rayon;
 extern crate tempdir;
 
 use clap::{App, Arg};
-use failure::Error;
+use failure::{err_msg, Error};
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -16,7 +16,7 @@ use super::garmin_file;
 use super::garmin_summary::{GarminSummary, GarminSummaryList};
 use super::garmin_sync::GarminSync;
 use super::garmin_sync::GarminSyncTrait;
-use crate::parsers::garmin_parse;
+use crate::parsers::garmin_parse::GarminParse;
 use crate::reports::garmin_file_report_html::file_report_html;
 use crate::reports::garmin_file_report_txt::generate_txt_report;
 use crate::reports::garmin_report_options::GarminReportOptions;
@@ -321,7 +321,9 @@ impl GarminCli {
         match file_list.len() {
             0 => (),
             1 => {
-                let file_name = file_list.get(0).expect("This shouldn't be happening...");
+                let file_name = file_list
+                    .get(0)
+                    .ok_or_else(|| err_msg("This shouldn't be happening..."))?;
                 debug!("{}", &file_name);
                 let avro_file = format!("{}/{}.avro", &self.config.cache_dir, file_name);
                 let gfile = match garmin_file::GarminFile::read_avro(&avro_file) {
@@ -336,9 +338,7 @@ impl GarminCli {
                         let corr_map = corr_list.get_corr_list_map();
 
                         debug!("Reading gps_file: {}", &gps_file);
-                        garmin_parse::GarminParse::new()
-                            .with_file(&gps_file, &corr_map)
-                            .gfile
+                        GarminParse::new().with_file(&gps_file, &corr_map)?
                     }
                 };
                 debug!("gfile {} {}", gfile.laps.len(), gfile.points.len());
@@ -368,7 +368,9 @@ impl GarminCli {
         match file_list.len() {
             0 => Ok("".to_string()),
             1 => {
-                let file_name = file_list.get(0).expect("This shouldn't be happening...");
+                let file_name = file_list
+                    .get(0)
+                    .ok_or_else(|| err_msg("This shouldn't be happening..."))?;
                 debug!("{}", &file_name);
                 let avro_file = format!("{}/{}.avro", self.config.cache_dir, file_name);
                 let gfile = match garmin_file::GarminFile::read_avro(&avro_file) {
@@ -383,9 +385,7 @@ impl GarminCli {
                         let corr_map = corr_list.get_corr_list_map();
 
                         debug!("Reading gps_file: {}", &gps_file);
-                        garmin_parse::GarminParse::new()
-                            .with_file(&gps_file, &corr_map)
-                            .gfile
+                        GarminParse::new().with_file(&gps_file, &corr_map)?
                     }
                 };
                 debug!("gfile {} {}", gfile.laps.len(), gfile.points.len());
@@ -394,7 +394,7 @@ impl GarminCli {
                 let htmlcachedir = tempdir
                     .path()
                     .to_str()
-                    .expect("Path is invalid unicode somehow");
+                    .ok_or_else(|| err_msg("Path is invalid unicode somehow"))?;
 
                 file_report_html(
                     &gfile,
@@ -412,7 +412,7 @@ impl GarminCli {
                 let htmlcachedir = tempdir
                     .path()
                     .to_str()
-                    .expect("Path is invalid unicode somehow");
+                    .ok_or_else(|| err_msg("Path is invalid unicode somehow"))?;
 
                 summary_report_html(&txt_result, &options, &htmlcachedir, &filter, &history)
             }

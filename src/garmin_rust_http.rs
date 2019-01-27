@@ -9,7 +9,7 @@ extern crate rust_auth_server;
 use actix_web::middleware::identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::{http::Method, http::StatusCode, server, App, HttpResponse, Json, Query};
 use chrono::Duration;
-use failure::Error;
+use failure::{err_msg, Error};
 use rust_auth_server::auth_handler::LoggedUser;
 use std::env;
 
@@ -101,7 +101,9 @@ fn garmin_get_hr_data(request: Query<FilterRequest>) -> Result<Json<HrData>, Err
 
     match file_list.len() {
         1 => {
-            let file_name = file_list.get(0).expect("This shouldn't be happening...");
+            let file_name = file_list
+                .get(0)
+                .ok_or_else(|| err_msg("This shouldn't be happening..."))?;
             let avro_file = format!("{}/{}.avro", &config.cache_dir, file_name);
             let gfile = match garmin_file::GarminFile::read_avro(&avro_file) {
                 Ok(g) => g,
@@ -111,9 +113,7 @@ fn garmin_get_hr_data(request: Query<FilterRequest>) -> Result<Json<HrData>, Err
                     let corr_list = GarminCorrectionList::read_corrections_from_db(&pg_conn)?;
                     let corr_map = corr_list.get_corr_list_map();
 
-                    garmin_parse::GarminParse::new()
-                        .with_file(&gps_file, &corr_map)
-                        .gfile
+                    garmin_parse::GarminParse::new().with_file(&gps_file, &corr_map)?
                 }
             };
 
@@ -161,7 +161,9 @@ fn garmin_get_hr_pace(request: Query<FilterRequest>) -> Result<Json<HrPaceList>,
 
     match file_list.len() {
         1 => {
-            let file_name = file_list.get(0).expect("This shouldn't be happening...");
+            let file_name = file_list
+                .get(0)
+                .ok_or_else(|| err_msg("This shouldn't be happening..."))?;
             let avro_file = format!("{}/{}.avro", &config.cache_dir, file_name);
             let gfile = match garmin_file::GarminFile::read_avro(&avro_file) {
                 Ok(g) => g,
@@ -171,9 +173,7 @@ fn garmin_get_hr_pace(request: Query<FilterRequest>) -> Result<Json<HrPaceList>,
                     let corr_list = GarminCorrectionList::read_corrections_from_db(&pg_conn)?;
                     let corr_map = corr_list.get_corr_list_map();
 
-                    garmin_parse::GarminParse::new()
-                        .with_file(&gps_file, &corr_map)
-                        .gfile
+                    garmin_parse::GarminParse::new().with_file(&gps_file, &corr_map)?
                 }
             };
 

@@ -229,7 +229,7 @@ impl GarminSyncTrait for GarminSync<S3Client> {
                     let tmod_ = file_set[key];
                     if *tmod > tmod_ {
                         let file_name = format!("{}/{}", local_dir, key);
-                        let md5_ = get_md5sum(&file_name).unwrap();
+                        let md5_ = get_md5sum(&file_name).expect("Failed md5sum");
                         if &md5_ != md5 {
                             debug!("download md5 {} {} {} {} {} ", key, md5_, md5, tmod, tmod_);
                             let file_name = format!("{}/{}", local_dir, key);

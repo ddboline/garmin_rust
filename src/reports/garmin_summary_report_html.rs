@@ -92,14 +92,14 @@ pub fn summary_report_html(
             }
             let cmd = generate_url_string(&ent, &options);
             format!(
-                "{}{}{}{}{}{}{}{}",
+                "<tr><td>{}{}{}{}{}{}{}{}</td></tr>",
                 r#"<button type="submit" onclick="send_command('filter="#,
                 cmd,
                 r#"&history="#,
                 history_vec.join(";"),
                 r#"');">"#,
                 cmd,
-                "</button> ",
+                "</button></td><td>",
                 ent.trim()
             )
         })

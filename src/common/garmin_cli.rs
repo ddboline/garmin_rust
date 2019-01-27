@@ -346,7 +346,10 @@ impl GarminCli {
             }
             _ => {
                 debug!("{:?}", options);
-                let txt_result = create_report_query(&pg_conn, &options, &constraints)?;
+                let txt_result: Vec<_> = create_report_query(&pg_conn, &options, &constraints)?
+                    .iter()
+                    .map(|x| x.join(" "))
+                    .collect();
 
                 println!("{}", txt_result.join("\n"));
             }
@@ -406,7 +409,10 @@ impl GarminCli {
             }
             _ => {
                 debug!("{:?}", options);
-                let txt_result = create_report_query(&pg_conn, &options, &constraints)?;
+                let txt_result: Vec<_> = create_report_query(&pg_conn, &options, &constraints)?
+                    .iter()
+                    .map(|x| x.join("</td><td>"))
+                    .collect();
 
                 let tempdir = TempDir::new("garmin_html")?;
                 let htmlcachedir = tempdir

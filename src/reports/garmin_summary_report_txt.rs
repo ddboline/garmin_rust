@@ -11,7 +11,7 @@ pub fn create_report_query(
     pool: &PgPool,
     options: &GarminReportOptions,
     constraints: &[String],
-) -> Result<Vec<String>, Error> {
+) -> Result<Vec<Vec<String>>, Error> {
     let sport_constr = match options.do_sport {
         Some(x) => format!("sport = '{}'", x.to_string()),
         None => "".to_string(),
@@ -43,13 +43,13 @@ pub fn create_report_query(
     } else if options.do_file {
         file_summary_report(&pool, &constr)?
     } else {
-        vec!["".to_string()]
+        Vec::new()
     };
 
     Ok(result_vec)
 }
 
-fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<String>, Error> {
+fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, Error> {
     let mut result_vec = Vec::new();
     let query = format!(
         "
@@ -182,12 +182,12 @@ fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<String>, Error
                 format!("{} bpm", (total_hr_dur / total_hr_dis) as i32)
             ));
         }
-        result_vec.push(tmp_vec.join(" "));
+        result_vec.push(tmp_vec);
     }
     Ok(result_vec)
 }
 
-fn day_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<String>, Error> {
+fn day_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, Error> {
     let mut result_vec = Vec::new();
     let query = format!(
         "
@@ -320,12 +320,12 @@ fn day_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<String>, Error>
                 format!("{} bpm", (total_hr_dur / total_hr_dis) as i32)
             ));
         }
-        result_vec.push(tmp_vec.join(" "));
+        result_vec.push(tmp_vec);
     }
     Ok(result_vec)
 }
 
-fn week_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<String>, Error> {
+fn week_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, Error> {
     let mut result_vec = Vec::new();
     let query = format!("
         WITH a AS (
@@ -447,12 +447,12 @@ fn week_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<String>, Error
             format!("{} / {} days", number_of_days, total_days)
         ));
 
-        result_vec.push(tmp_vec.join(" "));
+        result_vec.push(tmp_vec);
     }
     Ok(result_vec)
 }
 
-fn month_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<String>, Error> {
+fn month_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, Error> {
     let mut result_vec = Vec::new();
     let query = format!("
         WITH a AS (
@@ -514,12 +514,12 @@ fn month_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<String>, Erro
         let mut tmp_vec = Vec::new();
 
         tmp_vec.push(format!(
-            "{:8} {:10} {:8} \t {:10} \t",
+            "{:8} {:10} {:8} \t",
             format!("{} {}", year, MONTH_NAMES[month as usize - 1]),
             sport,
             format!("{:4.2} mi", (total_distance / METERS_PER_MILE)),
-            format!("{} cal", total_calories)
         ));
+        tmp_vec.push(format!("{:10} \t", format!("{} cal", total_calories)));
 
         match sport.as_str() {
             "running" | "walking" => {
@@ -568,12 +568,12 @@ fn month_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<String>, Erro
             format!("{} / {} days", number_of_days, total_days)
         ));
 
-        result_vec.push(tmp_vec.join(" "));
+        result_vec.push(tmp_vec);
     }
     Ok(result_vec)
 }
 
-fn sport_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<String>, Error> {
+fn sport_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, Error> {
     let mut result_vec = Vec::new();
 
     let query = format!(
@@ -619,12 +619,12 @@ fn sport_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<String>, Erro
         );
         let mut tmp_vec = Vec::new();
 
+        tmp_vec.push(format!("{:10} \t", sport));
         tmp_vec.push(format!(
-            "{:10} \t {:10} \t {:10} \t",
-            sport,
+            "{:10} \t",
             format!("{:4.2} mi", total_distance / METERS_PER_MILE),
-            format!("{} cal", total_calories)
         ));
+        tmp_vec.push(format!("{:10} \t", format!("{} cal", total_calories)));
 
         match sport.as_str() {
             "running" | "walking" => {
@@ -666,12 +666,12 @@ fn sport_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<String>, Erro
             tmp_vec.push(format!(" {:7} {:2}", "", ""));
         }
 
-        result_vec.push(tmp_vec.join(" "));
+        result_vec.push(tmp_vec);
     }
     Ok(result_vec)
 }
 
-fn year_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<String>, Error> {
+fn year_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, Error> {
     let mut result_vec = Vec::new();
 
     let query = format!(
@@ -732,13 +732,12 @@ fn year_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<String>, Error
 
         let mut tmp_vec = Vec::new();
 
+        tmp_vec.push(format!("{:5} {:10} \t", year, sport,));
         tmp_vec.push(format!(
-            "{:5} {:10} \t {:10} \t {:10} \t",
-            year,
-            sport,
+            "{:10} \t",
             format!("{:4.2} mi", total_distance / METERS_PER_MILE),
-            format!("{} cal", total_calories)
         ));
+        tmp_vec.push(format!("{:10} \t", format!("{} cal", total_calories)));
 
         match sport.as_str() {
             "running" | "walking" => {
@@ -759,7 +758,7 @@ fn year_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<String>, Error
             }
             "biking" => {
                 tmp_vec.push(format!(
-                    " {:10} \t",
+                    " {:10} ",
                     format!(
                         "{:.2} mph",
                         (total_distance / METERS_PER_MILE) / (total_duration / 60. / 60.)
@@ -785,7 +784,7 @@ fn year_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<String>, Error
             format!("{} / {} days", number_of_days, total_days)
         ));
 
-        result_vec.push(tmp_vec.join(" "));
+        result_vec.push(tmp_vec);
     }
     Ok(result_vec)
 }

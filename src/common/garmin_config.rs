@@ -83,8 +83,6 @@ impl GarminConfig {
             dotenv::from_path(&env_file).ok();
         } else if Path::new("config.env").exists() {
             dotenv::from_filename("config.env").ok();
-        } else if Path::new("config.env").exists() {
-            dotenv::from_filename("config.env").ok();
         } else {
             dotenv::dotenv().ok();
         }

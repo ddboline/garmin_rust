@@ -175,7 +175,7 @@ impl GarminPoint {
 
     pub fn calculate_durations(point_list: &[GarminPoint]) -> Vec<GarminPoint> {
         point_list
-            .into_iter()
+            .iter()
             .enumerate()
             .scan(0.0, |time_from_begin, (i, point)| {
                 let mut new_point = point.clone();

@@ -20,7 +20,7 @@ use garmin_rust::common::garmin_file;
 use garmin_rust::parsers::garmin_parse;
 use garmin_rust::reports::garmin_file_report_txt;
 use garmin_rust::reports::garmin_report_options::GarminReportOptions;
-use garmin_rust::utils::garmin_util::{get_list_of_files_from_db, get_pg_conn};
+use garmin_rust::utils::garmin_util::get_list_of_files_from_db;
 
 #[derive(Deserialize)]
 struct FilterRequest {
@@ -51,12 +51,7 @@ fn garmin(request: Query<FilterRequest>, user: LoggedUser) -> Result<HttpRespons
 
     let resp = HttpResponse::build(StatusCode::OK)
         .content_type("text/html; charset=utf-8")
-        .body(GarminCli::new().with_config().run_html(
-            &options,
-            &constraints,
-            &filter,
-            &history,
-        )?);
+        .body(GarminCli::with_config().run_html(&options, &constraints, &filter, &history)?);
     Ok(resp)
 }
 
@@ -76,9 +71,9 @@ fn garmin_list_gps_tracks(request: Query<FilterRequest>) -> Result<Json<GpsList>
 
     let ProcPatternOutput(_, _, _, constraints) = proc_pattern_wrapper(request);
 
-    let pgurl = GarminCli::new().with_config().config.pgurl;
+    let gc = GarminCli::with_config();
 
-    let gps_list = get_list_of_files_from_db(&get_pg_conn(&pgurl)?, &constraints)?;
+    let gps_list = get_list_of_files_from_db(&gc.get_pool()?, &constraints)?;
 
     Ok(Json(GpsList { gps_list }))
 }
@@ -93,9 +88,9 @@ fn garmin_get_hr_data(request: Query<FilterRequest>) -> Result<Json<HrData>, Err
 
     let ProcPatternOutput(_, _, _, constraints) = proc_pattern_wrapper(request);
 
-    let config = GarminCli::new().with_config().config;
+    let gc = GarminCli::with_config();
 
-    let pg_conn = get_pg_conn(&config.pgurl)?;
+    let pg_conn = gc.get_pool()?;
 
     let file_list = get_list_of_files_from_db(&pg_conn, &constraints)?;
 
@@ -104,11 +99,11 @@ fn garmin_get_hr_data(request: Query<FilterRequest>) -> Result<Json<HrData>, Err
             let file_name = file_list
                 .get(0)
                 .ok_or_else(|| err_msg("This shouldn't be happening..."))?;
-            let avro_file = format!("{}/{}.avro", &config.cache_dir, file_name);
+            let avro_file = format!("{}/{}.avro", &gc.config.cache_dir, file_name);
             let gfile = match garmin_file::GarminFile::read_avro(&avro_file) {
                 Ok(g) => g,
                 Err(_) => {
-                    let gps_file = format!("{}/{}", &config.gps_dir, file_name);
+                    let gps_file = format!("{}/{}", &gc.config.gps_dir, file_name);
 
                     let corr_list = GarminCorrectionList::read_corrections_from_db(&pg_conn)?;
                     let corr_map = corr_list.get_corr_list_map();
@@ -153,9 +148,9 @@ fn garmin_get_hr_pace(request: Query<FilterRequest>) -> Result<Json<HrPaceList>,
 
     let ProcPatternOutput(_, _, _, constraints) = proc_pattern_wrapper(request);
 
-    let config = GarminCli::new().with_config().config;
+    let gc = GarminCli::with_config();
 
-    let pg_conn = get_pg_conn(&config.pgurl)?;
+    let pg_conn = gc.get_pool()?;
 
     let file_list = get_list_of_files_from_db(&pg_conn, &constraints)?;
 
@@ -164,11 +159,11 @@ fn garmin_get_hr_pace(request: Query<FilterRequest>) -> Result<Json<HrPaceList>,
             let file_name = file_list
                 .get(0)
                 .ok_or_else(|| err_msg("This shouldn't be happening..."))?;
-            let avro_file = format!("{}/{}.avro", &config.cache_dir, file_name);
+            let avro_file = format!("{}/{}.avro", &gc.config.cache_dir, file_name);
             let gfile = match garmin_file::GarminFile::read_avro(&avro_file) {
                 Ok(g) => g,
                 Err(_) => {
-                    let gps_file = format!("{}/{}", &config.gps_dir, file_name);
+                    let gps_file = format!("{}/{}", &gc.config.gps_dir, file_name);
 
                     let corr_list = GarminCorrectionList::read_corrections_from_db(&pg_conn)?;
                     let corr_map = corr_list.get_corr_list_map();

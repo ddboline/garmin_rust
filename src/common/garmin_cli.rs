@@ -16,15 +16,14 @@ use super::garmin_file;
 use super::garmin_summary::{GarminSummary, GarminSummaryList};
 use super::garmin_sync::GarminSync;
 use super::garmin_sync::GarminSyncTrait;
+use super::pgpool::PgPool;
 use crate::parsers::garmin_parse::GarminParse;
 use crate::reports::garmin_file_report_html::file_report_html;
 use crate::reports::garmin_file_report_txt::generate_txt_report;
 use crate::reports::garmin_report_options::GarminReportOptions;
 use crate::reports::garmin_summary_report_html::summary_report_html;
 use crate::reports::garmin_summary_report_txt::create_report_query;
-use crate::utils::garmin_util::{
-    get_file_list, get_list_of_files_from_db, get_pg_conn, map_result_vec,
-};
+use crate::utils::garmin_util::{get_file_list, get_list_of_files_from_db, map_result_vec};
 use crate::utils::sport_types::get_sport_type_map;
 
 fn get_version_number() -> String {
@@ -37,32 +36,50 @@ fn get_version_number() -> String {
     )
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct GarminCli {
     pub config: GarminConfig,
     pub do_sync: bool,
     pub do_all: bool,
     pub do_bootstrap: bool,
     pub filenames: Option<Vec<String>>,
+    pub pool: Option<PgPool>,
+}
+
+impl Default for GarminCli {
+    fn default() -> GarminCli {
+        GarminCli::new()
+    }
 }
 
 impl GarminCli {
     pub fn new() -> GarminCli {
+        let config = GarminConfig::new();
         GarminCli {
-            config: GarminConfig::new(),
+            config,
             do_sync: false,
             do_all: false,
             do_bootstrap: false,
             filenames: None,
+            pool: None,
         }
     }
 
-    pub fn with_config(mut self) -> GarminCli {
-        self.config = GarminConfig::get_config(None);
-        self
+    pub fn with_config() -> GarminCli {
+        let mut gc = GarminCli::new();
+        gc.config = GarminConfig::get_config(None);
+        gc.pool = Some(PgPool::new(&gc.config.pgurl));
+        gc
     }
 
-    pub fn with_cli_proc(mut self) -> GarminCli {
+    pub fn get_pool(&self) -> Result<PgPool, Error> {
+        self.pool
+            .as_ref()
+            .ok_or_else(|| err_msg("No Database Connection"))
+            .map(|x| x.clone())
+    }
+
+    pub fn with_cli_proc() -> GarminCli {
         let matches = App::new("Garmin Rust Proc")
             .version(get_version_number().as_str())
             .author("Daniel Boline <ddboline@gmail.com>")
@@ -101,18 +118,19 @@ impl GarminCli {
             )
             .get_matches();
 
-        self.filenames = matches
+        let mut gc = GarminCli::with_config();
+        gc.filenames = matches
             .values_of("filename")
             .map(|f| f.map(|f| f.to_string()).collect());
 
-        self.do_sync = matches.is_present("sync");
-        self.do_all = matches.is_present("all");
-        self.do_bootstrap = matches.is_present("bootstrap");
-        self
+        gc.do_sync = matches.is_present("sync");
+        gc.do_all = matches.is_present("all");
+        gc.do_bootstrap = matches.is_present("bootstrap");
+        gc
     }
 
     pub fn garmin_proc(&self) -> Result<(), Error> {
-        let pg_conn = get_pg_conn(&self.config.pgurl)?;
+        let pg_conn = self.get_pool()?;
 
         if self.do_bootstrap {
             self.run_bootstrap()?;
@@ -149,7 +167,7 @@ impl GarminCli {
         &self,
         corr_map: &HashMap<(String, i32), GarminCorrectionLap>,
     ) -> Result<GarminSummaryList, Error> {
-        let pg_conn = get_pg_conn(&self.config.pgurl)?;
+        let pg_conn = self.get_pool()?;
 
         let gsum_list = match &self.filenames {
             Some(flist) => {
@@ -220,7 +238,7 @@ impl GarminCli {
     }
 
     pub fn run_bootstrap(&self) -> Result<(), Error> {
-        let pg_conn = get_pg_conn(&self.config.pgurl)?;
+        let pg_conn = self.get_pool()?;
 
         let gsync = GarminSync::new();
         println!("Syncing GPS files");
@@ -314,7 +332,7 @@ impl GarminCli {
         options: &GarminReportOptions,
         constraints: &[String],
     ) -> Result<(), Error> {
-        let pg_conn = get_pg_conn(&self.config.pgurl)?;
+        let pg_conn = self.get_pool()?;
 
         let file_list = get_list_of_files_from_db(&pg_conn, &constraints)?;
 
@@ -364,7 +382,7 @@ impl GarminCli {
         filter: &str,
         history: &str,
     ) -> Result<String, Error> {
-        let pg_conn = get_pg_conn(&self.config.pgurl)?;
+        let pg_conn = self.get_pool()?;
 
         let file_list = get_list_of_files_from_db(&pg_conn, &constraints)?;
 

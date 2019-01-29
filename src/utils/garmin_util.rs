@@ -7,9 +7,6 @@ extern crate serde_json;
 
 use num::traits::Pow;
 
-use r2d2::Pool;
-use r2d2_postgres::{PostgresConnectionManager, TlsMode};
-
 use std::io::BufRead;
 use std::io::BufReader;
 use std::path::Path;
@@ -22,7 +19,7 @@ use chrono::prelude::*;
 
 use failure::{err_msg, Error};
 
-pub type PgPool = Pool<PostgresConnectionManager>;
+use crate::common::pgpool::PgPool;
 
 pub const METERS_PER_MILE: f64 = 1609.344;
 pub const MARATHON_DISTANCE_M: i32 = 42195;
@@ -117,12 +114,6 @@ pub fn titlecase(input: &str) -> String {
         let firstchar = input[0..1].to_uppercase();
         format!("{}{}", firstchar, &input[1..input.len()])
     }
-}
-
-pub fn get_pg_conn(pg_url: &str) -> Result<PgPool, Error> {
-    let manager = PostgresConnectionManager::new(pg_url, TlsMode::None)?;
-
-    Ok(Pool::new(manager)?)
 }
 
 pub fn get_list_of_files_from_db(

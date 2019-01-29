@@ -25,5 +25,6 @@ fn test_garmin_file_test_filenames() {
             "tests/data/test.tcx".to_string(),
             "tests/data/test.txt".to_string(),
         ]),
+        pool: None,
     };
 }

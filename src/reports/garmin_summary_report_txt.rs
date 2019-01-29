@@ -2,9 +2,10 @@ extern crate rayon;
 
 use failure::Error;
 
+use crate::common::pgpool::PgPool;
 use crate::reports::garmin_report_options::GarminReportOptions;
 use crate::utils::garmin_util::{
-    days_in_month, days_in_year, print_h_m_s, PgPool, METERS_PER_MILE, MONTH_NAMES, WEEKDAY_NAMES,
+    days_in_month, days_in_year, print_h_m_s, METERS_PER_MILE, MONTH_NAMES, WEEKDAY_NAMES,
 };
 
 pub fn create_report_query(

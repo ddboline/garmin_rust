@@ -21,9 +21,10 @@ use super::garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList};
 use super::garmin_file::GarminFile;
 use super::garmin_sync::GarminSync;
 use super::garmin_sync::GarminSyncTrait;
+use super::pgpool::PgPool;
 use crate::parsers::garmin_parse::GarminParse;
 use crate::utils::garmin_util::{
-    generate_random_string, get_file_list, get_md5sum, map_result_vec, PgPool,
+    generate_random_string, get_file_list, get_md5sum, map_result_vec,
 };
 
 pub const GARMIN_SUMMARY_AVRO_SCHEMA: &str = r#"

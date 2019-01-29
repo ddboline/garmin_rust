@@ -16,4 +16,3 @@ zip --symlinks ../rust.zip bootstrap bin/* lib/*
 cd ../
 
 rm -rf tmp/
-

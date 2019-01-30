@@ -44,6 +44,7 @@ pub struct GarminCli {
     pub do_bootstrap: bool,
     pub filenames: Option<Vec<String>>,
     pub pool: Option<PgPool>,
+    pub corr: GarminCorrectionList,
 }
 
 impl Default for GarminCli {
@@ -62,13 +63,16 @@ impl GarminCli {
             do_bootstrap: false,
             filenames: None,
             pool: None,
+            corr: GarminCorrectionList::new(),
         }
     }
 
     pub fn with_config() -> GarminCli {
         let mut gc = GarminCli::new();
         gc.config = GarminConfig::get_config(None);
-        gc.pool = Some(PgPool::new(&gc.config.pgurl));
+        let pool = PgPool::new(&gc.config.pgurl);
+        gc.corr = gc.corr.with_pool(&pool);
+        gc.pool = Some(pool);
         gc
     }
 
@@ -146,7 +150,7 @@ impl GarminCli {
             println!("Syncing SUMMARY file");
             gsync.sync_dir(&self.config.summary_cache, &self.config.summary_bucket)?;
         } else {
-            let corr_list = GarminCorrectionList::read_corrections_from_db(&pg_conn)?;
+            let corr_list = self.corr.read_corrections_from_db()?;
             let corr_map = corr_list.get_corr_list_map();
 
             let gsum_list = self.get_summary_list(&corr_map)?;
@@ -252,10 +256,11 @@ impl GarminCli {
         let corr_list = GarminCorrectionList::read_corr_list_from_avro(&format!(
             "{}/garmin_correction.avro",
             &self.config.cache_dir
-        ))?;
+        ))?
+        .with_pool(&pg_conn);
 
         println!("Write corrections to postgres");
-        corr_list.dump_corrections_to_db(&pg_conn)?;
+        corr_list.dump_corrections_to_db()?;
 
         println!("Read summaries from avro files");
         let gsum_list =
@@ -352,7 +357,7 @@ impl GarminCli {
                     Err(_) => {
                         let gps_file = format!("{}/{}", &self.config.gps_dir, file_name);
 
-                        let corr_list = GarminCorrectionList::read_corrections_from_db(&pg_conn)?;
+                        let corr_list = self.corr.read_corrections_from_db()?;
                         let corr_map = corr_list.get_corr_list_map();
 
                         debug!("Reading gps_file: {}", &gps_file);
@@ -402,7 +407,7 @@ impl GarminCli {
                     Err(_) => {
                         let gps_file = format!("{}/{}", &self.config.gps_dir, file_name);
 
-                        let corr_list = GarminCorrectionList::read_corrections_from_db(&pg_conn)?;
+                        let corr_list = self.corr.read_corrections_from_db()?;
                         let corr_map = corr_list.get_corr_list_map();
 
                         debug!("Reading gps_file: {}", &gps_file);

@@ -1,5 +1,6 @@
 use garmin_rust::common::garmin_cli;
 use garmin_rust::common::garmin_config;
+use garmin_rust::common::garmin_correction_lap::GarminCorrectionList;
 
 #[test]
 fn test_garmin_cli_new() {
@@ -26,5 +27,6 @@ fn test_garmin_file_test_filenames() {
             "tests/data/test.txt".to_string(),
         ]),
         pool: None,
+        corr: GarminCorrectionList::new(),
     };
 }

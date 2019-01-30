@@ -269,7 +269,7 @@ impl GarminSummaryList {
         let gps_dir = "/home/ddboline/.garmin_cache/run/gps_tracks";
         let cache_dir = "/home/ddboline/.garmin_cache/run/cache";
 
-        let corr_list = GarminCorrectionList::read_corrections_from_db(&pool)?;
+        let corr_list = GarminCorrectionList::from_pool(&pool).read_corrections_from_db()?;
 
         println!("{}", corr_list.corr_list.len());
 

@@ -15,7 +15,6 @@ use std::env;
 
 use garmin_rust::common::garmin_cli::GarminCli;
 use garmin_rust::common::garmin_config::GarminConfig;
-use garmin_rust::common::garmin_correction_lap::GarminCorrectionList;
 use garmin_rust::common::garmin_file;
 use garmin_rust::parsers::garmin_parse;
 use garmin_rust::reports::garmin_file_report_txt;
@@ -105,7 +104,7 @@ fn garmin_get_hr_data(request: Query<FilterRequest>) -> Result<Json<HrData>, Err
                 Err(_) => {
                     let gps_file = format!("{}/{}", &gc.config.gps_dir, file_name);
 
-                    let corr_list = GarminCorrectionList::read_corrections_from_db(&pg_conn)?;
+                    let corr_list = gc.corr.read_corrections_from_db()?;
                     let corr_map = corr_list.get_corr_list_map();
 
                     garmin_parse::GarminParse::new().with_file(&gps_file, &corr_map)?
@@ -165,7 +164,7 @@ fn garmin_get_hr_pace(request: Query<FilterRequest>) -> Result<Json<HrPaceList>,
                 Err(_) => {
                     let gps_file = format!("{}/{}", &gc.config.gps_dir, file_name);
 
-                    let corr_list = GarminCorrectionList::read_corrections_from_db(&pg_conn)?;
+                    let corr_list = gc.corr.read_corrections_from_db()?;
                     let corr_map = corr_list.get_corr_list_map();
 
                     garmin_parse::GarminParse::new().with_file(&gps_file, &corr_map)?

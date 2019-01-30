@@ -15,6 +15,12 @@ impl fmt::Debug for PgPool {
     }
 }
 
+impl PartialEq for PgPool {
+    fn eq(&self, other: &PgPool) -> bool {
+        self.pgurl == other.pgurl
+    }
+}
+
 impl PgPool {
     pub fn new(pgurl: &str) -> PgPool {
         let manager = PostgresConnectionManager::new(pgurl, TlsMode::None)

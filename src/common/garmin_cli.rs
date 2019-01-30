@@ -153,7 +153,7 @@ impl GarminCli {
 
             if !gsum_list.summary_list.is_empty() {
                 gsum_list.write_summary_to_avro_files(&self.config.summary_cache)?;
-                gsum_list.write_summary_to_postgres(&pg_conn)?;
+                gsum_list.write_summary_to_postgres()?;
                 corr_list.dump_corr_list_to_avro(&format!(
                     "{}/garmin_correction.avro",
                     &self.config.cache_dir
@@ -233,7 +233,8 @@ impl GarminCli {
                     GarminSummaryList::from_vec(map_result_vec(proc_list)?)
                 }
             }
-        };
+        }
+        .with_pool(&pg_conn);
         Ok(gsum_list)
     }
 
@@ -259,10 +260,11 @@ impl GarminCli {
 
         println!("Read summaries from avro files");
         let gsum_list =
-            GarminSummaryList::read_summary_from_avro_files(&self.config.summary_cache)?;
+            GarminSummaryList::read_summary_from_avro_files(&self.config.summary_cache)?
+                .with_pool(&pg_conn);
 
         println!("Write summaries to postgres");
-        gsum_list.write_summary_to_postgres(&pg_conn)?;
+        gsum_list.write_summary_to_postgres()?;
         Ok(())
     }
 

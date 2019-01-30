@@ -215,17 +215,41 @@ impl fmt::Display for GarminSummary {
 #[derive(Default)]
 pub struct GarminSummaryList {
     pub summary_list: Vec<GarminSummary>,
+    pub pool: Option<PgPool>,
 }
 
 impl GarminSummaryList {
     pub fn new() -> GarminSummaryList {
         GarminSummaryList {
             summary_list: Vec::new(),
+            pool: None,
         }
     }
 
     pub fn from_vec(summary_list: Vec<GarminSummary>) -> GarminSummaryList {
-        GarminSummaryList { summary_list }
+        GarminSummaryList {
+            summary_list,
+            pool: None,
+        }
+    }
+
+    pub fn with_pool(mut self, pool: &PgPool) -> GarminSummaryList {
+        self.pool = Some(pool.clone());
+        self
+    }
+
+    pub fn from_pool(pool: &PgPool) -> GarminSummaryList {
+        GarminSummaryList {
+            summary_list: Vec::new(),
+            pool: Some(pool.clone()),
+        }
+    }
+
+    pub fn get_pool(&self) -> Result<PgPool, Error> {
+        self.pool
+            .as_ref()
+            .ok_or_else(|| err_msg("No Database Connection"))
+            .map(|x| x.clone())
     }
 
     pub fn process_all_gps_files(
@@ -265,11 +289,11 @@ impl GarminSummaryList {
         )?))
     }
 
-    pub fn create_summary_list(pool: &PgPool) -> Result<GarminSummaryList, Error> {
+    pub fn create_summary_list(&self) -> Result<GarminSummaryList, Error> {
         let gps_dir = "/home/ddboline/.garmin_cache/run/gps_tracks";
         let cache_dir = "/home/ddboline/.garmin_cache/run/cache";
 
-        let corr_list = GarminCorrectionList::read_corrections_from_db(&pool)?;
+        let corr_list = GarminCorrectionList::read_corrections_from_db(&self.get_pool()?)?;
 
         println!("{}", corr_list.corr_list.len());
 
@@ -310,45 +334,13 @@ impl GarminSummaryList {
         Ok(GarminSummaryList::from_vec(gsum_list))
     }
 
-    pub fn read_summary_from_postgres(pool: &PgPool) -> Result<GarminSummaryList, Error> {
-        let query = "
-            SELECT filename,
-                   begin_datetime,
-                   sport,
-                   total_calories,
-                   total_distance,
-                   total_duration,
-                   total_hr_dur,
-                   total_hr_dis,
-                   number_of_items,
-                   md5sum
-            FROM garmin_summary
-        ";
-        let conn = pool.get()?;
+    pub fn read_summary_from_postgres(&self, pattern: &str) -> Result<GarminSummaryList, Error> {
+        let where_str = if pattern.len() > 0 {
+            format!("WHERE filename like '%{}%'", pattern)
+        } else {
+            "".to_string()
+        };
 
-        let gsum_list = conn
-            .query(&query, &[])?
-            .iter()
-            .map(|row| GarminSummary {
-                filename: row.get(0),
-                begin_datetime: row.get(1),
-                sport: row.get(2),
-                total_calories: row.get(3),
-                total_distance: row.get(4),
-                total_duration: row.get(5),
-                total_hr_dur: row.get(6),
-                total_hr_dis: row.get(7),
-                number_of_items: row.get(8),
-                md5sum: row.get(9),
-            })
-            .collect();
-        Ok(GarminSummaryList::from_vec(gsum_list))
-    }
-
-    pub fn read_summary_from_postgres_pattern(
-        pool: &PgPool,
-        pattern: &str,
-    ) -> Result<GarminSummaryList, Error> {
         let query = format!(
             "
             SELECT filename,
@@ -362,10 +354,10 @@ impl GarminSummaryList {
                    number_of_items,
                    md5sum
             FROM garmin_summary
-            WHERE filename like '%{}%'
-        ",
-            pattern
+            {}",
+            where_str
         );
+        let pool = self.get_pool()?;
         let conn = pool.get()?;
 
         let gsum_list = conn
@@ -384,7 +376,8 @@ impl GarminSummaryList {
                 md5sum: row.get(9),
             })
             .collect();
-        Ok(GarminSummaryList::from_vec(gsum_list))
+
+        Ok(GarminSummaryList::from_vec(gsum_list).with_pool(&pool))
     }
 
     pub fn dump_summary_to_avro(self, output_filename: &str) -> Result<(), Error> {
@@ -438,7 +431,7 @@ impl GarminSummaryList {
         ))
     }
 
-    pub fn write_summary_to_postgres(&self, pool: &PgPool) -> Result<(), Error> {
+    pub fn write_summary_to_postgres(&self) -> Result<(), Error> {
         let rand_str = generate_random_string(8);
 
         let temp_table_name = format!("garmin_summary_{}", rand_str);
@@ -458,7 +451,7 @@ impl GarminSummaryList {
             );",
             temp_table_name
         );
-        let conn = pool.clone().get()?;
+        let conn = self.get_pool()?.get()?;
 
         conn.execute(&create_table_query, &[])?;
 
@@ -471,7 +464,7 @@ impl GarminSummaryList {
             .summary_list
             .par_iter()
             .map(|gsum| {
-                let conn = pool.clone().get()?;
+                let conn = self.get_pool()?.get()?;
                 Ok(conn.execute(
                     &insert_query,
                     &[
@@ -516,7 +509,7 @@ impl GarminSummaryList {
     }
 
     pub fn dump_summary_from_postgres_to_avro(pool: &PgPool) -> Result<(), Error> {
-        let gsum_list = GarminSummaryList::read_summary_from_postgres(&pool)?;
+        let gsum_list = GarminSummaryList::from_pool(pool).read_summary_from_postgres("")?;
 
         println!("{}", gsum_list.summary_list.len());
 

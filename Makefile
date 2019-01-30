@@ -55,3 +55,6 @@ pull:
 	docker pull 281914939654.dkr.ecr.us-east-1.amazonaws.com/rust_stable:latest
 	docker tag 281914939654.dkr.ecr.us-east-1.amazonaws.com/rust_stable:latest rust_stable:latest
 	docker rmi 281914939654.dkr.ecr.us-east-1.amazonaws.com/rust_stable:latest
+
+dev:
+	docker run -it --rm -v `pwd`:/garmin_rust rust_stable:latest /bin/bash || true

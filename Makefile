@@ -1,13 +1,12 @@
-version := "0.1.19"
+version := "0.1.20"
 release := "1"
 uniq := $(shell head -c1000 /dev/urandom | sha512sum | head -c 12 ; echo ;)
 cidfile := "/tmp/.tmp.docker.$(uniq)"
 build_type := release
 
 all:
-	cp Dockerfile.ubuntu18.04 Dockerfile
-	docker build -t garmin_rust/build_rust:ubuntu18.04 .
-	rm Dockerfile
+	mkdir build/ &&  cp Dockerfile.ubuntu18.04 build/Dockerfile && cp -a Cargo.toml src scripts Makefile python build/
+	cd build/ && docker build -t garmin_rust/build_rust:ubuntu18.04 . && cd ../ && rm -rf build/
 
 amazon:
 	cp Dockerfile.amazonlinux2018.03 Dockerfile
@@ -55,3 +54,6 @@ pull:
 	docker pull 281914939654.dkr.ecr.us-east-1.amazonaws.com/rust_stable:latest
 	docker tag 281914939654.dkr.ecr.us-east-1.amazonaws.com/rust_stable:latest rust_stable:latest
 	docker rmi 281914939654.dkr.ecr.us-east-1.amazonaws.com/rust_stable:latest
+
+dev:
+	docker run -it --rm -v `pwd`:/garmin_rust rust_stable:latest /bin/bash || true

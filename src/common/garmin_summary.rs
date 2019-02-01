@@ -293,7 +293,7 @@ impl GarminSummaryList {
         let gps_dir = "/home/ddboline/.garmin_cache/run/gps_tracks";
         let cache_dir = "/home/ddboline/.garmin_cache/run/cache";
 
-        let corr_list = GarminCorrectionList::from_pool(&pool).read_corrections_from_db()?;
+        let corr_list = GarminCorrectionList::from_pool(&self.get_pool()?).read_corrections_from_db()?;
 
         println!("{}", corr_list.corr_list.len());
 
@@ -303,7 +303,7 @@ impl GarminSummaryList {
     }
 
     pub fn read_summary_from_avro(input_filename: &str) -> Result<GarminSummaryList, Error> {
-        let garmin_summary_avro_schema = GARMIN_SUMMARY_AVRO_SCHE;
+        let garmin_summary_avro_schema = GARMIN_SUMMARY_AVRO_SCHEMA;
         let schema = Schema::parse_str(&garmin_summary_avro_schema)?;
 
         let input_file = File::open(input_filename)?;
@@ -335,7 +335,7 @@ impl GarminSummaryList {
     }
 
     pub fn read_summary_from_postgres(&self, pattern: &str) -> Result<GarminSummaryList, Error> {
-        let where_str = if pattern.len() > 0 {
+        let where_str = if !pattern.is_empty() {
             format!("WHERE filename like '%{}%'", pattern)
         } else {
             "".to_string()

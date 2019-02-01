@@ -134,8 +134,6 @@ impl GarminCli {
     }
 
     pub fn garmin_proc(&self) -> Result<(), Error> {
-        let pg_conn = self.get_pool()?;
-
         if self.do_bootstrap {
             self.run_bootstrap()?;
         } else if self.do_sync {

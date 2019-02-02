@@ -259,10 +259,8 @@ impl GarminSummaryList {
     ) -> Result<GarminSummaryList, Error> {
         let path = Path::new(gps_dir);
 
-        let file_list: Vec<String> = get_file_list(&path);
-
-        let gsum_result_list: Vec<Result<GarminSummary, Error>> = file_list
-            .par_iter()
+        let gsum_result_list: Vec<Result<_, Error>> = get_file_list(&path)
+            .into_par_iter()
             .map(|input_file| {
                 println!("Process {}", &input_file);
                 let cache_file = format!(
@@ -293,7 +291,8 @@ impl GarminSummaryList {
         let gps_dir = "/home/ddboline/.garmin_cache/run/gps_tracks";
         let cache_dir = "/home/ddboline/.garmin_cache/run/cache";
 
-        let corr_list = GarminCorrectionList::from_pool(&self.get_pool()?).read_corrections_from_db()?;
+        let corr_list =
+            GarminCorrectionList::from_pool(&self.get_pool()?).read_corrections_from_db()?;
 
         println!("{}", corr_list.corr_list.len());
 
@@ -410,9 +409,7 @@ impl GarminSummaryList {
         Ok(())
     }
 
-    pub fn read_summary_from_avro_files(
-        summary_cache_dir: &str,
-    ) -> Result<GarminSummaryList, Error> {
+    pub fn from_avro_files(summary_cache_dir: &str) -> Result<GarminSummaryList, Error> {
         let path = Path::new(summary_cache_dir);
 
         let file_list: Vec<String> = get_file_list(&path);

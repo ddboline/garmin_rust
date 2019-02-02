@@ -174,7 +174,7 @@ impl GarminCli {
         let gsum_list = match &self.filenames {
             Some(flist) => {
                 let proc_list: Vec<Result<_, Error>> = flist
-                    .iter()
+                    .par_iter()
                     .map(|f| {
                         println!("Process {}", &f);
                         Ok(GarminSummary::process_single_gps_file(
@@ -262,9 +262,8 @@ impl GarminCli {
         corr_list.dump_corrections_to_db()?;
 
         println!("Read summaries from avro files");
-        let gsum_list =
-            GarminSummaryList::read_summary_from_avro_files(&self.config.summary_cache)?
-                .with_pool(&pg_conn);
+        let cache = &self.config.summary_cache;
+        let gsum_list = GarminSummaryList::from_avro_files(cache)?.with_pool(&pg_conn);
 
         println!("Write summaries to postgres");
         gsum_list.write_summary_to_postgres()?;

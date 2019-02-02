@@ -16,8 +16,8 @@ use json::{parse, JsonValue};
 use super::garmin_lap::GarminLap;
 use super::garmin_summary::GarminSummaryList;
 use super::pgpool::PgPool;
-use crate::utils::garmin_util::{METERS_PER_MILE, map_result_vec};
-use crate::utils::sport_types::{convert_sport_name};
+use crate::utils::garmin_util::{map_result_vec, METERS_PER_MILE};
+use crate::utils::sport_types::convert_sport_name;
 
 pub const GARMIN_CORRECTION_LAP_AVRO_SCHEMA: &str = r#"
     {

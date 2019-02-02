@@ -140,13 +140,17 @@ impl GarminCli {
             let gsync = GarminSync::new();
 
             println!("Syncing GPS files");
-            gsync.sync_dir(&self.config.gps_dir, &self.config.gps_bucket)?;
+            gsync.sync_dir(&self.config.gps_dir, &self.config.gps_bucket, true)?;
 
             println!("Syncing CACHE files");
-            gsync.sync_dir(&self.config.cache_dir, &self.config.cache_bucket)?;
+            gsync.sync_dir(&self.config.cache_dir, &self.config.cache_bucket, false)?;
 
             println!("Syncing SUMMARY file");
-            gsync.sync_dir(&self.config.summary_cache, &self.config.summary_bucket)?;
+            gsync.sync_dir(
+                &self.config.summary_cache,
+                &self.config.summary_bucket,
+                false,
+            )?;
         } else {
             let corr_list = self.corr.read_corrections_from_db()?;
             let corr_map = corr_list.get_corr_list_map();
@@ -245,11 +249,15 @@ impl GarminCli {
 
         let gsync = GarminSync::new();
         println!("Syncing GPS files");
-        gsync.sync_dir(&self.config.gps_dir, &self.config.gps_bucket)?;
+        gsync.sync_dir(&self.config.gps_dir, &self.config.gps_bucket, true)?;
         println!("Syncing CACHE files");
-        gsync.sync_dir(&self.config.cache_dir, &self.config.cache_bucket)?;
+        gsync.sync_dir(&self.config.cache_dir, &self.config.cache_bucket, false)?;
         println!("Syncing SUMMARY files");
-        gsync.sync_dir(&self.config.summary_cache, &self.config.summary_bucket)?;
+        gsync.sync_dir(
+            &self.config.summary_cache,
+            &self.config.summary_bucket,
+            false,
+        )?;
 
         println!("Read corrections from avro file");
         let corr_list = GarminCorrectionList::read_corr_list_from_avro(&format!(

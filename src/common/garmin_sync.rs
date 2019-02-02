@@ -53,7 +53,7 @@ impl GarminSync<S3Client> {
 pub trait GarminSyncTrait {
     fn get_list_of_keys(&self, bucket: &str) -> Result<Vec<(String, String, i64)>, Error>;
 
-    fn sync_dir(&self, local_dir: &str, s3_bucket: &str) -> Result<(), Error>;
+    fn sync_dir(&self, local_dir: &str, s3_bucket: &str, check_md5sum: bool) -> Result<(), Error>;
 
     fn download_file(
         &self,
@@ -144,7 +144,7 @@ impl GarminSyncTrait for GarminSync<S3Client> {
         Ok(list_of_keys)
     }
 
-    fn sync_dir(&self, local_dir: &str, s3_bucket: &str) -> Result<(), Error> {
+    fn sync_dir(&self, local_dir: &str, s3_bucket: &str, check_md5sum: bool) -> Result<(), Error> {
         let path = Path::new(local_dir);
 
         let file_list: Vec<String> = path
@@ -194,7 +194,7 @@ impl GarminSyncTrait for GarminSync<S3Client> {
                     let tmod_ = &tmod__;
                     if tmod > tmod_ {
                         let md5 = get_md5sum(&file).unwrap();
-                        if md5_ != md5 {
+                        if md5_ != md5 && check_md5sum {
                             debug!(
                                 "upload md5 {} {} {} {} {}",
                                 file_name, md5_, md5, tmod_, tmod
@@ -230,7 +230,7 @@ impl GarminSyncTrait for GarminSync<S3Client> {
                     if *tmod > tmod_ {
                         let file_name = format!("{}/{}", local_dir, key);
                         let md5_ = get_md5sum(&file_name).expect("Failed md5sum");
-                        if &md5_ != md5 {
+                        if &md5_ != md5 && check_md5sum {
                             debug!("download md5 {} {} {} {} {} ", key, md5_, md5, tmod, tmod_);
                             let file_name = format!("{}/{}", local_dir, key);
                             fs::remove_file(&file_name).expect("Failed to remove existing file");

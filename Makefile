@@ -5,8 +5,13 @@ cidfile := "/tmp/.tmp.docker.$(uniq)"
 build_type := release
 
 all:
-	mkdir build/ &&  cp Dockerfile.ubuntu18.04 build/Dockerfile && cp -a Cargo.toml src scripts Makefile python build/
-	cd build/ && docker build -t garmin_rust/build_rust:ubuntu18.04 . && cd ../ && rm -rf build/
+	mkdir build/
+	cp Dockerfile.ubuntu18.04 build/Dockerfile
+	cp -a Cargo.toml src scripts Makefile python build/
+	cd build/
+	docker build -t garmin_rust/build_rust:ubuntu18.04 .
+	cd ../
+	rm -rf build/
 
 amazon:
 	cp Dockerfile.amazonlinux2018.03 Dockerfile
@@ -23,6 +28,9 @@ package:
 	docker cp `cat $(cidfile)`:/garmin_rust/garmin-rust_$(version)-$(release)_amd64.deb .
 	docker rm `cat $(cidfile)`
 	rm $(cidfile)
+
+test:
+	docker run --cidfile $(cidfile) -v `pwd`/target:/garmin_rust/target garmin_rust/build_rust:ubuntu18.04 /bin/bash -c ". ~/.cargo/env && cargo test"
 
 lambda_build:
 	docker run --cidfile $(cidfile) -v `pwd`/target:/garmin_rust/target garmin_rust/build_rust:amazonlinux2018.03 /garmin_rust/scripts/build_lambda.sh

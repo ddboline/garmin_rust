@@ -5,7 +5,7 @@ cidfile := "/tmp/.tmp.docker.$(uniq)"
 build_type := release
 
 all:
-	mkdir build/
+	mkdir -p build/
 	cp Dockerfile.ubuntu18.04 build/Dockerfile
 	cp -a Cargo.toml src scripts Makefile python build/
 	cd build/

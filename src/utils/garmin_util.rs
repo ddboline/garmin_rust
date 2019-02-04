@@ -19,8 +19,6 @@ use chrono::prelude::*;
 
 use failure::{err_msg, Error};
 
-use crate::common::pgpool::PgPool;
-
 pub const METERS_PER_MILE: f64 = 1609.344;
 pub const MARATHON_DISTANCE_M: i32 = 42195;
 pub const MARATHON_DISTANCE_MI: f64 = MARATHON_DISTANCE_M as f64 / METERS_PER_MILE;
@@ -114,27 +112,6 @@ pub fn titlecase(input: &str) -> String {
         let firstchar = input[0..1].to_uppercase();
         format!("{}{}", firstchar, &input[1..input.len()])
     }
-}
-
-pub fn get_list_of_files_from_db(
-    pool: &PgPool,
-    constraints: &[String],
-) -> Result<Vec<String>, Error> {
-    let constr = if constraints.is_empty() {
-        "".to_string()
-    } else {
-        format!("WHERE {}", constraints.join(" OR "))
-    };
-
-    let query = format!("SELECT filename FROM garmin_summary {}", constr);
-
-    let conn = pool.get()?;
-
-    Ok(conn
-        .query(&query, &[])?
-        .iter()
-        .map(|row| row.get(0))
-        .collect())
 }
 
 pub fn map_result_vec<T, E>(input: Vec<Result<T, E>>) -> Result<Vec<T>, E> {

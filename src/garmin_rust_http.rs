@@ -18,7 +18,6 @@ use garmin_rust::common::garmin_config::GarminConfig;
 use garmin_rust::common::garmin_file;
 use garmin_rust::parsers::garmin_parse;
 use garmin_rust::reports::garmin_file_report_txt;
-use garmin_rust::utils::garmin_util::get_list_of_files_from_db;
 
 #[derive(Deserialize)]
 struct FilterRequest {
@@ -32,12 +31,12 @@ fn proc_pattern_wrapper(request: FilterRequest) -> GarminHtmlRequest {
 
     let filter_vec: Vec<String> = filter.split(',').map(|x| x.to_string()).collect();
 
-    let (options, constraints) = GarminCli::process_pattern(&filter_vec);
+    let req = GarminCli::process_pattern(&filter_vec);
+
     GarminHtmlRequest {
         filter,
         history,
-        options,
-        constraints,
+        ..req
     }
 }
 
@@ -74,7 +73,7 @@ fn garmin_list_gps_tracks(request: Query<FilterRequest>) -> Result<Json<GpsList>
 
     let gc = GarminCli::with_config();
 
-    let gps_list = get_list_of_files_from_db(&gc.get_pool()?, &req.constraints)?;
+    let gps_list = req.get_list_of_files_from_db(&gc.get_pool()?)?;
 
     Ok(Json(GpsList { gps_list }))
 }
@@ -93,7 +92,7 @@ fn garmin_get_hr_data(request: Query<FilterRequest>) -> Result<Json<HrData>, Err
 
     let pg_conn = gc.get_pool()?;
 
-    let file_list = get_list_of_files_from_db(&pg_conn, &req.constraints)?;
+    let file_list = req.get_list_of_files_from_db(&pg_conn)?;
 
     match file_list.len() {
         1 => {
@@ -153,7 +152,7 @@ fn garmin_get_hr_pace(request: Query<FilterRequest>) -> Result<Json<HrPaceList>,
 
     let pg_conn = gc.get_pool()?;
 
-    let file_list = get_list_of_files_from_db(&pg_conn, &req.constraints)?;
+    let file_list = req.get_list_of_files_from_db(&pg_conn)?;
 
     match file_list.len() {
         1 => {

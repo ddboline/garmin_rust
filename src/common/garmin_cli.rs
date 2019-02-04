@@ -22,14 +22,35 @@ use crate::reports::garmin_file_report_txt::generate_txt_report;
 use crate::reports::garmin_report_options::GarminReportOptions;
 use crate::reports::garmin_summary_report_html::summary_report_html;
 use crate::reports::garmin_summary_report_txt::create_report_query;
-use crate::utils::garmin_util::{get_file_list, get_list_of_files_from_db, map_result_vec};
+use crate::utils::garmin_util::{get_file_list, map_result_vec};
 use crate::utils::sport_types::get_sport_type_map;
 
+#[derive(Debug, Default)]
 pub struct GarminHtmlRequest {
     pub filter: String,
     pub history: String,
     pub options: GarminReportOptions,
     pub constraints: Vec<String>,
+}
+
+impl GarminHtmlRequest {
+    pub fn get_list_of_files_from_db(&self, pool: &PgPool) -> Result<Vec<String>, Error> {
+        let constr = if self.constraints.is_empty() {
+            "".to_string()
+        } else {
+            format!("WHERE {}", self.constraints.join(" OR "))
+        };
+
+        let query = format!("SELECT filename FROM garmin_summary {}", constr);
+
+        let conn = pool.get()?;
+
+        Ok(conn
+            .query(&query, &[])?
+            .iter()
+            .map(|row| row.get(0))
+            .collect())
+    }
 }
 
 fn get_version_number() -> String {
@@ -216,7 +237,9 @@ impl GarminCli {
                         })
                         .collect();
 
-                    let dbset: HashSet<String> = get_list_of_files_from_db(&pg_conn, &Vec::new())?
+                    let req = GarminHtmlRequest::default();
+                    let dbset: HashSet<String> = req
+                        .get_list_of_files_from_db(&pg_conn)?
                         .into_iter()
                         .collect();
 
@@ -292,7 +315,7 @@ impl GarminCli {
             .arg(Arg::with_name("patterns").multiple(true))
             .get_matches();
 
-        let (options, constraints) = match matches.values_of("patterns") {
+        let req = match matches.values_of("patterns") {
             Some(patterns) => {
                 let strings: Vec<String> = patterns.map(|x| x.to_string()).collect();
                 GarminCli::process_pattern(&strings)
@@ -303,10 +326,10 @@ impl GarminCli {
             }
         };
 
-        self.run_cli(&options, &constraints)
+        self.run_cli(&req.options, &req.constraints)
     }
 
-    pub fn process_pattern(patterns: &[String]) -> (GarminReportOptions, Vec<String>) {
+    pub fn process_pattern(patterns: &[String]) -> GarminHtmlRequest {
         let mut options = GarminReportOptions::new();
 
         let sport_type_map = get_sport_type_map();
@@ -342,7 +365,11 @@ impl GarminCli {
             };
         }
 
-        (options, constraints)
+        GarminHtmlRequest {
+            options,
+            constraints,
+            ..Default::default()
+        }
     }
 
     pub fn run_cli(
@@ -352,7 +379,11 @@ impl GarminCli {
     ) -> Result<(), Error> {
         let pg_conn = self.get_pool()?;
 
-        let file_list = get_list_of_files_from_db(&pg_conn, &constraints)?;
+        let req = GarminHtmlRequest {
+            constraints: constraints.to_vec(),
+            ..Default::default()
+        };
+        let file_list = req.get_list_of_files_from_db(&pg_conn)?;
 
         match file_list.len() {
             0 => (),
@@ -396,7 +427,7 @@ impl GarminCli {
     pub fn run_html(&self, req: &GarminHtmlRequest) -> Result<String, Error> {
         let pg_conn = self.get_pool()?;
 
-        let file_list = get_list_of_files_from_db(&pg_conn, &req.constraints)?;
+        let file_list = req.get_list_of_files_from_db(&pg_conn)?;
 
         match file_list.len() {
             0 => Ok("".to_string()),

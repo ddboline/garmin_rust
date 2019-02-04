@@ -14,8 +14,7 @@ use super::garmin_config::GarminConfig;
 use super::garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList};
 use super::garmin_file;
 use super::garmin_summary::{GarminSummary, GarminSummaryList};
-use super::garmin_sync::GarminSync;
-use super::garmin_sync::GarminSyncTrait;
+use super::garmin_sync::{GarminSync, GarminSyncTrait};
 use super::pgpool::PgPool;
 use crate::parsers::garmin_parse::GarminParse;
 use crate::reports::garmin_file_report_html::file_report_html;
@@ -25,6 +24,13 @@ use crate::reports::garmin_summary_report_html::summary_report_html;
 use crate::reports::garmin_summary_report_txt::create_report_query;
 use crate::utils::garmin_util::{get_file_list, get_list_of_files_from_db, map_result_vec};
 use crate::utils::sport_types::get_sport_type_map;
+
+pub struct GarminHtmlRequest {
+    pub filter: String,
+    pub history: String,
+    pub options: GarminReportOptions,
+    pub constraints: Vec<String>,
+}
 
 fn get_version_number() -> String {
     format!(
@@ -387,16 +393,10 @@ impl GarminCli {
         Ok(())
     }
 
-    pub fn run_html(
-        &self,
-        options: &GarminReportOptions,
-        constraints: &[String],
-        filter: &str,
-        history: &str,
-    ) -> Result<String, Error> {
+    pub fn run_html(&self, req: &GarminHtmlRequest) -> Result<String, Error> {
         let pg_conn = self.get_pool()?;
 
-        let file_list = get_list_of_files_from_db(&pg_conn, &constraints)?;
+        let file_list = get_list_of_files_from_db(&pg_conn, &req.constraints)?;
 
         match file_list.len() {
             0 => Ok("".to_string()),
@@ -433,16 +433,17 @@ impl GarminCli {
                     &gfile,
                     &self.config.maps_api_key,
                     &htmlcachedir,
-                    &history,
+                    &req.history,
                     &self.config.gps_dir,
                 )
             }
             _ => {
-                debug!("{:?}", options);
-                let txt_result: Vec<_> = create_report_query(&pg_conn, &options, &constraints)?
-                    .iter()
-                    .map(|x| x.join("</td><td>"))
-                    .collect();
+                debug!("{:?}", req.options);
+                let txt_result: Vec<_> =
+                    create_report_query(&pg_conn, &req.options, &req.constraints)?
+                        .iter()
+                        .map(|x| x.join("</td><td>"))
+                        .collect();
 
                 let tempdir = TempDir::new("garmin_html")?;
                 let htmlcachedir = tempdir
@@ -450,7 +451,13 @@ impl GarminCli {
                     .to_str()
                     .ok_or_else(|| err_msg("Path is invalid unicode somehow"))?;
 
-                summary_report_html(&txt_result, &options, &htmlcachedir, &filter, &history)
+                summary_report_html(
+                    &txt_result,
+                    &req.options,
+                    &htmlcachedir,
+                    &req.filter,
+                    &req.history,
+                )
             }
         }
     }

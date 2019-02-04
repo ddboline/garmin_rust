@@ -193,13 +193,17 @@ impl GarminSyncTrait for GarminSync<S3Client> {
                     let (md5_, tmod__) = key_set[&file_name].clone();
                     let tmod_ = &tmod__;
                     if tmod > tmod_ {
-                        let md5 = get_md5sum(&file).unwrap();
-                        if md5_ != md5 && check_md5sum {
-                            debug!(
-                                "upload md5 {} {} {} {} {}",
-                                file_name, md5_, md5, tmod_, tmod
-                            );
-                            true
+                        if check_md5sum {
+                            let md5 = get_md5sum(&file).unwrap();
+                            if md5_ != md5 {
+                                debug!(
+                                    "upload md5 {} {} {} {} {}",
+                                    file_name, md5_, md5, tmod_, tmod
+                                );
+                                true
+                            } else {
+                                false
+                            }
                         } else {
                             false
                         }
@@ -228,13 +232,18 @@ impl GarminSyncTrait for GarminSync<S3Client> {
                 let do_download = if file_set.contains_key(key) {
                     let tmod_ = file_set[key];
                     if *tmod > tmod_ {
-                        let file_name = format!("{}/{}", local_dir, key);
-                        let md5_ = get_md5sum(&file_name).expect("Failed md5sum");
-                        if &md5_ != md5 && check_md5sum {
-                            debug!("download md5 {} {} {} {} {} ", key, md5_, md5, tmod, tmod_);
+                        if check_md5sum {
                             let file_name = format!("{}/{}", local_dir, key);
-                            fs::remove_file(&file_name).expect("Failed to remove existing file");
-                            true
+                            let md5_ = get_md5sum(&file_name).expect("Failed md5sum");
+                            if &md5_ != md5 {
+                                debug!("download md5 {} {} {} {} {} ", key, md5_, md5, tmod, tmod_);
+                                let file_name = format!("{}/{}", local_dir, key);
+                                fs::remove_file(&file_name)
+                                    .expect("Failed to remove existing file");
+                                true
+                            } else {
+                                false
+                            }
                         } else {
                             false
                         }

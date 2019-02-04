@@ -13,12 +13,11 @@ use failure::{err_msg, Error};
 use rust_auth_server::auth_handler::LoggedUser;
 use std::env;
 
-use garmin_rust::common::garmin_cli::GarminCli;
+use garmin_rust::common::garmin_cli::{GarminCli, GarminHtmlRequest};
 use garmin_rust::common::garmin_config::GarminConfig;
 use garmin_rust::common::garmin_file;
 use garmin_rust::parsers::garmin_parse;
 use garmin_rust::reports::garmin_file_report_txt;
-use garmin_rust::reports::garmin_report_options::GarminReportOptions;
 use garmin_rust::utils::garmin_util::get_list_of_files_from_db;
 
 #[derive(Deserialize)]
@@ -27,16 +26,19 @@ struct FilterRequest {
     history: Option<String>,
 }
 
-struct ProcPatternOutput(String, String, GarminReportOptions, Vec<String>);
-
-fn proc_pattern_wrapper(request: FilterRequest) -> ProcPatternOutput {
+fn proc_pattern_wrapper(request: FilterRequest) -> GarminHtmlRequest {
     let filter = request.filter.unwrap_or_else(|| "sport".to_string());
     let history = request.history.unwrap_or_else(|| "sport".to_string());
 
     let filter_vec: Vec<String> = filter.split(',').map(|x| x.to_string()).collect();
 
     let (options, constraints) = GarminCli::process_pattern(&filter_vec);
-    ProcPatternOutput(filter, history, options, constraints)
+    GarminHtmlRequest {
+        filter,
+        history,
+        options,
+        constraints,
+    }
 }
 
 fn garmin(request: Query<FilterRequest>, user: LoggedUser) -> Result<HttpResponse, Error> {
@@ -46,11 +48,11 @@ fn garmin(request: Query<FilterRequest>, user: LoggedUser) -> Result<HttpRespons
 
     let request = request.into_inner();
 
-    let ProcPatternOutput(filter, history, options, constraints) = proc_pattern_wrapper(request);
+    let req = proc_pattern_wrapper(request);
 
     let resp = HttpResponse::build(StatusCode::OK)
         .content_type("text/html; charset=utf-8")
-        .body(GarminCli::with_config().run_html(&options, &constraints, &filter, &history)?);
+        .body(GarminCli::with_config().run_html(&req)?);
     Ok(resp)
 }
 
@@ -68,11 +70,11 @@ struct TimeValue {
 fn garmin_list_gps_tracks(request: Query<FilterRequest>) -> Result<Json<GpsList>, Error> {
     let request = request.into_inner();
 
-    let ProcPatternOutput(_, _, _, constraints) = proc_pattern_wrapper(request);
+    let req = proc_pattern_wrapper(request);
 
     let gc = GarminCli::with_config();
 
-    let gps_list = get_list_of_files_from_db(&gc.get_pool()?, &constraints)?;
+    let gps_list = get_list_of_files_from_db(&gc.get_pool()?, &req.constraints)?;
 
     Ok(Json(GpsList { gps_list }))
 }
@@ -85,13 +87,13 @@ struct HrData {
 fn garmin_get_hr_data(request: Query<FilterRequest>) -> Result<Json<HrData>, Error> {
     let request = request.into_inner();
 
-    let ProcPatternOutput(_, _, _, constraints) = proc_pattern_wrapper(request);
+    let req = proc_pattern_wrapper(request);
 
     let gc = GarminCli::with_config();
 
     let pg_conn = gc.get_pool()?;
 
-    let file_list = get_list_of_files_from_db(&pg_conn, &constraints)?;
+    let file_list = get_list_of_files_from_db(&pg_conn, &req.constraints)?;
 
     match file_list.len() {
         1 => {
@@ -145,13 +147,13 @@ struct HrPaceList {
 fn garmin_get_hr_pace(request: Query<FilterRequest>) -> Result<Json<HrPaceList>, Error> {
     let request = request.into_inner();
 
-    let ProcPatternOutput(_, _, _, constraints) = proc_pattern_wrapper(request);
+    let req = proc_pattern_wrapper(request);
 
     let gc = GarminCli::with_config();
 
     let pg_conn = gc.get_pool()?;
 
-    let file_list = get_list_of_files_from_db(&pg_conn, &constraints)?;
+    let file_list = get_list_of_files_from_db(&pg_conn, &req.constraints)?;
 
     match file_list.len() {
         1 => {

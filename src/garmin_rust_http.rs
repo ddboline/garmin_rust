@@ -19,11 +19,12 @@ use futures::future::Future;
 use rust_auth_server::auth_handler::LoggedUser;
 use std::env;
 
-use garmin_rust::common::garmin_cli::{
-    GarminCli, GarminCorrRequest, GarminHtmlRequest, GarminListRequest,
-};
+use garmin_rust::common::garmin_cli::GarminCli;
 use garmin_rust::common::garmin_config::GarminConfig;
 use garmin_rust::common::garmin_file;
+use garmin_rust::common::garmin_requests::{
+    GarminCorrRequest, GarminHtmlRequest, GarminListRequest,
+};
 use garmin_rust::common::pgpool::PgPool;
 use garmin_rust::parsers::garmin_parse;
 use garmin_rust::reports::garmin_file_report_txt;

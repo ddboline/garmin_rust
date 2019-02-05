@@ -7,15 +7,15 @@ extern crate rust_auth_server;
 use actix::sync::SyncArbiter;
 use actix::Addr;
 use actix_web::middleware::identity::{CookieIdentityPolicy, IdentityService};
-use actix_web::{
-    http::Method, server, App,
-};
+use actix_web::{http::Method, server, App};
 use chrono::Duration;
 use std::env;
 
-use crate::http::garmin_rust_routes::{garmin, garmin_list_gps_tracks, garmin_get_hr_data, garmin_get_hr_pace};
 use crate::common::garmin_config::GarminConfig;
 use crate::common::pgpool::PgPool;
+use crate::http::garmin_rust_routes::{
+    garmin, garmin_get_hr_data, garmin_get_hr_pace, garmin_list_gps_tracks,
+};
 
 pub struct AppState {
     pub db: Addr<PgPool>,

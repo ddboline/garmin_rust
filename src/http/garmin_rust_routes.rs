@@ -5,8 +5,8 @@ extern crate actix_web;
 extern crate rust_auth_server;
 
 use actix_web::{
-    http::StatusCode, AsyncResponder, FutureResponse, HttpMessage,
-    HttpRequest, HttpResponse, Json, Query,
+    http::StatusCode, AsyncResponder, FutureResponse, HttpMessage, HttpRequest, HttpResponse, Json,
+    Query,
 };
 use failure::err_msg;
 use futures::future::Future;

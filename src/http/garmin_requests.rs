@@ -5,9 +5,9 @@ extern crate tempdir;
 use actix::{Handler, Message};
 use failure::Error;
 
-use super::garmin_cli::GarminCli;
-use super::garmin_correction_lap::GarminCorrectionList;
-use super::pgpool::PgPool;
+use crate::common::garmin_cli::GarminCli;
+use crate::common::garmin_correction_lap::GarminCorrectionList;
+use crate::common::pgpool::PgPool;
 use crate::reports::garmin_report_options::GarminReportOptions;
 
 pub struct GarminCorrRequest {}

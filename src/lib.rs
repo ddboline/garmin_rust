@@ -9,6 +9,7 @@ extern crate postgres;
 extern crate postgres_derive;
 
 pub mod common;
+pub mod http;
 pub mod parsers;
 pub mod reports;
 pub mod utils;

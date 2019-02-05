@@ -2,6 +2,7 @@ extern crate config;
 extern crate rayon;
 extern crate tempdir;
 
+use actix::{Handler, Message};
 use clap::{App, Arg};
 use failure::{err_msg, Error};
 use rayon::prelude::*;
@@ -25,6 +26,37 @@ use crate::reports::garmin_summary_report_txt::create_report_query;
 use crate::utils::garmin_util::{get_file_list, map_result_vec};
 use crate::utils::sport_types::get_sport_type_map;
 
+pub struct GarminCorrRequest {}
+
+impl Message for GarminCorrRequest {
+    type Result = Result<GarminCorrectionList, Error>;
+}
+
+impl Handler<GarminCorrRequest> for PgPool {
+    type Result = Result<GarminCorrectionList, Error>;
+    fn handle(&mut self, _: GarminCorrRequest, _: &mut Self::Context) -> Self::Result {
+        GarminCorrectionList::from_pool(&self).read_corrections_from_db()
+    }
+}
+
+fn get_list_of_files_from_db(constraints: &[String], pool: &PgPool) -> Result<Vec<String>, Error> {
+    let constr = if constraints.is_empty() {
+        "".to_string()
+    } else {
+        format!("WHERE {}", constraints.join(" OR "))
+    };
+
+    let query = format!("SELECT filename FROM garmin_summary {}", constr);
+
+    let conn = pool.get()?;
+
+    Ok(conn
+        .query(&query, &[])?
+        .iter()
+        .map(|row| row.get(0))
+        .collect())
+}
+
 #[derive(Debug, Default)]
 pub struct GarminHtmlRequest {
     pub filter: String,
@@ -33,23 +65,51 @@ pub struct GarminHtmlRequest {
     pub constraints: Vec<String>,
 }
 
+impl Message for GarminHtmlRequest {
+    type Result = Result<String, Error>;
+}
+
+impl Handler<GarminHtmlRequest> for PgPool {
+    type Result = Result<String, Error>;
+    fn handle(&mut self, msg: GarminHtmlRequest, _: &mut Self::Context) -> Self::Result {
+        let body = GarminCli::from_pool(&self).run_html(&msg)?;
+        Ok(body)
+    }
+}
+
 impl GarminHtmlRequest {
     pub fn get_list_of_files_from_db(&self, pool: &PgPool) -> Result<Vec<String>, Error> {
-        let constr = if self.constraints.is_empty() {
-            "".to_string()
-        } else {
-            format!("WHERE {}", self.constraints.join(" OR "))
-        };
+        get_list_of_files_from_db(&self.constraints, &pool)
+    }
+}
 
-        let query = format!("SELECT filename FROM garmin_summary {}", constr);
+#[derive(Default)]
+pub struct GarminListRequest {
+    pub constraints: Vec<String>,
+}
 
-        let conn = pool.get()?;
+impl Into<GarminListRequest> for GarminHtmlRequest {
+    fn into(self) -> GarminListRequest {
+        GarminListRequest {
+            constraints: self.constraints,
+        }
+    }
+}
 
-        Ok(conn
-            .query(&query, &[])?
-            .iter()
-            .map(|row| row.get(0))
-            .collect())
+impl GarminListRequest {
+    pub fn get_list_of_files_from_db(&self, pool: &PgPool) -> Result<Vec<String>, Error> {
+        get_list_of_files_from_db(&self.constraints, &pool)
+    }
+}
+
+impl Message for GarminListRequest {
+    type Result = Result<Vec<String>, Error>;
+}
+
+impl Handler<GarminListRequest> for PgPool {
+    type Result = Result<Vec<String>, Error>;
+    fn handle(&mut self, msg: GarminListRequest, _: &mut Self::Context) -> Self::Result {
+        msg.get_list_of_files_from_db(self)
     }
 }
 
@@ -63,7 +123,7 @@ fn get_version_number() -> String {
     )
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct GarminCli {
     pub config: GarminConfig,
     pub do_sync: bool,
@@ -74,33 +134,34 @@ pub struct GarminCli {
     pub corr: GarminCorrectionList,
 }
 
-impl Default for GarminCli {
-    fn default() -> GarminCli {
-        GarminCli::new()
-    }
-}
-
 impl GarminCli {
     pub fn new() -> GarminCli {
         let config = GarminConfig::new();
         GarminCli {
             config,
-            do_sync: false,
-            do_all: false,
-            do_bootstrap: false,
-            filenames: None,
-            pool: None,
-            corr: GarminCorrectionList::new(),
+            ..Default::default()
         }
     }
 
     pub fn with_config() -> GarminCli {
-        let mut gc = GarminCli::new();
-        gc.config = GarminConfig::get_config(None);
-        let pool = PgPool::new(&gc.config.pgurl);
-        gc.corr = gc.corr.with_pool(&pool);
-        gc.pool = Some(pool);
-        gc
+        let config = GarminConfig::get_config(None);
+        let pool = PgPool::new(&config.pgurl);
+        let corr = GarminCorrectionList::from_pool(&pool);
+        GarminCli {
+            config,
+            pool: Some(pool),
+            corr,
+            ..Default::default()
+        }
+    }
+
+    pub fn from_pool(pool: &PgPool) -> GarminCli {
+        let config = GarminConfig::get_config(None);
+        GarminCli {
+            config,
+            pool: Some(pool.clone()),
+            ..Default::default()
+        }
     }
 
     pub fn get_pool(&self) -> Result<PgPool, Error> {
@@ -237,7 +298,7 @@ impl GarminCli {
                         })
                         .collect();
 
-                    let req = GarminHtmlRequest::default();
+                    let req = GarminListRequest::default();
                     let dbset: HashSet<String> = req
                         .get_list_of_files_from_db(&pg_conn)?
                         .into_iter()
@@ -379,9 +440,8 @@ impl GarminCli {
     ) -> Result<(), Error> {
         let pg_conn = self.get_pool()?;
 
-        let req = GarminHtmlRequest {
+        let req = GarminListRequest {
             constraints: constraints.to_vec(),
-            ..Default::default()
         };
         let file_list = req.get_list_of_files_from_db(&pg_conn)?;
 

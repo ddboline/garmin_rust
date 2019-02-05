@@ -1,3 +1,5 @@
+use actix::sync::SyncContext;
+use actix::Actor;
 use failure::{err_msg, Error};
 use r2d2::{Pool, PooledConnection};
 use r2d2_postgres::{PostgresConnectionManager, TlsMode};
@@ -34,4 +36,8 @@ impl PgPool {
     pub fn get(&self) -> Result<PooledConnection<PostgresConnectionManager>, Error> {
         self.pool.get().map_err(err_msg)
     }
+}
+
+impl Actor for PgPool {
+    type Context = SyncContext<Self>;
 }

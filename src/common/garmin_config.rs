@@ -15,6 +15,7 @@ pub struct GarminConfig {
     pub port: u32,
     pub summary_cache: String,
     pub summary_bucket: String,
+    pub n_db_workers: usize,
 }
 
 impl GarminConfig {
@@ -26,15 +27,12 @@ impl GarminConfig {
         let default_summary_cache = format!("{}/.garmin_cache/run/summary_cache", home_dir);
 
         GarminConfig {
-            pgurl: "".to_string(),
-            maps_api_key: "".to_string(),
-            gps_bucket: "".to_string(),
-            cache_bucket: "".to_string(),
             gps_dir: default_gps_dir,
             cache_dir: default_cache_dir,
-            port: 8000,
             summary_cache: default_summary_cache,
-            summary_bucket: "".to_string(),
+            port: 8000,
+            n_db_workers: 2,
+            ..Default::default()
         }
     }
 
@@ -65,6 +63,11 @@ impl GarminConfig {
         }
         if let Ok(summary_bucket) = var("SUMMARY_BUCKET") {
             self.summary_bucket = summary_bucket
+        }
+        if let Ok(n_db_workers_str) = var("N_DB_WORKERS") {
+            if let Ok(n_db_workers) = n_db_workers_str.parse() {
+                self.n_db_workers = n_db_workers
+            }
         }
         self
     }

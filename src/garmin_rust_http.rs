@@ -6,18 +6,31 @@ extern crate actix;
 extern crate actix_web;
 extern crate rust_auth_server;
 
+use actix::sync::SyncArbiter;
+use actix::Addr;
 use actix_web::middleware::identity::{CookieIdentityPolicy, IdentityService};
-use actix_web::{http::Method, http::StatusCode, server, App, HttpResponse, Json, Query};
+use actix_web::{
+    http::Method, http::StatusCode, server, App, AsyncResponder, FutureResponse, HttpMessage,
+    HttpRequest, HttpResponse, Json, Query,
+};
 use chrono::Duration;
-use failure::{err_msg, Error};
+use failure::err_msg;
+use futures::future::Future;
 use rust_auth_server::auth_handler::LoggedUser;
 use std::env;
 
-use garmin_rust::common::garmin_cli::{GarminCli, GarminHtmlRequest};
+use garmin_rust::common::garmin_cli::{
+    GarminCli, GarminCorrRequest, GarminHtmlRequest, GarminListRequest,
+};
 use garmin_rust::common::garmin_config::GarminConfig;
 use garmin_rust::common::garmin_file;
+use garmin_rust::common::pgpool::PgPool;
 use garmin_rust::parsers::garmin_parse;
 use garmin_rust::reports::garmin_file_report_txt;
+
+pub struct AppState {
+    pub db: Addr<PgPool>,
+}
 
 #[derive(Deserialize)]
 struct FilterRequest {
@@ -40,19 +53,38 @@ fn proc_pattern_wrapper(request: FilterRequest) -> GarminHtmlRequest {
     }
 }
 
-fn garmin(request: Query<FilterRequest>, user: LoggedUser) -> Result<HttpResponse, Error> {
+fn garmin(
+    query: Query<FilterRequest>,
+    user: LoggedUser,
+    request: HttpRequest<AppState>,
+) -> FutureResponse<HttpResponse> {
     if user.email != "ddboline@gmail.com" {
-        return Ok(HttpResponse::Unauthorized().json("Unauthorized"));
+        request
+            .body()
+            .from_err()
+            .and_then(move |_| Ok(HttpResponse::Unauthorized().json("Unauthorized")))
+            .responder()
+    } else {
+        let query = query.into_inner();
+
+        let req = proc_pattern_wrapper(query);
+
+        request
+            .state()
+            .db
+            .send(req)
+            .from_err()
+            .and_then(move |res| match res {
+                Ok(body) => {
+                    let resp = HttpResponse::build(StatusCode::OK)
+                        .content_type("text/html; charset=utf-8")
+                        .body(body);
+                    Ok(resp)
+                }
+                Err(err) => Err(err.into()),
+            })
+            .responder()
     }
-
-    let request = request.into_inner();
-
-    let req = proc_pattern_wrapper(request);
-
-    let resp = HttpResponse::build(StatusCode::OK)
-        .content_type("text/html; charset=utf-8")
-        .body(GarminCli::with_config().run_html(&req)?);
-    Ok(resp)
 }
 
 #[derive(Serialize)]
@@ -66,16 +98,24 @@ struct TimeValue {
     value: f64,
 }
 
-fn garmin_list_gps_tracks(request: Query<FilterRequest>) -> Result<Json<GpsList>, Error> {
-    let request = request.into_inner();
+fn garmin_list_gps_tracks(
+    query: Query<FilterRequest>,
+    request: HttpRequest<AppState>,
+) -> FutureResponse<Json<GpsList>> {
+    let query = query.into_inner();
 
-    let req = proc_pattern_wrapper(request);
+    let req: GarminListRequest = proc_pattern_wrapper(query).into();
 
-    let gc = GarminCli::with_config();
-
-    let gps_list = req.get_list_of_files_from_db(&gc.get_pool()?)?;
-
-    Ok(Json(GpsList { gps_list }))
+    request
+        .state()
+        .db
+        .send(req)
+        .from_err()
+        .and_then(move |res| match res {
+            Ok(gps_list) => Ok(Json(GpsList { gps_list })),
+            Err(err) => Err(err.into()),
+        })
+        .responder()
 }
 
 #[derive(Serialize)]
@@ -83,53 +123,58 @@ struct HrData {
     hr_data: Vec<TimeValue>,
 }
 
-fn garmin_get_hr_data(request: Query<FilterRequest>) -> Result<Json<HrData>, Error> {
-    let request = request.into_inner();
+fn garmin_get_hr_data(
+    query: Query<FilterRequest>,
+    request: HttpRequest<AppState>,
+) -> FutureResponse<Json<HrData>> {
+    let query = query.into_inner();
 
-    let req = proc_pattern_wrapper(request);
+    let req: GarminListRequest = proc_pattern_wrapper(query).into();
 
-    let gc = GarminCli::with_config();
+    request
+        .state()
+        .db
+        .send(req)
+        .from_err()
+        .join(request.state().db.send(GarminCorrRequest {}).from_err())
+        .and_then(move |(res0, res1)| match res0 {
+            Ok(file_list) => match file_list.len() {
+                1 => {
+                    let config = GarminConfig::get_config(None);
+                    let file_name = file_list
+                        .get(0)
+                        .ok_or_else(|| err_msg("This shouldn't be happening..."))?;
+                    let avro_file = format!("{}/{}.avro", &config.cache_dir, file_name);
+                    let gfile = match garmin_file::GarminFile::read_avro(&avro_file) {
+                        Ok(g) => g,
+                        Err(_) => {
+                            let gps_file = format!("{}/{}", &config.gps_dir, file_name);
+                            let corr_map = res1.map(|c| c.get_corr_list_map())?;
+                            garmin_parse::GarminParse::new().with_file(&gps_file, &corr_map)?
+                        }
+                    };
 
-    let pg_conn = gc.get_pool()?;
-
-    let file_list = req.get_list_of_files_from_db(&pg_conn)?;
-
-    match file_list.len() {
-        1 => {
-            let file_name = file_list
-                .get(0)
-                .ok_or_else(|| err_msg("This shouldn't be happening..."))?;
-            let avro_file = format!("{}/{}.avro", &gc.config.cache_dir, file_name);
-            let gfile = match garmin_file::GarminFile::read_avro(&avro_file) {
-                Ok(g) => g,
-                Err(_) => {
-                    let gps_file = format!("{}/{}", &gc.config.gps_dir, file_name);
-
-                    let corr_list = gc.corr.read_corrections_from_db()?;
-                    let corr_map = corr_list.get_corr_list_map();
-
-                    garmin_parse::GarminParse::new().with_file(&gps_file, &corr_map)?
+                    Ok(Json(HrData {
+                        hr_data: gfile
+                            .points
+                            .iter()
+                            .filter_map(|p| match p.heart_rate {
+                                Some(hr) => Some(TimeValue {
+                                    time: p.time.clone(),
+                                    value: hr,
+                                }),
+                                None => None,
+                            })
+                            .collect(),
+                    }))
                 }
-            };
-
-            Ok(Json(HrData {
-                hr_data: gfile
-                    .points
-                    .iter()
-                    .filter_map(|p| match p.heart_rate {
-                        Some(hr) => Some(TimeValue {
-                            time: p.time.clone(),
-                            value: hr,
-                        }),
-                        None => None,
-                    })
-                    .collect(),
-            }))
-        }
-        _ => Ok(Json(HrData {
-            hr_data: Vec::new(),
-        })),
-    }
+                _ => Ok(Json(HrData {
+                    hr_data: Vec::new(),
+                })),
+            },
+            Err(err) => Err(err.into()),
+        })
+        .responder()
 }
 
 #[derive(Serialize)]
@@ -143,57 +188,64 @@ struct HrPaceList {
     hr_pace: Vec<HrPace>,
 }
 
-fn garmin_get_hr_pace(request: Query<FilterRequest>) -> Result<Json<HrPaceList>, Error> {
-    let request = request.into_inner();
+fn garmin_get_hr_pace(
+    query: Query<FilterRequest>,
+    request: HttpRequest<AppState>,
+) -> FutureResponse<Json<HrPaceList>> {
+    let query = query.into_inner();
 
-    let req = proc_pattern_wrapper(request);
+    let req: GarminListRequest = proc_pattern_wrapper(query).into();
 
-    let gc = GarminCli::with_config();
+    request
+        .state()
+        .db
+        .send(req)
+        .from_err()
+        .join(request.state().db.send(GarminCorrRequest {}).from_err())
+        .and_then(move |(res0, res1)| match res0 {
+            Ok(file_list) => match file_list.len() {
+                1 => {
+                    let config = GarminConfig::get_config(None);
+                    let file_name = file_list
+                        .get(0)
+                        .ok_or_else(|| err_msg("This shouldn't be happening..."))?;
+                    let avro_file = format!("{}/{}.avro", &config.cache_dir, file_name);
+                    let gfile = match garmin_file::GarminFile::read_avro(&avro_file) {
+                        Ok(g) => g,
+                        Err(_) => {
+                            let gps_file = format!("{}/{}", &config.gps_dir, file_name);
 
-    let pg_conn = gc.get_pool()?;
+                            let corr_map = res1.map(|c| c.get_corr_list_map())?;
 
-    let file_list = req.get_list_of_files_from_db(&pg_conn)?;
-
-    match file_list.len() {
-        1 => {
-            let file_name = file_list
-                .get(0)
-                .ok_or_else(|| err_msg("This shouldn't be happening..."))?;
-            let avro_file = format!("{}/{}.avro", &gc.config.cache_dir, file_name);
-            let gfile = match garmin_file::GarminFile::read_avro(&avro_file) {
-                Ok(g) => g,
-                Err(_) => {
-                    let gps_file = format!("{}/{}", &gc.config.gps_dir, file_name);
-
-                    let corr_list = gc.corr.read_corrections_from_db()?;
-                    let corr_map = corr_list.get_corr_list_map();
-
-                    garmin_parse::GarminParse::new().with_file(&gps_file, &corr_map)?
-                }
-            };
-
-            let splits = garmin_file_report_txt::get_splits(&gfile, 400., "mi", true)?;
-
-            Ok(Json(HrPaceList {
-                hr_pace: splits
-                    .iter()
-                    .filter_map(|v| {
-                        let s = v[1];
-                        let h = v[2];
-                        let pace = 4. * s / 60.;
-                        if pace >= 5.5 && pace <= 20. {
-                            Some(HrPace { hr: h, pace })
-                        } else {
-                            None
+                            garmin_parse::GarminParse::new().with_file(&gps_file, &corr_map)?
                         }
-                    })
-                    .collect(),
-            }))
-        }
-        _ => Ok(Json(HrPaceList {
-            hr_pace: Vec::new(),
-        })),
-    }
+                    };
+
+                    let splits = garmin_file_report_txt::get_splits(&gfile, 400., "mi", true)?;
+
+                    Ok(Json(HrPaceList {
+                        hr_pace: splits
+                            .iter()
+                            .filter_map(|v| {
+                                let s = v[1];
+                                let h = v[2];
+                                let pace = 4. * s / 60.;
+                                if pace >= 5.5 && pace <= 20. {
+                                    Some(HrPace { hr: h, pace })
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect(),
+                    }))
+                }
+                _ => Ok(Json(HrPaceList {
+                    hr_pace: Vec::new(),
+                })),
+            },
+            Err(err) => Err(err.into()),
+        })
+        .responder()
 }
 
 fn main() {
@@ -201,9 +253,13 @@ fn main() {
     let config = GarminConfig::get_config(None);
     let secret: String = std::env::var("SECRET_KEY").unwrap_or_else(|_| "0123".repeat(8));
     let domain = env::var("DOMAIN").unwrap_or_else(|_| "localhost".to_string());
+    let nconn = config.n_db_workers;
+    let pool = PgPool::new(&config.pgurl);
+
+    let addr: Addr<PgPool> = SyncArbiter::start(nconn, move || pool.clone());
 
     server::new(move || {
-        App::new()
+        App::with_state(AppState { db: addr.clone() })
             .middleware(IdentityService::new(
                 CookieIdentityPolicy::new(secret.as_bytes())
                     .name("auth")

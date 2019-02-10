@@ -1,13 +1,10 @@
-extern crate config;
-extern crate rayon;
-extern crate tempdir;
-
 use actix::{Handler, Message};
 use failure::Error;
 
-use crate::common::garmin_cli::GarminCli;
-use crate::common::garmin_correction_lap::GarminCorrectionList;
+use crate::common::garmin_cli::{GarminCli, GarminCliObj};
+use crate::common::garmin_correction_lap::{GarminCorrectionList, GarminCorrectionListTrait};
 use crate::common::pgpool::PgPool;
+use crate::parsers::garmin_parse::GarminParse;
 use crate::reports::garmin_report_options::GarminReportOptions;
 
 pub struct GarminCorrRequest {}
@@ -56,7 +53,8 @@ impl Message for GarminHtmlRequest {
 impl Handler<GarminHtmlRequest> for PgPool {
     type Result = Result<String, Error>;
     fn handle(&mut self, msg: GarminHtmlRequest, _: &mut Self::Context) -> Self::Result {
-        let body = GarminCli::from_pool(&self).run_html(&msg)?;
+        let body =
+            GarminCliObj::<GarminParse, GarminCorrectionList>::from_pool(&self).run_html(&msg)?;
         Ok(body)
     }
 }

@@ -13,11 +13,12 @@ use futures::future::Future;
 use rust_auth_server::auth_handler::LoggedUser;
 
 use super::garmin_rust_app::AppState;
-use crate::common::garmin_cli::GarminCli;
+use crate::common::garmin_cli::{GarminCli, GarminCliObj};
 use crate::common::garmin_config::GarminConfig;
-use crate::common::garmin_file;
+use crate::common::garmin_correction_lap::{GarminCorrectionList, GarminCorrectionListTrait};
+use crate::common::garmin_file::GarminFile;
 use crate::http::garmin_requests::{GarminCorrRequest, GarminHtmlRequest, GarminListRequest};
-use crate::parsers::garmin_parse;
+use crate::parsers::garmin_parse::{GarminParse, GarminParseTrait};
 use crate::reports::garmin_file_report_txt;
 
 #[derive(Deserialize)]
@@ -32,7 +33,7 @@ fn proc_pattern_wrapper(request: FilterRequest) -> GarminHtmlRequest {
 
     let filter_vec: Vec<String> = filter.split(',').map(|x| x.to_string()).collect();
 
-    let req = GarminCli::process_pattern(&filter_vec);
+    let req = GarminCliObj::<GarminParse, GarminCorrectionList>::process_pattern(&filter_vec);
 
     GarminHtmlRequest {
         filter,
@@ -133,12 +134,12 @@ pub fn garmin_get_hr_data(
                         .get(0)
                         .ok_or_else(|| err_msg("This shouldn't be happening..."))?;
                     let avro_file = format!("{}/{}.avro", &config.cache_dir, file_name);
-                    let gfile = match garmin_file::GarminFile::read_avro(&avro_file) {
+                    let gfile = match GarminFile::read_avro(&avro_file) {
                         Ok(g) => g,
                         Err(_) => {
                             let gps_file = format!("{}/{}", &config.gps_dir, file_name);
                             let corr_map = res1.map(|c| c.get_corr_list_map())?;
-                            garmin_parse::GarminParse::new().with_file(&gps_file, &corr_map)?
+                            GarminParse::new().with_file(&gps_file, &corr_map)?
                         }
                     };
 
@@ -198,14 +199,14 @@ pub fn garmin_get_hr_pace(
                         .get(0)
                         .ok_or_else(|| err_msg("This shouldn't be happening..."))?;
                     let avro_file = format!("{}/{}.avro", &config.cache_dir, file_name);
-                    let gfile = match garmin_file::GarminFile::read_avro(&avro_file) {
+                    let gfile = match GarminFile::read_avro(&avro_file) {
                         Ok(g) => g,
                         Err(_) => {
                             let gps_file = format!("{}/{}", &config.gps_dir, file_name);
 
                             let corr_map = res1.map(|c| c.get_corr_list_map())?;
 
-                            garmin_parse::GarminParse::new().with_file(&gps_file, &corr_map)?
+                            GarminParse::new().with_file(&gps_file, &corr_map)?
                         }
                     };
 

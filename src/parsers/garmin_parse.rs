@@ -17,8 +17,10 @@ impl GarminParse {
     pub fn new() -> GarminParse {
         GarminParse {}
     }
+}
 
-    pub fn with_file(
+impl GarminParseTrait for GarminParse {
+    fn with_file(
         &self,
         filename: &str,
         corr_map: &HashMap<(String, i32), GarminCorrectionLap>,
@@ -37,6 +39,10 @@ impl GarminParse {
             _ => Err(err_msg("No extension?")),
         }
     }
+
+    fn parse_file(&self, _: &str) -> Result<ParseOutput, Error> {
+        Ok(ParseOutput::default())
+    }
 }
 
 #[derive(Default)]
@@ -46,7 +52,10 @@ pub struct ParseOutput {
     pub sport: Option<String>,
 }
 
-pub trait GarminParseTrait {
+pub trait GarminParseTrait
+where
+    Self: Send + Sync,
+{
     fn with_file(
         &self,
         filename: &str,

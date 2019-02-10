@@ -125,22 +125,42 @@ impl GarminCorrectionList {
             pool: Some(pool.clone()),
         }
     }
+}
 
-    pub fn get_pool(&self) -> Result<PgPool, Error> {
+impl GarminCorrectionListTrait for GarminCorrectionList {
+    fn from_pool(pool: &PgPool) -> Self {
+        Self {
+            pool: Some(pool.clone()),
+            ..Default::default()
+        }
+    }
+
+    fn get_pool(&self) -> Result<&PgPool, Error> {
         self.pool
             .as_ref()
             .ok_or_else(|| err_msg("No Database Connection"))
-            .map(|x| x.clone())
     }
 
-    pub fn get_corr_list_map(&self) -> HashMap<(String, i32), GarminCorrectionLap> {
-        self.corr_list
+    fn get_corr_list(&self) -> &Vec<GarminCorrectionLap> {
+        &self.corr_list
+    }
+}
+
+pub trait GarminCorrectionListTrait {
+    fn from_pool(pool: &PgPool) -> Self;
+
+    fn get_pool(&self) -> Result<&PgPool, Error>;
+
+    fn get_corr_list(&self) -> &Vec<GarminCorrectionLap>;
+
+    fn get_corr_list_map(&self) -> HashMap<(String, i32), GarminCorrectionLap> {
+        self.get_corr_list()
             .iter()
             .map(|corr| ((corr.start_time.clone(), corr.lap_number), corr.clone()))
             .collect()
     }
 
-    pub fn corr_list_from_buffer(buffer: &[u8]) -> Result<GarminCorrectionList, Error> {
+    fn corr_list_from_buffer(buffer: &[u8]) -> Result<GarminCorrectionList, Error> {
         let jsval = parse(&str::from_utf8(&buffer)?)?;
 
         let corr_list = match &jsval {
@@ -197,7 +217,7 @@ impl GarminCorrectionList {
         Ok(GarminCorrectionList::from_vec(corr_list))
     }
 
-    pub fn corr_list_from_json(json_filename: &str) -> Result<GarminCorrectionList, Error> {
+    fn corr_list_from_json(json_filename: &str) -> Result<GarminCorrectionList, Error> {
         let mut file = File::open(json_filename)?;
 
         let mut buffer = Vec::new();
@@ -208,7 +228,7 @@ impl GarminCorrectionList {
         }
     }
 
-    pub fn dump_corr_list_to_avro(&self, output_filename: &str) -> Result<(), Error> {
+    fn dump_corr_list_to_avro(&self, output_filename: &str) -> Result<(), Error> {
         let garmin_file_avro_schema = GARMIN_CORRECTION_LAP_AVRO_SCHEMA;
         let schema = Schema::parse_str(&garmin_file_avro_schema)?;
 
@@ -216,13 +236,13 @@ impl GarminCorrectionList {
 
         let mut writer = Writer::with_codec(&schema, output_file, Codec::Snappy);
 
-        writer.extend_ser(self.corr_list.clone())?;
+        writer.extend_ser(self.get_corr_list().clone())?;
         writer.flush()?;
 
         Ok(())
     }
 
-    pub fn read_corr_list_from_avro(input_filename: &str) -> Result<GarminCorrectionList, Error> {
+    fn read_corr_list_from_avro(input_filename: &str) -> Result<GarminCorrectionList, Error> {
         let garmin_file_avro_schema = GARMIN_CORRECTION_LAP_AVRO_SCHEMA;
         let schema = Schema::parse_str(&garmin_file_avro_schema)?;
 
@@ -242,7 +262,7 @@ impl GarminCorrectionList {
         Ok(GarminCorrectionList::from_vec(corr_list))
     }
 
-    pub fn add_mislabeled_times_to_corr_list(&self) -> GarminCorrectionList {
+    fn add_mislabeled_times_to_corr_list(&self) -> GarminCorrectionList {
         let mut corr_list_map = self.get_corr_list_map();
 
         let mislabeled_times = vec![
@@ -323,7 +343,7 @@ impl GarminCorrectionList {
         GarminCorrectionList::from_vec(corr_list_map.values().cloned().collect())
     }
 
-    pub fn fix_corrections(&self) -> Result<(), Error> {
+    fn fix_corrections(&self) -> Result<(), Error> {
         let correction_file = "garmin_corrections.avro";
         let gps_dir = "/home/ddboline/.garmin_cache/run/gps_tracks";
         let cache_dir = "/home/ddboline/.garmin_cache/run/cache";
@@ -378,7 +398,7 @@ impl GarminCorrectionList {
         Ok(())
     }
 
-    pub fn get_filename_start_map(&self) -> Result<HashMap<String, (String, i32)>, Error> {
+    fn get_filename_start_map(&self) -> Result<HashMap<String, (String, i32)>, Error> {
         let query = "
             select filename, unique_key
             from garmin_corrections_laps a
@@ -400,7 +420,7 @@ impl GarminCorrectionList {
         Ok(filename_start_map)
     }
 
-    pub fn dump_corrections_to_db(&self) -> Result<(), Error> {
+    fn dump_corrections_to_db(&self) -> Result<(), Error> {
         let query_unique_key = "SELECT unique_key FROM garmin_corrections_laps WHERE unique_key=$1";
         let query_insert = "
             INSERT INTO garmin_corrections_laps (start_time, lap_number, distance, duration, unique_key, sport)
@@ -413,7 +433,7 @@ impl GarminCorrectionList {
         let conn = self.get_pool()?.get()?;
         let stmt_insert = conn.prepare(query_insert)?;
         let stmt_update = conn.prepare(query_update)?;
-        for corr in &self.corr_list {
+        for corr in self.get_corr_list() {
             if corr.start_time == "DUMMY" {
                 continue;
             };
@@ -442,7 +462,7 @@ impl GarminCorrectionList {
         Ok(())
     }
 
-    pub fn read_corrections_from_db(&self) -> Result<GarminCorrectionList, Error> {
+    fn read_corrections_from_db(&self) -> Result<GarminCorrectionList, Error> {
         let conn = self.get_pool()?.get()?;
         let corr_list: Vec<GarminCorrectionLap> = conn.query(
             "select id, start_time, lap_number, sport, distance, duration from garmin_corrections_laps",
@@ -462,7 +482,7 @@ impl GarminCorrectionList {
         Ok(GarminCorrectionList::from_vec(corr_list))
     }
 
-    pub fn read_corrections_from_db_dump_to_avro(&self) -> Result<(), Error> {
+    fn read_corrections_from_db_dump_to_avro(&self) -> Result<(), Error> {
         let corr_list = self.read_corrections_from_db()?;
 
         println!("{}", corr_list.corr_list.len());

@@ -11,13 +11,15 @@ use std::path::Path;
 use tempdir::TempDir;
 
 use super::garmin_config::GarminConfig;
-use super::garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList};
+use super::garmin_correction_lap::{
+    GarminCorrectionLap, GarminCorrectionList, GarminCorrectionListTrait,
+};
 use super::garmin_file;
 use super::garmin_summary::{GarminSummary, GarminSummaryList};
 use super::garmin_sync::{GarminSync, GarminSyncTrait};
 use super::pgpool::PgPool;
 use crate::http::garmin_requests::{GarminHtmlRequest, GarminListRequest};
-use crate::parsers::garmin_parse::GarminParse;
+use crate::parsers::garmin_parse::{GarminParse, GarminParseTrait};
 use crate::reports::garmin_file_report_html::file_report_html;
 use crate::reports::garmin_file_report_txt::generate_txt_report;
 use crate::reports::garmin_report_options::GarminReportOptions;
@@ -37,30 +39,44 @@ fn get_version_number() -> String {
 }
 
 #[derive(Debug, Default)]
-pub struct GarminCli {
-    pub config: GarminConfig,
+pub struct GarminCliOptions {
     pub do_sync: bool,
     pub do_all: bool,
     pub do_bootstrap: bool,
     pub filenames: Option<Vec<String>>,
-    pub pool: Option<PgPool>,
-    pub corr: GarminCorrectionList,
 }
 
-impl GarminCli {
-    pub fn new() -> GarminCli {
+#[derive(Debug, Default)]
+pub struct GarminCliObj<T, U>
+where
+    T: GarminParseTrait,
+    U: GarminCorrectionListTrait,
+{
+    pub config: GarminConfig,
+    pub opts: GarminCliOptions,
+    pub pool: Option<PgPool>,
+    pub corr: U,
+    pub parser: T,
+}
+
+impl<T, U> GarminCliObj<T, U>
+where
+    T: GarminParseTrait + Default,
+    U: GarminCorrectionListTrait + Default,
+{
+    pub fn new() -> GarminCliObj<T, U> {
         let config = GarminConfig::new();
-        GarminCli {
+        GarminCliObj {
             config,
             ..Default::default()
         }
     }
 
-    pub fn with_config() -> GarminCli {
+    pub fn with_config() -> GarminCliObj<T, U> {
         let config = GarminConfig::get_config(None);
         let pool = PgPool::new(&config.pgurl);
-        let corr = GarminCorrectionList::from_pool(&pool);
-        GarminCli {
+        let corr = GarminCorrectionListTrait::from_pool(&pool);
+        GarminCliObj {
             config,
             pool: Some(pool),
             corr,
@@ -68,23 +84,16 @@ impl GarminCli {
         }
     }
 
-    pub fn from_pool(pool: &PgPool) -> GarminCli {
+    pub fn from_pool(pool: &PgPool) -> GarminCliObj<T, U> {
         let config = GarminConfig::get_config(None);
-        GarminCli {
+        GarminCliObj {
             config,
             pool: Some(pool.clone()),
             ..Default::default()
         }
     }
 
-    pub fn get_pool(&self) -> Result<PgPool, Error> {
-        self.pool
-            .as_ref()
-            .ok_or_else(|| err_msg("No Database Connection"))
-            .map(|x| x.clone())
-    }
-
-    pub fn with_cli_proc() -> GarminCli {
+    pub fn with_cli_proc() -> GarminCliObj<T, U> {
         let matches = App::new("Garmin Rust Proc")
             .version(get_version_number().as_str())
             .author("Daniel Boline <ddboline@gmail.com>")
@@ -123,60 +132,116 @@ impl GarminCli {
             )
             .get_matches();
 
-        let mut gc = GarminCli::with_config();
-        gc.filenames = matches
-            .values_of("filename")
-            .map(|f| f.map(|f| f.to_string()).collect());
+        GarminCliObj {
+            opts: GarminCliOptions {
+                do_sync: matches.is_present("sync"),
+                do_all: matches.is_present("all"),
+                do_bootstrap: matches.is_present("bootstrap"),
+                filenames: matches
+                    .values_of("filename")
+                    .map(|f| f.map(|f| f.to_string()).collect()),
+            },
+            ..GarminCliObj::with_config()
+        }
+    }
+}
 
-        gc.do_sync = matches.is_present("sync");
-        gc.do_all = matches.is_present("all");
-        gc.do_bootstrap = matches.is_present("bootstrap");
-        gc
+impl<T, U> GarminCli<T, U> for GarminCliObj<T, U>
+where
+    T: GarminParseTrait + Send + Sync,
+    U: GarminCorrectionListTrait + Send + Sync,
+{
+    fn get_pool(&self) -> Result<PgPool, Error> {
+        self.pool
+            .as_ref()
+            .ok_or_else(|| err_msg("No Database Connection"))
+            .map(|x| x.clone())
     }
 
-    pub fn garmin_proc(&self) -> Result<(), Error> {
-        if self.do_bootstrap {
+    fn get_config(&self) -> &GarminConfig {
+        &self.config
+    }
+
+    fn get_opts(&self) -> &GarminCliOptions {
+        &self.opts
+    }
+
+    fn get_corr(&self) -> &U {
+        &self.corr
+    }
+
+    fn get_parser(&self) -> &T {
+        &self.parser
+    }
+}
+
+pub trait GarminCli<T, U>
+where
+    Self: Send + Sync,
+    T: GarminParseTrait + Send + Sync,
+    U: GarminCorrectionListTrait + Send + Sync,
+{
+    fn get_pool(&self) -> Result<PgPool, Error>;
+
+    fn get_config(&self) -> &GarminConfig;
+
+    fn get_opts(&self) -> &GarminCliOptions;
+
+    fn get_corr(&self) -> &U;
+
+    fn get_parser(&self) -> &T;
+
+    fn garmin_proc(&self) -> Result<(), Error> {
+        if self.get_opts().do_bootstrap {
             self.run_bootstrap()?;
-        } else if self.do_sync {
+        } else if self.get_opts().do_sync {
             let gsync = GarminSync::new();
 
             println!("Syncing GPS files");
-            gsync.sync_dir(&self.config.gps_dir, &self.config.gps_bucket, true)?;
+            gsync.sync_dir(
+                &self.get_config().gps_dir,
+                &self.get_config().gps_bucket,
+                true,
+            )?;
 
             println!("Syncing CACHE files");
-            gsync.sync_dir(&self.config.cache_dir, &self.config.cache_bucket, false)?;
+            gsync.sync_dir(
+                &self.get_config().cache_dir,
+                &self.get_config().cache_bucket,
+                false,
+            )?;
 
             println!("Syncing SUMMARY file");
             gsync.sync_dir(
-                &self.config.summary_cache,
-                &self.config.summary_bucket,
+                &self.get_config().summary_cache,
+                &self.get_config().summary_bucket,
                 false,
             )?;
         } else {
-            let corr_list = self.corr.read_corrections_from_db()?;
+            let corr_list = self.get_corr().read_corrections_from_db()?;
             let corr_map = corr_list.get_corr_list_map();
 
             let gsum_list = self.get_summary_list(&corr_map)?;
 
             if !gsum_list.summary_list.is_empty() {
-                gsum_list.write_summary_to_avro_files(&self.config.summary_cache)?;
+                gsum_list.write_summary_to_avro_files(&self.get_config().summary_cache)?;
                 gsum_list.write_summary_to_postgres()?;
                 corr_list.dump_corr_list_to_avro(&format!(
                     "{}/garmin_correction.avro",
-                    &self.config.cache_dir
+                    &self.get_config().cache_dir
                 ))?;
             };
         };
         Ok(())
     }
 
-    pub fn get_summary_list(
+    fn get_summary_list(
         &self,
         corr_map: &HashMap<(String, i32), GarminCorrectionLap>,
     ) -> Result<GarminSummaryList, Error> {
         let pg_conn = self.get_pool()?;
 
-        let gsum_list = match &self.filenames {
+        let gsum_list = match &self.get_opts().filenames {
             Some(flist) => {
                 let proc_list: Vec<Result<_, Error>> = flist
                     .par_iter()
@@ -184,7 +249,7 @@ impl GarminCli {
                         println!("Process {}", &f);
                         Ok(GarminSummary::process_single_gps_file(
                             &f,
-                            &self.config.cache_dir,
+                            &self.get_config().cache_dir,
                             &corr_map,
                         )?)
                     })
@@ -192,14 +257,14 @@ impl GarminCli {
                 GarminSummaryList::from_vec(map_result_vec(proc_list)?)
             }
             None => {
-                if self.do_all {
+                if self.get_opts().do_all {
                     GarminSummaryList::process_all_gps_files(
-                        &self.config.gps_dir,
-                        &self.config.cache_dir,
+                        &self.get_config().gps_dir,
+                        &self.get_config().cache_dir,
                         &corr_map,
                     )?
                 } else {
-                    let path = Path::new(&self.config.cache_dir);
+                    let path = Path::new(&self.get_config().cache_dir);
                     let cacheset: HashSet<String> = get_file_list(&path)
                         .into_par_iter()
                         .filter_map(|f| {
@@ -217,7 +282,7 @@ impl GarminCli {
                         .into_iter()
                         .collect();
 
-                    let path = Path::new(&self.config.gps_dir);
+                    let path = Path::new(&self.get_config().gps_dir);
                     let proc_list: Vec<Result<_, Error>> = get_file_list(&path)
                         .into_par_iter()
                         .map(|f| f.split('/').last().unwrap().to_string())
@@ -226,7 +291,7 @@ impl GarminCli {
                             if dbset.contains(&f) && cacheset.contains(&cachefile) {
                                 None
                             } else {
-                                let gps_path = format!("{}/{}", &self.config.gps_dir, &f);
+                                let gps_path = format!("{}/{}", &self.get_config().gps_dir, &f);
                                 println!("Process {}", &gps_path);
                                 Some(gps_path)
                             }
@@ -234,7 +299,7 @@ impl GarminCli {
                         .map(|f| {
                             Ok(GarminSummary::process_single_gps_file(
                                 &f,
-                                &self.config.cache_dir,
+                                &self.get_config().cache_dir,
                                 &corr_map,
                             )?)
                         })
@@ -247,25 +312,33 @@ impl GarminCli {
         Ok(gsum_list)
     }
 
-    pub fn run_bootstrap(&self) -> Result<(), Error> {
+    fn run_bootstrap(&self) -> Result<(), Error> {
         let pg_conn = self.get_pool()?;
 
         let gsync = GarminSync::new();
         println!("Syncing GPS files");
-        gsync.sync_dir(&self.config.gps_dir, &self.config.gps_bucket, true)?;
+        gsync.sync_dir(
+            &self.get_config().gps_dir,
+            &self.get_config().gps_bucket,
+            true,
+        )?;
         println!("Syncing CACHE files");
-        gsync.sync_dir(&self.config.cache_dir, &self.config.cache_bucket, false)?;
+        gsync.sync_dir(
+            &self.get_config().cache_dir,
+            &self.get_config().cache_bucket,
+            false,
+        )?;
         println!("Syncing SUMMARY files");
         gsync.sync_dir(
-            &self.config.summary_cache,
-            &self.config.summary_bucket,
+            &self.get_config().summary_cache,
+            &self.get_config().summary_bucket,
             false,
         )?;
 
         println!("Read corrections from avro file");
         let corr_list = GarminCorrectionList::read_corr_list_from_avro(&format!(
             "{}/garmin_correction.avro",
-            &self.config.cache_dir
+            &self.get_config().cache_dir
         ))?
         .with_pool(&pg_conn);
 
@@ -273,7 +346,7 @@ impl GarminCli {
         corr_list.dump_corrections_to_db()?;
 
         println!("Read summaries from avro files");
-        let cache = &self.config.summary_cache;
+        let cache = &self.get_config().summary_cache;
         let gsum_list = GarminSummaryList::from_avro_files(cache)?.with_pool(&pg_conn);
 
         println!("Write summaries to postgres");
@@ -281,7 +354,7 @@ impl GarminCli {
         Ok(())
     }
 
-    pub fn cli_garmin_report(&self) -> Result<(), Error> {
+    fn cli_garmin_report(&self) -> Result<(), Error> {
         let matches = App::new("Garmin Rust Report")
             .version(get_version_number().as_str())
             .author("Daniel Boline <ddboline@gmail.com>")
@@ -292,18 +365,18 @@ impl GarminCli {
         let req = match matches.values_of("patterns") {
             Some(patterns) => {
                 let strings: Vec<String> = patterns.map(|x| x.to_string()).collect();
-                GarminCli::process_pattern(&strings)
+                Self::process_pattern(&strings)
             }
             None => {
                 let default_patterns = vec!["year".to_string()];
-                GarminCli::process_pattern(&default_patterns)
+                Self::process_pattern(&default_patterns)
             }
         };
 
         self.run_cli(&req.options, &req.constraints)
     }
 
-    pub fn process_pattern(patterns: &[String]) -> GarminHtmlRequest {
+    fn process_pattern(patterns: &[String]) -> GarminHtmlRequest {
         let mut options = GarminReportOptions::new();
 
         let sport_type_map = get_sport_type_map();
@@ -346,11 +419,7 @@ impl GarminCli {
         }
     }
 
-    pub fn run_cli(
-        &self,
-        options: &GarminReportOptions,
-        constraints: &[String],
-    ) -> Result<(), Error> {
+    fn run_cli(&self, options: &GarminReportOptions, constraints: &[String]) -> Result<(), Error> {
         let pg_conn = self.get_pool()?;
 
         let req = GarminListRequest {
@@ -365,16 +434,16 @@ impl GarminCli {
                     .get(0)
                     .ok_or_else(|| err_msg("This shouldn't be happening..."))?;
                 debug!("{}", &file_name);
-                let avro_file = format!("{}/{}.avro", &self.config.cache_dir, file_name);
+                let avro_file = format!("{}/{}.avro", &self.get_config().cache_dir, file_name);
                 let gfile = match garmin_file::GarminFile::read_avro(&avro_file) {
                     Ok(g) => {
                         debug!("Cached avro file read: {}", &avro_file);
                         g
                     }
                     Err(_) => {
-                        let gps_file = format!("{}/{}", &self.config.gps_dir, file_name);
+                        let gps_file = format!("{}/{}", &self.get_config().gps_dir, file_name);
 
-                        let corr_list = self.corr.read_corrections_from_db()?;
+                        let corr_list = self.get_corr().read_corrections_from_db()?;
                         let corr_map = corr_list.get_corr_list_map();
 
                         debug!("Reading gps_file: {}", &gps_file);
@@ -397,7 +466,7 @@ impl GarminCli {
         Ok(())
     }
 
-    pub fn run_html(&self, req: &GarminHtmlRequest) -> Result<String, Error> {
+    fn run_html(&self, req: &GarminHtmlRequest) -> Result<String, Error> {
         let pg_conn = self.get_pool()?;
 
         let file_list = req.get_list_of_files_from_db(&pg_conn)?;
@@ -409,16 +478,16 @@ impl GarminCli {
                     .get(0)
                     .ok_or_else(|| err_msg("This shouldn't be happening..."))?;
                 debug!("{}", &file_name);
-                let avro_file = format!("{}/{}.avro", self.config.cache_dir, file_name);
+                let avro_file = format!("{}/{}.avro", self.get_config().cache_dir, file_name);
                 let gfile = match garmin_file::GarminFile::read_avro(&avro_file) {
                     Ok(g) => {
                         debug!("Cached avro file read: {}", &avro_file);
                         g
                     }
                     Err(_) => {
-                        let gps_file = format!("{}/{}", &self.config.gps_dir, file_name);
+                        let gps_file = format!("{}/{}", &self.get_config().gps_dir, file_name);
 
-                        let corr_list = self.corr.read_corrections_from_db()?;
+                        let corr_list = self.get_corr().read_corrections_from_db()?;
                         let corr_map = corr_list.get_corr_list_map();
 
                         debug!("Reading gps_file: {}", &gps_file);
@@ -435,10 +504,10 @@ impl GarminCli {
 
                 file_report_html(
                     &gfile,
-                    &self.config.maps_api_key,
+                    &self.get_config().maps_api_key,
                     &htmlcachedir,
                     &req.history,
-                    &self.config.gps_dir,
+                    &self.get_config().gps_dir,
                 )
             }
             _ => {

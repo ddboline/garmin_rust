@@ -17,12 +17,14 @@ use rayon::prelude::*;
 use std::collections::HashMap;
 use std::fmt;
 
-use super::garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList};
+use super::garmin_correction_lap::{
+    GarminCorrectionLap, GarminCorrectionList, GarminCorrectionListTrait,
+};
 use super::garmin_file::GarminFile;
 use super::garmin_sync::GarminSync;
 use super::garmin_sync::GarminSyncTrait;
 use super::pgpool::PgPool;
-use crate::parsers::garmin_parse::GarminParse;
+use crate::parsers::garmin_parse::{GarminParse, GarminParseTrait};
 use crate::utils::garmin_util::{
     generate_random_string, get_file_list, get_md5sum, map_result_vec,
 };

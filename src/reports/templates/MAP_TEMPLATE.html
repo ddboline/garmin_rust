@@ -109,7 +109,13 @@ HISTORYBUTTONS
     function processStravaData() {
         var strava_title = document.getElementById( 'strava_upload' );
         var ostr = '../strava';
-        var data = JSON.stringify({"filename": "FILENAME", "title": strava_title.value, "activity_type": "ACTIVITYTYPE"});
+        var data = JSON.stringify(
+            {
+                "filename": "FILENAME",
+                "title": strava_title.value,
+                "activity_type": "ACTIVITYTYPE"
+            }
+        );
         var xmlhttp = new XMLHttpRequest();
         xmlhttp.onload = function() {
             var win = window.open(xmlhttp.responseText, '_blank');

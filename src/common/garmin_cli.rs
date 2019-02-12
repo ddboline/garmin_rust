@@ -47,7 +47,7 @@ pub struct GarminCliOptions {
 }
 
 #[derive(Debug, Default)]
-pub struct GarminCliObj<T, U>
+pub struct GarminCliObj<T = GarminParse, U = GarminCorrectionList>
 where
     T: GarminParseTrait,
     U: GarminCorrectionListTrait,
@@ -75,7 +75,7 @@ where
     pub fn with_config() -> GarminCliObj<T, U> {
         let config = GarminConfig::get_config(None);
         let pool = PgPool::new(&config.pgurl);
-        let corr = GarminCorrectionListTrait::from_pool(&pool);
+        let corr = U::from_pool(&pool);
         GarminCliObj {
             config,
             pool: Some(pool),
@@ -146,11 +146,7 @@ where
     }
 }
 
-impl<T, U> GarminCli<T, U> for GarminCliObj<T, U>
-where
-    T: GarminParseTrait + Send + Sync,
-    U: GarminCorrectionListTrait + Send + Sync,
-{
+impl GarminCli for GarminCliObj<GarminParse, GarminCorrectionList> {
     fn get_pool(&self) -> Result<PgPool, Error> {
         self.pool
             .as_ref()
@@ -166,16 +162,16 @@ where
         &self.opts
     }
 
-    fn get_corr(&self) -> &U {
+    fn get_corr(&self) -> &GarminCorrectionList {
         &self.corr
     }
 
-    fn get_parser(&self) -> &T {
+    fn get_parser(&self) -> &GarminParse {
         &self.parser
     }
 }
 
-pub trait GarminCli<T, U>
+pub trait GarminCli<T = GarminParse, U = GarminCorrectionList>
 where
     Self: Send + Sync,
     T: GarminParseTrait + Send + Sync,

@@ -15,7 +15,7 @@ use rust_auth_server::auth_handler::LoggedUser;
 use super::garmin_rust_app::AppState;
 use crate::common::garmin_cli::{GarminCli, GarminCliObj};
 use crate::common::garmin_config::GarminConfig;
-use crate::common::garmin_correction_lap::{GarminCorrectionList, GarminCorrectionListTrait};
+use crate::common::garmin_correction_lap::GarminCorrectionListTrait;
 use crate::common::garmin_file::GarminFile;
 use crate::http::garmin_requests::{GarminCorrRequest, GarminHtmlRequest, GarminListRequest};
 use crate::parsers::garmin_parse::{GarminParse, GarminParseTrait};
@@ -33,7 +33,7 @@ fn proc_pattern_wrapper(request: FilterRequest) -> GarminHtmlRequest {
 
     let filter_vec: Vec<String> = filter.split(',').map(|x| x.to_string()).collect();
 
-    let req = GarminCliObj::<GarminParse, GarminCorrectionList>::process_pattern(&filter_vec);
+    let req = GarminCliObj::process_pattern(&filter_vec);
 
     GarminHtmlRequest {
         filter,

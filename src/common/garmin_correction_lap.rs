@@ -118,18 +118,11 @@ impl GarminCorrectionList {
             pool: None,
         }
     }
-
-    pub fn from_pool(pool: &PgPool) -> GarminCorrectionList {
-        GarminCorrectionList {
-            corr_list: Vec::new(),
-            pool: Some(pool.clone()),
-        }
-    }
 }
 
 impl GarminCorrectionListTrait for GarminCorrectionList {
-    fn from_pool(pool: &PgPool) -> Self {
-        Self {
+    fn from_pool(pool: &PgPool) -> GarminCorrectionList {
+        GarminCorrectionList {
             pool: Some(pool.clone()),
             ..Default::default()
         }

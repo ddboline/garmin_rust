@@ -1,7 +1,5 @@
 #![allow(clippy::needless_pass_by_value)]
 
-extern crate actix;
-
 use garmin_rust::http::garmin_rust_app::start_app;
 
 fn main() {

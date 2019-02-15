@@ -1,5 +1,3 @@
-extern crate env_logger;
-
 use garmin_rust::common::garmin_cli::{GarminCli, GarminCliObj};
 
 fn main() {

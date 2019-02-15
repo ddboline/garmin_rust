@@ -1,6 +1,3 @@
-extern crate chrono;
-extern crate subprocess;
-
 use failure::{err_msg, Error};
 use std::collections::HashMap;
 use std::env::var;

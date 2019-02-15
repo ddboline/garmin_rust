@@ -1,10 +1,3 @@
-extern crate chrono;
-extern crate num;
-extern crate r2d2;
-extern crate r2d2_postgres;
-extern crate rayon;
-extern crate serde_json;
-
 use num::traits::Pow;
 
 use std::io::BufRead;

@@ -1,7 +1,3 @@
-extern crate config;
-extern crate rayon;
-extern crate tempdir;
-
 use clap::{App, Arg};
 use failure::{err_msg, Error};
 use rayon::prelude::*;

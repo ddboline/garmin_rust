@@ -1,7 +1,5 @@
 #![allow(clippy::needless_pass_by_value)]
 
-extern crate garmin_rust;
-
 use std::env::var;
 use std::error::Error;
 

@@ -2,16 +2,11 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
 import os.path
-import gzip
-import requests
-import time
 import logging
 
 from gevent.pywsgi import WSGIServer
 
-import fitbit
 from fitbit.api import Fitbit
-from tempfile import NamedTemporaryFile
 from oauthlib.oauth2.rfc6749.errors import MismatchingStateError, MissingTokenError
 
 from flask import Flask, request

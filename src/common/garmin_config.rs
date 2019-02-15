@@ -1,5 +1,4 @@
 #![allow(clippy::wrong_self_convention)]
-extern crate dotenv;
 
 use std::env::var;
 use std::path::Path;

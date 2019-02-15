@@ -1,5 +1,3 @@
-extern crate rayon;
-
 use failure::Error;
 use rayon::prelude::*;
 

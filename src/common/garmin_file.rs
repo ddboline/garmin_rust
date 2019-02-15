@@ -1,5 +1,3 @@
-extern crate flate2;
-
 use avro_rs::{from_value, Codec, Reader, Schema, Writer};
 use std::collections::HashMap;
 use std::fs::File;

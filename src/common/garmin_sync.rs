@@ -1,7 +1,3 @@
-extern crate futures;
-extern crate rayon;
-extern crate rusoto_s3;
-
 use futures::stream::Stream;
 use std::io::{Read, Write};
 

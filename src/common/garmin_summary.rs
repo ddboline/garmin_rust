@@ -1,7 +1,3 @@
-extern crate flate2;
-extern crate rand;
-extern crate rayon;
-
 use avro_rs::{from_value, Codec, Reader, Schema, Writer};
 use postgres_derive::{FromSql, ToSql};
 use tempdir::TempDir;

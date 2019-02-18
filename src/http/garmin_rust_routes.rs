@@ -35,7 +35,7 @@ fn proc_pattern_wrapper(request: FilterRequest) -> GarminHtmlRequest {
         (year - 1, 12)
     };
     let default_string = format!(
-        "{:04}-{:02},{:04}-{:02},week;latest",
+        "{:04}-{:02},{:04}-{:02},week",
         prev_year, prev_month, year, month
     );
 

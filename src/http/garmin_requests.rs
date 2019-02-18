@@ -19,7 +19,10 @@ impl Handler<GarminCorrRequest> for PgPool {
     }
 }
 
-fn get_list_of_files_from_db(constraints: &[String], pool: &PgPool) -> Result<Vec<String>, Error> {
+pub fn get_list_of_files_from_db(
+    constraints: &[String],
+    pool: &PgPool,
+) -> Result<Vec<String>, Error> {
     let constr = if constraints.is_empty() {
         "".to_string()
     } else {

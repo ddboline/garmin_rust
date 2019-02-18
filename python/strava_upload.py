@@ -78,13 +78,13 @@ def strava_auth_callback():
                 xmlhttp.onload = function() {
                     var win = window.open(xmlhttp.responseText, '_blank');
                     win.focus()
+                    window.close()
                 }
                 xmlhttp.open( "POST", ostr , true );
                 xmlhttp.setRequestHeader("Content-Type", "application/json");
                 xmlhttp.send(data);
             };
             processStravaData();
-            window.close()
             </script>""" % js, 200
     else:
         return '<title>Strava auth code received!</title>This window can be closed.' \

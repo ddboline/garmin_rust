@@ -22,7 +22,7 @@ pub fn generate_history_buttons(history: &str) -> String {
         let history_str = if !history_vec.is_empty() {
             history_vec.join(";")
         } else {
-            "sport".to_string()
+            "latest;sport".to_string()
         };
 
         history_buttons.push(format!(

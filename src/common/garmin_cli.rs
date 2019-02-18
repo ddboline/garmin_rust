@@ -381,6 +381,9 @@ where
                 "day" => options.do_day = true,
                 "file" => options.do_file = true,
                 "sport" => options.do_all_sports = true,
+                "latest" => constraints.push(
+                    "begin_datetime=(select max(begin_datetime) from garmin_summary)".to_string(),
+                ),
                 pat => match sport_type_map.get(pat) {
                     Some(&x) => options.do_sport = Some(x),
                     None => {

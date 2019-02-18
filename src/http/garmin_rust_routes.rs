@@ -25,7 +25,7 @@ pub struct FilterRequest {
 
 fn proc_pattern_wrapper(request: FilterRequest) -> GarminHtmlRequest {
     let filter = request.filter.unwrap_or_else(|| "sport".to_string());
-    let history = request.history.unwrap_or_else(|| "sport".to_string());
+    let history = request.history.unwrap_or_else(|| "latest".to_string());
 
     let filter_vec: Vec<String> = filter.split(',').map(|x| x.to_string()).collect();
 

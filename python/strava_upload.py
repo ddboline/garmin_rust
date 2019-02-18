@@ -5,6 +5,8 @@ import os.path
 import gzip
 import requests
 import time
+import json
+import base64
 
 from gevent.pywsgi import WSGIServer
 
@@ -47,6 +49,7 @@ def strava_auth_callback():
     cp_, cid, cs, cat = get_config()
 
     code = request.args.get('code')
+    state = request.args.get('state')
 
     if code is None:
         return 'No code received', 200
@@ -62,8 +65,30 @@ def strava_auth_callback():
     cp_.set('API', 'ACCESS_TOKEN', cat)
     cp_.write(open(os.path.expanduser('~/.stravacli'), "w"))
 
-    return '<title>Strava auth code received!</title>This window can be closed.' \
-        '<script language="JavaScript" type="text/javascript">window.close()</script>', 200
+    if state:
+        js = base64.b64decode(state).decode()
+
+        return """
+            <title>Strava auth code received!</title>This window can be closed.
+            <script language="JavaScript" type="text/javascript">
+            function processStravaData() {
+                var ostr = '/strava';
+                var data = JSON.stringify(%s);
+                var xmlhttp = new XMLHttpRequest();
+                xmlhttp.onload = function() {
+                    var win = window.open(xmlhttp.responseText, '_blank');
+                    win.focus()
+                }
+                xmlhttp.open( "POST", ostr , true );
+                xmlhttp.setRequestHeader("Content-Type", "application/json");
+                xmlhttp.send(data);
+            };
+            processStravaData();
+            window.close()
+            </script>""" % js, 200
+    else:
+        return '<title>Strava auth code received!</title>This window can be closed.' \
+            '<script language="JavaScript" type="text/javascript">window.close()</script>', 200
 
 
 @app.route('/', methods=['POST'])
@@ -96,7 +121,10 @@ def strava_endpoint():
 
         _scope = 'activity:write'
         authorize_url = client.authorization_url(
-            client_id=cid, redirect_uri='https://www.ddboline.net/strava/callback', scope=_scope)
+            client_id=cid,
+            redirect_uri='https://www.ddboline.net/strava/callback',
+            scope=_scope,
+            state=base64.b64encode(json.dumps(request.json).encode()).decode())
 
         return authorize_url, 200
 

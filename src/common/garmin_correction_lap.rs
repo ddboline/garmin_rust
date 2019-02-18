@@ -111,13 +111,6 @@ impl GarminCorrectionList {
         self.pool = Some(pool.clone());
         self
     }
-
-    pub fn from_vec(corr_list: Vec<GarminCorrectionLap>) -> GarminCorrectionList {
-        GarminCorrectionList {
-            corr_list,
-            pool: None,
-        }
-    }
 }
 
 impl GarminCorrectionListTrait for GarminCorrectionList {
@@ -137,10 +130,22 @@ impl GarminCorrectionListTrait for GarminCorrectionList {
     fn get_corr_list(&self) -> &Vec<GarminCorrectionLap> {
         &self.corr_list
     }
+
+    fn from_vec(corr_list: Vec<GarminCorrectionLap>) -> GarminCorrectionList {
+        GarminCorrectionList {
+            corr_list,
+            pool: None,
+        }
+    }
 }
 
-pub trait GarminCorrectionListTrait {
+pub trait GarminCorrectionListTrait
+where
+    Self: Sized,
+{
     fn from_pool(pool: &PgPool) -> Self;
+
+    fn from_vec(corr_list: Vec<GarminCorrectionLap>) -> Self;
 
     fn get_pool(&self) -> Result<&PgPool, Error>;
 
@@ -153,7 +158,7 @@ pub trait GarminCorrectionListTrait {
             .collect()
     }
 
-    fn corr_list_from_buffer(buffer: &[u8]) -> Result<GarminCorrectionList, Error> {
+    fn corr_list_from_buffer(buffer: &[u8]) -> Result<Self, Error> {
         let jsval = parse(&str::from_utf8(&buffer)?)?;
 
         let corr_list = match &jsval {
@@ -207,17 +212,17 @@ pub trait GarminCorrectionListTrait {
             _ => Vec::new(),
         };
 
-        Ok(GarminCorrectionList::from_vec(corr_list))
+        Ok(Self::from_vec(corr_list))
     }
 
-    fn corr_list_from_json(json_filename: &str) -> Result<GarminCorrectionList, Error> {
+    fn corr_list_from_json(json_filename: &str) -> Result<Self, Error> {
         let mut file = File::open(json_filename)?;
 
         let mut buffer = Vec::new();
 
         match file.read_to_end(&mut buffer)? {
             0 => Err(err_msg(format!("Zero bytes read from {}", json_filename))),
-            _ => GarminCorrectionList::corr_list_from_buffer(&buffer),
+            _ => Self::corr_list_from_buffer(&buffer),
         }
     }
 
@@ -235,7 +240,7 @@ pub trait GarminCorrectionListTrait {
         Ok(())
     }
 
-    fn read_corr_list_from_avro(input_filename: &str) -> Result<GarminCorrectionList, Error> {
+    fn read_corr_list_from_avro(input_filename: &str) -> Result<Self, Error> {
         let garmin_file_avro_schema = GARMIN_CORRECTION_LAP_AVRO_SCHEMA;
         let schema = Schema::parse_str(&garmin_file_avro_schema)?;
 
@@ -252,10 +257,10 @@ pub trait GarminCorrectionListTrait {
 
         let corr_list = map_result_vec(corr_list)?;
 
-        Ok(GarminCorrectionList::from_vec(corr_list))
+        Ok(Self::from_vec(corr_list))
     }
 
-    fn add_mislabeled_times_to_corr_list(&self) -> GarminCorrectionList {
+    fn add_mislabeled_times_to_corr_list(&self) -> Self {
         let mut corr_list_map = self.get_corr_list_map();
 
         let mislabeled_times = vec![
@@ -333,7 +338,7 @@ pub trait GarminCorrectionListTrait {
             }
         }
 
-        GarminCorrectionList::from_vec(corr_list_map.values().cloned().collect())
+        Self::from_vec(corr_list_map.values().cloned().collect())
     }
 
     fn fix_corrections(&self) -> Result<(), Error> {
@@ -341,8 +346,7 @@ pub trait GarminCorrectionListTrait {
         let gps_dir = "/home/ddboline/.garmin_cache/run/gps_tracks";
         let cache_dir = "/home/ddboline/.garmin_cache/run/cache";
 
-        let corr_list =
-            GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json")?;
+        let corr_list = Self::corr_list_from_json("tests/data/garmin_corrections.json")?;
 
         let corr_list = corr_list.add_mislabeled_times_to_corr_list();
 
@@ -350,7 +354,7 @@ pub trait GarminCorrectionListTrait {
 
         //let corr_list = read_corr_list_from_avro(&correction_file)?;
 
-        println!("{}", corr_list.corr_list.len());
+        println!("{}", corr_list.get_corr_list().len());
 
         let fn_unique_key_map = self.get_filename_start_map()?;
 
@@ -382,10 +386,9 @@ pub trait GarminCorrectionListTrait {
             }
         }
 
-        let new_corr_list =
-            GarminCorrectionList::from_vec(new_corr_map.values().cloned().collect());
+        let new_corr_list = Self::from_vec(new_corr_map.values().cloned().collect());
 
-        println!("{}", new_corr_list.corr_list.len());
+        println!("{}", new_corr_list.get_corr_list().len());
 
         new_corr_list.dump_corr_list_to_avro(correction_file)?;
         Ok(())
@@ -455,7 +458,7 @@ pub trait GarminCorrectionListTrait {
         Ok(())
     }
 
-    fn read_corrections_from_db(&self) -> Result<GarminCorrectionList, Error> {
+    fn read_corrections_from_db(&self) -> Result<Self, Error> {
         let conn = self.get_pool()?.get()?;
         let corr_list: Vec<GarminCorrectionLap> = conn.query(
             "select id, start_time, lap_number, sport, distance, duration from garmin_corrections_laps",
@@ -472,19 +475,19 @@ pub trait GarminCorrectionListTrait {
             })
             .collect();
 
-        Ok(GarminCorrectionList::from_vec(corr_list))
+        Ok(Self::from_vec(corr_list))
     }
 
     fn read_corrections_from_db_dump_to_avro(&self) -> Result<(), Error> {
         let corr_list = self.read_corrections_from_db()?;
 
-        println!("{}", corr_list.corr_list.len());
+        println!("{}", corr_list.get_corr_list().len());
 
         corr_list.dump_corr_list_to_avro("garmin_correction.avro")?;
 
-        let corr_list = GarminCorrectionList::read_corr_list_from_avro("garmin_correction.avro")?;
+        let corr_list = Self::read_corr_list_from_avro("garmin_correction.avro")?;
 
-        println!("{}", corr_list.corr_list.len());
+        println!("{}", corr_list.get_corr_list().len());
         Ok(())
     }
 }

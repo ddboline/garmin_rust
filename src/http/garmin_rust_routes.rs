@@ -4,7 +4,7 @@ use actix_web::{
     http::StatusCode, AsyncResponder, FutureResponse, HttpMessage, HttpRequest, HttpResponse, Json,
     Query,
 };
-use chrono::{Date, Local, Datelike};
+use chrono::{Date, Datelike, Local};
 use failure::err_msg;
 use futures::future::Future;
 
@@ -27,7 +27,17 @@ pub struct FilterRequest {
 
 fn proc_pattern_wrapper(request: FilterRequest) -> GarminHtmlRequest {
     let local: Date<Local> = Local::today();
-    let default_string = format!("{:04}-{:02},week;latest", local.year(), local.month());
+    let year = local.year();
+    let month = local.month();
+    let (prev_year, prev_month) = if month > 1 {
+        (year, month - 1)
+    } else {
+        (year - 1, 12)
+    };
+    let default_string = format!(
+        "{:04}-{:02},{:04}-{:02},week;latest",
+        prev_year, prev_month, year, month
+    );
 
     let filter = request.filter.unwrap_or_else(|| "sport".to_string());
     let history = request

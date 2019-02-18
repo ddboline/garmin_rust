@@ -4,8 +4,10 @@ use actix_web::{
     http::StatusCode, AsyncResponder, FutureResponse, HttpMessage, HttpRequest, HttpResponse, Json,
     Query,
 };
+use chrono::{Date, Local, Datelike};
 use failure::err_msg;
 use futures::future::Future;
+
 use rust_auth_server::auth_handler::LoggedUser;
 
 use super::garmin_rust_app::AppState;
@@ -24,8 +26,13 @@ pub struct FilterRequest {
 }
 
 fn proc_pattern_wrapper(request: FilterRequest) -> GarminHtmlRequest {
+    let local: Date<Local> = Local::today();
+    let default_string = format!("{:04}-{:02},week;latest", local.year(), local.month());
+
     let filter = request.filter.unwrap_or_else(|| "sport".to_string());
-    let history = request.history.unwrap_or_else(|| "latest".to_string());
+    let history = request
+        .history
+        .unwrap_or_else(|| format!("{};latest;sport", default_string));
 
     let filter_vec: Vec<String> = filter.split(',').map(|x| x.to_string()).collect();
 

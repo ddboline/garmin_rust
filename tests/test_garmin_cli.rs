@@ -1,26 +1,21 @@
-use garmin_rust::common::garmin_cli;
+use garmin_rust::common::garmin_cli::{GarminCliObj, GarminCliOptions};
 use garmin_rust::common::garmin_config;
 use garmin_rust::common::garmin_correction_lap::GarminCorrectionList;
+use garmin_rust::parsers::garmin_parse::GarminParse;
 
 #[test]
 fn test_garmin_cli_new() {
-    let gcli = garmin_cli::GarminCli::new();
-    assert_eq!(gcli.do_sync, false);
-    assert_eq!(gcli.do_all, false);
-    assert_eq!(gcli.do_bootstrap, false);
-    assert_eq!(gcli.filenames, None);
+    let gcli = GarminCliObj::<GarminParse, GarminCorrectionList>::new();
+    assert_eq!(gcli.opts, GarminCliOptions::None);
 }
 
 #[test]
 fn test_garmin_file_test_filenames() {
     let test_config = "tests/data/test.env";
 
-    let gcli = garmin_cli::GarminCli {
+    let gcli = GarminCliObj {
         config: garmin_config::GarminConfig::get_config(Some(test_config)),
-        do_sync: false,
-        do_all: false,
-        do_bootstrap: false,
-        filenames: Some(vec![
+        opts: GarminCliOptions::FileNames(vec![
             "tests/data/test.fit".to_string(),
             "tests/data/test.gmn".to_string(),
             "tests/data/test.tcx".to_string(),
@@ -28,5 +23,6 @@ fn test_garmin_file_test_filenames() {
         ]),
         pool: None,
         corr: GarminCorrectionList::new(),
+        parser: GarminParse::new(),
     };
 }

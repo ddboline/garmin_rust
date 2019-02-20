@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate approx;
 
-use garmin_rust::common::garmin_correction_lap::GarminCorrectionList;
+use garmin_rust::common::garmin_correction_lap::{GarminCorrectionList, GarminCorrectionListTrait};
 use garmin_rust::parsers::garmin_parse::GarminParseTrait;
 use garmin_rust::parsers::garmin_parse_tcx;
 

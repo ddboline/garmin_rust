@@ -1,15 +1,15 @@
 #[macro_use]
 extern crate approx;
 
-use garmin_rust::common::garmin_correction_lap::GarminCorrectionList;
-use garmin_rust::parsers::garmin_parse;
+use garmin_rust::common::garmin_correction_lap::{GarminCorrectionList, GarminCorrectionListTrait};
+use garmin_rust::parsers::garmin_parse::{GarminParse, GarminParseTrait};
 
 #[test]
 fn test_invalid_ext() {
     let corr_list =
         GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json").unwrap();
     let corr_map = corr_list.get_corr_list_map();
-    let err = garmin_parse::GarminParse::new()
+    let err = GarminParse::new()
         .with_file("invalid.invalid", &corr_map)
         .unwrap_err();
     assert_eq!(format!("{}", err), "Invalid extension".to_string())
@@ -20,7 +20,7 @@ fn test_garmin_parse_gmn() {
     let corr_list =
         GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json").unwrap();
     let corr_map = corr_list.get_corr_list_map();
-    let gfile = garmin_parse::GarminParse::new()
+    let gfile = GarminParse::new()
         .with_file("tests/data/test.gmn", &corr_map)
         .unwrap();
     assert_eq!(gfile.filename, "test.gmn");
@@ -41,7 +41,7 @@ fn test_garmin_parse_tcx() {
     let corr_list =
         GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json").unwrap();
     let corr_map = corr_list.get_corr_list_map();
-    let gfile = garmin_parse::GarminParse::new()
+    let gfile = GarminParse::new()
         .with_file("tests/data/test.tcx", &corr_map)
         .unwrap();
     assert_eq!(gfile.filename, "test.tcx");
@@ -62,7 +62,7 @@ fn test_garmin_parse_fit() {
     let corr_list =
         GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json").unwrap();
     let corr_map = corr_list.get_corr_list_map();
-    let gfile = garmin_parse::GarminParse::new()
+    let gfile = GarminParse::new()
         .with_file("tests/data/test.fit", &corr_map)
         .unwrap();
     assert_eq!(gfile.filename, "test.fit");

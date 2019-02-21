@@ -7,7 +7,7 @@ build_type := release
 all:
 	mkdir -p build/ && \
 	cp Dockerfile.ubuntu18.04 build/Dockerfile && \
-	cp -a Cargo.toml src scripts Makefile python build/ && \
+	cp -a Cargo.toml src scripts Makefile python templates build/ && \
 	cd build/ && \
 	docker build -t garmin_rust/build_rust:ubuntu18.04 . && \
 	cd ../ && \

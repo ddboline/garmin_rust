@@ -8,7 +8,7 @@ use chrono::{Date, Datelike, Local};
 use failure::err_msg;
 use futures::future::Future;
 
-use rust_auth_server::auth_handler::LoggedUser;
+use super::logged_user::LoggedUser;
 
 use super::garmin_rust_app::AppState;
 use crate::common::garmin_cli::{GarminCli, GarminCliObj};

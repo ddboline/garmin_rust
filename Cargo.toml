@@ -1,6 +1,6 @@
 [package]
 name = "garmin_rust"
-version = "0.1.30"
+version = "0.1.31"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -37,7 +37,7 @@ simple_logger = "1.0"
 r2d2 = "*"
 r2d2_postgres = "*"
 dotenv = "*"
-rust_auth_server = {git = "https://github.com/ddboline/rust-auth-server.git", tag="0.1.1"}
+jsonwebtoken = "5.0"
 
 [dependencies.avro-rs]
 version = "^0.6"

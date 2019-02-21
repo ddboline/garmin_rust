@@ -1,4 +1,4 @@
-version := "0.1.30"
+version = $(shell awk '/^version/' Cargo.toml | head -n1 | cut -d "=" -f 2)
 release := "1"
 uniq := $(shell head -c1000 /dev/urandom | sha512sum | head -c 12 ; echo ;)
 cidfile := "/tmp/.tmp.docker.$(uniq)"
@@ -66,3 +66,6 @@ pull:
 
 dev:
 	docker run -it --rm -v `pwd`:/garmin_rust rust_stable:latest /bin/bash || true
+
+get_version:
+	echo $(version)

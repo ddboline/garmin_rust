@@ -6,5 +6,6 @@ WORKDIR /garmin_rust
 ADD Cargo.toml /garmin_rust
 ADD src /garmin_rust/src
 ADD scripts /garmin_rust/scripts
+ADD templates /garmin_rust/templates
 ADD Makefile /garmin_rust
 ADD python /garmin_rust/python

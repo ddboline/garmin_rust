@@ -4,7 +4,7 @@ use actix_web::{
     http::StatusCode, AsyncResponder, FutureResponse, HttpRequest, HttpResponse, Json, Query,
 };
 use chrono::{Date, Datelike, Local};
-use failure::err_msg;
+use failure::{err_msg, Error};
 use futures::future::Future;
 
 use super::logged_user::LoggedUser;
@@ -62,6 +62,20 @@ fn form_http_response(body: String) -> HttpResponse {
         .body(body)
 }
 
+fn get_auth_fut(
+    user: LoggedUser,
+    request: HttpRequest<AppState>,
+) -> impl Future<Item=Result<bool, Error>, Error=actix_web::Error> {
+    request
+        .state()
+        .db
+        .send(AuthorizedUserRequest {
+            user,
+            user_list: request.state().user_list.clone(),
+        })
+        .from_err()
+}
+
 pub fn garmin(
     query: Query<FilterRequest>,
     user: LoggedUser,
@@ -79,14 +93,7 @@ pub fn garmin(
         })
         .responder()
     } else {
-        request
-            .state()
-            .db
-            .send(AuthorizedUserRequest {
-                user,
-                user_list: request.state().user_list.clone(),
-            })
-            .from_err()
+        get_auth_fut(user, request)
             .join(fut)
             .and_then(move |(res0, res1)| match res0 {
                 Ok(true) => match res1 {

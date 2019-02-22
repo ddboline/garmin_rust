@@ -48,7 +48,7 @@ impl LoggedUser {
             .iter()
             .nth(0)
             .map(|row| {
-                let count: i32 = row.get(0);
+                let count: i64 = row.get(0);
                 count > 0
             })
             .ok_or_else(|| err_msg("DB Failure"))

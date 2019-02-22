@@ -63,16 +63,13 @@ fn form_http_response(body: String) -> HttpResponse {
 }
 
 fn get_auth_fut(
-    user: LoggedUser,
+    user: &LoggedUser,
     request: &HttpRequest<AppState>,
 ) -> impl Future<Item = Result<bool, Error>, Error = actix_web::Error> {
     request
         .state()
         .db
-        .send(AuthorizedUserRequest {
-            user,
-            user_list: request.state().user_list.clone(),
-        })
+        .send(AuthorizedUserRequest { user: user.clone() })
         .from_err()
 }
 
@@ -86,20 +83,23 @@ pub fn garmin(
 
     let fut = request.state().db.send(req).from_err();
 
-    if request.state().user_list.try_is_authorized(&user) {
+    if request.state().user_list.is_authorized(&user) {
         fut.and_then(move |res| match res {
             Ok(body) => Ok(form_http_response(body)),
             Err(err) => Err(err.into()),
         })
         .responder()
     } else {
-        get_auth_fut(user, &request)
+        get_auth_fut(&user, &request)
             .join(fut)
             .and_then(move |(res0, res1)| match res0 {
-                Ok(true) => match res1 {
-                    Ok(body) => Ok(form_http_response(body)),
-                    Err(err) => Err(err.into()),
-                },
+                Ok(true) => {
+                    request.state().user_list.store_auth(user)?;
+                    match res1 {
+                        Ok(body) => Ok(form_http_response(body)),
+                        Err(err) => Err(err.into()),
+                    }
+                }
                 Ok(false) => Ok(HttpResponse::Unauthorized().json("Unauthorized")),
                 Err(err) => Err(err.into()),
             })

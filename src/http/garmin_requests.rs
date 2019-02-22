@@ -1,7 +1,7 @@
 use actix::{Handler, Message};
 use failure::Error;
 
-use super::logged_user::{AuthorizedUsers, LoggedUser};
+use super::logged_user::LoggedUser;
 use crate::common::garmin_cli::{GarminCli, GarminCliObj};
 use crate::common::garmin_correction_lap::{GarminCorrectionList, GarminCorrectionListTrait};
 use crate::common::pgpool::PgPool;

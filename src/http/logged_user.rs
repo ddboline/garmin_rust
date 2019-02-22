@@ -1,4 +1,3 @@
-use actix::{Context, Actor};
 use actix_web::{middleware::identity::RequestIdentity, FromRequest, HttpRequest};
 use failure::{err_msg, Error};
 use jsonwebtoken::{decode, Validation};
@@ -82,28 +81,19 @@ impl AuthorizedUsers {
         AuthorizedUsers(Arc::new(RwLock::new(HashSet::new())))
     }
 
-    pub fn try_is_authorized(&self, user: &LoggedUser) -> bool {
-        if let Ok(user_list) = self.0.try_read() {
+    pub fn is_authorized(&self, user: &LoggedUser) -> bool {
+        if let Ok(user_list) = self.0.read() {
             user_list.contains(user)
         } else {
             false
         }
     }
 
-    pub fn is_authorized(&self, user: &LoggedUser) -> bool {
-        if let Ok(user_list) = self.0.read() {
-            if user_list.contains(&user) {
-                return true;
-            }
-        }
-        false
-    }
-
     pub fn store_auth(&self, user: LoggedUser) -> Result<(), Error> {
         if let Ok(mut user_list) = self.0.write() {
-                user_list.insert(user);
-                return Ok(());
+            user_list.insert(user);
+            return Ok(());
         }
-        return Err(err_msg("Failed to store credentials"))
+        return Err(err_msg("Failed to store credentials"));
     }
 }

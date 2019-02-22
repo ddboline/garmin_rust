@@ -51,7 +51,7 @@ impl LoggedUser {
                 let count: i64 = row.get(0);
                 count > 0
             })
-            .ok_or_else(|| err_msg("DB Failure"))
+            .ok_or_else(|| err_msg("User not found"))
     }
 }
 

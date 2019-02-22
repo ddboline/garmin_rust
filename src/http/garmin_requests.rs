@@ -1,6 +1,7 @@
 use actix::{Handler, Message};
 use failure::Error;
 
+use super::logged_user::{AuthorizedUsers, LoggedUser};
 use crate::common::garmin_cli::{GarminCli, GarminCliObj};
 use crate::common::garmin_correction_lap::{GarminCorrectionList, GarminCorrectionListTrait};
 use crate::common::pgpool::PgPool;
@@ -93,5 +94,21 @@ impl Handler<GarminListRequest> for PgPool {
     type Result = Result<Vec<String>, Error>;
     fn handle(&mut self, msg: GarminListRequest, _: &mut Self::Context) -> Self::Result {
         msg.get_list_of_files_from_db(self)
+    }
+}
+
+pub struct AuthorizedUserRequest {
+    pub user: LoggedUser,
+    pub user_list: AuthorizedUsers,
+}
+
+impl Message for AuthorizedUserRequest {
+    type Result = Result<bool, Error>;
+}
+
+impl Handler<AuthorizedUserRequest> for PgPool {
+    type Result = Result<bool, Error>;
+    fn handle(&mut self, msg: AuthorizedUserRequest, _: &mut Self::Context) -> Self::Result {
+        msg.user_list.is_authorized(msg.user, self)
     }
 }

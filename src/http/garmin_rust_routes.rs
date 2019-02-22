@@ -1,8 +1,7 @@
 #![allow(clippy::needless_pass_by_value)]
 
 use actix_web::{
-    http::StatusCode, AsyncResponder, FutureResponse, HttpMessage, HttpRequest, HttpResponse, Json,
-    Query,
+    http::StatusCode, AsyncResponder, FutureResponse, HttpRequest, HttpResponse, Json, Query,
 };
 use chrono::{Date, Datelike, Local};
 use failure::err_msg;
@@ -15,7 +14,9 @@ use crate::common::garmin_cli::{GarminCli, GarminCliObj};
 use crate::common::garmin_config::GarminConfig;
 use crate::common::garmin_correction_lap::GarminCorrectionListTrait;
 use crate::common::garmin_file::GarminFile;
-use crate::http::garmin_requests::{GarminCorrRequest, GarminHtmlRequest, GarminListRequest};
+use crate::http::garmin_requests::{
+    AuthorizedUserRequest, GarminCorrRequest, GarminHtmlRequest, GarminListRequest,
+};
 use crate::parsers::garmin_parse::{GarminParse, GarminParseTrait};
 use crate::reports::garmin_file_report_txt;
 
@@ -55,34 +56,44 @@ fn proc_pattern_wrapper(request: FilterRequest) -> GarminHtmlRequest {
     }
 }
 
+fn form_http_response(body: String) -> HttpResponse {
+    HttpResponse::build(StatusCode::OK)
+        .content_type("text/html; charset=utf-8")
+        .body(body)
+}
+
 pub fn garmin(
     query: Query<FilterRequest>,
     user: LoggedUser,
     request: HttpRequest<AppState>,
 ) -> FutureResponse<HttpResponse> {
-    if user.email != "ddboline@gmail.com" {
-        request
-            .body()
-            .from_err()
-            .and_then(move |_| Ok(HttpResponse::Unauthorized().json("Unauthorized")))
-            .responder()
+    let query = query.into_inner();
+    let req = proc_pattern_wrapper(query);
+
+    let fut = request.state().db.send(req).from_err();
+
+    if request.state().user_list.try_is_authorized(&user) {
+        fut.and_then(move |res| match res {
+            Ok(body) => Ok(form_http_response(body)),
+            Err(err) => Err(err.into()),
+        })
+        .responder()
     } else {
-        let query = query.into_inner();
-
-        let req = proc_pattern_wrapper(query);
-
         request
             .state()
             .db
-            .send(req)
+            .send(AuthorizedUserRequest {
+                user,
+                user_list: request.state().user_list.clone(),
+            })
             .from_err()
-            .and_then(move |res| match res {
-                Ok(body) => {
-                    let resp = HttpResponse::build(StatusCode::OK)
-                        .content_type("text/html; charset=utf-8")
-                        .body(body);
-                    Ok(resp)
-                }
+            .join(fut)
+            .and_then(move |(res0, res1)| match res0 {
+                Ok(true) => match res1 {
+                    Ok(body) => Ok(form_http_response(body)),
+                    Err(err) => Err(err.into()),
+                },
+                Ok(false) => Ok(HttpResponse::Unauthorized().json("Unauthorized")),
                 Err(err) => Err(err.into()),
             })
             .responder()

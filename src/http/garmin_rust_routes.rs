@@ -64,7 +64,7 @@ fn form_http_response(body: String) -> HttpResponse {
 
 fn get_auth_fut(
     user: LoggedUser,
-    request: HttpRequest<AppState>,
+    request: &HttpRequest<AppState>,
 ) -> impl Future<Item=Result<bool, Error>, Error=actix_web::Error> {
     request
         .state()
@@ -93,7 +93,7 @@ pub fn garmin(
         })
         .responder()
     } else {
-        get_auth_fut(user, request)
+        get_auth_fut(user, &request)
             .join(fut)
             .and_then(move |(res0, res1)| match res0 {
                 Ok(true) => match res1 {

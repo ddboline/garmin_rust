@@ -73,7 +73,7 @@ pub fn decode_token(token: &str) -> Result<LoggedUser, ServiceError> {
         .map_err(|_err| ServiceError::Unauthorized)?
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AuthorizedUsers(Arc<RwLock<HashSet<LoggedUser>>>);
 
 impl AuthorizedUsers {
@@ -96,8 +96,10 @@ impl AuthorizedUsers {
             }
         }
         user.is_authorized(pool).map(|is_auth| {
-            if let Ok(mut user_list) = self.0.write() {
-                user_list.insert(user);
+            if is_auth {
+                if let Ok(mut user_list) = self.0.write() {
+                    user_list.insert(user);
+                }
             }
             is_auth
         })

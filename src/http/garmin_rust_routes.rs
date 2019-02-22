@@ -65,7 +65,7 @@ fn form_http_response(body: String) -> HttpResponse {
 fn get_auth_fut(
     user: LoggedUser,
     request: &HttpRequest<AppState>,
-) -> impl Future<Item=Result<bool, Error>, Error=actix_web::Error> {
+) -> impl Future<Item = Result<bool, Error>, Error = actix_web::Error> {
     request
         .state()
         .db

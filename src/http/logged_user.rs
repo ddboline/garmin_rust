@@ -1,5 +1,5 @@
 use actix_web::{middleware::identity::RequestIdentity, FromRequest, HttpRequest};
-use failure::Error;
+use failure::{err_msg, Error};
 use jsonwebtoken::{decode, Validation};
 use std::collections::HashSet;
 use std::convert::From;
@@ -43,7 +43,15 @@ pub struct LoggedUser {
 impl LoggedUser {
     pub fn is_authorized(&self, pool: &PgPool) -> Result<bool, Error> {
         let query = "SELECT count(*) FROM authorized_users WHERE email = $1";
-        Ok(pool.get()?.query(query, &[&self.email])?.len() > 0)
+        pool.get()?
+            .query(query, &[&self.email])?
+            .iter()
+            .nth(0)
+            .map(|row| {
+                let count: i32 = row.get(0);
+                count > 0
+            })
+            .ok_or_else(|| err_msg("DB Failure"))
     }
 }
 

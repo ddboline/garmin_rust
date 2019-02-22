@@ -5,7 +5,7 @@ use actix_web::{
 };
 use chrono::{Date, Datelike, Local};
 use failure::{err_msg, Error};
-use futures::future::Future;
+use futures::future::{lazy, Future};
 
 use super::logged_user::LoggedUser;
 
@@ -81,27 +81,24 @@ pub fn garmin(
     let query = query.into_inner();
     let req = proc_pattern_wrapper(query);
 
-    let fut = request.state().db.send(req).from_err();
-
-    if request.state().user_list.is_authorized(&user) {
-        fut.and_then(move |res| match res {
+    let resp = request
+        .state()
+        .db
+        .send(req)
+        .from_err()
+        .and_then(move |res| match res {
             Ok(body) => Ok(form_http_response(body)),
             Err(err) => Err(err.into()),
         })
-        .responder()
+        .responder();
+
+    if request.state().user_list.is_authorized(&user) {
+        resp
     } else {
         get_auth_fut(&user, &request)
-            .join(fut)
-            .and_then(move |(res0, res1)| match res0 {
-                Ok(true) => {
-                    request.state().user_list.store_auth(user)?;
-                    match res1 {
-                        Ok(body) => Ok(form_http_response(body)),
-                        Err(err) => Err(err.into()),
-                    }
-                }
-                Ok(false) => Ok(HttpResponse::Unauthorized().json("Unauthorized")),
-                Err(err) => Err(err.into()),
+            .and_then(move |res| match res {
+                Ok(true) => resp,
+                _ => lazy(|| Ok(HttpResponse::Unauthorized().json("Unauthorized"))).responder(),
             })
             .responder()
     }

@@ -94,6 +94,6 @@ impl AuthorizedUsers {
             user_list.insert(user);
             return Ok(());
         }
-        return Err(err_msg("Failed to store credentials"));
+        Err(err_msg("Failed to store credentials"))
     }
 }

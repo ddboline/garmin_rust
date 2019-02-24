@@ -38,6 +38,7 @@ r2d2 = "*"
 r2d2_postgres = "*"
 dotenv = "*"
 jsonwebtoken = "5.0"
+multi_try = "0.3"
 
 [dependencies.avro-rs]
 version = "^0.6"

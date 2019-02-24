@@ -81,7 +81,7 @@ pub fn garmin(
     let query = query.into_inner();
     let req = proc_pattern_wrapper(query);
 
-    let resp = request
+    let resp = || request
         .state()
         .db
         .send(req)
@@ -93,11 +93,11 @@ pub fn garmin(
         .responder();
 
     if request.state().user_list.is_authorized(&user) {
-        resp
+        resp()
     } else {
         get_auth_fut(&user, &request)
             .and_then(move |res| match res {
-                Ok(true) => resp,
+                Ok(true) => resp(),
                 _ => lazy(|| Ok(HttpResponse::Unauthorized().json("Unauthorized"))).responder(),
             })
             .responder()

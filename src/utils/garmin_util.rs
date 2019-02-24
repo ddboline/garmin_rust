@@ -1,5 +1,6 @@
 use num::traits::Pow;
 
+use multi_try::MultiTry;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::path::Path;
@@ -113,6 +114,22 @@ pub fn map_result_vec<T, E>(input: Vec<Result<T, E>>) -> Result<Vec<T>, E> {
         output.push(item?);
     }
     Ok(output)
+}
+
+pub fn map_result_vec2<T, E>(input: Vec<Result<T, E>>) -> Result<Vec<T>, Vec<E>> {
+    let mut output: Vec<T> = Vec::new();
+    let mut errs: Vec<E> = Vec: new();
+    for item in input {
+        match output {
+            Ok(v) => output.push(v),
+            Err(e) => errs.push(e),
+        }
+    };
+    if !errs.is_empty() {
+        Err(errs)
+    } else {
+        Ok(output)
+    }
 }
 
 pub fn generate_random_string(nchar: usize) -> String {

@@ -73,18 +73,42 @@ fn get_auth_fut(
         .from_err()
 }
 
+fn unauthbody() -> FutureResponse<HttpResponse> {
+    lazy(|| Ok(HttpResponse::Unauthorized().json("Unauthorized"))).responder()
+}
+
+fn authenticated_response<T: 'static>(
+    user: &LoggedUser,
+    request: HttpRequest<AppState>,
+    resp: T,
+) -> FutureResponse<HttpResponse>
+where
+    T: FnOnce(HttpRequest<AppState>) -> FutureResponse<HttpResponse>,
+{
+    if request.state().user_list.is_authorized(&user) {
+        resp(request)
+    } else {
+        get_auth_fut(&user, &request)
+            .and_then(move |res| match res {
+                Ok(true) => resp(request),
+                _ => unauthbody(),
+            })
+            .responder()
+    }
+}
+
 pub fn garmin(
     query: Query<FilterRequest>,
     user: LoggedUser,
     request: HttpRequest<AppState>,
 ) -> FutureResponse<HttpResponse> {
     let query = query.into_inner();
-    let req = proc_pattern_wrapper(query);
+    let grec = proc_pattern_wrapper(query);
 
-    let resp = request
+    let resp = move |req: HttpRequest<AppState>| req
         .state()
         .db
-        .send(req)
+        .send(grec)
         .from_err()
         .and_then(move |res| match res {
             Ok(body) => Ok(form_http_response(body)),
@@ -92,16 +116,7 @@ pub fn garmin(
         })
         .responder();
 
-    if request.state().user_list.is_authorized(&user) {
-        resp
-    } else {
-        get_auth_fut(&user, &request)
-            .and_then(move |res| match res {
-                Ok(true) => resp,
-                _ => lazy(|| Ok(HttpResponse::Unauthorized().json("Unauthorized"))).responder(),
-            })
-            .responder()
-    }
+    authenticated_response(&user, request, resp)
 }
 
 #[derive(Serialize)]

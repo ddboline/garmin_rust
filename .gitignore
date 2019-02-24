@@ -2,3 +2,5 @@
 **/*.rs.bk
 config.yml
 config.env
+Cargo.lock
+description-pak

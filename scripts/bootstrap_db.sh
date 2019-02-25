@@ -32,6 +32,7 @@ JWT_SECRET=$JWT_SECRET
 SECRET_KEY=$SECRET_KEY
 DOMAIN=$DOMAIN
 SPARKPOST_API_KEY=$SPARKPOST_API_KEY
+AUTHDB=postgresql://$USER:$PASSWORD@localhost:5432/$DB
 EOL
 
 psql $DB < ./scripts/garmin_corrections_laps.sql

@@ -6,6 +6,7 @@ use actix_web::{
 use chrono::{Date, Datelike, Local};
 use failure::{err_msg, Error};
 use futures::future::{lazy, Future};
+use serde::Serialize;
 
 use super::logged_user::LoggedUser;
 
@@ -131,6 +132,17 @@ pub struct TimeValue {
     pub value: f64,
 }
 
+fn to_json<T>(req: &HttpRequest<AppState>, js: &T) -> Result<HttpResponse, actix_web::Error>
+where
+    T: Serialize,
+{
+    let body = serde_json::to_string(&js)?;
+    Ok(req
+        .build_response(StatusCode::OK)
+        .content_type("application/json")
+        .body(body))
+}
+
 pub fn garmin_list_gps_tracks(
     query: Query<FilterRequest>,
     user: LoggedUser,
@@ -148,11 +160,7 @@ pub fn garmin_list_gps_tracks(
             .and_then(move |res| match res {
                 Ok(gps_list) => {
                     let glist = GpsList { gps_list };
-                    let body = serde_json::to_string(&glist)?;
-                    Ok(req
-                        .build_response(StatusCode::OK)
-                        .content_type("application/json")
-                        .body(body))
+                    to_json(&req, &glist)
                 }
                 Err(err) => Err(err.into()),
             })
@@ -215,11 +223,7 @@ pub fn garmin_get_hr_data(
                         _ => Vec::new(),
                     };
                     let hdata = HrData { hr_data };
-                    let body = serde_json::to_string(&hdata)?;
-                    Ok(req
-                        .build_response(StatusCode::OK)
-                        .content_type("application/json")
-                        .body(body))
+                    to_json(&req, &hdata)
                 }
                 Err(err) => Err(err.into()),
             })
@@ -298,11 +302,7 @@ pub fn garmin_get_hr_pace(
                             hr_pace: Vec::new(),
                         },
                     };
-                    let body = serde_json::to_string(&hrpace)?;
-                    Ok(req
-                        .build_response(StatusCode::OK)
-                        .content_type("application/json")
-                        .body(body))
+                    to_json(&req, &hrpace)
                 }
                 Err(err) => Err(err.into()),
             })

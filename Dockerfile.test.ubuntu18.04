@@ -1,0 +1,16 @@
+FROM ubuntu:bionic
+MAINTAINER Daniel Boline
+
+RUN echo deb [trusted=yes] https://py2deb-repo.s3.amazonaws.com/deb/bionic/python3 bionic main > /etc/apt/sources.list.d/py2deb.list && \
+    apt-key adv --keyserver keyserver.ubuntu.com --recv 25508FAF711C1DEB && \
+    apt-get update && \
+    apt-get install garmin-rust
+
+WORKDIR /garmin_rust
+
+ADD Cargo.toml /garmin_rust
+ADD src /garmin_rust/src
+ADD scripts /garmin_rust/scripts
+ADD templates /garmin_rust/templates
+ADD Makefile /garmin_rust
+ADD python /garmin_rust/python

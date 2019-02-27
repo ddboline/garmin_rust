@@ -3,7 +3,9 @@
 use std::env::var;
 use std::path::Path;
 
-#[derive(Default, Debug)]
+/// GarminConfig holds configuration information which can be set either through environment variables or the config.env file,
+/// see the dotenv crate for more information about the config file format.
+#[derive(Default, Debug, Clone)]
 pub struct GarminConfig {
     pub pgurl: String,
     pub maps_api_key: String,
@@ -15,9 +17,13 @@ pub struct GarminConfig {
     pub summary_cache: String,
     pub summary_bucket: String,
     pub n_db_workers: usize,
+    pub secret_key: String,
+    pub domain: String,
 }
 
 impl GarminConfig {
+
+    /// Some variables have natural default values, which we set in the new() method.
     pub fn new() -> GarminConfig {
         let home_dir = var("HOME").unwrap_or_else(|_| "/tmp".to_string());
 
@@ -31,10 +37,13 @@ impl GarminConfig {
             summary_cache: default_summary_cache,
             port: 8000,
             n_db_workers: 2,
+            secret_key: "0123".repeat(8),
+            domain: "localhost".to_string(),
             ..Default::default()
         }
     }
 
+    /// Each variable maps to an environment variable, if the variable exists, use it.
     pub fn from_env(mut self) -> GarminConfig {
         if let Ok(pgurl) = var("PGURL") {
             self.pgurl = pgurl.to_string()
@@ -68,9 +77,19 @@ impl GarminConfig {
                 self.n_db_workers = n_db_workers
             }
         }
+        if let Ok(secret_key) = var("SECRET_KEY") {
+            self.secret_key = secret_key
+        }
+        if let Ok(domain) = var("DOMAIN") {
+            self.domain = domain
+        }
         self
     }
 
+    /// Pull configuration from a file if it exists, first look for a config.env file in the current directory,
+    /// then try ${HOME}/.config/garmin_rust/config.env,
+    /// if that doesn't exist fall back on the default behaviour of dotenv
+    /// Panic if required variables aren't set appropriately.
     pub fn get_config(fname: Option<&str>) -> GarminConfig {
         let home_dir = var("HOME").expect("No HOME directory...");
 

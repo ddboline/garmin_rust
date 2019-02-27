@@ -32,6 +32,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+
+/// This is the lambda function handler, it receives input from the runtime as an event in json format
+/// the event must have the format of CustomEvent and the event will return a result of type CustomOutput
 fn my_handler(event: CustomEvent, c: Context) -> Result<CustomOutput, HandlerError> {
     if event.file_name == "" {
         error!("Empty filename in request {}", c.aws_request_id);

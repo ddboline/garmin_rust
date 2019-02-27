@@ -2,6 +2,7 @@
 
 use garmin_rust::http::garmin_rust_app::start_app;
 
+/// Start actix system and add our app to it
 fn main() {
     let sys = actix::System::new("garmin");
 

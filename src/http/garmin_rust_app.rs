@@ -5,7 +5,6 @@ use actix::Addr;
 use actix_web::middleware::identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::{http::Method, server, App};
 use chrono::Duration;
-use std::env;
 
 use super::logged_user::AuthorizedUsers;
 use crate::common::garmin_config::GarminConfig;
@@ -14,20 +13,30 @@ use crate::http::garmin_rust_routes::{
     garmin, garmin_get_hr_data, garmin_get_hr_pace, garmin_list_gps_tracks,
 };
 
+/// AppState is the application state shared between all the handlers
+/// db can be used to send messages to the database workers, each running on their own thread
+/// user_list contains a shared cache of previously authorized users
 pub struct AppState {
     pub db: Addr<PgPool>,
     pub user_list: AuthorizedUsers,
 }
 
+/// Create the actix-web server.
+/// Configuration is done through environment variables, see GarminConfig for more information.
+/// SyncArbiter spins up config.n_db_workers workers, each on their own thread,
+/// PgPool is a wrapper around a connection pool.
+/// Addr is a handle through which a message can be sent to an actor.
+/// We create several routes:
+///    /garmin is the main route, providing the same functionality as the CLI interface, while adding the ability of upload to strava.
+///    /garmin/list_gps_tracks, /garmin/get_hr_data and /garmin/get_hr_pace return structured json intended for separate analysis
 pub fn start_app() {
     let config = GarminConfig::get_config(None);
-    let secret: String = std::env::var("SECRET_KEY").unwrap_or_else(|_| "0123".repeat(8));
-    let domain = env::var("DOMAIN").unwrap_or_else(|_| "localhost".to_string());
-    let nconn = config.n_db_workers;
+    let secret = config.secret_key.clone();
+    let domain = config.domain.clone();
     let pool = PgPool::new(&config.pgurl);
     let user_list = AuthorizedUsers::new();
 
-    let addr: Addr<PgPool> = SyncArbiter::start(nconn, move || pool.clone());
+    let addr: Addr<PgPool> = SyncArbiter::start(config.n_db_workers, move || pool.clone());
 
     server::new(move || {
         App::with_state(AppState {

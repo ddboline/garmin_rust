@@ -5,6 +5,8 @@ use r2d2::{Pool, PooledConnection};
 use r2d2_postgres::{PostgresConnectionManager, TlsMode};
 use std::fmt;
 
+/// Wrapper around r2d2::Pool, two pools are considered equal if they have the same connection string
+/// The only way to use PgPool is through the get method, which returns a PooledConnection object
 #[derive(Clone)]
 pub struct PgPool {
     pgurl: String,

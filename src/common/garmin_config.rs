@@ -22,7 +22,6 @@ pub struct GarminConfig {
 }
 
 impl GarminConfig {
-
     /// Some variables have natural default values, which we set in the new() method.
     pub fn new() -> GarminConfig {
         let home_dir = var("HOME").unwrap_or_else(|_| "/tmp".to_string());

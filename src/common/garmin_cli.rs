@@ -272,7 +272,7 @@ where
                         if f.contains("garmin_correction.avro") {
                             None
                         } else {
-                            Some(f.split('/').last().unwrap().to_string())
+                            f.split('/').last().map(|x| x.to_string())
                         }
                     })
                     .collect();
@@ -284,7 +284,7 @@ where
                 let path = Path::new(&self.get_config().gps_dir);
                 let proc_list: Vec<Result<_, Error>> = get_file_list(&path)
                     .into_par_iter()
-                    .map(|f| f.split('/').last().unwrap().to_string())
+                    .filter_map(|f| f.split('/').last().map(|x| x.to_string()))
                     .filter_map(|f| {
                         let cachefile = format!("{}.avro", f);
                         if dbset.contains(&f) && cacheset.contains(&cachefile) {

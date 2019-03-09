@@ -35,7 +35,6 @@ def fitbit_auth():
         timeout=10,
     )
 
-
     url, state = fitbit_client[0].client.authorize_token_url()
     return url, 200
 

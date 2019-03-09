@@ -120,7 +120,7 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<String>, Error> {
         return_vec.push(format!(
             "Heart Rate {:2.2} avg {:2.2} max",
             avg_hr,
-            hr_vals.iter().map(|x| *x as i32).max().unwrap()
+            hr_vals.iter().map(|x| *x as i32).max().unwrap_or(0)
         ));
     }
 
@@ -149,8 +149,8 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<String>, Error> {
     if !alt_vals.is_empty() {
         return_vec.push(format!(
             "max altitude diff: {:.2} m",
-            alt_vals.iter().map(|x| *x as i32).max().unwrap()
-                - alt_vals.iter().map(|x| *x as i32).min().unwrap()
+            alt_vals.iter().map(|x| *x as i32).max().unwrap_or(0)
+                - alt_vals.iter().map(|x| *x as i32).min().unwrap_or(0)
         ));
         return_vec.push(format!("vertical climb: {:.2} m", vertical_climb));
     }
@@ -212,14 +212,16 @@ fn print_splits(
                 "{} {} \t {} \t {} / mi \t {} / km \t {} \t {:.2} bpm avg",
                 dis,
                 label,
-                print_h_m_s(tim, true).unwrap(),
-                print_h_m_s(tim / (split_distance_in_meters / METERS_PER_MILE), false).unwrap(),
-                print_h_m_s(tim / (split_distance_in_meters / 1000.), false).unwrap(),
+                print_h_m_s(tim, true).unwrap_or_else(|_| "".to_string()),
+                print_h_m_s(tim / (split_distance_in_meters / METERS_PER_MILE), false)
+                    .unwrap_or_else(|_| "".to_string()),
+                print_h_m_s(tim / (split_distance_in_meters / 1000.), false)
+                    .unwrap_or_else(|_| "".to_string()),
                 print_h_m_s(
                     tim / (split_distance_in_meters / METERS_PER_MILE) * MARATHON_DISTANCE_MI,
                     true
                 )
-                .unwrap(),
+                .unwrap_or_else(|_| "".to_string()),
                 hrt
             )
         })

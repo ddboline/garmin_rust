@@ -26,7 +26,7 @@ struct CustomOutput {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    simple_logger::init_with_level(log::Level::Debug).unwrap();
+    simple_logger::init_with_level(log::Level::Debug)?;
     lambda!(my_handler);
 
     Ok(())

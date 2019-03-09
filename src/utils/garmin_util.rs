@@ -132,10 +132,7 @@ pub fn get_file_list(path: &Path) -> Vec<String> {
     match path.read_dir() {
         Ok(it) => it
             .filter_map(|dir_line| match dir_line {
-                Ok(entry) => {
-                    let input_file = entry.path().to_str().unwrap().to_string();
-                    Some(input_file)
-                }
+                Ok(entry) => entry.path().to_str().map(|x| x.to_string()),
                 Err(_) => None,
             })
             .collect(),

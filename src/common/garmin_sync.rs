@@ -120,12 +120,20 @@ impl GarminSyncTrait for GarminSync<S3Client> {
             match current_list.key_count {
                 Some(0) => (),
                 Some(_) => {
-                    for item in current_list.contents.unwrap() {
-                        list_of_keys.push((
-                            item.key.unwrap(),
-                            item.e_tag.unwrap().trim_matches('"').to_string(),
-                            DateTime::parse_from_rfc3339(&item.last_modified.unwrap())?.timestamp(),
-                        ))
+                    for item in current_list.contents.unwrap_or_else(|| Vec::new()) {
+                        if let Some(key) = item.key {
+                            list_of_keys.push((
+                                key,
+                                item.e_tag
+                                    .unwrap_or_else(|| "".to_string())
+                                    .trim_matches('"')
+                                    .to_string(),
+                                DateTime::parse_from_rfc3339(
+                                    &item.last_modified.unwrap_or_else(|| "".to_string()),
+                                )?
+                                .timestamp(),
+                            ))
+                        }
                     }
                 }
                 None => (),
@@ -146,32 +154,31 @@ impl GarminSyncTrait for GarminSync<S3Client> {
         let file_list: Vec<String> = path
             .read_dir()?
             .filter_map(|dir_line| match dir_line {
-                Ok(entry) => {
-                    let input_file = entry.path().to_str().unwrap().to_string();
-                    Some(input_file)
-                }
+                Ok(entry) => entry
+                    .path()
+                    .to_str()
+                    .map(|input_file| input_file.to_string()),
                 Err(_) => None,
             })
             .collect();
 
-        let file_list: Vec<_> = file_list
+        let file_list: Vec<Result<_, Error>> = file_list
             .into_par_iter()
             .map(|f| {
-                let modified = fs::metadata(&f)
-                    .unwrap()
-                    .modified()
-                    .unwrap()
-                    .duration_since(SystemTime::UNIX_EPOCH)
-                    .unwrap()
+                let modified = fs::metadata(&f)?
+                    .modified()?
+                    .duration_since(SystemTime::UNIX_EPOCH)?
                     .as_secs() as i64;
 
-                (f.to_string(), modified)
+                Ok((f.to_string(), modified))
             })
             .collect();
 
+        let file_list: Vec<_> = map_result_vec(file_list)?;
+
         let file_set: HashMap<_, _> = file_list
             .iter()
-            .map(|(x, t)| (x.split('/').last().unwrap().to_string(), *t))
+            .filter_map(|(x, t)| x.split('/').last().map(|x| (x.to_string(), *t)))
             .collect();
 
         let key_list = self.get_list_of_keys(s3_bucket)?;
@@ -183,32 +190,32 @@ impl GarminSyncTrait for GarminSync<S3Client> {
         let results: Vec<_> = file_list
             .par_iter()
             .filter_map(|(file, tmod)| {
-                let file_name = file.split('/').last().unwrap().to_string();
+                let file_name = match file.split('/').last() {
+                    Some(x) => x.to_string(),
+                    None => return None,
+                };
 
-                let do_upload = if key_set.contains_key(&file_name) {
+                let mut do_upload = false;
+
+                if key_set.contains_key(&file_name) {
                     let (md5_, tmod__) = key_set[&file_name].clone();
                     let tmod_ = &tmod__;
                     if tmod > tmod_ {
                         if check_md5sum {
-                            let md5 = get_md5sum(&file).unwrap();
-                            if md5_ != md5 {
-                                debug!(
-                                    "upload md5 {} {} {} {} {}",
-                                    file_name, md5_, md5, tmod_, tmod
-                                );
-                                true
-                            } else {
-                                false
+                            if let Ok(md5) = get_md5sum(&file) {
+                                if md5_ != md5 {
+                                    debug!(
+                                        "upload md5 {} {} {} {} {}",
+                                        file_name, md5_, md5, tmod_, tmod
+                                    );
+                                    do_upload = true;
+                                }
                             }
-                        } else {
-                            false
                         }
-                    } else {
-                        false
                     }
                 } else {
-                    true
-                };
+                    do_upload = true;
+                }
 
                 if do_upload {
                     println!("upload file {}", file_name);

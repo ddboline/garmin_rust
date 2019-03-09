@@ -149,13 +149,19 @@ pub fn check_cached_files() -> Vec<String> {
     match path.read_dir() {
         Ok(it) => it
             .filter_map(|dir_line| match dir_line {
-                Ok(entry) => {
-                    let input_file = entry.path().to_str().unwrap().to_string();
-                    println!("{}", input_file);
-                    let gfile = GarminFile::read_avro(&input_file).unwrap();
-                    println!("{}", gfile.points.len());
-                    Some(input_file)
-                }
+                Ok(entry) => match entry.path().to_str().map(|x| x.to_string()) {
+                    Some(input_file) => {
+                        println!("{}", input_file);
+                        match GarminFile::read_avro(&input_file) {
+                            Ok(gfile) => {
+                                println!("{}", gfile.points.len());
+                                Some(input_file)
+                            }
+                            Err(_) => None,
+                        }
+                    }
+                    None => None,
+                },
                 Err(_) => None,
             })
             .collect(),

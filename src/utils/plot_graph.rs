@@ -6,49 +6,49 @@ use crate::reports::garmin_templates::{LINEPLOTTEMPLATE, SCATTERPLOTTEMPLATE};
 use crate::utils::plot_opts::PlotOpts;
 
 pub fn generate_d3_plot(opts: &PlotOpts) -> Result<String, Error> {
-    if opts.data == None {
-        return Err(err_msg(format!("No data points {}", opts.name)));
-    }
-    if let Some(x) = opts.data {
-        if x.is_empty() {
-            return Err(err_msg(format!("No data points {}", opts.name)));
-        }
-    }
+    let err_str = format!("No data points {}", opts.name);
 
-    Ok(if opts.do_scatter {
+    let data = match opts.data.as_ref() {
+        Some(x) => {
+            if x.is_empty() {
+                return Err(err_msg(err_str));
+            } else {
+                x
+            }
+        }
+        None => return Err(err_msg(err_str)),
+    };
+
+    let body = if opts.do_scatter {
         let nbins = 10;
-        let xmin = opts
-            .data
-            .unwrap()
+        let xmin = data
             .iter()
             .map(|(x, _)| x)
             .min_by_key(|&x| (*x * 1000.) as i64)
-            .unwrap();
+            .map(|x| *x)
+            .unwrap_or(0.0);
         let xmin = xmin - 0.01 * xmin.abs();
-        let xmax = opts
-            .data
-            .unwrap()
+        let xmax = data
             .iter()
             .map(|(x, _)| x)
             .max_by_key(|&x| (*x * 1000.) as i64)
-            .unwrap();
+            .map(|x| *x)
+            .unwrap_or(0.0);
         let xmax = xmax + 0.01 * xmax.abs();
         let xstep = (xmax - xmin) / (nbins as f64);
-        let ymin = opts
-            .data
-            .unwrap()
+        let ymin = data
             .iter()
             .map(|(_, y)| y)
             .min_by_key(|&x| (*x * 1000.) as i64)
-            .unwrap();
+            .map(|x| *x)
+            .unwrap_or(0.0);
         let ymin = ymin - 0.01 * ymin.abs();
-        let ymax = opts
-            .data
-            .unwrap()
+        let ymax = data
             .iter()
             .map(|(_, y)| y)
             .max_by_key(|&x| (*x * 1000.) as i64)
-            .unwrap();
+            .map(|x| *x)
+            .unwrap_or(0.0);
         let ymax = ymax + 0.01 * ymax.abs();
         let ystep = (ymax - ymin) / (nbins as f64);
 
@@ -59,7 +59,7 @@ pub fn generate_d3_plot(opts: &PlotOpts) -> Result<String, Error> {
             }
         }
 
-        for (x, y) in opts.data.unwrap() {
+        for (x, y) in data.iter() {
             let xindex = ((x - xmin) / xstep) as u64;
             let yindex = ((y - ymin) / ystep) as u64;
             match bins.get_mut(&(xindex, yindex)) {
@@ -86,7 +86,10 @@ pub fn generate_d3_plot(opts: &PlotOpts) -> Result<String, Error> {
                 } else if line.contains("YSTEP") {
                     line.replace("YSTEP", &ystep.to_string())
                 } else if line.contains("DATA") {
-                    line.replace("DATA", &serde_json::to_string(&data).unwrap())
+                    line.replace(
+                        "DATA",
+                        &serde_json::to_string(&data).unwrap_or_else(|_| "".to_string()),
+                    )
                 } else if line.contains("XLABEL") {
                     line.replace("XLABEL", &opts.xlabel)
                 } else if line.contains("YLABEL") {
@@ -109,7 +112,10 @@ pub fn generate_d3_plot(opts: &PlotOpts) -> Result<String, Error> {
                 } else if line.contains("YAXIS") {
                     line.replace("YAXIS", &opts.ylabel)
                 } else if line.contains("DATA") {
-                    line.replace("DATA", &serde_json::to_string(&opts.data).unwrap())
+                    line.replace(
+                        "DATA",
+                        &serde_json::to_string(&data).unwrap_or_else(|_| "".to_string()),
+                    )
                 } else {
                     line.to_string()
                 }
@@ -117,5 +123,6 @@ pub fn generate_d3_plot(opts: &PlotOpts) -> Result<String, Error> {
             .collect::<Vec<_>>()
             .join("\n");
         format!("<script>{}</script>", js_str)
-    })
+    };
+    Ok(body)
 }

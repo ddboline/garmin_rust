@@ -184,7 +184,7 @@ fn extract_report_objects_from_file(gfile: &GarminFile) -> Result<ReportObjects,
             .hr_vals
             .iter()
             .max_by_key(|&h| *h as i64)
-            .unwrap();
+            .unwrap_or(&0.0);
     };
 
     Ok(report_objs)
@@ -266,7 +266,7 @@ fn get_plot_opts<'a>(report_objs: &'a ReportObjects, cache_dir: &str) -> Vec<Plo
     };
 
     if !report_objs.avg_speed_values.is_empty() {
-        let (_, avg_speed_value) = report_objs.avg_speed_values.last().unwrap();
+        let (_, avg_speed_value) = report_objs.avg_speed_values.last().unwrap_or(&(0.0, 0.0));
         let avg_speed_value_min = *avg_speed_value as i32;
         let avg_speed_value_sec =
             ((*avg_speed_value - f64::from(avg_speed_value_min)) * 60.0) as i32;
@@ -289,7 +289,10 @@ fn get_plot_opts<'a>(report_objs: &'a ReportObjects, cache_dir: &str) -> Vec<Plo
     };
 
     if !report_objs.avg_mph_speed_values.is_empty() {
-        let (_, avg_mph_speed_value) = report_objs.avg_mph_speed_values.last().unwrap();
+        let (_, avg_mph_speed_value) = report_objs
+            .avg_mph_speed_values
+            .last()
+            .unwrap_or(&(0.0, 0.0));
 
         plot_opts.push(
             PlotOpts::new()
@@ -337,22 +340,22 @@ fn get_html_string(
             .lat_vals
             .iter()
             .min_by_key(|&v| (v * 1000.0) as i32)
-            .unwrap();
+            .unwrap_or(&0.0);
         let maxlat = report_objs
             .lat_vals
             .iter()
             .max_by_key(|&v| (v * 1000.0) as i32)
-            .unwrap();
+            .unwrap_or(&0.0);
         let minlon = report_objs
             .lon_vals
             .iter()
             .min_by_key(|&v| (v * 1000.0) as i32)
-            .unwrap();
+            .unwrap_or(&0.0);
         let maxlon = report_objs
             .lon_vals
             .iter()
             .max_by_key(|&v| (v * 1000.0) as i32)
-            .unwrap();
+            .unwrap_or(&0.0);
         let central_lat = (maxlat + minlat) / 2.0;
         let central_lon = (maxlon + minlon) / 2.0;
         let latlon_min = if (maxlat - minlat) > (maxlon - minlon) {
@@ -427,8 +430,10 @@ fn get_html_string(
                 htmlvec.push(line.replace("HISTORYBUTTONS", &history_button).to_string());
             } else if line.contains("FILENAME") | line.contains("ACTIVITYTYPE") {
                 let filename = format!("{}/{}", &gps_dir, &gfile.filename);
-                let activity_type =
-                    convert_sport_name_to_activity_type(&gfile.sport.clone().unwrap()).unwrap();
+                let activity_type = convert_sport_name_to_activity_type(
+                    &gfile.sport.clone().unwrap_or_else(|| "".to_string()),
+                )
+                .unwrap_or_else(|| "".to_string());
                 htmlvec.push(
                     line.replace("FILENAME", &filename)
                         .replace("ACTIVITYTYPE", &activity_type),
@@ -544,9 +549,10 @@ fn get_file_html(gfile: &GarminFile) -> String {
                 "total".to_string(),
                 format!("{:.2} mi", gfile.total_distance / METERS_PER_MILE),
                 format!("{}", gfile.total_calories),
-                print_h_m_s(gfile.total_duration, true).unwrap(),
-                print_h_m_s(min_mile * 60.0, false).unwrap(),
-                print_h_m_s(min_mile * 60.0 / METERS_PER_MILE * 1000., false).unwrap(),
+                print_h_m_s(gfile.total_duration, true).unwrap_or_else(|_| "".to_string()),
+                print_h_m_s(min_mile * 60.0, false).unwrap_or_else(|_| "".to_string()),
+                print_h_m_s(min_mile * 60.0 / METERS_PER_MILE * 1000., false)
+                    .unwrap_or_else(|_| "".to_string()),
             ],
         ),
         _ => (
@@ -561,7 +567,7 @@ fn get_file_html(gfile: &GarminFile) -> String {
                 "".to_string(),
                 format!("{:.2} mi", gfile.total_distance / METERS_PER_MILE),
                 format!("{}", gfile.total_calories),
-                print_h_m_s(gfile.total_duration, true).unwrap(),
+                print_h_m_s(gfile.total_duration, true).unwrap_or_else(|_| "".to_string()),
                 format!("{}", mi_per_hr),
             ],
         ),
@@ -602,7 +608,7 @@ fn get_lap_html(glap: &GarminLap, sport: &str) -> Vec<String> {
         sport.to_string(),
         format!("{}", glap.lap_number),
         format!("{:.2} mi", glap.lap_distance / METERS_PER_MILE),
-        print_h_m_s(glap.lap_duration, true).unwrap(),
+        print_h_m_s(glap.lap_duration, true).unwrap_or_else(|_| "".to_string()),
         format!("{}", glap.lap_calories),
         format!("{:.2} min", glap.lap_duration / 60.),
     ];
@@ -613,11 +619,12 @@ fn get_lap_html(glap: &GarminLap, sport: &str) -> Vec<String> {
                 glap.lap_duration / (glap.lap_distance / METERS_PER_MILE),
                 false
             )
-            .unwrap()
+            .unwrap_or_else(|_| "".to_string())
         ));
         values.push(format!(
             "{} / km",
-            print_h_m_s(glap.lap_duration / (glap.lap_distance / 1000.), false).unwrap()
+            print_h_m_s(glap.lap_duration / (glap.lap_distance / 1000.), false)
+                .unwrap_or_else(|_| "".to_string())
         ));
     }
     if let Some(lap_avg_hr) = glap.lap_avg_hr {
@@ -651,14 +658,16 @@ fn get_html_splits(
                 let hrt = *val.get(2).unwrap_or(&0.0) as i32;
                 vec![
                     format!("{} {}", dis, label),
-                    print_h_m_s(tim, true).unwrap(),
-                    print_h_m_s(tim / (split_distance_in_meters / METERS_PER_MILE), false).unwrap(),
-                    print_h_m_s(tim / (split_distance_in_meters / 1000.), false).unwrap(),
+                    print_h_m_s(tim, true).unwrap_or_else(|_| "".to_string()),
+                    print_h_m_s(tim / (split_distance_in_meters / METERS_PER_MILE), false)
+                        .unwrap_or_else(|_| "".to_string()),
+                    print_h_m_s(tim / (split_distance_in_meters / 1000.), false)
+                        .unwrap_or_else(|_| "".to_string()),
                     print_h_m_s(
                         tim / (split_distance_in_meters / METERS_PER_MILE) * MARATHON_DISTANCE_MI,
                         true,
                     )
-                    .unwrap(),
+                    .unwrap_or_else(|_| "".to_string()),
                     format!("{} bpm", hrt),
                 ]
             })

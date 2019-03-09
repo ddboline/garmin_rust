@@ -361,7 +361,7 @@ where
         println!(
             "{} {:?}",
             fn_unique_key_map.len(),
-            fn_unique_key_map.iter().nth(0).unwrap()
+            fn_unique_key_map.iter().nth(0)
         );
 
         let corr_map = corr_list.get_corr_list_map();
@@ -407,8 +407,16 @@ where
             .map(|row| {
                 let filename: String = row.get(0);
                 let unique_key: String = row.get(1);
-                let start_time: String = unique_key.split('_').nth(0).unwrap().to_string();
-                let lap_number: i32 = unique_key.split('_').last().unwrap().parse().unwrap_or(0);
+                let start_time: String = unique_key
+                    .split('_')
+                    .nth(0)
+                    .map(|x| x.to_string())
+                    .unwrap_or_else(|| "".to_string());
+                let lap_number: i32 = unique_key
+                    .split('_')
+                    .last()
+                    .map(|x| x.parse().unwrap_or(0))
+                    .unwrap_or(0);
                 (filename, (start_time, lap_number))
             })
             .collect();

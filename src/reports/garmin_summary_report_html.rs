@@ -43,9 +43,11 @@ fn generate_url_string(current_line: &str, options: &GarminReportOptions) -> Str
                 let current_month = MONTH_NAMES
                     .iter()
                     .position(|&x| x == current_month)
-                    .unwrap()
+                    .unwrap_or(12)
                     + 1;
-                cmd_options.push(format!("{:04}-{:02}", current_year, current_month));
+                if current_month >= 1 && current_month <= 12 {
+                    cmd_options.push(format!("{:04}-{:02}", current_year, current_month));
+                }
             }
             GarminReportAgg::Week => {
                 let isoyear = now.iso_week().year();

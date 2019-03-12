@@ -120,7 +120,7 @@ impl GarminSyncTrait for GarminSync<S3Client> {
             match current_list.key_count {
                 Some(0) => (),
                 Some(_) => {
-                    for item in current_list.contents.unwrap_or_else(|| Vec::new()) {
+                    for item in current_list.contents.unwrap_or_else(Vec::new) {
                         if let Some(key) = item.key {
                             list_of_keys.push((
                                 key,
@@ -200,16 +200,14 @@ impl GarminSyncTrait for GarminSync<S3Client> {
                 if key_set.contains_key(&file_name) {
                     let (md5_, tmod__) = key_set[&file_name].clone();
                     let tmod_ = &tmod__;
-                    if tmod > tmod_ {
-                        if check_md5sum {
-                            if let Ok(md5) = get_md5sum(&file) {
-                                if md5_ != md5 {
-                                    debug!(
-                                        "upload md5 {} {} {} {} {}",
-                                        file_name, md5_, md5, tmod_, tmod
-                                    );
-                                    do_upload = true;
-                                }
+                    if tmod > tmod_ && check_md5sum {
+                        if let Ok(md5) = get_md5sum(&file) {
+                            if md5_ != md5 {
+                                debug!(
+                                    "upload md5 {} {} {} {} {}",
+                                    file_name, md5_, md5, tmod_, tmod
+                                );
+                                do_upload = true;
                             }
                         }
                     }

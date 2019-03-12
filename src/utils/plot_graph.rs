@@ -25,14 +25,14 @@ pub fn generate_d3_plot(opts: &PlotOpts) -> Result<String, Error> {
             .iter()
             .map(|(x, _)| x)
             .min_by_key(|&x| (*x * 1000.) as i64)
-            .map(|x| *x)
+            .cloned()
             .unwrap_or(0.0);
         let xmin = xmin - 0.01 * xmin.abs();
         let xmax = data
             .iter()
             .map(|(x, _)| x)
             .max_by_key(|&x| (*x * 1000.) as i64)
-            .map(|x| *x)
+            .cloned()
             .unwrap_or(0.0);
         let xmax = xmax + 0.01 * xmax.abs();
         let xstep = (xmax - xmin) / (nbins as f64);
@@ -40,14 +40,14 @@ pub fn generate_d3_plot(opts: &PlotOpts) -> Result<String, Error> {
             .iter()
             .map(|(_, y)| y)
             .min_by_key(|&x| (*x * 1000.) as i64)
-            .map(|x| *x)
+            .cloned()
             .unwrap_or(0.0);
         let ymin = ymin - 0.01 * ymin.abs();
         let ymax = data
             .iter()
             .map(|(_, y)| y)
             .max_by_key(|&x| (*x * 1000.) as i64)
-            .map(|x| *x)
+            .cloned()
             .unwrap_or(0.0);
         let ymax = ymax + 0.01 * ymax.abs();
         let ystep = (ymax - ymin) / (nbins as f64);

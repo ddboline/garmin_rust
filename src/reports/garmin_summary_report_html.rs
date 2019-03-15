@@ -16,60 +16,62 @@ fn generate_url_string(current_line: &str, options: &GarminReportOptions) -> Str
     let mut cmd_options = Vec::new();
 
     if let Some(s) = options.do_sport {
-        cmd_options.push(s.to_string())
-    } else if let Some(agg) = &options.agg {
-        match agg {
-            GarminReportAgg::Year => {
-                cmd_options.push("month".to_string());
-                let current_year = current_line
-                    .trim()
-                    .split_whitespace()
-                    .nth(0)
-                    .unwrap_or(&year);
-                cmd_options.push(current_year.to_string());
-            }
-            GarminReportAgg::Month => {
-                cmd_options.push("day".to_string());
-                let current_year = current_line
-                    .trim()
-                    .split_whitespace()
-                    .nth(0)
-                    .unwrap_or(&year);
-                let current_month = current_line
-                    .trim()
-                    .split_whitespace()
-                    .nth(1)
-                    .unwrap_or(&month);
-                let current_month = MONTH_NAMES
-                    .iter()
-                    .position(|&x| x == current_month)
-                    .unwrap_or(12)
-                    + 1;
-                if current_month >= 1 && current_month <= 12 {
-                    cmd_options.push(format!("{:04}-{:02}", current_year, current_month));
+        cmd_options.push(s.to_string());
+
+        if let Some(agg) = &options.agg {
+            match agg {
+                GarminReportAgg::Year => {
+                    cmd_options.push("month".to_string());
+                    let current_year = current_line
+                        .trim()
+                        .split_whitespace()
+                        .nth(0)
+                        .unwrap_or(&year);
+                    cmd_options.push(current_year.to_string());
                 }
-            }
-            GarminReportAgg::Week => {
-                let isoyear = now.iso_week().year();
-                let isoweek = now.iso_week().week();
-                cmd_options.push("day".to_string());
-                let vals: Vec<_> = current_line.trim().split_whitespace().collect();
-                let current_year: i32 = vals[0].parse().unwrap_or(isoyear);
-                let current_week: u32 = vals[2].parse().unwrap_or(isoweek);
-                cmd_options.push(format!("{:04}w{:02}", current_year, current_week));
-            }
-            GarminReportAgg::Day => {
-                cmd_options.push("file".to_string());
-                let current_day = current_line
-                    .trim()
-                    .split_whitespace()
-                    .nth(0)
-                    .unwrap_or(&today);
-                cmd_options.push(current_day.to_string());
-            }
-            GarminReportAgg::File => {
-                let current_file = current_line.trim().split_whitespace().nth(0).unwrap_or("");
-                cmd_options.push(current_file.to_string());
+                GarminReportAgg::Month => {
+                    cmd_options.push("day".to_string());
+                    let current_year = current_line
+                        .trim()
+                        .split_whitespace()
+                        .nth(0)
+                        .unwrap_or(&year);
+                    let current_month = current_line
+                        .trim()
+                        .split_whitespace()
+                        .nth(1)
+                        .unwrap_or(&month);
+                    let current_month = MONTH_NAMES
+                        .iter()
+                        .position(|&x| x == current_month)
+                        .unwrap_or(12)
+                        + 1;
+                    if current_month >= 1 && current_month <= 12 {
+                        cmd_options.push(format!("{:04}-{:02}", current_year, current_month));
+                    }
+                }
+                GarminReportAgg::Week => {
+                    let isoyear = now.iso_week().year();
+                    let isoweek = now.iso_week().week();
+                    cmd_options.push("day".to_string());
+                    let vals: Vec<_> = current_line.trim().split_whitespace().collect();
+                    let current_year: i32 = vals[0].parse().unwrap_or(isoyear);
+                    let current_week: u32 = vals[2].parse().unwrap_or(isoweek);
+                    cmd_options.push(format!("{:04}w{:02}", current_year, current_week));
+                }
+                GarminReportAgg::Day => {
+                    cmd_options.push("file".to_string());
+                    let current_day = current_line
+                        .trim()
+                        .split_whitespace()
+                        .nth(0)
+                        .unwrap_or(&today);
+                    cmd_options.push(current_day.to_string());
+                }
+                GarminReportAgg::File => {
+                    let current_file = current_line.trim().split_whitespace().nth(0).unwrap_or("");
+                    cmd_options.push(current_file.to_string());
+                }
             }
         }
     } else {

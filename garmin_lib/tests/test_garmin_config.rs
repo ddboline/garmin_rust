@@ -1,6 +1,6 @@
 use std::env::var;
 
-use garmin_rust::common::garmin_config;
+use garmin_lib::common::garmin_config;
 
 #[test]
 fn test_garmin_config_new() {

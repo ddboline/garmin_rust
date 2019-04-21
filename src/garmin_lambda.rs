@@ -10,9 +10,9 @@ use log::error;
 use serde_derive::{Deserialize, Serialize};
 use simple_logger;
 
-use garmin_rust::common::garmin_config::GarminConfig;
-use garmin_rust::common::garmin_summary::GarminSummary;
-use garmin_rust::common::garmin_sync::{GarminSync, GarminSyncTrait};
+use garmin_lib::common::garmin_config::GarminConfig;
+use garmin_lib::common::garmin_summary::GarminSummary;
+use garmin_lib::common::garmin_sync::{GarminSync, GarminSyncTrait};
 
 #[derive(Deserialize)]
 struct CustomEvent {

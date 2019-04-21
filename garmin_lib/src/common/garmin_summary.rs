@@ -516,3 +516,24 @@ impl GarminSummaryList {
         Ok(())
     }
 }
+
+pub fn get_list_of_files_from_db(
+    constraints: &[String],
+    pool: &PgPool,
+) -> Result<Vec<String>, Error> {
+    let constr = if constraints.is_empty() {
+        "".to_string()
+    } else {
+        format!("WHERE {}", constraints.join(" OR "))
+    };
+
+    let query = format!("SELECT filename FROM garmin_summary {}", constr);
+
+    let conn = pool.get()?;
+
+    Ok(conn
+        .query(&query, &[])?
+        .iter()
+        .map(|row| row.get(0))
+        .collect())
+}

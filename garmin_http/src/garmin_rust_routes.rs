@@ -8,18 +8,19 @@ use failure::{err_msg, Error};
 use futures::future::{lazy, Future};
 use serde::Serialize;
 
+use garmin_lib::common::garmin_cli::{GarminCli, GarminCliObj, GarminRequest};
+use garmin_lib::common::garmin_config::GarminConfig;
+use garmin_lib::common::garmin_correction_lap::GarminCorrectionListTrait;
+use garmin_lib::common::garmin_file::GarminFile;
+use garmin_lib::parsers::garmin_parse::{GarminParse, GarminParseTrait};
+use garmin_lib::reports::garmin_file_report_txt;
+
 use super::logged_user::LoggedUser;
 
 use super::garmin_rust_app::AppState;
-use crate::common::garmin_cli::{GarminCli, GarminCliObj};
-use crate::common::garmin_config::GarminConfig;
-use crate::common::garmin_correction_lap::GarminCorrectionListTrait;
-use crate::common::garmin_file::GarminFile;
-use crate::http::garmin_requests::{
+use crate::garmin_requests::{
     AuthorizedUserRequest, GarminCorrRequest, GarminHtmlRequest, GarminListRequest,
 };
-use crate::parsers::garmin_parse::{GarminParse, GarminParseTrait};
-use crate::reports::garmin_file_report_txt;
 
 #[derive(Deserialize)]
 pub struct FilterRequest {
@@ -50,11 +51,11 @@ fn proc_pattern_wrapper(request: FilterRequest) -> GarminHtmlRequest {
 
     let req = GarminCliObj::process_pattern(&filter_vec);
 
-    GarminHtmlRequest {
+    GarminHtmlRequest(GarminRequest {
         filter,
         history,
         ..req
-    }
+    })
 }
 
 fn form_http_response(body: String) -> HttpResponse {

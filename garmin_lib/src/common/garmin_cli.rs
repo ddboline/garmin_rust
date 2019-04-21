@@ -11,10 +11,9 @@ use super::garmin_correction_lap::{
     GarminCorrectionLap, GarminCorrectionList, GarminCorrectionListTrait,
 };
 use super::garmin_file;
-use super::garmin_summary::{GarminSummary, GarminSummaryList};
+use super::garmin_summary::{get_list_of_files_from_db, GarminSummary, GarminSummaryList};
 use super::garmin_sync::{GarminSync, GarminSyncTrait};
 use super::pgpool::PgPool;
-use crate::http::garmin_requests::{get_list_of_files_from_db, GarminHtmlRequest};
 use crate::parsers::garmin_parse::{GarminParse, GarminParseTrait};
 use crate::reports::garmin_file_report_html::file_report_html;
 use crate::reports::garmin_file_report_txt::generate_txt_report;
@@ -374,7 +373,7 @@ where
         self.run_cli(&req.options, &req.constraints)
     }
 
-    fn process_pattern(patterns: &[String]) -> GarminHtmlRequest {
+    fn process_pattern(patterns: &[String]) -> GarminRequest {
         let mut options = GarminReportOptions::new();
 
         let sport_type_map = get_sport_type_map();
@@ -413,7 +412,7 @@ where
             };
         }
 
-        GarminHtmlRequest {
+        GarminRequest {
             options,
             constraints,
             ..Default::default()
@@ -464,10 +463,10 @@ where
         Ok(())
     }
 
-    fn run_html(&self, req: &GarminHtmlRequest) -> Result<String, Error> {
+    fn run_html(&self, req: &GarminRequest) -> Result<String, Error> {
         let pg_conn = self.get_pool()?;
 
-        let file_list = req.get_list_of_files_from_db(&pg_conn)?;
+        let file_list = get_list_of_files_from_db(&req.constraints, &pg_conn)?;
 
         match file_list.len() {
             0 => Ok("".to_string()),
@@ -532,4 +531,12 @@ where
             }
         }
     }
+}
+
+#[derive(Debug, Default)]
+pub struct GarminRequest {
+    pub filter: String,
+    pub history: String,
+    pub options: GarminReportOptions,
+    pub constraints: Vec<String>,
 }

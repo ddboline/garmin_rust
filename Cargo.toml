@@ -5,46 +5,11 @@ authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-serde = "1.0"
-serde_derive = "1.0"
-serde_json = "1.0"
-flate2 = "1.0"
-failure = "0.1"
-rayon = "1.0"
-chrono = "0.4"
-approx = "0.3"
-subprocess = "0.1"
-json = "0.11"
-postgres = "0.15"
-postgres-derive = "0.3"
-native-tls = "*"
-clap = "2"
+garmin_lib = { path = "garmin_lib" }
+garmin_http = { path = "garmin_http" }
+actix = "0.7"
 log = "0.4"
 env_logger = "0.6"
-rusoto_core = {version = "0.36", default_features = false, features=["rustls"]}
-rusoto_s3 = {version = "0.36", default_features = false, features=["rustls"]}
-futures = "*"
-# s4 = "*"
-num = "*"
-config = "*"
-tempdir = "*"
-tempfile = "*"
-actix-web = "*"
-actix = "*"
-rand = "0.6"
-simple_logger = "1.0"
-r2d2 = "*"
-r2d2_postgres = "*"
-dotenv = "*"
-jsonwebtoken = "5.0"
-
-[dependencies.avro-rs]
-version = "^0.6"
-features = ["snappy"]
-
-[lib]
-name = "garmin_rust"
-path = "src/lib.rs"
 
 [[bin]]
 name = "garmin-rust-proc"

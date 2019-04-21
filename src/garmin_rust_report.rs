@@ -1,4 +1,4 @@
-use garmin_rust::common::garmin_cli::{GarminCli, GarminCliObj};
+use garmin_lib::common::garmin_cli::{GarminCli, GarminCliObj};
 
 fn main() {
     env_logger::init();

@@ -6,8 +6,9 @@ use std::convert::From;
 use std::env;
 use std::sync::{Arc, RwLock};
 
+use garmin_lib::common::pgpool::PgPool;
+
 use super::errors::ServiceError;
-use crate::common::pgpool::PgPool;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Claims {

@@ -1,7 +1,7 @@
-use garmin_rust::common::garmin_cli::{GarminCliObj, GarminCliOptions};
-use garmin_rust::common::garmin_config;
-use garmin_rust::common::garmin_correction_lap::GarminCorrectionList;
-use garmin_rust::parsers::garmin_parse::GarminParse;
+use garmin_lib::common::garmin_cli::{GarminCliObj, GarminCliOptions};
+use garmin_lib::common::garmin_config;
+use garmin_lib::common::garmin_correction_lap::GarminCorrectionList;
+use garmin_lib::parsers::garmin_parse::GarminParse;
 
 #[test]
 fn test_garmin_cli_new() {

@@ -1,6 +1,6 @@
 #![allow(clippy::needless_pass_by_value)]
 
-use garmin_rust::http::garmin_rust_app::start_app;
+use garmin_http::garmin_rust_app::start_app;
 
 /// Start actix system and add our app to it
 fn main() {

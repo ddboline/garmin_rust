@@ -1,10 +1,10 @@
 #[macro_use]
 extern crate approx;
 
-use garmin_rust::common::garmin_correction_lap::{GarminCorrectionList, GarminCorrectionListTrait};
-use garmin_rust::common::garmin_file;
-use garmin_rust::parsers::garmin_parse::GarminParseTrait;
-use garmin_rust::parsers::garmin_parse_tcx;
+use garmin_lib::common::garmin_correction_lap::{GarminCorrectionList, GarminCorrectionListTrait};
+use garmin_lib::common::garmin_file;
+use garmin_lib::parsers::garmin_parse::GarminParseTrait;
+use garmin_lib::parsers::garmin_parse_tcx;
 
 #[test]
 fn test_garmin_file_test_avro() {

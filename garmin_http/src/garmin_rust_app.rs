@@ -6,10 +6,11 @@ use actix_web::middleware::identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::{http::Method, server, App};
 use chrono::Duration;
 
+use garmin_lib::common::garmin_config::GarminConfig;
+use garmin_lib::common::pgpool::PgPool;
+
 use super::logged_user::AuthorizedUsers;
-use crate::common::garmin_config::GarminConfig;
-use crate::common::pgpool::PgPool;
-use crate::http::garmin_rust_routes::{
+use crate::garmin_rust_routes::{
     garmin, garmin_get_hr_data, garmin_get_hr_pace, garmin_list_gps_tracks,
 };
 

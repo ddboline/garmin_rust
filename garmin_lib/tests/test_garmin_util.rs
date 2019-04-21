@@ -1,6 +1,6 @@
-use garmin_rust::utils::garmin_util;
-use garmin_rust::utils::plot_graph;
-use garmin_rust::utils::plot_opts;
+use garmin_lib::utils::garmin_util;
+use garmin_lib::utils::plot_graph;
+use garmin_lib::utils::plot_opts;
 
 #[test]
 fn test_convert_time_string() {

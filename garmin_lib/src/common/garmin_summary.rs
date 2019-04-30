@@ -96,8 +96,11 @@ impl GarminSummary {
         let gfile = GarminParse::new().with_file(&filename, &corr_map)?;
 
         match gfile.laps.get(0) {
+            Some(l) if l.lap_start.len() == 0 => {
+                return Err(err_msg(format!("{} has empty lap start?", &gfile.filename)));
+            }
             Some(_) => (),
-            None => println!("{} has no laps?", gfile.filename),
+            None => return Err(err_msg(format!("{} has no laps?", gfile.filename))),
         };
         gfile.dump_avro(&cache_file)?;
         Ok(GarminSummary::new(&gfile, &md5sum))
@@ -272,8 +275,19 @@ impl GarminSummaryList {
                 let md5sum = get_md5sum(&input_file)?;
                 let gfile = GarminParse::new().with_file(&input_file, &corr_map)?;
                 match gfile.laps.get(0) {
+                    Some(l) if l.lap_start.len() == 0 => {
+                        return Err(err_msg(format!(
+                            "{} {} has empty lap start?",
+                            &input_file, &gfile.filename
+                        )));
+                    }
                     Some(_) => (),
-                    None => println!("{} {} has no laps?", &input_file, &gfile.filename),
+                    None => {
+                        return Err(err_msg(format!(
+                            "{} {} has no laps?",
+                            &input_file, &gfile.filename
+                        )));
+                    }
                 };
                 gfile.dump_avro(&cache_file)?;
                 Ok(GarminSummary::new(&gfile, &md5sum))

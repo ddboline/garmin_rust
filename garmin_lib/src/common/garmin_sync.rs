@@ -1,16 +1,11 @@
-use futures::stream::Stream;
-use std::io::{Read, Write};
-
 use chrono::prelude::*;
 use rayon::prelude::*;
 
 use failure::Error;
 
 use rusoto_core::Region;
-use rusoto_s3::{
-    GetObjectOutput, GetObjectRequest, ListObjectsV2Request, PutObjectOutput, PutObjectRequest,
-    S3Client, StreamingBody, S3,
-};
+use rusoto_s3::{GetObjectRequest, ListObjectsV2Request, PutObjectRequest, S3Client, S3};
+use s4::S4;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
@@ -58,18 +53,6 @@ pub trait GarminSyncTrait {
         s3_key: &str,
     ) -> Result<String, Error>;
 
-    fn download_to_file<F>(
-        &self,
-        source: GetObjectRequest,
-        target: F,
-    ) -> Result<GetObjectOutput, Error>
-    where
-        F: AsRef<Path>;
-
-    fn copy<W>(src: &mut StreamingBody, dest: &mut W) -> Result<(), Error>
-    where
-        W: Write;
-
     fn upload_file(&self, local_file: &str, s3_bucket: &str, s3_key: &str) -> Result<(), Error>;
 
     fn upload_file_acl(
@@ -79,18 +62,6 @@ pub trait GarminSyncTrait {
         s3_key: &str,
         acl: Option<String>,
     ) -> Result<(), Error>;
-
-    fn upload_from_file<F>(
-        &self,
-        source: F,
-        target: PutObjectRequest,
-    ) -> Result<PutObjectOutput, Error>
-    where
-        F: AsRef<Path>;
-
-    fn upload<R>(&self, source: &mut R, target: PutObjectRequest) -> Result<PutObjectOutput, Error>
-    where
-        R: Read;
 }
 
 impl GarminSyncTrait for GarminSync<S3Client> {
@@ -278,6 +249,7 @@ impl GarminSyncTrait for GarminSync<S3Client> {
         s3_key: &str,
     ) -> Result<String, Error> {
         let etag = self
+            .s3_client
             .download_to_file(
                 GetObjectRequest {
                     bucket: s3_bucket.to_string(),
@@ -291,36 +263,6 @@ impl GarminSyncTrait for GarminSync<S3Client> {
         Ok(etag)
     }
 
-    fn download_to_file<F>(
-        &self,
-        source: GetObjectRequest,
-        target: F,
-    ) -> Result<GetObjectOutput, Error>
-    where
-        F: AsRef<Path>,
-    {
-        debug!("downloading to file {:?}", target.as_ref());
-        let mut resp = self.s3_client.get_object(source).sync()?;
-        let mut body = resp.body.take().expect("no body");
-        let mut target = fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(target)?;
-        GarminSync::copy(&mut body, &mut target)?;
-        Ok(resp)
-    }
-
-    fn copy<W>(src: &mut StreamingBody, dest: &mut W) -> Result<(), Error>
-    where
-        W: Write,
-    {
-        let src = src.take(512 * 1024).wait();
-        for chunk in src {
-            dest.write_all(chunk?.as_mut_slice())?;
-        }
-        Ok(())
-    }
-
     fn upload_file(&self, local_file: &str, s3_bucket: &str, s3_key: &str) -> Result<(), Error> {
         self.upload_file_acl(local_file, s3_bucket, s3_key, None)
     }
@@ -332,7 +274,7 @@ impl GarminSyncTrait for GarminSync<S3Client> {
         s3_key: &str,
         acl: Option<String>,
     ) -> Result<(), Error> {
-        self.upload_from_file(
+        self.s3_client.upload_from_file(
             &local_file,
             PutObjectRequest {
                 bucket: s3_bucket.to_string(),
@@ -342,36 +284,5 @@ impl GarminSyncTrait for GarminSync<S3Client> {
             },
         )?;
         Ok(())
-    }
-
-    #[inline]
-    fn upload_from_file<F>(
-        &self,
-        source: F,
-        target: PutObjectRequest,
-    ) -> Result<PutObjectOutput, Error>
-    where
-        F: AsRef<Path>,
-    {
-        debug!("uploading file {:?}", source.as_ref());
-        let mut source = fs::File::open(source)?;
-        self.upload(&mut source, target)
-    }
-
-    fn upload<R>(
-        &self,
-        source: &mut R,
-        mut target: PutObjectRequest,
-    ) -> Result<PutObjectOutput, Error>
-    where
-        R: Read,
-    {
-        let mut content = Vec::new();
-        source.read_to_end(&mut content)?;
-        target.body = Some(content.into());
-        self.s3_client
-            .put_object(target)
-            .sync()
-            .map_err(|e| e.into())
     }
 }

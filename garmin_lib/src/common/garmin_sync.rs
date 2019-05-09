@@ -120,21 +120,7 @@ impl GarminSyncTrait for GarminSync<S3Client> {
             match current_list.key_count {
                 Some(0) => (),
                 Some(_) => {
-                    for item in current_list.contents.unwrap_or_else(Vec::new) {
-                        if let Some(key) = item.key {
-                            list_of_keys.push((
-                                key,
-                                item.e_tag
-                                    .unwrap_or_else(|| "".to_string())
-                                    .trim_matches('"')
-                                    .to_string(),
-                                DateTime::parse_from_rfc3339(
-                                    &item.last_modified.unwrap_or_else(|| "".to_string()),
-                                )?
-                                .timestamp(),
-                            ))
-                        }
-                    }
+                    list_of_keys.extend_from_slice(&current_list.contents.unwrap_or_else(Vec::new));
                 }
                 None => (),
             };
@@ -144,6 +130,26 @@ impl GarminSyncTrait for GarminSync<S3Client> {
                 None => break,
             };
         }
+
+        let list_of_keys = list_of_keys
+            .into_iter()
+            .filter_map(|item| {
+                if let Some(key) = item.key {
+                    if let Some(etag) = item.e_tag {
+                        if let Some(last_mod) = item.last_modified {
+                            if let Ok(lm) = DateTime::parse_from_rfc3339(&last_mod) {
+                                return Some((
+                                    key,
+                                    etag.trim_matches('"').to_string(),
+                                    lm.timestamp(),
+                                ));
+                            }
+                        }
+                    }
+                }
+                None
+            })
+            .collect();
 
         Ok(list_of_keys)
     }

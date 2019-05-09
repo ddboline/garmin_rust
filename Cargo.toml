@@ -11,6 +11,12 @@ actix = "0.7"
 log = "0.4"
 env_logger = "0.6"
 
+[workspace]
+members = [
+    "garmin_lib",
+    "garmin_http",
+]
+
 [[bin]]
 name = "garmin-rust-proc"
 path = "src/garmin_rust_proc.rs"

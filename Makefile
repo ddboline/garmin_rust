@@ -40,24 +40,6 @@ build_test:
 	cd ../ && \
 	rm -rf build/
 
-lambda_build:
-	docker run --cidfile $(cidfile) -v `pwd`/target:/garmin_rust/target garmin_rust/build_rust:amazonlinux2018.03 /garmin_rust/scripts/build_lambda.sh
-	docker cp `cat $(cidfile)`:/garmin_rust/rust.zip .
-	docker rm `cat $(cidfile)`
-	rm $(cidfile)
-
-lambda_upload:
-	aws s3 cp rust.zip s3://garmin-scripts-lambda-code/
-
-lambda_create:
-	aws cloudformation create-stack --stack-name garmin-rust-lambda --template-body file:///home/ddboline/setup_files/build/garmin_rust/cloudformation-templates/garmin_rust_lambda.json
-
-lambda_update:
-	aws cloudformation update-stack --stack-name garmin-rust-lambda --template-body file:///home/ddboline/setup_files/build/garmin_rust/cloudformation-templates/garmin_rust_lambda.json
-
-lambda_update_code:
-	aws lambda update-function-code --function-name garmin_rust_lambda --s3-bucket garmin-scripts-lambda-code --s3-key rust.zip
-
 install:
 	cp target/$(build_type)/garmin-rust-proc /usr/bin/garmin-rust-proc
 	cp target/$(build_type)/garmin-rust-report /usr/bin/garmin-rust-report

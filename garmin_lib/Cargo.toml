@@ -21,7 +21,7 @@ env_logger = "0.6"
 rusoto_core = {version = "0.36", default_features = false, features=["rustls"]}
 rusoto_s3 = {version = "0.36", default_features = false, features=["rustls"]}
 futures = "0.1"
-# s4 = "*"
+s4 = { git = "https://github.com/ddboline/s4.git", branch = "upgrade_rusoto_0.36" }
 num = "0.2"
 config = "0.9"
 tempdir = "0.3"

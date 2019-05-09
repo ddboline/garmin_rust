@@ -31,8 +31,3 @@ doc = false
 name = "garmin-rust-http"
 path = "src/garmin_rust_http.rs"
 doc = false
-
-#[[bin]]
-#name = "bootstrap"
-#path = "src/garmin_lambda.rs"
-#doc = false

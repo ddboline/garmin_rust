@@ -112,8 +112,8 @@ fn extract_report_objects_from_file(gfile: &GarminFile) -> Result<ReportObjects,
     report_objs.heart_rate_speed = speed_values
         .iter()
         .map(|v| {
-            let t = v[1];
-            let h = v[2];
+            let t = v.time_value;
+            let h = v.avg_heart_rate.unwrap_or(0.0);
             (h, 4.0 * t / 60.)
         })
         .collect();
@@ -121,8 +121,8 @@ fn extract_report_objects_from_file(gfile: &GarminFile) -> Result<ReportObjects,
     report_objs.speed_values = speed_values
         .into_iter()
         .map(|v| {
-            let d = v[0];
-            let t = v[1];
+            let d = v.split_distance;
+            let t = v.time_value;
             (d / 4., 4. * t / 60.)
         })
         .collect();
@@ -130,8 +130,8 @@ fn extract_report_objects_from_file(gfile: &GarminFile) -> Result<ReportObjects,
     report_objs.mile_split_vals = get_splits(&gfile, METERS_PER_MILE, "mi", false)?
         .into_iter()
         .map(|v| {
-            let d = v[0];
-            let t = v[1];
+            let d = v.split_distance;
+            let t = v.time_value;
             (d, t / 60.)
         })
         .collect();
@@ -653,9 +653,9 @@ fn get_html_splits(
         let values: Vec<_> = get_splits(gfile, split_distance_in_meters, label, true)?
             .into_iter()
             .map(|val| {
-                let dis = val[0] as i32;
-                let tim = val[1];
-                let hrt = *val.get(2).unwrap_or(&0.0) as i32;
+                let dis = val.split_distance as i32;
+                let tim = val.time_value;
+                let hrt = val.avg_heart_rate.unwrap_or(0.0) as i32;
                 vec![
                     format!("{} {}", dis, label),
                     print_h_m_s(tim, true).unwrap_or_else(|_| "".to_string()),

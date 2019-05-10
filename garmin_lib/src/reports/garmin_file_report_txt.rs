@@ -204,9 +204,9 @@ fn print_splits(
     let retval: Vec<_> = get_splits(gfile, split_distance_in_meters, label, true)?
         .into_iter()
         .map(|val| {
-            let dis = val[0] as i32;
-            let tim = val[1];
-            let hrt = *val.get(2).unwrap_or(&0.0);
+            let dis = val.split_distance as i32;
+            let tim = val.time_value;
+            let hrt = val.avg_heart_rate.unwrap_or(0.0);
 
             format!(
                 "{} {} \t {} \t {} / mi \t {} / km \t {} \t {:.2} bpm avg",
@@ -229,12 +229,19 @@ fn print_splits(
     Ok(retval.join("\n"))
 }
 
+#[derive(Debug)]
+pub struct SplitValue {
+    pub split_distance: f64,
+    pub time_value: f64,
+    pub avg_heart_rate: Option<f64>,
+}
+
 pub fn get_splits(
     gfile: &GarminFile,
     split_distance_in_meters: f64,
     label: &str,
     do_heart_rate: bool,
-) -> Result<Vec<Vec<f64>>, Error> {
+) -> Result<Vec<SplitValue>, Error> {
     if gfile.points.len() < 3 {
         return Ok(Vec::new());
     };
@@ -285,13 +292,17 @@ pub fn get_splits(
                 cur_point_me / split_distance_in_meters
             };
             let tmp_vector = if do_heart_rate {
-                vec![
-                    split_dist,
-                    time_val,
-                    avg_hrt_rate / (cur_split_time - prev_split_time),
-                ]
+                SplitValue {
+                    split_distance: split_dist,
+                    time_value: time_val,
+                    avg_heart_rate: Some(avg_hrt_rate / (cur_split_time - prev_split_time)) ,
+                }
             } else {
-                vec![split_dist, time_val]
+                SplitValue {
+                    split_distance: split_dist,
+                    time_value: time_val,
+                    avg_heart_rate: None,
+                }
             };
 
             debug!("get splits 1 {:?}", &tmp_vector);

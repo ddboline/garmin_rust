@@ -13,7 +13,7 @@ use garmin_lib::common::garmin_config::GarminConfig;
 use garmin_lib::common::garmin_correction_lap::GarminCorrectionListTrait;
 use garmin_lib::common::garmin_file::GarminFile;
 use garmin_lib::parsers::garmin_parse::{GarminParse, GarminParseTrait};
-use garmin_lib::reports::garmin_file_report_txt;
+use garmin_lib::reports::garmin_file_report_txt::get_splits;
 
 use super::logged_user::LoggedUser;
 
@@ -212,10 +212,10 @@ pub fn garmin_get_hr_data(
                             gfile
                                 .points
                                 .iter()
-                                .filter_map(|p| match p.heart_rate {
-                                    Some(hr) => Some(TimeValue {
-                                        time: p.time.clone(),
-                                        value: hr,
+                                .filter_map(|point| match point.heart_rate {
+                                    Some(heart_rate) => Some(TimeValue {
+                                        time: point.time.clone(),
+                                        value: heart_rate,
                                     }),
                                     None => None,
                                 })
@@ -265,9 +265,7 @@ pub fn garmin_get_hr_pace(
                     let hrpace = match file_list.len() {
                         1 => {
                             let config = GarminConfig::get_config(None);
-                            let file_name = file_list
-                                .get(0)
-                                .ok_or_else(|| err_msg("This shouldn't be happening..."))?;
+                            let file_name = &file_list[0];
                             let avro_file = format!("{}/{}.avro", &config.cache_dir, file_name);
                             let gfile = match GarminFile::read_avro(&avro_file) {
                                 Ok(g) => g,
@@ -280,15 +278,14 @@ pub fn garmin_get_hr_pace(
                                 }
                             };
 
-                            let splits =
-                                garmin_file_report_txt::get_splits(&gfile, 400., "mi", true)?;
+                            let splits = get_splits(&gfile, 400., "mi", true)?;
 
                             HrPaceList {
                                 hr_pace: splits
                                     .iter()
                                     .filter_map(|v| {
-                                        let s = v[1];
-                                        let h = v[2];
+                                        let s = v.time_value;
+                                        let h = v.avg_heart_rate.unwrap_or(0.0);
                                         let pace = 4. * s / 60.;
                                         if pace >= 5.5 && pace <= 20. {
                                             Some(HrPace { hr: h, pace })

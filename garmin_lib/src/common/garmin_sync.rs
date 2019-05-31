@@ -1,7 +1,7 @@
 use chrono::prelude::*;
 use rayon::prelude::*;
 
-use failure::Error;
+use failure::{Error, err_msg};
 
 use rusoto_core::Region;
 use rusoto_s3::{GetObjectRequest, ListObjectsV2Request, PutObjectRequest, S3Client, S3};
@@ -11,7 +11,7 @@ use std::fs;
 use std::path::Path;
 use std::time::SystemTime;
 
-use crate::utils::garmin_util::{get_md5sum, map_result_vec};
+use crate::utils::garmin_util::{exponential_retry, get_md5sum, map_result_vec};
 
 pub fn get_s3_client() -> S3Client {
     S3Client::new(Region::UsEast1)
@@ -71,20 +71,21 @@ impl GarminSyncTrait for GarminSync<S3Client> {
         let mut list_of_keys = Vec::new();
 
         loop {
-            let current_list = self
-                .s3_client
-                .list_objects_v2(ListObjectsV2Request {
-                    bucket: bucket.to_string(),
-                    continuation_token,
-                    delimiter: None,
-                    encoding_type: None,
-                    fetch_owner: None,
-                    max_keys: None,
-                    prefix: None,
-                    request_payer: None,
-                    start_after: None,
-                })
-                .sync()?;
+            let current_list = exponential_retry(|| {
+                self.s3_client
+                    .list_objects_v2(ListObjectsV2Request {
+                        bucket: bucket.to_string(),
+                        continuation_token: continuation_token.clone(),
+                        delimiter: None,
+                        encoding_type: None,
+                        fetch_owner: None,
+                        max_keys: None,
+                        prefix: None,
+                        request_payer: None,
+                        start_after: None,
+                    })
+                    .sync().map_err(err_msg)
+            })?;
 
             continuation_token = current_list.next_continuation_token.clone();
 

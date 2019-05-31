@@ -295,7 +295,7 @@ pub fn get_splits(
                 SplitValue {
                     split_distance: split_dist,
                     time_value: time_val,
-                    avg_heart_rate: Some(avg_hrt_rate / (cur_split_time - prev_split_time)) ,
+                    avg_heart_rate: Some(avg_hrt_rate / (cur_split_time - prev_split_time)),
                 }
             } else {
                 SplitValue {

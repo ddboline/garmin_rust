@@ -5,8 +5,10 @@ use std::io::BufReader;
 use std::path::Path;
 use subprocess::Exec;
 
-use rand::distributions::{Alphanumeric, Distribution};
+use rand::distributions::{Alphanumeric, Distribution, Uniform};
 use rand::thread_rng;
+use std::thread::sleep;
+use std::time::Duration;
 
 use chrono::prelude::*;
 
@@ -139,6 +141,27 @@ pub fn get_file_list(path: &Path) -> Vec<String> {
         Err(err) => {
             println!("{}", err);
             Vec::new()
+        }
+    }
+}
+
+pub fn exponential_retry<T, U>(closure: T) -> Result<U, Error>
+where
+    T: Fn() -> Result<U, Error>,
+{
+    let mut timeout: f64 = 1.0;
+    let mut rng = thread_rng();
+    let range = Uniform::from(0..1000);
+    loop {
+        match closure() {
+            Ok(x) => return Ok(x),
+            Err(e) => {
+                sleep(Duration::from_millis((timeout * 1000.0) as u64));
+                timeout *= 4.0 * range.sample(&mut rng) as f64 / 1000.0;
+                if timeout >= 64.0 {
+                    return Err(err_msg(e));
+                }
+            }
         }
     }
 }

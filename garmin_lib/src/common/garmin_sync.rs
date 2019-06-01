@@ -1,7 +1,7 @@
 use chrono::prelude::*;
 use rayon::prelude::*;
 
-use failure::{Error, err_msg};
+use failure::{err_msg, Error};
 
 use rusoto_core::Region;
 use rusoto_s3::{GetObjectRequest, ListObjectsV2Request, PutObjectRequest, S3Client, S3};
@@ -84,7 +84,8 @@ impl GarminSyncTrait for GarminSync<S3Client> {
                         request_payer: None,
                         start_after: None,
                     })
-                    .sync().map_err(err_msg)
+                    .sync()
+                    .map_err(err_msg)
             })?;
 
             continuation_token = current_list.next_continuation_token.clone();
@@ -255,18 +256,21 @@ impl GarminSyncTrait for GarminSync<S3Client> {
         s3_bucket: &str,
         s3_key: &str,
     ) -> Result<String, Error> {
-        let etag = self
-            .s3_client
-            .download_to_file(
-                GetObjectRequest {
-                    bucket: s3_bucket.to_string(),
-                    key: s3_key.to_string(),
-                    ..Default::default()
-                },
-                local_file,
-            )?
-            .e_tag
-            .unwrap_or_else(|| "".to_string());
+        let etag = exponential_retry(|| {
+            {
+                self.s3_client.download_to_file(
+                    GetObjectRequest {
+                        bucket: s3_bucket.to_string(),
+                        key: s3_key.to_string(),
+                        ..Default::default()
+                    },
+                    local_file,
+                )
+            }
+            .map_err(err_msg)
+        })?
+        .e_tag
+        .unwrap_or_else(|| "".to_string());
         Ok(etag)
     }
 
@@ -281,15 +285,20 @@ impl GarminSyncTrait for GarminSync<S3Client> {
         s3_key: &str,
         acl: Option<String>,
     ) -> Result<(), Error> {
-        self.s3_client.upload_from_file(
-            &local_file,
-            PutObjectRequest {
-                bucket: s3_bucket.to_string(),
-                key: s3_key.to_string(),
-                acl,
-                ..Default::default()
-            },
-        )?;
+        exponential_retry(|| {
+            {
+                self.s3_client.upload_from_file(
+                    &local_file,
+                    PutObjectRequest {
+                        bucket: s3_bucket.to_string(),
+                        key: s3_key.to_string(),
+                        acl: acl.clone(),
+                        ..Default::default()
+                    },
+                )
+            }
+            .map_err(err_msg)
+        })?;
         Ok(())
     }
 }

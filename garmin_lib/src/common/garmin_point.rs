@@ -178,20 +178,24 @@ impl GarminPoint {
             .iter()
             .enumerate()
             .scan(0.0, |time_from_begin, (i, point)| {
-                let mut new_point = point.clone();
-                new_point.duration_from_last = match i {
+                let duration_from_last = match i {
                     0 => 0.0,
                     _ => {
-                        let cur_time: DateTime<Utc> = DateTime::from_str(&new_point.time)
-                            .expect("Failed to extract timestamp");
+                        let cur_time: DateTime<Utc> =
+                            DateTime::from_str(&point.time).expect("Failed to extract timestamp");
                         let last_time: DateTime<Utc> = DateTime::from_str(&point_list[i - 1].time)
                             .expect("Failed to extract timestamp");
                         (cur_time - last_time).num_seconds() as f64
                     }
                 };
-                *time_from_begin += new_point.duration_from_last;
-                new_point.duration_from_begin = *time_from_begin;
+                *time_from_begin += duration_from_last;
+                let duration_from_begin = *time_from_begin;
 
+                let new_point = GarminPoint {
+                    duration_from_begin,
+                    duration_from_last,
+                    ..point.clone()
+                };
                 Some(new_point)
             })
             .filter(|new_point| match new_point.distance {

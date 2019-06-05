@@ -234,7 +234,7 @@ where
 
         let mut writer = Writer::with_codec(&schema, output_file, Codec::Snappy);
 
-        writer.extend_ser(self.get_corr_list().clone())?;
+        writer.extend_ser(self.get_corr_list())?;
         writer.flush()?;
 
         Ok(())

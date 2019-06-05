@@ -545,9 +545,11 @@ pub fn get_list_of_files_from_db(
 
     let conn = pool.get()?;
 
-    Ok(conn
+    let results = conn
         .query(&query, &[])?
         .iter()
         .map(|row| row.get(0))
-        .collect())
+        .collect();
+
+    Ok(results)
 }

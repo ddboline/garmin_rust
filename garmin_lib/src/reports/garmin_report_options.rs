@@ -1,6 +1,6 @@
 use crate::utils::sport_types::SportTypes;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum GarminReportAgg {
     Year,
     Month,

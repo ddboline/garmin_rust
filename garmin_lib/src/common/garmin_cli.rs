@@ -533,7 +533,7 @@ where
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct GarminRequest {
     pub filter: String,
     pub history: String,

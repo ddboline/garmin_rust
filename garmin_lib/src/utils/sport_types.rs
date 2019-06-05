@@ -1,6 +1,10 @@
 use std::collections::HashMap;
 use std::fmt;
 
+lazy_static! {
+    static ref SPORT_TYPE_MAP: HashMap<String, SportTypes> = get_sport_type_map();
+}
+
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
 pub enum SportTypes {
     Running,
@@ -67,7 +71,7 @@ pub fn get_sport_type_map() -> HashMap<String, SportTypes> {
 }
 
 pub fn convert_sport_name(sport: &str) -> Option<String> {
-    let map0 = get_sport_type_map();
+    let map0 = &SPORT_TYPE_MAP;
 
     match map0.get(sport) {
         Some(&s) => Some(s.to_string()),
@@ -92,7 +96,7 @@ pub fn get_strava_activity_type(sport_type: SportTypes) -> String {
 }
 
 pub fn convert_sport_name_to_activity_type(sport: &str) -> Option<String> {
-    let map0 = get_sport_type_map();
+    let map0 = &SPORT_TYPE_MAP;
 
     match map0.get(sport) {
         Some(&s) => Some(get_strava_activity_type(s)),

@@ -157,7 +157,7 @@ where
             Ok(x) => return Ok(x),
             Err(e) => {
                 sleep(Duration::from_millis((timeout * 1000.0) as u64));
-                timeout *= 4.0 * range.sample(&mut rng) as f64 / 1000.0;
+                timeout *= 4.0 * f64::from(range.sample(&mut rng)) / 1000.0;
                 if timeout >= 64.0 {
                     return Err(err_msg(e));
                 }

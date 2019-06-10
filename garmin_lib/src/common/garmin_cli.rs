@@ -3,7 +3,10 @@ use failure::{err_msg, Error};
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::fs::{copy, rename};
+use std::io::Read;
 use std::path::Path;
+use subprocess::{Exec, Redirection};
 use tempdir::TempDir;
 
 use super::garmin_config::GarminConfig;
@@ -39,6 +42,7 @@ pub enum GarminCliOptions {
     All,
     Bootstrap,
     FileNames(Vec<String>),
+    ImportFileNames(Vec<String>),
 }
 
 #[derive(Debug, Default)]
@@ -99,7 +103,7 @@ where
                     .long("filename")
                     .value_name("FILENAME")
                     .multiple(true)
-                    .help("Convert a single file"),
+                    .help("Convert (a) file(s)"),
             )
             .arg(
                 Arg::with_name("all")
@@ -125,6 +129,14 @@ where
                     .help("Bootstrap a new node")
                     .takes_value(false),
             )
+            .arg(
+                Arg::with_name("import")
+                    .short("i")
+                    .long("import")
+                    .value_name("IMPORT")
+                    .multiple(true)
+                    .help("Import fit file(s) rename and copy to cache"),
+            )
             .get_matches();
 
         GarminCliObj {
@@ -134,12 +146,20 @@ where
                 Some(GarminCliOptions::All)
             } else if matches.is_present("bootstrap") {
                 Some(GarminCliOptions::Bootstrap)
-            } else {
+            } else if matches.is_present("filename") {
                 match matches
                     .values_of("filename")
                     .map(|f| f.map(|f| f.to_string()).collect())
                 {
                     Some(v) => Some(GarminCliOptions::FileNames(v)),
+                    None => None,
+                }
+            } else {
+                match matches
+                    .values_of("import")
+                    .map(|f| f.map(|f| f.to_string()).collect())
+                {
+                    Some(v) => Some(GarminCliOptions::ImportFileNames(v)),
                     None => None,
                 }
             },
@@ -190,6 +210,83 @@ where
     fn get_parser(&self) -> &T;
 
     fn garmin_proc(&self) -> Result<(), Error> {
+        if let Some(GarminCliOptions::ImportFileNames(v)) = self.get_opts() {
+            let tempdir = TempDir::new("garmin_zip")?;
+            let ziptmpdir = tempdir
+                .path()
+                .to_str()
+                .ok_or_else(|| err_msg("Path is invalid unicode somehow"))?;
+
+            let filenames: Vec<_> = v
+                .iter()
+                .filter(|f| (f.ends_with(".zip") || f.ends_with(".fit")) && Path::new(f).exists())
+                .collect();
+
+            let results: Vec<Result<_, Error>> = filenames
+                .into_par_iter()
+                .map(|filename| {
+                    if filename.ends_with(".zip") {
+                        let new_filename = Path::new(filename)
+                            .file_name()
+                            .ok_or_else(|| err_msg("Bad filename"))?
+                            .to_str()
+                            .ok_or_else(|| err_msg("Bad string"))?;
+                        let new_filename = new_filename.replace(".zip", ".fit");
+                        let command = format!("unzip {} -d {}", filename, ziptmpdir);
+                        let mut process = Exec::shell(command).stdout(Redirection::Pipe).popen()?;
+                        let exit_status = process.wait()?;
+                        if exit_status.success() {
+                            if let Some(mut f) = process.stdout.as_ref() {
+                                let mut buf = String::new();
+                                f.read_to_string(&mut buf)?;
+                                println!("{}", buf);
+                            }
+                            return Err(err_msg(format!(
+                                "Failed with exit status {:?}",
+                                exit_status
+                            )));
+                        }
+                        let new_filename = format!("{}/{}", ziptmpdir, new_filename);
+                        Ok(new_filename)
+                    } else {
+                        Ok(filename.clone())
+                    }
+                })
+                .collect();
+
+            let filenames = map_result_vec(results)?;
+
+            println!("{:?}", filenames);
+
+            let results: Vec<Result<_, Error>> = filenames
+                .par_iter()
+                .map(|filename| {
+                    assert!(Path::new(&filename).exists(), "No such file");
+                    assert!(filename.ends_with(".fit"), "Only fit files are supported");
+                    let mock_map = HashMap::new();
+                    let gfile = GarminParse::new().with_file(&filename, &mock_map)?;
+
+                    use chrono::{DateTime, Utc};
+                    use std::str::FromStr;
+
+                    let last_time: DateTime<Utc> = DateTime::from_str(&gfile.begin_datetime)
+                        .expect("Failed to extract timestamp");
+                    let outfile = format!(
+                        "{}/{}",
+                        &self.get_config().gps_dir,
+                        last_time.format("%Y-%m-%d_%H-%M-%S_1_1.fit")
+                    );
+
+                    println!("{} {}", filename, outfile);
+
+                    rename(filename.clone(), outfile.clone())
+                        .or_else(|_| copy(filename, outfile).map(|_| ()))?;
+                    Ok(())
+                })
+                .collect();
+            map_result_vec(results)?;
+        }
+
         match self.get_opts() {
             Some(GarminCliOptions::Bootstrap) => {
                 self.run_bootstrap()?;

@@ -11,8 +11,7 @@ use garmin_lib::common::pgpool::PgPool;
 
 use super::logged_user::AuthorizedUsers;
 use crate::garmin_rust_routes::{
-    garmin, 
-    // garmin_get_hr_data, garmin_get_hr_pace, garmin_list_gps_tracks,
+    garmin, garmin_get_hr_data, garmin_get_hr_pace, garmin_list_gps_tracks,
 };
 
 lazy_static! {
@@ -56,16 +55,16 @@ pub fn start_app() {
                     .secure(false), // this can only be true if you have https
             ))
             .service(web::resource("/garmin").route(web::get().to_async(garmin)))
-            // .service(
-            //     web::resource("/garmin/list_gps_tracks")
-            //         .route(web::get().to_async(garmin_list_gps_tracks)),
-            // )
-            // .service(
-            //     web::resource("/garmin/get_hr_data").route(web::get().to_async(garmin_get_hr_data)),
-            // )
-            // .service(
-            //     web::resource("/garmin/get_hr_pace").route(web::get().to_async(garmin_get_hr_pace)),
-            // )
+            .service(
+                web::resource("/garmin/list_gps_tracks")
+                    .route(web::get().to_async(garmin_list_gps_tracks)),
+            )
+            .service(
+                web::resource("/garmin/get_hr_data").route(web::get().to_async(garmin_get_hr_data)),
+            )
+            .service(
+                web::resource("/garmin/get_hr_pace").route(web::get().to_async(garmin_get_hr_pace)),
+            )
     })
     .bind(&format!("127.0.0.1:{}", config.port))
     .unwrap_or_else(|_| panic!("Failed to bind to port {}", config.port))

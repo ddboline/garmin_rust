@@ -57,16 +57,16 @@ impl LoggedUser {
 }
 
 impl FromRequest for LoggedUser {
-    type Error = Error;
-    type Future = Result<LoggedUser, Error>;
+    type Error = actix_web::Error;
+    type Future = Result<LoggedUser, actix_web::Error>;
     type Config = ();
 
     fn from_request(req: &HttpRequest, pl: &mut Payload) -> Self::Future {
-        if let Some(identity) = Identity::from_request(req, pl)? {
+        if let Some(identity) = Identity::from_request(req, pl)?.identity() {
             let user: LoggedUser = decode_token(&identity)?;
             return Ok(user);
         }
-        Err(ServiceError::Unauthorized)
+        Err(ServiceError::Unauthorized.into())
     }
 }
 

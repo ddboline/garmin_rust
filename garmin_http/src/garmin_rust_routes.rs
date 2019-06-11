@@ -103,6 +103,10 @@ pub fn garmin(
     let query = query.into_inner();
     let grec = proc_pattern_wrapper(query);
 
+    if !state.user_list.is_authorized(&user) {
+        state.db.send(AuthorizedUserRequest{user: user.clone()}).from_err()
+    }
+
     let resp = move |req: Data<AppState>| {
         req.db.send(grec).from_err().and_then(move |res| match res {
             Ok(body) => Ok(form_http_response(body)),

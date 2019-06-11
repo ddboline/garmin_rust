@@ -3,7 +3,7 @@
 use actix::sync::SyncArbiter;
 use actix::Addr;
 use actix_web::middleware::identity::{CookieIdentityPolicy, IdentityService};
-use actix_web::{http::Method, server, App};
+use actix_web::{web, App, HttpServer};
 use chrono::Duration;
 
 use garmin_lib::common::garmin_config::GarminConfig;
@@ -11,7 +11,8 @@ use garmin_lib::common::pgpool::PgPool;
 
 use super::logged_user::AuthorizedUsers;
 use crate::garmin_rust_routes::{
-    garmin, garmin_get_hr_data, garmin_get_hr_pace, garmin_list_gps_tracks,
+    garmin, 
+    // garmin_get_hr_data, garmin_get_hr_pace, garmin_list_gps_tracks,
 };
 
 lazy_static! {
@@ -40,29 +41,31 @@ pub fn start_app() {
 
     let addr: Addr<PgPool> = SyncArbiter::start(config.n_db_workers, move || pool.clone());
 
-    server::new(move || {
-        App::with_state(AppState {
-            db: addr.clone(),
-            user_list: AuthorizedUsers::new(),
-        })
-        .middleware(IdentityService::new(
-            CookieIdentityPolicy::new(config.secret_key.as_bytes())
-                .name("auth")
-                .path("/")
-                .domain(config.domain.as_str())
-                .max_age(Duration::days(1))
-                .secure(false), // this can only be true if you have https
-        ))
-        .resource("/garmin", |r| r.method(Method::GET).with(garmin))
-        .resource("/garmin/list_gps_tracks", |r| {
-            r.method(Method::GET).with(garmin_list_gps_tracks)
-        })
-        .resource("/garmin/get_hr_data", |r| {
-            r.method(Method::GET).with(garmin_get_hr_data)
-        })
-        .resource("/garmin/get_hr_pace", |r| {
-            r.method(Method::GET).with(garmin_get_hr_pace)
-        })
+    HttpServer::new(move || {
+        App::new()
+            .data(AppState {
+                db: addr.clone(),
+                user_list: AuthorizedUsers::new(),
+            })
+            .wrap(IdentityService::new(
+                CookieIdentityPolicy::new(config.secret_key.as_bytes())
+                    .name("auth")
+                    .path("/")
+                    .domain(config.domain.as_str())
+                    .max_age_time(Duration::days(1))
+                    .secure(false), // this can only be true if you have https
+            ))
+            .service(web::resource("/garmin").route(web::get().to_async(garmin)))
+            // .service(
+            //     web::resource("/garmin/list_gps_tracks")
+            //         .route(web::get().to_async(garmin_list_gps_tracks)),
+            // )
+            // .service(
+            //     web::resource("/garmin/get_hr_data").route(web::get().to_async(garmin_get_hr_data)),
+            // )
+            // .service(
+            //     web::resource("/garmin/get_hr_pace").route(web::get().to_async(garmin_get_hr_pace)),
+            // )
     })
     .bind(&format!("127.0.0.1:{}", config.port))
     .unwrap_or_else(|_| panic!("Failed to bind to port {}", config.port))

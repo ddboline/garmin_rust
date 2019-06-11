@@ -1,4 +1,4 @@
-use actix_web::{middleware::identity::RequestIdentity, FromRequest, HttpRequest};
+use actix_web::{dev::Payload, middleware::identity::Identity, FromRequest, HttpRequest};
 use failure::{err_msg, Error};
 use jsonwebtoken::{decode, Validation};
 use std::collections::HashSet;
@@ -56,11 +56,13 @@ impl LoggedUser {
     }
 }
 
-impl<S> FromRequest<S> for LoggedUser {
+impl FromRequest for LoggedUser {
+    type Error = Error;
+    type Future = Result<LoggedUser, Error>;
     type Config = ();
-    type Result = Result<LoggedUser, ServiceError>;
-    fn from_request(req: &HttpRequest<S>, _: &Self::Config) -> Self::Result {
-        if let Some(identity) = req.identity() {
+
+    fn from_request(req: &HttpRequest, pl: &mut Payload) -> Self::Future {
+        if let Some(identity) = Identity::from_request(req, pl)? {
             let user: LoggedUser = decode_token(&identity)?;
             return Ok(user);
         }

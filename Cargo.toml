@@ -7,7 +7,8 @@ edition = "2018"
 [dependencies]
 garmin_lib = { path = "garmin_lib" }
 garmin_http = { path = "garmin_http" }
-actix = "0.7"
+actix = "0.8"
+actix-rt = "0.2"
 log = "0.4"
 env_logger = "0.6"
 

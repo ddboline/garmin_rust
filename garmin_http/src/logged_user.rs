@@ -1,7 +1,8 @@
 use actix_web::{dev::Payload, middleware::identity::Identity, FromRequest, HttpRequest};
+use chrono::{DateTime, Utc};
 use failure::{err_msg, Error};
 use jsonwebtoken::{decode, Validation};
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::convert::From;
 use std::env;
 use std::sync::{Arc, RwLock};
@@ -77,11 +78,11 @@ pub fn decode_token(token: &str) -> Result<LoggedUser, ServiceError> {
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct AuthorizedUsers(Arc<RwLock<HashSet<LoggedUser>>>);
+pub struct AuthorizedUsers(Arc<RwLock<HashMap<LoggedUser, DateTime<Utc>>>>);
 
 impl AuthorizedUsers {
     pub fn new() -> AuthorizedUsers {
-        AuthorizedUsers(Arc::new(RwLock::new(HashSet::new())))
+        AuthorizedUsers(Arc::new(RwLock::new(HashMap::new())))
     }
 
     pub fn is_authorized(&self, user: &LoggedUser) -> bool {
@@ -91,17 +92,23 @@ impl AuthorizedUsers {
             }
         }
         if let Ok(user_list) = self.0.read() {
-            user_list.contains(user)
-        } else {
-            false
+            if let Some(last_time) = user_list.get(user) {
+                if (current_time - last_time).num_minutes() < 15 {
+                    return true;
+                }
+            }
         }
+        false
     }
 
     pub fn store_auth(&self, user: LoggedUser) -> Result<(), Error> {
-        if let Ok(mut user_list) = self.0.write() {
-            user_list.insert(user);
-            return Ok(());
+        match self.0.write() {
+            Ok(mut user_list) => {
+                let current_time = Utc::now();
+                user_list.insert(user, current_time);
+                Ok(())
+            }
+            _ => Err(err_msg("Failed to store credentials")),
         }
-        Err(err_msg("Failed to store credentials"))
     }
 }

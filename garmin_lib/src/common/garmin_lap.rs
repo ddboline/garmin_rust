@@ -1,5 +1,5 @@
 use failure::Error;
-use rayon::prelude::*;
+use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 
 use std::fmt;
 

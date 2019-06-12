@@ -1,5 +1,5 @@
-use chrono::prelude::*;
-use rayon::prelude::*;
+use chrono::DateTime;
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
 use failure::{err_msg, Error};
 

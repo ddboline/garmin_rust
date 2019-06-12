@@ -10,7 +10,7 @@ use rand::thread_rng;
 use std::thread::sleep;
 use std::time::Duration;
 
-use chrono::prelude::*;
+use chrono::{DateTime, FixedOffset, TimeZone, Utc};
 
 use failure::{err_msg, Error};
 

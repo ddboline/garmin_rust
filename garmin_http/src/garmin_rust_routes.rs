@@ -9,7 +9,6 @@ use futures::future::Future;
 use serde::Serialize;
 
 use garmin_lib::common::garmin_cli::{GarminCli, GarminCliObj, GarminRequest};
-use garmin_lib::common::garmin_config::GarminConfig;
 use garmin_lib::common::garmin_correction_lap::GarminCorrectionListTrait;
 use garmin_lib::common::garmin_file::GarminFile;
 use garmin_lib::parsers::garmin_parse::{GarminParse, GarminParseTrait};
@@ -19,6 +18,7 @@ use super::logged_user::LoggedUser;
 
 use super::garmin_rust_app::AppState;
 use crate::garmin_requests::{GarminCorrRequest, GarminHtmlRequest, GarminListRequest};
+use crate::CONFIG;
 
 #[derive(Deserialize)]
 pub struct FilterRequest {
@@ -154,7 +154,7 @@ pub fn garmin_get_hr_data(
                 }
                 let hr_data = match file_list.len() {
                     1 => {
-                        let config = GarminConfig::get_config(None);
+                        let config = &CONFIG;
                         let file_name = file_list
                             .get(0)
                             .ok_or_else(|| err_msg("This shouldn't be happening..."))?;
@@ -222,7 +222,7 @@ pub fn garmin_get_hr_pace(
 
                 let hrpace = match file_list.len() {
                     1 => {
-                        let config = GarminConfig::get_config(None);
+                        let config = &CONFIG;
                         let file_name = &file_list[0];
                         let avro_file = format!("{}/{}.avro", &config.cache_dir, file_name);
                         let gfile = match GarminFile::read_avro(&avro_file) {

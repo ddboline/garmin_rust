@@ -6,7 +6,7 @@ use postgres_derive::{FromSql, ToSql};
 use std::collections::HashMap;
 use std::fs::File;
 use std::hash::BuildHasher;
-use std::io::prelude::*;
+use std::io::Read;
 use std::str;
 
 use avro_rs::{from_value, Codec, Reader, Schema, Writer};

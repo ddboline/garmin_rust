@@ -2,7 +2,7 @@ extern crate rayon;
 
 use failure::Error;
 
-use rayon::prelude::*;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use crate::common::garmin_file::GarminFile;
 use crate::common::garmin_lap::GarminLap;

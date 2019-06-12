@@ -1,6 +1,6 @@
 use clap::{App, Arg};
 use failure::{err_msg, Error};
-use rayon::prelude::*;
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs::{copy, rename};

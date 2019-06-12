@@ -5,18 +5,16 @@ use actix::Addr;
 use actix_web::middleware::identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::{web, App, HttpServer};
 use chrono::Duration;
+use std::thread;
+use std::time;
 
-use garmin_lib::common::garmin_config::GarminConfig;
 use garmin_lib::common::pgpool::PgPool;
 
 use super::logged_user::AuthorizedUsers;
 use crate::garmin_rust_routes::{
     garmin, garmin_get_hr_data, garmin_get_hr_pace, garmin_list_gps_tracks,
 };
-
-lazy_static! {
-    static ref CONFIG: GarminConfig = GarminConfig::get_config(None);
-}
+use crate::CONFIG;
 
 /// AppState is the application state shared between all the handlers
 /// db can be used to send messages to the database workers, each running on their own thread
@@ -37,6 +35,16 @@ pub struct AppState {
 pub fn start_app() {
     let config = &CONFIG;
     let pool = PgPool::new(&config.pgurl);
+
+    let user_list = AuthorizedUsers::new();
+
+    let _u = user_list.clone();
+    let _p = pool.clone();
+
+    thread::spawn(move || loop {
+        _u.fill_from_db(&_p).unwrap();
+        thread::sleep(time::Duration::from_secs(600));
+    });
 
     let addr: Addr<PgPool> = SyncArbiter::start(config.n_db_workers, move || pool.clone());
 

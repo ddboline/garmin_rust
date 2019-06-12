@@ -77,12 +77,35 @@ pub fn decode_token(token: &str) -> Result<LoggedUser, ServiceError> {
         .map_err(|_err| ServiceError::Unauthorized)?
 }
 
+#[derive(Clone, Debug, Copy)]
+enum AuthStatus {
+    Authorized(DateTime<Utc>),
+    NotAuthorized(DateTime<Utc>),
+}
+
 #[derive(Clone, Debug, Default)]
-pub struct AuthorizedUsers(Arc<RwLock<HashMap<LoggedUser, DateTime<Utc>>>>);
+pub struct AuthorizedUsers(Arc<RwLock<HashMap<LoggedUser, AuthStatus>>>);
 
 impl AuthorizedUsers {
     pub fn new() -> AuthorizedUsers {
         AuthorizedUsers(Arc::new(RwLock::new(HashMap::new())))
+    }
+
+    pub fn fill_from_db(&self, pool: &PgPool) -> Result<(), Error> {
+        let query = "SELECT email FROM authorized_users";
+        let users: Vec<LoggedUser> = pool
+            .get()?
+            .query(query, &[])?
+            .iter()
+            .map(|row| {
+                let email: String = row.get(0);
+                LoggedUser { email }
+            })
+            .collect();
+        for user in users {
+            self.store_auth(&user, true)?;
+        }
+        Ok(())
     }
 
     pub fn is_authorized(&self, user: &LoggedUser) -> bool {
@@ -92,8 +115,9 @@ impl AuthorizedUsers {
             }
         }
         if let Ok(user_list) = self.0.read() {
-            if let Some(last_time) = user_list.get(user) {
-                if (current_time - last_time).num_minutes() < 15 {
+            if let Some(AuthStatus::Authorized(last_time)) = user_list.get(user) {
+                let current_time = Utc::now();
+                if (current_time - *last_time).num_minutes() < 15 {
                     return true;
                 }
             }
@@ -101,14 +125,27 @@ impl AuthorizedUsers {
         false
     }
 
-    pub fn store_auth(&self, user: LoggedUser) -> Result<(), Error> {
-        match self.0.write() {
-            Ok(mut user_list) => {
-                let current_time = Utc::now();
-                user_list.insert(user, current_time);
-                Ok(())
-            }
-            _ => Err(err_msg("Failed to store credentials")),
+    pub fn cache_authorization(&self, user: &LoggedUser, pool: &PgPool) -> Result<(), Error> {
+        if self.is_authorized(user) {
+            Ok(())
+        } else {
+            user.is_authorized(pool)
+                .and_then(|s| self.store_auth(user, s))
+        }
+    }
+
+    pub fn store_auth(&self, user: &LoggedUser, is_auth: bool) -> Result<(), Error> {
+        if let Ok(mut user_list) = self.0.write() {
+            let current_time = Utc::now();
+            let status = if is_auth {
+                AuthStatus::Authorized(current_time)
+            } else {
+                AuthStatus::NotAuthorized(current_time)
+            };
+            user_list.insert(user.clone(), status);
+            Ok(())
+        } else {
+            Err(err_msg("Failed to store credentials"))
         }
     }
 }

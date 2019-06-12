@@ -8,7 +8,7 @@ use std::fs::File;
 
 use failure::{err_msg, Error};
 
-use rayon::prelude::*;
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
 use std::collections::HashMap;
 use std::fmt;

@@ -102,6 +102,7 @@ impl AuthorizedUsers {
                 LoggedUser { email }
             })
             .collect();
+        self.clear_auth();
         for user in users {
             self.store_auth(&user, true)?;
         }
@@ -131,6 +132,12 @@ impl AuthorizedUsers {
         } else {
             user.is_authorized(pool)
                 .and_then(|s| self.store_auth(user, s))
+        }
+    }
+
+    pub fn clear_auth(&self) {
+        if let Ok(mut user_list) = self.0.write() {
+            user_list.clear();
         }
     }
 

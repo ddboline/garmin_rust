@@ -43,7 +43,7 @@ pub fn start_app() {
 
     thread::spawn(move || loop {
         _u.fill_from_db(&_p).unwrap();
-        thread::sleep(time::Duration::from_secs(600));
+        thread::sleep(time::Duration::from_secs(60));
     });
 
     let addr: Addr<PgPool> = SyncArbiter::start(config.n_db_workers, move || pool.clone());
@@ -52,7 +52,7 @@ pub fn start_app() {
         App::new()
             .data(AppState {
                 db: addr.clone(),
-                user_list: AuthorizedUsers::new(),
+                user_list: user_list.clone(),
             })
             .wrap(IdentityService::new(
                 CookieIdentityPolicy::new(config.secret_key.as_bytes())

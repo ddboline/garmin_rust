@@ -235,7 +235,7 @@ where
                         let command = format!("unzip {} -d {}", filename, ziptmpdir);
                         let mut process = Exec::shell(command).stdout(Redirection::Pipe).popen()?;
                         let exit_status = process.wait()?;
-                        if exit_status.success() {
+                        if !exit_status.success() {
                             if let Some(mut f) = process.stdout.as_ref() {
                                 let mut buf = String::new();
                                 f.read_to_string(&mut buf)?;

@@ -2,7 +2,7 @@ use actix_web::{dev::Payload, middleware::identity::Identity, FromRequest, HttpR
 use chrono::{DateTime, Utc};
 use failure::{err_msg, Error};
 use jsonwebtoken::{decode, Validation};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::convert::From;
 use std::env;
 use std::sync::{Arc, RwLock};
@@ -93,7 +93,7 @@ impl AuthorizedUsers {
 
     pub fn fill_from_db(&self, pool: &PgPool) -> Result<(), Error> {
         let query = "SELECT email FROM authorized_users";
-        let users: Vec<LoggedUser> = pool
+        let users: HashSet<LoggedUser> = pool
             .get()?
             .query(query, &[])?
             .iter()
@@ -102,11 +102,29 @@ impl AuthorizedUsers {
                 LoggedUser { email }
             })
             .collect();
-        self.clear_auth();
-        for user in users {
-            self.store_auth(&user, true)?;
+        let cached_users = self.list_of_users();
+
+        for user in &users {
+            if !cached_users.contains(user) {
+                self.store_auth(user, true)?;
+            }
         }
+
+        for user in &cached_users {
+            if !users.contains(user) {
+                self.remove_auth(user);
+            }
+        }
+
         Ok(())
+    }
+
+    pub fn list_of_users(&self) -> HashSet<LoggedUser> {
+        if let Ok(user_list) = self.0.read() {
+            user_list.keys().cloned().collect()
+        } else {
+            HashSet::new()
+        }
     }
 
     pub fn is_authorized(&self, user: &LoggedUser) -> bool {
@@ -135,9 +153,14 @@ impl AuthorizedUsers {
         }
     }
 
-    pub fn clear_auth(&self) {
+    pub fn remove_auth(&self, user: &LoggedUser) -> Option<bool> {
         if let Ok(mut user_list) = self.0.write() {
-            user_list.clear();
+            user_list.remove(user).map(|a| match a {
+                AuthStatus::Authorized(_) => true,
+                AuthStatus::NotAuthorized(_) => false,
+            })
+        } else {
+            None
         }
     }
 

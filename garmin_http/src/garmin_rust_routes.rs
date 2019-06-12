@@ -7,6 +7,7 @@ use chrono::{Date, Datelike, Local};
 use failure::{err_msg, Error};
 use futures::future::Future;
 use serde::Serialize;
+use std::string::ToString;
 
 use garmin_lib::common::garmin_cli::{GarminCli, GarminCliObj, GarminRequest};
 use garmin_lib::common::garmin_correction_lap::GarminCorrectionListTrait;
@@ -45,7 +46,7 @@ fn proc_pattern_wrapper(request: FilterRequest) -> GarminHtmlRequest {
         .history
         .unwrap_or_else(|| format!("{};latest;sport", default_string));
 
-    let filter_vec: Vec<String> = filter.split(',').map(|x| x.to_string()).collect();
+    let filter_vec: Vec<String> = filter.split(',').map(ToString::to_string).collect();
 
     let req = GarminCliObj::process_pattern(&filter_vec);
 
@@ -70,19 +71,14 @@ pub fn garmin(
     let query = query.into_inner();
     let grec = proc_pattern_wrapper(query);
 
-    state
-        .db
-        .send(grec)
-        .from_err()
-        .and_then(move |res| match res {
-            Ok(body) => {
-                if !state.user_list.is_authorized(&user) {
-                    return Ok(HttpResponse::Unauthorized().json("Unauthorized"));
-                }
-                Ok(form_http_response(body))
+    state.db.send(grec).from_err().and_then(move |res| {
+        res.and_then(|body| {
+            if !state.user_list.is_authorized(&user) {
+                return Ok(HttpResponse::Unauthorized().json("Unauthorized"));
             }
-            Err(err) => Err(err.into()),
+            Ok(form_http_response(body))
         })
+    })
 }
 
 #[derive(Serialize)]
@@ -96,7 +92,7 @@ pub struct TimeValue {
     pub value: f64,
 }
 
-fn to_json<T>(js: &T) -> Result<HttpResponse, actix_web::Error>
+fn to_json<T>(js: &T) -> Result<HttpResponse, Error>
 where
     T: Serialize,
 {
@@ -107,25 +103,20 @@ pub fn garmin_list_gps_tracks(
     query: Query<FilterRequest>,
     user: LoggedUser,
     state: Data<AppState>,
-) -> impl Future<Item = HttpResponse, Error = actix_web::Error> {
+) -> impl Future<Item = HttpResponse, Error = Error> {
     let query = query.into_inner();
 
     let greq: GarminListRequest = proc_pattern_wrapper(query).into();
 
-    state
-        .db
-        .send(greq)
-        .from_err()
-        .and_then(move |res| match res {
-            Ok(gps_list) => {
-                if !state.user_list.is_authorized(&user) {
-                    return Ok(HttpResponse::Unauthorized().json("Unauthorized"));
-                }
-                let glist = GpsList { gps_list };
-                to_json(&glist)
+    state.db.send(greq).from_err().and_then(move |res| {
+        res.and_then(|gps_list| {
+            if !state.user_list.is_authorized(&user) {
+                return Ok(HttpResponse::Unauthorized().json("Unauthorized"));
             }
-            Err(err) => Err(err.into()),
+            let glist = GpsList { gps_list };
+            to_json(&glist)
         })
+    })
 }
 
 #[derive(Serialize)]
@@ -137,7 +128,7 @@ pub fn garmin_get_hr_data(
     query: Query<FilterRequest>,
     user: LoggedUser,
     state: Data<AppState>,
-) -> impl Future<Item = HttpResponse, Error = actix_web::Error> {
+) -> impl Future<Item = HttpResponse, Error = Error> {
     let query = query.into_inner();
 
     let greq: GarminListRequest = proc_pattern_wrapper(query).into();
@@ -147,8 +138,8 @@ pub fn garmin_get_hr_data(
         .send(greq)
         .from_err()
         .join(state.db.send(GarminCorrRequest {}).from_err())
-        .and_then(move |(res0, res1)| match res0 {
-            Ok(file_list) => {
+        .and_then(move |(res0, res1)| {
+            res0.and_then(|file_list| {
                 if !state.user_list.is_authorized(&user) {
                     return Ok(HttpResponse::Unauthorized().json("Unauthorized"));
                 }
@@ -184,8 +175,7 @@ pub fn garmin_get_hr_data(
                 };
                 let hdata = HrData { hr_data };
                 to_json(&hdata)
-            }
-            Err(err) => Err(err.into()),
+            })
         })
 }
 
@@ -204,7 +194,7 @@ pub fn garmin_get_hr_pace(
     query: Query<FilterRequest>,
     user: LoggedUser,
     state: Data<AppState>,
-) -> impl Future<Item = HttpResponse, Error = actix_web::Error> {
+) -> impl Future<Item = HttpResponse, Error = Error> {
     let query = query.into_inner();
 
     let greq: GarminListRequest = proc_pattern_wrapper(query).into();
@@ -214,8 +204,8 @@ pub fn garmin_get_hr_pace(
         .send(greq)
         .from_err()
         .join(state.db.send(GarminCorrRequest {}).from_err())
-        .and_then(move |(res0, res1)| match res0 {
-            Ok(file_list) => {
+        .and_then(move |(res0, res1)| {
+            res0.and_then(|file_list| {
                 if !state.user_list.is_authorized(&user) {
                     return Ok(HttpResponse::Unauthorized().json("Unauthorized"));
                 }
@@ -259,7 +249,6 @@ pub fn garmin_get_hr_pace(
                     },
                 };
                 to_json(&hrpace)
-            }
-            Err(err) => Err(err.into()),
+            })
         })
 }

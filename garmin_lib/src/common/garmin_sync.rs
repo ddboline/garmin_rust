@@ -131,12 +131,13 @@ impl GarminSyncTrait for GarminSync<S3Client> {
 
         let file_list: Vec<String> = path
             .read_dir()?
-            .filter_map(|dir_line| match dir_line {
-                Ok(entry) => entry
-                    .path()
-                    .to_str()
-                    .map(|input_file| input_file.to_string()),
-                Err(_) => None,
+            .filter_map(|dir_line| {
+                dir_line.ok().and_then(|entry| {
+                    entry
+                        .path()
+                        .to_str()
+                        .map(|input_file| input_file.to_string())
+                })
             })
             .collect();
 
@@ -208,29 +209,22 @@ impl GarminSyncTrait for GarminSync<S3Client> {
         let results: Vec<_> = key_list
             .par_iter()
             .filter_map(|(key, md5, tmod)| {
-                let do_download = if file_set.contains_key(key) {
+                let mut do_download = false;
+
+                if file_set.contains_key(key) {
                     let tmod_ = file_set[key];
-                    if *tmod > tmod_ {
-                        if check_md5sum {
+                    if *tmod > tmod_ && check_md5sum {
+                        let file_name = format!("{}/{}", local_dir, key);
+                        let md5_ = get_md5sum(&file_name).expect("Failed md5sum");
+                        if &md5_ != md5 {
+                            debug!("download md5 {} {} {} {} {} ", key, md5_, md5, tmod, tmod_);
                             let file_name = format!("{}/{}", local_dir, key);
-                            let md5_ = get_md5sum(&file_name).expect("Failed md5sum");
-                            if &md5_ != md5 {
-                                debug!("download md5 {} {} {} {} {} ", key, md5_, md5, tmod, tmod_);
-                                let file_name = format!("{}/{}", local_dir, key);
-                                fs::remove_file(&file_name)
-                                    .expect("Failed to remove existing file");
-                                true
-                            } else {
-                                false
-                            }
-                        } else {
-                            false
+                            fs::remove_file(&file_name).expect("Failed to remove existing file");
+                            do_download = true;
                         }
-                    } else {
-                        false
                     }
                 } else {
-                    true
+                    do_download = true;
                 };
 
                 if do_download {

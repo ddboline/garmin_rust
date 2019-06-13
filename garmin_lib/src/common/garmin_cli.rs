@@ -216,7 +216,7 @@ where
                 .ok_or_else(|| err_msg("Path is invalid unicode somehow"))?;
 
             let filenames: Vec<_> = v
-                .into_iter()
+                .iter()
                 .filter(|f| (f.ends_with(".zip") || f.ends_with(".fit")) && Path::new(f).exists())
                 .collect();
 

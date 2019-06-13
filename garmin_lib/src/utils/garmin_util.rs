@@ -1,14 +1,12 @@
 use num::traits::Pow;
 
-use std::io::BufRead;
-use std::io::BufReader;
-use std::path::Path;
-use subprocess::Exec;
-
 use rand::distributions::{Alphanumeric, Distribution, Uniform};
 use rand::thread_rng;
+use std::io::{BufRead, BufReader, Read};
+use std::path::Path;
 use std::thread::sleep;
 use std::time::Duration;
+use subprocess::{Exec, Redirection};
 
 use chrono::{DateTime, FixedOffset, TimeZone, Utc};
 
@@ -164,4 +162,29 @@ where
             }
         }
     }
+}
+
+pub fn extract_zip_from_garmin_connect(filename: &str, ziptmpdir: &str) -> Result<String, Error> {
+    let new_filename = Path::new(filename)
+        .file_name()
+        .ok_or_else(|| err_msg("Bad filename"))?
+        .to_str()
+        .ok_or_else(|| err_msg("Bad string"))?;
+    let new_filename = new_filename.replace(".zip", ".fit");
+    let command = format!("unzip {} -d {}", filename, ziptmpdir);
+    let mut process = Exec::shell(command).stdout(Redirection::Pipe).popen()?;
+    let exit_status = process.wait()?;
+    if !exit_status.success() {
+        if let Some(mut f) = process.stdout.as_ref() {
+            let mut buf = String::new();
+            f.read_to_string(&mut buf)?;
+            println!("{}", buf);
+        }
+        return Err(err_msg(format!(
+            "Failed with exit status {:?}",
+            exit_status
+        )));
+    }
+    let new_filename = format!("{}/{}", ziptmpdir, new_filename);
+    Ok(new_filename)
 }

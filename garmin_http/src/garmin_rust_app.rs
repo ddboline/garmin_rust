@@ -5,7 +5,7 @@ use actix::Addr;
 use actix_web::middleware::identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::{web, App, HttpServer};
 use chrono::Duration;
-use futures::future::{Future};
+use futures::future::Future;
 use futures::stream::Stream;
 use std::time;
 use tokio_timer::Interval;

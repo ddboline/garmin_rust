@@ -4,9 +4,7 @@ use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterato
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs::{copy, rename};
-use std::io::Read;
 use std::path::Path;
-use subprocess::{Exec, Redirection};
 use tempdir::TempDir;
 
 use super::garmin_config::GarminConfig;
@@ -23,7 +21,7 @@ use crate::reports::garmin_file_report_txt::generate_txt_report;
 use crate::reports::garmin_report_options::{GarminReportAgg, GarminReportOptions};
 use crate::reports::garmin_summary_report_html::summary_report_html;
 use crate::reports::garmin_summary_report_txt::create_report_query;
-use crate::utils::garmin_util::{get_file_list, map_result_vec};
+use crate::utils::garmin_util::{extract_zip_from_garmin_connect, get_file_list, map_result_vec};
 use crate::utils::sport_types::get_sport_type_map;
 
 fn get_version_number() -> String {
@@ -218,7 +216,7 @@ where
                 .ok_or_else(|| err_msg("Path is invalid unicode somehow"))?;
 
             let filenames: Vec<_> = v
-                .iter()
+                .into_iter()
                 .filter(|f| (f.ends_with(".zip") || f.ends_with(".fit")) && Path::new(f).exists())
                 .collect();
 
@@ -226,28 +224,7 @@ where
                 .into_par_iter()
                 .map(|filename| {
                     if filename.ends_with(".zip") {
-                        let new_filename = Path::new(filename)
-                            .file_name()
-                            .ok_or_else(|| err_msg("Bad filename"))?
-                            .to_str()
-                            .ok_or_else(|| err_msg("Bad string"))?;
-                        let new_filename = new_filename.replace(".zip", ".fit");
-                        let command = format!("unzip {} -d {}", filename, ziptmpdir);
-                        let mut process = Exec::shell(command).stdout(Redirection::Pipe).popen()?;
-                        let exit_status = process.wait()?;
-                        if !exit_status.success() {
-                            if let Some(mut f) = process.stdout.as_ref() {
-                                let mut buf = String::new();
-                                f.read_to_string(&mut buf)?;
-                                println!("{}", buf);
-                            }
-                            return Err(err_msg(format!(
-                                "Failed with exit status {:?}",
-                                exit_status
-                            )));
-                        }
-                        let new_filename = format!("{}/{}", ziptmpdir, new_filename);
-                        Ok(new_filename)
+                        extract_zip_from_garmin_connect(&filename, &ziptmpdir)
                     } else {
                         Ok(filename.clone())
                     }
@@ -266,22 +243,17 @@ where
                     let mock_map = HashMap::new();
                     let gfile = GarminParse::new().with_file(&filename, &mock_map)?;
 
-                    use chrono::{DateTime, Utc};
-                    use std::str::FromStr;
-
-                    let last_time: DateTime<Utc> = DateTime::from_str(&gfile.begin_datetime)
-                        .expect("Failed to extract timestamp");
                     let outfile = format!(
                         "{}/{}",
                         &self.get_config().gps_dir,
-                        last_time.format("%Y-%m-%d_%H-%M-%S_1_1.fit")
+                        gfile.get_standardized_name()?
                     );
 
                     println!("{} {}", filename, outfile);
 
                     rename(filename.clone(), outfile.clone())
-                        .or_else(|_| copy(filename, outfile).map(|_| ()))?;
-                    Ok(())
+                        .or_else(|_| copy(filename, outfile).map(|_| ()))
+                        .map_err(err_msg)
                 })
                 .collect();
             map_result_vec(results)?;

@@ -1,9 +1,10 @@
 use avro_rs::{from_value, Codec, Reader, Schema, Writer};
+use chrono::{DateTime, Utc};
+use failure::{err_msg, Error};
 use std::collections::HashMap;
 use std::fs::File;
 use std::path::Path;
-
-use failure::{err_msg, Error};
+use std::str::FromStr;
 
 use super::garmin_lap::{GarminLap, GARMIN_LAP_AVRO_SCHEMA};
 use super::garmin_point::{GarminPoint, GARMIN_POINT_AVRO_SCHEMA};
@@ -109,6 +110,12 @@ impl GarminFile {
             };
         }
         Err(err_msg("Failed to find file"))
+    }
+
+    pub fn get_standardized_name(&self) -> Result<String, Error> {
+        let last_time: DateTime<Utc> =
+            DateTime::from_str(&self.begin_datetime).expect("Failed to extract timestamp");
+        Ok(last_time.format("%Y-%m-%d_%H-%M-%S_1_1.fit").to_string())
     }
 }
 

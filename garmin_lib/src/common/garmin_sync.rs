@@ -107,20 +107,19 @@ impl GarminSyncTrait for GarminSync<S3Client> {
         let list_of_keys = list_of_keys
             .into_iter()
             .filter_map(|item| {
-                if let Some(key) = item.key {
-                    if let Some(etag) = item.e_tag {
-                        if let Some(last_mod) = item.last_modified {
-                            if let Ok(lm) = DateTime::parse_from_rfc3339(&last_mod) {
-                                return Some((
-                                    key,
+                item.key.as_ref().and_then(|key| {
+                    item.e_tag.as_ref().and_then(|etag| {
+                        item.last_modified.as_ref().and_then(|last_mod| {
+                            DateTime::parse_from_rfc3339(&last_mod).ok().and_then(|lm| {
+                                Some((
+                                    key.clone(),
                                     etag.trim_matches('"').to_string(),
                                     lm.timestamp(),
-                                ));
-                            }
-                        }
-                    }
-                }
-                None
+                                ))
+                            })
+                        })
+                    })
+                })
             })
             .collect();
 

@@ -46,7 +46,7 @@ pub fn start_app() {
     actix_rt::spawn(
         Interval::new(time::Instant::now(), time::Duration::from_secs(60))
             .for_each(move |_| {
-                _u.fill_from_db(&_p).unwrap();
+                _u.fill_from_db(&_p).unwrap_or(());
                 Ok(())
             })
             .map_err(|e| panic!("error {:?}", e)),

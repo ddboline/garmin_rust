@@ -1,5 +1,5 @@
 use chrono::DateTime;
-use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use failure::{err_msg, Error};
 
@@ -142,7 +142,7 @@ impl GarminSyncTrait for GarminSync<S3Client> {
             .collect();
 
         let file_list: Vec<Result<_, Error>> = file_list
-            .into_par_iter()
+            .into_iter()
             .map(|f| {
                 let modified = fs::metadata(&f)?
                     .modified()?

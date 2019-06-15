@@ -30,7 +30,7 @@ impl Message for GarminHtmlRequest {
 impl Handler<GarminHtmlRequest> for PgPool {
     type Result = Result<String, Error>;
     fn handle(&mut self, msg: GarminHtmlRequest, _: &mut Self::Context) -> Self::Result {
-        let body = GarminCliObj::from_pool(&self).run_html(&msg.0)?;
+        let body = GarminCliObj::from_pool(&self)?.run_html(&msg.0)?;
         Ok(body)
     }
 }

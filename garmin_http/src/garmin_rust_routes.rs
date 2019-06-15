@@ -74,7 +74,8 @@ pub fn garmin(
     state.db.send(grec).from_err().and_then(move |res| {
         res.and_then(|body| {
             if !state.user_list.is_authorized(&user) {
-                return Ok(HttpResponse::Unauthorized().json("Unauthorized"));
+                return Ok(HttpResponse::Unauthorized()
+                    .json(format!("Unauthorized {:?}", state.user_list)));
             }
             Ok(form_http_response(body))
         })

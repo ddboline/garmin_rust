@@ -80,7 +80,7 @@ pub fn decode_token(token: &str) -> Result<LoggedUser, ServiceError> {
 #[derive(Clone, Debug, Copy)]
 enum AuthStatus {
     Authorized(DateTime<Utc>),
-    NotAuthorized(DateTime<Utc>),
+    NotAuthorized,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -105,14 +105,12 @@ impl AuthorizedUsers {
         let cached_users = self.list_of_users();
 
         for user in &users {
-            if !cached_users.contains(user) {
-                self.store_auth(user, true)?;
-            }
+            self.store_auth(user, true)?;
         }
 
         for user in &cached_users {
             if !users.contains(user) {
-                self.remove_auth(user);
+                self.store_auth(user, false)?;
             }
         }
 
@@ -153,24 +151,13 @@ impl AuthorizedUsers {
         }
     }
 
-    pub fn remove_auth(&self, user: &LoggedUser) -> Option<bool> {
-        if let Ok(mut user_list) = self.0.write() {
-            user_list.remove(user).map(|a| match a {
-                AuthStatus::Authorized(_) => true,
-                AuthStatus::NotAuthorized(_) => false,
-            })
-        } else {
-            None
-        }
-    }
-
     pub fn store_auth(&self, user: &LoggedUser, is_auth: bool) -> Result<(), Error> {
         if let Ok(mut user_list) = self.0.write() {
             let current_time = Utc::now();
             let status = if is_auth {
                 AuthStatus::Authorized(current_time)
             } else {
-                AuthStatus::NotAuthorized(current_time)
+                AuthStatus::NotAuthorized
             };
             user_list.insert(user.clone(), status);
             Ok(())

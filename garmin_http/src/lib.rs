@@ -12,7 +12,7 @@ pub mod logged_user;
 use garmin_lib::common::garmin_config::GarminConfig;
 
 lazy_static! {
-    static ref CONFIG: GarminConfig = GarminConfig::get_config(None);
+    static ref CONFIG: GarminConfig = GarminConfig::get_config(None).unwrap();
 }
 
 #[cfg(test)]

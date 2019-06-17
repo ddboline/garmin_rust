@@ -69,28 +69,30 @@ where
         }
     }
 
-    pub fn with_config() -> GarminCliObj<T, U> {
-        let config = GarminConfig::get_config(None);
+    pub fn with_config() -> Result<GarminCliObj<T, U>, Error> {
+        let config = GarminConfig::get_config(None)?;
         let pool = PgPool::new(&config.pgurl);
         let corr = U::from_pool(&pool);
-        GarminCliObj {
+        let obj = GarminCliObj {
             config,
             pool: Some(pool),
             corr,
             ..Default::default()
-        }
+        };
+        Ok(obj)
     }
 
-    pub fn from_pool(pool: &PgPool) -> GarminCliObj<T, U> {
-        let config = GarminConfig::get_config(None);
-        GarminCliObj {
+    pub fn from_pool(pool: &PgPool) -> Result<GarminCliObj<T, U>, Error> {
+        let config = GarminConfig::get_config(None)?;
+        let obj = GarminCliObj {
             config,
             pool: Some(pool.clone()),
             ..Default::default()
-        }
+        };
+        Ok(obj)
     }
 
-    pub fn with_cli_proc() -> GarminCliObj<T, U> {
+    pub fn with_cli_proc() -> Result<GarminCliObj<T, U>, Error> {
         let matches = App::new("Garmin Rust Proc")
             .version(get_version_number().as_str())
             .author("Daniel Boline <ddboline@gmail.com>")
@@ -137,7 +139,7 @@ where
             )
             .get_matches();
 
-        GarminCliObj {
+        let obj = GarminCliObj {
             opts: if matches.is_present("sync") {
                 Some(GarminCliOptions::Sync)
             } else if matches.is_present("all") {
@@ -161,8 +163,9 @@ where
                     None => None,
                 }
             },
-            ..GarminCliObj::with_config()
-        }
+            ..GarminCliObj::with_config()?
+        };
+        Ok(obj)
     }
 }
 

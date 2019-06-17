@@ -11,7 +11,7 @@ use std::fs;
 use std::path::Path;
 use std::time::SystemTime;
 
-use crate::utils::garmin_util::{exponential_retry, get_md5sum, map_result_vec};
+use crate::utils::garmin_util::{exponential_retry, get_md5sum, map_result};
 
 pub fn get_s3_client() -> S3Client {
     S3Client::new(Region::UsEast1)
@@ -153,7 +153,7 @@ impl GarminSyncTrait for GarminSync<S3Client> {
             })
             .collect();
 
-        let file_list: Vec<_> = map_result_vec(file_list)?;
+        let file_list: Vec<_> = map_result(file_list)?;
 
         let file_set: HashMap<_, _> = file_list
             .iter()
@@ -204,7 +204,7 @@ impl GarminSyncTrait for GarminSync<S3Client> {
             })
             .collect();
 
-        map_result_vec(results)?;
+        map_result(results)?;
 
         let results: Vec<_> = key_list
             .par_iter()
@@ -238,7 +238,7 @@ impl GarminSyncTrait for GarminSync<S3Client> {
             })
             .collect();
 
-        map_result_vec(results)?;
+        let _: Vec<_> = map_result(results)?;
 
         Ok(())
     }

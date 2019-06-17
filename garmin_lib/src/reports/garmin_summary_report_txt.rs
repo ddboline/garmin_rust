@@ -7,6 +7,7 @@ use crate::reports::garmin_report_options::{GarminReportAgg, GarminReportOptions
 use crate::utils::garmin_util::{
     days_in_month, days_in_year, print_h_m_s, METERS_PER_MILE, MONTH_NAMES, WEEKDAY_NAMES,
 };
+use crate::utils::row_index_trait::RowIndexTrait;
 
 pub fn create_report_query(
     pool: &PgPool,
@@ -83,15 +84,15 @@ fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, 
     debug!("{}", query);
 
     for row in pool.get()?.query(&query, &[])?.iter() {
-        let datetime: String = row.get(0);
-        let week: f64 = row.get(1);
-        let dow: f64 = row.get(2);
-        let sport: String = row.get(3);
-        let total_calories: i64 = row.get(4);
-        let total_distance: f64 = row.get(5);
-        let total_duration: f64 = row.get(6);
-        let total_hr_dur: f64 = row.get(7);
-        let total_hr_dis: f64 = row.get(8);
+        let datetime: String = row.get_idx(0)?;
+        let week: f64 = row.get_idx(1)?;
+        let dow: f64 = row.get_idx(2)?;
+        let sport: String = row.get_idx(3)?;
+        let total_calories: i64 = row.get_idx(4)?;
+        let total_distance: f64 = row.get_idx(5)?;
+        let total_duration: f64 = row.get_idx(6)?;
+        let total_hr_dur: f64 = row.get_idx(7)?;
+        let total_hr_dis: f64 = row.get_idx(8)?;
 
         let weekdayname = WEEKDAY_NAMES[dow as usize - 1];
 
@@ -219,15 +220,15 @@ fn day_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, E
     debug!("{}", query);
 
     for row in pool.get()?.query(&query, &[])?.iter() {
-        let date: String = row.get(0);
-        let week: f64 = row.get(1);
-        let dow: f64 = row.get(2);
-        let sport: String = row.get(3);
-        let total_calories: i64 = row.get(4);
-        let total_distance: f64 = row.get(5);
-        let total_duration: f64 = row.get(6);
-        let total_hr_dur: f64 = row.get(7);
-        let total_hr_dis: f64 = row.get(8);
+        let date: String = row.get_idx(0)?;
+        let week: f64 = row.get_idx(1)?;
+        let dow: f64 = row.get_idx(2)?;
+        let sport: String = row.get_idx(3)?;
+        let total_calories: i64 = row.get_idx(4)?;
+        let total_distance: f64 = row.get_idx(5)?;
+        let total_duration: f64 = row.get_idx(6)?;
+        let total_hr_dur: f64 = row.get_idx(7)?;
+        let total_hr_dis: f64 = row.get_idx(8)?;
 
         let weekdayname = WEEKDAY_NAMES[dow as usize - 1];
 
@@ -352,15 +353,15 @@ fn week_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, 
     debug!("{}", query);
 
     for row in pool.get()?.query(&query, &[])?.iter() {
-        let year: f64 = row.get(0);
-        let week: f64 = row.get(1);
-        let sport: String = row.get(2);
-        let total_calories: i64 = row.get(3);
-        let total_distance: f64 = row.get(4);
-        let total_duration: f64 = row.get(5);
-        let total_hr_dur: f64 = row.get(6);
-        let total_hr_dis: f64 = row.get(7);
-        let number_of_days: i64 = row.get(8);
+        let year: f64 = row.get_idx(0)?;
+        let week: f64 = row.get_idx(1)?;
+        let sport: String = row.get_idx(2)?;
+        let total_calories: i64 = row.get_idx(3)?;
+        let total_distance: f64 = row.get_idx(4)?;
+        let total_duration: f64 = row.get_idx(5)?;
+        let total_hr_dur: f64 = row.get_idx(6)?;
+        let total_hr_dis: f64 = row.get_idx(7)?;
+        let number_of_days: i64 = row.get_idx(8)?;
 
         let total_days = 7;
 
@@ -477,15 +478,15 @@ fn month_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>,
     debug!("{}", query);
 
     for row in pool.get()?.query(&query, &[])?.iter() {
-        let year: f64 = row.get(0);
-        let month: f64 = row.get(1);
-        let sport: String = row.get(2);
-        let total_calories: i64 = row.get(3);
-        let total_distance: f64 = row.get(4);
-        let total_duration: f64 = row.get(5);
-        let total_hr_dur: f64 = row.get(6);
-        let total_hr_dis: f64 = row.get(7);
-        let number_of_days: i64 = row.get(8);
+        let year: f64 = row.get_idx(0)?;
+        let month: f64 = row.get_idx(1)?;
+        let sport: String = row.get_idx(2)?;
+        let total_calories: i64 = row.get_idx(3)?;
+        let total_distance: f64 = row.get_idx(4)?;
+        let total_duration: f64 = row.get_idx(5)?;
+        let total_hr_dur: f64 = row.get_idx(6)?;
+        let total_hr_dis: f64 = row.get_idx(7)?;
+        let number_of_days: i64 = row.get_idx(8)?;
 
         let total_days = days_in_month(year as i32, month as u32);
 
@@ -595,12 +596,12 @@ fn sport_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>,
     debug!("{}", query);
 
     for row in pool.get()?.query(&query, &[])?.iter() {
-        let sport: String = row.get(0);
-        let total_calories: i64 = row.get(1);
-        let total_distance: f64 = row.get(2);
-        let total_duration: f64 = row.get(3);
-        let total_hr_dur: f64 = row.get(4);
-        let total_hr_dis: f64 = row.get(5);
+        let sport: String = row.get_idx(0)?;
+        let total_calories: i64 = row.get_idx(1)?;
+        let total_distance: f64 = row.get_idx(2)?;
+        let total_duration: f64 = row.get_idx(3)?;
+        let total_hr_dur: f64 = row.get_idx(4)?;
+        let total_hr_dis: f64 = row.get_idx(5)?;
 
         debug!(
             "{} {} {} {} {} {}",
@@ -694,14 +695,14 @@ fn year_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, 
     debug!("{}", query);
 
     for row in pool.get()?.query(&query, &[])?.iter() {
-        let year: f64 = row.get(0);
-        let sport: String = row.get(1);
-        let total_calories: i64 = row.get(2);
-        let total_distance: f64 = row.get(3);
-        let total_duration: f64 = row.get(4);
-        let total_hr_dur: f64 = row.get(5);
-        let total_hr_dis: f64 = row.get(6);
-        let number_of_days: i64 = row.get(7);
+        let year: f64 = row.get_idx(0)?;
+        let sport: String = row.get_idx(1)?;
+        let total_calories: i64 = row.get_idx(2)?;
+        let total_distance: f64 = row.get_idx(3)?;
+        let total_duration: f64 = row.get_idx(4)?;
+        let total_hr_dur: f64 = row.get_idx(5)?;
+        let total_hr_dis: f64 = row.get_idx(6)?;
+        let number_of_days: i64 = row.get_idx(7)?;
 
         let total_days = days_in_year(year as i32);
 

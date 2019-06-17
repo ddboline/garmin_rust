@@ -16,7 +16,7 @@ use json::{parse, JsonValue};
 use super::garmin_lap::GarminLap;
 use super::garmin_summary::GarminSummaryList;
 use super::pgpool::PgPool;
-use crate::utils::garmin_util::{map_result_vec, METERS_PER_MILE};
+use crate::utils::garmin_util::{map_result, METERS_PER_MILE};
 use crate::utils::row_index_trait::RowIndexTrait;
 use crate::utils::sport_types::convert_sport_name;
 
@@ -256,7 +256,7 @@ where
             })
             .collect();
 
-        let corr_list = map_result_vec(corr_list)?;
+        let corr_list = map_result(corr_list)?;
 
         Ok(Self::from_vec(corr_list))
     }
@@ -422,7 +422,7 @@ where
             })
             .collect();
 
-        let filename_start_map: HashMap<_, _> = map_result_vec(results)?.into_iter().collect();
+        let filename_start_map: HashMap<_, _> = map_result(results)?;
 
         Ok(filename_start_map)
     }
@@ -477,7 +477,7 @@ where
         )?
             .iter()
             .map(|row| Ok(GarminCorrectionLap {
-                id: row.get(0),
+                id: row.get_idx(0)?,
                 start_time: row.get_idx(1)?,
                 lap_number: row.get_idx(2)?,
                 sport: row.get_idx(3)?,
@@ -486,7 +486,7 @@ where
             }))
             .collect();
 
-        let corr_list: Vec<GarminCorrectionLap> = map_result_vec(results)?;
+        let corr_list: Vec<GarminCorrectionLap> = map_result(results)?;
 
         Ok(Self::from_vec(corr_list))
     }

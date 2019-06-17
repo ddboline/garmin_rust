@@ -21,7 +21,7 @@ use crate::reports::garmin_file_report_txt::generate_txt_report;
 use crate::reports::garmin_report_options::{GarminReportAgg, GarminReportOptions};
 use crate::reports::garmin_summary_report_html::summary_report_html;
 use crate::reports::garmin_summary_report_txt::create_report_query;
-use crate::utils::garmin_util::{extract_zip_from_garmin_connect, get_file_list, map_result_vec};
+use crate::utils::garmin_util::{extract_zip_from_garmin_connect, get_file_list, map_result};
 use crate::utils::sport_types::get_sport_type_map;
 
 fn get_version_number() -> String {
@@ -211,35 +211,35 @@ where
     fn get_parser(&self) -> &T;
 
     fn garmin_proc(&self) -> Result<(), Error> {
-        if let Some(GarminCliOptions::ImportFileNames(v)) = self.get_opts() {
+        if let Some(GarminCliOptions::ImportFileNames(filenames)) = self.get_opts() {
             let tempdir = TempDir::new("garmin_zip")?;
             let ziptmpdir = tempdir
                 .path()
                 .to_str()
                 .ok_or_else(|| err_msg("Path is invalid unicode somehow"))?;
 
-            let filenames: Vec<_> = v
+            let filenames: Vec<_> = filenames
                 .iter()
                 .filter(|f| (f.ends_with(".zip") || f.ends_with(".fit")) && Path::new(f).exists())
                 .collect();
 
             let results: Vec<Result<_, Error>> = filenames
-                .into_par_iter()
+                .par_iter()
                 .map(|filename| {
                     if filename.ends_with(".zip") {
                         extract_zip_from_garmin_connect(&filename, &ziptmpdir)
                     } else {
-                        Ok(filename.clone())
+                        Ok(filename.to_string())
                     }
                 })
                 .collect();
 
-            let filenames = map_result_vec(results)?;
+            let filenames: Vec<_> = map_result(results)?;
 
             println!("{:?}", filenames);
 
             let results: Vec<Result<_, Error>> = filenames
-                .par_iter()
+                .into_par_iter()
                 .map(|filename| {
                     assert!(Path::new(&filename).exists(), "No such file");
                     assert!(filename.ends_with(".fit"), "Only fit files are supported");
@@ -259,7 +259,7 @@ where
                         .map_err(err_msg)
                 })
                 .collect();
-            map_result_vec(results)?;
+            map_result(results)?;
         }
 
         match self.get_opts() {
@@ -267,39 +267,7 @@ where
                 self.run_bootstrap()?;
             }
             Some(GarminCliOptions::Sync) => {
-                let gsync = GarminSync::new();
-
-                let options = vec![
-                    (
-                        "Syncing GPS files",
-                        &self.get_config().gps_dir,
-                        &self.get_config().gps_bucket,
-                        true,
-                    ),
-                    (
-                        "Syncing CACHE files",
-                        &self.get_config().cache_dir,
-                        &self.get_config().cache_bucket,
-                        false,
-                    ),
-                    (
-                        "Syncing SUMMARY file",
-                        &self.get_config().summary_cache,
-                        &self.get_config().summary_bucket,
-                        false,
-                    ),
-                ];
-
-                let results = options
-                    .into_par_iter()
-                    .map(|(s, d, b, m)| {
-                        println!("{}", s);
-                        gsync.sync_dir(d, b, m)?;
-                        Ok(())
-                    })
-                    .collect();
-
-                map_result_vec(results)?;
+                self.sync_everything()?;
             }
             _ => {
                 let corr_list = self.get_corr().read_corrections_from_db()?;
@@ -339,7 +307,7 @@ where
                         )?)
                     })
                     .collect();
-                GarminSummaryList::from_vec(map_result_vec(proc_list)?)
+                GarminSummaryList::from_vec(map_result(proc_list)?)
             }
             Some(GarminCliOptions::All) => GarminSummaryList::process_all_gps_files(
                 &self.get_config().gps_dir,
@@ -385,7 +353,7 @@ where
                         )?)
                     })
                     .collect();
-                GarminSummaryList::from_vec(map_result_vec(proc_list)?)
+                GarminSummaryList::from_vec(map_result(proc_list)?)
             }
         }
         .with_pool(&pg_conn);
@@ -395,25 +363,7 @@ where
     fn run_bootstrap(&self) -> Result<(), Error> {
         let pg_conn = self.get_pool()?;
 
-        let gsync = GarminSync::new();
-        println!("Syncing GPS files");
-        gsync.sync_dir(
-            &self.get_config().gps_dir,
-            &self.get_config().gps_bucket,
-            true,
-        )?;
-        println!("Syncing CACHE files");
-        gsync.sync_dir(
-            &self.get_config().cache_dir,
-            &self.get_config().cache_bucket,
-            false,
-        )?;
-        println!("Syncing SUMMARY files");
-        gsync.sync_dir(
-            &self.get_config().summary_cache,
-            &self.get_config().summary_bucket,
-            false,
-        )?;
+        self.sync_everything()?;
 
         println!("Read corrections from avro file");
         let corr_list = GarminCorrectionList::read_corr_list_from_avro(&format!(
@@ -431,6 +381,43 @@ where
 
         println!("Write summaries to postgres");
         gsum_list.write_summary_to_postgres()?;
+        Ok(())
+    }
+
+    fn sync_everything(&self) -> Result<(), Error> {
+        let gsync = GarminSync::new();
+
+        let options = vec![
+            (
+                "Syncing GPS files",
+                &self.get_config().gps_dir,
+                &self.get_config().gps_bucket,
+                true,
+            ),
+            (
+                "Syncing CACHE files",
+                &self.get_config().cache_dir,
+                &self.get_config().cache_bucket,
+                false,
+            ),
+            (
+                "Syncing SUMMARY file",
+                &self.get_config().summary_cache,
+                &self.get_config().summary_bucket,
+                false,
+            ),
+        ];
+
+        let results: Vec<_> = options
+            .into_par_iter()
+            .map(|(s, d, b, m)| {
+                println!("{}", s);
+                gsync.sync_dir(d, b, m)?;
+                Ok(())
+            })
+            .collect();
+
+        map_result(results)?;
         Ok(())
     }
 

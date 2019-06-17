@@ -8,6 +8,8 @@ use std::env;
 use std::sync::{Arc, RwLock};
 
 use garmin_lib::common::pgpool::PgPool;
+use garmin_lib::utils::garmin_util::map_result_vec;
+use garmin_lib::utils::row_index_trait::RowIndexTrait;
 
 use super::errors::ServiceError;
 
@@ -50,10 +52,11 @@ impl LoggedUser {
             .iter()
             .nth(0)
             .map(|row| {
-                let count: i64 = row.get(0);
-                count > 0
+                let count: i64 = row.get_idx(0)?;
+                Ok(count > 0)
             })
             .ok_or_else(|| err_msg("User not found"))
+            .and_then(|x| x)
     }
 }
 
@@ -93,15 +96,16 @@ impl AuthorizedUsers {
 
     pub fn fill_from_db(&self, pool: &PgPool) -> Result<(), Error> {
         let query = "SELECT email FROM authorized_users";
-        let users: HashSet<LoggedUser> = pool
+        let results: Vec<Result<_, Error>> = pool
             .get()?
             .query(query, &[])?
             .iter()
             .map(|row| {
-                let email: String = row.get(0);
-                LoggedUser { email }
+                let email: String = row.get_idx(0)?;
+                Ok(LoggedUser { email })
             })
             .collect();
+        let users: HashSet<LoggedUser> = map_result_vec(results)?.into_iter().collect();
         let cached_users = self.list_of_users();
 
         for user in &users {

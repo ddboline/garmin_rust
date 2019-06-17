@@ -17,6 +17,7 @@ use super::garmin_lap::GarminLap;
 use super::garmin_summary::GarminSummaryList;
 use super::pgpool::PgPool;
 use crate::utils::garmin_util::{map_result_vec, METERS_PER_MILE};
+use crate::utils::row_index_trait::RowIndexTrait;
 use crate::utils::sport_types::convert_sport_name;
 
 pub const GARMIN_CORRECTION_LAP_AVRO_SCHEMA: &str = r#"
@@ -401,12 +402,12 @@ where
             join garmin_summary b on a.start_time = b.begin_datetime
         ";
         let conn = self.get_pool()?.get()?;
-        let filename_start_map: HashMap<_, _> = conn
+        let results: Vec<Result<_, Error>> = conn
             .query(query, &[])?
             .iter()
             .map(|row| {
-                let filename: String = row.get(0);
-                let unique_key: String = row.get(1);
+                let filename: String = row.get_idx(0)?;
+                let unique_key: String = row.get_idx(1)?;
                 let start_time: String = unique_key
                     .split('_')
                     .nth(0)
@@ -417,9 +418,11 @@ where
                     .last()
                     .map(|x| x.parse().unwrap_or(0))
                     .unwrap_or(0);
-                (filename, (start_time, lap_number))
+                Ok((filename, (start_time, lap_number)))
             })
             .collect();
+
+        let filename_start_map: HashMap<_, _> = map_result_vec(results)?.into_iter().collect();
 
         Ok(filename_start_map)
     }
@@ -468,20 +471,22 @@ where
 
     fn read_corrections_from_db(&self) -> Result<Self, Error> {
         let conn = self.get_pool()?.get()?;
-        let corr_list: Vec<GarminCorrectionLap> = conn.query(
+        let results: Vec<Result<_, Error>> = conn.query(
             "select id, start_time, lap_number, sport, distance, duration from garmin_corrections_laps",
             &[],
         )?
             .iter()
-            .map(|row| GarminCorrectionLap {
+            .map(|row| Ok(GarminCorrectionLap {
                 id: row.get(0),
-                start_time: row.get(1),
-                lap_number: row.get(2),
-                sport: row.get(3),
-                distance: row.get(4),
-                duration: row.get(5),
-            })
+                start_time: row.get_idx(1)?,
+                lap_number: row.get_idx(2)?,
+                sport: row.get_idx(3)?,
+                distance: row.get_idx(4)?,
+                duration: row.get_idx(5)?,
+            }))
             .collect();
+
+        let corr_list: Vec<GarminCorrectionLap> = map_result_vec(results)?;
 
         Ok(Self::from_vec(corr_list))
     }

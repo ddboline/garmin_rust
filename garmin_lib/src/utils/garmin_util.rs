@@ -1,7 +1,7 @@
 use num::traits::Pow;
-
 use rand::distributions::{Alphanumeric, Distribution, Uniform};
 use rand::thread_rng;
+use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read};
 use std::path::Path;
 use std::thread::sleep;
@@ -113,6 +113,28 @@ pub fn map_result_vec<T>(input: Vec<Result<T, Error>>) -> Result<Vec<T>, Error> 
         .into_iter()
         .filter_map(|item| match item {
             Ok(i) => Some(i),
+            Err(e) => {
+                errors.push(format!("{}", e));
+                None
+            }
+        })
+        .collect();
+    if !errors.is_empty() {
+        Err(err_msg(errors.join("\n")))
+    } else {
+        Ok(output)
+    }
+}
+
+pub fn map_result_hashmap<K, V>(input: Vec<Result<(K, V), Error>>) -> Result<HashMap<K, V>, Error>
+where
+    K: std::cmp::Eq + std::hash::Hash,
+{
+    let mut errors: Vec<_> = Vec::new();
+    let output: HashMap<K, V> = input
+        .into_iter()
+        .filter_map(|item| match item {
+            Ok((k, v)) => Some((k, v)),
             Err(e) => {
                 errors.push(format!("{}", e));
                 None

@@ -22,6 +22,7 @@ use super::garmin_sync::GarminSyncTrait;
 use super::pgpool::PgPool;
 use crate::parsers::garmin_parse::{GarminParse, GarminParseTrait};
 use crate::utils::garmin_util::{generate_random_string, get_file_list, get_md5sum, map_result};
+use crate::utils::row_index_trait::RowIndexTrait;
 
 pub const GARMIN_SUMMARY_AVRO_SCHEMA: &str = r#"
     {
@@ -367,22 +368,26 @@ impl GarminSummaryList {
         let pool = self.get_pool()?;
         let conn = pool.get()?;
 
-        let gsum_list = conn
+        let gsum_list: Vec<_> = conn
             .query(&query, &[])?
             .iter()
-            .map(|row| GarminSummary {
-                filename: row.get(0),
-                begin_datetime: row.get(1),
-                sport: row.get(2),
-                total_calories: row.get(3),
-                total_distance: row.get(4),
-                total_duration: row.get(5),
-                total_hr_dur: row.get(6),
-                total_hr_dis: row.get(7),
-                number_of_items: row.get(8),
-                md5sum: row.get(9),
+            .map(|row| {
+                Ok(GarminSummary {
+                    filename: row.get_idx(0)?,
+                    begin_datetime: row.get_idx(1)?,
+                    sport: row.get_idx(2)?,
+                    total_calories: row.get_idx(3)?,
+                    total_distance: row.get_idx(4)?,
+                    total_duration: row.get_idx(5)?,
+                    total_hr_dur: row.get_idx(6)?,
+                    total_hr_dis: row.get_idx(7)?,
+                    number_of_items: row.get_idx(8)?,
+                    md5sum: row.get_idx(9)?,
+                })
             })
             .collect();
+
+        let gsum_list: Vec<_> = map_result(gsum_list)?;
 
         Ok(GarminSummaryList::from_vec(gsum_list).with_pool(&pool))
     }
@@ -543,11 +548,11 @@ pub fn get_list_of_files_from_db(
 
     let conn = pool.get()?;
 
-    let results = conn
+    let results: Vec<_> = conn
         .query(&query, &[])?
         .iter()
-        .map(|row| row.get(0))
+        .map(|row| row.get_idx(0))
         .collect();
 
-    Ok(results)
+    map_result(results)
 }

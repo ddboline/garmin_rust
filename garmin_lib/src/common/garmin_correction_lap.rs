@@ -477,7 +477,7 @@ where
         )?
             .iter()
             .map(|row| Ok(GarminCorrectionLap {
-                id: row.get(0),
+                id: row.get_idx(0)?,
                 start_time: row.get_idx(1)?,
                 lap_number: row.get_idx(2)?,
                 sport: row.get_idx(3)?,

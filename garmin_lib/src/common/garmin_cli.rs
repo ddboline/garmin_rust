@@ -269,26 +269,37 @@ where
             Some(GarminCliOptions::Sync) => {
                 let gsync = GarminSync::new();
 
-                println!("Syncing GPS files");
-                gsync.sync_dir(
-                    &self.get_config().gps_dir,
-                    &self.get_config().gps_bucket,
-                    true,
-                )?;
+                let options = vec![
+                    (
+                        "Syncing GPS files",
+                        &self.get_config().gps_dir,
+                        &self.get_config().gps_bucket,
+                        true,
+                    ),
+                    (
+                        "Syncing CACHE files",
+                        &self.get_config().cache_dir,
+                        &self.get_config().cache_bucket,
+                        false,
+                    ),
+                    (
+                        "Syncing SUMMARY file",
+                        &self.get_config().summary_cache,
+                        &self.get_config().summary_bucket,
+                        false,
+                    ),
+                ];
 
-                println!("Syncing CACHE files");
-                gsync.sync_dir(
-                    &self.get_config().cache_dir,
-                    &self.get_config().cache_bucket,
-                    false,
-                )?;
+                let results = options
+                    .into_par_iter()
+                    .map(|(s, d, b, m)| {
+                        println!("{}", s);
+                        gsync.sync_dir(d, b, m)?;
+                        Ok(())
+                    })
+                    .collect();
 
-                println!("Syncing SUMMARY file");
-                gsync.sync_dir(
-                    &self.get_config().summary_cache,
-                    &self.get_config().summary_bucket,
-                    false,
-                )?;
+                map_result_vec(results)?;
             }
             _ => {
                 let corr_list = self.get_corr().read_corrections_from_db()?;

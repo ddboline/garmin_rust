@@ -21,9 +21,7 @@ use super::garmin_sync::GarminSync;
 use super::garmin_sync::GarminSyncTrait;
 use super::pgpool::PgPool;
 use crate::parsers::garmin_parse::{GarminParse, GarminParseTrait};
-use crate::utils::garmin_util::{
-    generate_random_string, get_file_list, get_md5sum, map_result_vec,
-};
+use crate::utils::garmin_util::{generate_random_string, get_file_list, get_md5sum, map_result};
 
 pub const GARMIN_SUMMARY_AVRO_SCHEMA: &str = r#"
     {
@@ -294,9 +292,7 @@ impl GarminSummaryList {
             })
             .collect();
 
-        Ok(GarminSummaryList::from_vec(map_result_vec(
-            gsum_result_list,
-        )?))
+        Ok(GarminSummaryList::from_vec(map_result(gsum_result_list)?))
     }
 
     pub fn create_summary_list(&self) -> Result<GarminSummaryList, Error> {
@@ -406,7 +402,7 @@ impl GarminSummaryList {
     }
 
     pub fn write_summary_to_avro_files(&self, summary_cache_dir: &str) -> Result<(), Error> {
-        let results = self
+        let results: Vec<_> = self
             .summary_list
             .par_iter()
             .map(|gsum| {
@@ -417,7 +413,7 @@ impl GarminSummaryList {
             })
             .collect();
 
-        map_result_vec(results)?;
+        map_result(results)?;
         Ok(())
     }
 
@@ -426,18 +422,20 @@ impl GarminSummaryList {
 
         let file_list: Vec<String> = get_file_list(&path);
 
-        let gsum_result_list: Vec<_> = file_list
+        let results: Vec<_> = file_list
             .par_iter()
             .map(|f| GarminSummaryList::read_summary_from_avro(f))
             .collect();
 
-        Ok(GarminSummaryList::from_vec(
-            map_result_vec(gsum_result_list)?
-                .into_iter()
-                .map(|g| g.summary_list)
-                .flatten()
-                .collect(),
-        ))
+        let gsum_result_list: Vec<_> = map_result(results)?;
+
+        let gsum_result_list: Vec<_> = gsum_result_list
+            .into_iter()
+            .map(|g| g.summary_list)
+            .flatten()
+            .collect();
+
+        Ok(GarminSummaryList::from_vec(gsum_result_list))
     }
 
     pub fn write_summary_to_postgres(&self) -> Result<(), Error> {
@@ -491,7 +489,7 @@ impl GarminSummaryList {
             })
             .collect();
 
-        map_result_vec(results)?;
+        let _: Vec<_> = map_result(results)?;
 
         let insert_query = format!("
             INSERT INTO garmin_summary (filename, begin_datetime, sport, total_calories, total_distance, total_duration, total_hr_dur, total_hr_dis, md5sum, number_of_items)

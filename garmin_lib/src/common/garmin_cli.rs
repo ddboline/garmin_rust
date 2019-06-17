@@ -211,20 +211,20 @@ where
     fn get_parser(&self) -> &T;
 
     fn garmin_proc(&self) -> Result<(), Error> {
-        if let Some(GarminCliOptions::ImportFileNames(v)) = self.get_opts() {
+        if let Some(GarminCliOptions::ImportFileNames(filenames)) = self.get_opts() {
             let tempdir = TempDir::new("garmin_zip")?;
             let ziptmpdir = tempdir
                 .path()
                 .to_str()
                 .ok_or_else(|| err_msg("Path is invalid unicode somehow"))?;
 
-            let filenames: Vec<_> = v
+            let filenames: Vec<_> = filenames
                 .iter()
                 .filter(|f| (f.ends_with(".zip") || f.ends_with(".fit")) && Path::new(f).exists())
                 .collect();
 
             let results: Vec<Result<_, Error>> = filenames
-                .into_par_iter()
+                .par_iter()
                 .map(|filename| {
                     if filename.ends_with(".zip") {
                         extract_zip_from_garmin_connect(&filename, &ziptmpdir)

@@ -61,6 +61,13 @@ where
     T: GarminParseTrait + Default,
     U: GarminCorrectionListTrait + Default,
 {
+    /// ```
+    /// # use garmin_lib::common::garmin_cli::GarminCliObj;
+    /// # use garmin_lib::parsers::garmin_parse::GarminParse;
+    /// # use garmin_lib::common::garmin_correction_lap::GarminCorrectionList;
+    /// let gcli = GarminCliObj::<GarminParse, GarminCorrectionList>::new();
+    /// assert_eq!(gcli.opts, None);
+    /// ```
     pub fn new() -> GarminCliObj<T, U> {
         let config = GarminConfig::new();
         GarminCliObj {

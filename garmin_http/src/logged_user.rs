@@ -1,4 +1,5 @@
-use actix_web::{dev::Payload, middleware::identity::Identity, FromRequest, HttpRequest};
+use actix_web::{dev::Payload, FromRequest, HttpRequest};
+use actix_identity::Identity;
 use chrono::{DateTime, Utc};
 use failure::{err_msg, Error};
 use jsonwebtoken::{decode, Validation};

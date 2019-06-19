@@ -2,7 +2,7 @@
 
 use actix::sync::SyncArbiter;
 use actix::Addr;
-use actix_web::middleware::identity::{CookieIdentityPolicy, IdentityService};
+use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::{web, App, HttpServer};
 use chrono::Duration;
 use futures::future::Future;

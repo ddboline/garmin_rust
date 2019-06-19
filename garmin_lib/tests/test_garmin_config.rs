@@ -18,7 +18,7 @@ fn test_garmin_config_new() {
 fn test_garmin_config_get_config() {
     let test_fname = "tests/data/test.env";
 
-    let gc = garmin_config::GarminConfig::get_config(Some(test_fname));
+    let gc = garmin_config::GarminConfig::get_config(Some(test_fname)).unwrap();
 
     assert_eq!(&gc.maps_api_key, "TESTKEY");
     assert_eq!(

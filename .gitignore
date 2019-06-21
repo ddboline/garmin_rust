@@ -5,3 +5,5 @@ config.env
 Cargo.lock
 description-pak
 */target
+backup
+.vscode

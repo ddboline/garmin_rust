@@ -51,7 +51,7 @@ impl FromStr for SportTypes {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match SPORT_TYPE_MAP.get(s) {
+        match SPORT_TYPE_MAP.get(&s.to_lowercase()) {
             Some(sport) => Ok(*sport),
             None => Err(err_msg(format!("Invalid Sport Type {}", s))),
         }

@@ -87,12 +87,10 @@ impl GarminParseTrait for GarminParseGmn {
                 }
             }
             if d.node_type() == NodeType::Element && d.tag_name().name() == "lap" {
-                let lap = GarminLap::read_lap_xml_new(&d)?;
-                println!("lap {:?}", lap);
-                lap_list.push(lap);
+                lap_list.push(GarminLap::read_lap_xml(&d)?);
             }
             if d.node_type() == NodeType::Element && d.tag_name().name() == "point" {
-                point_list.push(GarminPoint::read_point_xml_new(&d)?);
+                point_list.push(GarminPoint::read_point_xml(&d)?);
             }
         }
 

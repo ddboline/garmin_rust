@@ -23,7 +23,7 @@ fn test_garmin_parse_gmn() {
     assert_eq!(gfile.sport.unwrap(), "running");
     assert_eq!(gfile.filetype, "gmn");
     assert_eq!(gfile.begin_datetime, "2011-05-07T19:43:08Z");
-    // assert_eq!(gfile.total_calories, 122);
+    assert_eq!(gfile.total_calories, 122);
     assert_eq!(gfile.laps.len(), 1);
     assert_eq!(gfile.points.len(), 44);
     assert_abs_diff_eq!(gfile.total_distance, 1696.85999);

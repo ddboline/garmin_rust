@@ -1,9 +1,16 @@
 #[macro_use]
 extern crate approx;
 
+use roxmltree::{Document, NodeType};
+use std::fs::File;
+use std::io::Read;
+
 use garmin_lib::common::garmin_correction_lap::{GarminCorrectionList, GarminCorrectionListTrait};
 use garmin_lib::parsers::garmin_parse::GarminParseTrait;
 use garmin_lib::parsers::garmin_parse_tcx;
+use garmin_lib::common::garmin_lap::GarminLap;
+use garmin_lib::common::garmin_point::GarminPoint;
+use garmin_lib::utils::sport_types::SportTypes;
 
 #[test]
 fn test_garmin_parse_tcx() {
@@ -45,4 +52,35 @@ fn test_garmin_parse_fit() {
     assert_abs_diff_eq!(gfile.total_duration, 1451.55);
     assert_abs_diff_eq!(gfile.total_hr_dur, 220635.6);
     assert_abs_diff_eq!(gfile.total_hr_dis, 1451.55);
+}
+
+#[test]
+fn test_garmin_parse_tcx_roxmltree() {
+    let mut f = File::open("tests/data/test.tcx").unwrap();
+    let mut buf = String::new();
+    f.read_to_string(&mut buf).unwrap();
+    let doc = Document::parse(&buf).unwrap();
+
+    let mut lap_list = Vec::new();
+    let mut point_list = Vec::new();
+
+    for d in doc.root().descendants() {
+        if d.node_type() == NodeType::Element && d.tag_name().name() == "Activity" {
+            for a in d.attributes() {
+                if a.name() == "Sport" {
+                    let sport: SportTypes = a.value().parse().unwrap();
+                    println!("{:?}", sport);
+                }
+            }
+        }
+        if d.node_type() == NodeType::Element && d.tag_name().name() == "Lap" {
+            lap_list.push(GarminLap::read_lap_tcx_new(&d).unwrap());
+        }
+        if d.node_type() == NodeType::Element && d.tag_name().name() == "Trackpoint" {
+            let new_point = GarminPoint::read_point_tcx_new(&d).unwrap();
+            println!("new_point {:?}", new_point);
+            point_list.push(new_point);
+        }
+    }
+    assert!(false);
 }

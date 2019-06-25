@@ -1,6 +1,6 @@
 use failure::Error;
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
-use roxmltree::Node;
+use roxmltree::{Node, NodeType};
 use std::fmt;
 
 use crate::utils::garmin_util::{convert_time_string, convert_xml_local_time_to_utc};
@@ -57,47 +57,20 @@ impl GarminLap {
         self.lap_start_string = None;
     }
 
-    pub fn read_lap_xml(&mut self, entries: &[&str]) -> Result<(), Error> {
-        for entry in entries {
-            let value = match entry.split('=').last() {
-                Some(x) => x,
-                None => continue,
-            };
-            if entry.contains("@type") {
-                self.lap_type = Some(value.to_string());
-            } else if entry.contains("index") {
-                self.lap_index = value.parse().unwrap_or(-1);
-            } else if entry.contains("start") {
-                self.lap_start = convert_xml_local_time_to_utc(value)?;
-                self.lap_start_string = Some(self.lap_start.clone());
-            } else if entry.contains("duration") {
-                self.lap_duration = convert_time_string(value).unwrap_or(0.0);
-            } else if entry.contains("distance") {
-                self.lap_distance = value.parse().unwrap_or(0.0);
-            } else if entry.contains("trigger") {
-                self.lap_trigger = Some(value.to_string());
-            } else if entry.contains("max_speed") {
-                self.lap_max_speed = match value.parse() {
-                    Ok(x) => Some(x),
-                    Err(_) => None,
-                };
-            } else if entry.contains("calories") {
-                self.lap_calories = value.parse().unwrap_or(0);
-            } else if entry.contains("avg_hr") {
-                self.lap_max_hr = match value.parse() {
-                    Ok(x) => Some(x),
-                    Err(_) => None,
-                };
-            } else if entry.contains("intensity") {
-                self.lap_intensity = Some(value.to_string());
+    pub fn read_lap_xml(entries: &Node) -> Result<Self, Error> {
+        let mut new_lap = Self::new();
+        for d in entries.descendants() {
+            if d.node_type() == NodeType::Element {
+                match d.tag_name().name() {
+                    "max_speed" => new_lap.lap_max_speed = d.text().and_then(|x| x.parse().ok()),
+                    "calories" => {
+                        new_lap.lap_calories = d.text().and_then(|x| x.parse().ok()).unwrap_or(0)
+                    }
+                    "intensity" => new_lap.lap_intensity = d.text().map(|s| s.to_string()),
+                    _ => (),
+                }
             }
         }
-        Ok(())
-    }
-
-    pub fn read_lap_xml_new(entries: &Node) -> Result<Self, Error> {
-        let mut new_lap = Self::new();
-        println!("{:?}", entries);
         for entry in entries.attributes() {
             match entry.name() {
                 "type" => new_lap.lap_type = Some(entry.value().to_string()),
@@ -111,10 +84,7 @@ impl GarminLap {
                 }
                 "distance" => new_lap.lap_distance = entry.value().parse().unwrap_or(0.0),
                 "trigger" => new_lap.lap_trigger = Some(entry.value().to_string()),
-                "max_speed" => new_lap.lap_max_speed = entry.value().parse().ok(),
-                "calories" => new_lap.lap_calories = entry.value().parse().unwrap_or(0),
                 "avg_hr" => new_lap.lap_max_hr = entry.value().parse().ok(),
-                "intensity" => new_lap.lap_intensity = Some(entry.value().to_string()),
                 _ => (),
             }
         }
@@ -170,6 +140,32 @@ impl GarminLap {
             }
         }
         Ok(())
+    }
+
+    pub fn read_lap_tcx_new(entries: &Node) -> Result<GarminLap, Error> {
+        let mut new_lap = GarminLap::new();
+        for d in entries.descendants() {
+            if d.node_type() == NodeType::Element {
+                match d.tag_name().name() {
+                    "TotalTimeSeconds" => new_lap.lap_duration = d.text().and_then(|x| x.parse().ok()).unwrap_or(0.0),
+                    "DistanceMeters" => new_lap.lap_distance = d.text().and_then(|x| x.parse().ok()).unwrap_or(0.0),
+                    "MaximumSpeed" => new_lap.lap_max_speed = d.text().and_then(|x| x.parse().ok()),
+                    "TriggerMethod" => new_lap.lap_trigger = d.text().map(|s| s.to_string()),
+                    "Calories" => new_lap.lap_calories = d.text().and_then(|x| x.parse().ok()).unwrap_or(0),
+                    "Intensity" => new_lap.lap_intensity = d.text().map(|s| s.to_string()),
+                    "AverageHeartRateBpm" => println!("{:?}", d),
+                    "MaximumHeartRateBpm" => println!("{:?}", d),
+                    _ => (),
+                }
+            }
+        }
+        for entry in entries.attributes() {
+            if entry.name() == "StartTime" {
+                new_lap.lap_start = convert_xml_local_time_to_utc(entry.value())?;
+                new_lap.lap_start_string = Some(new_lap.lap_start.clone());
+            }
+        }
+        Ok(new_lap)
     }
 
     pub fn fix_lap_number(lap_list: Vec<GarminLap>) -> Vec<GarminLap> {

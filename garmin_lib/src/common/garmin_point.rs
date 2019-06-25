@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use failure::{err_msg, Error};
-use roxmltree::Node;
+use roxmltree::{Node, NodeType};
 use std::fmt;
 use std::str::FromStr;
 
@@ -58,45 +58,7 @@ impl GarminPoint {
         self.avg_speed_value_mph = 0.0;
     }
 
-    pub fn read_point_xml(&mut self, entries: &[&str]) -> Result<(), Error> {
-        for entry in entries {
-            let val = match entry.split('=').last() {
-                Some(x) => x,
-                None => continue,
-            };
-            if entry.contains("@time") {
-                self.time = convert_xml_local_time_to_utc(val)?;
-            } else if entry.contains("@lat") {
-                self.latitude = match val.parse() {
-                    Ok(x) => Some(x),
-                    Err(_) => None,
-                };
-            } else if entry.contains("@lon") {
-                self.longitude = match val.parse() {
-                    Ok(x) => Some(x),
-                    Err(_) => None,
-                };
-            } else if entry.contains("@alt") {
-                self.altitude = match val.parse() {
-                    Ok(x) => Some(x),
-                    Err(_) => None,
-                };
-            } else if entry.contains("@distance") {
-                self.distance = match val.parse() {
-                    Ok(x) => Some(x),
-                    Err(_) => None,
-                };
-            } else if entry.contains("@hr") {
-                self.heart_rate = match val.parse() {
-                    Ok(x) => Some(x),
-                    Err(_) => None,
-                };
-            }
-        }
-        Ok(())
-    }
-
-    pub fn read_point_xml_new(entries: &Node) -> Result<GarminPoint, Error> {
+    pub fn read_point_xml(entries: &Node) -> Result<GarminPoint, Error> {
         let mut new_point = GarminPoint::new();
         for entry in entries.attributes() {
             match entry.name() {
@@ -108,6 +70,19 @@ impl GarminPoint {
                 "hr" => new_point.heart_rate = entry.value().parse().ok(),
                 _ => (),
             }
+        }
+        Ok(new_point)
+    }
+
+    pub fn read_point_tcx_new(entries: &Node) -> Result<GarminPoint, Error> {
+        let mut new_point = GarminPoint::new();
+        for d in entries.descendants() {
+            if d.node_type() == NodeType::Element {
+                println!("d {}", d.tag_name().name())
+            }
+        }
+        for entry in entries.attributes() {
+            println!("a {}", entry.name());
         }
         Ok(new_point)
     }

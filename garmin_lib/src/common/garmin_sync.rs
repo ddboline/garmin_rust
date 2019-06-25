@@ -39,33 +39,8 @@ impl GarminSync<S3Client> {
             s3_client: s3client,
         }
     }
-}
 
-pub trait GarminSyncTrait {
-    fn get_list_of_keys(&self, bucket: &str) -> Result<Vec<(String, String, i64)>, Error>;
-
-    fn sync_dir(&self, local_dir: &str, s3_bucket: &str, check_md5sum: bool) -> Result<(), Error>;
-
-    fn download_file(
-        &self,
-        local_file: &str,
-        s3_bucket: &str,
-        s3_key: &str,
-    ) -> Result<String, Error>;
-
-    fn upload_file(&self, local_file: &str, s3_bucket: &str, s3_key: &str) -> Result<(), Error>;
-
-    fn upload_file_acl(
-        &self,
-        local_file: &str,
-        s3_bucket: &str,
-        s3_key: &str,
-        acl: Option<String>,
-    ) -> Result<(), Error>;
-}
-
-impl GarminSyncTrait for GarminSync<S3Client> {
-    fn get_list_of_keys(&self, bucket: &str) -> Result<Vec<(String, String, i64)>, Error> {
+    pub fn get_list_of_keys(&self, bucket: &str) -> Result<Vec<(String, String, i64)>, Error> {
         let mut continuation_token = None;
 
         let mut list_of_keys = Vec::new();
@@ -126,7 +101,12 @@ impl GarminSyncTrait for GarminSync<S3Client> {
         Ok(list_of_keys)
     }
 
-    fn sync_dir(&self, local_dir: &str, s3_bucket: &str, check_md5sum: bool) -> Result<(), Error> {
+    pub fn sync_dir(
+        &self,
+        local_dir: &str,
+        s3_bucket: &str,
+        check_md5sum: bool,
+    ) -> Result<(), Error> {
         let path = Path::new(local_dir);
 
         let file_list: Vec<String> = path
@@ -243,7 +223,7 @@ impl GarminSyncTrait for GarminSync<S3Client> {
         Ok(())
     }
 
-    fn download_file(
+    pub fn download_file(
         &self,
         local_file: &str,
         s3_bucket: &str,
@@ -267,11 +247,16 @@ impl GarminSyncTrait for GarminSync<S3Client> {
         Ok(etag)
     }
 
-    fn upload_file(&self, local_file: &str, s3_bucket: &str, s3_key: &str) -> Result<(), Error> {
+    pub fn upload_file(
+        &self,
+        local_file: &str,
+        s3_bucket: &str,
+        s3_key: &str,
+    ) -> Result<(), Error> {
         self.upload_file_acl(local_file, s3_bucket, s3_key, None)
     }
 
-    fn upload_file_acl(
+    pub fn upload_file_acl(
         &self,
         local_file: &str,
         s3_bucket: &str,

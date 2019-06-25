@@ -8,12 +8,10 @@ use std::path::Path;
 use tempdir::TempDir;
 
 use super::garmin_config::GarminConfig;
-use super::garmin_correction_lap::{
-    GarminCorrectionLap, GarminCorrectionList, GarminCorrectionListTrait,
-};
+use super::garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList};
 use super::garmin_file;
 use super::garmin_summary::{get_list_of_files_from_db, GarminSummary, GarminSummaryList};
-use super::garmin_sync::{GarminSync, GarminSyncTrait};
+use super::garmin_sync::GarminSync;
 use super::pgpool::PgPool;
 use crate::parsers::garmin_parse::{GarminParse, GarminParseTrait};
 use crate::reports::garmin_file_report_html::file_report_html;
@@ -44,22 +42,20 @@ pub enum GarminCliOptions {
 }
 
 #[derive(Debug, Default)]
-pub struct GarminCliObj<T = GarminParse, U = GarminCorrectionList>
+pub struct GarminCliObj<T = GarminParse>
 where
     T: GarminParseTrait,
-    U: GarminCorrectionListTrait,
 {
     pub config: GarminConfig,
     pub opts: Option<GarminCliOptions>,
     pub pool: Option<PgPool>,
-    pub corr: U,
+    pub corr: GarminCorrectionList,
     pub parser: T,
 }
 
-impl<T, U> GarminCliObj<T, U>
+impl<T> GarminCliObj<T>
 where
     T: GarminParseTrait + Default,
-    U: GarminCorrectionListTrait + Default,
 {
     /// ```
     /// # use garmin_lib::common::garmin_cli::GarminCliObj;
@@ -68,7 +64,7 @@ where
     /// let gcli = GarminCliObj::<GarminParse, GarminCorrectionList>::new();
     /// assert_eq!(gcli.opts, None);
     /// ```
-    pub fn new() -> GarminCliObj<T, U> {
+    pub fn new() -> GarminCliObj<T> {
         let config = GarminConfig::new();
         GarminCliObj {
             config,
@@ -76,10 +72,10 @@ where
         }
     }
 
-    pub fn with_config() -> Result<GarminCliObj<T, U>, Error> {
+    pub fn with_config() -> Result<GarminCliObj<T>, Error> {
         let config = GarminConfig::get_config(None)?;
         let pool = PgPool::new(&config.pgurl);
-        let corr = U::from_pool(&pool);
+        let corr = GarminCorrectionList::from_pool(&pool);
         let obj = GarminCliObj {
             config,
             pool: Some(pool),
@@ -89,7 +85,7 @@ where
         Ok(obj)
     }
 
-    pub fn from_pool(pool: &PgPool) -> Result<GarminCliObj<T, U>, Error> {
+    pub fn from_pool(pool: &PgPool) -> Result<GarminCliObj<T>, Error> {
         let config = GarminConfig::get_config(None)?;
         let obj = GarminCliObj {
             config,
@@ -99,7 +95,7 @@ where
         Ok(obj)
     }
 
-    pub fn with_cli_proc() -> Result<GarminCliObj<T, U>, Error> {
+    pub fn with_cli_proc() -> Result<GarminCliObj<T>, Error> {
         let matches = App::new("Garmin Rust Proc")
             .version(get_version_number().as_str())
             .author("Daniel Boline <ddboline@gmail.com>")
@@ -176,7 +172,7 @@ where
     }
 }
 
-impl GarminCli for GarminCliObj<GarminParse, GarminCorrectionList> {
+impl GarminCli for GarminCliObj<GarminParse> {
     fn get_pool(&self) -> Result<PgPool, Error> {
         self.pool
             .as_ref()
@@ -201,11 +197,10 @@ impl GarminCli for GarminCliObj<GarminParse, GarminCorrectionList> {
     }
 }
 
-pub trait GarminCli<T = GarminParse, U = GarminCorrectionList>
+pub trait GarminCli<T = GarminParse>
 where
     Self: Send + Sync,
     T: GarminParseTrait + Send + Sync,
-    U: GarminCorrectionListTrait + Send + Sync,
 {
     fn get_pool(&self) -> Result<PgPool, Error>;
 
@@ -213,7 +208,7 @@ where
 
     fn get_opts(&self) -> &Option<GarminCliOptions>;
 
-    fn get_corr(&self) -> &U;
+    fn get_corr(&self) -> &GarminCorrectionList;
 
     fn get_parser(&self) -> &T;
 

@@ -1,8 +1,6 @@
 extern crate tempfile;
 
-use garmin_lib::common::garmin_correction_lap::{
-    GarminCorrectionLap, GarminCorrectionList, GarminCorrectionListTrait,
-};
+use garmin_lib::common::garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList};
 
 #[test]
 fn test_garmin_correction_lap_new() {

@@ -2,7 +2,7 @@ use actix::{Handler, Message};
 use failure::Error;
 
 use garmin_lib::common::garmin_cli::{GarminCli, GarminCliObj, GarminRequest};
-use garmin_lib::common::garmin_correction_lap::{GarminCorrectionList, GarminCorrectionListTrait};
+use garmin_lib::common::garmin_correction_lap::GarminCorrectionList;
 use garmin_lib::common::garmin_summary::get_list_of_files_from_db;
 use garmin_lib::common::pgpool::PgPool;
 

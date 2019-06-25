@@ -1,5 +1,7 @@
+use failure::{err_msg, Error};
 use std::collections::HashMap;
 use std::fmt;
+use std::str::FromStr;
 
 lazy_static! {
     static ref SPORT_TYPE_MAP: HashMap<String, SportTypes> = get_sport_type_map();
@@ -42,6 +44,17 @@ impl fmt::Display for SportTypes {
 impl SportTypes {
     pub fn to_string(self) -> String {
         format!("{}", self)
+    }
+}
+
+impl FromStr for SportTypes {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match SPORT_TYPE_MAP.get(s) {
+            Some(sport) => Ok(*sport),
+            None => Err(err_msg(format!("Invalid Sport Type {}", s))),
+        }
     }
 }
 

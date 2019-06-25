@@ -1,8 +1,8 @@
 use chrono::{DateTime, Utc};
 use failure::{err_msg, Error};
+use roxmltree::Node;
 use std::fmt;
 use std::str::FromStr;
-use roxmltree::Node;
 
 use crate::utils::garmin_util::{convert_xml_local_time_to_utc, METERS_PER_MILE};
 
@@ -97,41 +97,19 @@ impl GarminPoint {
     }
 
     pub fn read_point_xml_new(entries: &Node) -> Result<GarminPoint, Error> {
-        for entry in entries {
-            let val = match entry.split('=').last() {
-                Some(x) => x,
-                None => continue,
-            };
-            if entry.contains("@time") {
-                self.time = convert_xml_local_time_to_utc(val)?;
-            } else if entry.contains("@lat") {
-                self.latitude = match val.parse() {
-                    Ok(x) => Some(x),
-                    Err(_) => None,
-                };
-            } else if entry.contains("@lon") {
-                self.longitude = match val.parse() {
-                    Ok(x) => Some(x),
-                    Err(_) => None,
-                };
-            } else if entry.contains("@alt") {
-                self.altitude = match val.parse() {
-                    Ok(x) => Some(x),
-                    Err(_) => None,
-                };
-            } else if entry.contains("@distance") {
-                self.distance = match val.parse() {
-                    Ok(x) => Some(x),
-                    Err(_) => None,
-                };
-            } else if entry.contains("@hr") {
-                self.heart_rate = match val.parse() {
-                    Ok(x) => Some(x),
-                    Err(_) => None,
-                };
+        let mut new_point = GarminPoint::new();
+        for entry in entries.attributes() {
+            match entry.name() {
+                "time" => new_point.time = convert_xml_local_time_to_utc(entry.value())?,
+                "lat" => new_point.latitude = entry.value().parse().ok(),
+                "lon" => new_point.longitude = entry.value().parse().ok(),
+                "alt" => new_point.altitude = entry.value().parse().ok(),
+                "distance" => new_point.distance = entry.value().parse().ok(),
+                "hr" => new_point.heart_rate = entry.value().parse().ok(),
+                _ => (),
             }
         }
-        Ok(())
+        Ok(new_point)
     }
 
     fn read_point_tcx_position(&mut self, entries: &[&str]) {

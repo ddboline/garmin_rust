@@ -1,17 +1,16 @@
 use failure::{err_msg, Error};
+use roxmltree::{Document, NodeType};
 use std::collections::HashMap;
 use std::env::var;
-use std::io::BufRead;
-use std::io::BufReader;
 use std::path::Path;
-use subprocess::Exec;
+use subprocess::{Exec, Redirection};
 
 use super::garmin_parse::{GarminParseTrait, ParseOutput};
 use crate::common::garmin_correction_lap::{apply_lap_corrections, GarminCorrectionLap};
 use crate::common::garmin_file::GarminFile;
 use crate::common::garmin_lap::GarminLap;
 use crate::common::garmin_point::GarminPoint;
-use crate::utils::sport_types::get_sport_type_map;
+use crate::utils::sport_types::SportTypes;
 
 #[derive(Debug, Default)]
 pub struct GarminParseGmn {}
@@ -58,78 +57,44 @@ impl GarminParseTrait for GarminParseGmn {
     }
 
     fn parse_file(&self, filename: &str) -> Result<ParseOutput, Error> {
-        let sport_type_map = get_sport_type_map();
-
         let command = match var("LAMBDA_TASK_ROOT") {
             Ok(x) => format!(
-                "echo \"{}\" `{}/bin/garmin_dump {}` \"{}\" | {}/bin/xml2",
-                "<root>", x, filename, "</root>", x
+                "echo \"{}\" `{}/bin/garmin_dump {}` \"{}\"",
+                "<root>", x, filename, "</root>"
             ),
             Err(_) => format!(
-                "echo \"{}\" `garmin_dump {}` \"{}\" | xml2",
+                "echo \"{}\" `garmin_dump {}` \"{}\"",
                 "<root>", filename, "</root>"
             ),
         };
 
-        let stream = Exec::shell(command).stream_stdout()?;
-
-        let reader = BufReader::new(stream);
-
-        let mut current_point = GarminPoint::new();
-        let mut current_lap = GarminLap::new();
+        let output = Exec::shell(command)
+            .stdout(Redirection::Pipe)
+            .capture()?
+            .stdout_str();
+        let doc = Document::parse(&output)?;
 
         let mut lap_list = Vec::new();
         let mut point_list = Vec::new();
-        let mut sport: Option<String> = None;
+        let mut sport: Option<SportTypes> = None;
 
-        for line in reader.lines() {
-            match line {
-                Ok(l) => {
-                    let entries: Vec<_> = l.split('/').collect();
-                    match entries.get(2) {
-                        Some(&"run") => {
-                            if let Some(&entry) = entries.get(3) {
-                                if entry.contains("@sport") {
-                                    sport = match entry.split('=').last() {
-                                        Some(val) => {
-                                            if sport_type_map.contains_key(val) {
-                                                Some(val.to_string())
-                                            } else {
-                                                None
-                                            }
-                                        }
-                                        None => None,
-                                    };
-                                }
-                            }
-                        }
-                        Some(&"lap") => match entries.get(3) {
-                            Some(_) => {
-                                current_lap.read_lap_xml(&entries[3..entries.len()])?;
-                            }
-                            None => {
-                                lap_list.push(current_lap.clone());
-                                current_lap.clear();
-                            }
-                        },
-                        Some(&"point") => match entries.get(3) {
-                            Some(_) => {
-                                current_point.read_point_xml(&entries[3..entries.len()])?;
-                            }
-                            None => {
-                                point_list.push(current_point.clone());
-                                current_point.clear();
-                            }
-                        },
-                        _ => (),
-                    };
+        for d in doc.root().descendants() {
+            if d.node_type() == NodeType::Element && d.tag_name().name() == "run" {
+                for a in d.attributes() {
+                    if a.name() == "sport" {
+                        sport = a.value().parse().ok();
+                    }
                 }
-                Err(e) => return Err(err_msg(e)),
+            }
+            if d.node_type() == NodeType::Element && d.tag_name().name() == "lap" {
+                let lap = GarminLap::read_lap_xml_new(&d)?;
+                println!("lap {:?}", lap);
+                lap_list.push(lap);
+            }
+            if d.node_type() == NodeType::Element && d.tag_name().name() == "point" {
+                point_list.push(GarminPoint::read_point_xml_new(&d)?);
             }
         }
-
-        lap_list.push(current_lap.clone());
-        point_list.push(current_point.clone());
 
         let point_list = GarminPoint::calculate_durations(&point_list);
 
@@ -138,7 +103,7 @@ impl GarminParseTrait for GarminParseGmn {
         Ok(ParseOutput {
             lap_list,
             point_list,
-            sport,
+            sport: sport.map(|x| x.to_string()),
         })
     }
 }

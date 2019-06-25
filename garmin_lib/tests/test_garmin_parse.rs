@@ -16,7 +16,7 @@ fn test_invalid_ext() {
 }
 
 #[test]
-fn test_garmin_parse_gmn() {
+fn test_garmin_parse_parse_gmn() {
     let corr_list =
         GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json").unwrap();
     let corr_map = corr_list.get_corr_list_map();

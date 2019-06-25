@@ -97,35 +97,24 @@ impl GarminLap {
 
     pub fn read_lap_xml_new(entries: &Node) -> Result<Self, Error> {
         let mut new_lap = Self::new();
+        println!("{:?}", entries);
         for entry in entries.attributes() {
             match entry.name() {
                 "type" => new_lap.lap_type = Some(entry.value().to_string()),
                 "index" => new_lap.lap_index = entry.value().parse().unwrap_or(-1),
                 "start" => {
-                        new_lap.lap_start = convert_xml_local_time_to_utc(entry.value())?;
-                        new_lap.lap_start_string = Some(new_lap.lap_start.clone());
-                },
+                    new_lap.lap_start = convert_xml_local_time_to_utc(entry.value())?;
+                    new_lap.lap_start_string = Some(new_lap.lap_start.clone());
+                }
                 "duration" => {
-                    new_lap.lap_duration = convert_time_string(entry.value()).unwrap_or(0.0);
-                },
-                "distance" => {
-                new_lap.lap_distance = entry.value().parse().unwrap_or(0.0);
-                },
-                "trigger" => {
-                    new_lap.lap_trigger = Some(entry.value().to_string());
-                },
-                "max_speed" => {
-                    new_lap.lap_max_speed = entry.value().parse().ok();
-                },
-                "calories" => {
-                    new_lap.lap_calories = entry.value().parse().unwrap_or(0);
-                },
-                "avg_hr" => {
-                    new_lap.lap_max_hr = entry.value().parse().ok();
-                },
-                "intensity" => {
-                    new_lap.lap_intensity = Some(entry.value().to_string());
-                },
+                    new_lap.lap_duration = convert_time_string(entry.value()).unwrap_or(0.0)
+                }
+                "distance" => new_lap.lap_distance = entry.value().parse().unwrap_or(0.0),
+                "trigger" => new_lap.lap_trigger = Some(entry.value().to_string()),
+                "max_speed" => new_lap.lap_max_speed = entry.value().parse().ok(),
+                "calories" => new_lap.lap_calories = entry.value().parse().unwrap_or(0),
+                "avg_hr" => new_lap.lap_max_hr = entry.value().parse().ok(),
+                "intensity" => new_lap.lap_intensity = Some(entry.value().to_string()),
                 _ => (),
             }
         }

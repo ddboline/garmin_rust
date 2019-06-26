@@ -1,13 +1,7 @@
 #[macro_use]
 extern crate approx;
 
-use roxmltree::{Document, NodeType};
-use std::fs::File;
-use std::io::Read;
-
-use garmin_lib::common::garmin_correction_lap::{GarminCorrectionList, GarminCorrectionListTrait};
-use garmin_lib::common::garmin_lap::GarminLap;
-use garmin_lib::common::garmin_point::GarminPoint;
+use garmin_lib::common::garmin_correction_lap::GarminCorrectionList;
 use garmin_lib::parsers::garmin_parse::GarminParseTrait;
 use garmin_lib::parsers::garmin_parse_tcx;
 use garmin_lib::utils::sport_types::SportTypes;

@@ -1,12 +1,7 @@
 #[macro_use]
 extern crate approx;
 
-use roxmltree::{Document, NodeType};
-use subprocess::{Exec, Redirection};
-
-use garmin_lib::common::garmin_correction_lap::{GarminCorrectionList, GarminCorrectionListTrait};
-use garmin_lib::common::garmin_lap::GarminLap;
-use garmin_lib::common::garmin_point::GarminPoint;
+use garmin_lib::common::garmin_correction_lap::GarminCorrectionList;
 use garmin_lib::parsers::garmin_parse::GarminParseTrait;
 use garmin_lib::parsers::garmin_parse_gmn;
 use garmin_lib::utils::sport_types::SportTypes;

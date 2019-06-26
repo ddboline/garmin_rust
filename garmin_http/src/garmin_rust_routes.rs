@@ -10,7 +10,6 @@ use serde::Serialize;
 use std::string::ToString;
 
 use garmin_lib::common::garmin_cli::{GarminCli, GarminCliObj, GarminRequest};
-use garmin_lib::common::garmin_correction_lap::GarminCorrectionListTrait;
 use garmin_lib::common::garmin_file::GarminFile;
 use garmin_lib::parsers::garmin_parse::{GarminParse, GarminParseTrait};
 use garmin_lib::reports::garmin_file_report_txt::get_splits;

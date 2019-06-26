@@ -1,17 +1,16 @@
 use failure::{err_msg, Error};
+use roxmltree::{Document, NodeType};
 use std::collections::HashMap;
 use std::env::var;
-use std::io::BufRead;
-use std::io::BufReader;
 use std::path::Path;
-use subprocess::Exec;
+use subprocess::{Exec, Redirection};
 
 use super::garmin_parse::{GarminParseTrait, ParseOutput};
 use crate::common::garmin_correction_lap::{apply_lap_corrections, GarminCorrectionLap};
 use crate::common::garmin_file::GarminFile;
 use crate::common::garmin_lap::GarminLap;
 use crate::common::garmin_point::GarminPoint;
-use crate::utils::sport_types::get_sport_type_map;
+use crate::utils::sport_types::SportTypes;
 
 #[derive(Debug, Default)]
 pub struct GarminParseTcx {
@@ -60,93 +59,52 @@ impl GarminParseTrait for GarminParseTcx {
     }
 
     fn parse_file(&self, filename: &str) -> Result<ParseOutput, Error> {
-        let sport_type_map = get_sport_type_map();
-
         let command = match var("LAMBDA_TASK_ROOT") {
             Ok(x) => {
                 if self.is_fit_file {
-                    format!("{}/bin/fit2tcx -i {} | {}/bin/xml2", x, filename, x)
+                    format!("{}/bin/fit2tcx -i {}", x, filename)
                 } else {
-                    format!("cat {} | {}/bin/xml2", filename, x)
+                    format!("cat {}", filename)
                 }
             }
             Err(_) => {
                 if self.is_fit_file {
-                    format!("fit2tcx -i {} | xml2", filename)
+                    format!("fit2tcx -i {}", filename)
                 } else {
-                    format!("cat {} | xml2", filename)
+                    format!("cat {}", filename)
                 }
             }
         };
 
-        debug!("command {}", command);
-
-        let stream = Exec::shell(command).stream_stdout()?;
-
-        let reader = BufReader::new(stream);
-
-        let mut current_point = GarminPoint::new();
-        let mut current_lap = GarminLap::new();
+        let output = Exec::shell(command)
+            .stdout(Redirection::Pipe)
+            .capture()?
+            .stdout_str();
+        let doc = Document::parse(&output)?;
 
         let mut lap_list = Vec::new();
-        let mut point_list = Vec::new();
-        let mut sport: Option<String> = None;
+        let mut point_list: Vec<GarminPoint> = Vec::new();
+        let mut sport: Option<SportTypes> = None;
 
-        for line in reader.lines() {
-            match line {
-                Ok(l) => {
-                    let entries: Vec<_> = l.split('/').collect();
-                    match entries.get(4) {
-                        Some(&"Lap") => match entries.get(5) {
-                            Some(&"Track") => {
-                                if let Some(&"Trackpoint") = entries.get(6) {
-                                    match entries.get(7) {
-                                        Some(_) => {
-                                            current_point
-                                                .read_point_tcx(&entries[7..entries.len()])?;
-                                        }
-                                        None => {
-                                            point_list.push(current_point.clone());
-                                            current_point.clear();
-                                        }
-                                    }
-                                }
-                            }
-                            Some(&entry) => {
-                                if entry.contains("StartTime") {
-                                    current_lap.clear();
-                                }
-                                current_lap.read_lap_tcx(&entries[5..entries.len()])?;
-                            }
-                            None => {
-                                lap_list.push(current_lap.clone());
-                            }
-                        },
-                        Some(&entry) => {
-                            if entry.contains("Sport") {
-                                sport = match entry.split('=').last() {
-                                    Some(val) => {
-                                        let v = val.to_lowercase();
-                                        if sport_type_map.contains_key(&v) {
-                                            Some(v.to_string())
-                                        } else {
-                                            println!("Non matching sport {}", val);
-                                            None
-                                        }
-                                    }
-                                    None => None,
-                                };
-                            }
-                        }
-                        None => (),
+        for d in doc.root().descendants() {
+            if d.node_type() == NodeType::Element && d.tag_name().name() == "Activity" {
+                for a in d.attributes() {
+                    if a.name() == "Sport" {
+                        sport = a.value().parse().ok();
                     }
                 }
-                Err(e) => return Err(err_msg(e)),
+            }
+            if d.node_type() == NodeType::Element && d.tag_name().name() == "Lap" {
+                let new_lap = GarminLap::read_lap_tcx(&d)?;
+                lap_list.push(new_lap);
+            }
+            if d.node_type() == NodeType::Element && d.tag_name().name() == "Trackpoint" {
+                let new_point = GarminPoint::read_point_tcx(&d)?;
+                if new_point.latitude.is_some() && new_point.longitude.is_some() {
+                    point_list.push(new_point);
+                }
             }
         }
-
-        lap_list.push(current_lap.clone());
-        point_list.push(current_point.clone());
 
         let point_list = GarminPoint::calculate_durations(&point_list);
 
@@ -155,7 +113,7 @@ impl GarminParseTrait for GarminParseTcx {
         Ok(ParseOutput {
             lap_list,
             point_list,
-            sport,
+            sport: sport.map(|x| x.to_string()),
         })
     }
 }

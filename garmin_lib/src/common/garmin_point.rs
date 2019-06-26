@@ -74,95 +74,53 @@ impl GarminPoint {
         Ok(new_point)
     }
 
-    pub fn read_point_tcx_new(entries: &Node) -> Result<GarminPoint, Error> {
+    pub fn read_point_tcx(entries: &Node) -> Result<GarminPoint, Error> {
         let mut new_point = GarminPoint::new();
         for d in entries.descendants() {
             if d.node_type() == NodeType::Element {
-                println!("d {}", d.tag_name().name())
-            }
-        }
-        for entry in entries.attributes() {
-            println!("a {}", entry.name());
-        }
-        Ok(new_point)
-    }
-
-    fn read_point_tcx_position(&mut self, entries: &[&str]) {
-        if let Some(&v1) = entries.get(1) {
-            if v1.contains("LatitudeDegrees") {
-                self.latitude = match v1.split('=').last() {
-                    Some(v) => match v.parse() {
-                        Ok(x) => Some(x),
-                        Err(_) => None,
-                    },
-                    None => None,
-                };
-            } else if v1.contains("LongitudeDegrees") {
-                self.longitude = match v1.split('=').last() {
-                    Some(v) => match v.parse() {
-                        Ok(x) => Some(x),
-                        Err(_) => None,
-                    },
-                    None => None,
-                };
-            }
-        }
-    }
-
-    pub fn read_point_tcx(&mut self, entries: &[&str]) -> Result<(), Error> {
-        if let Some(&v0) = entries.get(0) {
-            if v0.contains("Time") {
-                self.time = convert_xml_local_time_to_utc(
-                    v0.split('=')
-                        .last()
-                        .ok_or_else(|| err_msg("Malformed time"))?,
-                )?;
-            } else if v0.contains("Position") {
-                self.read_point_tcx_position(&entries);
-            } else if v0.contains("AltitudeMeters") {
-                self.altitude = match v0.split('=').last() {
-                    Some(v) => match v.parse() {
-                        Ok(x) => Some(x),
-                        Err(_) => None,
-                    },
-                    None => None,
-                };
-            } else if v0.contains("DistanceMeters") {
-                self.distance = match v0.split('=').last() {
-                    Some(v) => match v.parse() {
-                        Ok(x) => Some(x),
-                        Err(_) => None,
-                    },
-                    None => None,
-                };
-            } else if v0.contains("HeartRateBpm") {
-                if let Some(&v1) = entries.get(1) {
-                    if v1.contains("Value") {
-                        self.heart_rate = match v1.split('=').last() {
-                            Some(v) => match v.parse() {
-                                Ok(x) => Some(x),
-                                Err(_) => None,
-                            },
-                            None => None,
-                        };
+                match d.tag_name().name() {
+                    "Time" => {
+                        new_point.time = convert_xml_local_time_to_utc(
+                            d.text().ok_or_else(|| err_msg("Malformed time"))?,
+                        )?
                     }
-                }
-            } else if v0.contains("Extensions") {
-                if let Some(&v2) = entries.get(2) {
-                    if v2.contains("Speed") {
-                        self.speed_mps = match v2.split('=').last() {
-                            Some(v) => v.parse().unwrap_or(0.0),
-                            None => 0.0,
-                        };
-                        self.speed_mph = self.speed_mps * 3600.0 / METERS_PER_MILE;
-                        if self.speed_mps > 0.0 {
-                            self.speed_permi = METERS_PER_MILE / self.speed_mps / 60.0;
+                    "AltitudeMeters" => new_point.altitude = d.text().and_then(|x| x.parse().ok()),
+                    "LatitudeDegrees" => new_point.latitude = d.text().and_then(|x| x.parse().ok()),
+                    "LongitudeDegrees" => {
+                        new_point.longitude = d.text().and_then(|x| x.parse().ok())
+                    }
+                    "DistanceMeters" => new_point.distance = d.text().and_then(|x| x.parse().ok()),
+                    "HeartRateBpm" => {
+                        for entry in d.descendants() {
+                            if entry.node_type() == NodeType::Element {
+                                if entry.tag_name().name() == "Value" {
+                                    new_point.heart_rate =
+                                        entry.text().and_then(|x| x.parse().ok());
+                                }
+                            }
                         }
                     }
+                    "Extensions" => {
+                        for entry in d.descendants() {
+                            if entry.node_type() == NodeType::Element {
+                                if entry.tag_name().name() == "Speed" {
+                                    new_point.speed_mps =
+                                        entry.text().and_then(|x| x.parse().ok()).unwrap_or(0.0);
+                                    new_point.speed_mph =
+                                        new_point.speed_mps * 3600.0 / METERS_PER_MILE;
+                                    if new_point.speed_mps > 0.0 {
+                                        new_point.speed_permi =
+                                            METERS_PER_MILE / new_point.speed_mps / 60.0;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    _ => (),
                 }
             }
         }
-        Ok(())
+        Ok(new_point)
     }
 
     pub fn calculate_durations(point_list: &[GarminPoint]) -> Vec<GarminPoint> {

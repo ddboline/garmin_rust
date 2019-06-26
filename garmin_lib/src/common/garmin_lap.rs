@@ -91,70 +91,41 @@ impl GarminLap {
         Ok(new_lap)
     }
 
-    pub fn read_lap_tcx(&mut self, entries: &[&str]) -> Result<(), Error> {
-        if let Some(&v0) = entries.get(0) {
-            if let Some(value) = v0.split('=').last() {
-                if v0.contains("@StartTime") {
-                    self.lap_start = convert_xml_local_time_to_utc(value)?;
-                    self.lap_start_string = Some(self.lap_start.clone());
-                } else if v0.contains("TotalTimeSeconds") {
-                    self.lap_duration = value.parse().unwrap_or(0.0);
-                } else if v0.contains("DistanceMeters") {
-                    self.lap_distance = value.parse().unwrap_or(0.0);
-                } else if v0.contains("TriggerMethod") {
-                    self.lap_trigger = Some(value.to_string());
-                } else if v0.contains("MaximumSpeed") {
-                    self.lap_max_speed = match value.parse() {
-                        Ok(x) => Some(x),
-                        Err(_) => None,
-                    };
-                } else if v0.contains("Calories") {
-                    self.lap_calories = value.parse().unwrap_or(0);
-                } else if v0.contains("Intensity") {
-                    self.lap_intensity = Some(value.to_string());
-                } else if v0.contains("AverageHeartRateBpm") {
-                    if let Some(&v1) = entries.get(1) {
-                        if v1.contains("Value") {
-                            self.lap_avg_hr = match v1.split('=').last() {
-                                Some(val) => match val.parse() {
-                                    Ok(x) => Some(x),
-                                    Err(_) => None,
-                                },
-                                None => None,
-                            };
-                        }
-                    }
-                } else if v0.contains("MaximumHeartRateBpm") {
-                    if let Some(&v1) = entries.get(1) {
-                        if v1.contains("Value") {
-                            self.lap_max_hr = match v1.split('=').last() {
-                                Some(val) => match val.parse() {
-                                    Ok(x) => Some(x),
-                                    Err(_) => None,
-                                },
-                                None => None,
-                            };
-                        }
-                    }
-                }
-            }
-        }
-        Ok(())
-    }
-
-    pub fn read_lap_tcx_new(entries: &Node) -> Result<GarminLap, Error> {
+    pub fn read_lap_tcx(entries: &Node) -> Result<GarminLap, Error> {
         let mut new_lap = GarminLap::new();
         for d in entries.descendants() {
             if d.node_type() == NodeType::Element {
                 match d.tag_name().name() {
-                    "TotalTimeSeconds" => new_lap.lap_duration = d.text().and_then(|x| x.parse().ok()).unwrap_or(0.0),
-                    "DistanceMeters" => new_lap.lap_distance = d.text().and_then(|x| x.parse().ok()).unwrap_or(0.0),
+                    "TotalTimeSeconds" => {
+                        new_lap.lap_duration = d.text().and_then(|x| x.parse().ok()).unwrap_or(0.0)
+                    }
+                    "DistanceMeters" => {
+                        new_lap.lap_distance = d.text().and_then(|x| x.parse().ok()).unwrap_or(0.0)
+                    }
                     "MaximumSpeed" => new_lap.lap_max_speed = d.text().and_then(|x| x.parse().ok()),
                     "TriggerMethod" => new_lap.lap_trigger = d.text().map(|s| s.to_string()),
-                    "Calories" => new_lap.lap_calories = d.text().and_then(|x| x.parse().ok()).unwrap_or(0),
+                    "Calories" => {
+                        new_lap.lap_calories = d.text().and_then(|x| x.parse().ok()).unwrap_or(0)
+                    }
                     "Intensity" => new_lap.lap_intensity = d.text().map(|s| s.to_string()),
-                    "AverageHeartRateBpm" => println!("{:?}", d),
-                    "MaximumHeartRateBpm" => println!("{:?}", d),
+                    "AverageHeartRateBpm" => {
+                        for entry in d.descendants() {
+                            if entry.node_type() == NodeType::Element {
+                                if entry.tag_name().name() == "Value" {
+                                    new_lap.lap_avg_hr = entry.text().and_then(|x| x.parse().ok());
+                                }
+                            }
+                        }
+                    }
+                    "MaximumHeartRateBpm" => {
+                        for entry in d.descendants() {
+                            if entry.node_type() == NodeType::Element {
+                                if entry.tag_name().name() == "Value" {
+                                    new_lap.lap_max_hr = entry.text().and_then(|x| x.parse().ok());
+                                }
+                            }
+                        }
+                    }
                     _ => (),
                 }
             }

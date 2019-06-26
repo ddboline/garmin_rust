@@ -61,7 +61,7 @@ where
     /// # use garmin_lib::common::garmin_cli::GarminCliObj;
     /// # use garmin_lib::parsers::garmin_parse::GarminParse;
     /// # use garmin_lib::common::garmin_correction_lap::GarminCorrectionList;
-    /// let gcli = GarminCliObj::<GarminParse, GarminCorrectionList>::new();
+    /// let gcli = GarminCliObj::<GarminParse>::new();
     /// assert_eq!(gcli.opts, None);
     /// ```
     pub fn new() -> GarminCliObj<T> {

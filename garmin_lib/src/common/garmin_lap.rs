@@ -110,19 +110,19 @@ impl GarminLap {
                     "Intensity" => new_lap.lap_intensity = d.text().map(|s| s.to_string()),
                     "AverageHeartRateBpm" => {
                         for entry in d.descendants() {
-                            if entry.node_type() == NodeType::Element {
-                                if entry.tag_name().name() == "Value" {
-                                    new_lap.lap_avg_hr = entry.text().and_then(|x| x.parse().ok());
-                                }
+                            if entry.node_type() == NodeType::Element
+                                && entry.tag_name().name() == "Value"
+                            {
+                                new_lap.lap_avg_hr = entry.text().and_then(|x| x.parse().ok());
                             }
                         }
                     }
                     "MaximumHeartRateBpm" => {
                         for entry in d.descendants() {
-                            if entry.node_type() == NodeType::Element {
-                                if entry.tag_name().name() == "Value" {
-                                    new_lap.lap_max_hr = entry.text().and_then(|x| x.parse().ok());
-                                }
+                            if entry.node_type() == NodeType::Element
+                                && entry.tag_name().name() == "Value"
+                            {
+                                new_lap.lap_max_hr = entry.text().and_then(|x| x.parse().ok());
                             }
                         }
                     }

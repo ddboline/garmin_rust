@@ -92,26 +92,25 @@ impl GarminPoint {
                     "DistanceMeters" => new_point.distance = d.text().and_then(|x| x.parse().ok()),
                     "HeartRateBpm" => {
                         for entry in d.descendants() {
-                            if entry.node_type() == NodeType::Element {
-                                if entry.tag_name().name() == "Value" {
-                                    new_point.heart_rate =
-                                        entry.text().and_then(|x| x.parse().ok());
-                                }
+                            if entry.node_type() == NodeType::Element
+                                && entry.tag_name().name() == "Value"
+                            {
+                                new_point.heart_rate = entry.text().and_then(|x| x.parse().ok());
                             }
                         }
                     }
                     "Extensions" => {
                         for entry in d.descendants() {
-                            if entry.node_type() == NodeType::Element {
-                                if entry.tag_name().name() == "Speed" {
-                                    new_point.speed_mps =
-                                        entry.text().and_then(|x| x.parse().ok()).unwrap_or(0.0);
-                                    new_point.speed_mph =
-                                        new_point.speed_mps * 3600.0 / METERS_PER_MILE;
-                                    if new_point.speed_mps > 0.0 {
-                                        new_point.speed_permi =
-                                            METERS_PER_MILE / new_point.speed_mps / 60.0;
-                                    }
+                            if entry.node_type() == NodeType::Element
+                                && entry.tag_name().name() == "Speed"
+                            {
+                                new_point.speed_mps =
+                                    entry.text().and_then(|x| x.parse().ok()).unwrap_or(0.0);
+                                new_point.speed_mph =
+                                    new_point.speed_mps * 3600.0 / METERS_PER_MILE;
+                                if new_point.speed_mps > 0.0 {
+                                    new_point.speed_permi =
+                                        METERS_PER_MILE / new_point.speed_mps / 60.0;
                                 }
                             }
                         }

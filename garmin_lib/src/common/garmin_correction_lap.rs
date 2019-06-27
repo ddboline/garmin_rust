@@ -91,20 +91,23 @@ impl GarminCorrectionLap {
 
 #[derive(Debug, PartialEq, Default)]
 pub struct GarminCorrectionList {
-    pub corr_list: Vec<GarminCorrectionLap>,
+    pub corr_map: HashMap<(String, i32), GarminCorrectionLap>,
     pub pool: Option<PgPool>,
 }
 
 impl GarminCorrectionList {
     pub fn new() -> GarminCorrectionList {
         GarminCorrectionList {
-            corr_list: Vec::new(),
+            corr_map: HashMap::new(),
             pool: None,
         }
     }
 
     pub fn with_vec(mut self, corr_list: Vec<GarminCorrectionLap>) -> GarminCorrectionList {
-        self.corr_list = corr_list;
+        self.corr_map = corr_list
+            .into_iter()
+            .map(|corr| ((corr.start_time.clone(), corr.lap_number), corr))
+            .collect();
         self
     }
 
@@ -126,22 +129,20 @@ impl GarminCorrectionList {
             .ok_or_else(|| err_msg("No Database Connection"))
     }
 
-    pub fn get_corr_list(&self) -> &Vec<GarminCorrectionLap> {
-        &self.corr_list
+    pub fn get_corr_list(&self) -> Vec<GarminCorrectionLap> {
+        self.corr_map.values().cloned().collect()
     }
 
     pub fn from_vec(corr_list: Vec<GarminCorrectionLap>) -> GarminCorrectionList {
-        GarminCorrectionList {
-            corr_list,
-            pool: None,
-        }
+        GarminCorrectionList::default().with_vec(corr_list)
     }
 
-    pub fn get_corr_list_map(&self) -> HashMap<(String, i32), GarminCorrectionLap> {
-        self.get_corr_list()
-            .iter()
-            .map(|corr| ((corr.start_time.clone(), corr.lap_number), corr.clone()))
-            .collect()
+    pub fn get_corr_list_map(&self) -> &HashMap<(String, i32), GarminCorrectionLap> {
+        &self.corr_map
+    }
+
+    pub fn get_corr_list_map_mut(&mut self) -> &mut HashMap<(String, i32), GarminCorrectionLap> {
+        &mut self.corr_map
     }
 
     pub fn corr_list_from_buffer(buffer: &[u8]) -> Result<Self, Error> {
@@ -246,8 +247,8 @@ impl GarminCorrectionList {
         Ok(Self::from_vec(corr_list))
     }
 
-    pub fn add_mislabeled_times_to_corr_list(&self) -> Self {
-        let mut corr_list_map = self.get_corr_list_map();
+    pub fn add_mislabeled_times_to_corr_list(&mut self) -> Self {
+        let corr_list_map = self.get_corr_list_map_mut();
 
         let mislabeled_times = vec![
             (
@@ -332,7 +333,7 @@ impl GarminCorrectionList {
         let gps_dir = "/home/ddboline/.garmin_cache/run/gps_tracks";
         let cache_dir = "/home/ddboline/.garmin_cache/run/cache";
 
-        let corr_list = Self::corr_list_from_json("tests/data/garmin_corrections.json")?;
+        let mut corr_list = Self::corr_list_from_json("tests/data/garmin_corrections.json")?;
 
         let corr_list = corr_list.add_mislabeled_times_to_corr_list();
 

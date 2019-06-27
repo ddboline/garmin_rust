@@ -122,7 +122,7 @@ impl GarminSummary {
 
         debug!("Try downloading {}", corr_file);
         let corr_list = GarminCorrectionList::read_corr_list_from_avro(&corr_file)?;
-        debug!("Success {}", corr_list.corr_list.len());
+        debug!("Success {}", corr_list.corr_map.len());
         let corr_map = corr_list.get_corr_list_map();
 
         let local_file = format!("{}/{}", temp_path, filename);
@@ -300,7 +300,7 @@ impl GarminSummaryList {
         let corr_list =
             GarminCorrectionList::from_pool(&self.get_pool()?).read_corrections_from_db()?;
 
-        println!("{}", corr_list.corr_list.len());
+        println!("{}", corr_list.corr_map.len());
 
         let corr_map = corr_list.get_corr_list_map();
 

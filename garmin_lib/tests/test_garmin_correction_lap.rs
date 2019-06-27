@@ -27,9 +27,12 @@ fn test_garmin_correction_lap_new() {
 
 #[test]
 fn test_corr_list_from_json() {
-    let corr_list = GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json")
-        .unwrap()
-        .corr_list;
+    let mut corr_list =
+        GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json")
+            .unwrap()
+            .get_corr_list();
+
+    corr_list.sort_by_key(|i| (i.start_time.clone(), i.lap_number));
 
     assert_eq!(corr_list.get(0).unwrap().distance, Some(3.10685596118667));
 
@@ -60,9 +63,11 @@ fn test_corr_list_from_buffer() {
     .to_string()
     .into_bytes();
 
-    let corr_list = GarminCorrectionList::corr_list_from_buffer(&json_buffer)
+    let mut corr_list = GarminCorrectionList::corr_list_from_buffer(&json_buffer)
         .unwrap()
-        .corr_list;
+        .get_corr_list();
+
+    corr_list.sort_by_key(|i| (i.start_time.clone(), i.lap_number));
 
     let first = corr_list.get(0).unwrap();
     let second = corr_list.get(1).unwrap();
@@ -122,7 +127,7 @@ fn test_corr_list_from_buffer_invalid() {
 
     let corr_list = GarminCorrectionList::corr_list_from_buffer(&json_buffer)
         .unwrap()
-        .corr_list;
+        .get_corr_list();
 
     assert_eq!(corr_list.len(), 0);
 }
@@ -162,7 +167,7 @@ fn test_dump_read_corr_list() {
 
 #[test]
 fn test_add_mislabeled_times_to_corr_list() {
-    let corr_list = GarminCorrectionList::from_vec(vec![
+    let mut corr_list = GarminCorrectionList::from_vec(vec![
         GarminCorrectionLap::new()
             .with_start_time("2010-11-20T19:55:34Z")
             .with_distance(10.0)
@@ -179,7 +184,7 @@ fn test_add_mislabeled_times_to_corr_list() {
 
     println!("{:?}", corr_list);
 
-    assert_eq!(corr_list.corr_list.len(), 26);
+    assert_eq!(corr_list.corr_map.len(), 26);
 
     assert_eq!(
         corr_map

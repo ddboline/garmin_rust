@@ -154,7 +154,7 @@ pub fn garmin_get_hr_data(
                             Ok(g) => g,
                             Err(_) => {
                                 let gps_file = format!("{}/{}", &config.gps_dir, file_name);
-                                let corr_map = res1.map(|c| c.get_corr_list_map())?;
+                                let corr_map = res1.map(|c| c.corr_map)?;
                                 GarminParse::new().with_file(&gps_file, &corr_map)?
                             }
                         };
@@ -220,7 +220,7 @@ pub fn garmin_get_hr_pace(
                             Err(_) => {
                                 let gps_file = format!("{}/{}", &config.gps_dir, file_name);
 
-                                let corr_map = res1.map(|c| c.get_corr_list_map())?;
+                                let corr_map = res1.map(|c| c.corr_map)?;
 
                                 GarminParse::new().with_file(&gps_file, &corr_map)?
                             }

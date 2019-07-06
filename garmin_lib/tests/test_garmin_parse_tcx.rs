@@ -4,7 +4,6 @@ extern crate approx;
 use garmin_lib::common::garmin_correction_lap::GarminCorrectionList;
 use garmin_lib::parsers::garmin_parse::GarminParseTrait;
 use garmin_lib::parsers::garmin_parse_tcx;
-use garmin_lib::utils::sport_types::SportTypes;
 
 #[test]
 fn test_garmin_parse_tcx() {

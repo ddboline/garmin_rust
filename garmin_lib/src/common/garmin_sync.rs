@@ -1,8 +1,6 @@
 use chrono::DateTime;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator, IntoParallelIterator};
 use failure::{err_msg, Error};
-
 use rusoto_core::Region;
 use rusoto_s3::{GetObjectRequest, ListObjectsV2Request, PutObjectRequest, S3Client, S3};
 use s4::S4;
@@ -122,7 +120,7 @@ impl GarminSync<S3Client> {
             .collect();
 
         let file_list: Vec<Result<_, Error>> = file_list
-            .into_iter()
+            .into_par_iter()
             .map(|f| {
                 let modified = fs::metadata(&f)?
                     .modified()?
@@ -141,6 +139,7 @@ impl GarminSync<S3Client> {
             .collect();
 
         let key_list = self.get_list_of_keys(s3_bucket)?;
+        println!("{} s3_bucketnkeys {}", s3_bucket, key_list.len());
         let key_set: HashMap<_, _> = key_list
             .iter()
             .map(|(k, m, t)| (k.to_string(), (m.to_string(), *t)))

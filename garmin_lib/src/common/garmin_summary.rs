@@ -1,21 +1,14 @@
 use avro_rs::{from_value, Codec, Reader, Schema, Writer};
-use postgres_derive::{FromSql, ToSql};
-use tempdir::TempDir;
-
-use std::path::Path;
-
-use std::fs::File;
-
 use failure::{err_msg, Error};
-
+use postgres_derive::{FromSql, ToSql};
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
-
 use std::collections::HashMap;
 use std::fmt;
+use std::fs::File;
+use std::path::Path;
 
 use super::garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList};
 use super::garmin_file::GarminFile;
-use super::garmin_sync::GarminSync;
 use super::pgpool::PgPool;
 use crate::parsers::garmin_parse::{GarminParse, GarminParseTrait};
 use crate::utils::garmin_util::{generate_random_string, get_file_list, get_md5sum, map_result};
@@ -100,74 +93,6 @@ impl GarminSummary {
         };
         gfile.dump_avro(&cache_file)?;
         Ok(GarminSummary::new(&gfile, &md5sum))
-    }
-
-    pub fn process_and_upload_single_gps_file(
-        filename: &str,
-        gps_bucket: &str,
-        cache_bucket: &str,
-        summary_bucket: &str,
-    ) -> Result<(), Error> {
-        let tempdir = TempDir::new("garmin_cache")?;
-
-        let temp_path = tempdir
-            .path()
-            .to_str()
-            .ok_or_else(|| err_msg("Path is invalid unicode somehow"))?;
-
-        let corr_file = format!("{}/{}", temp_path, "garmin_correction.avro");
-
-        let gsync = GarminSync::new();
-        gsync.download_file(&corr_file, &cache_bucket, "garmin_correction.avro")?;
-
-        debug!("Try downloading {}", corr_file);
-        let corr_list = GarminCorrectionList::read_corr_list_from_avro(&corr_file)?;
-        debug!("Success {}", corr_list.corr_map.len());
-        let corr_map = corr_list.get_corr_list_map();
-
-        let local_file = format!("{}/{}", temp_path, filename);
-
-        debug!("Download file {}", local_file);
-        let md5sum = gsync
-            .download_file(&local_file, &gps_bucket, &filename)?
-            .trim_matches('"')
-            .to_string();
-
-        debug!("Try processing file {} {}", local_file, temp_path);
-
-        let cache_file = format!(
-            "{}/{}.avro",
-            temp_path,
-            filename
-                .split('/')
-                .last()
-                .ok_or_else(|| err_msg(format!("Failed to split filename {}", filename)))?
-        );
-
-        println!("Found md5sum {}, try parsing", md5sum);
-        let gfile = GarminParse::new().with_file(&filename, &corr_map)?;
-
-        match gfile.laps.get(0) {
-            Some(_) => (),
-            None => println!("{} has no laps?", gfile.filename),
-        };
-        gfile.dump_avro(&cache_file)?;
-        let gsum = GarminSummary::new(&gfile, &md5sum);
-
-        let gsum_list = GarminSummaryList::from_vec(vec![gsum]);
-
-        gsum_list.write_summary_to_avro_files(&temp_path)?;
-
-        let local_file = format!("{}/{}.avro", temp_path, filename);
-        let s3_key = format!("{}.avro", filename);
-
-        gsync.upload_file(&local_file, &cache_bucket, &s3_key)?;
-
-        let local_file = format!("{}/{}.summary.avro", temp_path, filename);
-        let s3_key = format!("{}.summary.avro", filename);
-
-        gsync.upload_file(&local_file, &summary_bucket, &s3_key)?;
-        Ok(())
     }
 }
 

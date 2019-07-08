@@ -3,7 +3,6 @@ use chrono::{DateTime, Utc};
 use failure::{err_msg, Error};
 use std::collections::HashMap;
 use std::fs::File;
-use std::path::Path;
 use std::str::FromStr;
 
 use super::garmin_lap::{GarminLap, GARMIN_LAP_AVRO_SCHEMA};
@@ -146,35 +145,4 @@ pub fn get_reverse_file_type_map() -> HashMap<GarminFileTypes, String> {
         .into_iter()
         .map(|(k, v)| (v, k))
         .collect()
-}
-
-pub fn check_cached_files() -> Vec<String> {
-    let cache_dir = "/home/ddboline/.garmin_cache/run/cache";
-
-    let path = Path::new(cache_dir);
-
-    match path.read_dir() {
-        Ok(it) => it
-            .filter_map(|dir_line| match dir_line {
-                Ok(entry) => match entry.path().to_str().map(|x| x.to_string()) {
-                    Some(input_file) => {
-                        println!("{}", input_file);
-                        match GarminFile::read_avro(&input_file) {
-                            Ok(gfile) => {
-                                println!("{}", gfile.points.len());
-                                Some(input_file)
-                            }
-                            Err(_) => None,
-                        }
-                    }
-                    None => None,
-                },
-                Err(_) => None,
-            })
-            .collect(),
-        Err(err) => {
-            println!("{}", err);
-            Vec::new()
-        }
-    }
 }

@@ -220,33 +220,18 @@ where
                 .to_str()
                 .ok_or_else(|| err_msg("Path is invalid unicode somehow"))?;
 
-            let filenames: Vec<_> = filenames
-                .iter()
-                .filter(|f| (f.ends_with(".zip") || f.ends_with(".fit")) && Path::new(f).exists())
-                .collect();
-
             let results: Vec<Result<_, Error>> = filenames
                 .par_iter()
+                .filter(|f| (f.ends_with(".zip") || f.ends_with(".fit")) && Path::new(f).exists())
                 .map(|filename| {
-                    if filename.ends_with(".zip") {
-                        extract_zip_from_garmin_connect(&filename, &ziptmpdir)
+                    let filename = if filename.ends_with(".zip") {
+                        extract_zip_from_garmin_connect(&filename, &ziptmpdir)?
                     } else {
-                        Ok(filename.to_string())
-                    }
-                })
-                .collect();
-
-            let filenames: Vec<_> = map_result(results)?;
-
-            println!("{:?}", filenames);
-
-            let results: Vec<Result<_, Error>> = filenames
-                .into_par_iter()
-                .map(|filename| {
+                        filename.to_string()
+                    };
                     assert!(Path::new(&filename).exists(), "No such file");
                     assert!(filename.ends_with(".fit"), "Only fit files are supported");
-                    let mock_map = HashMap::new();
-                    let gfile = GarminParse::new().with_file(&filename, &mock_map)?;
+                    let gfile = GarminParse::new().with_file(&filename, &HashMap::new())?;
 
                     let outfile = format!(
                         "{}/{}",
@@ -256,21 +241,18 @@ where
 
                     println!("{} {}", filename, outfile);
 
-                    rename(filename.clone(), outfile.clone())
-                        .or_else(|_| copy(filename, outfile).map(|_| ()))
+                    rename(&filename, &outfile)
+                        .or_else(|_| copy(&filename, &outfile).map(|_| ()))
                         .map_err(err_msg)
                 })
                 .collect();
+
             map_result(results)?;
         }
 
         match self.get_opts() {
-            Some(GarminCliOptions::Bootstrap) => {
-                self.run_bootstrap()?;
-            }
-            Some(GarminCliOptions::Sync) => {
-                self.sync_everything()?;
-            }
+            Some(GarminCliOptions::Bootstrap) => self.run_bootstrap(),
+            Some(GarminCliOptions::Sync) => self.sync_everything(),
             _ => {
                 let corr_list = self.get_corr().read_corrections_from_db()?;
                 let corr_map = corr_list.get_corr_list_map();
@@ -283,11 +265,12 @@ where
                     corr_list.dump_corr_list_to_avro(&format!(
                         "{}/garmin_correction.avro",
                         &self.get_config().cache_dir
-                    ))?;
-                };
+                    ))
+                } else {
+                    Ok(())
+                }
             }
-        };
-        Ok(())
+        }
     }
 
     fn get_summary_list(
@@ -382,8 +365,7 @@ where
         let gsum_list = GarminSummaryList::from_avro_files(cache)?.with_pool(&pg_conn);
 
         println!("Write summaries to postgres");
-        gsum_list.write_summary_to_postgres()?;
-        Ok(())
+        gsum_list.write_summary_to_postgres()
     }
 
     fn sync_everything(&self) -> Result<(), Error> {
@@ -412,15 +394,13 @@ where
 
         let results: Vec<_> = options
             .into_par_iter()
-            .map(|(s, d, b, m)| {
-                println!("{}", s);
-                gsync.sync_dir(d, b, m)?;
-                Ok(())
+            .map(|(title, local_dir, s3_bucket, check_md5)| {
+                println!("{}", title);
+                gsync.sync_dir(local_dir, s3_bucket, check_md5)
             })
             .collect();
 
-        map_result(results)?;
-        Ok(())
+        map_result(results)
     }
 
     fn cli_garmin_report(&self) -> Result<(), Error> {

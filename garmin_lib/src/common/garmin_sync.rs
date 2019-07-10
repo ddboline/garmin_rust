@@ -1,6 +1,6 @@
 use chrono::DateTime;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator, IntoParallelIterator};
 use failure::{err_msg, Error};
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use rusoto_core::Region;
 use rusoto_s3::{GetObjectRequest, ListObjectsV2Request, PutObjectRequest, S3Client, S3};
 use s4::S4;

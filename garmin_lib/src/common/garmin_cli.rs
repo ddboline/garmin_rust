@@ -66,7 +66,7 @@ where
     /// ```
     pub fn new() -> GarminCliObj<T> {
         GarminCliObj {
-            GarminConfig::new(),
+            config: GarminConfig::new(),
             ..Default::default()
         }
     }

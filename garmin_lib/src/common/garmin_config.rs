@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 /// GarminConfig holds configuration information which can be set either through environment variables or the config.env file,
 /// see the dotenv crate for more information about the config file format.
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug)]
 pub struct GarminConfigInner {
     pub pgurl: String,
     pub maps_api_key: String,

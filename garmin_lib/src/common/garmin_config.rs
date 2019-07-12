@@ -2,12 +2,14 @@
 
 use failure::{err_msg, Error};
 use std::env::var;
+use std::ops::Deref;
 use std::path::Path;
+use std::sync::Arc;
 
 /// GarminConfig holds configuration information which can be set either through environment variables or the config.env file,
 /// see the dotenv crate for more information about the config file format.
 #[derive(Default, Debug, Clone)]
-pub struct GarminConfig {
+pub struct GarminConfigInner {
     pub pgurl: String,
     pub maps_api_key: String,
     pub gps_bucket: String,
@@ -22,16 +24,19 @@ pub struct GarminConfig {
     pub domain: String,
 }
 
-impl GarminConfig {
+#[derive(Default, Debug, Clone)]
+pub struct GarminConfig(Arc<GarminConfigInner>);
+
+impl GarminConfigInner {
     /// Some variables have natural default values, which we set in the new() method.
-    pub fn new() -> GarminConfig {
+    pub fn new() -> GarminConfigInner {
         let home_dir = var("HOME").unwrap_or_else(|_| "/tmp".to_string());
 
         let default_gps_dir = format!("{}/.garmin_cache/run/gps_tracks", home_dir);
         let default_cache_dir = format!("{}/.garmin_cache/run/cache", home_dir);
         let default_summary_cache = format!("{}/.garmin_cache/run/summary_cache", home_dir);
 
-        GarminConfig {
+        GarminConfigInner {
             gps_dir: default_gps_dir,
             cache_dir: default_cache_dir,
             summary_cache: default_summary_cache,
@@ -44,7 +49,7 @@ impl GarminConfig {
     }
 
     /// Each variable maps to an environment variable, if the variable exists, use it.
-    pub fn from_env(mut self) -> GarminConfig {
+    pub fn from_env(mut self) -> GarminConfigInner {
         if let Ok(pgurl) = var("PGURL") {
             self.pgurl = pgurl.to_string()
         }
@@ -85,6 +90,12 @@ impl GarminConfig {
         }
         self
     }
+}
+
+impl GarminConfig {
+    pub fn new() -> GarminConfig {
+        GarminConfig(Arc::new(GarminConfigInner::new()))
+    }
 
     /// Pull configuration from a file if it exists, first look for a config.env file in the current directory,
     /// then try ${HOME}/.config/garmin_rust/config.env,
@@ -108,7 +119,7 @@ impl GarminConfig {
             dotenv::from_filename("config.env").ok();
         }
 
-        let conf = GarminConfig::new().from_env();
+        let conf = GarminConfigInner::new().from_env();
 
         if &conf.pgurl == "" {
             Err(err_msg("No PGURL specified"))
@@ -119,7 +130,15 @@ impl GarminConfig {
         } else if &conf.summary_bucket == "" {
             Err(err_msg("No SUMMARY_BUCKET specified"))
         } else {
-            Ok(conf)
+            Ok(GarminConfig(Arc::new(conf)))
         }
+    }
+}
+
+impl Deref for GarminConfig {
+    type Target = GarminConfigInner;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }

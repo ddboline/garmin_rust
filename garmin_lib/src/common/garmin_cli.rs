@@ -65,9 +65,8 @@ where
     /// assert_eq!(gcli.opts, None);
     /// ```
     pub fn new() -> GarminCliObj<T> {
-        let config = GarminConfig::new();
         GarminCliObj {
-            config,
+            GarminConfig::new(),
             ..Default::default()
         }
     }

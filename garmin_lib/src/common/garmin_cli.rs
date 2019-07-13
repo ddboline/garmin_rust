@@ -3,14 +3,17 @@ use failure::{err_msg, Error};
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::fs::{copy, rename};
+use std::io::{BufRead, BufReader};
 use std::path::Path;
+use subprocess::Exec;
 use tempdir::TempDir;
 
 use super::garmin_config::GarminConfig;
 use super::garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList};
 use super::garmin_file;
-use super::garmin_summary::{get_list_of_files_from_db, GarminSummary, GarminSummaryList};
+use super::garmin_summary::{
+    get_list_of_files_from_db, get_maximum_begin_datetime, GarminSummary, GarminSummaryList,
+};
 use super::garmin_sync::GarminSync;
 use super::pgpool::PgPool;
 use crate::parsers::garmin_parse::{GarminParse, GarminParseTrait};
@@ -19,7 +22,7 @@ use crate::reports::garmin_file_report_txt::generate_txt_report;
 use crate::reports::garmin_report_options::{GarminReportAgg, GarminReportOptions};
 use crate::reports::garmin_summary_report_html::summary_report_html;
 use crate::reports::garmin_summary_report_txt::create_report_query;
-use crate::utils::garmin_util::{extract_zip_from_garmin_connect, get_file_list, map_result};
+use crate::utils::garmin_util::{extract_zip_files, get_file_list, map_result};
 use crate::utils::sport_types::get_sport_type_map;
 
 fn get_version_number() -> String {
@@ -39,6 +42,7 @@ pub enum GarminCliOptions {
     Bootstrap,
     FileNames(Vec<String>),
     ImportFileNames(Vec<String>),
+    Connect,
 }
 
 #[derive(Debug, Default)]
@@ -139,6 +143,13 @@ where
                     .multiple(true)
                     .help("Import fit file(s) rename and copy to cache"),
             )
+            .arg(
+                Arg::with_name("connect")
+                    .short("c")
+                    .long("connect")
+                    .value_name("CONNECT")
+                    .help("Download new files from Garmin Connect"),
+            )
             .get_matches();
 
         let obj = GarminCliObj {
@@ -156,6 +167,8 @@ where
                     Some(v) => Some(GarminCliOptions::FileNames(v)),
                     None => None,
                 }
+            } else if matches.is_present("connect") {
+                Some(GarminCliOptions::Connect)
             } else {
                 match matches
                     .values_of("import")
@@ -212,41 +225,20 @@ where
     fn get_parser(&self) -> &T;
 
     fn garmin_proc(&self) -> Result<(), Error> {
+        if let Some(GarminCliOptions::Connect) = self.get_opts() {
+            let pool = self.get_pool()?;
+            if let Some(max_datetime) = get_maximum_begin_datetime(&pool)? {
+                let command = format!("/usr/bin/garmin-connect-download {}", max_datetime);
+                let stream = Exec::shell(command).stream_stdout()?;
+                let reader = BufReader::new(stream);
+                let results: Vec<_> = reader.lines().map(|line| Ok(line?)).collect();
+                let filenames: Vec<_> = map_result(results)?;
+                extract_zip_files(&filenames, &self.get_config().gps_dir)?;
+            }
+        }
+
         if let Some(GarminCliOptions::ImportFileNames(filenames)) = self.get_opts() {
-            let tempdir = TempDir::new("garmin_zip")?;
-            let ziptmpdir = tempdir
-                .path()
-                .to_str()
-                .ok_or_else(|| err_msg("Path is invalid unicode somehow"))?;
-
-            let results: Vec<Result<_, Error>> = filenames
-                .par_iter()
-                .filter(|f| (f.ends_with(".zip") || f.ends_with(".fit")) && Path::new(f).exists())
-                .map(|filename| {
-                    let filename = if filename.ends_with(".zip") {
-                        extract_zip_from_garmin_connect(&filename, &ziptmpdir)?
-                    } else {
-                        filename.to_string()
-                    };
-                    assert!(Path::new(&filename).exists(), "No such file");
-                    assert!(filename.ends_with(".fit"), "Only fit files are supported");
-                    let gfile = GarminParse::new().with_file(&filename, &HashMap::new())?;
-
-                    let outfile = format!(
-                        "{}/{}",
-                        &self.get_config().gps_dir,
-                        gfile.get_standardized_name()?
-                    );
-
-                    println!("{} {}", filename, outfile);
-
-                    rename(&filename, &outfile)
-                        .or_else(|_| copy(&filename, &outfile).map(|_| ()))
-                        .map_err(err_msg)
-                })
-                .collect();
-
-            map_result(results)?;
+            extract_zip_files(filenames, &self.get_config().gps_dir)?;
         }
 
         match self.get_opts() {

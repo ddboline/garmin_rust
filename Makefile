@@ -46,6 +46,7 @@ install:
 	cp target/$(build_type)/garmin-rust-http /usr/bin/garmin-rust-http
 	cp python/strava_upload.py /usr/bin/strava-upload
 	cp python/fitbit_auth.py /usr/bin/fitbit-auth
+	cp python/garmin_connect.py /usr/bin/garmin-connect-download
 
 pull:
 	`aws ecr --region us-east-1 get-login --no-include-email`

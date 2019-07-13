@@ -35,14 +35,14 @@ def fitbit_auth():
         timeout=10,
     )
 
-    url, state = fitbit_client[0].client.authorize_token_url()
+    url, _ = fitbit_client[0].client.authorize_token_url()
     return url, 200
 
 
 @app.route('/callback', methods=['GET'])
 def fitbit_auth_callback():
     code = request.args.get('code')
-    state = request.args.get('state')
+    # state = request.args.get('state')
 
     if code is None:
         return 'No code received', 200

@@ -478,3 +478,15 @@ pub fn get_list_of_files_from_db(
 
     map_result(results)
 }
+
+pub fn get_maximum_begin_datetime(pool: &PgPool) -> Result<Option<String>, Error> {
+    let query = "SELECT MAX(begin_datetime) FROM garmin_summary";
+
+    let conn = pool.get()?;
+
+    conn.query(&query, &[])?
+        .iter()
+        .nth(0)
+        .map(|row| row.get_idx(0))
+        .transpose()
+}

@@ -111,6 +111,8 @@ impl Message for GarminSyncRequest {
 impl Handler<GarminSyncRequest> for PgPool {
     type Result = Result<(), Error>;
     fn handle(&mut self, _: GarminSyncRequest, _: &mut Self::Context) -> Self::Result {
-        GarminCli::from_pool(&self)?.sync_everything()
+        let gcli = GarminCli::from_pool(&self)?;
+        gcli.sync_everything()?;
+        gcli.proc_everything()
     }
 }

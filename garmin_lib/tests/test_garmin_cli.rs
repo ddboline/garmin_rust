@@ -1,4 +1,4 @@
-use garmin_lib::common::garmin_cli::{GarminCliObj, GarminCliOptions};
+use garmin_lib::common::garmin_cli::{GarminCli, GarminCliOptions};
 use garmin_lib::common::garmin_config;
 use garmin_lib::common::garmin_correction_lap::GarminCorrectionList;
 use garmin_lib::parsers::garmin_parse::GarminParse;
@@ -7,7 +7,7 @@ use garmin_lib::parsers::garmin_parse::GarminParse;
 fn test_garmin_file_test_filenames() {
     let test_config = "tests/data/test.env";
 
-    let gcli = GarminCliObj {
+    let gcli = GarminCli {
         config: garmin_config::GarminConfig::get_config(Some(test_config)).unwrap(),
         opts: Some(GarminCliOptions::FileNames(vec![
             "tests/data/test.fit".to_string(),

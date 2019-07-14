@@ -59,7 +59,7 @@ impl GarminCli {
     /// # use garmin_lib::common::garmin_cli::GarminCli;
     /// # use garmin_lib::parsers::garmin_parse::GarminParse;
     /// # use garmin_lib::common::garmin_correction_lap::GarminCorrectionList;
-    /// let gcli = GarminCli::<GarminParse>::new();
+    /// let gcli = GarminCli::new();
     /// assert_eq!(gcli.opts, None);
     /// ```
     pub fn new() -> GarminCli {

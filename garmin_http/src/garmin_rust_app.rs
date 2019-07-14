@@ -15,6 +15,7 @@ use garmin_lib::common::pgpool::PgPool;
 use super::logged_user::AuthorizedUsers;
 use crate::garmin_rust_routes::{
     garmin, garmin_connect_sync, garmin_get_hr_data, garmin_get_hr_pace, garmin_list_gps_tracks,
+    garmin_sync,
 };
 use crate::CONFIG;
 
@@ -83,6 +84,7 @@ pub fn start_app() {
                 web::resource("/garmin/garmin_connect_sync")
                     .route(web::get().to_async(garmin_connect_sync)),
             )
+            .service(web::resource("/garmin/garmin_sync").route(web::get().to_async(garmin_sync)))
     })
     .bind(&format!("127.0.0.1:{}", config.port))
     .unwrap_or_else(|_| panic!("Failed to bind to port {}", config.port))

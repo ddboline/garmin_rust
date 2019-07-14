@@ -1,12 +1,10 @@
 use actix::{Handler, Message};
 use failure::Error;
 
-use garmin_lib::common::garmin_cli::{GarminCli, GarminCliObj, GarminRequest};
-use garmin_lib::common::garmin_config::GarminConfig;
+use garmin_lib::common::garmin_cli::{GarminCli, GarminRequest};
 use garmin_lib::common::garmin_correction_lap::GarminCorrectionList;
 use garmin_lib::common::garmin_summary::get_list_of_files_from_db;
 use garmin_lib::common::pgpool::PgPool;
-use garmin_lib::utils::garmin_util::sync_with_garmin_connect;
 
 use super::logged_user::LoggedUser;
 
@@ -32,7 +30,7 @@ impl Message for GarminHtmlRequest {
 impl Handler<GarminHtmlRequest> for PgPool {
     type Result = Result<String, Error>;
     fn handle(&mut self, msg: GarminHtmlRequest, _: &mut Self::Context) -> Self::Result {
-        let body = GarminCliObj::from_pool(&self)?.run_html(&msg.0)?;
+        let body = GarminCli::from_pool(&self)?.run_html(&msg.0)?;
         Ok(body)
     }
 }
@@ -97,7 +95,22 @@ impl Message for GarminConnectSyncRequest {
 impl Handler<GarminConnectSyncRequest> for PgPool {
     type Result = Result<Vec<String>, Error>;
     fn handle(&mut self, _: GarminConnectSyncRequest, _: &mut Self::Context) -> Self::Result {
-        let config = GarminConfig::get_config(None)?;
-        sync_with_garmin_connect(self, &config.gps_dir)
+        let gcli = GarminCli::from_pool(&self)?;
+        let filenames = gcli.sync_with_garmin_connect()?;
+        gcli.proc_everything()?;
+        Ok(filenames)
+    }
+}
+
+pub struct GarminSyncRequest {}
+
+impl Message for GarminSyncRequest {
+    type Result = Result<(), Error>;
+}
+
+impl Handler<GarminSyncRequest> for PgPool {
+    type Result = Result<(), Error>;
+    fn handle(&mut self, _: GarminSyncRequest, _: &mut Self::Context) -> Self::Result {
+        GarminCli::from_pool(&self)?.sync_everything()
     }
 }

@@ -9,7 +9,7 @@ use futures::future::Future;
 use serde::Serialize;
 use std::string::ToString;
 
-use garmin_lib::common::garmin_cli::{GarminCli, GarminCliObj, GarminRequest};
+use garmin_lib::common::garmin_cli::{GarminCli, GarminRequest};
 use garmin_lib::common::garmin_file::GarminFile;
 use garmin_lib::parsers::garmin_parse::{GarminParse, GarminParseTrait};
 use garmin_lib::reports::garmin_file_report_txt::get_splits;
@@ -19,6 +19,7 @@ use super::logged_user::LoggedUser;
 use super::garmin_rust_app::AppState;
 use crate::garmin_requests::{
     GarminConnectSyncRequest, GarminCorrRequest, GarminHtmlRequest, GarminListRequest,
+    GarminSyncRequest,
 };
 use crate::CONFIG;
 
@@ -49,7 +50,7 @@ fn proc_pattern_wrapper(request: FilterRequest) -> GarminHtmlRequest {
 
     let filter_vec: Vec<String> = filter.split(',').map(ToString::to_string).collect();
 
-    let req = GarminCliObj::process_pattern(&filter_vec);
+    let req = GarminCli::process_pattern(&filter_vec);
 
     GarminHtmlRequest(GarminRequest {
         filter,
@@ -98,6 +99,25 @@ pub fn garmin_connect_sync(
                         .json(format!("Unauthorized {:?}", state.user_list)));
                 }
                 to_json(&flist)
+            })
+        })
+}
+
+pub fn garmin_sync(
+    user: LoggedUser,
+    state: Data<AppState>,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    state
+        .db
+        .send(GarminSyncRequest {})
+        .from_err()
+        .and_then(move |res| {
+            res.and_then(|_| {
+                if !state.user_list.is_authorized(&user) {
+                    return Ok(HttpResponse::Unauthorized()
+                        .json(format!("Unauthorized {:?}", state.user_list)));
+                }
+                Ok(form_http_response("finished".to_string()))
             })
         })
 }

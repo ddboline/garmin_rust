@@ -3,20 +3,12 @@ use failure::{err_msg, Error};
 use num::traits::Pow;
 use rand::distributions::{Alphanumeric, Distribution, Uniform};
 use rand::thread_rng;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use std::collections::HashMap;
-use std::fs::{copy, rename};
 use std::io::{stdout, BufRead, BufReader, Read, Write};
 use std::iter::FromIterator;
 use std::path::Path;
 use std::thread::sleep;
 use std::time::Duration;
 use subprocess::{Exec, Redirection};
-use tempdir::TempDir;
-
-use crate::common::garmin_summary::get_maximum_begin_datetime;
-use crate::common::pgpool::PgPool;
-use crate::parsers::garmin_parse::{GarminParse, GarminParseTrait};
 
 pub const METERS_PER_MILE: f64 = 1609.344;
 pub const MARATHON_DISTANCE_M: i32 = 42195;
@@ -201,52 +193,4 @@ pub fn extract_zip_from_garmin_connect(filename: &str, ziptmpdir: &str) -> Resul
     }
     let new_filename = format!("{}/{}", ziptmpdir, new_filename);
     Ok(new_filename)
-}
-
-pub fn extract_zip_files(filenames: &[String], gps_dir: &str) -> Result<(), Error> {
-    let tempdir = TempDir::new("garmin_zip")?;
-    let ziptmpdir = tempdir
-        .path()
-        .to_str()
-        .ok_or_else(|| err_msg("Path is invalid unicode somehow"))?;
-
-    let results: Vec<Result<_, Error>> = filenames
-        .par_iter()
-        .filter(|f| (f.ends_with(".zip") || f.ends_with(".fit")) && Path::new(f).exists())
-        .map(|filename| {
-            let filename = if filename.ends_with(".zip") {
-                extract_zip_from_garmin_connect(&filename, &ziptmpdir)?
-            } else {
-                filename.to_string()
-            };
-            assert!(Path::new(&filename).exists(), "No such file");
-            assert!(filename.ends_with(".fit"), "Only fit files are supported");
-            let gfile = GarminParse::new().with_file(&filename, &HashMap::new())?;
-
-            let outfile = format!("{}/{}", gps_dir, gfile.get_standardized_name()?);
-
-            writeln!(stdout().lock(), "{} {}", filename, outfile)?;
-
-            rename(&filename, &outfile)
-                .or_else(|_| copy(&filename, &outfile).map(|_| ()))
-                .map_err(err_msg)
-        })
-        .collect();
-
-    map_result(results)?;
-    Ok(())
-}
-
-pub fn sync_with_garmin_connect(pool: &PgPool, gps_dir: &str) -> Result<Vec<String>, Error> {
-    if let Some(max_datetime) = get_maximum_begin_datetime(&pool)? {
-        let command = format!("/usr/bin/garmin-connect-download {}", max_datetime);
-        let stream = Exec::shell(command).stream_stdout()?;
-        let reader = BufReader::new(stream);
-        let results: Vec<_> = reader.lines().map(|line| Ok(line?)).collect();
-        let filenames: Vec<_> = map_result(results)?;
-        extract_zip_files(&filenames, gps_dir)?;
-        Ok(filenames)
-    } else {
-        Ok(Vec::new())
-    }
 }

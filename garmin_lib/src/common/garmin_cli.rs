@@ -3,8 +3,10 @@ use failure::{err_msg, Error};
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::io::{stdout, Write};
+use std::fs::{copy, rename};
+use std::io::{stdout, BufRead, BufReader, Write};
 use std::path::Path;
+use subprocess::Exec;
 use tempdir::TempDir;
 
 use super::garmin_config::GarminConfig;
@@ -13,15 +15,14 @@ use super::garmin_file;
 use super::garmin_summary::{get_list_of_files_from_db, GarminSummary, GarminSummaryList};
 use super::garmin_sync::GarminSync;
 use super::pgpool::PgPool;
+use crate::common::garmin_summary::get_maximum_begin_datetime;
 use crate::parsers::garmin_parse::{GarminParse, GarminParseTrait};
 use crate::reports::garmin_file_report_html::file_report_html;
 use crate::reports::garmin_file_report_txt::generate_txt_report;
 use crate::reports::garmin_report_options::{GarminReportAgg, GarminReportOptions};
 use crate::reports::garmin_summary_report_html::summary_report_html;
 use crate::reports::garmin_summary_report_txt::create_report_query;
-use crate::utils::garmin_util::{
-    extract_zip_files, get_file_list, map_result, sync_with_garmin_connect,
-};
+use crate::utils::garmin_util::{extract_zip_from_garmin_connect, get_file_list, map_result};
 use crate::utils::sport_types::get_sport_type_map;
 
 fn get_version_number() -> String {
@@ -45,40 +46,34 @@ pub enum GarminCliOptions {
 }
 
 #[derive(Debug, Default)]
-pub struct GarminCliObj<T = GarminParse>
-where
-    T: GarminParseTrait,
-{
+pub struct GarminCli {
     pub config: GarminConfig,
     pub opts: Option<GarminCliOptions>,
     pub pool: Option<PgPool>,
     pub corr: GarminCorrectionList,
-    pub parser: T,
+    pub parser: GarminParse,
 }
 
-impl<T> GarminCliObj<T>
-where
-    T: GarminParseTrait + Default,
-{
+impl GarminCli {
     /// ```
-    /// # use garmin_lib::common::garmin_cli::GarminCliObj;
+    /// # use garmin_lib::common::garmin_cli::GarminCli;
     /// # use garmin_lib::parsers::garmin_parse::GarminParse;
     /// # use garmin_lib::common::garmin_correction_lap::GarminCorrectionList;
-    /// let gcli = GarminCliObj::<GarminParse>::new();
+    /// let gcli = GarminCli::<GarminParse>::new();
     /// assert_eq!(gcli.opts, None);
     /// ```
-    pub fn new() -> GarminCliObj<T> {
-        GarminCliObj {
+    pub fn new() -> GarminCli {
+        GarminCli {
             config: GarminConfig::new(),
             ..Default::default()
         }
     }
 
-    pub fn with_config() -> Result<GarminCliObj<T>, Error> {
+    pub fn with_config() -> Result<GarminCli, Error> {
         let config = GarminConfig::get_config(None)?;
         let pool = PgPool::new(&config.pgurl);
         let corr = GarminCorrectionList::from_pool(&pool);
-        let obj = GarminCliObj {
+        let obj = GarminCli {
             config,
             pool: Some(pool),
             corr,
@@ -87,9 +82,9 @@ where
         Ok(obj)
     }
 
-    pub fn from_pool(pool: &PgPool) -> Result<GarminCliObj<T>, Error> {
+    pub fn from_pool(pool: &PgPool) -> Result<GarminCli, Error> {
         let config = GarminConfig::get_config(None)?;
-        let obj = GarminCliObj {
+        let obj = GarminCli {
             config,
             pool: Some(pool.clone()),
             ..Default::default()
@@ -97,7 +92,7 @@ where
         Ok(obj)
     }
 
-    pub fn with_cli_proc() -> Result<GarminCliObj<T>, Error> {
+    pub fn with_cli_proc() -> Result<GarminCli, Error> {
         let matches = App::new("Garmin Rust Proc")
             .version(get_version_number().as_str())
             .author("Daniel Boline <ddboline@gmail.com>")
@@ -151,7 +146,7 @@ where
             )
             .get_matches();
 
-        let obj = GarminCliObj {
+        let obj = GarminCli {
             opts: if matches.is_present("sync") {
                 Some(GarminCliOptions::Sync)
             } else if matches.is_present("all") {
@@ -177,86 +172,69 @@ where
                     None => None,
                 }
             },
-            ..GarminCliObj::with_config()?
+            ..GarminCli::with_config()?
         };
         Ok(obj)
     }
-}
 
-impl GarminCli for GarminCliObj<GarminParse> {
-    fn get_pool(&self) -> Result<PgPool, Error> {
+    pub fn get_pool(&self) -> Result<PgPool, Error> {
         self.pool
             .as_ref()
             .ok_or_else(|| err_msg("No Database Connection"))
             .map(|x| x.clone())
     }
 
-    fn get_config(&self) -> &GarminConfig {
+    pub fn get_config(&self) -> &GarminConfig {
         &self.config
     }
 
-    fn get_opts(&self) -> &Option<GarminCliOptions> {
+    pub fn get_opts(&self) -> &Option<GarminCliOptions> {
         &self.opts
     }
 
-    fn get_corr(&self) -> &GarminCorrectionList {
+    pub fn get_corr(&self) -> &GarminCorrectionList {
         &self.corr
     }
 
-    fn get_parser(&self) -> &GarminParse {
+    pub fn get_parser(&self) -> &GarminParse {
         &self.parser
     }
-}
 
-pub trait GarminCli<T = GarminParse>
-where
-    Self: Send + Sync,
-    T: GarminParseTrait + Send + Sync,
-{
-    fn get_pool(&self) -> Result<PgPool, Error>;
-
-    fn get_config(&self) -> &GarminConfig;
-
-    fn get_opts(&self) -> &Option<GarminCliOptions>;
-
-    fn get_corr(&self) -> &GarminCorrectionList;
-
-    fn get_parser(&self) -> &T;
-
-    fn garmin_proc(&self) -> Result<(), Error> {
+    pub fn garmin_proc(&self) -> Result<(), Error> {
         if let Some(GarminCliOptions::Connect) = self.get_opts() {
-            let pool = self.get_pool()?;
-            sync_with_garmin_connect(&pool, &self.get_config().gps_dir)?;
+            self.sync_with_garmin_connect()?;
         }
 
         if let Some(GarminCliOptions::ImportFileNames(filenames)) = self.get_opts() {
-            extract_zip_files(filenames, &self.get_config().gps_dir)?;
+            self.extract_zip_files(filenames)?;
         }
 
         match self.get_opts() {
             Some(GarminCliOptions::Bootstrap) => self.run_bootstrap(),
             Some(GarminCliOptions::Sync) => self.sync_everything(),
-            _ => {
-                let corr_list = self.get_corr().read_corrections_from_db()?;
-                let corr_map = corr_list.get_corr_list_map();
-
-                let gsum_list = self.get_summary_list(&corr_map)?;
-
-                if !gsum_list.summary_list.is_empty() {
-                    gsum_list.write_summary_to_avro_files(&self.get_config().summary_cache)?;
-                    gsum_list.write_summary_to_postgres()?;
-                    corr_list.dump_corr_list_to_avro(&format!(
-                        "{}/garmin_correction.avro",
-                        &self.get_config().cache_dir
-                    ))
-                } else {
-                    Ok(())
-                }
-            }
+            _ => self.proc_everything(),
         }
     }
 
-    fn get_summary_list(
+    pub fn proc_everything(&self) -> Result<(), Error> {
+        let corr_list = self.get_corr().read_corrections_from_db()?;
+        let corr_map = corr_list.get_corr_list_map();
+
+        let gsum_list = self.get_summary_list(&corr_map)?;
+
+        if !gsum_list.summary_list.is_empty() {
+            gsum_list.write_summary_to_avro_files(&self.get_config().summary_cache)?;
+            gsum_list.write_summary_to_postgres()?;
+            corr_list.dump_corr_list_to_avro(&format!(
+                "{}/garmin_correction.avro",
+                &self.get_config().cache_dir
+            ))
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn get_summary_list(
         &self,
         corr_map: &HashMap<(String, i32), GarminCorrectionLap>,
     ) -> Result<GarminSummaryList, Error> {
@@ -328,7 +306,7 @@ where
         Ok(gsum_list)
     }
 
-    fn run_bootstrap(&self) -> Result<(), Error> {
+    pub fn run_bootstrap(&self) -> Result<(), Error> {
         let pg_conn = self.get_pool()?;
 
         self.sync_everything()?;
@@ -351,7 +329,7 @@ where
         gsum_list.write_summary_to_postgres()
     }
 
-    fn sync_everything(&self) -> Result<(), Error> {
+    pub fn sync_everything(&self) -> Result<(), Error> {
         let gsync = GarminSync::new();
 
         let options = vec![
@@ -386,7 +364,7 @@ where
         map_result(results)
     }
 
-    fn cli_garmin_report(&self) -> Result<(), Error> {
+    pub fn cli_garmin_report(&self) -> Result<(), Error> {
         let matches = App::new("Garmin Rust Report")
             .version(get_version_number().as_str())
             .author("Daniel Boline <ddboline@gmail.com>")
@@ -408,7 +386,7 @@ where
         self.run_cli(&req.options, &req.constraints)
     }
 
-    fn process_pattern(patterns: &[String]) -> GarminRequest {
+    pub fn process_pattern(patterns: &[String]) -> GarminRequest {
         let mut options = GarminReportOptions::new();
 
         let sport_type_map = get_sport_type_map();
@@ -454,7 +432,11 @@ where
         }
     }
 
-    fn run_cli(&self, options: &GarminReportOptions, constraints: &[String]) -> Result<(), Error> {
+    pub fn run_cli(
+        &self,
+        options: &GarminReportOptions,
+        constraints: &[String],
+    ) -> Result<(), Error> {
         let pg_conn = self.get_pool()?;
 
         let file_list = get_list_of_files_from_db(constraints, &pg_conn)?;
@@ -502,7 +484,7 @@ where
         Ok(())
     }
 
-    fn run_html(&self, req: &GarminRequest) -> Result<String, Error> {
+    pub fn run_html(&self, req: &GarminRequest) -> Result<String, Error> {
         let pg_conn = self.get_pool()?;
 
         let file_list = get_list_of_files_from_db(&req.constraints, &pg_conn)?;
@@ -569,6 +551,59 @@ where
                 )
             }
         }
+    }
+
+    pub fn extract_zip_files(&self, filenames: &[String]) -> Result<(), Error> {
+        let tempdir = TempDir::new("garmin_zip")?;
+        let ziptmpdir = tempdir
+            .path()
+            .to_str()
+            .ok_or_else(|| err_msg("Path is invalid unicode somehow"))?;
+
+        let results: Vec<Result<_, Error>> = filenames
+            .par_iter()
+            .filter(|f| (f.ends_with(".zip") || f.ends_with(".fit")) && Path::new(f).exists())
+            .map(|filename| {
+                let filename = if filename.ends_with(".zip") {
+                    extract_zip_from_garmin_connect(&filename, &ziptmpdir)?
+                } else {
+                    filename.to_string()
+                };
+                assert!(Path::new(&filename).exists(), "No such file");
+                assert!(filename.ends_with(".fit"), "Only fit files are supported");
+                let gfile = GarminParse::new().with_file(&filename, &HashMap::new())?;
+
+                let outfile = format!(
+                    "{}/{}",
+                    &self.get_config().gps_dir,
+                    gfile.get_standardized_name()?
+                );
+
+                writeln!(stdout().lock(), "{} {}", filename, outfile)?;
+
+                rename(&filename, &outfile)
+                    .or_else(|_| copy(&filename, &outfile).map(|_| ()))
+                    .map_err(err_msg)
+            })
+            .collect();
+
+        map_result(results)?;
+        Ok(())
+    }
+
+    pub fn sync_with_garmin_connect(&self) -> Result<Vec<String>, Error> {
+        if let Some(pool) = self.pool.as_ref() {
+            if let Some(max_datetime) = get_maximum_begin_datetime(&pool)? {
+                let command = format!("/usr/bin/garmin-connect-download {}", max_datetime);
+                let stream = Exec::shell(command).stream_stdout()?;
+                let reader = BufReader::new(stream);
+                let results: Vec<_> = reader.lines().map(|line| Ok(line?)).collect();
+                let filenames: Vec<_> = map_result(results)?;
+                self.extract_zip_files(&filenames)?;
+                return Ok(filenames);
+            }
+        }
+        Ok(Vec::new())
     }
 }
 

@@ -1,9 +1,9 @@
-use garmin_lib::common::garmin_cli::{GarminCli, GarminCliObj};
+use garmin_lib::common::garmin_cli::GarminCli;
 
 fn main() {
     env_logger::init();
 
-    match GarminCliObj::with_cli_proc()
+    match GarminCli::with_cli_proc()
         .expect("config init failed")
         .garmin_proc()
     {

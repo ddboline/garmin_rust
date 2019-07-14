@@ -10,7 +10,7 @@ use crate::parsers::garmin_parse_gmn::GarminParseGmn;
 use crate::parsers::garmin_parse_tcx::GarminParseTcx;
 use crate::parsers::garmin_parse_txt::GarminParseTxt;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct GarminParse {}
 
 impl GarminParse {

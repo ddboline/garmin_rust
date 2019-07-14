@@ -5,6 +5,7 @@ use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterato
 use std::collections::HashMap;
 use std::fmt;
 use std::fs::File;
+use std::io::{stdout, Write};
 use std::path::Path;
 
 use super::garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList};
@@ -78,10 +79,10 @@ impl GarminSummary {
                 .ok_or_else(|| err_msg(format!("Failed to split filename {}", filename)))?
         );
 
-        println!("Get md5sum {}", filename);
+        writeln!(stdout().lock(), "Get md5sum {}", filename)?;
         let md5sum = get_md5sum(&filename)?;
 
-        println!("Found md5sum {}, try parsing", md5sum);
+        writeln!(stdout().lock(), "Found md5sum {}, try parsing", md5sum)?;
         let gfile = GarminParse::new().with_file(&filename, &corr_map)?;
 
         match gfile.laps.get(0) {
@@ -184,7 +185,7 @@ impl GarminSummaryList {
         let gsum_result_list: Vec<Result<_, Error>> = get_file_list(&path)
             .into_par_iter()
             .map(|input_file| {
-                println!("Process {}", &input_file);
+                writeln!(stdout().lock(), "Process {}", &input_file)?;
                 let cache_file = format!(
                     "{}/{}.avro",
                     cache_dir,
@@ -225,7 +226,7 @@ impl GarminSummaryList {
         let corr_list =
             GarminCorrectionList::from_pool(&self.get_pool()?).read_corrections_from_db()?;
 
-        println!("{}", corr_list.corr_map.len());
+        writeln!(stdout().lock(), "{}", corr_list.corr_map.len())?;
 
         let corr_map = corr_list.get_corr_list_map();
 
@@ -445,13 +446,13 @@ impl GarminSummaryList {
     pub fn dump_summary_from_postgres_to_avro(pool: &PgPool) -> Result<(), Error> {
         let gsum_list = GarminSummaryList::from_pool(pool).read_summary_from_postgres("")?;
 
-        println!("{}", gsum_list.summary_list.len());
+        writeln!(stdout().lock(), "{}", gsum_list.summary_list.len())?;
 
         gsum_list.dump_summary_to_avro("garmin_summary.avro")?;
 
         let gsum_list = GarminSummaryList::read_summary_from_avro("garmin_summary.avro")?;
 
-        println!("{}", gsum_list.summary_list.len());
+        writeln!(stdout().lock(), "{}", gsum_list.summary_list.len())?;
         Ok(())
     }
 }

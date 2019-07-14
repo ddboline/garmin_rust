@@ -1,6 +1,6 @@
-use std::collections::HashMap;
-
 use failure::{err_msg, Error};
+use std::collections::HashMap;
+use std::io::{stdout, Write};
 
 use crate::reports::garmin_templates::{LINEPLOTTEMPLATE, SCATTERPLOTTEMPLATE};
 use crate::utils::plot_opts::PlotOpts;
@@ -64,10 +64,18 @@ pub fn generate_d3_plot(opts: &PlotOpts) -> Result<String, Error> {
             let yindex = ((y - ymin) / ystep) as u64;
             match bins.get_mut(&(xindex, yindex)) {
                 Some(x) => *x += 1,
-                None => println!(
+                None => writeln!(
+                    stdout().lock(),
                     "missing {} {} {} {} {} {} {} {}",
-                    xindex, yindex, x, y, xmin, ymin, xmax, ymax
-                ),
+                    xindex,
+                    yindex,
+                    x,
+                    y,
+                    xmin,
+                    ymin,
+                    xmax,
+                    ymax
+                )?,
             }
         }
 

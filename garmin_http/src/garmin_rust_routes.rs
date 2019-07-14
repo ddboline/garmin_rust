@@ -17,7 +17,9 @@ use garmin_lib::reports::garmin_file_report_txt::get_splits;
 use super::logged_user::LoggedUser;
 
 use super::garmin_rust_app::AppState;
-use crate::garmin_requests::{GarminCorrRequest, GarminHtmlRequest, GarminListRequest};
+use crate::garmin_requests::{
+    GarminConnectSyncRequest, GarminCorrRequest, GarminHtmlRequest, GarminListRequest,
+};
 use crate::CONFIG;
 
 #[derive(Deserialize)]
@@ -79,6 +81,25 @@ pub fn garmin(
             Ok(form_http_response(body))
         })
     })
+}
+
+pub fn garmin_connect_sync(
+    user: LoggedUser,
+    state: Data<AppState>,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    state
+        .db
+        .send(GarminConnectSyncRequest {})
+        .from_err()
+        .and_then(move |res| {
+            res.and_then(|flist| {
+                if !state.user_list.is_authorized(&user) {
+                    return Ok(HttpResponse::Unauthorized()
+                        .json(format!("Unauthorized {:?}", state.user_list)));
+                }
+                to_json(&flist)
+            })
+        })
 }
 
 #[derive(Serialize)]

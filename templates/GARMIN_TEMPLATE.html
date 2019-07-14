@@ -8,6 +8,11 @@
 </head>
 <body>
 
+<H3>
+    <button type="submit" id="ID" onclick="garmin_connect_sync();">sync with Garmin Connect</button>
+    <button name="garminconnectoutput" id="garminconnectoutput"> &nbsp; </button>
+</H3>
+
 <p>
 HISTORYBUTTONS
 </p>
@@ -31,6 +36,16 @@ INSERTTEXTHERE
     function processFormData() {
         var garmin_filter = document.getElementById( 'garmin_filter' );
         send_command( 'filter=' + garmin_filter.value );
+    }
+    function garmin_connect_sync() {
+        var ostr = '../garmin/garmin_connect_sync';
+        var xmlhttp = new XMLHttpRequest();
+        xmlhttp.open("GET", ostr, true);
+        xmlhttp.onload = function nothing() {
+            document.getElementById("garminconnectoutput").innerHTML = "done";
+        }
+        xmlhttp.send(null);
+        document.getElementById("garminconnectoutput").innerHTML = "syncing";
     }
 </script>
 

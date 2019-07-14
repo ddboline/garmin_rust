@@ -6,7 +6,7 @@ use postgres_derive::{FromSql, ToSql};
 use std::collections::HashMap;
 use std::fs::File;
 use std::hash::BuildHasher;
-use std::io::Read;
+use std::io::{stdout, Read, Write};
 use std::str;
 
 use avro_rs::{from_value, Codec, Reader, Schema, Writer};
@@ -341,21 +341,22 @@ impl GarminCorrectionList {
 
         //let corr_list = read_corr_list_from_avro(&correction_file)?;
 
-        println!("{}", corr_list.get_corr_list().len());
+        writeln!(stdout().lock(), "{}", corr_list.get_corr_list().len())?;
 
         let fn_unique_key_map = self.get_filename_start_map()?;
 
-        println!(
+        writeln!(
+            stdout().lock(),
             "{} {:?}",
             fn_unique_key_map.len(),
             fn_unique_key_map.iter().nth(0)
-        );
+        )?;
 
         let corr_map = corr_list.get_corr_list_map();
 
         let gsum_list = GarminSummaryList::process_all_gps_files(&gps_dir, &cache_dir, &corr_map)?;
 
-        println!("{}", gsum_list.summary_list.len());
+        writeln!(stdout().lock(), "{}", gsum_list.summary_list.len())?;
 
         let mut new_corr_map = corr_map.clone();
 
@@ -363,7 +364,14 @@ impl GarminCorrectionList {
             match fn_unique_key_map.get(&gsum.filename) {
                 Some((s, n)) => {
                     if let Some(v) = corr_map.get(&(s.to_string(), *n)) {
-                        println!("{} {} {} {}", gsum.filename, gsum.begin_datetime, s, n);
+                        writeln!(
+                            stdout().lock(),
+                            "{} {} {} {}",
+                            gsum.filename,
+                            gsum.begin_datetime,
+                            s,
+                            n
+                        )?;
                         let mut new_corr = v.clone();
                         new_corr.start_time = gsum.begin_datetime.clone();
                         new_corr_map.insert((s.to_string(), *n), new_corr);
@@ -375,7 +383,7 @@ impl GarminCorrectionList {
 
         let new_corr_list = Self::from_vec(new_corr_map.values().cloned().collect());
 
-        println!("{}", new_corr_list.get_corr_list().len());
+        writeln!(stdout().lock(), "{}", new_corr_list.get_corr_list().len())?;
 
         new_corr_list.dump_corr_list_to_avro(correction_file)?;
         Ok(())
@@ -480,13 +488,13 @@ impl GarminCorrectionList {
     pub fn read_corrections_from_db_dump_to_avro(&self) -> Result<(), Error> {
         let corr_list = self.read_corrections_from_db()?;
 
-        println!("{}", corr_list.get_corr_list().len());
+        writeln!(stdout().lock(), "{}", corr_list.get_corr_list().len())?;
 
         corr_list.dump_corr_list_to_avro("garmin_correction.avro")?;
 
         let corr_list = Self::read_corr_list_from_avro("garmin_correction.avro")?;
 
-        println!("{}", corr_list.get_corr_list().len());
+        writeln!(stdout().lock(), "{}", corr_list.get_corr_list().len())?;
         Ok(())
     }
 }

@@ -2,9 +2,11 @@ use actix::{Handler, Message};
 use failure::Error;
 
 use garmin_lib::common::garmin_cli::{GarminCli, GarminCliObj, GarminRequest};
+use garmin_lib::common::garmin_config::GarminConfig;
 use garmin_lib::common::garmin_correction_lap::GarminCorrectionList;
 use garmin_lib::common::garmin_summary::get_list_of_files_from_db;
 use garmin_lib::common::pgpool::PgPool;
+use garmin_lib::utils::garmin_util::sync_with_garmin_connect;
 
 use super::logged_user::LoggedUser;
 
@@ -83,5 +85,19 @@ impl Handler<AuthorizedUserRequest> for PgPool {
     type Result = Result<bool, Error>;
     fn handle(&mut self, msg: AuthorizedUserRequest, _: &mut Self::Context) -> Self::Result {
         msg.user.is_authorized(self)
+    }
+}
+
+pub struct GarminConnectSyncRequest {}
+
+impl Message for GarminConnectSyncRequest {
+    type Result = Result<Vec<String>, Error>;
+}
+
+impl Handler<GarminConnectSyncRequest> for PgPool {
+    type Result = Result<Vec<String>, Error>;
+    fn handle(&mut self, _: GarminConnectSyncRequest, _: &mut Self::Context) -> Self::Result {
+        let config = GarminConfig::get_config(None)?;
+        sync_with_garmin_connect(self, &config.gps_dir)
     }
 }

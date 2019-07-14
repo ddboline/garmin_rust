@@ -3,17 +3,14 @@ use failure::{err_msg, Error};
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::io::{BufRead, BufReader};
+use std::io::{stdout, Write};
 use std::path::Path;
-use subprocess::Exec;
 use tempdir::TempDir;
 
 use super::garmin_config::GarminConfig;
 use super::garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList};
 use super::garmin_file;
-use super::garmin_summary::{
-    get_list_of_files_from_db, get_maximum_begin_datetime, GarminSummary, GarminSummaryList,
-};
+use super::garmin_summary::{get_list_of_files_from_db, GarminSummary, GarminSummaryList};
 use super::garmin_sync::GarminSync;
 use super::pgpool::PgPool;
 use crate::parsers::garmin_parse::{GarminParse, GarminParseTrait};
@@ -22,7 +19,9 @@ use crate::reports::garmin_file_report_txt::generate_txt_report;
 use crate::reports::garmin_report_options::{GarminReportAgg, GarminReportOptions};
 use crate::reports::garmin_summary_report_html::summary_report_html;
 use crate::reports::garmin_summary_report_txt::create_report_query;
-use crate::utils::garmin_util::{extract_zip_files, get_file_list, map_result};
+use crate::utils::garmin_util::{
+    extract_zip_files, get_file_list, map_result, sync_with_garmin_connect,
+};
 use crate::utils::sport_types::get_sport_type_map;
 
 fn get_version_number() -> String {
@@ -227,14 +226,7 @@ where
     fn garmin_proc(&self) -> Result<(), Error> {
         if let Some(GarminCliOptions::Connect) = self.get_opts() {
             let pool = self.get_pool()?;
-            if let Some(max_datetime) = get_maximum_begin_datetime(&pool)? {
-                let command = format!("/usr/bin/garmin-connect-download {}", max_datetime);
-                let stream = Exec::shell(command).stream_stdout()?;
-                let reader = BufReader::new(stream);
-                let results: Vec<_> = reader.lines().map(|line| Ok(line?)).collect();
-                let filenames: Vec<_> = map_result(results)?;
-                extract_zip_files(&filenames, &self.get_config().gps_dir)?;
-            }
+            sync_with_garmin_connect(&pool, &self.get_config().gps_dir)?;
         }
 
         if let Some(GarminCliOptions::ImportFileNames(filenames)) = self.get_opts() {
@@ -275,7 +267,7 @@ where
                 let proc_list: Vec<Result<_, Error>> = flist
                     .par_iter()
                     .map(|f| {
-                        println!("Process {}", &f);
+                        writeln!(stdout().lock(), "Process {}", &f)?;
                         Ok(GarminSummary::process_single_gps_file(
                             &f,
                             &self.get_config().cache_dir,
@@ -341,21 +333,21 @@ where
 
         self.sync_everything()?;
 
-        println!("Read corrections from avro file");
+        writeln!(stdout().lock(), "Read corrections from avro file")?;
         let corr_list = GarminCorrectionList::read_corr_list_from_avro(&format!(
             "{}/garmin_correction.avro",
             &self.get_config().cache_dir
         ))?
         .with_pool(&pg_conn);
 
-        println!("Write corrections to postgres");
+        writeln!(stdout().lock(), "Write corrections to postgres")?;
         corr_list.dump_corrections_to_db()?;
 
-        println!("Read summaries from avro files");
+        writeln!(stdout().lock(), "Read summaries from avro files")?;
         let cache = &self.get_config().summary_cache;
         let gsum_list = GarminSummaryList::from_avro_files(cache)?.with_pool(&pg_conn);
 
-        println!("Write summaries to postgres");
+        writeln!(stdout().lock(), "Write summaries to postgres")?;
         gsum_list.write_summary_to_postgres()
     }
 
@@ -386,7 +378,7 @@ where
         let results: Vec<_> = options
             .into_par_iter()
             .map(|(title, local_dir, s3_bucket, check_md5)| {
-                println!("{}", title);
+                writeln!(stdout().lock(), "{}", title)?;
                 gsync.sync_dir(local_dir, s3_bucket, check_md5)
             })
             .collect();
@@ -491,7 +483,11 @@ where
                     }
                 };
                 debug!("gfile {} {}", gfile.laps.len(), gfile.points.len());
-                println!("{}", generate_txt_report(&gfile)?.join("\n"));
+                writeln!(
+                    stdout().lock(),
+                    "{}",
+                    generate_txt_report(&gfile)?.join("\n")
+                )?;
             }
             _ => {
                 debug!("{:?}", options);
@@ -500,7 +496,7 @@ where
                     .map(|x| x.join(" "))
                     .collect();
 
-                println!("{}", txt_result.join("\n"));
+                writeln!(stdout().lock(), "{}", txt_result.join("\n"))?;
             }
         };
         Ok(())

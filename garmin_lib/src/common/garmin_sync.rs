@@ -6,6 +6,7 @@ use rusoto_s3::{GetObjectRequest, ListObjectsV2Request, PutObjectRequest, S3Clie
 use s4::S4;
 use std::collections::HashMap;
 use std::fs;
+use std::io::{stdout, Write};
 use std::path::Path;
 use std::time::SystemTime;
 
@@ -139,7 +140,12 @@ impl GarminSync<S3Client> {
             .collect();
 
         let key_list = self.get_list_of_keys(s3_bucket)?;
-        println!("{} s3_bucketnkeys {}", s3_bucket, key_list.len());
+        writeln!(
+            stdout().lock(),
+            "{} s3_bucketnkeys {}",
+            s3_bucket,
+            key_list.len()
+        )?;
         let key_set: HashMap<_, _> = key_list
             .iter()
             .map(|(k, m, t)| (k.to_string(), (m.to_string(), *t)))

@@ -6,7 +6,7 @@ use rand::thread_rng;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::collections::HashMap;
 use std::fs::{copy, rename};
-use std::io::{BufRead, BufReader, Read};
+use std::io::{stdout, BufRead, BufReader, Read, Write};
 use std::iter::FromIterator;
 use std::path::Path;
 use std::thread::sleep;
@@ -14,6 +14,8 @@ use std::time::Duration;
 use subprocess::{Exec, Redirection};
 use tempdir::TempDir;
 
+use crate::common::garmin_summary::get_maximum_begin_datetime;
+use crate::common::pgpool::PgPool;
 use crate::parsers::garmin_parse::{GarminParse, GarminParseTrait};
 
 pub const METERS_PER_MILE: f64 = 1609.344;
@@ -165,7 +167,7 @@ where
         match closure() {
             Ok(x) => return Ok(x),
             Err(e) => {
-                println!("Got Error {:?} , retrying", e);
+                writeln!(stdout().lock(), "Got Error {:?} , retrying", e)?;
                 sleep(Duration::from_millis((timeout * 1000.0) as u64));
                 timeout *= 4.0 * f64::from(range.sample(&mut rng)) / 1000.0;
                 if timeout >= 64.0 {
@@ -190,7 +192,7 @@ pub fn extract_zip_from_garmin_connect(filename: &str, ziptmpdir: &str) -> Resul
         if let Some(mut f) = process.stdout.as_ref() {
             let mut buf = String::new();
             f.read_to_string(&mut buf)?;
-            println!("{}", buf);
+            writeln!(stdout().lock(), "{}", buf)?;
         }
         return Err(err_msg(format!(
             "Failed with exit status {:?}",
@@ -223,7 +225,7 @@ pub fn extract_zip_files(filenames: &[String], gps_dir: &str) -> Result<(), Erro
 
             let outfile = format!("{}/{}", gps_dir, gfile.get_standardized_name()?);
 
-            println!("{} {}", filename, outfile);
+            writeln!(stdout().lock(), "{} {}", filename, outfile)?;
 
             rename(&filename, &outfile)
                 .or_else(|_| copy(&filename, &outfile).map(|_| ()))
@@ -233,4 +235,18 @@ pub fn extract_zip_files(filenames: &[String], gps_dir: &str) -> Result<(), Erro
 
     map_result(results)?;
     Ok(())
+}
+
+pub fn sync_with_garmin_connect(pool: &PgPool, gps_dir: &str) -> Result<Vec<String>, Error> {
+    if let Some(max_datetime) = get_maximum_begin_datetime(&pool)? {
+        let command = format!("/usr/bin/garmin-connect-download {}", max_datetime);
+        let stream = Exec::shell(command).stream_stdout()?;
+        let reader = BufReader::new(stream);
+        let results: Vec<_> = reader.lines().map(|line| Ok(line?)).collect();
+        let filenames: Vec<_> = map_result(results)?;
+        extract_zip_files(&filenames, gps_dir)?;
+        Ok(filenames)
+    } else {
+        Ok(Vec::new())
+    }
 }

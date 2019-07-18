@@ -84,9 +84,11 @@ impl GarminCli {
 
     pub fn from_pool(pool: &PgPool) -> Result<GarminCli, Error> {
         let config = GarminConfig::get_config(None)?;
+        let corr = GarminCorrectionList::from_pool(&pool);
         let obj = GarminCli {
             config,
             pool: Some(pool.clone()),
+            corr,
             ..Default::default()
         };
         Ok(obj)

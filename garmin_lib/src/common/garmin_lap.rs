@@ -93,14 +93,16 @@ impl GarminLap {
 
     pub fn read_lap_tcx(entries: &Node) -> Result<GarminLap, Error> {
         let mut new_lap = GarminLap::new();
-        for d in entries.descendants() {
+        for d in entries.children() {
             if d.node_type() == NodeType::Element {
                 match d.tag_name().name() {
                     "TotalTimeSeconds" => {
                         new_lap.lap_duration = d.text().and_then(|x| x.parse().ok()).unwrap_or(0.0)
                     }
                     "DistanceMeters" => {
-                        new_lap.lap_distance = d.text().and_then(|x| x.parse().ok()).unwrap_or(0.0)
+                        let lap_dist = d.text().and_then(|x| x.parse().ok()).unwrap_or(0.0);
+                        println!("lap_dist {}", lap_dist);
+                        new_lap.lap_distance = lap_dist
                     }
                     "MaximumSpeed" => new_lap.lap_max_speed = d.text().and_then(|x| x.parse().ok()),
                     "TriggerMethod" => new_lap.lap_trigger = d.text().map(|s| s.to_string()),

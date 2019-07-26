@@ -6,6 +6,8 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use crate::common::garmin_file::GarminFile;
 use crate::common::garmin_lap::GarminLap;
+use crate::common::garmin_summary::get_strava_id_from_begin_datetime;
+use crate::common::pgpool::PgPool;
 use crate::reports::garmin_file_report_txt::get_splits;
 use crate::reports::garmin_templates::{GARMIN_TEMPLATE, MAP_TEMPLATE};
 use crate::utils::garmin_util::{print_h_m_s, titlecase, MARATHON_DISTANCE_MI, METERS_PER_MILE};
@@ -70,6 +72,7 @@ pub fn file_report_html(
     cache_dir: &str,
     history: &str,
     gps_dir: &str,
+    pool: Option<&PgPool>,
 ) -> Result<String, Error> {
     let sport = match &gfile.sport {
         Some(s) => s.clone(),
@@ -88,6 +91,7 @@ pub fn file_report_html(
         &maps_api_key,
         &history,
         &gps_dir,
+        pool,
     )
 }
 
@@ -329,7 +333,13 @@ fn get_html_string(
     maps_api_key: &str,
     history: &str,
     gps_dir: &str,
+    pool: Option<&PgPool>,
 ) -> Result<String, Error> {
+    let strava_id = match pool {
+        Some(p) => get_strava_id_from_begin_datetime(p, &gfile.begin_datetime)?,
+        None => None,
+    };
+
     let mut htmlvec: Vec<String> = Vec::new();
 
     if !report_objs.lat_vals.is_empty()
@@ -379,6 +389,13 @@ fn get_html_string(
                     titlecase(&sport),
                     gfile.begin_datetime
                 );
+                let newtitle = match strava_id.as_ref() {
+                    Some(id) => format!(
+                        r#"<a href="https://www.strava.com/activities/{}">{}</a>"#,
+                        id, newtitle
+                    ),
+                    None => newtitle,
+                };
                 htmlvec.push(line.replace("SPORTTITLEDATE", &newtitle).to_string());
             } else if line.contains("ZOOMVALUE") {
                 for (zoom, thresh) in &latlon_thresholds {
@@ -460,6 +477,13 @@ fn get_html_string(
                     titlecase(&sport),
                     gfile.begin_datetime
                 );
+                let newtitle = match strava_id.as_ref() {
+                    Some(id) => format!(
+                        r#"<a href="https://www.strava.com/activities/{}">{}</a>"#,
+                        id, newtitle
+                    ),
+                    None => newtitle,
+                };
                 htmlvec.push(line.replace("SPORTTITLEDATE", &newtitle).to_string());
             } else if line.contains("HISTORYBUTTONS") {
                 let history_button = generate_history_buttons(&history);

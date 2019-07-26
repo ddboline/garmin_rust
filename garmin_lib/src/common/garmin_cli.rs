@@ -528,6 +528,7 @@ impl GarminCli {
                     &htmlcachedir,
                     &req.history,
                     &self.get_config().gps_dir,
+                    Some(&pg_conn),
                 )
             }
             _ => {

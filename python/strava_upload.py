@@ -118,7 +118,7 @@ def strava_activities():
         return authorize_url, 200
 
     activities = {
-        x.id: x.start_date.isoformat()
+        x.id: {'begin_datetime': x.start_date.isoformat().replace('+00:00', 'Z'), 'title': x.name}
         for x in client.get_activities(before=end_date, after=start_date)
     }
 
@@ -212,7 +212,7 @@ def strava_endpoint():
 
 
 if __name__ == '__main__':
-    http_server = WSGIServer(('', 52168), app)
-    http_server.serve_forever()
+    # http_server = WSGIServer(('', 52168), app)
+    # http_server.serve_forever()
 
-    # app.run(host='0.0.0.0', port=12345)
+    app.run(host='0.0.0.0', port=12345)

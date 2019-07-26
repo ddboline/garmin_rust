@@ -335,7 +335,7 @@ fn get_html_string(
     gps_dir: &str,
     pool: Option<&PgPool>,
 ) -> Result<String, Error> {
-    let strava_id = match pool {
+    let strava_id_title = match pool {
         Some(p) => get_strava_id_from_begin_datetime(p, &gfile.begin_datetime)?,
         None => None,
     };
@@ -396,10 +396,10 @@ fn get_html_string(
                     titlecase(&sport),
                     gfile.begin_datetime
                 );
-                let newtitle = match strava_id.as_ref() {
-                    Some(id) => format!(
+                let newtitle = match strava_id_title.as_ref() {
+                    Some((id, title)) => format!(
                         r#"<a href="https://www.strava.com/activities/{}">{}</a>"#,
-                        id, newtitle
+                        id, title
                     ),
                     None => newtitle,
                 };
@@ -491,10 +491,10 @@ fn get_html_string(
                     titlecase(&sport),
                     gfile.begin_datetime
                 );
-                let newtitle = match strava_id.as_ref() {
-                    Some(id) => format!(
+                let newtitle = match strava_id_title.as_ref() {
+                    Some((id, title)) => format!(
                         r#"<a href="https://www.strava.com/activities/{}">{}</a>"#,
-                        id, newtitle
+                        id, title
                     ),
                     None => newtitle,
                 };

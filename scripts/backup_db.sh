@@ -5,7 +5,9 @@ BUCKET=garmin-summary-db-backup
 
 TABLES="
 garmin_corrections_laps
-garmin_summary"
+garmin_summary
+strava_id_cache
+"
 
 mkdir -p backup/
 

@@ -497,9 +497,10 @@ pub fn get_strava_id_from_begin_datetime(
     begin_datetime: &str,
 ) -> Result<Option<String>, Error> {
     let query = format!(
-        r#"SELECT strava_id FROM strava_id_cache WHERE begin_datetime = "{}""#,
+        r#"SELECT strava_id FROM strava_id_cache WHERE begin_datetime = '{}'"#,
         begin_datetime
     );
+    
     let conn = pool.get()?;
     conn.query(&query, &[])?
         .iter()

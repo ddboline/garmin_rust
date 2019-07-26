@@ -18,7 +18,7 @@ try:
 except ImportError:
     from configparser import ConfigParser
 
-from flask import Flask, request
+from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
@@ -91,6 +91,40 @@ def strava_auth_callback():
             '<script language="JavaScript" type="text/javascript">window.close()</script>', 200
 
 
+@app.route('/activities', methods=['GET'])
+def strava_activities():
+
+    start_date = request.args.get('start_date', None)
+    end_date = request.args.get('end_date', None)
+
+    _, cid, _, cat = get_config()
+
+    client = Client(cat)
+
+    try:
+        list(client.get_activities(limit=1))
+    except requests.exceptions.ConnectionError:
+        raise
+    except Exception:
+        client = Client()
+
+        _scope = 'activity:read_all'
+        authorize_url = client.authorization_url(
+            client_id=cid,
+            redirect_uri='https://www.ddboline.net/strava/callback',
+            scope=_scope,
+            state=base64.b64encode(json.dumps(request.json).encode()).decode())
+
+        return authorize_url, 200
+
+    activities = {
+        x.id: x.start_date.isoformat()
+        for x in client.get_activities(before=end_date, after=start_date)
+    }
+
+    return jsonify(activities)
+
+
 @app.route('/', methods=['POST'])
 def strava_endpoint():
     allowed_exts = {
@@ -108,7 +142,7 @@ def strava_endpoint():
 
     assert activity_type in ACTIVITY_TYPES, 'invalid activity'
 
-    cp_, cid, cs, cat = get_config()
+    _, cid, _, cat = get_config()
 
     client = Client(cat)
 
@@ -149,13 +183,12 @@ def strava_endpoint():
     # upload activity
     try:
         cf_.seek(0, 0)
-        upstat = client.upload_activity(
-            cf_,
-            ext[1:] + '.gz',
-            title,
-            description,
-            private=is_private,
-            activity_type=activity_type)
+        upstat = client.upload_activity(cf_,
+                                        ext[1:] + '.gz',
+                                        title,
+                                        description,
+                                        private=is_private,
+                                        activity_type=activity_type)
 
         timeout = 10
         start = time.time()
@@ -182,4 +215,4 @@ if __name__ == '__main__':
     http_server = WSGIServer(('', 52168), app)
     http_server.serve_forever()
 
-    #app.run(host='0.0.0.0', port=52168)
+    # app.run(host='0.0.0.0', port=12345)

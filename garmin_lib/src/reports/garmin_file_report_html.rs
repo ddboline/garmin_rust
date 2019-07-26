@@ -389,6 +389,13 @@ fn get_html_string(
                     titlecase(&sport),
                     gfile.begin_datetime
                 );
+                htmlvec.push(line.replace("SPORTTITLEDATE", &newtitle).to_string());
+            } else if line.contains("SPORTTITLELINK") {
+                let newtitle = format!(
+                    "Garmin Event {} on {}",
+                    titlecase(&sport),
+                    gfile.begin_datetime
+                );
                 let newtitle = match strava_id.as_ref() {
                     Some(id) => format!(
                         r#"<a href="https://www.strava.com/activities/{}">{}</a>"#,
@@ -396,7 +403,7 @@ fn get_html_string(
                     ),
                     None => newtitle,
                 };
-                htmlvec.push(line.replace("SPORTTITLEDATE", &newtitle).to_string());
+                htmlvec.push(line.replace("SPORTTITLELINK", &newtitle).to_string());
             } else if line.contains("ZOOMVALUE") {
                 for (zoom, thresh) in &latlon_thresholds {
                     if (latlon_min < *thresh) | (*zoom == 10) {
@@ -477,6 +484,13 @@ fn get_html_string(
                     titlecase(&sport),
                     gfile.begin_datetime
                 );
+                htmlvec.push(line.replace("SPORTTITLEDATE", &newtitle).to_string());
+            } else if line.contains("SPORTTITLELINK") {
+                let newtitle = format!(
+                    "Garmin Event {} on {}",
+                    titlecase(&sport),
+                    gfile.begin_datetime
+                );
                 let newtitle = match strava_id.as_ref() {
                     Some(id) => format!(
                         r#"<a href="https://www.strava.com/activities/{}">{}</a>"#,
@@ -484,7 +498,7 @@ fn get_html_string(
                     ),
                     None => newtitle,
                 };
-                htmlvec.push(line.replace("SPORTTITLEDATE", &newtitle).to_string());
+                htmlvec.push(line.replace("SPORTTITLELINK", &newtitle).to_string());
             } else if line.contains("HISTORYBUTTONS") {
                 let history_button = generate_history_buttons(&history);
                 htmlvec.push(line.replace("HISTORYBUTTONS", &history_button).to_string());

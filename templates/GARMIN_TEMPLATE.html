@@ -59,18 +59,18 @@ INSERTTEXTHERE
         xmlhttp.send(null);
         document.getElementById("garminconnectoutput").innerHTML = "syncing";
     }
-    function stravaAuth() {
+    function strava_sync() {
         var ostr = "../strava/auth/read?domain=www.ddboline.net";
         var xmlhttp = new XMLHttpRequest();
         xmlhttp.onload = function() {
             var win = window.open(xmlhttp.responseText, '_blank');
             win.focus()
+            stava_sync_main()
         }
         xmlhttp.open( "GET", ostr, true );
         xmlhttp.send(null);
     }
-    function strava_sync() {
-        stravaAuth();
+    function strava_sync_main() {
         var ostr = '../garmin/strava_sync';
         var xmlhttp = new XMLHttpRequest();
         xmlhttp.open("GET", ostr, true);

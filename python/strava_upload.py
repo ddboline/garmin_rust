@@ -111,12 +111,13 @@ def strava_auth(type):
 
     try:
         client.get_athlete()
+        if type == 'read':
+            list(client.get_activities(limit=1))
     except requests.exceptions.ConnectionError:
         raise
     except Exception:
         client = Client()
 
-        _scope = 'activity:write'
         authorize_url = client.authorization_url(
             client_id=cid,
             redirect_uri=f'https://{domain}/strava/callback',

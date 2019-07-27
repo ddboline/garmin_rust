@@ -128,6 +128,13 @@ impl GarminCli {
                     .takes_value(false),
             )
             .arg(
+                Arg::with_name("sync_strava")
+                    .long("sync_strava")
+                    .value_name("SYNC_STRAVA")
+                    .help("Sync with Strava")
+                    .takes_value(false),
+            )
+            .arg(
                 Arg::with_name("bootstrap")
                     .short("b")
                     .long("bootstrap")
@@ -626,6 +633,7 @@ impl GarminCli {
                     &format!("https://{}/strava/activities", &self.config.domain),
                     &[("start_date", max_datetime)],
                 )?;
+                println!("{}", url.as_str());
                 let resp: HashMap<String, StravaItem> = Client::new().get(url).send()?.json()?;
                 let query = "INSERT INTO strava_id_cache (strava_id, begin_datetime, strava_title) VALUES ($1,$2,$3)";
                 let items: Vec<_> = resp

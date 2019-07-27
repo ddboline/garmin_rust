@@ -540,11 +540,10 @@ impl GarminCli {
                     .ok_or_else(|| err_msg("Path is invalid unicode somehow"))?;
 
                 file_report_html(
+                    self.get_config(),
                     &gfile,
-                    &self.get_config().maps_api_key,
                     &htmlcachedir,
                     &req.history,
-                    &self.get_config().gps_dir,
                     Some(&pg_conn),
                 )
             }

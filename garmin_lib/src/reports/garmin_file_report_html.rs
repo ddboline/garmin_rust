@@ -4,6 +4,7 @@ use failure::Error;
 
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
+use crate::common::garmin_config::GarminConfig;
 use crate::common::garmin_file::GarminFile;
 use crate::common::garmin_lap::GarminLap;
 use crate::common::garmin_summary::get_strava_id_from_begin_datetime;
@@ -67,11 +68,10 @@ struct ReportObjects {
 }
 
 pub fn file_report_html(
+    config: &GarminConfig,
     gfile: &GarminFile,
-    maps_api_key: &str,
     cache_dir: &str,
     history: &str,
-    gps_dir: &str,
     pool: Option<&PgPool>,
 ) -> Result<String, Error> {
     let sport = match &gfile.sport {
@@ -84,13 +84,12 @@ pub fn file_report_html(
     let graphs = get_graphs(&plot_opts);
 
     get_html_string(
+        config,
         &gfile,
         &report_objs,
         &graphs,
         &sport,
-        &maps_api_key,
         &history,
-        &gps_dir,
         pool,
     )
 }
@@ -326,13 +325,12 @@ fn get_graphs(plot_opts: &[PlotOpts]) -> Vec<String> {
 }
 
 fn get_html_string(
+    config: &GarminConfig,
     gfile: &GarminFile,
     report_objs: &ReportObjects,
     graphs: &[String],
     sport: &str,
-    maps_api_key: &str,
     history: &str,
-    gps_dir: &str,
     pool: Option<&PgPool>,
 ) -> Result<String, Error> {
     let strava_id_title = match pool {
@@ -340,179 +338,212 @@ fn get_html_string(
         None => None,
     };
 
-    let mut htmlvec: Vec<String> = Vec::new();
-
-    if !report_objs.lat_vals.is_empty()
+    let htmlvec = if !report_objs.lat_vals.is_empty()
         & !report_objs.lon_vals.is_empty()
         & (report_objs.lat_vals.len() == report_objs.lon_vals.len())
     {
-        let minlat = report_objs
-            .lat_vals
-            .iter()
-            .min_by_key(|&v| (v * 1000.0) as i32)
-            .unwrap_or(&0.0);
-        let maxlat = report_objs
-            .lat_vals
-            .iter()
-            .max_by_key(|&v| (v * 1000.0) as i32)
-            .unwrap_or(&0.0);
-        let minlon = report_objs
-            .lon_vals
-            .iter()
-            .min_by_key(|&v| (v * 1000.0) as i32)
-            .unwrap_or(&0.0);
-        let maxlon = report_objs
-            .lon_vals
-            .iter()
-            .max_by_key(|&v| (v * 1000.0) as i32)
-            .unwrap_or(&0.0);
-        let central_lat = (maxlat + minlat) / 2.0;
-        let central_lon = (maxlon + minlon) / 2.0;
-        let latlon_min = if (maxlat - minlat) > (maxlon - minlon) {
-            maxlat - minlat
-        } else {
-            maxlon - minlon
-        };
-        let latlon_thresholds = vec![
-            (15, 0.015),
-            (14, 0.038),
-            (13, 0.07),
-            (12, 0.12),
-            (11, 0.20),
-            (10, 0.4),
-        ];
-
-        for line in MAP_TEMPLATE.split('\n') {
-            if line.contains("SPORTTITLEDATE") {
-                let newtitle = format!(
-                    "Garmin Event {} on {}",
-                    titlecase(&sport),
-                    gfile.begin_datetime
-                );
-                htmlvec.push(line.replace("SPORTTITLEDATE", &newtitle).to_string());
-            } else if line.contains("SPORTTITLELINK") {
-                let newtitle = format!(
-                    "Garmin Event {} on {}",
-                    titlecase(&sport),
-                    gfile.begin_datetime
-                );
-                let newtitle = match strava_id_title.as_ref() {
-                    Some((id, title)) => format!(
-                        r#"<a href="https://www.strava.com/activities/{}">{} {}</a>"#,
-                        id, title, gfile.begin_datetime
-                    ),
-                    None => newtitle,
-                };
-                htmlvec.push(line.replace("SPORTTITLELINK", &newtitle).to_string());
-            } else if line.contains("ZOOMVALUE") {
-                for (zoom, thresh) in &latlon_thresholds {
-                    if (latlon_min < *thresh) | (*zoom == 10) {
-                        htmlvec.push(line.replace("ZOOMVALUE", &format!("{}", zoom)).to_string());
-                        break;
-                    }
-                }
-            } else if line.contains("INSERTTABLESHERE") {
-                htmlvec.push(format!("{}\n", get_file_html(&gfile)));
-                htmlvec.push(format!(
-                    "<br><br>{}\n",
-                    get_html_splits(&gfile, METERS_PER_MILE, "mi")?
-                ));
-                htmlvec.push(format!(
-                    "<br><br>{}\n",
-                    get_html_splits(&gfile, 5000.0, "km")?
-                ));
-            } else if line.contains("INSERTMAPSEGMENTSHERE") {
-                for (latv, lonv) in report_objs.lat_vals.iter().zip(report_objs.lon_vals.iter()) {
-                    htmlvec.push(format!("new google.maps.LatLng({},{}),", latv, lonv));
-                }
-            } else if line.contains("MINLAT")
-                | line.contains("MAXLAT")
-                | line.contains("MINLON")
-                | line.contains("MAXLON")
-            {
-                htmlvec.push(
-                    line.replace("MINLAT", &format!("{}", minlat))
-                        .replace("MAXLAT", &format!("{}", maxlat))
-                        .replace("MINLON", &format!("{}", minlon))
-                        .replace("MAXLON", &format!("{}", maxlon))
-                        .to_string(),
-                );
-            } else if line.contains("CENTRALLAT") | line.contains("CENTRALLON") {
-                htmlvec.push(
-                    line.replace("CENTRALLAT", &central_lat.to_string())
-                        .replace("CENTRALLON", &central_lon.to_string())
-                        .to_string(),
-                );
-            } else if line.contains("INSERTOTHERIMAGESHERE") {
-                for uri in graphs {
-                    htmlvec.push(uri.clone());
-                }
-            } else if line.contains("MAPSAPIKEY") {
-                htmlvec.push(line.replace("MAPSAPIKEY", maps_api_key).to_string());
-            } else if line.contains("HISTORYBUTTONS") {
-                let history_button = generate_history_buttons(&history);
-                htmlvec.push(line.replace("HISTORYBUTTONS", &history_button).to_string());
-            } else if line.contains("FILENAME") | line.contains("ACTIVITYTYPE") {
-                let filename = format!("{}/{}", &gps_dir, &gfile.filename);
-                let activity_type = convert_sport_name_to_activity_type(
-                    &gfile.sport.clone().unwrap_or_else(|| "".to_string()),
-                )
-                .unwrap_or_else(|| "".to_string());
-                htmlvec.push(
-                    line.replace("FILENAME", &filename)
-                        .replace("ACTIVITYTYPE", &activity_type),
-                );
-            } else {
-                htmlvec.push(line.to_string());
-            };
-        }
+        get_map_tempate_vec(
+            report_objs,
+            gfile,
+            sport,
+            strava_id_title,
+            history,
+            graphs,
+            config,
+        )?
     } else {
-        for line in GARMIN_TEMPLATE.split('\n') {
-            if line.contains("INSERTTEXTHERE") {
-                htmlvec.push(format!("{}\n", get_file_html(&gfile)));
-                htmlvec.push(format!(
-                    "<br><br>{}\n",
-                    get_html_splits(&gfile, METERS_PER_MILE, "mi")?
-                ));
-                htmlvec.push(format!(
-                    "<br><br>{}\n",
-                    get_html_splits(&gfile, 5000.0, "km")?
-                ));
-            } else if line.contains("SPORTTITLEDATE") {
-                let newtitle = format!(
-                    "Garmin Event {} on {}",
-                    titlecase(&sport),
-                    gfile.begin_datetime
-                );
-                htmlvec.push(line.replace("SPORTTITLEDATE", &newtitle).to_string());
-            } else if line.contains("SPORTTITLELINK") {
-                let newtitle = format!(
-                    "Garmin Event {} on {}",
-                    titlecase(&sport),
-                    gfile.begin_datetime
-                );
-                let newtitle = match strava_id_title.as_ref() {
-                    Some((id, title)) => format!(
-                        r#"<a href="https://www.strava.com/activities/{}">{} {}</a>"#,
-                        id, title, gfile.begin_datetime
-                    ),
-                    None => newtitle,
-                };
-                htmlvec.push(line.replace("SPORTTITLELINK", &newtitle).to_string());
-            } else if line.contains("HISTORYBUTTONS") {
-                let history_button = generate_history_buttons(&history);
-                htmlvec.push(line.replace("HISTORYBUTTONS", &history_button).to_string());
-            } else {
-                htmlvec.push(
-                    line.replace("<pre>", "<div>")
-                        .replace("</pre>", "</div>")
-                        .to_string(),
-                );
-            }
-        }
+        get_garmin_template_vec(gfile, sport, strava_id_title, history)?
     };
 
     Ok(htmlvec.join("\n"))
+}
+
+fn get_garmin_template_vec(
+    gfile: &GarminFile,
+    sport: &str,
+    strava_id_title: Option<(String, String)>,
+    history: &str,
+) -> Result<Vec<String>, Error> {
+    let mut htmlvec = Vec::new();
+
+    for line in GARMIN_TEMPLATE.split('\n') {
+        if line.contains("INSERTTEXTHERE") {
+            htmlvec.push(format!("{}\n", get_file_html(&gfile)));
+            htmlvec.push(format!(
+                "<br><br>{}\n",
+                get_html_splits(&gfile, METERS_PER_MILE, "mi")?
+            ));
+            htmlvec.push(format!(
+                "<br><br>{}\n",
+                get_html_splits(&gfile, 5000.0, "km")?
+            ));
+        } else if line.contains("SPORTTITLEDATE") {
+            let newtitle = format!(
+                "Garmin Event {} on {}",
+                titlecase(&sport),
+                gfile.begin_datetime
+            );
+            htmlvec.push(line.replace("SPORTTITLEDATE", &newtitle).to_string());
+        } else if line.contains("SPORTTITLELINK") {
+            let newtitle = format!(
+                "Garmin Event {} on {}",
+                titlecase(&sport),
+                gfile.begin_datetime
+            );
+            let newtitle = match strava_id_title.as_ref() {
+                Some((id, title)) => format!(
+                    r#"<a href="https://www.strava.com/activities/{}">{} {}</a>"#,
+                    id, title, gfile.begin_datetime
+                ),
+                None => newtitle,
+            };
+            htmlvec.push(line.replace("SPORTTITLELINK", &newtitle).to_string());
+        } else if line.contains("HISTORYBUTTONS") {
+            let history_button = generate_history_buttons(&history);
+            htmlvec.push(line.replace("HISTORYBUTTONS", &history_button).to_string());
+        } else {
+            htmlvec.push(
+                line.replace("<pre>", "<div>")
+                    .replace("</pre>", "</div>")
+                    .to_string(),
+            );
+        }
+    }
+    Ok(htmlvec)
+}
+
+fn get_map_tempate_vec(
+    report_objs: &ReportObjects,
+    gfile: &GarminFile,
+    sport: &str,
+    strava_id_title: Option<(String, String)>,
+    history: &str,
+    graphs: &[String],
+    config: &GarminConfig,
+) -> Result<Vec<String>, Error> {
+    let minlat = report_objs
+        .lat_vals
+        .iter()
+        .min_by_key(|&v| (v * 1000.0) as i32)
+        .unwrap_or(&0.0);
+    let maxlat = report_objs
+        .lat_vals
+        .iter()
+        .max_by_key(|&v| (v * 1000.0) as i32)
+        .unwrap_or(&0.0);
+    let minlon = report_objs
+        .lon_vals
+        .iter()
+        .min_by_key(|&v| (v * 1000.0) as i32)
+        .unwrap_or(&0.0);
+    let maxlon = report_objs
+        .lon_vals
+        .iter()
+        .max_by_key(|&v| (v * 1000.0) as i32)
+        .unwrap_or(&0.0);
+    let central_lat = (maxlat + minlat) / 2.0;
+    let central_lon = (maxlon + minlon) / 2.0;
+    let latlon_min = if (maxlat - minlat) > (maxlon - minlon) {
+        maxlat - minlat
+    } else {
+        maxlon - minlon
+    };
+    let latlon_thresholds = vec![
+        (15, 0.015),
+        (14, 0.038),
+        (13, 0.07),
+        (12, 0.12),
+        (11, 0.20),
+        (10, 0.4),
+    ];
+
+    let mut htmlvec = Vec::new();
+
+    for line in MAP_TEMPLATE.split('\n') {
+        if line.contains("SPORTTITLEDATE") {
+            let newtitle = format!(
+                "Garmin Event {} on {}",
+                titlecase(&sport),
+                gfile.begin_datetime
+            );
+            htmlvec.push(line.replace("SPORTTITLEDATE", &newtitle).to_string());
+        } else if line.contains("SPORTTITLELINK") {
+            let newtitle = format!(
+                "Garmin Event {} on {}",
+                titlecase(&sport),
+                gfile.begin_datetime
+            );
+            let newtitle = match strava_id_title.as_ref() {
+                Some((id, title)) => format!(
+                    r#"<a href="https://www.strava.com/activities/{}">{} {}</a>"#,
+                    id, title, gfile.begin_datetime
+                ),
+                None => newtitle,
+            };
+            htmlvec.push(line.replace("SPORTTITLELINK", &newtitle).to_string());
+        } else if line.contains("ZOOMVALUE") {
+            for (zoom, thresh) in &latlon_thresholds {
+                if (latlon_min < *thresh) | (*zoom == 10) {
+                    htmlvec.push(line.replace("ZOOMVALUE", &format!("{}", zoom)).to_string());
+                    break;
+                }
+            }
+        } else if line.contains("INSERTTABLESHERE") {
+            htmlvec.push(format!("{}\n", get_file_html(&gfile)));
+            htmlvec.push(format!(
+                "<br><br>{}\n",
+                get_html_splits(&gfile, METERS_PER_MILE, "mi")?
+            ));
+            htmlvec.push(format!(
+                "<br><br>{}\n",
+                get_html_splits(&gfile, 5000.0, "km")?
+            ));
+        } else if line.contains("INSERTMAPSEGMENTSHERE") {
+            for (latv, lonv) in report_objs.lat_vals.iter().zip(report_objs.lon_vals.iter()) {
+                htmlvec.push(format!("new google.maps.LatLng({},{}),", latv, lonv));
+            }
+        } else if line.contains("MINLAT")
+            | line.contains("MAXLAT")
+            | line.contains("MINLON")
+            | line.contains("MAXLON")
+        {
+            htmlvec.push(
+                line.replace("MINLAT", &format!("{}", minlat))
+                    .replace("MAXLAT", &format!("{}", maxlat))
+                    .replace("MINLON", &format!("{}", minlon))
+                    .replace("MAXLON", &format!("{}", maxlon))
+                    .to_string(),
+            );
+        } else if line.contains("CENTRALLAT") | line.contains("CENTRALLON") {
+            htmlvec.push(
+                line.replace("CENTRALLAT", &central_lat.to_string())
+                    .replace("CENTRALLON", &central_lon.to_string())
+                    .to_string(),
+            );
+        } else if line.contains("INSERTOTHERIMAGESHERE") {
+            for uri in graphs {
+                htmlvec.push(uri.clone());
+            }
+        } else if line.contains("MAPSAPIKEY") {
+            htmlvec.push(line.replace("MAPSAPIKEY", &config.maps_api_key).to_string());
+        } else if line.contains("HISTORYBUTTONS") {
+            let history_button = generate_history_buttons(&history);
+            htmlvec.push(line.replace("HISTORYBUTTONS", &history_button).to_string());
+        } else if line.contains("FILENAME") | line.contains("ACTIVITYTYPE") {
+            let filename = format!("{}/{}", &config.gps_dir, &gfile.filename);
+            let activity_type = convert_sport_name_to_activity_type(
+                &gfile.sport.clone().unwrap_or_else(|| "".to_string()),
+            )
+            .unwrap_or_else(|| "".to_string());
+            htmlvec.push(
+                line.replace("FILENAME", &filename)
+                    .replace("ACTIVITYTYPE", &activity_type),
+            );
+        } else {
+            htmlvec.push(line.to_string());
+        };
+    }
+    Ok(htmlvec)
 }
 
 fn get_file_html(gfile: &GarminFile) -> String {

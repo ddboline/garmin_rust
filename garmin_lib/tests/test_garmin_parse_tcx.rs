@@ -21,7 +21,7 @@ fn test_garmin_parse_tcx() {
     assert_eq!(gfile.laps.len(), 1);
     assert_eq!(gfile.laps[0].lap_duration, 1037.53);
     assert_eq!(gfile.points.len(), 182);
-    assert_abs_diff_eq!(gfile.total_distance, 5981.0424805); // 5981.9423828);
+    assert_abs_diff_eq!(gfile.total_distance, 5981.9423828);
     assert_abs_diff_eq!(gfile.total_duration, 1037.53);
     assert_abs_diff_eq!(gfile.total_hr_dur, 0.0);
     assert_abs_diff_eq!(gfile.total_hr_dis, 1037.53);

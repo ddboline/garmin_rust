@@ -398,8 +398,8 @@ fn get_html_string(
                 );
                 let newtitle = match strava_id_title.as_ref() {
                     Some((id, title)) => format!(
-                        r#"<a href="https://www.strava.com/activities/{}">{}</a>"#,
-                        id, title
+                        r#"<a href="https://www.strava.com/activities/{}">{} {}</a>"#,
+                        id, title, gfile.begin_datetime
                     ),
                     None => newtitle,
                 };
@@ -493,8 +493,8 @@ fn get_html_string(
                 );
                 let newtitle = match strava_id_title.as_ref() {
                     Some((id, title)) => format!(
-                        r#"<a href="https://www.strava.com/activities/{}">{}</a>"#,
-                        id, title
+                        r#"<a href="https://www.strava.com/activities/{}">{} {}</a>"#,
+                        id, title, gfile.begin_datetime
                     ),
                     None => newtitle,
                 };

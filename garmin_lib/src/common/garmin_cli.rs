@@ -1,6 +1,7 @@
 use clap::{App, Arg};
 use failure::{err_msg, Error};
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use reqwest::{Client, Url};
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs::{copy, rename};
@@ -15,7 +16,9 @@ use super::garmin_file;
 use super::garmin_summary::{get_list_of_files_from_db, GarminSummary, GarminSummaryList};
 use super::garmin_sync::GarminSync;
 use super::pgpool::PgPool;
-use crate::common::garmin_summary::get_maximum_begin_datetime;
+use crate::common::garmin_summary::{
+    get_maximum_begin_datetime, get_strava_id_maximum_begin_datetime,
+};
 use crate::parsers::garmin_parse::{GarminParse, GarminParseTrait};
 use crate::reports::garmin_file_report_html::file_report_html;
 use crate::reports::garmin_file_report_txt::generate_txt_report;
@@ -43,6 +46,7 @@ pub enum GarminCliOptions {
     FileNames(Vec<String>),
     ImportFileNames(Vec<String>),
     Connect,
+    SyncStrava,
 }
 
 #[derive(Debug, Default)]
@@ -165,6 +169,8 @@ impl GarminCli {
                 }
             } else if matches.is_present("connect") {
                 Some(GarminCliOptions::Connect)
+            } else if matches.is_present("sync_strava") {
+                Some(GarminCliOptions::SyncStrava)
             } else {
                 match matches
                     .values_of("import")
@@ -205,6 +211,10 @@ impl GarminCli {
     pub fn garmin_proc(&self) -> Result<(), Error> {
         if let Some(GarminCliOptions::Connect) = self.get_opts() {
             self.sync_with_garmin_connect()?;
+        }
+
+        if let Some(GarminCliOptions::SyncStrava) = self.get_opts() {
+            self.sync_with_strava()?;
         }
 
         if let Some(GarminCliOptions::ImportFileNames(filenames)) = self.get_opts() {
@@ -608,6 +618,30 @@ impl GarminCli {
         }
         Ok(Vec::new())
     }
+
+    pub fn sync_with_strava(&self) -> Result<Vec<String>, Error> {
+        if let Some(pool) = self.pool.as_ref() {
+            if let Some(max_datetime) = get_strava_id_maximum_begin_datetime(&pool)? {
+                let url = Url::parse_with_params(
+                    &format!("https://{}/strava/activities", &self.config.domain),
+                    &[("start_date", max_datetime)],
+                )?;
+                let resp: HashMap<String, StravaItem> = Client::new().get(url).send()?.json()?;
+                let query = "INSERT INTO strava_id_cache (strava_id, begin_datetime, strava_title) VALUES ($1,$2,$3)";
+                let items: Vec<_> = resp
+                    .into_par_iter()
+                    .map(|(key, val)| {
+                        let conn = pool.get()?;
+                        conn.execute(query, &[&key, &val.begin_datetime, &val.title])?;
+                        Ok(key.clone())
+                    })
+                    .collect();
+                let output: Vec<String> = map_result(items)?;
+                return Ok(output);
+            }
+        }
+        Ok(Vec::new())
+    }
 }
 
 #[derive(Debug, Default, Clone)]
@@ -616,4 +650,10 @@ pub struct GarminRequest {
     pub history: String,
     pub options: GarminReportOptions,
     pub constraints: Vec<String>,
+}
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+pub struct StravaItem {
+    pub begin_datetime: String,
+    pub title: String,
 }

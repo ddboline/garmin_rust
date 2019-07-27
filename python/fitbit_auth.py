@@ -26,7 +26,8 @@ def running():
 def fitbit_auth():
     client_id = request.args.get('id')
     client_secret = request.args.get('secret')
-    redirect_uri = 'https://www.ddboline.net/fitbit/callback'
+    domain = request.args.get('domain', 'www.ddboline.net')
+    redirect_uri = f'https://{domain}/fitbit/callback'
 
     fitbit_client[0] = Fitbit(
         client_id,

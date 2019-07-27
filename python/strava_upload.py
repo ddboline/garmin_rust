@@ -44,6 +44,12 @@ def running():
     return 'running', 200
 
 
+@app.route('/close_window', methods=['GET'])
+def close_window():
+    return '<title>Close window!</title>This window can be closed.' \
+    '<script language="JavaScript" type="text/javascript">window.close()</script>', 200
+
+
 @app.route('/callback', methods=['GET'])
 def strava_auth_callback():
     cp_, cid, cs, cat = get_config()
@@ -91,31 +97,46 @@ def strava_auth_callback():
             '<script language="JavaScript" type="text/javascript">window.close()</script>', 200
 
 
+@app.route('/auth/<type>')
+def strava_auth(type):
+    domain = request.args.get('domain', 'www.ddboline.net')
+
+    _scope = 'activity:write'
+    if type == 'read':
+        _scope = 'activity:read_all'
+    
+    _, cid, _, cat = get_config()
+
+    client = Client(cat)
+
+    try:
+        client.get_athlete()
+    except requests.exceptions.ConnectionError:
+        raise
+    except Exception:
+        client = Client()
+
+        _scope = 'activity:write'
+        authorize_url = client.authorization_url(
+            client_id=cid,
+            redirect_uri=f'https://{domain}/strava/callback',
+            scope=_scope,
+            state=base64.b64encode(json.dumps(request.json).encode()).decode())
+
+        return authorize_url, 200
+
+    return f'https://{domain}/strava/close_window', 200
+
+
 @app.route('/activities', methods=['GET'])
 def strava_activities():
 
     start_date = request.args.get('start_date', None)
     end_date = request.args.get('end_date', None)
 
-    _, cid, _, cat = get_config()
+    cat = get_config()[-1]
 
     client = Client(cat)
-
-    try:
-        list(client.get_activities(limit=1))
-    except requests.exceptions.ConnectionError:
-        raise
-    except Exception:
-        client = Client()
-
-        _scope = 'activity:read_all'
-        authorize_url = client.authorization_url(
-            client_id=cid,
-            redirect_uri='https://www.ddboline.net/strava/callback',
-            scope=_scope,
-            state=base64.b64encode(json.dumps(request.json).encode()).decode())
-
-        return authorize_url, 200
 
     activities = {
         x.id: {'begin_datetime': x.start_date.isoformat().replace('+00:00', 'Z'), 'title': x.name}
@@ -142,25 +163,9 @@ def strava_endpoint():
 
     assert activity_type in ACTIVITY_TYPES, 'invalid activity'
 
-    _, cid, _, cat = get_config()
+    cat = get_config()[-1]
 
     client = Client(cat)
-
-    try:
-        client.get_athlete()
-    except requests.exceptions.ConnectionError:
-        raise
-    except Exception:
-        client = Client()
-
-        _scope = 'activity:write'
-        authorize_url = client.authorization_url(
-            client_id=cid,
-            redirect_uri='https://www.ddboline.net/strava/callback',
-            scope=_scope,
-            state=base64.b64encode(json.dumps(request.json).encode()).decode())
-
-        return authorize_url, 200
 
     if not os.path.exists(filename):
         return "No such file %s" % filename, 400

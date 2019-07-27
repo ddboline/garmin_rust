@@ -512,3 +512,15 @@ pub fn get_strava_id_from_begin_datetime(
         })
         .transpose()
 }
+
+pub fn get_strava_id_maximum_begin_datetime(pool: &PgPool) -> Result<Option<String>, Error> {
+    let query = "SELECT MAX(begin_datetime) FROM strava_id_cache";
+
+    let conn = pool.get()?;
+
+    conn.query(&query, &[])?
+        .iter()
+        .nth(0)
+        .map(|row| row.get_idx(0))
+        .transpose()
+}

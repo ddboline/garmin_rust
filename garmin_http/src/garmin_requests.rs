@@ -102,6 +102,20 @@ impl Handler<GarminConnectSyncRequest> for PgPool {
     }
 }
 
+pub struct StravaSyncRequest {}
+
+impl Message for StravaSyncRequest {
+    type Result = Result<Vec<String>, Error>;
+}
+
+impl Handler<StravaSyncRequest> for PgPool {
+    type Result = Result<Vec<String>, Error>;
+    fn handle(&mut self, _: StravaSyncRequest, _: &mut Self::Context) -> Self::Result {
+        let gcli = GarminCli::from_pool(&self)?;
+        gcli.sync_with_strava()
+    }
+}
+
 pub struct GarminSyncRequest {}
 
 impl Message for GarminSyncRequest {

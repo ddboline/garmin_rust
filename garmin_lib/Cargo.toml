@@ -34,7 +34,7 @@ dotenv = "0.14"
 actix = "0.8.3"
 lazy_static = "1.3"
 roxmltree = "0.6"
-
+reqwest = "0.9"
 
 [dependencies.avro-rs]
 version = "0.6.5"

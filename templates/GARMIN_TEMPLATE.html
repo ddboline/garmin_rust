@@ -11,6 +11,7 @@
 <H3>
     <button type="submit" id="ID" onclick="garmin_sync();">sync with S3</button>
     <button type="submit" id="ID" onclick="garmin_connect_sync();">sync with Garmin Connect</button>
+    <button type="submit" id="ID" onclick="strava_sync();">sync with Strava</button>
     <button name="garminconnectoutput" id="garminconnectoutput"> &nbsp; </button>
 </H3>
 
@@ -50,6 +51,27 @@ INSERTTEXTHERE
     }
     function garmin_connect_sync() {
         var ostr = '../garmin/garmin_connect_sync';
+        var xmlhttp = new XMLHttpRequest();
+        xmlhttp.open("GET", ostr, true);
+        xmlhttp.onload = function nothing() {
+            document.getElementById("garminconnectoutput").innerHTML = "done";
+        }
+        xmlhttp.send(null);
+        document.getElementById("garminconnectoutput").innerHTML = "syncing";
+    }
+    function stravaAuth() {
+        var ostr = "../strava/auth/read?domain=www.ddboline.net";
+        var xmlhttp = new XMLHttpRequest();
+        xmlhttp.onload = function() {
+            var win = window.open(xmlhttp.responseText, '_blank');
+            win.focus()
+        }
+        xmlhttp.open( "GET", ostr, true );
+        xmlhttp.send(null);
+    }
+    function strava_sync() {
+        stravaAuth();
+        var ostr = '../garmin/strava_sync';
         var xmlhttp = new XMLHttpRequest();
         xmlhttp.open("GET", ostr, true);
         xmlhttp.onload = function nothing() {

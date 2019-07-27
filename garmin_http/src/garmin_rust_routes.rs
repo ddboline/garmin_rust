@@ -19,7 +19,7 @@ use super::logged_user::LoggedUser;
 use super::garmin_rust_app::AppState;
 use crate::garmin_requests::{
     GarminConnectSyncRequest, GarminCorrRequest, GarminHtmlRequest, GarminListRequest,
-    GarminSyncRequest,
+    GarminSyncRequest, StravaSyncRequest,
 };
 use crate::CONFIG;
 
@@ -110,6 +110,25 @@ pub fn garmin_sync(
     state
         .db
         .send(GarminSyncRequest {})
+        .from_err()
+        .and_then(move |res| {
+            res.and_then(|_| {
+                if !state.user_list.is_authorized(&user) {
+                    return Ok(HttpResponse::Unauthorized()
+                        .json(format!("Unauthorized {:?}", state.user_list)));
+                }
+                Ok(form_http_response("finished".to_string()))
+            })
+        })
+}
+
+pub fn strava_sync(
+    user: LoggedUser,
+    state: Data<AppState>,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    state
+        .db
+        .send(StravaSyncRequest {})
         .from_err()
         .and_then(move |res| {
             res.and_then(|_| {

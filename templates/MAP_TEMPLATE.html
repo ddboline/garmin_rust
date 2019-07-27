@@ -102,11 +102,22 @@ HISTORYBUTTONS
         var ostr = '../garmin?' + command;
         location.replace(ostr);
     }
+    function stravaAuth() {
+        var ostr = "../strava/auth/write?domain=www.ddboline.net";
+        var xmlhttp = new XMLHttpRequest();
+        xmlhttp.onload = function() {
+            var win = window.open(xmlhttp.responseText, '_blank');
+            win.focus()
+        }
+        xmlhttp.open( "GET", ostr, true );
+        xmlhttp.send(null);
+    }
     function processFormData() {
         var garmin_cmd = document.getElementById( 'garmin_cmd' );
         send_command( 'filter=' + garmin_cmd.value );
     }
     function processStravaData() {
+        stravaAuth();
         var strava_title = document.getElementById( 'strava_upload' );
         var ostr = '../strava';
         var data = JSON.stringify(

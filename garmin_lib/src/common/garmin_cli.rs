@@ -1,7 +1,7 @@
+use chrono::{DateTime, Duration, SecondsFormat};
 use clap::{App, Arg};
 use failure::{err_msg, Error};
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
-use reqwest::{Client, Url};
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs::{copy, rename};
@@ -16,9 +16,8 @@ use super::garmin_file;
 use super::garmin_summary::{get_list_of_files_from_db, GarminSummary, GarminSummaryList};
 use super::garmin_sync::GarminSync;
 use super::pgpool::PgPool;
-use crate::common::garmin_summary::{
-    get_maximum_begin_datetime, get_strava_id_maximum_begin_datetime,
-};
+use crate::common::garmin_summary::get_maximum_begin_datetime;
+use crate::common::strava_sync::{get_strava_id_maximum_begin_datetime, upsert_strava_id};
 use crate::parsers::garmin_parse::{GarminParse, GarminParseTrait};
 use crate::reports::garmin_file_report_html::file_report_html;
 use crate::reports::garmin_file_report_txt::generate_txt_report;
@@ -628,23 +627,10 @@ impl GarminCli {
     pub fn sync_with_strava(&self) -> Result<Vec<String>, Error> {
         if let Some(pool) = self.pool.as_ref() {
             if let Some(max_datetime) = get_strava_id_maximum_begin_datetime(&pool)? {
-                let url = Url::parse_with_params(
-                    &format!("https://{}/strava/activities", &self.config.domain),
-                    &[("start_date", max_datetime)],
-                )?;
-                println!("{}", url.as_str());
-                let resp: HashMap<String, StravaItem> = Client::new().get(url).send()?.json()?;
-                let query = "INSERT INTO strava_id_cache (strava_id, begin_datetime, strava_title) VALUES ($1,$2,$3)";
-                let items: Vec<_> = resp
-                    .into_par_iter()
-                    .map(|(key, val)| {
-                        let conn = pool.get()?;
-                        conn.execute(query, &[&key, &val.begin_datetime, &val.title])?;
-                        Ok(key.clone())
-                    })
-                    .collect();
-                let output: Vec<String> = map_result(items)?;
-                return Ok(output);
+                let max_datetime = DateTime::parse_from_rfc3339(&max_datetime)?;
+                let max_datetime = max_datetime - Duration::days(14);
+                let max_datetime = max_datetime.to_rfc3339_opts(SecondsFormat::Secs, true);
+                return upsert_strava_id(pool, &self.config, &max_datetime);
             }
         }
         Ok(Vec::new())
@@ -657,10 +643,4 @@ pub struct GarminRequest {
     pub history: String,
     pub options: GarminReportOptions,
     pub constraints: Vec<String>,
-}
-
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
-pub struct StravaItem {
-    pub begin_datetime: String,
-    pub title: String,
 }

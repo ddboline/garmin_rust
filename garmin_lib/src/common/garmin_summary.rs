@@ -491,36 +491,3 @@ pub fn get_maximum_begin_datetime(pool: &PgPool) -> Result<Option<String>, Error
         .map(|row| row.get_idx(0))
         .transpose()
 }
-
-pub fn get_strava_id_from_begin_datetime(
-    pool: &PgPool,
-    begin_datetime: &str,
-) -> Result<Option<(String, String)>, Error> {
-    let query = format!(
-        r#"SELECT strava_id, strava_title FROM strava_id_cache WHERE begin_datetime = '{}'"#,
-        begin_datetime
-    );
-
-    let conn = pool.get()?;
-    conn.query(&query, &[])?
-        .iter()
-        .nth(0)
-        .map(|row| {
-            let id = row.get_idx(0)?;
-            let title = row.get_idx(1)?;
-            Ok((id, title))
-        })
-        .transpose()
-}
-
-pub fn get_strava_id_maximum_begin_datetime(pool: &PgPool) -> Result<Option<String>, Error> {
-    let query = "SELECT MAX(begin_datetime) FROM strava_id_cache";
-
-    let conn = pool.get()?;
-
-    conn.query(&query, &[])?
-        .iter()
-        .nth(0)
-        .map(|row| row.get_idx(0))
-        .transpose()
-}

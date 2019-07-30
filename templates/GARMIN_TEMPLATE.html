@@ -61,7 +61,7 @@ INSERTTEXTHERE
         document.getElementById("garminconnectoutput").innerHTML = "syncing";
     }
     function stravaAuth() {
-        var ostr = "../strava/auth/read?domain=www.ddboline.net";
+        var ostr = "../strava/auth/read?domain=DOMAIN";
         var xmlhttp = new XMLHttpRequest();
         xmlhttp.onload = function() {
             var win = window.open(xmlhttp.responseText, '_blank');

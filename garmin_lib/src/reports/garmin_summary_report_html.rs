@@ -88,6 +88,7 @@ fn generate_url_string(current_line: &str, options: &GarminReportOptions) -> Str
 }
 
 pub fn summary_report_html(
+    domain: &str,
     retval: &[String],
     options: &GarminReportOptions,
     cache_dir: &str,
@@ -131,6 +132,8 @@ pub fn summary_report_html(
         } else if line.contains("HISTORYBUTTONS") {
             let history_button = generate_history_buttons(&history);
             htmlvec.push(line.replace("HISTORYBUTTONS", &history_button).to_string());
+        } else if line.contains("DOMAIN") {
+            htmlvec.push(line.replace("DOMAIN", domain));
         } else {
             htmlvec.push(line.to_string());
         }

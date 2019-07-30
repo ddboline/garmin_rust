@@ -5,6 +5,7 @@ authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+fitbit_lib = {path="fitbit_lib"}
 garmin_lib = { path = "garmin_lib" }
 garmin_http = { path = "garmin_http" }
 actix = "0.8.3"
@@ -14,6 +15,7 @@ env_logger = "0.6"
 
 [workspace]
 members = [
+    "fitbit_lib",
     "garmin_lib",
     "garmin_http",
 ]

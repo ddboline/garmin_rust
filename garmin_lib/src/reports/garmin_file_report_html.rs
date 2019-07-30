@@ -352,13 +352,14 @@ fn get_html_string(
             config,
         )?
     } else {
-        get_garmin_template_vec(gfile, sport, strava_id_title, history)?
+        get_garmin_template_vec(&config.domain, gfile, sport, strava_id_title, history)?
     };
 
     Ok(htmlvec.join("\n"))
 }
 
 fn get_garmin_template_vec(
+    domain: &str,
     gfile: &GarminFile,
     sport: &str,
     strava_id_title: Option<(String, String)>,
@@ -401,6 +402,8 @@ fn get_garmin_template_vec(
         } else if line.contains("HISTORYBUTTONS") {
             let history_button = generate_history_buttons(&history);
             htmlvec.push(line.replace("HISTORYBUTTONS", &history_button).to_string());
+        } else if line.contains("DOMAIN") {
+            htmlvec.push(line.replace("DOMAIN", domain));
         } else {
             htmlvec.push(
                 line.replace("<pre>", "<div>")

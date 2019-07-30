@@ -16,7 +16,7 @@ all:
 xenial:
 	mkdir -p build/ && \
 	cp Dockerfile.build.ubuntu16.04 build/Dockerfile && \
-	cp -a Cargo.toml src scripts Makefile python templates garmin_lib garmin_http build/ && \
+	cp -a Cargo.toml src scripts Makefile python templates garmin_lib garmin_http fitbit_lib build/ && \
 	cd build/ && \
 	docker build -t garmin_rust/build_rust:ubuntu16.04 . && \
 	cd ../ && \

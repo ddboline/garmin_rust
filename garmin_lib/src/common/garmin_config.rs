@@ -22,6 +22,8 @@ pub struct GarminConfigInner {
     pub n_db_workers: usize,
     pub secret_key: String,
     pub domain: String,
+    pub google_secret_file: String,
+    pub google_token_path: String,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -87,6 +89,12 @@ impl GarminConfigInner {
         }
         if let Ok(domain) = var("DOMAIN") {
             self.domain = domain
+        }
+        if let Ok(google_secret_file) = var("GOOGLE_SECRET_FILE") {
+            self.google_secret_file = google_secret_file;
+        }
+        if let Ok(google_token_path) = var("GOOGLE_TOKEN_PATH") {
+            self.google_token_path = google_token_path
         }
         self
     }

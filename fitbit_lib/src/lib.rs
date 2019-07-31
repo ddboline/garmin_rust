@@ -1,4 +1,4 @@
-pub mod scale_measurements;
+pub mod sheets_client;
 
 #[cfg(test)]
 mod tests {

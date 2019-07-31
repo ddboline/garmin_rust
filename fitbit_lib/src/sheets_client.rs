@@ -17,11 +17,11 @@ type GAuthenticator = Authenticator<DefaultAuthenticatorDelegate, DiskTokenStora
 type GSheets = Sheets<Client, GAuthenticator>;
 
 #[derive(Clone)]
-pub struct ScaleMeasurements {
+pub struct SheetsClient {
     pub gsheets: Rc<GSheets>,
 }
 
-impl ScaleMeasurements {
+impl SheetsClient {
     pub fn new(config: &GarminConfig, session_name: &str) -> Self {
         Self {
             gsheets: Rc::new(Self::create_drive(&config, session_name).unwrap()),

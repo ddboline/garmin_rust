@@ -4,7 +4,6 @@ pub struct PlotOpts<'a> {
     pub title: String,
     pub data: Option<&'a [(f64, f64)]>,
     pub do_scatter: bool,
-    pub cache_dir: String,
     pub marker: Option<String>,
     pub xlabel: String,
     pub ylabel: String,
@@ -17,7 +16,6 @@ impl<'a> PlotOpts<'a> {
             title: "".to_string(),
             data: None,
             do_scatter: false,
-            cache_dir: "".to_string(),
             marker: None,
             xlabel: "".to_string(),
             ylabel: "".to_string(),
@@ -41,11 +39,6 @@ impl<'a> PlotOpts<'a> {
 
     pub fn with_scatter(mut self) -> PlotOpts<'a> {
         self.do_scatter = true;
-        self
-    }
-
-    pub fn with_cache_dir(mut self, cache_dir: &str) -> PlotOpts<'a> {
-        self.cache_dir = cache_dir.to_string();
         self
     }
 

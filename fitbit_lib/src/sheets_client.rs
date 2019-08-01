@@ -66,3 +66,10 @@ impl SheetsClient {
         ))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    // use crate::
+    #[test]
+    fn test_sheets_client() {}
+}

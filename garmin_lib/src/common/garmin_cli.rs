@@ -532,19 +532,7 @@ impl GarminCli {
                 };
                 debug!("gfile {} {}", gfile.laps.len(), gfile.points.len());
 
-                let tempdir = TempDir::new("garmin_html")?;
-                let htmlcachedir = tempdir
-                    .path()
-                    .to_str()
-                    .ok_or_else(|| err_msg("Path is invalid unicode somehow"))?;
-
-                file_report_html(
-                    self.get_config(),
-                    &gfile,
-                    &htmlcachedir,
-                    &req.history,
-                    Some(&pg_conn),
-                )
+                file_report_html(self.get_config(), &gfile, &req.history, Some(&pg_conn))
             }
             _ => {
                 debug!("{:?}", req.options);
@@ -554,17 +542,10 @@ impl GarminCli {
                         .map(|x| x.join("</td><td>"))
                         .collect();
 
-                let tempdir = TempDir::new("garmin_html")?;
-                let htmlcachedir = tempdir
-                    .path()
-                    .to_str()
-                    .ok_or_else(|| err_msg("Path is invalid unicode somehow"))?;
-
                 summary_report_html(
                     &self.get_config().domain,
                     &txt_result,
                     &req.options,
-                    &htmlcachedir,
                     &req.filter,
                     &req.history,
                 )

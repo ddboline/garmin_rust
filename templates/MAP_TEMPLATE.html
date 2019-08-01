@@ -107,7 +107,7 @@ HISTORYBUTTONS
         location.replace(ostr);
     }
     function stravaAuth() {
-        var ostr = "../strava/auth/write?domain=www.ddboline.net";
+        var ostr = "../strava/auth/write?domain=DOMAIN";
         var xmlhttp = new XMLHttpRequest();
         xmlhttp.onload = function() {
             var win = window.open(xmlhttp.responseText, '_blank');

@@ -70,7 +70,6 @@ struct ReportObjects {
 pub fn file_report_html(
     config: &GarminConfig,
     gfile: &GarminFile,
-    cache_dir: &str,
     history: &str,
     pool: Option<&PgPool>,
 ) -> Result<String, Error> {
@@ -80,7 +79,7 @@ pub fn file_report_html(
     };
 
     let report_objs = extract_report_objects_from_file(&gfile)?;
-    let plot_opts = get_plot_opts(&report_objs, &cache_dir);
+    let plot_opts = get_plot_opts(&report_objs);
     let graphs = get_graphs(&plot_opts);
 
     get_html_string(
@@ -193,7 +192,7 @@ fn extract_report_objects_from_file(gfile: &GarminFile) -> Result<ReportObjects,
     Ok(report_objs)
 }
 
-fn get_plot_opts<'a>(report_objs: &'a ReportObjects, cache_dir: &str) -> Vec<PlotOpts<'a>> {
+fn get_plot_opts<'a>(report_objs: &'a ReportObjects) -> Vec<PlotOpts<'a>> {
     let mut plot_opts = Vec::new();
 
     if !report_objs.mile_split_vals.is_empty() {
@@ -203,8 +202,7 @@ fn get_plot_opts<'a>(report_objs: &'a ReportObjects, cache_dir: &str) -> Vec<Plo
                 .with_title("Pace per Mile every mi")
                 .with_data(&report_objs.mile_split_vals)
                 .with_marker("o")
-                .with_labels("mi", "min/mi")
-                .with_cache_dir(&cache_dir),
+                .with_labels("mi", "min/mi"),
         );
     };
 
@@ -220,8 +218,7 @@ fn get_plot_opts<'a>(report_objs: &'a ReportObjects, cache_dir: &str) -> Vec<Plo
                     .as_str(),
                 )
                 .with_data(&report_objs.hr_values)
-                .with_labels("mi", "bpm")
-                .with_cache_dir(&cache_dir),
+                .with_labels("mi", "bpm"),
         );
     };
 
@@ -231,8 +228,7 @@ fn get_plot_opts<'a>(report_objs: &'a ReportObjects, cache_dir: &str) -> Vec<Plo
                 .with_name("altitude")
                 .with_title("Altitude")
                 .with_data(&report_objs.alt_values)
-                .with_labels("mi", "height [m]")
-                .with_cache_dir(&cache_dir),
+                .with_labels("mi", "height [m]"),
         );
     };
 
@@ -242,8 +238,7 @@ fn get_plot_opts<'a>(report_objs: &'a ReportObjects, cache_dir: &str) -> Vec<Plo
                 .with_name("speed_minpermi")
                 .with_title("Speed min/mi every 1/4 mi")
                 .with_data(&report_objs.speed_values)
-                .with_labels("mi", "min/mi")
-                .with_cache_dir(&cache_dir),
+                .with_labels("mi", "min/mi"),
         );
 
         plot_opts.push(
@@ -251,8 +246,7 @@ fn get_plot_opts<'a>(report_objs: &'a ReportObjects, cache_dir: &str) -> Vec<Plo
                 .with_name("speed_mph")
                 .with_title("Speed mph")
                 .with_data(&report_objs.mph_speed_values)
-                .with_labels("mi", "mph")
-                .with_cache_dir(&cache_dir),
+                .with_labels("mi", "mph"),
         );
     };
 
@@ -263,8 +257,7 @@ fn get_plot_opts<'a>(report_objs: &'a ReportObjects, cache_dir: &str) -> Vec<Plo
                 .with_title("Speed min/mi every 1/4 mi")
                 .with_data(&report_objs.heart_rate_speed)
                 .with_scatter()
-                .with_labels("hrt", "min/mi")
-                .with_cache_dir(&cache_dir),
+                .with_labels("hrt", "min/mi"),
         );
     };
 
@@ -286,8 +279,7 @@ fn get_plot_opts<'a>(report_objs: &'a ReportObjects, cache_dir: &str) -> Vec<Plo
                 )
                 .with_data(&report_objs.heart_rate_speed)
                 .with_scatter()
-                .with_labels("mi", "min/mi")
-                .with_cache_dir(&cache_dir),
+                .with_labels("mi", "min/mi"),
         );
     };
 
@@ -303,8 +295,7 @@ fn get_plot_opts<'a>(report_objs: &'a ReportObjects, cache_dir: &str) -> Vec<Plo
                 .with_title(format!("Avg Speed {:.2} mph", avg_mph_speed_value).as_str())
                 .with_data(&report_objs.avg_mph_speed_values)
                 .with_scatter()
-                .with_labels("mi", "min/mi")
-                .with_cache_dir(&cache_dir),
+                .with_labels("mi", "min/mi"),
         );
     };
 
@@ -542,6 +533,8 @@ fn get_map_tempate_vec(
                 line.replace("FILENAME", &filename)
                     .replace("ACTIVITYTYPE", &activity_type),
             );
+        } else if line.contains("DOMAIN") {
+            htmlvec.push(line.replace("DOMAIN", &config.domain));
         } else {
             htmlvec.push(line.to_string());
         };

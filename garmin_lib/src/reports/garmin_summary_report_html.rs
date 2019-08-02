@@ -1,6 +1,5 @@
 use chrono::{Datelike, Utc};
 use failure::Error;
-use std::fs::create_dir_all;
 
 use crate::reports::garmin_file_report_html::generate_history_buttons;
 use crate::reports::garmin_report_options::{GarminReportAgg, GarminReportOptions};
@@ -91,7 +90,6 @@ pub fn summary_report_html(
     domain: &str,
     retval: &[String],
     options: &GarminReportOptions,
-    cache_dir: &str,
     filter: &str,
     history: &str,
 ) -> Result<String, Error> {
@@ -118,8 +116,6 @@ pub fn summary_report_html(
         .collect();
 
     let htmlostr = htmlostr.join("\n").replace("\n\n", "<br>\n");
-
-    create_dir_all(&format!("{}/html", cache_dir))?;
 
     let mut htmlvec: Vec<String> = Vec::new();
 

@@ -1,6 +1,6 @@
 [package]
 name = "garmin_rust"
-version = "0.4.13"
+version = "0.4.15"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -33,4 +33,14 @@ doc = false
 [[bin]]
 name = "garmin-rust-http"
 path = "src/garmin_rust_http.rs"
+doc = false
+
+[[bin]]
+name = "pull-scale-measurements-from-sheets"
+path = "src/pull_scale_measurements_from_sheets.rs"
+doc = false
+
+[[bin]]
+name = "pull-scale-measurements-from-telegram"
+path = "src/pull_scale_measurements_from_telegram.rs"
 doc = false

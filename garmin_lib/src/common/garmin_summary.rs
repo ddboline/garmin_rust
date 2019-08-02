@@ -8,7 +8,7 @@ use std::fs::File;
 use std::io::{stdout, Write};
 use std::path::Path;
 
-use super::garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList};
+use super::garmin_correction_lap::GarminCorrectionLap;
 use super::garmin_file::GarminFile;
 use super::pgpool::PgPool;
 use crate::parsers::garmin_parse::{GarminParse, GarminParseTrait};
@@ -217,20 +217,6 @@ impl GarminSummaryList {
             .collect();
 
         Ok(GarminSummaryList::from_vec(map_result(gsum_result_list)?))
-    }
-
-    pub fn create_summary_list(&self) -> Result<GarminSummaryList, Error> {
-        let gps_dir = "/home/ddboline/.garmin_cache/run/gps_tracks";
-        let cache_dir = "/home/ddboline/.garmin_cache/run/cache";
-
-        let corr_list =
-            GarminCorrectionList::from_pool(&self.get_pool()?).read_corrections_from_db()?;
-
-        writeln!(stdout().lock(), "{}", corr_list.corr_map.len())?;
-
-        let corr_map = corr_list.get_corr_list_map();
-
-        GarminSummaryList::process_all_gps_files(&gps_dir, &cache_dir, &corr_map)
     }
 
     pub fn read_summary_from_avro(input_filename: &str) -> Result<GarminSummaryList, Error> {

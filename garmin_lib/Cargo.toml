@@ -1,6 +1,6 @@
 [package]
 name = "garmin_lib"
-version = "0.4.13"
+version = "0.4.15"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -13,7 +13,7 @@ rayon = "1.1"
 chrono = "0.4"
 subprocess = "0.1"
 json = "0.11"
-postgres = "0.15"
+postgres = {version = "0.15", features = ["with-chrono"]}
 postgres-derive = "0.3"
 clap = "2"
 log = "0.4"

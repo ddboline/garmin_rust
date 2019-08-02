@@ -55,6 +55,7 @@ install:
 	cp target/$(build_type)/garmin-rust-proc /usr/bin/garmin-rust-proc
 	cp target/$(build_type)/garmin-rust-report /usr/bin/garmin-rust-report
 	cp target/$(build_type)/garmin-rust-http /usr/bin/garmin-rust-http
+	cp target/$(build_type)/pull-scale-measurements-from-telegram /usr/bin/pull-scale-measurements-from-telegram
 	cp python/strava_upload.py /usr/bin/strava-upload
 	cp python/fitbit_auth.py /usr/bin/fitbit-auth
 	cp python/garmin_connect.py /usr/bin/garmin-connect-download

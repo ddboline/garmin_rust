@@ -24,6 +24,7 @@ pub struct GarminConfigInner {
     pub domain: String,
     pub google_secret_file: String,
     pub google_token_path: String,
+    pub telegram_bot_token: String,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -95,6 +96,9 @@ impl GarminConfigInner {
         }
         if let Ok(google_token_path) = var("GOOGLE_TOKEN_PATH") {
             self.google_token_path = google_token_path
+        }
+        if let Ok(telegram_bot_token) = var("TELEGRAM_BOT_TOKEN") {
+            self.telegram_bot_token = telegram_bot_token
         }
         self
     }

@@ -14,7 +14,6 @@ use avro_rs::{from_value, Codec, Reader, Schema, Writer};
 use json::{parse, JsonValue};
 
 use super::garmin_lap::GarminLap;
-use super::garmin_summary::GarminSummaryList;
 use super::pgpool::PgPool;
 use crate::utils::garmin_util::{map_result, METERS_PER_MILE};
 use crate::utils::row_index_trait::RowIndexTrait;
@@ -326,67 +325,6 @@ impl GarminCorrectionList {
         }
 
         Self::from_vec(corr_list_map.values().cloned().collect())
-    }
-
-    pub fn fix_corrections(&self) -> Result<(), Error> {
-        let correction_file = "garmin_corrections.avro";
-        let gps_dir = "/home/ddboline/.garmin_cache/run/gps_tracks";
-        let cache_dir = "/home/ddboline/.garmin_cache/run/cache";
-
-        let mut corr_list = Self::corr_list_from_json("tests/data/garmin_corrections.json")?;
-
-        let corr_list = corr_list.add_mislabeled_times_to_corr_list();
-
-        //dump_corr_list_to_avro(&corr_list, correction_file)?;
-
-        //let corr_list = read_corr_list_from_avro(&correction_file)?;
-
-        writeln!(stdout().lock(), "{}", corr_list.get_corr_list().len())?;
-
-        let fn_unique_key_map = self.get_filename_start_map()?;
-
-        writeln!(
-            stdout().lock(),
-            "{} {:?}",
-            fn_unique_key_map.len(),
-            fn_unique_key_map.iter().nth(0)
-        )?;
-
-        let corr_map = corr_list.get_corr_list_map();
-
-        let gsum_list = GarminSummaryList::process_all_gps_files(&gps_dir, &cache_dir, &corr_map)?;
-
-        writeln!(stdout().lock(), "{}", gsum_list.summary_list.len())?;
-
-        let mut new_corr_map = corr_map.clone();
-
-        for gsum in gsum_list.summary_list {
-            match fn_unique_key_map.get(&gsum.filename) {
-                Some((s, n)) => {
-                    if let Some(v) = corr_map.get(&(s.to_string(), *n)) {
-                        writeln!(
-                            stdout().lock(),
-                            "{} {} {} {}",
-                            gsum.filename,
-                            gsum.begin_datetime,
-                            s,
-                            n
-                        )?;
-                        let mut new_corr = v.clone();
-                        new_corr.start_time = gsum.begin_datetime.clone();
-                        new_corr_map.insert((s.to_string(), *n), new_corr);
-                    }
-                }
-                None => continue,
-            }
-        }
-
-        let new_corr_list = Self::from_vec(new_corr_map.values().cloned().collect());
-
-        writeln!(stdout().lock(), "{}", new_corr_list.get_corr_list().len())?;
-
-        new_corr_list.dump_corr_list_to_avro(correction_file)?;
-        Ok(())
     }
 
     pub fn get_filename_start_map(&self) -> Result<HashMap<String, (String, i32)>, Error> {

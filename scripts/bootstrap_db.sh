@@ -37,3 +37,5 @@ EOL
 
 psql $DB < ./scripts/garmin_corrections_laps.sql
 psql $DB < ./scripts/garmin_summary.sql
+psql $DB < ./scripts/strava_id_cache.sql
+psql $DB < ./scripts/scale_measurements.sql

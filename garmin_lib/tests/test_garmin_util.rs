@@ -32,7 +32,6 @@ fn plot_graph() {
     let test_data = vec![(0.1, 0.2), (1.0, 2.0), (3.0, 4.0)];
 
     let plot_opts = plot_opts::PlotOpts::new()
-        .with_cache_dir("/home/ddboline/.garmin_cache")
         .with_labels("Test X label", "Test Y label")
         .with_marker("o")
         .with_name("test_plot")

@@ -29,7 +29,9 @@ pub fn run_bot(config: &GarminConfig, pool: PgPool) -> Result<(), Error> {
                 // Print received text message to stdout.
                 println!("{:?}", message);
                 if message.from.id == UserId::new(972549683) {
-                    s.send(data.to_string()).unwrap();
+                    if let Err(e) = s.try_send(data.to_string()) {
+                        println!("send error {}", e);
+                    }
                 }
 
                 // Answer message with "Hi".

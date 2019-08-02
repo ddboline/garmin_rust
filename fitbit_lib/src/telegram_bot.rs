@@ -2,9 +2,9 @@ use crossbeam_channel::{unbounded, Receiver};
 use failure::{err_msg, Error};
 use futures::Stream;
 use std::thread;
+use telegram_bot::types::refs::UserId;
 use telegram_bot::{Api, CanReplySendMessage, MessageKind, UpdateKind};
 use tokio_core::reactor::Core;
-use telegram_bot::types::refs::UserId;
 
 use crate::scale_measurement::ScaleMeasurement;
 use garmin_lib::common::garmin_config::GarminConfig;
@@ -28,7 +28,7 @@ pub fn run_bot(config: &GarminConfig, pool: PgPool) -> Result<(), Error> {
             if let MessageKind::Text { ref data, .. } = message.kind {
                 // Print received text message to stdout.
                 println!("{:?}", message);
-                if message.from.id == UserId::new(972549683) {
+                if message.from.id == UserId::new(972_549_683) {
                     if let Err(e) = s.try_send(data.to_string()) {
                         println!("send error {}", e);
                     }

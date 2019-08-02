@@ -3,6 +3,7 @@ use google_sheets4::{Sheet, Sheets};
 use hyper::net::HttpsConnector;
 use hyper::Client;
 use hyper_native_tls::NativeTlsClient;
+use std::collections::HashMap;
 use std::fs::{create_dir_all, File};
 use std::path::Path;
 use std::rc::Rc;
@@ -12,6 +13,9 @@ use yup_oauth2::{
 };
 
 use garmin_lib::common::garmin_config::GarminConfig;
+use garmin_lib::common::pgpool::PgPool;
+
+use crate::scale_measurement::ScaleMeasurement;
 
 type GAuthenticator = Authenticator<DefaultAuthenticatorDelegate, DiskTokenStorage, Client>;
 type GSheets = Sheets<Client, GAuthenticator>;
@@ -76,6 +80,45 @@ impl SheetsClient {
             .map_err(|e| err_msg(format!("{:#?}", e)))?;
         sheets.sheets.ok_or_else(|| err_msg("No sheets"))
     }
+}
+
+pub fn run_sync_sheets() -> Result<(), Error> {
+    let config = GarminConfig::get_config(None)?;
+    let pool = PgPool::new(&config.pgurl);
+    let current_measurements: HashMap<_, _> = ScaleMeasurement::read_from_db(&pool)?
+        .into_iter()
+        .map(|meas| (meas.datetime, meas))
+        .collect();
+
+    let c = SheetsClient::new(&config, "ddboline@gmail.com");
+    let (_, sheets) = c
+        .gsheets
+        .spreadsheets()
+        .get("1MG8so2pFKoOIpt0Vo9pUAtoNk-Y1SnHq9DiEFi-m5Uw")
+        .include_grid_data(true)
+        .doit()
+        .map_err(|e| err_msg(format!("Failure {}", e)))?;
+    let sheets = sheets.sheets.ok_or_else(|| err_msg("No sheet"))?;
+    let sheet = &sheets[0];
+    let data = sheet.data.as_ref().ok_or_else(|| err_msg("No data"))?;
+    let row_data = &data[0]
+        .row_data
+        .as_ref()
+        .ok_or_else(|| err_msg("No row_data"))?;
+    let measurements: Vec<ScaleMeasurement> = row_data[1..]
+        .iter()
+        .filter_map(|row| ScaleMeasurement::from_row_data(row).ok())
+        .collect();
+    println!("{} {} {}", data.len(), row_data.len(), measurements.len());
+    for meas in measurements {
+        if !current_measurements.contains_key(&meas.datetime) {
+            println!("insert {:?}", meas);
+            meas.insert_into_db(&pool)?;
+        } else {
+            println!("exists {:?}", meas);
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]

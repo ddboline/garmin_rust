@@ -7,6 +7,7 @@ TABLES="
 garmin_corrections_laps
 garmin_summary
 strava_id_cache
+scale_measurements
 "
 
 mkdir -p backup/

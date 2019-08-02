@@ -1,5 +1,5 @@
 use failure::{err_msg, Error};
-use google_sheets4::Sheets;
+use google_sheets4::{Sheet, Sheets};
 use hyper::net::HttpsConnector;
 use hyper::Client;
 use hyper_native_tls::NativeTlsClient;
@@ -65,11 +65,43 @@ impl SheetsClient {
             auth,
         ))
     }
+
+    pub fn get_sheets(&self, sheet_id: &str) -> Result<Vec<Sheet>, Error> {
+        let (_, sheets) = self
+            .gsheets
+            .spreadsheets()
+            .get(sheet_id)
+            .include_grid_data(true)
+            .doit()
+            .map_err(|e| err_msg(format!("{:#?}", e)))?;
+        sheets.sheets.ok_or_else(|| err_msg("No sheets"))
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    // use crate::
+    use crate::sheets_client::SheetsClient;
+    use garmin_lib::common::garmin_config::GarminConfig;
+
     #[test]
-    fn test_sheets_client() {}
+    fn test_sheets_client() {
+        let config = GarminConfig::get_config(None).unwrap();
+        let c = SheetsClient::new(&config, "ddboline@gmail.com");
+        let (_, sheets) = c
+            .gsheets
+            .spreadsheets()
+            .get("1MG8so2pFKoOIpt0Vo9pUAtoNk-Y1SnHq9DiEFi-m5Uw")
+            .include_grid_data(true)
+            .doit()
+            .unwrap();
+        println!("{:?}", sheets);
+        if let Some(sheets) = sheets.sheets {
+            let sheet = &sheets[0];
+
+            if let Some(data) = &sheet.data {
+                println!("{:?}", data);
+            }
+        }
+        assert!(false);
+    }
 }

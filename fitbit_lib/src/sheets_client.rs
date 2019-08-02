@@ -91,14 +91,7 @@ pub fn run_sync_sheets() -> Result<(), Error> {
         .collect();
 
     let c = SheetsClient::new(&config, "ddboline@gmail.com");
-    let (_, sheets) = c
-        .gsheets
-        .spreadsheets()
-        .get("1MG8so2pFKoOIpt0Vo9pUAtoNk-Y1SnHq9DiEFi-m5Uw")
-        .include_grid_data(true)
-        .doit()
-        .map_err(|e| err_msg(format!("Failure {}", e)))?;
-    let sheets = sheets.sheets.ok_or_else(|| err_msg("No sheet"))?;
+    let sheets = c.get_sheets("1MG8so2pFKoOIpt0Vo9pUAtoNk-Y1SnHq9DiEFi-m5Uw")?;
     let sheet = &sheets[0];
     let data = sheet.data.as_ref().ok_or_else(|| err_msg("No data"))?;
     let row_data = &data[0]

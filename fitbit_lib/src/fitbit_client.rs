@@ -157,7 +157,9 @@ impl FitbitClient {
         date: &str,
     ) -> PyResult<Vec<HeartRateEntry>> {
         let client = self.get_fitbit_client(py)?;
+        println!("got here");
         client.call_method(py, "user_profile_get", PyTuple::empty(py), None)?;
+        println!("and here");
         let args = PyDict::new(py);
         args.set_item(py, "base_date", date)?;
         let result = client.call_method(
@@ -166,6 +168,7 @@ impl FitbitClient {
             PyTuple::new(py, &[PyString::new(py, "activities/heart").into_object()]),
             Some(&args),
         )?;
+        println!("and there");
         let activities_heart_intraday = result.get_item(
             py,
             PyString::new(py, "activities-heart-intraday").into_object(),

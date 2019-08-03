@@ -170,7 +170,7 @@ impl FitbitClient {
         let result = client.call_method(
             py,
             "intraday_time_series",
-            PyTuple::new(py, &[PyString::new(py, "activities/heart").into_object()]),
+            ("activities/heart",),
             Some(&args),
         )?;
         println!("and there");

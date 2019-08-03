@@ -206,14 +206,14 @@ impl FitbitClient {
 #[derive(Serialize, Deserialize)]
 pub struct HeartRateEntry {
     pub time: String,
-    pub value: String,
+    pub value: i32,
 }
 
 impl HeartRateEntry {
     pub fn from_pydict(py: Python, dict: PyDict) -> PyResult<Self> {
         let time = get_pydict_item!(py, dict, time, String)?;
         println!("got here 4");
-        let value = get_pydict_item!(py, dict, value, String)?;
+        let value = get_pydict_item!(py, dict, value, i32)?;
         println!("got here 5");
         let hre = Self { time, value };
         Ok(hre)

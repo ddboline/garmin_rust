@@ -1,3 +1,4 @@
+use chrono::{FixedOffset, Local, NaiveDate, TimeZone};
 use cpython::{
     exc, FromPyObject, ObjectProtocol, PyDict, PyErr, PyList, PyObject, PyResult, PyString,
     PyTuple, Python, PythonObject,
@@ -160,11 +161,10 @@ impl FitbitClient {
         &self,
         py: Python,
         date: &str,
+        offset: FixedOffset,
     ) -> PyResult<Vec<HeartRateEntry>> {
         let client = self.get_fitbit_client(py, false)?;
-        println!("got here");
         client.call_method(py, "user_profile_get", PyTuple::empty(py), None)?;
-        println!("and here");
         let args = PyDict::new(py);
         args.set_item(py, "base_date", date)?;
         let result = client.call_method(
@@ -173,20 +173,17 @@ impl FitbitClient {
             ("activities/heart",),
             Some(&args),
         )?;
-        println!("and there");
         let activities_heart_intraday = result.get_item(
             py,
             PyString::new(py, "activities-heart-intraday").into_object(),
         )?;
-        println!("got here 1");
         let dataset = activities_heart_intraday.get_item(py, "dataset")?;
-        println!("got here 2");
         let dataset = PyList::extract(py, &dataset)?;
-        println!("got here 3");
+
         let mut results = Vec::new();
         for item in dataset.iter(py) {
             let dict = PyDict::extract(py, &item)?;
-            results.push(HeartRateEntry::from_pydict(py, dict)?);
+            results.push(HeartRateEntry::from_pydict(py, dict, date, offset)?);
         }
         Ok(results)
     }
@@ -198,24 +195,30 @@ impl FitbitClient {
         let gil = Python::acquire_gil();
         let py = gil.python();
 
-        self._get_fitbit_intraday_time_series_heartrate(py, date)
+        let naivedate = NaiveDate::parse_from_str(date, "%Y-%m-%d")?;
+        let offset = Local.offset_from_local_date(&naivedate).unwrap();
+        self._get_fitbit_intraday_time_series_heartrate(py, date, offset)
             .map_err(|e| err_msg(format!("{:?}", e)))
     }
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct HeartRateEntry {
-    pub time: String,
+    pub datetime: String,
     pub value: i32,
 }
 
 impl HeartRateEntry {
-    pub fn from_pydict(py: Python, dict: PyDict) -> PyResult<Self> {
+    pub fn from_pydict(
+        py: Python,
+        dict: PyDict,
+        date: &str,
+        offset: FixedOffset,
+    ) -> PyResult<Self> {
         let time = get_pydict_item!(py, dict, time, String)?;
-        println!("got here 4");
+        let datetime = format!("{}T{}{}", date, time, offset);
         let value = get_pydict_item!(py, dict, value, i32)?;
-        println!("got here 5");
-        let hre = Self { time, value };
+        let hre = Self { datetime, value };
         Ok(hre)
     }
 }

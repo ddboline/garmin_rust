@@ -90,7 +90,7 @@ impl FitbitClient {
         let args = PyDict::new(py);
         args.set_item(py, "redirect_uri", redirect_uri)?;
         args.set_item(py, "timeout", 10)?;
-        let fitbit_client = fitbit.call(
+        fitbit.call(
             py,
             "Fitbit",
             PyTuple::new(
@@ -101,12 +101,12 @@ impl FitbitClient {
                 ],
             ),
             Some(&args),
-        )?;
-        fitbit_client.getattr(py, "client")
+        )
     }
 
     fn _get_fitbit_auth_url(&self, py: Python) -> PyResult<String> {
         let client = self.get_fitbit_client(py)?;
+        let client = client.getattr(py, "client")?;
         let result = client.call_method(py, "authorize_token_url", PyTuple::empty(py), None)?;
         let result = PyTuple::extract(py, &result)?;
         let url = result.get_item(py, 0);
@@ -123,6 +123,7 @@ impl FitbitClient {
 
     fn _get_fitbit_access_token(&mut self, py: Python, code: &str) -> PyResult<String> {
         let client = self.get_fitbit_client(py)?;
+        let client = client.getattr(py, "client")?;
         client.call_method(
             py,
             "fetch_access_token",

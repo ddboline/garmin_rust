@@ -1,7 +1,7 @@
 use actix::{Handler, Message};
 use failure::Error;
 
-use fitbit_lib::fitbit_client::FitbitClient;
+use fitbit_lib::fitbit_client::{FitbitClient, HeartRateEntry};
 
 use garmin_lib::common::garmin_cli::{GarminCli, GarminRequest};
 use garmin_lib::common::garmin_config::GarminConfig;
@@ -167,5 +167,23 @@ impl Handler<FitbitCallbackRequest> for PgPool {
         let url = client.get_fitbit_access_token(&msg.code)?;
         client.to_file()?;
         Ok(url)
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct FitbitHeartrateRequest {
+    date: String,
+}
+
+impl Message for FitbitHeartrateRequest {
+    type Result = Result<Vec<HeartRateEntry>, Error>;
+}
+
+impl Handler<FitbitHeartrateRequest> for PgPool {
+    type Result = Result<Vec<HeartRateEntry>, Error>;
+    fn handle(&mut self, msg: FitbitHeartrateRequest, _: &mut Self::Context) -> Self::Result {
+        let config = GarminConfig::get_config(None)?;
+        let client = FitbitClient::from_file(&config)?;
+        client.get_fitbit_intraday_time_series_heartrate(&msg.date)
     }
 }

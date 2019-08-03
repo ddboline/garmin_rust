@@ -1,6 +1,6 @@
 use cpython::{
-    FromPyObject, ObjectProtocol, PyDict, PyObject, PyResult, PyString, PyTuple, Python,
-    PythonObject,
+    exc, FromPyObject, ObjectProtocol, PyDict, PyErr, PyList, PyObject, PyResult, PyString,
+    PyTuple, Python, PythonObject,
 };
 use failure::{err_msg, Error};
 use std::fs::File;
@@ -16,6 +16,10 @@ pub struct FitbitClient {
     pub refresh_token: String,
 }
 
+fn exception(py: Python, msg: &str) -> PyErr {
+    PyErr::new::<exc::Exception, _>(py, msg)
+}
+
 macro_rules! set_attr_from_dect {
     ($token:ident, $py:ident, $s:ident, $item:ident) => {
         $token
@@ -23,6 +27,23 @@ macro_rules! set_attr_from_dect {
             .as_ref()
             .map(|v| String::extract($py, v).map(|x| $s.$item = x))
             .transpose()
+    };
+}
+
+macro_rules! get_pydict_item_option {
+    ($py:ident, $dict:ident, $id:ident, $T:ty) => {
+        $dict
+            .get_item($py, &stringify!($id))
+            .as_ref()
+            .map(|v| <$T>::extract($py, v))
+            .transpose()
+    };
+}
+
+macro_rules! get_pydict_item {
+    ($py:ident, $dict:ident, $id:ident, $T:ty) => {
+        get_pydict_item_option!($py, $dict, $id, $T)
+            .and_then(|x| x.ok_or_else(|| exception($py, &format!("No {}", stringify!($id)))))
     };
 }
 
@@ -128,6 +149,60 @@ impl FitbitClient {
 
         self._get_fitbit_access_token(py, code)
             .map_err(|e| err_msg(format!("{:?}", e)))
+    }
+
+    fn _get_fitbit_intraday_time_series_heartrate(
+        &self,
+        py: Python,
+        date: &str,
+    ) -> PyResult<Vec<HeartRateEntry>> {
+        let client = self.get_fitbit_client(py)?;
+        let intraday_time_series = client.getattr(py, "intraday_time_series")?;
+        let args = PyDict::new(py);
+        args.set_item(py, "base_date", date)?;
+        let result = intraday_time_series.call(
+            py,
+            PyTuple::new(py, &[PyString::new(py, "activities/heart").into_object()]),
+            Some(&args),
+        )?;
+        let activities_heart_intraday = result.get_item(
+            py,
+            PyString::new(py, "activities-heart-intraday").into_object(),
+        )?;
+        let dataset = activities_heart_intraday.get_item(py, "dataset")?;
+        let dataset = PyList::extract(py, &dataset)?;
+        let mut results = Vec::new();
+        for item in dataset.iter(py) {
+            let dict = PyDict::extract(py, &item)?;
+            results.push(HeartRateEntry::from_pydict(py, dict)?);
+        }
+        Ok(results)
+    }
+
+    pub fn get_fitbit_intraday_time_series_heartrate(
+        &self,
+        date: &str,
+    ) -> Result<Vec<HeartRateEntry>, Error> {
+        let gil = Python::acquire_gil();
+        let py = gil.python();
+
+        self._get_fitbit_intraday_time_series_heartrate(py, date)
+            .map_err(|e| err_msg(format!("{:?}", e)))
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct HeartRateEntry {
+    pub time: String,
+    pub value: String,
+}
+
+impl HeartRateEntry {
+    pub fn from_pydict(py: Python, dict: PyDict) -> PyResult<Self> {
+        let time = get_pydict_item!(py, dict, time, String)?;
+        let value = get_pydict_item!(py, dict, value, String)?;
+        let hre = Self { time, value };
+        Ok(hre)
     }
 }
 

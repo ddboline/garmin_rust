@@ -178,8 +178,11 @@ impl FitbitClient {
             py,
             PyString::new(py, "activities-heart-intraday").into_object(),
         )?;
+        println!("got here 1");
         let dataset = activities_heart_intraday.get_item(py, "dataset")?;
+        println!("got here 2");
         let dataset = PyList::extract(py, &dataset)?;
+        println!("got here 3");
         let mut results = Vec::new();
         for item in dataset.iter(py) {
             let dict = PyDict::extract(py, &item)?;
@@ -209,7 +212,9 @@ pub struct HeartRateEntry {
 impl HeartRateEntry {
     pub fn from_pydict(py: Python, dict: PyDict) -> PyResult<Self> {
         let time = get_pydict_item!(py, dict, time, String)?;
+        println!("got here 4");
         let value = get_pydict_item!(py, dict, value, String)?;
+        println!("got here 5");
         let hre = Self { time, value };
         Ok(hre)
     }

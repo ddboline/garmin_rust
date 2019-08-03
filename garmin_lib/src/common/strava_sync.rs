@@ -48,7 +48,7 @@ pub fn get_strava_id_maximum_begin_datetime(pool: &PgPool) -> Result<Option<Stri
 }
 
 pub fn get_strava_id_map(pool: &PgPool) -> Result<HashMap<String, StravaItem>, Error> {
-    let query = "SELECT strava_id, begin_datetime, strava_title FROM stava_id_cache";
+    let query = "SELECT strava_id, begin_datetime, strava_title FROM strava_id_cache";
     let conn = pool.get()?;
     let strava_id_map: Vec<Result<_, Error>> = conn
         .query(&query, &[])?

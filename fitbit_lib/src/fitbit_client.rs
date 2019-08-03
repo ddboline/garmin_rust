@@ -84,12 +84,17 @@ impl FitbitClient {
         Ok(())
     }
 
-    pub fn get_fitbit_client(&self, py: Python) -> PyResult<PyObject> {
+    pub fn get_fitbit_client(&self, py: Python, do_auth: bool) -> PyResult<PyObject> {
         let redirect_uri = format!("https://{}/garmin/fitbit/callback", self.config.domain);
         let fitbit = py.import("fitbit.api")?;
         let args = PyDict::new(py);
-        args.set_item(py, "redirect_uri", redirect_uri)?;
-        args.set_item(py, "timeout", 10)?;
+        if do_auth {
+            args.set_item(py, "redirect_uri", redirect_uri)?;
+            args.set_item(py, "timeout", 10)?;
+        } else {
+            args.set_item(py, "access_token", &self.access_token)?;
+            args.set_item(py, "refresh_token", &self.refresh_token)?;
+        }
         fitbit.call(
             py,
             "Fitbit",
@@ -105,7 +110,7 @@ impl FitbitClient {
     }
 
     fn _get_fitbit_auth_url(&self, py: Python) -> PyResult<String> {
-        let client = self.get_fitbit_client(py)?;
+        let client = self.get_fitbit_client(py, true)?;
         let client = client.getattr(py, "client")?;
         let result = client.call_method(py, "authorize_token_url", PyTuple::empty(py), None)?;
         let result = PyTuple::extract(py, &result)?;
@@ -122,7 +127,7 @@ impl FitbitClient {
     }
 
     fn _get_fitbit_access_token(&mut self, py: Python, code: &str) -> PyResult<String> {
-        let client = self.get_fitbit_client(py)?;
+        let client = self.get_fitbit_client(py, true)?;
         let client = client.getattr(py, "client")?;
         client.call_method(
             py,
@@ -156,7 +161,7 @@ impl FitbitClient {
         py: Python,
         date: &str,
     ) -> PyResult<Vec<HeartRateEntry>> {
-        let client = self.get_fitbit_client(py)?;
+        let client = self.get_fitbit_client(py, false)?;
         println!("got here");
         client.call_method(py, "user_profile_get", PyTuple::empty(py), None)?;
         println!("and here");

@@ -28,7 +28,7 @@ pub fn run_bot(config: &GarminConfig, pool: PgPool) -> Result<(), Error> {
             if let MessageKind::Text { ref data, .. } = message.kind {
                 // Print received text message to stdout.
                 println!("{:?}", message);
-                if message.from.id == UserId::new(972549683) {
+                if message.from.id == UserId::new(972_549_683) {
                     match ScaleMeasurement::from_telegram_text(data) {
                         Ok(meas) => match s.try_send(meas.clone()) {
                             Ok(_) => {

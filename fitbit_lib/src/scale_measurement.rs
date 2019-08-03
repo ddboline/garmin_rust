@@ -18,7 +18,7 @@ pub struct ScaleMeasurement {
 }
 
 impl ScaleMeasurement {
-    pub fn from_row_data(row_data: &RowData) -> Result<ScaleMeasurement, Error> {
+    pub fn from_row_data(row_data: &RowData) -> Result<Self, Error> {
         let values = row_data
             .values
             .as_ref()
@@ -46,7 +46,7 @@ impl ScaleMeasurement {
             let water_pct: f64 = values[3].parse()?;
             let muscle_pct: f64 = values[4].parse()?;
             let bone_pct: f64 = values[5].parse()?;
-            Ok(ScaleMeasurement {
+            Ok(Self {
                 datetime,
                 mass,
                 fat_pct,
@@ -76,7 +76,7 @@ impl ScaleMeasurement {
         })
         .collect();
         let items: Vec<_> = map_result(items)?;
-        let items: Vec<_> = items.into_iter().map(|x| x as f64 / 10.).collect();
+        let items: Vec<_> = items.into_iter().map(|x| f64::from(x) / 10.).collect();
         if items.len() < 5 {
             return Err(err_msg("Bad message"));
         }

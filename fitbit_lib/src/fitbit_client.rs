@@ -107,8 +107,7 @@ impl FitbitClient {
 
     fn _get_fitbit_auth_url(&self, py: Python) -> PyResult<String> {
         let client = self.get_fitbit_client(py)?;
-        let authorize_token_url = client.getattr(py, "authorize_token_url")?;
-        let result = authorize_token_url.call(py, PyTuple::empty(py), None)?;
+        let result = client.call_method(py, "authorize_token_url", PyTuple::empty(py), None)?;
         let result = PyTuple::extract(py, &result)?;
         let url = result.get_item(py, 0);
         String::extract(py, &url)
@@ -124,9 +123,9 @@ impl FitbitClient {
 
     fn _get_fitbit_access_token(&mut self, py: Python, code: &str) -> PyResult<String> {
         let client = self.get_fitbit_client(py)?;
-        let fetch_access_token = client.getattr(py, "fetch_access_token")?;
-        fetch_access_token.call(
+        client.call_method(
             py,
+            "fetch_access_token",
             PyTuple::new(py, &[PyString::new(py, code).into_object()]),
             None,
         )?;
@@ -157,11 +156,12 @@ impl FitbitClient {
         date: &str,
     ) -> PyResult<Vec<HeartRateEntry>> {
         let client = self.get_fitbit_client(py)?;
-        let intraday_time_series = client.getattr(py, "intraday_time_series")?;
+        client.call_method(py, "user_profile_get", PyTuple::empty(py), None)?;
         let args = PyDict::new(py);
         args.set_item(py, "base_date", date)?;
-        let result = intraday_time_series.call(
+        let result = client.call_method(
             py,
+            "intraday_time_series",
             PyTuple::new(py, &[PyString::new(py, "activities/heart").into_object()]),
             Some(&args),
         )?;

@@ -1,3 +1,4 @@
+pub mod fitbit_client;
 pub mod scale_measurement;
 pub mod sheets_client;
 pub mod telegram_bot;

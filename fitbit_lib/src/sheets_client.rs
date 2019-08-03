@@ -94,14 +94,6 @@ mod tests {
             .include_grid_data(true)
             .doit()
             .unwrap();
-        println!("{:?}", sheets);
-        if let Some(sheets) = sheets.sheets {
-            let sheet = &sheets[0];
-
-            if let Some(data) = &sheet.data {
-                println!("{:?}", data);
-            }
-        }
-        assert!(false);
+        assert!(sheets.sheets.is_some());
     }
 }

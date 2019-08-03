@@ -1,7 +1,10 @@
 use actix::{Handler, Message};
 use failure::Error;
 
+use fitbit_lib::fitbit_client::FitbitClient;
+
 use garmin_lib::common::garmin_cli::{GarminCli, GarminRequest};
+use garmin_lib::common::garmin_config::GarminConfig;
 use garmin_lib::common::garmin_correction_lap::GarminCorrectionList;
 use garmin_lib::common::garmin_summary::get_list_of_files_from_db;
 use garmin_lib::common::pgpool::PgPool;
@@ -128,5 +131,41 @@ impl Handler<GarminSyncRequest> for PgPool {
         let gcli = GarminCli::from_pool(&self)?;
         gcli.sync_everything()?;
         gcli.proc_everything()
+    }
+}
+
+pub struct FitbitAuthRequest {}
+
+impl Message for FitbitAuthRequest {
+    type Result = Result<String, Error>;
+}
+
+impl Handler<FitbitAuthRequest> for PgPool {
+    type Result = Result<String, Error>;
+    fn handle(&mut self, _: FitbitAuthRequest, _: &mut Self::Context) -> Self::Result {
+        let config = GarminConfig::get_config(None)?;
+        let client = FitbitClient::from_file(&config)?;
+        let url = client.get_fitbit_auth_url()?;
+        Ok(url)
+    }
+}
+
+#[derive(Deserialize)]
+pub struct FitbitCallbackRequest {
+    code: String,
+}
+
+impl Message for FitbitCallbackRequest {
+    type Result = Result<String, Error>;
+}
+
+impl Handler<FitbitCallbackRequest> for PgPool {
+    type Result = Result<String, Error>;
+    fn handle(&mut self, msg: FitbitCallbackRequest, _: &mut Self::Context) -> Self::Result {
+        let config = GarminConfig::get_config(None)?;
+        let mut client = FitbitClient::from_file(&config)?;
+        let url = client.get_fitbit_access_token(&msg.code)?;
+        client.to_file()?;
+        Ok(url)
     }
 }

@@ -2,9 +2,9 @@ use crossbeam_channel::{unbounded, Receiver};
 use failure::{err_msg, Error};
 use futures::Stream;
 use std::thread;
+use telegram_bot::types::refs::UserId;
 use telegram_bot::{Api, CanReplySendMessage, MessageKind, UpdateKind};
 use tokio_core::reactor::Core;
-use telegram_bot::types::refs::UserId;
 
 use crate::scale_measurement::ScaleMeasurement;
 use garmin_lib::common::garmin_config::GarminConfig;
@@ -29,16 +29,22 @@ pub fn run_bot(config: &GarminConfig, pool: PgPool) -> Result<(), Error> {
                 // Print received text message to stdout.
                 println!("{:?}", message);
                 if message.from.id == UserId::new(972549683) {
-                    if let Err(e) = s.try_send(data.to_string()) {
-                        println!("send error {}", e);
+                    match ScaleMeasurement::from_telegram_text(data) {
+                        Ok(meas) => match s.try_send(meas.clone()) {
+                            Ok(_) => {
+                                api.spawn(message.text_reply(format!("{:?} sent to the db", meas)))
+                            }
+                            Err(e) => api.spawn(message.text_reply(format!("Send Error {}", e))),
+                        },
+                        Err(e) => api.spawn(message.text_reply(format!("Parse error {}", e))),
                     }
+                } else {
+                    // Answer message with "Hi".
+                    api.spawn(message.text_reply(format!(
+                        "Hi, {}! You just wrote '{}'",
+                        &message.from.first_name, data
+                    )));
                 }
-
-                // Answer message with "Hi".
-                api.spawn(message.text_reply(format!(
-                    "Hi, {}! You just wrote '{}'",
-                    &message.from.first_name, data
-                )));
             }
         }
 
@@ -49,13 +55,11 @@ pub fn run_bot(config: &GarminConfig, pool: PgPool) -> Result<(), Error> {
     Ok(())
 }
 
-fn process_messages(r: Receiver<String>, pool: PgPool) {
+fn process_messages(r: Receiver<ScaleMeasurement>, pool: PgPool) {
     loop {
-        if let Ok(msg) = r.recv() {
-            if let Ok(meas) = ScaleMeasurement::from_telegram_text(&msg) {
-                if meas.insert_into_db(&pool).is_ok() {
-                    println!("{:?}", meas);
-                }
+        if let Ok(meas) = r.recv() {
+            if meas.insert_into_db(&pool).is_ok() {
+                println!("{:?}", meas);
             }
         }
     }

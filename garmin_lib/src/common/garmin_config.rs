@@ -25,10 +25,21 @@ pub struct GarminConfigInner {
     pub google_secret_file: String,
     pub google_token_path: String,
     pub telegram_bot_token: String,
+    pub fitbit_clientid: String,
+    pub fitbit_clientsecret: String,
+    pub fitbit_tokenfile: String,
 }
 
 #[derive(Default, Debug, Clone)]
 pub struct GarminConfig(Arc<GarminConfigInner>);
+
+macro_rules! set_config_from_env {
+    ($s:ident, $id:ident, $name:literal) => {
+        if let Ok($id) = var($name) {
+            $s.$id = $id.to_string()
+        }
+    };
+}
 
 impl GarminConfigInner {
     /// Some variables have natural default values, which we set in the new() method.
@@ -47,59 +58,37 @@ impl GarminConfigInner {
             n_db_workers: 2,
             secret_key: "0123".repeat(8),
             domain: "localhost".to_string(),
+            fitbit_tokenfile: format!("{}/.fitbit_tokens", home_dir),
             ..Default::default()
         }
     }
 
     /// Each variable maps to an environment variable, if the variable exists, use it.
     pub fn from_env(mut self) -> GarminConfigInner {
-        if let Ok(pgurl) = var("PGURL") {
-            self.pgurl = pgurl.to_string()
-        }
-        if let Ok(maps_api_key) = var("MAPS_API_KEY") {
-            self.maps_api_key = maps_api_key.to_string()
-        }
-        if let Ok(gps_bucket) = var("GPS_BUCKET") {
-            self.gps_bucket = gps_bucket.to_string()
-        }
-        if let Ok(cache_bucket) = var("CACHE_BUCKET") {
-            self.cache_bucket = cache_bucket.to_string()
-        }
-        if let Ok(gps_dir) = var("GPS_DIR") {
-            self.gps_dir = gps_dir.to_string()
-        }
-        if let Ok(cache_dir) = var("CACHE_DIR") {
-            self.cache_dir = cache_dir.to_string()
-        }
+        set_config_from_env!(self, pgurl, "PGURL");
+        set_config_from_env!(self, maps_api_key, "MAPS_API_KEY");
+        set_config_from_env!(self, gps_bucket, "GPS_BUCKET");
+        set_config_from_env!(self, cache_bucket, "CACHE_BUCKET");
+        set_config_from_env!(self, gps_dir, "GPS_DIR");
+        set_config_from_env!(self, cache_dir, "CACHE_DIR");
         if let Ok(port) = var("PORT") {
             self.port = port.parse().unwrap_or(8000)
         }
-        if let Ok(summary_cache) = var("SUMMARY_CACHE") {
-            self.summary_cache = summary_cache
-        }
-        if let Ok(summary_bucket) = var("SUMMARY_BUCKET") {
-            self.summary_bucket = summary_bucket
-        }
+        set_config_from_env!(self, summary_cache, "SUMMARY_CACHE");
+        set_config_from_env!(self, summary_bucket, "SUMMARY_BUCKET");
         if let Ok(n_db_workers_str) = var("N_DB_WORKERS") {
             if let Ok(n_db_workers) = n_db_workers_str.parse() {
                 self.n_db_workers = n_db_workers
             }
         }
-        if let Ok(secret_key) = var("SECRET_KEY") {
-            self.secret_key = secret_key
-        }
-        if let Ok(domain) = var("DOMAIN") {
-            self.domain = domain
-        }
-        if let Ok(google_secret_file) = var("GOOGLE_SECRET_FILE") {
-            self.google_secret_file = google_secret_file;
-        }
-        if let Ok(google_token_path) = var("GOOGLE_TOKEN_PATH") {
-            self.google_token_path = google_token_path
-        }
-        if let Ok(telegram_bot_token) = var("TELEGRAM_BOT_TOKEN") {
-            self.telegram_bot_token = telegram_bot_token
-        }
+        set_config_from_env!(self, secret_key, "SECRET_KEY");
+        set_config_from_env!(self, domain, "DOMAIN");
+        set_config_from_env!(self, google_secret_file, "GOOGLE_SECRET_FILE");
+        set_config_from_env!(self, google_token_path, "GOOGLE_TOKEN_PATH");
+        set_config_from_env!(self, telegram_bot_token, "TELEGRAM_BOT_TOKEN");
+        set_config_from_env!(self, fitbit_clientid, "FITBIT_CLIENTID");
+        set_config_from_env!(self, fitbit_clientsecret, "FITBIT_CLIENTSECRET");
+        set_config_from_env!(self, fitbit_tokenfile, "FITBIT_TOKENFILE");
         self
     }
 }

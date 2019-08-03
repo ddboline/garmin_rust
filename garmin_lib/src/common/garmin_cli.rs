@@ -612,6 +612,7 @@ impl GarminCli {
                 let max_datetime = DateTime::parse_from_rfc3339(&max_datetime)?;
                 let max_datetime = max_datetime - Duration::days(14);
                 let max_datetime = max_datetime.to_rfc3339_opts(SecondsFormat::Secs, true);
+                println!("max_datetime {}", max_datetime);
                 return upsert_strava_id(pool, &self.config, &max_datetime);
             }
         }

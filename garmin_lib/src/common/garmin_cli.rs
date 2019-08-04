@@ -430,8 +430,8 @@ impl GarminCli {
                             if let Ok(year) = vals[0].parse::<i32>() {
                                 if let Ok(week) = vals[1].parse::<i32>() {
                                     constraints.push(format!(
-                                        "(EXTRACT(isoyear from cast(begin_datetime as timestamp with time zone) at time zone 'EST') = {} AND
-                                        EXTRACT(week from cast(begin_datetime as timestamp with time zone) at time zone 'EST') = {})", year, week));
+                                        "(EXTRACT(isoyear from cast(begin_datetime as timestamp with time zone) at time zone 'localtime') = {} AND
+                                        EXTRACT(week from cast(begin_datetime as timestamp with time zone) at time zone 'localtime') = {})", year, week));
                                 }
                             }
                         } else {

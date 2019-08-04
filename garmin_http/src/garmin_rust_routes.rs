@@ -18,9 +18,9 @@ use super::logged_user::LoggedUser;
 
 use super::garmin_rust_app::AppState;
 use crate::garmin_requests::{
-    FitbitAuthRequest, FitbitCallbackRequest, FitbitHeartrateRequest, FitbitSyncRequest,
-    GarminConnectSyncRequest, GarminCorrRequest, GarminHtmlRequest, GarminListRequest,
-    GarminSyncRequest, StravaSyncRequest,
+    FitbitAuthRequest, FitbitCallbackRequest, FitbitHeartrateApiRequest, FitbitHeartrateDbRequest,
+    FitbitSyncRequest, GarminConnectSyncRequest, GarminCorrRequest, GarminHtmlRequest,
+    GarminListRequest, GarminSyncRequest, StravaSyncRequest,
 };
 use crate::CONFIG;
 
@@ -161,8 +161,25 @@ pub fn fitbit_auth(
         })
 }
 
-pub fn fitbit_heartrate(
-    query: Query<FitbitHeartrateRequest>,
+pub fn fitbit_heartrate_api(
+    query: Query<FitbitHeartrateApiRequest>,
+    user: LoggedUser,
+    state: Data<AppState>,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let query = query.into_inner();
+    state.db.send(query).from_err().and_then(move |res| {
+        res.and_then(|hlist| {
+            if !state.user_list.is_authorized(&user) {
+                return Ok(HttpResponse::Unauthorized()
+                    .json(format!("Unauthorized {:?}", state.user_list)));
+            }
+            to_json(&hlist)
+        })
+    })
+}
+
+pub fn fitbit_heartrate_db(
+    query: Query<FitbitHeartrateDbRequest>,
     user: LoggedUser,
     state: Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {

@@ -172,20 +172,36 @@ impl Handler<FitbitCallbackRequest> for PgPool {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct FitbitHeartrateRequest {
+pub struct FitbitHeartrateApiRequest {
     date: String,
 }
 
-impl Message for FitbitHeartrateRequest {
+impl Message for FitbitHeartrateApiRequest {
     type Result = Result<Vec<FitbitHeartRate>, Error>;
 }
 
-impl Handler<FitbitHeartrateRequest> for PgPool {
+impl Handler<FitbitHeartrateApiRequest> for PgPool {
     type Result = Result<Vec<FitbitHeartRate>, Error>;
-    fn handle(&mut self, msg: FitbitHeartrateRequest, _: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: FitbitHeartrateApiRequest, _: &mut Self::Context) -> Self::Result {
         let config = GarminConfig::get_config(None)?;
         let client = FitbitClient::from_file(&config)?;
         client.get_fitbit_intraday_time_series_heartrate(&msg.date)
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct FitbitHeartrateDbRequest {
+    date: String,
+}
+
+impl Message for FitbitHeartrateDbRequest {
+    type Result = Result<Vec<FitbitHeartRate>, Error>;
+}
+
+impl Handler<FitbitHeartrateDbRequest> for PgPool {
+    type Result = Result<Vec<FitbitHeartRate>, Error>;
+    fn handle(&mut self, msg: FitbitHeartrateDbRequest, _: &mut Self::Context) -> Self::Result {
+        FitbitHeartRate::read_from_db(self, &msg.date)
     }
 }
 

@@ -66,8 +66,8 @@ fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, 
         )
         SELECT
             begin_datetime as datetime,
-            EXTRACT(week from cast(begin_datetime as timestamp with time zone) at time zone 'EST') as week,
-            EXTRACT(isodow from cast(begin_datetime as timestamp with time zone) at time zone 'EST') as isodow,
+            EXTRACT(week from cast(begin_datetime as timestamp with time zone) at time zone 'localtime') as week,
+            EXTRACT(isodow from cast(begin_datetime as timestamp with time zone) at time zone 'localtime') as isodow,
             sport,
             sum(total_calories) as total_calories,
             sum(total_distance) as total_distance,
@@ -201,9 +201,9 @@ fn day_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, E
             {}
         )
         SELECT
-            CAST(CAST(CAST(begin_datetime as timestamp with time zone) at time zone 'EST' as date) as text) as date,
-            EXTRACT(week from cast(begin_datetime as timestamp with time zone) at time zone 'EST') as week,
-            EXTRACT(isodow from cast(begin_datetime as timestamp with time zone) at time zone 'EST') as isodow,
+            CAST(CAST(CAST(begin_datetime as timestamp with time zone) at time zone 'localtime' as date) as text) as date,
+            EXTRACT(week from cast(begin_datetime as timestamp with time zone) at time zone 'localtime') as week,
+            EXTRACT(isodow from cast(begin_datetime as timestamp with time zone) at time zone 'localtime') as isodow,
             sport,
             sum(total_calories) as total_calories,
             sum(total_distance) as total_distance,
@@ -336,15 +336,15 @@ fn week_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, 
             {}
         )
         SELECT
-            EXTRACT(isoyear from cast(begin_datetime as timestamp with time zone) at time zone 'EST') as year,
-            EXTRACT(week from cast(begin_datetime as timestamp with time zone) at time zone 'EST') as week,
+            EXTRACT(isoyear from cast(begin_datetime as timestamp with time zone) at time zone 'localtime') as year,
+            EXTRACT(week from cast(begin_datetime as timestamp with time zone) at time zone 'localtime') as week,
             sport,
             sum(total_calories) as total_calories,
             sum(total_distance) as total_distance,
             sum(total_duration) as total_duration,
             sum(total_hr_dur) as total_hr_dur,
             sum(total_hr_dis) as total_hr_dis,
-            count(distinct cast(cast(begin_datetime as timestamp with time zone) at time zone 'EST' as date)) as number_of_days
+            count(distinct cast(cast(begin_datetime as timestamp with time zone) at time zone 'localtime' as date)) as number_of_days
         FROM a
         GROUP BY sport, year, week
         ORDER BY sport, year, week
@@ -461,15 +461,15 @@ fn month_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>,
             {}
         )
         SELECT
-            EXTRACT(year from cast(begin_datetime as timestamp with time zone) at time zone 'EST') as year,
-            EXTRACT(month from cast(begin_datetime as timestamp with time zone) at time zone 'EST') as month,
+            EXTRACT(year from cast(begin_datetime as timestamp with time zone) at time zone 'localtime') as year,
+            EXTRACT(month from cast(begin_datetime as timestamp with time zone) at time zone 'localtime') as month,
             sport,
             sum(total_calories) as total_calories,
             sum(total_distance) as total_distance,
             sum(total_duration) as total_duration,
             sum(total_hr_dur) as total_hr_dur,
             sum(total_hr_dis) as total_hr_dis,
-            count(distinct cast(cast(begin_datetime as timestamp with time zone) at time zone 'EST' as date)) as number_of_days
+            count(distinct cast(cast(begin_datetime as timestamp with time zone) at time zone 'localtime' as date)) as number_of_days
         FROM a
         GROUP BY sport, year, month
         ORDER BY sport, year, month
@@ -678,14 +678,14 @@ fn year_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, 
             {}
         )
         SELECT
-            EXTRACT(year from cast(begin_datetime as timestamp with time zone) at time zone 'EST') as year,
+            EXTRACT(year from cast(begin_datetime as timestamp with time zone) at time zone 'localtime') as year,
             sport,
             sum(total_calories) as total_calories,
             sum(total_distance) as total_distance,
             sum(total_duration) as total_duration,
             sum(total_hr_dur) as total_hr_dur,
             sum(total_hr_dis) as total_hr_dis,
-            count(distinct cast(cast(begin_datetime as timestamp with time zone) at time zone 'EST' as date)) as number_of_days
+            count(distinct cast(cast(begin_datetime as timestamp with time zone) at time zone 'localtime' as date)) as number_of_days
         FROM a
         GROUP BY sport, year
         ORDER BY sport, year

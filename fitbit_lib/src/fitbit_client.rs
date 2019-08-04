@@ -1,13 +1,15 @@
 use chrono::{FixedOffset, Local, NaiveDate, TimeZone};
 use cpython::{
-    exc, FromPyObject, ObjectProtocol, PyDict, PyErr, PyList, PyObject, PyResult, PyString,
-    PyTuple, Python, PythonObject,
+    FromPyObject, ObjectProtocol, PyDict, PyList, PyObject, PyResult, PyString, PyTuple, Python,
+    PythonObject,
 };
 use failure::{err_msg, Error};
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 
 use garmin_lib::common::garmin_config::GarminConfig;
+
+use crate::fitbit_heartrate::FitbitHeartRate;
 
 #[derive(Default, Debug)]
 pub struct FitbitClient {
@@ -17,10 +19,6 @@ pub struct FitbitClient {
     pub refresh_token: String,
 }
 
-fn exception(py: Python, msg: &str) -> PyErr {
-    PyErr::new::<exc::Exception, _>(py, msg)
-}
-
 macro_rules! set_attr_from_dect {
     ($token:ident, $py:ident, $s:ident, $item:ident) => {
         $token
@@ -28,23 +26,6 @@ macro_rules! set_attr_from_dect {
             .as_ref()
             .map(|v| String::extract($py, v).map(|x| $s.$item = x))
             .transpose()
-    };
-}
-
-macro_rules! get_pydict_item_option {
-    ($py:ident, $dict:ident, $id:ident, $T:ty) => {
-        $dict
-            .get_item($py, &stringify!($id))
-            .as_ref()
-            .map(|v| <$T>::extract($py, v))
-            .transpose()
-    };
-}
-
-macro_rules! get_pydict_item {
-    ($py:ident, $dict:ident, $id:ident, $T:ty) => {
-        get_pydict_item_option!($py, $dict, $id, $T)
-            .and_then(|x| x.ok_or_else(|| exception($py, &format!("No {}", stringify!($id)))))
     };
 }
 
@@ -162,7 +143,7 @@ impl FitbitClient {
         py: Python,
         date: &str,
         offset: FixedOffset,
-    ) -> PyResult<Vec<HeartRateEntry>> {
+    ) -> PyResult<Vec<FitbitHeartRate>> {
         let client = self.get_fitbit_client(py, false)?;
         client.call_method(py, "user_profile_get", PyTuple::empty(py), None)?;
         let args = PyDict::new(py);
@@ -183,7 +164,7 @@ impl FitbitClient {
         let mut results = Vec::new();
         for item in dataset.iter(py) {
             let dict = PyDict::extract(py, &item)?;
-            results.push(HeartRateEntry::from_pydict(py, dict, date, offset)?);
+            results.push(FitbitHeartRate::from_pydict(py, dict, date, offset)?);
         }
         Ok(results)
     }
@@ -191,7 +172,7 @@ impl FitbitClient {
     pub fn get_fitbit_intraday_time_series_heartrate(
         &self,
         date: &str,
-    ) -> Result<Vec<HeartRateEntry>, Error> {
+    ) -> Result<Vec<FitbitHeartRate>, Error> {
         let gil = Python::acquire_gil();
         let py = gil.python();
 
@@ -199,27 +180,6 @@ impl FitbitClient {
         let offset = Local.offset_from_local_date(&naivedate).unwrap();
         self._get_fitbit_intraday_time_series_heartrate(py, date, offset)
             .map_err(|e| err_msg(format!("{:?}", e)))
-    }
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct HeartRateEntry {
-    pub datetime: String,
-    pub value: i32,
-}
-
-impl HeartRateEntry {
-    pub fn from_pydict(
-        py: Python,
-        dict: PyDict,
-        date: &str,
-        offset: FixedOffset,
-    ) -> PyResult<Self> {
-        let time = get_pydict_item!(py, dict, time, String)?;
-        let datetime = format!("{}T{}{}", date, time, offset);
-        let value = get_pydict_item!(py, dict, value, i32)?;
-        let hre = Self { datetime, value };
-        Ok(hre)
     }
 }
 

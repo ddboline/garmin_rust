@@ -44,3 +44,8 @@ doc = false
 name = "pull-scale-measurements-from-telegram"
 path = "src/pull_scale_measurements_from_telegram.rs"
 doc = false
+
+[[bin]]
+name = "import-fitbit-json-files"
+path = "src/import_fitbit_json_files.rs"
+doc = false

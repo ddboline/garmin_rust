@@ -1,7 +1,8 @@
 use actix::{Handler, Message};
 use failure::Error;
 
-use fitbit_lib::fitbit_client::{FitbitClient, HeartRateEntry};
+use fitbit_lib::fitbit_client::FitbitClient;
+use fitbit_lib::fitbit_heartrate::FitbitHeartRate;
 
 use garmin_lib::common::garmin_cli::{GarminCli, GarminRequest};
 use garmin_lib::common::garmin_config::GarminConfig;
@@ -176,11 +177,11 @@ pub struct FitbitHeartrateRequest {
 }
 
 impl Message for FitbitHeartrateRequest {
-    type Result = Result<Vec<HeartRateEntry>, Error>;
+    type Result = Result<Vec<FitbitHeartRate>, Error>;
 }
 
 impl Handler<FitbitHeartrateRequest> for PgPool {
-    type Result = Result<Vec<HeartRateEntry>, Error>;
+    type Result = Result<Vec<FitbitHeartRate>, Error>;
     fn handle(&mut self, msg: FitbitHeartrateRequest, _: &mut Self::Context) -> Self::Result {
         let config = GarminConfig::get_config(None)?;
         let client = FitbitClient::from_file(&config)?;

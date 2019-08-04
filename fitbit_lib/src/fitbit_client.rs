@@ -1,13 +1,17 @@
-use chrono::{FixedOffset, Local, NaiveDate, TimeZone};
+use chrono::{Datelike, FixedOffset, Local, NaiveDate, TimeZone};
 use cpython::{
     FromPyObject, ObjectProtocol, PyDict, PyList, PyObject, PyResult, PyString, PyTuple, Python,
     PythonObject,
 };
 use failure::{err_msg, Error};
+use rayon::prelude::*;
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 
 use garmin_lib::common::garmin_config::GarminConfig;
+use garmin_lib::common::pgpool::PgPool;
+use garmin_lib::utils::garmin_util::map_result;
 
 use crate::fitbit_heartrate::FitbitHeartRate;
 
@@ -180,6 +184,44 @@ impl FitbitClient {
         let offset = Local.offset_from_local_date(&naivedate).unwrap();
         self._get_fitbit_intraday_time_series_heartrate(py, date, offset)
             .map_err(|e| err_msg(format!("{:?}", e)))
+    }
+
+    pub fn import_fitbit_heartrate(&self, date: &str, pool: &PgPool) -> Result<(), Error> {
+        let heartrates = self.get_fitbit_intraday_time_series_heartrate(date)?;
+        let dates: HashSet<_> = heartrates
+            .par_iter()
+            .map(|entry| {
+                format!(
+                    "{:04}-{:02}-{:02}",
+                    entry.datetime.year(),
+                    entry.datetime.month(),
+                    entry.datetime.day()
+                )
+            })
+            .collect();
+        let mut current_datetimes = HashSet::new();
+        for date in &dates {
+            for entry in FitbitHeartRate::read_from_db(&pool, &date).unwrap() {
+                current_datetimes.insert(entry.datetime);
+            }
+        }
+        println!(
+            "{} {} {}",
+            heartrates.len(),
+            dates.len(),
+            current_datetimes.len()
+        );
+        let results: Vec<_> = heartrates
+            .par_iter()
+            .map(|entry| {
+                if !current_datetimes.contains(&entry.datetime) {
+                    entry.insert_into_db(&pool.clone())?;
+                }
+                Ok(())
+            })
+            .collect();
+        let _: Vec<_> = map_result(results)?;
+        Ok(())
     }
 }
 

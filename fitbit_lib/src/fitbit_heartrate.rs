@@ -2,7 +2,7 @@ use chrono::{DateTime, Datelike, FixedOffset, Local, NaiveDateTime, TimeZone, Ut
 use cpython::{exc, FromPyObject, PyDict, PyErr, PyResult, Python};
 use failure::Error;
 use glob::glob;
-use rayon::prelude::*;
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use std::collections::HashSet;
 use std::fs::File;
 use std::path::Path;

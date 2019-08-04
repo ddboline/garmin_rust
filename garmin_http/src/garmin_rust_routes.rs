@@ -18,8 +18,9 @@ use super::logged_user::LoggedUser;
 
 use super::garmin_rust_app::AppState;
 use crate::garmin_requests::{
-    FitbitAuthRequest, FitbitCallbackRequest, FitbitHeartrateRequest, GarminConnectSyncRequest,
-    GarminCorrRequest, GarminHtmlRequest, GarminListRequest, GarminSyncRequest, StravaSyncRequest,
+    FitbitAuthRequest, FitbitCallbackRequest, FitbitHeartrateRequest, FitbitSyncRequest,
+    GarminConnectSyncRequest, GarminCorrRequest, GarminHtmlRequest, GarminListRequest,
+    GarminSyncRequest, StravaSyncRequest,
 };
 use crate::CONFIG;
 
@@ -190,6 +191,23 @@ pub fn fitbit_callback(
                     .json(format!("Unauthorized {:?}", state.user_list)));
             }
             Ok(form_http_response(body))
+        })
+    })
+}
+
+pub fn fitbit_sync(
+    query: Query<FitbitSyncRequest>,
+    user: LoggedUser,
+    state: Data<AppState>,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let query = query.into_inner();
+    state.db.send(query).from_err().and_then(move |res| {
+        res.and_then(|_| {
+            if !state.user_list.is_authorized(&user) {
+                return Ok(HttpResponse::Unauthorized()
+                    .json(format!("Unauthorized {:?}", state.user_list)));
+            }
+            Ok(form_http_response("finished".to_string()))
         })
     })
 }

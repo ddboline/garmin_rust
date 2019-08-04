@@ -188,3 +188,22 @@ impl Handler<FitbitHeartrateRequest> for PgPool {
         client.get_fitbit_intraday_time_series_heartrate(&msg.date)
     }
 }
+
+#[derive(Serialize, Deserialize)]
+pub struct FitbitSyncRequest {
+    date: String,
+}
+
+impl Message for FitbitSyncRequest {
+    type Result = Result<(), Error>;
+}
+
+impl Handler<FitbitSyncRequest> for PgPool {
+    type Result = Result<(), Error>;
+    fn handle(&mut self, msg: FitbitSyncRequest, _: &mut Self::Context) -> Self::Result {
+        let config = GarminConfig::get_config(None)?;
+        let client = FitbitClient::from_file(&config)?;
+        client.import_fitbit_heartrate(&msg.date, self)?;
+        Ok(())
+    }
+}

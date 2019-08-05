@@ -3,6 +3,7 @@ use failure::Error;
 
 use fitbit_lib::fitbit_client::FitbitClient;
 use fitbit_lib::fitbit_heartrate::FitbitHeartRate;
+use fitbit_lib::scale_measurement::ScaleMeasurement;
 
 use garmin_lib::common::garmin_cli::{GarminCli, GarminRequest};
 use garmin_lib::common::garmin_config::GarminConfig;
@@ -221,5 +222,18 @@ impl Handler<FitbitSyncRequest> for PgPool {
         let client = FitbitClient::from_file(&config)?;
         client.import_fitbit_heartrate(&msg.date, self)?;
         Ok(())
+    }
+}
+
+pub struct ScaleMeasurementRequest {}
+
+impl Message for ScaleMeasurementRequest {
+    type Result = Result<Vec<ScaleMeasurement>, Error>;
+}
+
+impl Handler<ScaleMeasurementRequest> for PgPool {
+    type Result = Result<Vec<ScaleMeasurement>, Error>;
+    fn handle(&mut self, _: ScaleMeasurementRequest, _: &mut Self::Context) -> Self::Result {
+        ScaleMeasurement::read_from_db(self)
     }
 }

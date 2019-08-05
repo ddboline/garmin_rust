@@ -20,7 +20,7 @@ use super::garmin_rust_app::AppState;
 use crate::garmin_requests::{
     FitbitAuthRequest, FitbitCallbackRequest, FitbitHeartrateApiRequest, FitbitHeartrateDbRequest,
     FitbitSyncRequest, GarminConnectSyncRequest, GarminCorrRequest, GarminHtmlRequest,
-    GarminListRequest, GarminSyncRequest, StravaSyncRequest,
+    GarminListRequest, GarminSyncRequest, ScaleMeasurementRequest, StravaSyncRequest,
 };
 use crate::CONFIG;
 
@@ -227,6 +227,25 @@ pub fn fitbit_sync(
             Ok(form_http_response("finished".to_string()))
         })
     })
+}
+
+pub fn scale_measurement(
+    user: LoggedUser,
+    state: Data<AppState>,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    state
+        .db
+        .send(ScaleMeasurementRequest {})
+        .from_err()
+        .and_then(move |res| {
+            res.and_then(|slist| {
+                if !state.user_list.is_authorized(&user) {
+                    return Ok(HttpResponse::Unauthorized()
+                        .json(format!("Unauthorized {:?}", state.user_list)));
+                }
+                to_json(&slist)
+            })
+        })
 }
 
 #[derive(Serialize)]

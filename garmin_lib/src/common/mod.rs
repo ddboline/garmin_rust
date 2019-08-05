@@ -7,4 +7,3 @@ pub mod garmin_point;
 pub mod garmin_summary;
 pub mod garmin_sync;
 pub mod pgpool;
-pub mod strava_sync;

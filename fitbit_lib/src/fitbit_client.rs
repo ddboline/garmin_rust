@@ -23,7 +23,7 @@ pub struct FitbitClient {
     pub refresh_token: String,
 }
 
-macro_rules! set_attr_from_dect {
+macro_rules! set_attr_from_dict {
     ($token:ident, $py:ident, $s:ident, $item:ident) => {
         $token
             .get_item($py, stringify!($item))
@@ -124,9 +124,9 @@ impl FitbitClient {
         let session = client.getattr(py, "session")?;
         let token = session.getattr(py, "token")?;
         let token = PyDict::extract(py, &token)?;
-        set_attr_from_dect!(token, py, self, user_id)?;
-        set_attr_from_dect!(token, py, self, access_token)?;
-        set_attr_from_dect!(token, py, self, refresh_token)?;
+        set_attr_from_dict!(token, py, self, user_id)?;
+        set_attr_from_dict!(token, py, self, access_token)?;
+        set_attr_from_dict!(token, py, self, refresh_token)?;
         let success = r#"
             <h1>You are now authorized to access the Fitbit API!</h1>
             <br/><h3>You can close this window</h3>"#

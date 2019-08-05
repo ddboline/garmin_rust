@@ -28,6 +28,7 @@ pub struct GarminConfigInner {
     pub fitbit_clientid: String,
     pub fitbit_clientsecret: String,
     pub fitbit_tokenfile: String,
+    pub strava_tokenfile: String,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -59,6 +60,7 @@ impl GarminConfigInner {
             secret_key: "0123".repeat(8),
             domain: "localhost".to_string(),
             fitbit_tokenfile: format!("{}/.fitbit_tokens", home_dir),
+            strava_tokenfile: format!("{}/.stravacli", home_dir),
             ..Default::default()
         }
     }
@@ -89,6 +91,7 @@ impl GarminConfigInner {
         set_config_from_env!(self, fitbit_clientid, "FITBIT_CLIENTID");
         set_config_from_env!(self, fitbit_clientsecret, "FITBIT_CLIENTSECRET");
         set_config_from_env!(self, fitbit_tokenfile, "FITBIT_TOKENFILE");
+        set_config_from_env!(self, strava_tokenfile, "STRAVA_TOKENFILE");
         self
     }
 }

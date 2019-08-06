@@ -16,7 +16,7 @@ use super::logged_user::AuthorizedUsers;
 use crate::garmin_rust_routes::{
     fitbit_auth, fitbit_callback, fitbit_heartrate_api, fitbit_heartrate_db, fitbit_sync, garmin,
     garmin_connect_sync, garmin_get_hr_data, garmin_get_hr_pace, garmin_list_gps_tracks,
-    garmin_sync, scale_measurement, strava_sync, strava_auth, strava_callback, strava_activities,
+    garmin_sync, scale_measurement, strava_activities, strava_auth, strava_callback, strava_sync,
 };
 use crate::CONFIG;
 
@@ -105,9 +105,21 @@ pub fn start_app() {
                 web::resource("/garmin/scale_measurements")
                     .route(web::get().to_async(scale_measurement)),
             )
-            .service(web::resource("/garmin/strava/auth").route(web::get()).to_async(strava_auth))
-            .service(web::resource("/garmin/strava/callback").route(web::get()).to_async(strava_callback))
-            .service(web::resource("/garmin/strava/activities").route(web::get()).to_async(strava_activities))
+            .service(
+                web::resource("/garmin/strava/auth")
+                    .route(web::get())
+                    .to_async(strava_auth),
+            )
+            .service(
+                web::resource("/garmin/strava/callback")
+                    .route(web::get())
+                    .to_async(strava_callback),
+            )
+            .service(
+                web::resource("/garmin/strava/activities")
+                    .route(web::get())
+                    .to_async(strava_activities),
+            )
     })
     .bind(&format!("127.0.0.1:{}", config.port))
     .unwrap_or_else(|_| panic!("Failed to bind to port {}", config.port))

@@ -20,7 +20,8 @@ use super::garmin_rust_app::AppState;
 use crate::garmin_requests::{
     FitbitAuthRequest, FitbitCallbackRequest, FitbitHeartrateApiRequest, FitbitHeartrateDbRequest,
     FitbitSyncRequest, GarminConnectSyncRequest, GarminCorrRequest, GarminHtmlRequest,
-    GarminListRequest, GarminSyncRequest, ScaleMeasurementRequest, StravaSyncRequest,
+    GarminListRequest, GarminSyncRequest, ScaleMeasurementRequest, StravaActivitiesRequest,
+    StravaAuthRequest, StravaCallbackRequest, StravaSyncRequest,
 };
 use crate::CONFIG;
 
@@ -142,13 +143,56 @@ pub fn strava_sync(
         })
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct StravaAuthQuery {
-    type: Option<String>,
+pub fn strava_auth(
+    query: Query<StravaAuthRequest>,
+    user: LoggedUser,
+    state: Data<AppState>,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let query = query.into_inner();
+    state.db.send(query).from_err().and_then(move |res| {
+        res.and_then(|url| {
+            if !state.user_list.is_authorized(&user) {
+                return Ok(HttpResponse::Unauthorized()
+                    .json(format!("Unauthorized {:?}", state.user_list)));
+            }
+            Ok(form_http_response(url))
+        })
+    })
 }
 
-// , strava_callback, strava_activities,
-pub fn strava_auth()
+pub fn strava_callback(
+    query: Query<StravaCallbackRequest>,
+    user: LoggedUser,
+    state: Data<AppState>,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let query = query.into_inner();
+    state.db.send(query).from_err().and_then(move |res| {
+        res.and_then(|body| {
+            if !state.user_list.is_authorized(&user) {
+                return Ok(HttpResponse::Unauthorized()
+                    .json(format!("Unauthorized {:?}", state.user_list)));
+            }
+            Ok(form_http_response(body))
+        })
+    })
+}
+
+pub fn strava_activities(
+    query: Query<StravaActivitiesRequest>,
+    user: LoggedUser,
+    state: Data<AppState>,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let query = query.into_inner();
+    state.db.send(query).from_err().and_then(move |res| {
+        res.and_then(|alist| {
+            if !state.user_list.is_authorized(&user) {
+                return Ok(HttpResponse::Unauthorized()
+                    .json(format!("Unauthorized {:?}", state.user_list)));
+            }
+            to_json(&alist)
+        })
+    })
+}
 
 pub fn fitbit_auth(
     user: LoggedUser,

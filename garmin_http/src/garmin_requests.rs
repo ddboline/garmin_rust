@@ -1,15 +1,19 @@
 use actix::{Handler, Message};
 use failure::Error;
+use std::collections::HashMap;
 
 use fitbit_lib::fitbit_client::FitbitClient;
 use fitbit_lib::fitbit_heartrate::FitbitHeartRate;
 use fitbit_lib::scale_measurement::ScaleMeasurement;
+
+use strava_lib::strava_client::{StravaAuthType, StravaClient};
 
 use garmin_lib::common::garmin_cli::{GarminCli, GarminRequest};
 use garmin_lib::common::garmin_config::GarminConfig;
 use garmin_lib::common::garmin_correction_lap::GarminCorrectionList;
 use garmin_lib::common::garmin_summary::get_list_of_files_from_db;
 use garmin_lib::common::pgpool::PgPool;
+use garmin_lib::common::strava_sync::StravaItem;
 
 use super::logged_user::LoggedUser;
 
@@ -238,6 +242,69 @@ impl Handler<ScaleMeasurementRequest> for PgPool {
     }
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct StravaAuthRequest {
-    pub type: Option<String>,
+    pub auth_type: Option<String>,
+}
+
+impl Message for StravaAuthRequest {
+    type Result = Result<String, Error>;
+}
+
+impl Handler<StravaAuthRequest> for PgPool {
+    type Result = Result<String, Error>;
+    fn handle(&mut self, msg: StravaAuthRequest, _: &mut Self::Context) -> Self::Result {
+        let config = GarminConfig::get_config(None)?;
+        let auth_type = msg.auth_type.and_then(|a| match a.as_str() {
+            "read" => Some(StravaAuthType::Read),
+            "write" => Some(StravaAuthType::Write),
+            _ => None,
+        });
+        let client = StravaClient::from_file(&config, auth_type)?;
+        client.get_authorization_url()
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct StravaCallbackRequest {
+    pub code: String,
+    pub state: String,
+}
+
+impl Message for StravaCallbackRequest {
+    type Result = Result<String, Error>;
+}
+
+impl Handler<StravaCallbackRequest> for PgPool {
+    type Result = Result<String, Error>;
+    fn handle(&mut self, msg: StravaCallbackRequest, _: &mut Self::Context) -> Self::Result {
+        let config = GarminConfig::get_config(None)?;
+        let mut client = StravaClient::from_file(&config, None)?;
+        client.process_callback(&msg.code, &msg.state)?;
+        client.to_file()?;
+        let body = r#"
+            <title>Strava auth code received!</title>
+            This window can be closed.
+            <script language="JavaScript" type="text/javascript">window.close()</script>"#;
+        Ok(body.to_string())
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct StravaActivitiesRequest {
+    pub start_date: Option<String>,
+    pub end_date: Option<String>,
+}
+
+impl Message for StravaActivitiesRequest {
+    type Result = Result<HashMap<String, StravaItem>, Error>;
+}
+
+impl Handler<StravaActivitiesRequest> for PgPool {
+    type Result = Result<HashMap<String, StravaItem>, Error>;
+    fn handle(&mut self, msg: StravaActivitiesRequest, _: &mut Self::Context) -> Self::Result {
+        let config = GarminConfig::get_config(None)?;
+        let client = StravaClient::from_file(&config, Some(StravaAuthType::Read))?;
+        client.get_strava_activites(msg.start_date, msg.end_date)
+    }
 }

@@ -237,3 +237,7 @@ impl Handler<ScaleMeasurementRequest> for PgPool {
         ScaleMeasurement::read_from_db(self)
     }
 }
+
+pub struct StravaAuthRequest {
+    pub type: Option<String>,
+}

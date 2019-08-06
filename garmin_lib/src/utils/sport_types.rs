@@ -25,25 +25,38 @@ pub enum SportTypes {
 impl fmt::Display for SportTypes {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let sport_str = match self {
-            SportTypes::Running => "running".to_string(),
-            SportTypes::Biking => "biking".to_string(),
-            SportTypes::Walking => "walking".to_string(),
-            SportTypes::Ultimate => "ultimate".to_string(),
-            SportTypes::Elliptical => "elliptical".to_string(),
-            SportTypes::Stairs => "stairs".to_string(),
-            SportTypes::Lifting => "lifting".to_string(),
-            SportTypes::Swimming => "swimming".to_string(),
-            SportTypes::Other => "other".to_string(),
-            SportTypes::Snowshoeing => "snowshoeing".to_string(),
-            SportTypes::Skiing => "skiing".to_string(),
+            SportTypes::Running => "running",
+            SportTypes::Biking => "biking",
+            SportTypes::Walking => "walking",
+            SportTypes::Ultimate => "ultimate",
+            SportTypes::Elliptical => "elliptical",
+            SportTypes::Stairs => "stairs",
+            SportTypes::Lifting => "lifting",
+            SportTypes::Swimming => "swimming",
+            SportTypes::Other => "other",
+            SportTypes::Snowshoeing => "snowshoeing",
+            SportTypes::Skiing => "skiing",
         };
         write!(f, "{}", sport_str)
     }
 }
 
 impl SportTypes {
-    pub fn to_string(self) -> String {
-        format!("{}", self)
+    pub fn to_strava_activity(&self) -> String {
+        match self {
+            SportTypes::Running => "run",
+            SportTypes::Biking => "ride",
+            SportTypes::Walking => "walk",
+            SportTypes::Ultimate => "workout",
+            SportTypes::Elliptical => "workout",
+            SportTypes::Stairs => "workout",
+            SportTypes::Lifting => "workout",
+            SportTypes::Swimming => "swim",
+            SportTypes::Other => "workout",
+            SportTypes::Snowshoeing => "workout",
+            SportTypes::Skiing => "nordicski",
+        }
+        .to_string()
     }
 }
 
@@ -94,18 +107,19 @@ pub fn convert_sport_name(sport: &str) -> Option<String> {
 
 pub fn get_strava_activity_type(sport_type: SportTypes) -> String {
     match sport_type {
-        SportTypes::Running => "run".to_string(),
-        SportTypes::Biking => "ride".to_string(),
-        SportTypes::Walking => "walk".to_string(),
-        SportTypes::Ultimate => "ultimate".to_string(),
-        SportTypes::Elliptical => "elliptical".to_string(),
-        SportTypes::Stairs => "stairs".to_string(),
-        SportTypes::Lifting => "lifting".to_string(),
-        SportTypes::Swimming => "swim".to_string(),
-        SportTypes::Other => "other".to_string(),
-        SportTypes::Snowshoeing => "snowshoe".to_string(),
-        SportTypes::Skiing => "nordicski".to_string(),
+        SportTypes::Running => "run",
+        SportTypes::Biking => "ride",
+        SportTypes::Walking => "walk",
+        SportTypes::Ultimate => "ultimate",
+        SportTypes::Elliptical => "elliptical",
+        SportTypes::Stairs => "stairs",
+        SportTypes::Lifting => "lifting",
+        SportTypes::Swimming => "swim",
+        SportTypes::Other => "other",
+        SportTypes::Snowshoeing => "snowshoe",
+        SportTypes::Skiing => "nordicski",
     }
+    .to_string()
 }
 
 pub fn convert_sport_name_to_activity_type(sport: &str) -> Option<String> {

@@ -142,6 +142,14 @@ pub fn strava_sync(
         })
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct StravaAuthQuery {
+    type: Option<String>,
+}
+
+// , strava_callback, strava_activities,
+pub fn strava_auth()
+
 pub fn fitbit_auth(
     user: LoggedUser,
     state: Data<AppState>,

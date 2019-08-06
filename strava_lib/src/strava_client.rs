@@ -8,6 +8,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 
 use garmin_lib::common::garmin_config::GarminConfig;
+use garmin_lib::utils::sport_types::SportTypes;
 
 use garmin_lib::common::strava_sync::StravaItem;
 
@@ -230,5 +231,55 @@ impl StravaClient {
 
         self._get_strava_activites(py, start_date, end_date)
             .map_err(|e| err_msg(format!("{:?}", e)))
+    }
+
+    fn _upload_strava_activity(
+        &self,
+        py: Python,
+        filepath: &str,
+        title: &str,
+        description: &str,
+        is_private: bool,
+        sport: SportTypes,
+    ) -> PyResult<()> {
+        let fext = if filepath.ends_with("fit.gz") {
+            "fit.gz"
+        } else if filepath.ends_with("tcx.gz") {
+            "tcx.gz"
+        } else {
+            return Ok(());
+        };
+        let client = self.get_strava_client(py)?;
+        let builtins = py.import("builtins")?;
+        let file_obj = builtins.call(
+            py,
+            "open",
+            PyTuple::new(
+                py,
+                &[
+                    PyString::new(py, filepath).into_object(),
+                    PyString::new(py, "rb").into_object(),
+                ],
+            ),
+            None,
+        )?;
+        let args = PyDict::new(py);
+        args.set_item(py, "private", is_private)?;
+        args.set_item(py, "activity_type", sport.to_strava_activity())?;
+        let upstat = client.call_method(
+            py,
+            "upload_activity",
+            PyTuple::new(
+                py,
+                &[
+                    file_obj,
+                    PyString::new(py, fext).into_object(),
+                    PyString::new(py, title).into_object(),
+                    PyString::new(py, description).into_object(),
+                ],
+            ),
+            Some(&args),
+        )?;
+        Ok(())
     }
 }

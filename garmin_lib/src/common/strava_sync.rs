@@ -77,7 +77,7 @@ pub fn upsert_strava_id(
 ) -> Result<Vec<String>, Error> {
     let strava_id_map = get_strava_id_map(pool)?;
     let url = Url::parse_with_params(
-        &format!("https://{}/strava/activities", &config.domain),
+        &format!("https://{}/garmin/strava/activities", &config.domain),
         &[("start_date", max_datetime)],
     )?;
     println!("{}", url.as_str());

@@ -105,20 +105,14 @@ pub fn start_app() {
                 web::resource("/garmin/scale_measurements")
                     .route(web::get().to_async(scale_measurement)),
             )
-            .service(
-                web::resource("/garmin/strava/auth")
-                    .route(web::get())
-                    .to_async(strava_auth),
-            )
+            .service(web::resource("/garmin/strava/auth").route(web::get().to_async(strava_auth)))
             .service(
                 web::resource("/garmin/strava/callback")
-                    .route(web::get())
-                    .to_async(strava_callback),
+                    .route(web::get().to_async(strava_callback)),
             )
             .service(
                 web::resource("/garmin/strava/activities")
-                    .route(web::get())
-                    .to_async(strava_activities),
+                    .route(web::get().to_async(strava_activities)),
             )
     })
     .bind(&format!("127.0.0.1:{}", config.port))

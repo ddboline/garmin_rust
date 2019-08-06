@@ -3,22 +3,30 @@ use cpython::{
     PythonObject,
 };
 use failure::{err_msg, Error};
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 
 use garmin_lib::common::garmin_config::GarminConfig;
 
-use crate::strava_sync::StravaItem;
+use garmin_lib::common::strava_sync::StravaItem;
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct StravaItem {
-    pub begin_datetime: String,
-    pub title: String,
+pub struct LocalStravaItem(pub StravaItem);
+
+impl<'a> FromPyObject<'a> for LocalStravaItem {
+    fn extract(py: Python, obj: &'a PyObject) -> PyResult<Self> {
+        let start_date = obj.getattr(py, "start_date")?;
+        let start_date = start_date.call_method(py, "isoformat", PyTuple::empty(py), None)?;
+        let start_date = String::extract(py, &start_date)?;
+        let title = obj.getattr(py, "title")?;
+        let title = String::extract(py, &title)?;
+        let item = StravaItem {
+            begin_datetime: start_date.replace("+00:00", "Z"),
+            title,
+        };
+        Ok(LocalStravaItem(item))
+    }
 }
-
-// impl StravaItem {
-
-// }
 
 #[derive(Debug, Copy, Clone)]
 pub enum StravaAuthType {
@@ -197,11 +205,29 @@ impl StravaClient {
         if let Some(end_date) = end_date {
             args.set_item(py, "before", end_date)?;
         }
-        let activities = client.call_method(py, "get_activities", PyTuple::empty(py), Some(&args))?;
+        let activities =
+            client.call_method(py, "get_activities", PyTuple::empty(py), Some(&args))?;
 
-        let mut results = Vec::new();
+        let mut results = HashMap::new();
         for activity in activities.iter(py) {
-
+            let activity = activity.into_object();
+            let id = activity.getattr(py, "id")?;
+            let id = String::extract(py, &id)?;
+            let item = LocalStravaItem::extract(py, &activity)?;
+            results.insert(id, item.0);
         }
+        Ok(results)
+    }
+
+    pub fn get_strava_activites(
+        &self,
+        start_date: Option<&str>,
+        end_date: Option<&str>,
+    ) -> Result<HashMap<String, StravaItem>, Error> {
+        let gil = Python::acquire_gil();
+        let py = gil.python();
+
+        self._get_strava_activites(py, start_date, end_date)
+            .map_err(|e| err_msg(format!("{:?}", e)))
     }
 }

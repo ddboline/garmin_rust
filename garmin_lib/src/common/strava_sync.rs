@@ -3,12 +3,16 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reqwest::{Client, Url};
 use std::collections::HashMap;
 
-use garmin_lib::common::garmin_config::GarminConfig;
-use garmin_lib::common::pgpool::PgPool;
-use garmin_lib::utils::garmin_util::map_result;
-use garmin_lib::utils::row_index_trait::RowIndexTrait;
+use crate::common::garmin_config::GarminConfig;
+use crate::common::pgpool::PgPool;
+use crate::utils::garmin_util::map_result;
+use crate::utils::row_index_trait::RowIndexTrait;
 
-use crate::strava_client::StravaItem;
+#[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct StravaItem {
+    pub begin_datetime: String,
+    pub title: String,
+}
 
 pub fn get_strava_id_from_begin_datetime(
     pool: &PgPool,

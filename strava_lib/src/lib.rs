@@ -1,5 +1,4 @@
 pub mod strava_client;
-pub mod strava_sync;
 
 #[cfg(test)]
 mod tests {

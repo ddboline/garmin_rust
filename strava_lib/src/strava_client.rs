@@ -1,5 +1,5 @@
 use cpython::{
-    FromPyObject, ObjectProtocol, PyDict, PyObject, PyResult, PyString, PyTuple, Python,
+    FromPyObject, ObjectProtocol, PyDict, PyList, PyObject, PyResult, PyString, PyTuple, Python,
     PythonObject,
 };
 use failure::{err_msg, Error};
@@ -207,6 +207,7 @@ impl StravaClient {
         }
         let activities =
             client.call_method(py, "get_activities", PyTuple::empty(py), Some(&args))?;
+        let activities = PyList::extract(py, &activities)?;
 
         let mut results = HashMap::new();
         for activity in activities.iter(py) {

@@ -11,6 +11,10 @@ WORKDIR /garmin_rust
 ADD Cargo.toml /garmin_rust
 ADD src /garmin_rust/src
 ADD scripts /garmin_rust/scripts
-ADD lambda /garmin_rust/lambda
+ADD templates /garmin_rust/templates
 ADD Makefile /garmin_rust
 ADD python /garmin_rust/python
+ADD garmin_lib /garmin_rust/garmin_lib
+ADD garmin_http /garmin_rust/garmin_http
+ADD fitbit_lib /garmin_rust/fitbit_lib
+ADD strava_lib /garmin_rust/strava_lib

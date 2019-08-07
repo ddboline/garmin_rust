@@ -1,6 +1,6 @@
 use cpython::{
-    FromPyObject, ObjectProtocol, PyDict, PyList, PyObject, PyResult, PyString, PyTuple, Python,
-    PythonObject,
+    FromPyObject, ObjectProtocol, PyDict, PyIterator, PyObject, PyResult, PyString, PyTuple,
+    Python, PythonObject,
 };
 use failure::{err_msg, Error};
 use std::collections::HashMap;
@@ -19,7 +19,7 @@ impl<'a> FromPyObject<'a> for LocalStravaItem {
         let start_date = obj.getattr(py, "start_date")?;
         let start_date = start_date.call_method(py, "isoformat", PyTuple::empty(py), None)?;
         let start_date = String::extract(py, &start_date)?;
-        let title = obj.getattr(py, "title")?;
+        let title = obj.getattr(py, "name")?;
         let title = String::extract(py, &title)?;
         let item = StravaItem {
             begin_datetime: start_date.replace("+00:00", "Z"),
@@ -73,7 +73,7 @@ impl StravaClient {
             if items.len() >= 2 {
                 let key = items[0];
                 let val = items[1];
-                match key {
+                match key.trim() {
                     "client_id" => client.client_id = val.trim().to_string(),
                     "client_secret" => client.client_secret = val.trim().to_string(),
                     "read_access_token" => client.read_access_token = Some(val.trim().to_string()),
@@ -93,7 +93,7 @@ impl StravaClient {
         writeln!(f, "client_id = {}", self.client_id)?;
         writeln!(f, "client_secret = {}", self.client_secret)?;
         if let Some(token) = self.read_access_token.as_ref() {
-            writeln!(f, "read_access_token={}", token)?;
+            writeln!(f, "read_access_token = {}", token)?;
         }
         if let Some(token) = self.write_access_token.as_ref() {
             writeln!(f, "write_access_token = {}", token)?;
@@ -111,7 +111,7 @@ impl StravaClient {
             py,
             "Client",
             match access_token {
-                Some(ac) => PyTuple::new(py, &[PyString::new(py, &ac).into_object()]),
+                Some(ac) => PyTuple::new(py, &[PyString::new(py, ac).into_object()]),
                 None => PyTuple::empty(py),
             },
             None,
@@ -208,13 +208,14 @@ impl StravaClient {
         }
         let activities =
             client.call_method(py, "get_activities", PyTuple::empty(py), Some(&args))?;
-        let activities = PyList::extract(py, &activities)?;
+        let activities = PyIterator::from_object(py, activities)?;
 
         let mut results = HashMap::new();
-        for activity in activities.iter(py) {
-            let activity = activity.into_object();
+
+        for activity in activities {
+            let activity = activity?;
             let id = activity.getattr(py, "id")?;
-            let id = String::extract(py, &id)?;
+            let id = i64::extract(py, &id)?.to_string();
             let item = LocalStravaItem::extract(py, &activity)?;
             results.insert(id, item.0);
         }

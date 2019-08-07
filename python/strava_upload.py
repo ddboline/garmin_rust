@@ -34,117 +34,14 @@ def get_config():
     if cp_.has_section('API'):
         cid = cp_.get('API', 'CLIENT_ID')
         cs = cp_.get('API', 'CLIENT_SECRET')
-        if 'access_token' in cp_.options('API'):
-            cat = cp_.get('API', 'ACCESS_TOKEN')
+        if 'write_access_token' in cp_.options('API'):
+            cat = cp_.get('API', 'WRITE_ACCESS_TOKEN')
     return cp_, cid, cs, cat
 
 
 @app.route('/running', methods=['GET'])
 def running():
     return 'running', 200
-
-
-@app.route('/close_window', methods=['GET'])
-def close_window():
-    return '<title>Close window!</title>This window can be closed.' \
-    '<script language="JavaScript" type="text/javascript">window.close()</script>', 200
-
-
-@app.route('/callback', methods=['GET'])
-def strava_auth_callback():
-    cp_, cid, cs, cat = get_config()
-
-    code = request.args.get('code')
-    state = request.args.get('state')
-
-    if code is None:
-        return 'No code received', 200
-
-    client = Client()
-
-    cat = client.exchange_code_for_token(client_id=cid, client_secret=cs, code=code)['access_token']
-
-    if not cp_.has_section('API'):
-        cp_.add_section('API')
-    cp_.set('API', 'CLIENT_ID', cid)
-    cp_.set('API', 'CLIENT_SECRET', cs)
-    cp_.set('API', 'ACCESS_TOKEN', cat)
-    cp_.write(open(os.path.expanduser('~/.stravacli'), "w"))
-
-    if state:
-        js = base64.b64decode(state).decode()
-
-        return """
-            <title>Strava auth code received!</title>This window can be closed.
-            <script language="JavaScript" type="text/javascript">
-            function processStravaData() {
-                var ostr = '/strava';
-                var data = JSON.stringify(%s);
-                var xmlhttp = new XMLHttpRequest();
-                xmlhttp.onload = function() {
-                    var win = window.open(xmlhttp.responseText, '_blank');
-                    win.focus()
-                    window.close()
-                }
-                xmlhttp.open( "POST", ostr , true );
-                xmlhttp.setRequestHeader("Content-Type", "application/json");
-                xmlhttp.send(data);
-            };
-            processStravaData();
-            </script>""" % js, 200
-    else:
-        return '<title>Strava auth code received!</title>This window can be closed.' \
-            '<script language="JavaScript" type="text/javascript">window.close()</script>', 200
-
-
-@app.route('/auth/<type>')
-def strava_auth(type):
-    domain = request.args.get('domain', 'www.ddboline.net')
-
-    _scope = 'activity:write'
-    if type == 'read':
-        _scope = 'activity:read_all'
-    
-    _, cid, _, cat = get_config()
-
-    client = Client(cat)
-
-    try:
-        client.get_athlete()
-        if type == 'read':
-            list(client.get_activities(limit=1))
-    except requests.exceptions.ConnectionError:
-        raise
-    except Exception:
-        client = Client()
-
-        authorize_url = client.authorization_url(
-            client_id=cid,
-            redirect_uri=f'https://{domain}/strava/callback',
-            scope=_scope,
-            state=base64.b64encode(json.dumps(request.json).encode()).decode())
-
-        return authorize_url, 200
-
-    return f'https://{domain}/strava/close_window', 200
-
-
-@app.route('/activities', methods=['GET'])
-def strava_activities():
-
-    start_date = request.args.get('start_date', None)
-    end_date = request.args.get('end_date', None)
-
-    cat = get_config()[-1]
-
-    client = Client(cat)
-
-    activities = {
-        x.id: {'begin_datetime': x.start_date.isoformat().replace('+00:00', 'Z'), 'title': x.name}
-        for x in client.get_activities(before=end_date, after=start_date)
-    }
-
-    return jsonify(activities)
 
 
 @app.route('/', methods=['POST'])

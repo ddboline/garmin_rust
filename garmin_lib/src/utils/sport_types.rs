@@ -42,7 +42,7 @@ impl fmt::Display for SportTypes {
 }
 
 impl SportTypes {
-    pub fn to_strava_activity(&self) -> String {
+    pub fn to_strava_activity(self) -> String {
         match self {
             SportTypes::Running => "run",
             SportTypes::Biking => "ride",

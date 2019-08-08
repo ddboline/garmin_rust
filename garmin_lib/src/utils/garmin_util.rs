@@ -194,3 +194,21 @@ pub fn extract_zip_from_garmin_connect(filename: &str, ziptmpdir: &str) -> Resul
     let new_filename = format!("{}/{}", ziptmpdir, new_filename);
     Ok(new_filename)
 }
+
+pub fn gzip_file(input_filename: &str, output_filename: &str) -> Result<(), Error> {
+    let command = format!("gzip -c {} > {}", input_filename, output_filename);
+    let mut process = Exec::shell(command).stdout(Redirection::Pipe).popen()?;
+    let exit_status = process.wait()?;
+    if !exit_status.success() {
+        if let Some(mut f) = process.stdout.as_ref() {
+            let mut buf = String::new();
+            f.read_to_string(&mut buf)?;
+            writeln!(stdout().lock(), "{}", buf)?;
+        }
+        return Err(err_msg(format!(
+            "Failed with exit status {:?}",
+            exit_status
+        )));
+    }
+    Ok(())
+}

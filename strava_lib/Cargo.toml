@@ -8,3 +8,4 @@ edition = "2018"
 garmin_lib = { path = "../garmin_lib" }
 failure = "0.1"
 cpython = "0.3"
+tempfile = "3.1"

@@ -6,11 +6,14 @@ use failure::{err_msg, Error};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
+use std::path::Path;
+use std::time::{Duration, SystemTime};
+use tempfile::Builder;
 
 use garmin_lib::common::garmin_config::GarminConfig;
-use garmin_lib::utils::sport_types::SportTypes;
-
 use garmin_lib::common::strava_sync::StravaItem;
+use garmin_lib::utils::garmin_util::gzip_file;
+use garmin_lib::utils::sport_types::SportTypes;
 
 pub struct LocalStravaItem(pub StravaItem);
 
@@ -234,6 +237,55 @@ impl StravaClient {
             .map_err(|e| err_msg(format!("{:?}", e)))
     }
 
+    pub fn upload_strava_activity(
+        &self,
+        filepath: &Path,
+        title: &str,
+        description: &str,
+        is_private: bool,
+        sport: SportTypes,
+    ) -> Result<String, Error> {
+        let gil = Python::acquire_gil();
+        let py = gil.python();
+
+        let mut _tempfile: Option<_> = None;
+
+        let ext = filepath
+            .extension()
+            .ok_or_else(|| err_msg("No extension"))?
+            .to_str()
+            .ok_or_else(|| err_msg("OsStr to Str conversion error"))?
+            .to_string();
+
+        let filename = match ext.as_str() {
+            "gz" => filepath
+                .canonicalize()?
+                .to_str()
+                .ok_or_else(|| err_msg("OsStr to Str conversion error"))?
+                .to_string(),
+            _ => {
+                let tfile = Builder::new().suffix(&format!("{}.gz", ext)).tempfile()?;
+                let infname = filepath
+                    .canonicalize()?
+                    .to_str()
+                    .ok_or_else(|| err_msg("OsStr to Str conversion error"))?
+                    .to_string();
+                let outfname = tfile
+                    .path()
+                    .to_str()
+                    .ok_or_else(|| err_msg("OsStr to Str conversion error"))?
+                    .to_string();
+                gzip_file(&infname, &outfname)?;
+                _tempfile = Some(tfile);
+                outfname
+            }
+        };
+
+        self._upload_strava_activity(py, &filename, title, description, is_private, sport)
+            .map_err(|e| err_msg(format!("{:?}", e)))
+            .map(|x| x.unwrap_or_else(|| format!("Bad extension {}", filename)))
+    }
+
     fn _upload_strava_activity(
         &self,
         py: Python,
@@ -242,13 +294,13 @@ impl StravaClient {
         description: &str,
         is_private: bool,
         sport: SportTypes,
-    ) -> PyResult<()> {
+    ) -> PyResult<Option<String>> {
         let fext = if filepath.ends_with("fit.gz") {
             "fit.gz"
         } else if filepath.ends_with("tcx.gz") {
             "tcx.gz"
         } else {
-            return Ok(());
+            return Ok(None);
         };
         let client = self.get_strava_client(py)?;
         let builtins = py.import("builtins")?;
@@ -281,6 +333,32 @@ impl StravaClient {
             ),
             Some(&args),
         )?;
-        Ok(())
+
+        let start_time = SystemTime::now();
+        let timeout = Duration::from_secs(10);
+
+        loop {
+            let result = String::extract(py, &upstat.getattr(py, "activity_id")?);
+
+            if result.is_ok()
+                || SystemTime::now()
+                    .duration_since(start_time)
+                    .unwrap_or_else(|_| Duration::from_secs(20))
+                    > timeout
+            {
+                break;
+            }
+
+            if let Err(e) = result {
+                println!("Error {:?}", e);
+            }
+
+            upstat.call_method(py, "poll", PyTuple::empty(py), None)?;
+        }
+
+        let activity_id = upstat.getattr(py, "activity_id")?;
+        let activity_id = i64::extract(py, &activity_id)?;
+
+        Ok(Some(activity_id.to_string()))
     }
 }

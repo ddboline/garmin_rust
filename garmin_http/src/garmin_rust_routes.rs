@@ -1,7 +1,7 @@
 #![allow(clippy::needless_pass_by_value)]
 
 use actix_web::http::StatusCode;
-use actix_web::web::{Data, Query};
+use actix_web::web::{Data, Json, Query};
 use actix_web::HttpResponse;
 use chrono::{Date, Datelike, Local};
 use failure::{err_msg, Error};
@@ -21,7 +21,7 @@ use crate::garmin_requests::{
     FitbitAuthRequest, FitbitCallbackRequest, FitbitHeartrateApiRequest, FitbitHeartrateDbRequest,
     FitbitSyncRequest, GarminConnectSyncRequest, GarminCorrRequest, GarminHtmlRequest,
     GarminListRequest, GarminSyncRequest, ScaleMeasurementRequest, StravaActivitiesRequest,
-    StravaAuthRequest, StravaCallbackRequest, StravaSyncRequest,
+    StravaAuthRequest, StravaCallbackRequest, StravaSyncRequest, StravaUploadRequest,
 };
 use crate::CONFIG;
 
@@ -190,6 +190,23 @@ pub fn strava_activities(
                     .json(format!("Unauthorized {:?}", state.user_list)));
             }
             to_json(&alist)
+        })
+    })
+}
+
+pub fn strava_upload(
+    payload: Json<StravaUploadRequest>,
+    user: LoggedUser,
+    state: Data<AppState>,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let payload = payload.into_inner();
+    state.db.send(payload).from_err().and_then(move |res| {
+        res.and_then(|body| {
+            if !state.user_list.is_authorized(&user) {
+                return Ok(HttpResponse::Unauthorized()
+                    .json(format!("Unauthorized {:?}", state.user_list)));
+            }
+            Ok(form_http_response(body))
         })
     })
 }

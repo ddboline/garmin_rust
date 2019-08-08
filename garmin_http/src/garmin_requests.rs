@@ -1,6 +1,7 @@
 use actix::{Handler, Message};
 use failure::Error;
 use std::collections::HashMap;
+use std::path::Path;
 
 use fitbit_lib::fitbit_client::FitbitClient;
 use fitbit_lib::fitbit_heartrate::FitbitHeartRate;
@@ -306,5 +307,39 @@ impl Handler<StravaActivitiesRequest> for PgPool {
         let config = GarminConfig::get_config(None)?;
         let client = StravaClient::from_file(&config, Some(StravaAuthType::Read))?;
         client.get_strava_activites(msg.start_date, msg.end_date)
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct StravaUploadRequest {
+    pub filename: String,
+    pub title: String,
+    pub activity_type: String,
+    pub description: Option<String>,
+    pub is_private: Option<bool>,
+}
+
+impl Message for StravaUploadRequest {
+    type Result = Result<String, Error>;
+}
+
+impl Handler<StravaUploadRequest> for PgPool {
+    type Result = Result<String, Error>;
+    fn handle(&mut self, msg: StravaUploadRequest, _: &mut Self::Context) -> Self::Result {
+        let filepath = Path::new(&msg.filename);
+        if !filepath.exists() {
+            return Ok(format!("File {} does not exist", msg.filename));
+        }
+        let sport = msg.activity_type.parse()?;
+
+        let config = GarminConfig::get_config(None)?;
+        let client = StravaClient::from_file(&config, Some(StravaAuthType::Write))?;
+        client.upload_strava_activity(
+            &filepath,
+            &msg.title,
+            msg.description.as_ref().unwrap_or(&"".to_string()),
+            msg.is_private.unwrap_or(false),
+            sport,
+        )
     }
 }

@@ -237,55 +237,6 @@ impl StravaClient {
             .map_err(|e| err_msg(format!("{:?}", e)))
     }
 
-    pub fn upload_strava_activity(
-        &self,
-        filepath: &Path,
-        title: &str,
-        description: &str,
-        is_private: bool,
-        sport: SportTypes,
-    ) -> Result<String, Error> {
-        let gil = Python::acquire_gil();
-        let py = gil.python();
-
-        let mut _tempfile: Option<_> = None;
-
-        let ext = filepath
-            .extension()
-            .ok_or_else(|| err_msg("No extension"))?
-            .to_str()
-            .ok_or_else(|| err_msg("OsStr to Str conversion error"))?
-            .to_string();
-
-        let filename = match ext.as_str() {
-            "gz" => filepath
-                .canonicalize()?
-                .to_str()
-                .ok_or_else(|| err_msg("OsStr to Str conversion error"))?
-                .to_string(),
-            _ => {
-                let tfile = Builder::new().suffix(&format!("{}.gz", ext)).tempfile()?;
-                let infname = filepath
-                    .canonicalize()?
-                    .to_str()
-                    .ok_or_else(|| err_msg("OsStr to Str conversion error"))?
-                    .to_string();
-                let outfname = tfile
-                    .path()
-                    .to_str()
-                    .ok_or_else(|| err_msg("OsStr to Str conversion error"))?
-                    .to_string();
-                gzip_file(&infname, &outfname)?;
-                _tempfile = Some(tfile);
-                outfname
-            }
-        };
-
-        self._upload_strava_activity(py, &filename, title, description, is_private, sport)
-            .map_err(|e| err_msg(format!("{:?}", e)))
-            .map(|x| x.unwrap_or_else(|| format!("Bad extension {}", filename)))
-    }
-
     fn _upload_strava_activity(
         &self,
         py: Python,
@@ -360,5 +311,54 @@ impl StravaClient {
         let activity_id = i64::extract(py, &activity_id)?;
 
         Ok(Some(activity_id.to_string()))
+    }
+
+    pub fn upload_strava_activity(
+        &self,
+        filepath: &Path,
+        title: &str,
+        description: &str,
+        is_private: bool,
+        sport: SportTypes,
+    ) -> Result<String, Error> {
+        let gil = Python::acquire_gil();
+        let py = gil.python();
+
+        let mut _tempfile: Option<_> = None;
+
+        let ext = filepath
+            .extension()
+            .ok_or_else(|| err_msg("No extension"))?
+            .to_str()
+            .ok_or_else(|| err_msg("OsStr to Str conversion error"))?
+            .to_string();
+
+        let filename = match ext.as_str() {
+            "gz" => filepath
+                .canonicalize()?
+                .to_str()
+                .ok_or_else(|| err_msg("OsStr to Str conversion error"))?
+                .to_string(),
+            _ => {
+                let tfile = Builder::new().suffix(&format!("{}.gz", ext)).tempfile()?;
+                let infname = filepath
+                    .canonicalize()?
+                    .to_str()
+                    .ok_or_else(|| err_msg("OsStr to Str conversion error"))?
+                    .to_string();
+                let outfname = tfile
+                    .path()
+                    .to_str()
+                    .ok_or_else(|| err_msg("OsStr to Str conversion error"))?
+                    .to_string();
+                gzip_file(&infname, &outfname)?;
+                _tempfile = Some(tfile);
+                outfname
+            }
+        };
+
+        self._upload_strava_activity(py, &filename, title, description, is_private, sport)
+            .map_err(|e| err_msg(format!("{:?}", e)))
+            .map(|x| x.unwrap_or_else(|| format!("Bad extension {}", filename)))
     }
 }

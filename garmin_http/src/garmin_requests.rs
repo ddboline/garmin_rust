@@ -1,4 +1,5 @@
 use actix::{Handler, Message};
+use chrono::{DateTime, Duration, SecondsFormat};
 use failure::Error;
 use std::collections::HashMap;
 use std::path::Path;
@@ -14,7 +15,9 @@ use garmin_lib::common::garmin_config::GarminConfig;
 use garmin_lib::common::garmin_correction_lap::GarminCorrectionList;
 use garmin_lib::common::garmin_summary::get_list_of_files_from_db;
 use garmin_lib::common::pgpool::PgPool;
-use garmin_lib::common::strava_sync::StravaItem;
+use garmin_lib::common::strava_sync::{
+    get_strava_id_maximum_begin_datetime, upsert_strava_id, StravaItem,
+};
 
 use super::logged_user::LoggedUser;
 
@@ -121,8 +124,25 @@ impl Message for StravaSyncRequest {
 impl Handler<StravaSyncRequest> for PgPool {
     type Result = Result<Vec<String>, Error>;
     fn handle(&mut self, _: StravaSyncRequest, _: &mut Self::Context) -> Self::Result {
-        let gcli = GarminCli::from_pool(&self)?;
-        gcli.sync_with_strava()
+        let config = GarminConfig::get_config(None)?;
+
+        get_strava_id_maximum_begin_datetime(&self).and_then(|max_datetime| {
+            let max_datetime = match max_datetime {
+                Some(dt) => {
+                    let max_datetime = DateTime::parse_from_rfc3339(&dt)?;
+                    let max_datetime = max_datetime - Duration::days(14);
+                    let max_datetime = max_datetime.to_rfc3339_opts(SecondsFormat::Secs, true);
+                    println!("max_datetime {}", max_datetime);
+                    Some(max_datetime)
+                }
+                None => None,
+            };
+
+            let client = StravaClient::from_file(&config, Some(StravaAuthType::Read))?;
+            let activities = client.get_strava_activites(max_datetime, None)?;
+
+            upsert_strava_id(&activities, &self)
+        })
     }
 }
 

@@ -1,9 +1,7 @@
 use failure::Error;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use reqwest::{Client, Url};
 use std::collections::HashMap;
 
-use crate::common::garmin_config::GarminConfig;
 use crate::common::pgpool::PgPool;
 use crate::utils::garmin_util::map_result;
 use crate::utils::row_index_trait::RowIndexTrait;
@@ -71,19 +69,12 @@ pub fn get_strava_id_map(pool: &PgPool) -> Result<HashMap<String, StravaItem>, E
 }
 
 pub fn upsert_strava_id(
+    new_items: &HashMap<String, StravaItem>,
     pool: &PgPool,
-    config: &GarminConfig,
-    max_datetime: &str,
 ) -> Result<Vec<String>, Error> {
     let strava_id_map = get_strava_id_map(pool)?;
-    let url = Url::parse_with_params(
-        &format!("https://{}/garmin/strava/activities", &config.domain),
-        &[("start_date", max_datetime)],
-    )?;
-    println!("{}", url.as_str());
-    let resp: HashMap<String, StravaItem> = Client::new().get(url).send()?.json()?;
 
-    let update_items: Vec<_> = resp
+    let update_items: Vec<_> = new_items
         .iter()
         .filter_map(|(id, new_item)| {
             strava_id_map.get(id).and_then(|item| {
@@ -96,7 +87,7 @@ pub fn upsert_strava_id(
         })
         .collect();
 
-    let insert_items: Vec<_> = resp
+    let insert_items: Vec<_> = new_items
         .iter()
         .filter_map(|(id, new_item)| {
             if strava_id_map.contains_key(id) {
@@ -110,6 +101,7 @@ pub fn upsert_strava_id(
     let query = "
         UPDATE strava_id_cache SET strava_title=$2 WHERE strava_id=$1
     ";
+    println!("{}", query);
     let items: Vec<_> = update_items
         .into_par_iter()
         .map(|(key, val)| {
@@ -124,6 +116,7 @@ pub fn upsert_strava_id(
         INSERT INTO strava_id_cache (strava_id, begin_datetime, strava_title)
         VALUES ($1,$2,$3)
     ";
+    println!("{}", query);
     let items: Vec<_> = insert_items
         .into_par_iter()
         .map(|(key, val)| {

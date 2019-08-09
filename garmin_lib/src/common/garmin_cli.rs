@@ -1,4 +1,3 @@
-use chrono::{DateTime, Duration, SecondsFormat};
 use clap::{App, Arg};
 use failure::{err_msg, Error};
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
@@ -16,7 +15,6 @@ use super::garmin_file;
 use super::garmin_summary::{get_list_of_files_from_db, GarminSummary, GarminSummaryList};
 use super::garmin_sync::GarminSync;
 use super::pgpool::PgPool;
-use super::strava_sync::{get_strava_id_maximum_begin_datetime, upsert_strava_id};
 use crate::common::garmin_summary::get_maximum_begin_datetime;
 use crate::parsers::garmin_parse::{GarminParse, GarminParseTrait};
 use crate::reports::garmin_file_report_html::file_report_html;
@@ -45,7 +43,6 @@ pub enum GarminCliOptions {
     FileNames(Vec<String>),
     ImportFileNames(Vec<String>),
     Connect,
-    SyncStrava,
 }
 
 #[derive(Debug, Default)]
@@ -175,8 +172,6 @@ impl GarminCli {
                 }
             } else if matches.is_present("connect") {
                 Some(GarminCliOptions::Connect)
-            } else if matches.is_present("sync_strava") {
-                Some(GarminCliOptions::SyncStrava)
             } else {
                 match matches
                     .values_of("import")
@@ -217,10 +212,6 @@ impl GarminCli {
     pub fn garmin_proc(&self) -> Result<(), Error> {
         if let Some(GarminCliOptions::Connect) = self.get_opts() {
             self.sync_with_garmin_connect()?;
-        }
-
-        if let Some(GarminCliOptions::SyncStrava) = self.get_opts() {
-            self.sync_with_strava()?;
         }
 
         if let Some(GarminCliOptions::ImportFileNames(filenames)) = self.get_opts() {
@@ -601,19 +592,6 @@ impl GarminCli {
                 let filenames: Vec<_> = map_result(results)?;
                 self.extract_zip_files(&filenames)?;
                 return Ok(filenames);
-            }
-        }
-        Ok(Vec::new())
-    }
-
-    pub fn sync_with_strava(&self) -> Result<Vec<String>, Error> {
-        if let Some(pool) = self.pool.as_ref() {
-            if let Some(max_datetime) = get_strava_id_maximum_begin_datetime(&pool)? {
-                let max_datetime = DateTime::parse_from_rfc3339(&max_datetime)?;
-                let max_datetime = max_datetime - Duration::days(14);
-                let max_datetime = max_datetime.to_rfc3339_opts(SecondsFormat::Secs, true);
-                println!("max_datetime {}", max_datetime);
-                return upsert_strava_id(pool, &self.config, &max_datetime);
             }
         }
         Ok(Vec::new())

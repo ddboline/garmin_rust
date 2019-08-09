@@ -1,6 +1,7 @@
 use failure::Error;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::collections::HashMap;
+use std::hash::BuildHasher;
 
 use crate::common::pgpool::PgPool;
 use crate::utils::garmin_util::map_result;
@@ -68,8 +69,8 @@ pub fn get_strava_id_map(pool: &PgPool) -> Result<HashMap<String, StravaItem>, E
     map_result(strava_id_map)
 }
 
-pub fn upsert_strava_id(
-    new_items: &HashMap<String, StravaItem>,
+pub fn upsert_strava_id<S: BuildHasher>(
+    new_items: &HashMap<String, StravaItem, S>,
     pool: &PgPool,
 ) -> Result<Vec<String>, Error> {
     let strava_id_map = get_strava_id_map(pool)?;

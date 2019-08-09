@@ -354,12 +354,14 @@ impl Handler<StravaUploadRequest> for PgPool {
 
         let config = GarminConfig::get_config(None)?;
         let client = StravaClient::from_file(&config, Some(StravaAuthType::Write))?;
-        client.upload_strava_activity(
-            &filepath,
-            &msg.title,
-            msg.description.as_ref().unwrap_or(&"".to_string()),
-            msg.is_private.unwrap_or(false),
-            sport,
-        )
+        client
+            .upload_strava_activity(
+                &filepath,
+                &msg.title,
+                msg.description.as_ref().unwrap_or(&"".to_string()),
+                msg.is_private.unwrap_or(false),
+                sport,
+            )
+            .map(|id| format!("http://strava.com/activities/{}", id))
     }
 }

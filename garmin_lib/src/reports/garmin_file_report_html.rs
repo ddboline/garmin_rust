@@ -476,7 +476,7 @@ fn get_map_tempate_vec(
             };
             htmlvec.push(line.replace("SPORTTITLELINK", &newtitle).to_string());
         } else if line.contains("STRAVAUPLOADBUTTON") {
-            if strava_id_title.is_some() {
+            if strava_id_title.is_none() {
                 htmlvec.push(line.replace("STRAVAUPLOADBUTTON", r#"
                     <p>
                     <form>

@@ -475,6 +475,17 @@ fn get_map_tempate_vec(
                 None => newtitle,
             };
             htmlvec.push(line.replace("SPORTTITLELINK", &newtitle).to_string());
+        } else if line.contains("STRAVAUPLOADBUTTON") {
+            if strava_id_title.is_some() {
+                htmlvec.push(line.replace("STRAVAUPLOADBUTTON", r#"
+                    <p>
+                    <form>
+                    <input type="text" name="cmd" id="strava_upload"/>
+                    <input type="button" name="submitSTRAVA" value="Title" onclick="processStravaData();"/>
+                    </form>
+                    </p>
+                "#));
+            }
         } else if line.contains("ZOOMVALUE") {
             for (zoom, thresh) in &latlon_thresholds {
                 if (latlon_min < *thresh) | (*zoom == 10) {

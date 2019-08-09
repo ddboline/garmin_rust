@@ -357,8 +357,23 @@ impl StravaClient {
             }
         };
 
-        self._upload_strava_activity(py, &filename, title, description, is_private, sport)
-            .map_err(|e| err_msg(format!("{:?}", e)))
-            .map(|x| x.unwrap_or_else(|| format!("Bad extension {}", filename)))
+        match self._upload_strava_activity(py, &filename, title, description, is_private, sport) {
+            Ok(x) => x.ok_or_else(|| err_msg(format!("Bad extension {}", filename))),
+            Err(e) => {
+                let err = format!("{:?}", e);
+                if err.contains("duplicate of activity") {
+                    err.replace("'", " ")
+                        .split("duplicate of activity ")
+                        .nth(1)
+                        .unwrap_or("")
+                        .split_whitespace()
+                        .nth(0)
+                        .map(|x| x.to_string())
+                        .ok_or_else(|| err_msg("No id"))
+                } else {
+                    Err(err_msg(err))
+                }
+            }
+        }
     }
 }

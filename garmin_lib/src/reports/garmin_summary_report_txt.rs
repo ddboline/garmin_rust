@@ -1,6 +1,5 @@
-extern crate rayon;
-
 use failure::Error;
+use log::debug;
 
 use crate::common::pgpool::PgPool;
 use crate::reports::garmin_report_options::{GarminReportAgg, GarminReportOptions};

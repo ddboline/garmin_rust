@@ -1,6 +1,5 @@
-extern crate rayon;
-
 use failure::Error;
+use log::debug;
 
 use crate::common::garmin_file::GarminFile;
 use crate::common::garmin_lap::GarminLap;

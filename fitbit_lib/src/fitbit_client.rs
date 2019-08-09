@@ -4,6 +4,7 @@ use cpython::{
     PythonObject,
 };
 use failure::{err_msg, Error};
+use log::debug;
 use rayon::prelude::*;
 use std::collections::HashSet;
 use std::fs::File;
@@ -205,7 +206,7 @@ impl FitbitClient {
                 current_datetimes.insert(entry.datetime);
             }
         }
-        println!(
+        debug!(
             "{} {} {}",
             heartrates.len(),
             dates.len(),

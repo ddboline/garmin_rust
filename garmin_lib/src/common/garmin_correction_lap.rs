@@ -1,17 +1,16 @@
 #![allow(clippy::wrong_self_convention)]
 
+use avro_rs::{from_value, Codec, Reader, Schema, Writer};
 use chrono::Utc;
 use failure::{err_msg, Error};
+use json::{parse, JsonValue};
+use log::debug;
 use postgres_derive::{FromSql, ToSql};
 use std::collections::HashMap;
 use std::fs::File;
 use std::hash::BuildHasher;
 use std::io::{stdout, Read, Write};
 use std::str;
-
-use avro_rs::{from_value, Codec, Reader, Schema, Writer};
-
-use json::{parse, JsonValue};
 
 use super::garmin_lap::GarminLap;
 use super::pgpool::PgPool;

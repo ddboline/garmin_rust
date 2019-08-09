@@ -3,6 +3,7 @@ use garmin_lib::common::garmin_config::GarminConfig;
 use garmin_lib::common::pgpool::PgPool;
 
 fn main() {
+    env_logger::init();
     let config = GarminConfig::get_config(None).unwrap();
     let pool = PgPool::new(&config.pgurl);
     run_bot(&config, pool).unwrap();

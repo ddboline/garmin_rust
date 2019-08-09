@@ -1,4 +1,5 @@
 use failure::Error;
+use log::debug;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::collections::HashMap;
 use std::hash::BuildHasher;
@@ -102,7 +103,7 @@ pub fn upsert_strava_id<S: BuildHasher>(
     let query = "
         UPDATE strava_id_cache SET strava_title=$2 WHERE strava_id=$1
     ";
-    println!("{}", query);
+    debug!("{}", query);
     let items: Vec<_> = update_items
         .into_par_iter()
         .map(|(key, val)| {
@@ -117,7 +118,7 @@ pub fn upsert_strava_id<S: BuildHasher>(
         INSERT INTO strava_id_cache (strava_id, begin_datetime, strava_title)
         VALUES ($1,$2,$3)
     ";
-    println!("{}", query);
+    debug!("{}", query);
     let items: Vec<_> = insert_items
         .into_par_iter()
         .map(|(key, val)| {

@@ -1,5 +1,6 @@
 use chrono::DateTime;
 use failure::{err_msg, Error};
+use log::debug;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use rusoto_core::Region;
 use rusoto_s3::{GetObjectRequest, ListObjectsV2Request, PutObjectRequest, S3Client, S3};
@@ -180,7 +181,7 @@ impl GarminSync<S3Client> {
                 }
 
                 if do_upload {
-                    println!("upload file {}", file_name);
+                    debug!("upload file {}", file_name);
 
                     Some(self.upload_file(&file, &s3_bucket, &file_name))
                 } else {
@@ -214,7 +215,7 @@ impl GarminSync<S3Client> {
 
                 if do_download {
                     let file_name = format!("{}/{}", local_dir, key);
-                    println!("download {} {}", s3_bucket, key);
+                    debug!("download {} {}", s3_bucket, key);
 
                     Some(self.download_file(&file_name, &s3_bucket, &key))
                 } else {

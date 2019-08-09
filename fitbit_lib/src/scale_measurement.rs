@@ -2,6 +2,7 @@ use chrono::offset::TimeZone;
 use chrono::{DateTime, Utc};
 use failure::{err_msg, Error};
 use google_sheets4::RowData;
+use log::debug;
 
 use garmin_lib::common::pgpool::PgPool;
 use garmin_lib::utils::garmin_util::map_result;
@@ -38,7 +39,7 @@ impl ScaleMeasurement {
                         .map(|d| d.with_timezone(&Utc))
                 })
                 .or_else(|e| {
-                    println!("{} {}", values[0], e);
+                    debug!("{} {}", values[0], e);
                     Err(e)
                 })?;
             let mass: f64 = values[1].parse()?;

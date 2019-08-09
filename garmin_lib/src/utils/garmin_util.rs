@@ -1,5 +1,6 @@
 use chrono::{DateTime, FixedOffset, TimeZone, Utc};
 use failure::{err_msg, Error};
+use log::debug;
 use num::traits::Pow;
 use rand::distributions::{Alphanumeric, Distribution, Uniform};
 use rand::thread_rng;
@@ -137,7 +138,7 @@ pub fn get_file_list(path: &Path) -> Vec<String> {
             })
             .collect(),
         Err(err) => {
-            println!("{}", err);
+            debug!("{}", err);
             Vec::new()
         }
     }

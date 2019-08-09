@@ -3,6 +3,7 @@ use cpython::{
     Python, PythonObject,
 };
 use failure::{err_msg, Error};
+use log::debug;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
@@ -301,7 +302,7 @@ impl StravaClient {
             }
 
             if let Err(e) = result {
-                println!("Error {:?}", e);
+                debug!("Error {:?}", e);
             }
 
             upstat.call_method(py, "poll", PyTuple::empty(py), None)?;

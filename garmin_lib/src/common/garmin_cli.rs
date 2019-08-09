@@ -1,5 +1,6 @@
 use clap::{App, Arg};
 use failure::{err_msg, Error};
+use log::debug;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -296,7 +297,7 @@ impl GarminCli {
                             None
                         } else {
                             let gps_path = format!("{}/{}", &self.get_config().gps_dir, &f);
-                            println!("Process {}", &gps_path);
+                            debug!("Process {}", &gps_path);
                             Some(gps_path)
                         }
                     })

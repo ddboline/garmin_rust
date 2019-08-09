@@ -1,6 +1,5 @@
-extern crate rayon;
-
 use failure::Error;
+use log::debug;
 
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
@@ -308,7 +307,7 @@ fn get_graphs(plot_opts: &[PlotOpts]) -> Vec<String> {
         .filter_map(|options| match generate_d3_plot(&options) {
             Ok(s) => Some(s),
             Err(e) => {
-                println!("{}", e);
+                debug!("{}", e);
                 None
             }
         })

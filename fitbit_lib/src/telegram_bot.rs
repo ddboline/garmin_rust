@@ -1,6 +1,7 @@
 use crossbeam_channel::{unbounded, Receiver};
 use failure::{err_msg, Error};
 use futures::Stream;
+use log::debug;
 use std::thread;
 use telegram_bot::types::refs::UserId;
 use telegram_bot::{Api, CanReplySendMessage, MessageKind, UpdateKind};
@@ -27,7 +28,7 @@ pub fn run_bot(config: &GarminConfig, pool: PgPool) -> Result<(), Error> {
         if let UpdateKind::Message(message) = update.kind {
             if let MessageKind::Text { ref data, .. } = message.kind {
                 // Print received text message to stdout.
-                println!("{:?}", message);
+                debug!("{:?}", message);
                 if message.from.id == UserId::new(972_549_683) {
                     match ScaleMeasurement::from_telegram_text(data) {
                         Ok(meas) => match s.try_send(meas.clone()) {
@@ -59,7 +60,7 @@ fn process_messages(r: Receiver<ScaleMeasurement>, pool: PgPool) {
     loop {
         if let Ok(meas) = r.recv() {
             if meas.insert_into_db(&pool).is_ok() {
-                println!("{:?}", meas);
+                debug!("{:?}", meas);
             }
         }
     }

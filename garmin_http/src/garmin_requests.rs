@@ -1,6 +1,7 @@
 use actix::{Handler, Message};
 use chrono::{DateTime, Duration, SecondsFormat};
 use failure::Error;
+use log::debug;
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -132,7 +133,7 @@ impl Handler<StravaSyncRequest> for PgPool {
                     let max_datetime = DateTime::parse_from_rfc3339(&dt)?;
                     let max_datetime = max_datetime - Duration::days(14);
                     let max_datetime = max_datetime.to_rfc3339_opts(SecondsFormat::Secs, true);
-                    println!("max_datetime {}", max_datetime);
+                    debug!("max_datetime {}", max_datetime);
                     Some(max_datetime)
                 }
                 None => None,

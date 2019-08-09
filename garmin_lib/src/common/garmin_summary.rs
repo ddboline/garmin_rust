@@ -1,5 +1,6 @@
 use avro_rs::{from_value, Codec, Reader, Schema, Writer};
 use failure::{err_msg, Error};
+use log::debug;
 use postgres_derive::{FromSql, ToSql};
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use std::collections::HashMap;

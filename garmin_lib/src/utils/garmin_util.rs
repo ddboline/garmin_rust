@@ -110,21 +110,16 @@ where
     U: IntoIterator<Item = Result<T, Error>>,
     V: FromIterator<T>,
 {
-    let mut errors: Vec<_> = Vec::new();
-    let output: V = input
-        .into_iter()
-        .filter_map(|item| match item {
-            Ok(i) => Some(i),
-            Err(e) => {
-                errors.push(format!("{}", e));
-                None
-            }
-        })
-        .collect();
+    let (output, errors): (Vec<_>, Vec<_>) = input.into_iter().partition(Result::is_ok);
     if !errors.is_empty() {
+        let errors: Vec<_> = errors
+            .into_iter()
+            .filter_map(Result::err)
+            .map(|x| x.to_string())
+            .collect();
         Err(err_msg(errors.join("\n")))
     } else {
-        Ok(output)
+        Ok(output.into_iter().filter_map(Result::ok).collect())
     }
 }
 

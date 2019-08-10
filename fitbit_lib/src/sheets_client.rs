@@ -3,7 +3,6 @@ use google_sheets4::{Sheet, Sheets};
 use hyper::net::HttpsConnector;
 use hyper::Client;
 use hyper_native_tls::NativeTlsClient;
-use log::debug;
 use std::collections::HashMap;
 use std::fs::{create_dir_all, File};
 use std::path::Path;

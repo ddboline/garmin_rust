@@ -480,7 +480,7 @@ fn get_map_tempate_vec(
                     <p>
                     <form>
                     <input type="text" name="cmd" id="strava_upload"/>
-                    <input type="button" name="submitSTRAVA" value="Title" onclick="processStravaUpdate({});"/>
+                    <input type="button" name="submitSTRAVA" value="Title" onclick="processStravaUpdate('{}');"/>
                     </form>
                     </p>
                 "#,

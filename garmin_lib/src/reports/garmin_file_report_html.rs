@@ -475,7 +475,18 @@ fn get_map_tempate_vec(
             };
             htmlvec.push(line.replace("SPORTTITLELINK", &newtitle).to_string());
         } else if line.contains("STRAVAUPLOADBUTTON") {
-            if strava_id_title.is_none() {
+            if let Some((id, _)) = strava_id_title.as_ref() {
+                htmlvec.push(line.replace("STRAVAUPLOADBUTTON", &format!(r#"
+                    <p>
+                    <form>
+                    <input type="text" name="cmd" id="strava_upload"/>
+                    <input type="button" name="submitSTRAVA" value="Title" onclick="processStravaUpdate({});"/>
+                    </form>
+                    </p>
+                "#,
+                id
+                )));
+            } else {
                 htmlvec.push(line.replace("STRAVAUPLOADBUTTON", r#"
                     <p>
                     <form>

@@ -21,7 +21,8 @@ use crate::garmin_requests::{
     FitbitAuthRequest, FitbitCallbackRequest, FitbitHeartrateApiRequest, FitbitHeartrateDbRequest,
     FitbitSyncRequest, GarminConnectSyncRequest, GarminCorrRequest, GarminHtmlRequest,
     GarminListRequest, GarminSyncRequest, ScaleMeasurementRequest, StravaActivitiesRequest,
-    StravaAuthRequest, StravaCallbackRequest, StravaSyncRequest, StravaUploadRequest,
+    StravaAuthRequest, StravaCallbackRequest, StravaSyncRequest, StravaUpdateRequest,
+    StravaUploadRequest,
 };
 use crate::CONFIG;
 
@@ -207,6 +208,23 @@ pub fn strava_upload(
                     .json(format!("Unauthorized {:?}", state.user_list)));
             }
             Ok(form_http_response(body))
+        })
+    })
+}
+
+pub fn strava_update(
+    payload: Json<StravaUpdateRequest>,
+    user: LoggedUser,
+    state: Data<AppState>,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let payload = payload.into_inner();
+    state.db.send(payload).from_err().and_then(move |res| {
+        res.and_then(|_| {
+            if !state.user_list.is_authorized(&user) {
+                return Ok(HttpResponse::Unauthorized()
+                    .json(format!("Unauthorized {:?}", state.user_list)));
+            }
+            Ok(form_http_response("success".to_string()))
         })
     })
 }

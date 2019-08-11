@@ -366,3 +366,33 @@ impl Handler<StravaUploadRequest> for PgPool {
             .map(|id| format!("http://strava.com/activities/{}", id))
     }
 }
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct StravaUpdateRequest {
+    pub activity_id: String,
+    pub title: String,
+    pub activity_type: String,
+    pub description: Option<String>,
+    pub is_private: Option<bool>,
+}
+
+impl Message for StravaUpdateRequest {
+    type Result = Result<(), Error>;
+}
+
+impl Handler<StravaUpdateRequest> for PgPool {
+    type Result = Result<(), Error>;
+    fn handle(&mut self, msg: StravaUpdateRequest, _: &mut Self::Context) -> Self::Result {
+        let sport = msg.activity_type.parse()?;
+
+        let config = GarminConfig::get_config(None)?;
+        let client = StravaClient::from_file(&config, Some(StravaAuthType::Write))?;
+        client.update_strava_activity(
+            &msg.activity_id,
+            &msg.title,
+            msg.description.as_ref().map(|x| x.as_str()),
+            msg.is_private,
+            sport,
+        )
+    }
+}

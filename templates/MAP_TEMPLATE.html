@@ -134,6 +134,25 @@ STRAVAUPLOADBUTTON
         xmlhttp.setRequestHeader("Content-Type", "application/json");
         xmlhttp.send(data);
     }
+    function processStravaUpdate(activity_id) {
+        var strava_title = document.getElementById( 'strava_upload' );
+        var ostr = '../garmin/strava/update';
+        var data = JSON.stringify(
+            {
+                "activity_id": activity_id,
+                "title": strava_title.value,
+                "activity_type": "ACTIVITYTYPE"
+            }
+        );
+        var xmlhttp = new XMLHttpRequest();
+        xmlhttp.onload = function() {
+            var win = window.open(xmlhttp.responseText, '_blank');
+            win.focus()
+        }
+        xmlhttp.open( "POST", ostr , true );
+        xmlhttp.setRequestHeader("Content-Type", "application/json");
+        xmlhttp.send(data);
+    }
 </script>
 
 </body>

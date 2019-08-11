@@ -1,6 +1,6 @@
 use cpython::{
     FromPyObject, ObjectProtocol, PyDict, PyIterator, PyObject, PyResult, PyString, PyTuple,
-    Python, PythonObject,
+    Python, PythonObject, ToPyObject,
 };
 use failure::{err_msg, Error};
 use log::debug;
@@ -376,5 +376,50 @@ impl StravaClient {
                 }
             }
         }
+    }
+
+    fn _update_strava_activity(
+        &self,
+        py: Python,
+        activity_id: i64,
+        title: &str,
+        description: Option<&str>,
+        is_private: Option<bool>,
+        sport: SportTypes,
+    ) -> PyResult<()> {
+        let client = self.get_strava_client(py)?;
+        let args = PyDict::new(py);
+        args.set_item(py, "name", title)?;
+        args.set_item(py, "activity_type", sport.to_strava_activity())?;
+        if let Some(is_private) = is_private {
+            args.set_item(py, "private", is_private)?;
+        }
+        if let Some(description) = description {
+            args.set_item(py, "description", description)?;
+        }
+        client.call_method(
+            py,
+            "update_activity",
+            PyTuple::new(py, &[activity_id.to_py_object(py).into_object()]),
+            Some(&args),
+        )?;
+        Ok(())
+    }
+
+    pub fn update_strava_activity(
+        &self,
+        activity_id: &str,
+        title: &str,
+        description: Option<&str>,
+        is_private: Option<bool>,
+        sport: SportTypes,
+    ) -> Result<(), Error> {
+        let activity_id: i64 = activity_id.parse()?;
+
+        let gil = Python::acquire_gil();
+        let py = gil.python();
+
+        self._update_strava_activity(py, activity_id, title, description, is_private, sport)
+            .map_err(|e| err_msg(format!("{:?}", e)))
     }
 }

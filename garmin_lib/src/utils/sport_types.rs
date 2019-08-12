@@ -12,6 +12,7 @@ pub enum SportTypes {
     Running,
     Biking,
     Walking,
+    Hiking,
     Ultimate,
     Elliptical,
     Stairs,
@@ -28,6 +29,7 @@ impl fmt::Display for SportTypes {
             SportTypes::Running => "running",
             SportTypes::Biking => "biking",
             SportTypes::Walking => "walking",
+            SportTypes::Hiking => "hiking",
             SportTypes::Ultimate => "ultimate",
             SportTypes::Elliptical => "elliptical",
             SportTypes::Stairs => "stairs",
@@ -47,13 +49,14 @@ impl SportTypes {
             SportTypes::Running => "run",
             SportTypes::Biking => "ride",
             SportTypes::Walking => "walk",
-            SportTypes::Ultimate => "workout",
-            SportTypes::Elliptical => "workout",
-            SportTypes::Stairs => "workout",
-            SportTypes::Lifting => "workout",
+            SportTypes::Hiking => "hike",
+            SportTypes::Ultimate => "ultimate",
+            SportTypes::Elliptical => "elliptical",
+            SportTypes::Stairs => "stairs",
+            SportTypes::Lifting => "lifting",
             SportTypes::Swimming => "swim",
-            SportTypes::Other => "workout",
-            SportTypes::Snowshoeing => "workout",
+            SportTypes::Other => "other",
+            SportTypes::Snowshoeing => "snowshoe",
             SportTypes::Skiing => "nordicski",
         }
         .to_string()
@@ -79,6 +82,8 @@ pub fn get_sport_type_map() -> HashMap<String, SportTypes> {
         ("bike", SportTypes::Biking),
         ("walking", SportTypes::Walking),
         ("walk", SportTypes::Walking),
+        ("hiking", SportTypes::Hiking),
+        ("hike", SportTypes::Hiking),
         ("ultimate", SportTypes::Ultimate),
         ("frisbee", SportTypes::Ultimate),
         ("elliptical", SportTypes::Elliptical),
@@ -97,36 +102,12 @@ pub fn get_sport_type_map() -> HashMap<String, SportTypes> {
 }
 
 pub fn convert_sport_name(sport: &str) -> Option<String> {
-    let map0 = &SPORT_TYPE_MAP;
-
-    match map0.get(sport) {
-        Some(&s) => Some(s.to_string()),
-        None => None,
-    }
-}
-
-pub fn get_strava_activity_type(sport_type: SportTypes) -> String {
-    match sport_type {
-        SportTypes::Running => "run",
-        SportTypes::Biking => "ride",
-        SportTypes::Walking => "walk",
-        SportTypes::Ultimate => "ultimate",
-        SportTypes::Elliptical => "elliptical",
-        SportTypes::Stairs => "stairs",
-        SportTypes::Lifting => "lifting",
-        SportTypes::Swimming => "swim",
-        SportTypes::Other => "other",
-        SportTypes::Snowshoeing => "snowshoe",
-        SportTypes::Skiing => "nordicski",
-    }
-    .to_string()
+    sport.parse().ok().map(|s: SportTypes| s.to_string())
 }
 
 pub fn convert_sport_name_to_activity_type(sport: &str) -> Option<String> {
-    let map0 = &SPORT_TYPE_MAP;
-
-    match map0.get(sport) {
-        Some(&s) => Some(get_strava_activity_type(s)),
-        None => None,
-    }
+    sport
+        .parse()
+        .ok()
+        .map(|s: SportTypes| s.to_strava_activity())
 }

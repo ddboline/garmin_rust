@@ -125,7 +125,7 @@ impl StravaClient {
     fn _get_authorization_url(&self, py: Python) -> PyResult<String> {
         let scope = match self.auth_type {
             Some(StravaAuthType::Read) => "activity:read_all",
-            _ => "activity:write,read",
+            _ => "activity:write,activity:read_all",
         };
         let state = match self.auth_type {
             Some(StravaAuthType::Read) => "YWN0aXZpdHk6cmVhZF9hbGw=",

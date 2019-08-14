@@ -125,13 +125,6 @@ impl GarminCli {
                     .takes_value(false),
             )
             .arg(
-                Arg::with_name("sync_strava")
-                    .long("sync_strava")
-                    .value_name("SYNC_STRAVA")
-                    .help("Sync with Strava")
-                    .takes_value(false),
-            )
-            .arg(
                 Arg::with_name("bootstrap")
                     .short("b")
                     .long("bootstrap")

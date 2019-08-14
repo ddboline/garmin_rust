@@ -1,6 +1,6 @@
 use cpython::{
-    FromPyObject, ObjectProtocol, PyDict, PyIterator, PyObject, PyResult, PyString, PyTuple,
-    Python, PythonObject, ToPyObject,
+    FromPyObject, ObjectProtocol, PyDict, PyIterator, PyObject, PyResult, PyTuple, Python,
+    PythonObject, ToPyObject,
 };
 use failure::{err_msg, Error};
 use log::debug;
@@ -115,7 +115,7 @@ impl StravaClient {
             py,
             "Client",
             match access_token {
-                Some(ac) => PyTuple::new(py, &[PyString::new(py, ac).into_object()]),
+                Some(ac) => PyTuple::new(py, &[ac.to_py_object(py).into_object()]),
                 None => PyTuple::empty(py),
             },
             None,
@@ -123,10 +123,6 @@ impl StravaClient {
     }
 
     fn _get_authorization_url(&self, py: Python) -> PyResult<String> {
-        let scope = match self.auth_type {
-            Some(StravaAuthType::Read) => "activity:read_all",
-            _ => "activity:write,activity:read_all",
-        };
         let state = match self.auth_type {
             Some(StravaAuthType::Read) => "YWN0aXZpdHk6cmVhZF9hbGw=",
             _ => "YWN0aXZpdHk6d3JpdGU=",
@@ -139,7 +135,21 @@ impl StravaClient {
             "redirect_uri",
             &format!("https://{}/garmin/strava/callback", &self.config.domain),
         )?;
-        args.set_item(py, "scope", scope)?;
+        match self.auth_type {
+            Some(StravaAuthType::Read) => args.set_item(py, "scope", "activity:read_all")?,
+            _ => args.set_item(
+                py,
+                "scope",
+                PyTuple::new(
+                    py,
+                    &[
+                        "activity:write".to_py_object(py).into_object(),
+                        "activity:read_all".to_py_object(py).into_object(),
+                    ],
+                ),
+            )?,
+        };
+
         args.set_item(py, "state", state)?;
         let result =
             client.call_method(py, "authorization_url", PyTuple::empty(py), Some(&args))?;
@@ -262,8 +272,8 @@ impl StravaClient {
             PyTuple::new(
                 py,
                 &[
-                    PyString::new(py, filepath).into_object(),
-                    PyString::new(py, "rb").into_object(),
+                    filepath.to_py_object(py).into_object(),
+                    "rb".to_py_object(py).into_object(),
                 ],
             ),
             None,
@@ -278,9 +288,9 @@ impl StravaClient {
                 py,
                 &[
                     file_obj,
-                    PyString::new(py, fext).into_object(),
-                    PyString::new(py, title).into_object(),
-                    PyString::new(py, description).into_object(),
+                    fext.to_py_object(py).into_object(),
+                    title.to_py_object(py).into_object(),
+                    description.to_py_object(py).into_object(),
                 ],
             ),
             Some(&args),

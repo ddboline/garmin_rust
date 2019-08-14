@@ -321,7 +321,11 @@ impl StravaClient {
         let activity_id = upstat.getattr(py, "activity_id")?;
         let activity_id = i64::extract(py, &activity_id)?;
 
-        Ok(Some(activity_id.to_string()))
+        let url = format!(
+            "https://www.strava.com/activities/{}",
+            activity_id.to_string()
+        );
+        Ok(Some(url))
     }
 
     pub fn upload_strava_activity(
@@ -396,7 +400,7 @@ impl StravaClient {
         description: Option<&str>,
         is_private: Option<bool>,
         sport: SportTypes,
-    ) -> PyResult<()> {
+    ) -> PyResult<String> {
         let client = self.get_strava_client(py)?;
         let args = PyDict::new(py);
         args.set_item(py, "name", title)?;
@@ -413,7 +417,8 @@ impl StravaClient {
             PyTuple::new(py, &[activity_id.to_py_object(py).into_object()]),
             Some(&args),
         )?;
-        Ok(())
+        let url = format!("https://{}/garmin/strava_sync", self.config.domain);
+        Ok(url)
     }
 
     pub fn update_strava_activity(
@@ -423,7 +428,7 @@ impl StravaClient {
         description: Option<&str>,
         is_private: Option<bool>,
         sport: SportTypes,
-    ) -> Result<(), Error> {
+    ) -> Result<String, Error> {
         let activity_id: i64 = activity_id.parse()?;
 
         let gil = Python::acquire_gil();

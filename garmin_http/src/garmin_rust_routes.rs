@@ -219,12 +219,12 @@ pub fn strava_update(
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let payload = payload.into_inner();
     state.db.send(payload).from_err().and_then(move |res| {
-        res.and_then(|_| {
+        res.and_then(|url| {
             if !state.user_list.is_authorized(&user) {
                 return Ok(HttpResponse::Unauthorized()
                     .json(format!("Unauthorized {:?}", state.user_list)));
             }
-            Ok(form_http_response("success".to_string()))
+            Ok(form_http_response(url))
         })
     })
 }

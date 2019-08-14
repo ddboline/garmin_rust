@@ -377,11 +377,11 @@ pub struct StravaUpdateRequest {
 }
 
 impl Message for StravaUpdateRequest {
-    type Result = Result<(), Error>;
+    type Result = Result<String, Error>;
 }
 
 impl Handler<StravaUpdateRequest> for PgPool {
-    type Result = Result<(), Error>;
+    type Result = Result<String, Error>;
     fn handle(&mut self, msg: StravaUpdateRequest, _: &mut Self::Context) -> Self::Result {
         let sport = msg.activity_type.parse()?;
 

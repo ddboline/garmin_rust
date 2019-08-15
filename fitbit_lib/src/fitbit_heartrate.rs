@@ -169,17 +169,15 @@ mod tests {
     use std::collections::HashSet;
     use std::path::Path;
 
-    use garmin_lib::common::garmin_config::GarminConfig;
-    use garmin_lib::common::pgpool::PgPool;
+    // use garmin_lib::common::garmin_config::GarminConfig;
+    // use garmin_lib::common::pgpool::PgPool;
 
-    use crate::fitbit_heartrate::{
-        import_fitbit_json_files, process_fitbit_json_file, FitbitHeartRate,
-    };
+    use crate::fitbit_heartrate::process_fitbit_json_file;
 
     #[test]
     fn test_process_fitbit_json_file() {
-        let config = GarminConfig::get_config(None).unwrap();
-        let pool = PgPool::new(&config.pgurl);
+        // let config = GarminConfig::get_config(None).unwrap();
+        // let pool = PgPool::new(&config.pgurl);
         let path = Path::new(
             "/home/ddboline/Downloads/tmp/DanielBoline/user-site-export/heart_rate-2019-01-01.json",
         );

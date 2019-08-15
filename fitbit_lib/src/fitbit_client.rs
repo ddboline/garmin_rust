@@ -1,7 +1,7 @@
 use chrono::{Datelike, FixedOffset, Local, NaiveDate, TimeZone};
 use cpython::{
-    FromPyObject, ObjectProtocol, PyDict, PyList, PyObject, PyResult, PyString, PyTuple, Python,
-    PythonObject,
+    FromPyObject, ObjectProtocol, PyDict, PyList, PyObject, PyResult, PyTuple, Python,
+    PythonObject, ToPyObject,
 };
 use failure::{err_msg, Error};
 use log::debug;
@@ -88,8 +88,11 @@ impl FitbitClient {
             PyTuple::new(
                 py,
                 &[
-                    PyString::new(py, &self.config.fitbit_clientid).into_object(),
-                    PyString::new(py, &self.config.fitbit_clientsecret).into_object(),
+                    self.config.fitbit_clientid.to_py_object(py).into_object(),
+                    self.config
+                        .fitbit_clientsecret
+                        .to_py_object(py)
+                        .into_object(),
                 ],
             ),
             Some(&args),
@@ -119,7 +122,7 @@ impl FitbitClient {
         client.call_method(
             py,
             "fetch_access_token",
-            PyTuple::new(py, &[PyString::new(py, code).into_object()]),
+            PyTuple::new(py, &[code.to_py_object(py).into_object()]),
             None,
         )?;
         let session = client.getattr(py, "session")?;
@@ -161,7 +164,7 @@ impl FitbitClient {
         )?;
         let activities_heart_intraday = result.get_item(
             py,
-            PyString::new(py, "activities-heart-intraday").into_object(),
+            "activities-heart-intraday".to_py_object(py).into_object(),
         )?;
         let dataset = activities_heart_intraday.get_item(py, "dataset")?;
         let dataset = PyList::extract(py, &dataset)?;

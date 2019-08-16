@@ -592,7 +592,7 @@ impl GarminCli {
     }
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default)]
 pub struct GarminRequest {
     pub filter: String,
     pub history: String,

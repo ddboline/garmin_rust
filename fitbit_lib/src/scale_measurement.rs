@@ -8,7 +8,7 @@ use garmin_lib::common::pgpool::PgPool;
 use garmin_lib::utils::garmin_util::map_result;
 use garmin_lib::utils::row_index_trait::RowIndexTrait;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Copy)]
 pub struct ScaleMeasurement {
     pub datetime: DateTime<Utc>,
     pub mass: f64,

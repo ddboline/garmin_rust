@@ -31,7 +31,7 @@ pub fn run_bot(config: &GarminConfig, pool: PgPool) -> Result<(), Error> {
                 debug!("{:?}", message);
                 if message.from.id == UserId::new(972_549_683) {
                     match ScaleMeasurement::from_telegram_text(data) {
-                        Ok(meas) => match s.try_send(meas.clone()) {
+                        Ok(meas) => match s.try_send(meas) {
                             Ok(_) => {
                                 api.spawn(message.text_reply(format!("{:?} sent to the db", meas)))
                             }

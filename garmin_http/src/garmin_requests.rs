@@ -264,7 +264,7 @@ impl Handler<ScaleMeasurementRequest> for PgPool {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct StravaAuthRequest {
     pub auth_type: Option<String>,
 }
@@ -287,7 +287,7 @@ impl Handler<StravaAuthRequest> for PgPool {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct StravaCallbackRequest {
     pub code: String,
     pub state: String,
@@ -312,7 +312,7 @@ impl Handler<StravaCallbackRequest> for PgPool {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct StravaActivitiesRequest {
     pub start_date: Option<String>,
     pub end_date: Option<String>,
@@ -331,7 +331,7 @@ impl Handler<StravaActivitiesRequest> for PgPool {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct StravaUploadRequest {
     pub filename: String,
     pub title: String,
@@ -367,7 +367,7 @@ impl Handler<StravaUploadRequest> for PgPool {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct StravaUpdateRequest {
     pub activity_id: String,
     pub title: String,

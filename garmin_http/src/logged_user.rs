@@ -87,8 +87,14 @@ enum AuthStatus {
     NotAuthorized,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Debug, Default)]
 pub struct AuthorizedUsers(Arc<RwLock<HashMap<LoggedUser, AuthStatus>>>);
+
+impl Clone for AuthorizedUsers {
+    fn clone(&self) -> Self {
+        AuthorizedUsers(Arc::clone(&self.0))
+    }
+}
 
 impl AuthorizedUsers {
     pub fn new() -> AuthorizedUsers {

@@ -36,7 +36,7 @@ impl SheetsClient {
         config: &GarminConfig,
         session_name: &str,
     ) -> Result<GAuthenticator, Error> {
-        let secret_file = File::open(config.google_secret_file.clone())?;
+        let secret_file = File::open(&config.google_secret_file)?;
         let secret: ConsoleApplicationSecret = serde_json::from_reader(secret_file)?;
         let secret = secret
             .installed

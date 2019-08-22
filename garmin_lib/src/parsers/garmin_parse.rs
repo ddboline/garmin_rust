@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use failure::{err_msg, Error};
 use std::collections::HashMap;
 use std::path::Path;
@@ -9,6 +10,7 @@ use crate::common::garmin_point::GarminPoint;
 use crate::parsers::garmin_parse_gmn::GarminParseGmn;
 use crate::parsers::garmin_parse_tcx::GarminParseTcx;
 use crate::parsers::garmin_parse_txt::GarminParseTxt;
+use crate::utils::sport_types::SportTypes;
 
 #[derive(Default, Debug)]
 pub struct GarminParse {}
@@ -23,7 +25,7 @@ impl GarminParseTrait for GarminParse {
     fn with_file(
         &self,
         filename: &str,
-        corr_map: &HashMap<(String, i32), GarminCorrectionLap>,
+        corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
     ) -> Result<GarminFile, Error> {
         let file_path = Path::new(&filename);
         match file_path.extension() {
@@ -49,7 +51,7 @@ impl GarminParseTrait for GarminParse {
 pub struct ParseOutput {
     pub lap_list: Vec<GarminLap>,
     pub point_list: Vec<GarminPoint>,
-    pub sport: Option<String>,
+    pub sport: Option<SportTypes>,
 }
 
 pub trait GarminParseTrait
@@ -59,7 +61,7 @@ where
     fn with_file(
         &self,
         filename: &str,
-        corr_map: &HashMap<(String, i32), GarminCorrectionLap>,
+        corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
     ) -> Result<GarminFile, Error>;
 
     fn parse_file(&self, filename: &str) -> Result<ParseOutput, Error>;

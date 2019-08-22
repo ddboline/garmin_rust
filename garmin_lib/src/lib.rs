@@ -2,10 +2,6 @@
 extern crate serde_derive;
 
 #[macro_use]
-extern crate postgres;
-extern crate postgres_derive;
-
-#[macro_use]
 extern crate lazy_static;
 
 pub mod common;

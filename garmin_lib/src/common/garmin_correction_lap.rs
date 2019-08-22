@@ -1,11 +1,10 @@
 #![allow(clippy::wrong_self_convention)]
 
 use avro_rs::{from_value, Codec, Reader, Schema, Writer};
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use failure::{err_msg, Error};
 use json::{parse, JsonValue};
 use log::debug;
-use postgres_derive::{FromSql, ToSql};
 use std::collections::HashMap;
 use std::fs::File;
 use std::hash::BuildHasher;
@@ -15,8 +14,9 @@ use std::str;
 use super::garmin_lap::GarminLap;
 use super::pgpool::PgPool;
 use crate::utils::garmin_util::{map_result, METERS_PER_MILE};
+use crate::utils::iso_8601_datetime::{self, convert_str_to_datetime, sentinel_datetime};
 use crate::utils::row_index_trait::RowIndexTrait;
-use crate::utils::sport_types::convert_sport_name;
+use crate::utils::sport_types::SportTypes;
 
 pub const GARMIN_CORRECTION_LAP_AVRO_SCHEMA: &str = r#"
     {
@@ -34,21 +34,28 @@ pub const GARMIN_CORRECTION_LAP_AVRO_SCHEMA: &str = r#"
     }
 "#;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSql, FromSql, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GarminCorrectionLap {
     pub id: i32,
-    pub start_time: String,
+    #[serde(with = "iso_8601_datetime")]
+    pub start_time: DateTime<Utc>,
     pub lap_number: i32,
     pub sport: Option<String>,
     pub distance: Option<f64>,
     pub duration: Option<f64>,
 }
 
+impl Default for GarminCorrectionLap {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GarminCorrectionLap {
     pub fn new() -> GarminCorrectionLap {
         GarminCorrectionLap {
             id: -1,
-            start_time: Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string(),
+            start_time: sentinel_datetime(),
             lap_number: -1,
             sport: None,
             distance: None,
@@ -61,8 +68,8 @@ impl GarminCorrectionLap {
         self
     }
 
-    pub fn with_start_time(mut self, start_time: &str) -> GarminCorrectionLap {
-        self.start_time = start_time.to_string();
+    pub fn with_start_time(mut self, start_time: DateTime<Utc>) -> GarminCorrectionLap {
+        self.start_time = start_time;
         self
     }
 
@@ -71,8 +78,8 @@ impl GarminCorrectionLap {
         self
     }
 
-    pub fn with_sport(mut self, sport: &str) -> GarminCorrectionLap {
-        self.sport = convert_sport_name(sport);
+    pub fn with_sport(mut self, sport: Option<SportTypes>) -> GarminCorrectionLap {
+        self.sport = sport.map(|s| s.to_string());
         self
     }
 
@@ -89,7 +96,7 @@ impl GarminCorrectionLap {
 
 #[derive(Debug, PartialEq, Default)]
 pub struct GarminCorrectionList {
-    pub corr_map: HashMap<(String, i32), GarminCorrectionLap>,
+    pub corr_map: HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
     pub pool: Option<PgPool>,
 }
 
@@ -104,7 +111,7 @@ impl GarminCorrectionList {
     pub fn with_vec(mut self, corr_list: Vec<GarminCorrectionLap>) -> GarminCorrectionList {
         self.corr_map = corr_list
             .into_iter()
-            .map(|corr| ((corr.start_time.clone(), corr.lap_number), corr))
+            .map(|corr| ((corr.start_time, corr.lap_number), corr))
             .collect();
         self
     }
@@ -135,11 +142,13 @@ impl GarminCorrectionList {
         GarminCorrectionList::default().with_vec(corr_list)
     }
 
-    pub fn get_corr_list_map(&self) -> &HashMap<(String, i32), GarminCorrectionLap> {
+    pub fn get_corr_list_map(&self) -> &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap> {
         &self.corr_map
     }
 
-    pub fn get_corr_list_map_mut(&mut self) -> &mut HashMap<(String, i32), GarminCorrectionLap> {
+    pub fn get_corr_list_map_mut(
+        &mut self,
+    ) -> &mut HashMap<(DateTime<Utc>, i32), GarminCorrectionLap> {
         &mut self.corr_map
     }
 
@@ -155,7 +164,7 @@ impl GarminCorrectionList {
                         .map(|(lap, result)| match result {
                             JsonValue::Number(_) => {
                                 let corr = GarminCorrectionLap::new()
-                                    .with_start_time(&key)
+                                    .with_start_time(convert_str_to_datetime(key)?)
                                     .with_lap_number(lap.parse()?);
                                 Ok(match result.as_f64() {
                                     Some(r) => corr.with_distance(r),
@@ -164,7 +173,7 @@ impl GarminCorrectionList {
                             }
                             JsonValue::Array(arr) => {
                                 let corr = GarminCorrectionLap::new()
-                                    .with_start_time(&key)
+                                    .with_start_time(convert_str_to_datetime(key)?)
                                     .with_lap_number(lap.parse()?);
                                 let corr = match arr.get(0) {
                                     Some(x) => match x.as_f64() {
@@ -297,10 +306,12 @@ impl GarminCorrectionList {
         ];
 
         for (sport, times_list) in mislabeled_times {
+            let sport: Option<SportTypes> = sport.parse().ok();
             for time in times_list {
+                let time = convert_str_to_datetime(time).expect("Invalid time string");
                 let lap_list: Vec<_> = corr_list_map
                     .keys()
-                    .filter_map(|(t, n)| if t == time { Some(*n) } else { None })
+                    .filter_map(|(t, n)| if *t == time { Some(*n) } else { None })
                     .collect();
 
                 let lap_list = if !lap_list.is_empty() {
@@ -310,7 +321,7 @@ impl GarminCorrectionList {
                 };
 
                 for lap_number in lap_list {
-                    let new_corr = match corr_list_map.get(&(time.to_string(), lap_number)) {
+                    let new_corr = match corr_list_map.get(&(time, lap_number)) {
                         Some(v) => v.clone().with_sport(sport),
                         None => GarminCorrectionLap::new()
                             .with_start_time(time)
@@ -318,7 +329,7 @@ impl GarminCorrectionList {
                             .with_sport(sport),
                     };
 
-                    corr_list_map.insert((time.to_string(), lap_number), new_corr);
+                    corr_list_map.insert((time, lap_number), new_corr);
                 }
             }
         }
@@ -372,9 +383,6 @@ impl GarminCorrectionList {
         let stmt_insert = conn.prepare(query_insert)?;
         let stmt_update = conn.prepare(query_update)?;
         for corr in self.get_corr_list() {
-            if corr.start_time == "DUMMY" {
-                continue;
-            };
             let unique_key = format!("{}_{}", corr.start_time, corr.lap_number);
 
             if conn.query(query_unique_key, &[&unique_key])?.iter().len() == 0 {
@@ -438,13 +446,13 @@ impl GarminCorrectionList {
 
 pub fn apply_lap_corrections<S: BuildHasher + Sync>(
     lap_list: &[GarminLap],
-    sport: &Option<String>,
-    corr_map: &HashMap<(String, i32), GarminCorrectionLap, S>,
-) -> (Vec<GarminLap>, Option<String>) {
+    sport: Option<SportTypes>,
+    corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap, S>,
+) -> (Vec<GarminLap>, Option<SportTypes>) {
     let mut new_sport = sport.clone();
     match lap_list.get(0) {
         Some(l) => {
-            let lap_start = &l.lap_start.clone();
+            let lap_start = l.lap_start;
             for lap in lap_list {
                 debug!("lap {} dis {}", lap.lap_number, lap.lap_distance);
             }
@@ -452,13 +460,13 @@ pub fn apply_lap_corrections<S: BuildHasher + Sync>(
                 .iter()
                 .map(|lap| {
                     let lap_number = lap.lap_number;
-                    match &corr_map.get(&(lap_start.to_string(), lap_number)) {
+                    match &corr_map.get(&(lap_start, lap_number)) {
                         Some(corr) => {
                             let mut new_lap = lap.clone();
                             new_sport = match &corr.sport {
                                 Some(s) => {
                                     debug!("change sport {} {:?} {}", lap_start, lap.lap_type, s);
-                                    Some(s.clone())
+                                    s.parse().ok()
                                 }
                                 None => sport.clone(),
                             };

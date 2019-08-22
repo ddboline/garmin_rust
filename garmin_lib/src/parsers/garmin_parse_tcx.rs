@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use failure::{err_msg, Error};
 use roxmltree::{Document, NodeType};
 use std::collections::HashMap;
@@ -27,7 +28,7 @@ impl GarminParseTrait for GarminParseTcx {
     fn with_file(
         &self,
         filename: &str,
-        corr_map: &HashMap<(String, i32), GarminCorrectionLap>,
+        corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
     ) -> Result<GarminFile, Error> {
         let file_name = Path::new(&filename)
             .file_name()
@@ -37,12 +38,16 @@ impl GarminParseTrait for GarminParseTcx {
             .unwrap_or_else(|_| filename.to_string());
         let tcx_output = self.parse_file(filename)?;
         let (lap_list, sport) =
-            apply_lap_corrections(&tcx_output.lap_list, &tcx_output.sport, corr_map);
+            apply_lap_corrections(&tcx_output.lap_list, tcx_output.sport, corr_map);
+        let sport = match sport {
+            Some(s) => s,
+            None => SportTypes::None,
+        };
         let first_lap = lap_list.get(0).ok_or_else(|| err_msg("No laps"))?;
         let gfile = GarminFile {
             filename: file_name,
             filetype: "tcx".to_string(),
-            begin_datetime: first_lap.lap_start.clone(),
+            begin_datetime: first_lap.lap_start,
             sport,
             total_calories: lap_list.iter().map(|lap| lap.lap_calories).sum(),
             total_distance: lap_list.iter().map(|lap| lap.lap_distance).sum(),
@@ -113,7 +118,7 @@ impl GarminParseTrait for GarminParseTcx {
         Ok(ParseOutput {
             lap_list,
             point_list,
-            sport: sport.map(|x| x.to_string()),
+            sport,
         })
     }
 }

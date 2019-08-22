@@ -1,4 +1,5 @@
 use failure::{err_msg, Error};
+use serde::{self, Deserialize, Deserializer, Serializer};
 use std::collections::HashMap;
 use std::fmt;
 use std::str::FromStr;
@@ -21,6 +22,7 @@ pub enum SportTypes {
     Other,
     Snowshoeing,
     Skiing,
+    None,
 }
 
 impl fmt::Display for SportTypes {
@@ -38,6 +40,7 @@ impl fmt::Display for SportTypes {
             SportTypes::Other => "other",
             SportTypes::Snowshoeing => "snowshoeing",
             SportTypes::Skiing => "skiing",
+            SportTypes::None => "none",
         };
         write!(f, "{}", sport_str)
     }
@@ -58,6 +61,7 @@ impl SportTypes {
             SportTypes::Other => "other",
             SportTypes::Snowshoeing => "snowshoe",
             SportTypes::Skiing => "nordicski",
+            SportTypes::None => "none",
         }
         .to_string()
     }
@@ -95,6 +99,7 @@ pub fn get_sport_type_map() -> HashMap<String, SportTypes> {
         ("other", SportTypes::Other),
         ("snowshoeing", SportTypes::Snowshoeing),
         ("skiing", SportTypes::Skiing),
+        ("none", SportTypes::None),
     ]
     .iter()
     .map(|(k, v)| (k.to_string(), *v))
@@ -110,4 +115,19 @@ pub fn convert_sport_name_to_activity_type(sport: &str) -> Option<String> {
         .parse()
         .ok()
         .map(|s: SportTypes| s.to_strava_activity())
+}
+
+pub fn serialize<S>(sport: &SportTypes, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    serializer.serialize_str(&sport.to_string())
+}
+
+pub fn deserialize<'de, D>(deserializer: D) -> Result<SportTypes, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    s.parse().map_err(serde::de::Error::custom)
 }

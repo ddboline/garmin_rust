@@ -1,15 +1,18 @@
+use chrono::{DateTime, Utc};
 use failure::Error;
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 use roxmltree::{Node, NodeType};
 use std::fmt;
 
 use crate::utils::garmin_util::{convert_time_string, convert_xml_local_time_to_utc};
+use crate::utils::iso_8601_datetime::{self, convert_datetime_to_str, sentinel_datetime};
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GarminLap {
     pub lap_type: Option<String>,
     pub lap_index: i32,
-    pub lap_start: String,
+    #[serde(with = "iso_8601_datetime")]
+    pub lap_start: DateTime<Utc>,
     pub lap_duration: f64,
     pub lap_distance: f64,
     pub lap_trigger: Option<String>,
@@ -22,12 +25,18 @@ pub struct GarminLap {
     pub lap_start_string: Option<String>,
 }
 
+impl Default for GarminLap {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GarminLap {
     pub fn new() -> GarminLap {
         GarminLap {
             lap_type: None,
             lap_index: -1,
-            lap_start: "".to_string(),
+            lap_start: sentinel_datetime(),
             lap_duration: 0.0,
             lap_distance: 0.0,
             lap_trigger: None,
@@ -44,7 +53,7 @@ impl GarminLap {
     pub fn clear(&mut self) {
         self.lap_type = None;
         self.lap_index = -1;
-        self.lap_start = "".to_string();
+        self.lap_start = sentinel_datetime();
         self.lap_duration = 0.0;
         self.lap_distance = 0.0;
         self.lap_trigger = None;
@@ -77,7 +86,7 @@ impl GarminLap {
                 "index" => new_lap.lap_index = entry.value().parse().unwrap_or(-1),
                 "start" => {
                     new_lap.lap_start = convert_xml_local_time_to_utc(entry.value())?;
-                    new_lap.lap_start_string = Some(new_lap.lap_start.clone());
+                    new_lap.lap_start_string = Some(convert_datetime_to_str(new_lap.lap_start));
                 }
                 "duration" => {
                     new_lap.lap_duration = convert_time_string(entry.value()).unwrap_or(0.0)
@@ -133,7 +142,7 @@ impl GarminLap {
         for entry in entries.attributes() {
             if entry.name() == "StartTime" {
                 new_lap.lap_start = convert_xml_local_time_to_utc(entry.value())?;
-                new_lap.lap_start_string = Some(new_lap.lap_start.clone());
+                new_lap.lap_start_string = Some(convert_datetime_to_str(new_lap.lap_start));
             }
         }
         Ok(new_lap)

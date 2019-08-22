@@ -1,4 +1,4 @@
-use chrono::{DateTime, FixedOffset, TimeZone, Utc};
+use chrono::{DateTime, TimeZone, Utc};
 use failure::{err_msg, Error};
 use log::debug;
 use num::traits::Pow;
@@ -35,9 +35,10 @@ pub fn convert_time_string(time_str: &str) -> Result<f64, Error> {
     Ok(s + 60.0 * (f64::from(m) + 60.0 * f64::from(h)))
 }
 
-pub fn convert_xml_local_time_to_utc(xml_local_time: &str) -> Result<String, Error> {
-    let local = DateTime::parse_from_rfc3339(xml_local_time)?.with_timezone(&FixedOffset::east(0));
-    Ok(local.format("%Y-%m-%dT%H:%M:%SZ").to_string())
+pub fn convert_xml_local_time_to_utc(xml_local_time: &str) -> Result<DateTime<Utc>, Error> {
+    DateTime::parse_from_rfc3339(xml_local_time)
+        .map(|x| x.with_timezone(&Utc))
+        .map_err(err_msg)
 }
 
 pub fn get_md5sum(filename: &str) -> Result<String, Error> {

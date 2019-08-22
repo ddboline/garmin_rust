@@ -1,6 +1,6 @@
 use cpython::{
-    FromPyObject, ObjectProtocol, PyDict, PyIterator, PyObject, PyResult, PyTuple, Python,
-    PythonObject, ToPyObject,
+    exc, FromPyObject, ObjectProtocol, PyDict, PyErr, PyIterator, PyObject, PyResult, PyTuple,
+    Python, PythonObject, ToPyObject,
 };
 use failure::{err_msg, Error};
 use log::debug;
@@ -14,7 +14,12 @@ use tempfile::Builder;
 use garmin_lib::common::garmin_config::GarminConfig;
 use garmin_lib::common::strava_sync::StravaItem;
 use garmin_lib::utils::garmin_util::gzip_file;
+use garmin_lib::utils::iso_8601_datetime::convert_str_to_datetime;
 use garmin_lib::utils::sport_types::SportTypes;
+
+fn exception(py: Python, msg: &str) -> PyErr {
+    PyErr::new::<exc::Exception, _>(py, msg)
+}
 
 pub struct LocalStravaItem(pub StravaItem);
 
@@ -26,7 +31,8 @@ impl<'a> FromPyObject<'a> for LocalStravaItem {
         let title = obj.getattr(py, "name")?;
         let title = String::extract(py, &title)?;
         let item = StravaItem {
-            begin_datetime: start_date.replace("+00:00", "Z"),
+            begin_datetime: convert_str_to_datetime(&start_date.replace("+00:00", "Z"))
+                .map_err(|e| exception(py, &e.to_string()))?,
             title,
         };
         Ok(LocalStravaItem(item))

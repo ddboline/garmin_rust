@@ -1,7 +1,7 @@
 use avro_rs::{from_value, Codec, Reader, Schema, Writer};
+use chrono::{DateTime, Utc};
 use failure::{err_msg, Error};
 use log::debug;
-use postgres_derive::{FromSql, ToSql};
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use std::collections::HashMap;
 use std::fmt;
@@ -14,7 +14,9 @@ use super::garmin_file::GarminFile;
 use super::pgpool::PgPool;
 use crate::parsers::garmin_parse::{GarminParse, GarminParseTrait};
 use crate::utils::garmin_util::{generate_random_string, get_file_list, get_md5sum, map_result};
+use crate::utils::iso_8601_datetime::{self, convert_datetime_to_str, sentinel_datetime};
 use crate::utils::row_index_trait::RowIndexTrait;
+use crate::utils::sport_types::{self, SportTypes};
 
 pub const GARMIN_SUMMARY_AVRO_SCHEMA: &str = r#"
     {
@@ -36,11 +38,13 @@ pub const GARMIN_SUMMARY_AVRO_SCHEMA: &str = r#"
     }
 "#;
 
-#[derive(Debug, Clone, Serialize, Deserialize, ToSql, FromSql, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GarminSummary {
     pub filename: String,
-    pub begin_datetime: String,
-    pub sport: String,
+    #[serde(with = "iso_8601_datetime")]
+    pub begin_datetime: DateTime<Utc>,
+    #[serde(with = "sport_types")]
+    pub sport: SportTypes,
     pub total_calories: i32,
     pub total_distance: f64,
     pub total_duration: f64,
@@ -54,8 +58,8 @@ impl GarminSummary {
     pub fn new(gfile: &GarminFile, md5sum: &str) -> GarminSummary {
         GarminSummary {
             filename: gfile.filename.clone(),
-            begin_datetime: gfile.begin_datetime.clone(),
-            sport: gfile.sport.clone().unwrap_or_else(|| "".to_string()),
+            begin_datetime: gfile.begin_datetime,
+            sport: gfile.sport,
             total_calories: gfile.total_calories,
             total_distance: gfile.total_distance,
             total_duration: gfile.total_duration,
@@ -69,7 +73,7 @@ impl GarminSummary {
     pub fn process_single_gps_file(
         filename: &str,
         cache_dir: &str,
-        corr_map: &HashMap<(String, i32), GarminCorrectionLap>,
+        corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
     ) -> Result<GarminSummary, Error> {
         let cache_file = format!(
             "{}/{}.avro",
@@ -87,7 +91,7 @@ impl GarminSummary {
         let gfile = GarminParse::new().with_file(&filename, &corr_map)?;
 
         match gfile.laps.get(0) {
-            Some(l) if l.lap_start.is_empty() => {
+            Some(l) if l.lap_start == sentinel_datetime() => {
                 return Err(err_msg(format!("{} has empty lap start?", &gfile.filename)));
             }
             Some(_) => (),
@@ -114,7 +118,7 @@ impl fmt::Display for GarminSummary {
         ];
         let vals = vec![
             self.filename.to_string(),
-            self.begin_datetime.to_string(),
+            convert_datetime_to_str(self.begin_datetime),
             self.sport.to_string(),
             self.total_calories.to_string(),
             self.total_distance.to_string(),
@@ -179,7 +183,7 @@ impl GarminSummaryList {
     pub fn process_all_gps_files(
         gps_dir: &str,
         cache_dir: &str,
-        corr_map: &HashMap<(String, i32), GarminCorrectionLap>,
+        corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
     ) -> Result<GarminSummaryList, Error> {
         let path = Path::new(gps_dir);
 
@@ -198,7 +202,7 @@ impl GarminSummaryList {
                 let md5sum = get_md5sum(&input_file)?;
                 let gfile = GarminParse::new().with_file(&input_file, &corr_map)?;
                 match gfile.laps.get(0) {
-                    Some(l) if l.lap_start.is_empty() => {
+                    Some(l) if l.lap_start == sentinel_datetime() => {
                         return Err(err_msg(format!(
                             "{} {} has empty lap start?",
                             &input_file, &gfile.filename
@@ -282,10 +286,11 @@ impl GarminSummaryList {
             .query(&query, &[])?
             .iter()
             .map(|row| {
+                let sport: String = row.get_idx(2)?;
                 Ok(GarminSummary {
                     filename: row.get_idx(0)?,
                     begin_datetime: row.get_idx(1)?,
-                    sport: row.get_idx(2)?,
+                    sport: sport.parse()?,
                     total_calories: row.get_idx(3)?,
                     total_distance: row.get_idx(4)?,
                     total_duration: row.get_idx(5)?,
@@ -361,7 +366,7 @@ impl GarminSummaryList {
         let create_table_query = format!(
             "CREATE TABLE {} (
                 filename text NOT NULL PRIMARY KEY,
-                begin_datetime text,
+                begin_datetime TIMESTAMP WITH TIME ZONE NOT NULL,
                 sport varchar(12),
                 total_calories integer,
                 total_distance double precision,
@@ -377,10 +382,16 @@ impl GarminSummaryList {
 
         conn.execute(&create_table_query, &[])?;
 
-        let insert_query = format!("
-            INSERT INTO {} (filename, begin_datetime, sport, total_calories, total_distance, total_duration, total_hr_dur, total_hr_dis, md5sum, number_of_items)
+        let insert_query = format!(
+            "
+            INSERT INTO {} (
+                filename, begin_datetime, sport, total_calories, total_distance, total_duration,
+                total_hr_dur, total_hr_dis, md5sum, number_of_items
+            )
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 1)
-        ", temp_table_name);
+        ",
+            temp_table_name
+        );
 
         let results: Vec<Result<u64, Error>> = self
             .summary_list
@@ -392,7 +403,7 @@ impl GarminSummaryList {
                     &[
                         &gsum.filename,
                         &gsum.begin_datetime,
-                        &gsum.sport,
+                        &gsum.sport.to_string(),
                         &gsum.total_calories,
                         &gsum.total_distance,
                         &gsum.total_duration,
@@ -406,20 +417,34 @@ impl GarminSummaryList {
 
         let _: Vec<_> = map_result(results)?;
 
-        let insert_query = format!("
-            INSERT INTO garmin_summary (filename, begin_datetime, sport, total_calories, total_distance, total_duration, total_hr_dur, total_hr_dis, md5sum, number_of_items)
-            SELECT b.filename, b.begin_datetime, b.sport, b.total_calories, b.total_distance, b.total_duration, b.total_hr_dur, b.total_hr_dis, b.md5sum, b.number_of_items
+        let insert_query = format!(
+            "
+            INSERT INTO garmin_summary (
+                filename, begin_datetime, sport, total_calories, total_distance, total_duration,
+                total_hr_dur, total_hr_dis, md5sum, number_of_items
+            )
+            SELECT b.filename, b.begin_datetime, b.sport, b.total_calories, b.total_distance,
+                   b.total_duration, b.total_hr_dur, b.total_hr_dis, b.md5sum, b.number_of_items
             FROM {} b
             WHERE b.filename not in (select filename from garmin_summary)
-        ", temp_table_name);
+        ",
+            temp_table_name
+        );
 
-        let update_query = format!("
+        let update_query = format!(
+            "
             UPDATE garmin_summary a
-            SET (begin_datetime,sport,total_calories,total_distance,total_duration,total_hr_dur,total_hr_dis,md5sum,number_of_items) =
-                (b.begin_datetime,b.sport,b.total_calories,b.total_distance,b.total_duration,b.total_hr_dur,b.total_hr_dis,b.md5sum,b.number_of_items)
+            SET (
+                begin_datetime,sport,total_calories,total_distance,total_duration,total_hr_dur,
+                total_hr_dis,md5sum,number_of_items
+            ) = (b.begin_datetime,b.sport,b.total_calories,b.total_distance,b.total_duration,
+                 b.total_hr_dur,b.total_hr_dis,b.md5sum,b.number_of_items
+            )
             FROM {} b
             WHERE a.filename = b.filename
-        ", temp_table_name);
+        ",
+            temp_table_name
+        );
 
         let drop_table_query = format!("DROP TABLE {}", temp_table_name);
 
@@ -467,7 +492,7 @@ pub fn get_list_of_files_from_db(
     map_result(results)
 }
 
-pub fn get_maximum_begin_datetime(pool: &PgPool) -> Result<Option<String>, Error> {
+pub fn get_maximum_begin_datetime(pool: &PgPool) -> Result<Option<DateTime<Utc>>, Error> {
     let query = "SELECT MAX(begin_datetime) FROM garmin_summary";
 
     let conn = pool.get()?;

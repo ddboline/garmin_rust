@@ -1,6 +1,10 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, TimeZone, Utc};
 use failure::{err_msg, Error};
 use serde::{self, Deserialize, Deserializer, Serializer};
+
+pub fn sentinel_datetime() -> DateTime<Utc> {
+    Utc.ymd(0, 1, 1).and_hms(0, 0, 0)
+}
 
 pub fn convert_datetime_to_str(datetime: DateTime<Utc>) -> String {
     datetime.format("%Y-%m-%dT%H:%M:%SZ").to_string()

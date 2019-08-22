@@ -13,6 +13,7 @@ use garmin_lib::common::garmin_cli::{GarminCli, GarminRequest};
 use garmin_lib::common::garmin_file::GarminFile;
 use garmin_lib::parsers::garmin_parse::{GarminParse, GarminParseTrait};
 use garmin_lib::reports::garmin_file_report_txt::get_splits;
+use garmin_lib::utils::iso_8601_datetime::convert_datetime_to_str;
 
 use super::logged_user::LoggedUser;
 
@@ -418,7 +419,7 @@ pub fn garmin_get_hr_data(
                             .iter()
                             .filter_map(|point| match point.heart_rate {
                                 Some(heart_rate) => Some(TimeValue {
-                                    time: point.time.clone(),
+                                    time: convert_datetime_to_str(point.time),
                                     value: heart_rate,
                                 }),
                                 None => None,

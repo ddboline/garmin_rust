@@ -3,17 +3,21 @@ use chrono::{DateTime, Utc};
 use failure::{err_msg, Error};
 use std::collections::HashMap;
 use std::fs::File;
-use std::str::FromStr;
+
+use crate::utils::iso_8601_datetime::{self, sentinel_datetime};
+use crate::utils::sport_types::{self, SportTypes};
 
 use super::garmin_lap::{GarminLap, GARMIN_LAP_AVRO_SCHEMA};
 use super::garmin_point::{GarminPoint, GARMIN_POINT_AVRO_SCHEMA};
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GarminFile {
     pub filename: String,
     pub filetype: String,
-    pub begin_datetime: String,
-    pub sport: Option<String>,
+    #[serde(with = "iso_8601_datetime")]
+    pub begin_datetime: DateTime<Utc>,
+    #[serde(with = "sport_types")]
+    pub sport: SportTypes,
     pub total_calories: i32,
     pub total_distance: f64,
     pub total_duration: f64,
@@ -23,13 +27,19 @@ pub struct GarminFile {
     pub points: Vec<GarminPoint>,
 }
 
+impl Default for GarminFile {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GarminFile {
     pub fn new() -> GarminFile {
         GarminFile {
             filename: "".to_string(),
             filetype: "".to_string(),
-            begin_datetime: "".to_string(),
-            sport: None,
+            begin_datetime: sentinel_datetime(),
+            sport: SportTypes::None,
             total_calories: 0,
             total_distance: 0.0,
             total_duration: 0.0,
@@ -43,8 +53,8 @@ impl GarminFile {
     pub fn clear(&mut self) {
         self.filename = "".to_string();
         self.filetype = "".to_string();
-        self.begin_datetime = "".to_string();
-        self.sport = None;
+        self.begin_datetime = sentinel_datetime();
+        self.sport = SportTypes::None;
         self.total_calories = 0;
         self.total_distance = 0.0;
         self.total_duration = 0.0;
@@ -63,7 +73,7 @@ impl GarminFile {
                 {"name": "filename", "type": "string"},
                 {"name": "filetype", "type": "string"},
                 {"name": "begin_datetime", "type": "string"},
-                {"name": "sport", "type": ["string", "null"]},
+                {"name": "sport", "type": "string"},
                 {"name": "total_calories", "type": "int"},
                 {"name": "total_distance", "type": "double"},
                 {"name": "total_duration", "type": "double"},
@@ -112,9 +122,10 @@ impl GarminFile {
     }
 
     pub fn get_standardized_name(&self) -> Result<String, Error> {
-        let last_time: DateTime<Utc> =
-            DateTime::from_str(&self.begin_datetime).expect("Failed to extract timestamp");
-        Ok(last_time.format("%Y-%m-%d_%H-%M-%S_1_1.fit").to_string())
+        Ok(self
+            .begin_datetime
+            .format("%Y-%m-%d_%H-%M-%S_1_1.fit")
+            .to_string())
     }
 }
 

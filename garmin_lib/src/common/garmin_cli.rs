@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use clap::{App, Arg};
 use failure::{err_msg, Error};
 use log::debug;
@@ -239,7 +240,7 @@ impl GarminCli {
 
     pub fn get_summary_list(
         &self,
-        corr_map: &HashMap<(String, i32), GarminCorrectionLap>,
+        corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
     ) -> Result<GarminSummaryList, Error> {
         let pg_conn = self.get_pool()?;
 

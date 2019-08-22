@@ -13,7 +13,7 @@ use crate::reports::garmin_templates::{GARMIN_TEMPLATE, MAP_TEMPLATE};
 use crate::utils::garmin_util::{print_h_m_s, titlecase, MARATHON_DISTANCE_MI, METERS_PER_MILE};
 use crate::utils::plot_graph::generate_d3_plot;
 use crate::utils::plot_opts::PlotOpts;
-use crate::utils::sport_types::convert_sport_name_to_activity_type;
+use crate::utils::sport_types::SportTypes;
 
 pub fn generate_history_buttons(history: &str) -> String {
     let mut history_vec: Vec<String> = history.split(';').map(|s| s.to_string()).collect();
@@ -72,11 +72,6 @@ pub fn file_report_html(
     history: &str,
     pool: Option<&PgPool>,
 ) -> Result<String, Error> {
-    let sport = match &gfile.sport {
-        Some(s) => s.clone(),
-        None => "none".to_string(),
-    };
-
     let report_objs = extract_report_objects_from_file(&gfile)?;
     let plot_opts = get_plot_opts(&report_objs);
     let graphs = get_graphs(&plot_opts);
@@ -86,7 +81,7 @@ pub fn file_report_html(
         &gfile,
         &report_objs,
         &graphs,
-        &sport,
+        gfile.sport,
         &history,
         pool,
     )
@@ -319,12 +314,12 @@ fn get_html_string(
     gfile: &GarminFile,
     report_objs: &ReportObjects,
     graphs: &[String],
-    sport: &str,
+    sport: SportTypes,
     history: &str,
     pool: Option<&PgPool>,
 ) -> Result<String, Error> {
     let strava_id_title = match pool {
-        Some(p) => get_strava_id_from_begin_datetime(p, &gfile.begin_datetime)?,
+        Some(p) => get_strava_id_from_begin_datetime(p, gfile.begin_datetime)?,
         None => None,
     };
 
@@ -351,7 +346,7 @@ fn get_html_string(
 fn get_garmin_template_vec(
     domain: &str,
     gfile: &GarminFile,
-    sport: &str,
+    sport: SportTypes,
     strava_id_title: Option<(String, String)>,
     history: &str,
 ) -> Result<Vec<String>, Error> {
@@ -371,14 +366,14 @@ fn get_garmin_template_vec(
         } else if line.contains("SPORTTITLEDATE") {
             let newtitle = format!(
                 "Garmin Event {} on {}",
-                titlecase(&sport),
+                titlecase(&sport.to_string()),
                 gfile.begin_datetime
             );
             htmlvec.push(line.replace("SPORTTITLEDATE", &newtitle).to_string());
         } else if line.contains("SPORTTITLELINK") {
             let newtitle = format!(
                 "Garmin Event {} on {}",
-                titlecase(&sport),
+                titlecase(&sport.to_string()),
                 gfile.begin_datetime
             );
             let newtitle = match strava_id_title.as_ref() {
@@ -408,7 +403,7 @@ fn get_garmin_template_vec(
 fn get_map_tempate_vec(
     report_objs: &ReportObjects,
     gfile: &GarminFile,
-    sport: &str,
+    sport: SportTypes,
     strava_id_title: Option<(String, String)>,
     history: &str,
     graphs: &[String],
@@ -456,14 +451,14 @@ fn get_map_tempate_vec(
         if line.contains("SPORTTITLEDATE") {
             let newtitle = format!(
                 "Garmin Event {} on {}",
-                titlecase(&sport),
+                titlecase(&sport.to_string()),
                 gfile.begin_datetime
             );
             htmlvec.push(line.replace("SPORTTITLEDATE", &newtitle).to_string());
         } else if line.contains("SPORTTITLELINK") {
             let newtitle = format!(
                 "Garmin Event {} on {}",
-                titlecase(&sport),
+                titlecase(&sport.to_string()),
                 gfile.begin_datetime
             );
             let newtitle = match strava_id_title.as_ref() {
@@ -546,10 +541,7 @@ fn get_map_tempate_vec(
             htmlvec.push(line.replace("HISTORYBUTTONS", &history_button).to_string());
         } else if line.contains("FILENAME") | line.contains("ACTIVITYTYPE") {
             let filename = format!("{}/{}", &config.gps_dir, &gfile.filename);
-            let activity_type = convert_sport_name_to_activity_type(
-                &gfile.sport.clone().unwrap_or_else(|| "".to_string()),
-            )
-            .unwrap_or_else(|| "".to_string());
+            let activity_type = gfile.sport.to_strava_activity();
             htmlvec.push(
                 line.replace("FILENAME", &filename)
                     .replace("ACTIVITYTYPE", &activity_type),
@@ -566,10 +558,7 @@ fn get_map_tempate_vec(
 fn get_file_html(gfile: &GarminFile) -> String {
     let mut retval = Vec::new();
 
-    let sport = match &gfile.sport {
-        Some(s) => s.clone(),
-        None => "none".to_string(),
-    };
+    let sport = gfile.sport.to_string();
 
     retval.push(r#"<table border="1" class="dataframe">"#.to_string());
     retval.push(

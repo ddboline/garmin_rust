@@ -4,19 +4,12 @@ use log::debug;
 use crate::common::garmin_file::GarminFile;
 use crate::common::garmin_lap::GarminLap;
 use crate::utils::garmin_util::{print_h_m_s, MARATHON_DISTANCE_MI, METERS_PER_MILE};
-use crate::utils::sport_types::{get_sport_type_map, SportTypes};
+use crate::utils::sport_types::SportTypes;
 
 pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<String>, Error> {
     let mut return_vec = vec![format!("Start time {}", gfile.filename)];
 
-    let sport_type_map = get_sport_type_map();
-    let sport_type = match &gfile.sport {
-        Some(sport) => match sport_type_map.get(sport) {
-            Some(s) => *s,
-            None => SportTypes::Other,
-        },
-        None => SportTypes::Other,
-    };
+    let sport_type = gfile.sport;
 
     for lap in &gfile.laps {
         return_vec.push(print_lap_string(&lap, sport_type)?)

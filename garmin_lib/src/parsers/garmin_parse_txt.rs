@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use failure::{err_msg, Error};
 use std::collections::HashMap;
 use std::fs::File;
@@ -10,7 +11,8 @@ use crate::common::garmin_file::GarminFile;
 use crate::common::garmin_lap::GarminLap;
 use crate::common::garmin_point::GarminPoint;
 use crate::utils::garmin_util::{convert_time_string, METERS_PER_MILE};
-use crate::utils::sport_types::get_sport_type_map;
+use crate::utils::iso_8601_datetime::convert_str_to_datetime;
+use crate::utils::sport_types::{get_sport_type_map, SportTypes};
 
 #[derive(Debug, Default)]
 pub struct GarminParseTxt {}
@@ -25,7 +27,7 @@ impl GarminParseTrait for GarminParseTxt {
     fn with_file(
         &self,
         filename: &str,
-        corr_map: &HashMap<(String, i32), GarminCorrectionLap>,
+        corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
     ) -> Result<GarminFile, Error> {
         let file_name = Path::new(&filename)
             .file_name()
@@ -34,18 +36,22 @@ impl GarminParseTrait for GarminParseTxt {
             .into_string()
             .unwrap_or_else(|_| filename.to_string());
         let txt_output = self.parse_file(filename)?;
-        let sport = txt_output
+        let sport: Option<SportTypes> = txt_output
             .lap_list
             .get(0)
             .ok_or_else(|| err_msg("No laps"))?
-            .lap_type
-            .clone();
-        let (lap_list, sport) = apply_lap_corrections(&txt_output.lap_list, &sport, corr_map);
+            .lap_type.as_ref()
+            .and_then(|s| s.parse().ok());
+        let (lap_list, sport) = apply_lap_corrections(&txt_output.lap_list, sport, corr_map);
         let first_lap = lap_list.get(0).ok_or_else(|| err_msg("No laps"))?;
+        let sport = match sport {
+            Some(s) => s,
+            None => SportTypes::None,
+        };
         let gfile = GarminFile {
             filename: file_name,
             filetype: "txt".to_string(),
-            begin_datetime: first_lap.lap_start.clone(),
+            begin_datetime: first_lap.lap_start,
             sport,
             total_calories: lap_list.iter().map(|lap| lap.lap_calories).sum(),
             total_distance: lap_list.iter().map(|lap| lap.lap_distance).sum(),
@@ -151,7 +157,7 @@ impl GarminParseTrait for GarminParseTxt {
                         avg_speed_value_mph,
                     ),
                 )| GarminPoint {
-                    time: lap.lap_start.clone(),
+                    time: lap.lap_start,
                     latitude: None,
                     longitude: None,
                     altitude: None,
@@ -216,10 +222,10 @@ impl GarminParseTxt {
             None => (0, 0, 0),
         };
 
-        let lap_start = format!(
+        let lap_start = convert_str_to_datetime(&format!(
             "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
             year, month, date, hour, minute, second
-        );
+        ))?;
 
         let lap_type = match entry_dict.get("type") {
             Some(val) => match sport_type_map.get(val) {

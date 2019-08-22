@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use failure::Error;
 use log::debug;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
@@ -6,25 +7,24 @@ use std::hash::BuildHasher;
 
 use crate::common::pgpool::PgPool;
 use crate::utils::garmin_util::map_result;
+use crate::utils::iso_8601_datetime;
 use crate::utils::row_index_trait::RowIndexTrait;
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct StravaItem {
-    pub begin_datetime: String,
+    #[serde(with = "iso_8601_datetime")]
+    pub begin_datetime: DateTime<Utc>,
     pub title: String,
 }
 
 pub fn get_strava_id_from_begin_datetime(
     pool: &PgPool,
-    begin_datetime: &str,
+    begin_datetime: DateTime<Utc>,
 ) -> Result<Option<(String, String)>, Error> {
-    let query = format!(
-        r#"SELECT strava_id, strava_title FROM strava_id_cache WHERE begin_datetime = '{}'"#,
-        begin_datetime
-    );
+    let query = "SELECT strava_id, strava_title FROM strava_id_cache WHERE begin_datetime = $1";
 
     let conn = pool.get()?;
-    conn.query(&query, &[])?
+    conn.query(&query, &[&begin_datetime])?
         .iter()
         .nth(0)
         .map(|row| {
@@ -35,7 +35,7 @@ pub fn get_strava_id_from_begin_datetime(
         .transpose()
 }
 
-pub fn get_strava_id_maximum_begin_datetime(pool: &PgPool) -> Result<Option<String>, Error> {
+pub fn get_strava_id_maximum_begin_datetime(pool: &PgPool) -> Result<Option<DateTime<Utc>>, Error> {
     let query = "SELECT MAX(begin_datetime) FROM strava_id_cache";
 
     let conn = pool.get()?;
@@ -55,7 +55,7 @@ pub fn get_strava_id_map(pool: &PgPool) -> Result<HashMap<String, StravaItem>, E
         .iter()
         .map(|row| {
             let strava_id: String = row.get_idx(0)?;
-            let begin_datetime: String = row.get_idx(1)?;
+            let begin_datetime: DateTime<Utc> = row.get_idx(1)?;
             let strava_title: String = row.get_idx(2)?;
             Ok((
                 strava_id,

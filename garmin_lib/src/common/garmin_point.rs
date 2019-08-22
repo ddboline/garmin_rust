@@ -2,13 +2,14 @@ use chrono::{DateTime, Utc};
 use failure::{err_msg, Error};
 use roxmltree::{Node, NodeType};
 use std::fmt;
-use std::str::FromStr;
 
 use crate::utils::garmin_util::{convert_xml_local_time_to_utc, METERS_PER_MILE};
+use crate::utils::iso_8601_datetime::{self, sentinel_datetime};
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GarminPoint {
-    pub time: String,
+    #[serde(with = "iso_8601_datetime")]
+    pub time: DateTime<Utc>,
     pub latitude: Option<f64>,
     pub longitude: Option<f64>,
     pub altitude: Option<f64>,
@@ -23,10 +24,16 @@ pub struct GarminPoint {
     pub avg_speed_value_mph: f64,
 }
 
+impl Default for GarminPoint {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GarminPoint {
     pub fn new() -> GarminPoint {
         GarminPoint {
-            time: "".to_string(),
+            time: sentinel_datetime(),
             latitude: None,
             longitude: None,
             altitude: None,
@@ -43,7 +50,7 @@ impl GarminPoint {
     }
 
     pub fn clear(&mut self) {
-        self.time = "".to_string();
+        self.time = sentinel_datetime();
         self.latitude = None;
         self.longitude = None;
         self.altitude = None;
@@ -129,13 +136,7 @@ impl GarminPoint {
             .scan(0.0, |time_from_begin, (i, point)| {
                 let duration_from_last = match i {
                     0 => 0.0,
-                    _ => {
-                        let cur_time: DateTime<Utc> =
-                            DateTime::from_str(&point.time).expect("Failed to extract timestamp");
-                        let last_time: DateTime<Utc> = DateTime::from_str(&point_list[i - 1].time)
-                            .expect("Failed to extract timestamp");
-                        (cur_time - last_time).num_seconds() as f64
-                    }
+                    _ => (point.time - point_list[i - 1].time).num_seconds() as f64,
                 };
                 *time_from_begin += duration_from_last;
                 let duration_from_begin = *time_from_begin;

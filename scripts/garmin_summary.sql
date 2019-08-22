@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS garmin_summary (
     filename text NOT NULL PRIMARY KEY,
-    begin_datetime text,
-    sport varchar(12),
+    begin_datetime TIMESTAMP WITH TIME ZONE NOT NULL,
+    sport varchar(12) NOT NULL,
     total_calories integer,
     total_distance double precision,
     total_duration double precision,

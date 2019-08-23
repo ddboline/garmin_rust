@@ -81,10 +81,10 @@ impl GarminSummary {
                 .ok_or_else(|| err_msg(format!("Failed to split filename {}", filename)))?
         );
 
-        writeln!(stdout().lock(), "Get md5sum {}", filename)?;
+        writeln!(stdout().lock(), "Get md5sum {} ", filename)?;
         let md5sum = get_md5sum(&filename)?;
 
-        writeln!(stdout().lock(), "Found md5sum {}, try parsing", md5sum)?;
+        writeln!(stdout().lock(), "{} Found md5sum {} ", filename, md5sum)?;
         let gfile = GarminParse::new().with_file(&filename, &corr_map)?;
 
         match gfile.laps.get(0) {
@@ -95,6 +95,12 @@ impl GarminSummary {
             None => return Err(err_msg(format!("{} has no laps?", gfile.filename))),
         };
         gfile.dump_avro(&cache_file)?;
+        writeln!(
+            stdout().lock(),
+            "{} Found md5sum {} success",
+            filename,
+            md5sum
+        )?;
         Ok(GarminSummary::new(&gfile, &md5sum))
     }
 }

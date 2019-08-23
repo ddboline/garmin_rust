@@ -449,7 +449,7 @@ pub fn apply_lap_corrections<S: BuildHasher + Sync>(
     sport: Option<SportTypes>,
     corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap, S>,
 ) -> (Vec<GarminLap>, Option<SportTypes>) {
-    let mut new_sport = sport.clone();
+    let mut new_sport = sport;
     match lap_list.get(0) {
         Some(l) => {
             let lap_start = l.lap_start;
@@ -468,7 +468,7 @@ pub fn apply_lap_corrections<S: BuildHasher + Sync>(
                                     debug!("change sport {} {:?} {}", lap_start, lap.lap_type, s);
                                     s.parse().ok()
                                 }
-                                None => sport.clone(),
+                                None => sport,
                             };
                             new_lap.lap_duration = match &corr.duration {
                                 Some(dur) => {

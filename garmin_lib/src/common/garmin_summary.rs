@@ -32,7 +32,6 @@ pub const GARMIN_SUMMARY_AVRO_SCHEMA: &str = r#"
             {"name": "total_duration", "type": "double"},
             {"name": "total_hr_dur", "type": "double"},
             {"name": "total_hr_dis", "type": "double"},
-            {"name": "number_of_items", "type": "int"},
             {"name": "md5sum", "type": "string"}
         ]
     }
@@ -50,7 +49,6 @@ pub struct GarminSummary {
     pub total_duration: f64,
     pub total_hr_dur: f64,
     pub total_hr_dis: f64,
-    pub number_of_items: i32,
     pub md5sum: String,
 }
 
@@ -65,7 +63,6 @@ impl GarminSummary {
             total_duration: gfile.total_duration,
             total_hr_dur: gfile.total_hr_dur,
             total_hr_dis: gfile.total_hr_dis,
-            number_of_items: 1,
             md5sum: md5sum.to_string(),
         }
     }
@@ -113,7 +110,6 @@ impl fmt::Display for GarminSummary {
             "total_duration",
             "total_hr_dur",
             "total_hr_dis",
-            "number_of_items",
             "md5sum",
         ];
         let vals = vec![
@@ -125,7 +121,6 @@ impl fmt::Display for GarminSummary {
             self.total_duration.to_string(),
             self.total_hr_dur.to_string(),
             self.total_hr_dis.to_string(),
-            self.number_of_items.to_string(),
             self.md5sum.to_string(),
         ];
         write!(
@@ -273,7 +268,6 @@ impl GarminSummaryList {
                    total_duration,
                    total_hr_dur,
                    total_hr_dis,
-                   number_of_items,
                    md5sum
             FROM garmin_summary
             {}",
@@ -296,8 +290,7 @@ impl GarminSummaryList {
                     total_duration: row.get_idx(5)?,
                     total_hr_dur: row.get_idx(6)?,
                     total_hr_dis: row.get_idx(7)?,
-                    number_of_items: row.get_idx(8)?,
-                    md5sum: row.get_idx(9)?,
+                    md5sum: row.get_idx(8)?,
                 })
             })
             .collect();
@@ -373,7 +366,6 @@ impl GarminSummaryList {
                 total_duration double precision,
                 total_hr_dur double precision,
                 total_hr_dis double precision,
-                number_of_items integer,
                 md5sum varchar(32)
             );",
             temp_table_name
@@ -386,9 +378,9 @@ impl GarminSummaryList {
             "
             INSERT INTO {} (
                 filename, begin_datetime, sport, total_calories, total_distance, total_duration,
-                total_hr_dur, total_hr_dis, md5sum, number_of_items
+                total_hr_dur, total_hr_dis, md5sum
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 1)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         ",
             temp_table_name
         );
@@ -421,10 +413,10 @@ impl GarminSummaryList {
             "
             INSERT INTO garmin_summary (
                 filename, begin_datetime, sport, total_calories, total_distance, total_duration,
-                total_hr_dur, total_hr_dis, md5sum, number_of_items
+                total_hr_dur, total_hr_dis, md5sum
             )
             SELECT b.filename, b.begin_datetime, b.sport, b.total_calories, b.total_distance,
-                   b.total_duration, b.total_hr_dur, b.total_hr_dis, b.md5sum, b.number_of_items
+                   b.total_duration, b.total_hr_dur, b.total_hr_dis, b.md5sum
             FROM {} b
             WHERE b.filename not in (select filename from garmin_summary)
         ",
@@ -436,9 +428,9 @@ impl GarminSummaryList {
             UPDATE garmin_summary a
             SET (
                 begin_datetime,sport,total_calories,total_distance,total_duration,total_hr_dur,
-                total_hr_dis,md5sum,number_of_items
+                total_hr_dis,md5sum
             ) = (b.begin_datetime,b.sport,b.total_calories,b.total_distance,b.total_duration,
-                 b.total_hr_dur,b.total_hr_dis,b.md5sum,b.number_of_items
+                 b.total_hr_dur,b.total_hr_dis,b.md5sum
             )
             FROM {} b
             WHERE a.filename = b.filename
@@ -480,6 +472,8 @@ pub fn get_list_of_files_from_db(
     };
 
     let query = format!("SELECT filename FROM garmin_summary {}", constr);
+
+    debug!("{}", query);
 
     let conn = pool.get()?;
 

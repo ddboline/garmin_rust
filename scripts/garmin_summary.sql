@@ -7,6 +7,5 @@ CREATE TABLE IF NOT EXISTS garmin_summary (
     total_duration double precision,
     total_hr_dur double precision,
     total_hr_dis double precision,
-    number_of_items integer,
     md5sum varchar(32)
 );

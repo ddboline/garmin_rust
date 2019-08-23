@@ -40,7 +40,8 @@ impl GarminParseTrait for GarminParseTxt {
             .lap_list
             .get(0)
             .ok_or_else(|| err_msg("No laps"))?
-            .lap_type.as_ref()
+            .lap_type
+            .as_ref()
             .and_then(|s| s.parse().ok());
         let (lap_list, sport) = apply_lap_corrections(&txt_output.lap_list, sport, corr_map);
         let first_lap = lap_list.get(0).ok_or_else(|| err_msg("No laps"))?;

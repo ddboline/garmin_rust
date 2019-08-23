@@ -408,24 +408,26 @@ impl GarminCli {
                 "latest" => constraints.push(
                     "begin_datetime=(select max(begin_datetime) from garmin_summary)".to_string(),
                 ),
-                pat => match sport_type_map.get(pat) {
-                    Some(&x) => options.do_sport = Some(x),
-                    None => {
-                        if pat.contains('w') {
-                            let vals: Vec<_> = pat.split('w').collect();
-                            if let Ok(year) = vals[0].parse::<i32>() {
-                                if let Ok(week) = vals[1].parse::<i32>() {
-                                    constraints.push(format!(
-                                        "(EXTRACT(isoyear from cast(begin_datetime as timestamp with time zone) at time zone 'localtime') = {} AND
-                                        EXTRACT(week from cast(begin_datetime as timestamp with time zone) at time zone 'localtime') = {})", year, week));
+                pat => {
+                    match sport_type_map.get(pat) {
+                        Some(&x) => options.do_sport = Some(x),
+                        None => {
+                            if pat.contains('w') {
+                                let vals: Vec<_> = pat.split('w').collect();
+                                if let Ok(year) = vals[0].parse::<i32>() {
+                                    if let Ok(week) = vals[1].parse::<i32>() {
+                                        constraints.push(format!(
+                                        "(EXTRACT(isoyear from begin_datetime at time zone 'localtime') = {} AND
+                                        EXTRACT(week from begin_datetime at time zone 'localtime') = {})", year, week));
+                                    }
                                 }
+                            } else {
+                                constraints.push(format!("cast(begin_datetime at time zone 'localtime' as text) like '%{}%'", pat));
                             }
-                        } else {
-                            constraints.push(format!("begin_datetime like '%{}%'", pat));
+                            constraints.push(format!("filename like '%{}%'", pat));
                         }
-                        constraints.push(format!("filename like '%{}%'", pat));
                     }
-                },
+                }
             };
         }
 

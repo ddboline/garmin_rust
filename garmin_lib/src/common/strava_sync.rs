@@ -76,8 +76,12 @@ pub fn upsert_strava_id<S: BuildHasher>(
 ) -> Result<Vec<String>, Error> {
     let strava_id_map = get_strava_id_map(pool)?;
 
-    let update_items: Vec<_> = new_items
+    let (update_items, insert_items): (Vec<_>, Vec<_>) = new_items
         .iter()
+        .partition(|(id, _)| strava_id_map.contains_key(*id));
+
+    let update_items: Vec<_> = update_items
+        .into_iter()
         .filter_map(|(id, new_item)| {
             strava_id_map.get(id).and_then(|item| {
                 if new_item != item {
@@ -86,17 +90,6 @@ pub fn upsert_strava_id<S: BuildHasher>(
                     None
                 }
             })
-        })
-        .collect();
-
-    let insert_items: Vec<_> = new_items
-        .iter()
-        .filter_map(|(id, new_item)| {
-            if strava_id_map.contains_key(id) {
-                None
-            } else {
-                Some((id.clone(), new_item.clone()))
-            }
         })
         .collect();
 
@@ -109,7 +102,7 @@ pub fn upsert_strava_id<S: BuildHasher>(
         .map(|(key, val)| {
             let conn = pool.get()?;
             conn.execute(query, &[&key, &val.title])?;
-            Ok(key.clone())
+            Ok(key)
         })
         .collect();
     let mut output: Vec<String> = map_result(items)?;
@@ -124,9 +117,10 @@ pub fn upsert_strava_id<S: BuildHasher>(
         .map(|(key, val)| {
             let conn = pool.get()?;
             conn.execute(query, &[&key, &val.begin_datetime, &val.title])?;
-            Ok(key.clone())
+            Ok(key.to_owned())
         })
         .collect();
+
     let items: Vec<_> = map_result(items)?;
     output.extend(items);
     Ok(output)

@@ -6,7 +6,7 @@ use std::fmt;
 use crate::utils::garmin_util::{convert_xml_local_time_to_utc, METERS_PER_MILE};
 use crate::utils::iso_8601_datetime::{self, sentinel_datetime};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct GarminPoint {
     #[serde(with = "iso_8601_datetime")]
     pub time: DateTime<Utc>,
@@ -144,7 +144,7 @@ impl GarminPoint {
                 let new_point = GarminPoint {
                     duration_from_begin,
                     duration_from_last,
-                    ..point.clone()
+                    ..*point
                 };
                 Some(new_point)
             })

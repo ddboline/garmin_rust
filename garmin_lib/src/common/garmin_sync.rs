@@ -81,16 +81,12 @@ impl GarminSync<S3Client> {
 
         let list_of_keys = list_of_keys
             .into_iter()
-            .filter_map(|item| {
-                item.key.as_ref().and_then(|key| {
-                    item.e_tag.as_ref().and_then(|etag| {
+            .filter_map(|mut item| {
+                item.key.take().and_then(|key| {
+                    item.e_tag.take().and_then(|etag| {
                         item.last_modified.as_ref().and_then(|last_mod| {
-                            DateTime::parse_from_rfc3339(&last_mod).ok().and_then(|lm| {
-                                Some((
-                                    key.clone(),
-                                    etag.trim_matches('"').to_string(),
-                                    lm.timestamp(),
-                                ))
+                            DateTime::parse_from_rfc3339(last_mod).ok().and_then(|lm| {
+                                Some((key, etag.trim_matches('"').to_string(), lm.timestamp()))
                             })
                         })
                     })
@@ -163,11 +159,10 @@ impl GarminSync<S3Client> {
                 let mut do_upload = false;
 
                 if key_set.contains_key(&file_name) {
-                    let (md5_, tmod__) = key_set[&file_name].clone();
-                    let tmod_ = &tmod__;
+                    let (md5_, tmod_) = &key_set[&file_name];
                     if tmod > tmod_ && check_md5sum {
                         if let Ok(md5) = get_md5sum(&file) {
-                            if md5_ != md5 {
+                            if md5_ != &md5 {
                                 debug!(
                                     "upload md5 {} {} {} {} {}",
                                     file_name, md5_, md5, tmod_, tmod

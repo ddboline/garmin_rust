@@ -25,6 +25,7 @@ use crate::reports::garmin_report_options::{GarminReportAgg, GarminReportOptions
 use crate::reports::garmin_summary_report_html::summary_report_html;
 use crate::reports::garmin_summary_report_txt::create_report_query;
 use crate::utils::garmin_util::{extract_zip_from_garmin_connect, get_file_list, map_result};
+use crate::utils::iso_8601_datetime::convert_datetime_to_str;
 use crate::utils::sport_types::get_sport_type_map;
 
 fn get_version_number() -> String {
@@ -408,26 +409,30 @@ impl GarminCli {
                 "latest" => constraints.push(
                     "begin_datetime=(select max(begin_datetime) from garmin_summary)".to_string(),
                 ),
-                pat => {
-                    match sport_type_map.get(pat) {
-                        Some(&x) => options.do_sport = Some(x),
-                        None => {
-                            if pat.contains('w') {
-                                let vals: Vec<_> = pat.split('w').collect();
-                                if let Ok(year) = vals[0].parse::<i32>() {
-                                    if let Ok(week) = vals[1].parse::<i32>() {
-                                        constraints.push(format!(
+                pat => match sport_type_map.get(pat) {
+                    Some(&x) => options.do_sport = Some(x),
+                    None => {
+                        if pat.contains('w') {
+                            let vals: Vec<_> = pat.split('w').collect();
+                            if let Ok(year) = vals[0].parse::<i32>() {
+                                if let Ok(week) = vals[1].parse::<i32>() {
+                                    constraints.push(format!(
                                         "(EXTRACT(isoyear from begin_datetime at time zone 'localtime') = {} AND
                                         EXTRACT(week from begin_datetime at time zone 'localtime') = {})", year, week));
-                                    }
                                 }
-                            } else {
-                                constraints.push(format!("cast(begin_datetime at time zone 'localtime' as text) like '%{}%'", pat));
                             }
-                            constraints.push(format!("filename like '%{}%'", pat));
+                        } else {
+                            constraints.push(
+                                    format!(
+                                        "replace({}, '%', 'T') like '%{}%'",
+                                        "to_char(begin_datetime at time zone 'utc', 'YYYY-MM-DD%HH24:MI:SSZ')",
+                                        pat
+                                    )
+                                );
                         }
+                        constraints.push(format!("filename like '%{}%'", pat));
                     }
-                }
+                },
             };
         }
 
@@ -582,6 +587,7 @@ impl GarminCli {
     pub fn sync_with_garmin_connect(&self) -> Result<Vec<String>, Error> {
         if let Some(pool) = self.pool.as_ref() {
             if let Some(max_datetime) = get_maximum_begin_datetime(&pool)? {
+                let max_datetime = convert_datetime_to_str(max_datetime);
                 let command = format!("/usr/bin/garmin-connect-download {}", max_datetime);
                 let stream = Exec::shell(command).stream_stdout()?;
                 let reader = BufReader::new(stream);

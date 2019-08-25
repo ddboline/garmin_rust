@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use failure::Error;
 use log::debug;
 
@@ -6,6 +7,7 @@ use crate::reports::garmin_report_options::{GarminReportAgg, GarminReportOptions
 use crate::utils::garmin_util::{
     days_in_month, days_in_year, print_h_m_s, METERS_PER_MILE, MONTH_NAMES, WEEKDAY_NAMES,
 };
+use crate::utils::iso_8601_datetime::convert_datetime_to_str;
 use crate::utils::row_index_trait::RowIndexTrait;
 
 pub fn create_report_query(
@@ -83,7 +85,7 @@ fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, 
     debug!("{}", query);
 
     for row in pool.get()?.query(&query, &[])?.iter() {
-        let datetime: String = row.get_idx(0)?;
+        let datetime: DateTime<Utc> = row.get_idx(0)?;
         let week: f64 = row.get_idx(1)?;
         let dow: f64 = row.get_idx(2)?;
         let sport: String = row.get_idx(3)?;
@@ -94,6 +96,7 @@ fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, 
         let total_hr_dis: f64 = row.get_idx(8)?;
 
         let weekdayname = WEEKDAY_NAMES[dow as usize - 1];
+        let datetime = convert_datetime_to_str(datetime);
 
         debug!(
             "{} {} {} {} {} {} {} {} {}",

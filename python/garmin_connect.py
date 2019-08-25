@@ -101,6 +101,7 @@ def get_activities(max_timestamp):
         start_time_gmt = entry['startTimeGMT']
         timestamp = parse(start_time_gmt).replace(tzinfo=tzutc())
 
+        print(timestamp, max_timestamp)
         if timestamp <= max_timestamp:
             continue
 

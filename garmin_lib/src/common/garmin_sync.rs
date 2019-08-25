@@ -21,6 +21,13 @@ pub struct GarminSync<T: S3> {
     s3_client: T,
 }
 
+#[derive(Debug, Clone)]
+pub struct KeyItem {
+    pub key: String,
+    pub etag: String,
+    pub timestamp: i64,
+}
+
 impl Default for GarminSync<S3Client> {
     fn default() -> GarminSync<S3Client> {
         GarminSync::new()
@@ -40,7 +47,7 @@ impl GarminSync<S3Client> {
         }
     }
 
-    pub fn get_list_of_keys(&self, bucket: &str) -> Result<Vec<(String, String, i64)>, Error> {
+    pub fn get_list_of_keys(&self, bucket: &str) -> Result<Vec<KeyItem>, Error> {
         let mut continuation_token = None;
 
         let mut list_of_keys = Vec::new();
@@ -68,7 +75,29 @@ impl GarminSync<S3Client> {
             match current_list.key_count {
                 Some(0) => (),
                 Some(_) => {
-                    list_of_keys.extend_from_slice(&current_list.contents.unwrap_or_else(Vec::new));
+                    current_list.contents.map(|c| {
+                        let contents: Vec<_> = c
+                            .into_iter()
+                            .filter_map(|mut item| {
+                                item.key.take().and_then(|key| {
+                                    item.e_tag.take().and_then(|etag| {
+                                        item.last_modified.as_ref().and_then(|last_mod| {
+                                            DateTime::parse_from_rfc3339(last_mod).ok().and_then(
+                                                |lm| {
+                                                    Some(KeyItem {
+                                                        key,
+                                                        etag: etag.trim_matches('"').to_string(),
+                                                        timestamp: lm.timestamp(),
+                                                    })
+                                                },
+                                            )
+                                        })
+                                    })
+                                })
+                            })
+                            .collect();
+                        list_of_keys.extend_from_slice(&contents)
+                    });
                 }
                 None => (),
             };
@@ -78,21 +107,6 @@ impl GarminSync<S3Client> {
                 None => break,
             };
         }
-
-        let list_of_keys = list_of_keys
-            .into_iter()
-            .filter_map(|mut item| {
-                item.key.take().and_then(|key| {
-                    item.e_tag.take().and_then(|etag| {
-                        item.last_modified.as_ref().and_then(|last_mod| {
-                            DateTime::parse_from_rfc3339(last_mod).ok().and_then(|lm| {
-                                Some((key, etag.trim_matches('"').to_string(), lm.timestamp()))
-                            })
-                        })
-                    })
-                })
-            })
-            .collect();
 
         Ok(list_of_keys)
     }
@@ -145,7 +159,7 @@ impl GarminSync<S3Client> {
         )?;
         let key_set: HashMap<_, _> = key_list
             .iter()
-            .map(|(k, m, t)| (k.to_string(), (m.to_string(), *t)))
+            .map(|item| (item.key.to_string(), item.clone()))
             .collect();
 
         let results: Vec<_> = file_list
@@ -159,13 +173,17 @@ impl GarminSync<S3Client> {
                 let mut do_upload = false;
 
                 if key_set.contains_key(&file_name) {
-                    let (md5_, tmod_) = &key_set[&file_name];
-                    if tmod > tmod_ && check_md5sum {
+                    let item = &key_set[&file_name];
+                    if tmod < &item.timestamp && check_md5sum {
                         if let Ok(md5) = get_md5sum(&file) {
-                            if md5_ != &md5 {
+                            println!(
+                                "tmod {} timestamp {} md5sum {} {}",
+                                *tmod, item.timestamp, md5, item.etag
+                            );
+                            if item.etag != md5 {
                                 debug!(
                                     "upload md5 {} {} {} {} {}",
-                                    file_name, md5_, md5, tmod_, tmod
+                                    file_name, item.etag, md5, item.timestamp, tmod
                                 );
                                 do_upload = true;
                             }
@@ -189,17 +207,20 @@ impl GarminSync<S3Client> {
 
         let results: Vec<_> = key_list
             .par_iter()
-            .filter_map(|(key, md5, tmod)| {
+            .filter_map(|item| {
                 let mut do_download = false;
 
-                if file_set.contains_key(key) {
-                    let tmod_ = file_set[key];
-                    if *tmod > tmod_ && check_md5sum {
-                        let file_name = format!("{}/{}", local_dir, key);
+                if file_set.contains_key(&item.key) {
+                    let tmod_ = file_set[&item.key];
+                    if item.timestamp > tmod_ && check_md5sum {
+                        let file_name = format!("{}/{}", local_dir, item.key);
                         let md5_ = get_md5sum(&file_name).expect("Failed md5sum");
-                        if &md5_ != md5 {
-                            debug!("download md5 {} {} {} {} {} ", key, md5_, md5, tmod, tmod_);
-                            let file_name = format!("{}/{}", local_dir, key);
+                        if md5_ != item.etag {
+                            debug!(
+                                "download md5 {} {} {} {} {} ",
+                                item.key, md5_, item.etag, item.timestamp, tmod_
+                            );
+                            let file_name = format!("{}/{}", local_dir, item.key);
                             fs::remove_file(&file_name).expect("Failed to remove existing file");
                             do_download = true;
                         }
@@ -209,10 +230,10 @@ impl GarminSync<S3Client> {
                 };
 
                 if do_download {
-                    let file_name = format!("{}/{}", local_dir, key);
-                    debug!("download {} {}", s3_bucket, key);
+                    let file_name = format!("{}/{}", local_dir, item.key);
+                    debug!("download {} {}", s3_bucket, item.key);
 
-                    Some(self.download_file(&file_name, &s3_bucket, &key))
+                    Some(self.download_file(&file_name, &s3_bucket, &item.key))
                 } else {
                     None
                 }

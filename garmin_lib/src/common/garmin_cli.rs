@@ -40,7 +40,7 @@ fn get_version_number() -> String {
 
 #[derive(Debug, PartialEq)]
 pub enum GarminCliOptions {
-    Sync,
+    Sync(bool),
     All,
     Bootstrap,
     FileNames(Vec<String>),
@@ -127,6 +127,14 @@ impl GarminCli {
                     .takes_value(false),
             )
             .arg(
+                Arg::with_name("check_md5sum")
+                    .short("m")
+                    .long("check_md5sum")
+                    .value_name("CHECK_MD5SUM")
+                    .help("Check file md5sums")
+                    .takes_value(false),
+            )
+            .arg(
                 Arg::with_name("bootstrap")
                     .short("b")
                     .long("bootstrap")
@@ -153,7 +161,8 @@ impl GarminCli {
 
         let obj = GarminCli {
             opts: if matches.is_present("sync") {
-                Some(GarminCliOptions::Sync)
+                let check_md5sum = matches.is_present("check_md5sum");
+                Some(GarminCliOptions::Sync(check_md5sum))
             } else if matches.is_present("all") {
                 Some(GarminCliOptions::All)
             } else if matches.is_present("bootstrap") {
@@ -216,7 +225,7 @@ impl GarminCli {
 
         match self.get_opts() {
             Some(GarminCliOptions::Bootstrap) => self.run_bootstrap(),
-            Some(GarminCliOptions::Sync) => self.sync_everything(),
+            Some(GarminCliOptions::Sync(check_md5)) => self.sync_everything(*check_md5),
             _ => self.proc_everything(),
         }
     }
@@ -314,7 +323,7 @@ impl GarminCli {
     pub fn run_bootstrap(&self) -> Result<(), Error> {
         let pg_conn = self.get_pool()?;
 
-        self.sync_everything()?;
+        self.sync_everything(true)?;
 
         writeln!(stdout().lock(), "Read corrections from avro file")?;
         let corr_list = GarminCorrectionList::read_corr_list_from_avro(&format!(
@@ -334,7 +343,7 @@ impl GarminCli {
         gsum_list.write_summary_to_postgres()
     }
 
-    pub fn sync_everything(&self) -> Result<(), Error> {
+    pub fn sync_everything(&self, check_md5: bool) -> Result<(), Error> {
         let gsync = GarminSync::new();
 
         let options = vec![
@@ -342,19 +351,19 @@ impl GarminCli {
                 "Syncing GPS files",
                 &self.get_config().gps_dir,
                 &self.get_config().gps_bucket,
-                true,
+                check_md5,
             ),
             (
                 "Syncing CACHE files",
                 &self.get_config().cache_dir,
                 &self.get_config().cache_bucket,
-                false,
+                check_md5,
             ),
             (
                 "Syncing SUMMARY file",
                 &self.get_config().summary_cache,
                 &self.get_config().summary_bucket,
-                false,
+                check_md5,
             ),
         ];
 

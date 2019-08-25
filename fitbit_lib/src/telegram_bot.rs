@@ -2,7 +2,6 @@ use crossbeam_channel::{unbounded, Receiver};
 use failure::{err_msg, Error};
 use futures::Stream;
 use log::debug;
-use std::thread;
 use telegram_bot::types::refs::UserId;
 use telegram_bot::{Api, CanReplySendMessage, MessageKind, UpdateKind};
 use tokio_core::reactor::Core;
@@ -14,7 +13,7 @@ use garmin_lib::common::pgpool::PgPool;
 pub fn run_bot(config: &GarminConfig, pool: PgPool) -> Result<(), Error> {
     let (s, r) = unbounded();
 
-    thread::spawn(move || process_messages(r.clone(), pool.clone()));
+    jod_thread::spawn(move || process_messages(r.clone(), pool.clone()));
 
     let mut core = Core::new()?;
 

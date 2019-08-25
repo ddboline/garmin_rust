@@ -3,7 +3,7 @@ use failure::{err_msg, Error};
 use log::debug;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use rusoto_core::Region;
-use rusoto_s3::{GetObjectRequest, ListObjectsV2Request, PutObjectRequest, S3Client, S3};
+use rusoto_s3::{GetObjectRequest, ListObjectsV2Request, Object as S3Object, PutObjectRequest, S3Client, S3};
 use s4::S4;
 use std::collections::HashMap;
 use std::fs;
@@ -32,6 +32,22 @@ impl Default for GarminSync<S3Client> {
     fn default() -> GarminSync<S3Client> {
         GarminSync::new()
     }
+}
+
+fn process_s3_item(mut item: S3Object) -> Option<KeyItem> {
+    item.key.take().and_then(|key| {
+        item.e_tag.take().and_then(|etag| {
+            item.last_modified.as_ref().and_then(|last_mod| {
+                DateTime::parse_from_rfc3339(last_mod).ok().and_then(|lm| {
+                    Some(KeyItem {
+                        key,
+                        etag: etag.trim_matches('"').to_string(),
+                        timestamp: lm.timestamp(),
+                    })
+                })
+            })
+        })
+    })
 }
 
 impl GarminSync<S3Client> {
@@ -75,29 +91,13 @@ impl GarminSync<S3Client> {
             match current_list.key_count {
                 Some(0) => (),
                 Some(_) => {
-                    current_list.contents.map(|c| {
+                    if let Some(c) = current_list.contents {
                         let contents: Vec<_> = c
                             .into_iter()
-                            .filter_map(|mut item| {
-                                item.key.take().and_then(|key| {
-                                    item.e_tag.take().and_then(|etag| {
-                                        item.last_modified.as_ref().and_then(|last_mod| {
-                                            DateTime::parse_from_rfc3339(last_mod).ok().and_then(
-                                                |lm| {
-                                                    Some(KeyItem {
-                                                        key,
-                                                        etag: etag.trim_matches('"').to_string(),
-                                                        timestamp: lm.timestamp(),
-                                                    })
-                                                },
-                                            )
-                                        })
-                                    })
-                                })
-                            })
+                            .filter_map(process_s3_item)
                             .collect();
                         list_of_keys.extend_from_slice(&contents)
-                    });
+                    };
                 }
                 None => (),
             };
@@ -174,7 +174,7 @@ impl GarminSync<S3Client> {
 
                 if key_set.contains_key(&file_name) {
                     let item = &key_set[&file_name];
-                    if tmod < &item.timestamp && check_md5sum {
+                    if *tmod != item.timestamp && check_md5sum {
                         if let Ok(md5) = get_md5sum(&file) {
                             println!(
                                 "tmod {} timestamp {} md5sum {} {}",

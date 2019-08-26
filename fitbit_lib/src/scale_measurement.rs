@@ -3,9 +3,11 @@ use chrono::{DateTime, Utc};
 use failure::{err_msg, Error};
 use google_sheets4::RowData;
 use log::debug;
+use std::fmt;
 
 use garmin_lib::common::pgpool::PgPool;
 use garmin_lib::utils::garmin_util::map_result;
+use garmin_lib::utils::iso_8601_datetime::convert_datetime_to_str;
 use garmin_lib::utils::row_index_trait::RowIndexTrait;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Copy)]
@@ -16,6 +18,21 @@ pub struct ScaleMeasurement {
     pub water_pct: f64,
     pub muscle_pct: f64,
     pub bone_pct: f64,
+}
+
+impl fmt::Display for ScaleMeasurement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "ScaleMeasurement(\ndatetime: {}\nmass: {} lbs\nfat: {}%\nwater: {}%\nmuscle: {}%\nbone: {}%\n)",
+            convert_datetime_to_str(self.datetime),
+            self.mass,
+            self.fat_pct,
+            self.water_pct,
+            self.muscle_pct,
+            self.bone_pct,
+        )
+    }
 }
 
 impl ScaleMeasurement {

@@ -3,10 +3,11 @@ use actix_web::{dev::Payload, FromRequest, HttpRequest};
 use chrono::{DateTime, Utc};
 use failure::{err_msg, Error};
 use jsonwebtoken::{decode, Validation};
+use parking_lot::RwLock;
 use std::collections::{HashMap, HashSet};
 use std::convert::From;
 use std::env;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 use garmin_lib::common::pgpool::PgPool;
 use garmin_lib::utils::garmin_util::map_result;
@@ -129,11 +130,7 @@ impl AuthorizedUsers {
     }
 
     pub fn list_of_users(&self) -> HashSet<LoggedUser> {
-        if let Ok(user_list) = self.0.read() {
-            user_list.keys().cloned().collect()
-        } else {
-            HashSet::new()
-        }
+        self.0.read().keys().cloned().collect()
     }
 
     pub fn is_authorized(&self, user: &LoggedUser) -> bool {
@@ -142,12 +139,10 @@ impl AuthorizedUsers {
                 return true;
             }
         }
-        if let Ok(user_list) = self.0.read() {
-            if let Some(AuthStatus::Authorized(last_time)) = user_list.get(user) {
-                let current_time = Utc::now();
-                if (current_time - *last_time).num_minutes() < 15 {
-                    return true;
-                }
+        if let Some(AuthStatus::Authorized(last_time)) = self.0.read().get(user) {
+            let current_time = Utc::now();
+            if (current_time - *last_time).num_minutes() < 15 {
+                return true;
             }
         }
         false
@@ -163,17 +158,13 @@ impl AuthorizedUsers {
     }
 
     pub fn store_auth(&self, user: &LoggedUser, is_auth: bool) -> Result<(), Error> {
-        if let Ok(mut user_list) = self.0.write() {
-            let current_time = Utc::now();
-            let status = if is_auth {
-                AuthStatus::Authorized(current_time)
-            } else {
-                AuthStatus::NotAuthorized
-            };
-            user_list.insert(user.clone(), status);
-            Ok(())
+        let current_time = Utc::now();
+        let status = if is_auth {
+            AuthStatus::Authorized(current_time)
         } else {
-            Err(err_msg("Failed to store credentials"))
-        }
+            AuthStatus::NotAuthorized
+        };
+        self.0.write().insert(user.clone(), status);
+        Ok(())
     }
 }

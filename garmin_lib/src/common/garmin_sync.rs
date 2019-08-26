@@ -3,7 +3,9 @@ use failure::{err_msg, Error};
 use log::debug;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use rusoto_core::Region;
-use rusoto_s3::{GetObjectRequest, ListObjectsV2Request, Object as S3Object, PutObjectRequest, S3Client, S3};
+use rusoto_s3::{
+    GetObjectRequest, ListObjectsV2Request, Object as S3Object, PutObjectRequest, S3Client, S3,
+};
 use s4::S4;
 use std::collections::HashMap;
 use std::fs;
@@ -92,10 +94,7 @@ impl GarminSync<S3Client> {
                 Some(0) => (),
                 Some(_) => {
                     if let Some(c) = current_list.contents {
-                        let contents: Vec<_> = c
-                            .into_iter()
-                            .filter_map(process_s3_item)
-                            .collect();
+                        let contents: Vec<_> = c.into_iter().filter_map(process_s3_item).collect();
                         list_of_keys.extend_from_slice(&contents)
                     };
                 }

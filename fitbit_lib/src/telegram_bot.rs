@@ -43,7 +43,7 @@ pub fn run_bot(config: &GarminConfig, pool: PgPool) -> Result<(), Error> {
                                 );
                             }
                             None => {
-                                api.spawn(message.text_reply(format!("No measurements")));
+                                api.spawn(message.text_reply("No measurements".to_string()));
                             }
                         },
                         _ => match ScaleMeasurement::from_telegram_text(data) {

@@ -1,4 +1,5 @@
 use crossbeam_channel::{unbounded, Receiver};
+use crossbeam_utils::thread::Scope;
 use failure::{err_msg, Error};
 use futures::Stream;
 use log::debug;
@@ -9,21 +10,20 @@ use telegram_bot::{Api, CanReplySendMessage, MessageKind, UpdateKind};
 use tokio_core::reactor::Core;
 
 use crate::scale_measurement::ScaleMeasurement;
-use garmin_lib::common::garmin_config::GarminConfig;
 use garmin_lib::common::pgpool::PgPool;
 
 lazy_static! {
     static ref LAST_WEIGHT: Arc<RwLock<Option<ScaleMeasurement>>> = Arc::new(RwLock::new(None));
 }
 
-pub fn run_bot(config: &GarminConfig, pool: PgPool) -> Result<(), Error> {
+pub fn run_bot(telegram_bot_token: &str, pool: PgPool, scope: &Scope) -> Result<(), Error> {
     let (s, r) = unbounded();
 
-    let handle = jod_thread::spawn(move || process_messages(r.clone(), pool.clone()));
+    let handle = scope.spawn(move |_| process_messages(r.clone(), pool.clone()));
 
     let mut core = Core::new()?;
 
-    let api = Api::configure(&config.telegram_bot_token)
+    let api = Api::configure(telegram_bot_token)
         .build(core.handle())
         .map_err(|e| err_msg(format!("{}", e)))?;
 

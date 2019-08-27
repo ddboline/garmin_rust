@@ -4,22 +4,31 @@ use failure::{err_msg, Error};
 use futures::Stream;
 use log::debug;
 use parking_lot::RwLock;
+use std::collections::HashSet;
 use std::sync::Arc;
+use std::thread::sleep;
+use std::time::Duration;
 use telegram_bot::types::refs::UserId;
 use telegram_bot::{Api, CanReplySendMessage, MessageKind, UpdateKind};
 use tokio_core::reactor::Core;
 
 use crate::scale_measurement::ScaleMeasurement;
 use garmin_lib::common::pgpool::PgPool;
+use garmin_lib::utils::garmin_util::map_result;
+use garmin_lib::utils::row_index_trait::RowIndexTrait;
 
 lazy_static! {
     static ref LAST_WEIGHT: Arc<RwLock<Option<ScaleMeasurement>>> = Arc::new(RwLock::new(None));
+    static ref TELEGRAM_USERIDS: Arc<RwLock<HashSet<UserId>>> =
+        Arc::new(RwLock::new(HashSet::new()));
 }
 
 pub fn run_bot(telegram_bot_token: &str, pool: PgPool, scope: &Scope) -> Result<(), Error> {
     let (s, r) = unbounded();
 
-    let handle = scope.spawn(move |_| process_messages(r.clone(), pool.clone()));
+    let pool_ = pool.clone();
+    let userid_handle = scope.spawn(move |_| fill_telegram_user_ids(pool_));
+    let message_handle = scope.spawn(move |_| process_messages(r, pool));
 
     let mut core = Core::new()?;
 
@@ -34,7 +43,7 @@ pub fn run_bot(telegram_bot_token: &str, pool: PgPool, scope: &Scope) -> Result<
             if let MessageKind::Text { ref data, .. } = message.kind {
                 // Print received text message to stdout.
                 debug!("{:?}", message);
-                if message.from.id == UserId::new(972_549_683) {
+                if TELEGRAM_USERIDS.read().contains(&message.from.id) {
                     match data.to_lowercase().as_str() {
                         "check" => match *LAST_WEIGHT.read() {
                             Some(meas) => {
@@ -60,8 +69,8 @@ pub fn run_bot(telegram_bot_token: &str, pool: PgPool, scope: &Scope) -> Result<
                 } else {
                     // Answer message with "Hi".
                     api.spawn(message.text_reply(format!(
-                        "Hi, {}! You just wrote '{}'",
-                        &message.from.first_name, data
+                        "Hi, {}, user_id {}! You just wrote '{}'",
+                        &message.from.first_name, &message.from.id, data
                     )));
                 }
             }
@@ -71,7 +80,8 @@ pub fn run_bot(telegram_bot_token: &str, pool: PgPool, scope: &Scope) -> Result<
     });
 
     core.run(future).map_err(|e| err_msg(format!("{}", e)))?;
-    drop(handle);
+    drop(message_handle);
+    drop(userid_handle);
     Ok(())
 }
 
@@ -96,4 +106,34 @@ fn process_messages(r: Receiver<ScaleMeasurement>, pool: PgPool) {
             }
         }
     }
+}
+
+fn fill_telegram_user_ids(pool: PgPool) {
+    loop {
+        if let Ok(telegram_userids) = list_of_telegram_user_ids(&pool) {
+            TELEGRAM_USERIDS.write().clear();
+            for userid in telegram_userids {
+                TELEGRAM_USERIDS.write().insert(UserId::new(userid));
+            }
+        }
+        sleep(Duration::from_secs(60));
+    }
+}
+
+fn list_of_telegram_user_ids(pool: &PgPool) -> Result<Vec<i64>, Error> {
+    let query = "
+        SELECT distinct telegram_userid
+        FROM authorized_users
+        WHERE telegram_userid IS NOT NULL
+    ";
+    let results: Vec<Result<_, Error>> = pool
+        .get()?
+        .query(query, &[])?
+        .iter()
+        .map(|row| {
+            let telegram_userid: i64 = row.get_idx(0)?;
+            Ok(telegram_userid)
+        })
+        .collect();
+    map_result(results)
 }

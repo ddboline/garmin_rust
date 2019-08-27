@@ -111,9 +111,10 @@ fn process_messages(r: Receiver<ScaleMeasurement>, pool: PgPool) {
 fn fill_telegram_user_ids(pool: PgPool) {
     loop {
         if let Ok(telegram_userids) = list_of_telegram_user_ids(&pool) {
-            TELEGRAM_USERIDS.write().clear();
+            let mut telegram_userid_set = TELEGRAM_USERIDS.write();
+            telegram_userid_set.clear();
             for userid in telegram_userids {
-                TELEGRAM_USERIDS.write().insert(UserId::new(userid));
+                telegram_userid_set.insert(UserId::new(userid));
             }
         }
         sleep(Duration::from_secs(60));

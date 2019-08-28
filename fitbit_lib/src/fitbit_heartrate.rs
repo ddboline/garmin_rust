@@ -9,7 +9,6 @@ use std::path::Path;
 
 use garmin_lib::common::garmin_config::GarminConfig;
 use garmin_lib::common::pgpool::PgPool;
-use garmin_lib::utils::garmin_util::map_result;
 use garmin_lib::utils::row_index_trait::RowIndexTrait;
 
 fn exception(py: Python, msg: &str) -> PyErr {
@@ -95,28 +94,24 @@ impl FitbitHeartRate {
             date
         );
         let conn = pool.get()?;
-        let result: Vec<_> = conn
-            .query(&query, &[])?
+        conn.query(&query, &[])?
             .iter()
             .map(|row| {
                 let datetime = row.get_idx(0)?;
                 let value = row.get_idx(1)?;
                 Ok(Self { datetime, value })
             })
-            .collect();
-        let result: Vec<_> = map_result(result)?;
-        Ok(result)
+            .collect()
     }
 }
 
 pub fn process_fitbit_json_file(fname: &Path) -> Result<Vec<FitbitHeartRate>, Error> {
     let f = File::open(fname)?;
     let result: Vec<JsonHeartRateEntry> = serde_json::from_reader(f)?;
-    let result: Vec<FitbitHeartRate> = result
+    result
         .into_par_iter()
-        .filter_map(|entry| FitbitHeartRate::from_json_heartrate_entry(entry).ok())
-        .collect();
-    Ok(result)
+        .map(|entry| FitbitHeartRate::from_json_heartrate_entry(entry))
+        .collect()
 }
 
 pub fn import_fitbit_json_files(directory: &str) -> Result<(), Error> {
@@ -149,7 +144,7 @@ pub fn import_fitbit_json_files(directory: &str) -> Result<(), Error> {
             dates.len(),
             current_datetimes.len()
         );
-        let results: Vec<_> = heartrates
+        let results: Result<Vec<_>, Error> = heartrates
             .par_iter()
             .map(|entry| {
                 if !current_datetimes.contains(&entry.datetime) {
@@ -158,7 +153,7 @@ pub fn import_fitbit_json_files(directory: &str) -> Result<(), Error> {
                 Ok(())
             })
             .collect();
-        let _: Vec<_> = map_result(results)?;
+        results?;
     }
     Ok(())
 }

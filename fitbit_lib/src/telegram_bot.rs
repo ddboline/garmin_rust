@@ -14,7 +14,6 @@ use tokio_core::reactor::Core;
 
 use crate::scale_measurement::ScaleMeasurement;
 use garmin_lib::common::pgpool::PgPool;
-use garmin_lib::utils::garmin_util::map_result;
 use garmin_lib::utils::row_index_trait::RowIndexTrait;
 
 lazy_static! {
@@ -127,14 +126,12 @@ fn list_of_telegram_user_ids(pool: &PgPool) -> Result<Vec<i64>, Error> {
         FROM authorized_users
         WHERE telegram_userid IS NOT NULL
     ";
-    let results: Vec<Result<_, Error>> = pool
-        .get()?
+    pool.get()?
         .query(query, &[])?
         .iter()
         .map(|row| {
             let telegram_userid: i64 = row.get_idx(0)?;
             Ok(telegram_userid)
         })
-        .collect();
-    map_result(results)
+        .collect()
 }

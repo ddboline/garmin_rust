@@ -10,7 +10,6 @@ use std::env;
 use std::sync::Arc;
 
 use garmin_lib::common::pgpool::PgPool;
-use garmin_lib::utils::garmin_util::map_result;
 use garmin_lib::utils::row_index_trait::RowIndexTrait;
 
 use super::errors::ServiceError;
@@ -104,7 +103,7 @@ impl AuthorizedUsers {
 
     pub fn fill_from_db(&self, pool: &PgPool) -> Result<(), Error> {
         let query = "SELECT email FROM authorized_users";
-        let results: Vec<Result<_, Error>> = pool
+        let results: Result<HashSet<_>, Error> = pool
             .get()?
             .query(query, &[])?
             .iter()
@@ -113,7 +112,7 @@ impl AuthorizedUsers {
                 Ok(LoggedUser { email })
             })
             .collect();
-        let users: HashSet<LoggedUser> = map_result(results)?;
+        let users = results?;
         let cached_users = self.list_of_users();
 
         for user in &users {

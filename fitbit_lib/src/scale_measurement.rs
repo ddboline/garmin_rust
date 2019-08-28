@@ -6,7 +6,6 @@ use log::debug;
 use std::fmt;
 
 use garmin_lib::common::pgpool::PgPool;
-use garmin_lib::utils::garmin_util::map_result;
 use garmin_lib::utils::iso_8601_datetime::convert_datetime_to_str;
 use garmin_lib::utils::row_index_trait::RowIndexTrait;
 
@@ -79,7 +78,7 @@ impl ScaleMeasurement {
 
     pub fn from_telegram_text(msg: &str) -> Result<Self, Error> {
         let datetime = Utc::now();
-        let items: Vec<Result<i32, Error>> = if msg.contains(',') {
+        let items: Result<Vec<f64>, Error> = if msg.contains(',') {
             msg.split(',')
         } else if msg.contains(':') {
             msg.split(':')
@@ -90,11 +89,12 @@ impl ScaleMeasurement {
         }
         .map(|x| {
             let y: i32 = x.parse()?;
-            Ok(y)
+            Ok(f64::from(y) / 10.)
         })
         .collect();
-        let items: Vec<_> = map_result(items)?;
-        let items: Vec<_> = items.into_iter().map(|x| f64::from(x) / 10.).collect();
+
+        let items = items?;
+
         if items.len() < 5 {
             return Err(err_msg("Bad message"));
         }
@@ -132,8 +132,7 @@ impl ScaleMeasurement {
             SELECT datetime, mass, fat_pct, water_pct, muscle_pct, bone_pct
             FROM scale_measurements";
         let conn = pool.get()?;
-        let results: Vec<Result<_, Error>> = conn
-            .query(query, &[])?
+        conn.query(query, &[])?
             .iter()
             .map(|row| {
                 let datetime: DateTime<Utc> = row.get_idx(0)?;
@@ -151,7 +150,6 @@ impl ScaleMeasurement {
                     bone_pct,
                 })
             })
-            .collect();
-        map_result(results)
+            .collect()
     }
 }

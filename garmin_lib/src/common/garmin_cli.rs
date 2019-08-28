@@ -24,7 +24,7 @@ use crate::reports::garmin_file_report_txt::generate_txt_report;
 use crate::reports::garmin_report_options::{GarminReportAgg, GarminReportOptions};
 use crate::reports::garmin_summary_report_html::summary_report_html;
 use crate::reports::garmin_summary_report_txt::create_report_query;
-use crate::utils::garmin_util::{extract_zip_from_garmin_connect, get_file_list, map_result};
+use crate::utils::garmin_util::{extract_zip_from_garmin_connect, get_file_list};
 use crate::utils::iso_8601_datetime::convert_datetime_to_str;
 use crate::utils::sport_types::get_sport_type_map;
 
@@ -256,7 +256,7 @@ impl GarminCli {
 
         let gsum_list = match self.get_opts() {
             Some(GarminCliOptions::FileNames(flist)) => {
-                let proc_list: Vec<Result<_, Error>> = flist
+                let proc_list: Result<Vec<_>, Error> = flist
                     .par_iter()
                     .map(|f| {
                         writeln!(stdout().lock(), "Process {}", &f)?;
@@ -267,7 +267,7 @@ impl GarminCli {
                         )?)
                     })
                     .collect();
-                GarminSummaryList::from_vec(map_result(proc_list)?)
+                GarminSummaryList::from_vec(proc_list?)
             }
             Some(GarminCliOptions::All) => GarminSummaryList::process_all_gps_files(
                 &self.get_config().gps_dir,
@@ -292,7 +292,7 @@ impl GarminCli {
                     .collect();
 
                 let path = Path::new(&self.get_config().gps_dir);
-                let proc_list: Vec<Result<_, Error>> = get_file_list(&path)
+                let proc_list: Result<Vec<_>, Error> = get_file_list(&path)
                     .into_par_iter()
                     .filter_map(|f| f.split('/').last().map(|x| x.to_string()))
                     .filter_map(|f| {
@@ -313,7 +313,7 @@ impl GarminCli {
                         )?)
                     })
                     .collect();
-                GarminSummaryList::from_vec(map_result(proc_list)?)
+                GarminSummaryList::from_vec(proc_list?)
             }
         }
         .with_pool(&pg_conn);
@@ -367,15 +367,14 @@ impl GarminCli {
             ),
         ];
 
-        let results: Vec<_> = options
+        let results: Result<Vec<_>, Error> = options
             .into_par_iter()
             .map(|(title, local_dir, s3_bucket, check_md5)| {
                 writeln!(stdout().lock(), "{}", title)?;
                 gsync.sync_dir(local_dir, s3_bucket, check_md5)
             })
             .collect();
-
-        map_result(results)
+        results.map(|_| ())
     }
 
     pub fn cli_garmin_report(&self) -> Result<(), Error> {
@@ -562,7 +561,7 @@ impl GarminCli {
             .to_str()
             .ok_or_else(|| err_msg("Path is invalid unicode somehow"))?;
 
-        let results: Vec<Result<_, Error>> = filenames
+        let results: Result<Vec<_>, Error> = filenames
             .par_iter()
             .filter(|f| (f.ends_with(".zip") || f.ends_with(".fit")) && Path::new(f).exists())
             .map(|filename| {
@@ -589,8 +588,7 @@ impl GarminCli {
             })
             .collect();
 
-        map_result(results)?;
-        Ok(())
+        results.map(|_| ())
     }
 
     pub fn sync_with_garmin_connect(&self) -> Result<Vec<String>, Error> {
@@ -600,8 +598,8 @@ impl GarminCli {
                 let command = format!("/usr/bin/garmin-connect-download {}", max_datetime);
                 let stream = Exec::shell(command).stream_stdout()?;
                 let reader = BufReader::new(stream);
-                let results: Vec<_> = reader.lines().map(|line| Ok(line?)).collect();
-                let filenames: Vec<_> = map_result(results)?;
+                let results: Result<Vec<_>, Error> = reader.lines().map(|line| Ok(line?)).collect();
+                let filenames: Vec<_> = results?;
                 self.extract_zip_files(&filenames)?;
                 return Ok(filenames);
             }

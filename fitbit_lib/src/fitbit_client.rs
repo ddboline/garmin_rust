@@ -12,7 +12,6 @@ use std::io::{BufRead, BufReader, Write};
 
 use garmin_lib::common::garmin_config::GarminConfig;
 use garmin_lib::common::pgpool::PgPool;
-use garmin_lib::utils::garmin_util::map_result;
 
 use crate::fitbit_heartrate::FitbitHeartRate;
 
@@ -215,7 +214,7 @@ impl FitbitClient {
             dates.len(),
             current_datetimes.len()
         );
-        let results: Vec<_> = heartrates
+        heartrates
             .par_iter()
             .map(|entry| {
                 if !current_datetimes.contains(&entry.datetime) {
@@ -223,9 +222,7 @@ impl FitbitClient {
                 }
                 Ok(())
             })
-            .collect();
-        let _: Vec<_> = map_result(results)?;
-        Ok(())
+            .collect()
     }
 }
 

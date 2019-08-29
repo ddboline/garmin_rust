@@ -5,7 +5,6 @@ use num::traits::Pow;
 use rand::distributions::{Alphanumeric, Distribution, Uniform};
 use rand::thread_rng;
 use std::io::{stdout, BufRead, BufReader, Read, Write};
-use std::iter::FromIterator;
 use std::path::Path;
 use std::thread::sleep;
 use std::time::Duration;
@@ -104,24 +103,6 @@ pub fn titlecase(input: &str) -> String {
     } else {
         let firstchar = input[0..1].to_uppercase();
         format!("{}{}", firstchar, &input[1..input.len()])
-    }
-}
-
-pub fn map_result<T, U, V>(input: U) -> Result<V, Error>
-where
-    U: IntoIterator<Item = Result<T, Error>>,
-    V: FromIterator<T>,
-{
-    let (output, errors): (Vec<_>, Vec<_>) = input.into_iter().partition(Result::is_ok);
-    if !errors.is_empty() {
-        let errors: Vec<_> = errors
-            .into_iter()
-            .filter_map(Result::err)
-            .map(|x| x.to_string())
-            .collect();
-        Err(err_msg(errors.join("\n")))
-    } else {
-        Ok(output.into_iter().filter_map(Result::ok).collect())
     }
 }
 

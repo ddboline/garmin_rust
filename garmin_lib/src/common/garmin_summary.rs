@@ -13,7 +13,7 @@ use super::garmin_correction_lap::GarminCorrectionLap;
 use super::garmin_file::GarminFile;
 use super::pgpool::PgPool;
 use crate::parsers::garmin_parse::{GarminParse, GarminParseTrait};
-use crate::utils::garmin_util::{generate_random_string, get_file_list, get_md5sum, map_result};
+use crate::utils::garmin_util::{generate_random_string, get_file_list, get_md5sum};
 use crate::utils::iso_8601_datetime::{self, convert_datetime_to_str, sentinel_datetime};
 use crate::utils::row_index_trait::RowIndexTrait;
 use crate::utils::sport_types::{self, SportTypes};
@@ -188,7 +188,7 @@ impl GarminSummaryList {
     ) -> Result<GarminSummaryList, Error> {
         let path = Path::new(gps_dir);
 
-        let gsum_result_list: Vec<Result<_, Error>> = get_file_list(&path)
+        let gsum_result_list: Result<Vec<_>, Error> = get_file_list(&path)
             .into_par_iter()
             .map(|input_file| {
                 writeln!(stdout().lock(), "Process {}", &input_file)?;
@@ -222,7 +222,7 @@ impl GarminSummaryList {
             })
             .collect();
 
-        Ok(GarminSummaryList::from_vec(map_result(gsum_result_list)?))
+        Ok(GarminSummaryList::from_vec(gsum_result_list?))
     }
 
     pub fn read_summary_from_avro(input_filename: &str) -> Result<GarminSummaryList, Error> {
@@ -282,7 +282,7 @@ impl GarminSummaryList {
         let pool = self.get_pool()?;
         let conn = pool.get()?;
 
-        let gsum_list: Vec<_> = conn
+        let gsum_list: Result<Vec<_>, Error> = conn
             .query(&query, &[])?
             .iter()
             .map(|row| {
@@ -301,9 +301,7 @@ impl GarminSummaryList {
             })
             .collect();
 
-        let gsum_list: Vec<_> = map_result(gsum_list)?;
-
-        Ok(GarminSummaryList::from_vec(gsum_list).with_pool(&pool))
+        Ok(GarminSummaryList::from_vec(gsum_list?).with_pool(&pool))
     }
 
     pub fn dump_summary_to_avro(self, output_filename: &str) -> Result<(), Error> {
@@ -321,7 +319,7 @@ impl GarminSummaryList {
     }
 
     pub fn write_summary_to_avro_files(&self, summary_cache_dir: &str) -> Result<(), Error> {
-        let results: Vec<_> = self
+        let results: Result<Vec<_>, Error> = self
             .summary_list
             .par_iter()
             .map(|gsum| {
@@ -332,8 +330,7 @@ impl GarminSummaryList {
             })
             .collect();
 
-        map_result(results)?;
-        Ok(())
+        results.map(|_| ())
     }
 
     pub fn from_avro_files(summary_cache_dir: &str) -> Result<GarminSummaryList, Error> {
@@ -341,14 +338,12 @@ impl GarminSummaryList {
 
         let file_list: Vec<String> = get_file_list(&path);
 
-        let results: Vec<_> = file_list
+        let results: Result<Vec<_>, Error> = file_list
             .par_iter()
             .map(|f| GarminSummaryList::read_summary_from_avro(f))
             .collect();
 
-        let gsum_result_list: Vec<_> = map_result(results)?;
-
-        let gsum_result_list: Vec<_> = gsum_result_list
+        let gsum_result_list: Vec<_> = results?
             .into_iter()
             .map(|g| g.summary_list)
             .flatten()
@@ -391,7 +386,7 @@ impl GarminSummaryList {
             temp_table_name
         );
 
-        let results: Vec<Result<u64, Error>> = self
+        let results: Result<Vec<u64>, Error> = self
             .summary_list
             .par_iter()
             .map(|gsum| {
@@ -413,7 +408,7 @@ impl GarminSummaryList {
             })
             .collect();
 
-        let _: Vec<_> = map_result(results)?;
+        results?;
 
         let insert_query = format!(
             "
@@ -483,13 +478,10 @@ pub fn get_list_of_files_from_db(
 
     let conn = pool.get()?;
 
-    let results: Vec<_> = conn
-        .query(&query, &[])?
+    conn.query(&query, &[])?
         .iter()
         .map(|row| row.get_idx(0))
-        .collect();
-
-    map_result(results)
+        .collect()
 }
 
 pub fn get_maximum_begin_datetime(pool: &PgPool) -> Result<Option<DateTime<Utc>>, Error> {

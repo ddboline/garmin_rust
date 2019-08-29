@@ -13,7 +13,7 @@ use std::io::{stdout, Write};
 use std::path::Path;
 use std::time::SystemTime;
 
-use crate::utils::garmin_util::{exponential_retry, get_md5sum, map_result};
+use crate::utils::garmin_util::{exponential_retry, get_md5sum};
 
 pub fn get_s3_client() -> S3Client {
     S3Client::new(Region::UsEast1)
@@ -130,7 +130,7 @@ impl GarminSync<S3Client> {
             })
             .collect();
 
-        let file_list: Vec<Result<_, Error>> = file_list
+        let results: Result<Vec<_>, Error> = file_list
             .into_par_iter()
             .map(|f| {
                 let modified = fs::metadata(&f)?
@@ -142,7 +142,7 @@ impl GarminSync<S3Client> {
             })
             .collect();
 
-        let file_list: Vec<_> = map_result(file_list)?;
+        let file_list = results?;
 
         let file_set: HashMap<_, _> = file_list
             .iter()
@@ -161,7 +161,7 @@ impl GarminSync<S3Client> {
             .map(|item| (item.key.to_string(), item.clone()))
             .collect();
 
-        let results: Vec<_> = file_list
+        let results: Result<Vec<_>, Error> = file_list
             .par_iter()
             .filter_map(|(file, tmod)| {
                 let file_name = match file.split('/').last() {
@@ -202,9 +202,9 @@ impl GarminSync<S3Client> {
             })
             .collect();
 
-        map_result(results)?;
+        results?;
 
-        let results: Vec<_> = key_list
+        let results: Result<Vec<_>, Error> = key_list
             .par_iter()
             .filter_map(|item| {
                 let mut do_download = false;
@@ -239,9 +239,7 @@ impl GarminSync<S3Client> {
             })
             .collect();
 
-        let _: Vec<_> = map_result(results)?;
-
-        Ok(())
+        results.map(|_| ())
     }
 
     pub fn download_file(

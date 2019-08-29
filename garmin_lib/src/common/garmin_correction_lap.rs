@@ -13,7 +13,7 @@ use std::str;
 
 use super::garmin_lap::GarminLap;
 use super::pgpool::PgPool;
-use crate::utils::garmin_util::{map_result, METERS_PER_MILE};
+use crate::utils::garmin_util::METERS_PER_MILE;
 use crate::utils::iso_8601_datetime::{self, convert_str_to_datetime, sentinel_datetime};
 use crate::utils::row_index_trait::RowIndexTrait;
 use crate::utils::sport_types::SportTypes;
@@ -242,14 +242,14 @@ impl GarminCorrectionList {
 
         let reader = Reader::with_schema(&schema, input_file)?;
 
-        let corr_list: Vec<Result<_, Error>> = reader
+        let corr_list: Result<Vec<_>, Error> = reader
             .map(|record| match from_value::<GarminCorrectionLap>(&record?) {
                 Ok(v) => Ok(v),
                 Err(e) => Err(err_msg(e)),
             })
             .collect();
 
-        let corr_list = map_result(corr_list)?;
+        let corr_list = corr_list?;
 
         Ok(Self::from_vec(corr_list))
     }
@@ -344,8 +344,7 @@ impl GarminCorrectionList {
             join garmin_summary b on a.start_time = b.begin_datetime
         ";
         let conn = self.get_pool()?.get()?;
-        let results: Vec<Result<_, Error>> = conn
-            .query(query, &[])?
+        conn.query(query, &[])?
             .iter()
             .map(|row| {
                 let filename: String = row.get_idx(0)?;
@@ -362,11 +361,7 @@ impl GarminCorrectionList {
                     .unwrap_or(0);
                 Ok((filename, (start_time, lap_number)))
             })
-            .collect();
-
-        let filename_start_map: HashMap<_, _> = map_result(results)?;
-
-        Ok(filename_start_map)
+            .collect()
     }
 
     pub fn dump_corrections_to_db(&self) -> Result<(), Error> {
@@ -410,7 +405,7 @@ impl GarminCorrectionList {
 
     pub fn read_corrections_from_db(&self) -> Result<Self, Error> {
         let conn = self.get_pool()?.get()?;
-        let results: Vec<Result<_, Error>> = conn.query(
+        let results: Result<Vec<_>, Error> = conn.query(
             "select id, start_time, lap_number, sport, distance, duration from garmin_corrections_laps",
             &[],
         )?
@@ -425,7 +420,7 @@ impl GarminCorrectionList {
             }))
             .collect();
 
-        let corr_list: Vec<GarminCorrectionLap> = map_result(results)?;
+        let corr_list = results?;
 
         Ok(Self::from_vec(corr_list))
     }

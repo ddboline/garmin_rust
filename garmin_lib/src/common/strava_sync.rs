@@ -6,7 +6,6 @@ use std::collections::HashMap;
 use std::hash::BuildHasher;
 
 use crate::common::pgpool::PgPool;
-use crate::utils::garmin_util::map_result;
 use crate::utils::iso_8601_datetime;
 use crate::utils::row_index_trait::RowIndexTrait;
 
@@ -50,8 +49,7 @@ pub fn get_strava_id_maximum_begin_datetime(pool: &PgPool) -> Result<Option<Date
 pub fn get_strava_id_map(pool: &PgPool) -> Result<HashMap<String, StravaItem>, Error> {
     let query = "SELECT strava_id, begin_datetime, strava_title FROM strava_id_cache";
     let conn = pool.get()?;
-    let strava_id_map: Vec<Result<_, Error>> = conn
-        .query(&query, &[])?
+    conn.query(&query, &[])?
         .iter()
         .map(|row| {
             let strava_id: String = row.get_idx(0)?;
@@ -65,9 +63,7 @@ pub fn get_strava_id_map(pool: &PgPool) -> Result<HashMap<String, StravaItem>, E
                 },
             ))
         })
-        .collect();
-
-    map_result(strava_id_map)
+        .collect()
 }
 
 pub fn upsert_strava_id<S: BuildHasher>(
@@ -97,7 +93,7 @@ pub fn upsert_strava_id<S: BuildHasher>(
         UPDATE strava_id_cache SET strava_title=$2 WHERE strava_id=$1
     ";
     debug!("{}", query);
-    let items: Vec<_> = update_items
+    let items: Result<Vec<_>, Error> = update_items
         .into_par_iter()
         .map(|(key, val)| {
             let conn = pool.get()?;
@@ -105,14 +101,14 @@ pub fn upsert_strava_id<S: BuildHasher>(
             Ok(key)
         })
         .collect();
-    let mut output: Vec<String> = map_result(items)?;
+    let mut output: Vec<_> = items?;
 
     let query = "
         INSERT INTO strava_id_cache (strava_id, begin_datetime, strava_title)
         VALUES ($1,$2,$3)
     ";
     debug!("{}", query);
-    let items: Vec<_> = insert_items
+    let items: Result<Vec<_>, Error> = insert_items
         .into_par_iter()
         .map(|(key, val)| {
             let conn = pool.get()?;
@@ -121,7 +117,7 @@ pub fn upsert_strava_id<S: BuildHasher>(
         })
         .collect();
 
-    let items: Vec<_> = map_result(items)?;
+    let items: Vec<_> = items?;
     output.extend(items);
     Ok(output)
 }

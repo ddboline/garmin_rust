@@ -1,28 +1,25 @@
-use garmin_lib::utils::garmin_util;
+use garmin_lib::utils::garmin_util::{
+    convert_time_string, convert_xml_local_time_to_utc, titlecase,
+};
+use garmin_lib::utils::iso_8601_datetime::convert_str_to_datetime;
 use garmin_lib::utils::plot_graph;
 use garmin_lib::utils::plot_opts;
 
 #[test]
 fn test_convert_time_string() {
+    assert_eq!(convert_time_string("07:03:12.2").unwrap(), 25392.2);
     assert_eq!(
-        garmin_util::convert_time_string("07:03:12.2").unwrap(),
-        25392.2
-    );
-    assert_eq!(
-        format!(
-            "{}",
-            garmin_util::convert_time_string("07:AB:12.2")
-                .err()
-                .unwrap()
-        ),
+        format!("{}", convert_time_string("07:AB:12.2").err().unwrap()),
         "invalid digit found in string"
     );
 }
 
 #[test]
-fn convert_xml_local_time_to_utc() {
+fn test_convert_xml_local_time_to_utc() {
     assert_eq!(
-        garmin_util::convert_xml_local_time_to_utc("2011-05-07T15:43:07-04:00").unwrap(),
+        convert_datetime_to_str(
+            convert_xml_local_time_to_utc("2011-05-07T15:43:07-04:00").unwrap()
+        ),
         "2011-05-07T19:43:07Z"
     );
 }
@@ -44,7 +41,7 @@ fn plot_graph() {
 }
 
 #[test]
-fn titlecase() {
+fn test_titlecase() {
     let input = "running";
-    assert_eq!(garmin_util::titlecase(input), "Running");
+    assert_eq!(titlecase(input), "Running");
 }

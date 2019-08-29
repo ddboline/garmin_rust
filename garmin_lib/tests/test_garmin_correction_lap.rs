@@ -1,6 +1,8 @@
 extern crate tempfile;
 
 use garmin_lib::common::garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList};
+use garmin_lib::utils::sport_types::SportTypes;
+use garmin_lib::utils::iso_8601_datetime::{convert_str_to_datetime};
 
 #[test]
 fn test_garmin_correction_lap_new() {
@@ -15,7 +17,7 @@ fn test_garmin_correction_lap_new() {
     let gc = GarminCorrectionLap::new()
         .with_id(5)
         .with_lap_number(3)
-        .with_sport("running")
+        .with_sport(Some(SportTypes::Running))
         .with_distance(5.3)
         .with_duration(6.2);
     assert_eq!(gc.id, 5);
@@ -79,7 +81,7 @@ fn test_corr_list_from_buffer() {
         first,
         &GarminCorrectionLap {
             id: -1,
-            start_time: "2011-07-04T08:58:27Z".to_string(),
+            start_time: convert_str_to_datetime("2011-07-04T08:58:27Z").unwrap(),
             lap_number: 0,
             sport: None,
             distance: Some(3.10685596118667),
@@ -90,7 +92,7 @@ fn test_corr_list_from_buffer() {
         second,
         &GarminCorrectionLap {
             id: -1,
-            start_time: "2013-01-17T16:14:32Z".to_string(),
+            start_time: convert_str_to_datetime("2013-01-17T16:14:32Z").unwrap(),
             lap_number: 0,
             sport: None,
             distance: Some(0.507143),
@@ -101,7 +103,7 @@ fn test_corr_list_from_buffer() {
         third,
         &GarminCorrectionLap {
             id: -1,
-            start_time: "2013-01-17T16:14:32Z".to_string(),
+            start_time: convert_str_to_datetime("2013-01-17T16:14:32Z").unwrap(),
             lap_number: 1,
             sport: None,
             distance: Some(0.190476),
@@ -112,7 +114,7 @@ fn test_corr_list_from_buffer() {
         fourth,
         &GarminCorrectionLap {
             id: -1,
-            start_time: "2014-08-23T10:17:14Z".to_string(),
+            start_time: convert_str_to_datetime("2014-08-23T10:17:14Z").unwrap(),
             lap_number: 0,
             sport: None,
             distance: Some(6.5),

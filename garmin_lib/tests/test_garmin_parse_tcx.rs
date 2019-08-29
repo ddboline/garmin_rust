@@ -4,6 +4,8 @@ extern crate approx;
 use garmin_lib::common::garmin_correction_lap::GarminCorrectionList;
 use garmin_lib::parsers::garmin_parse::GarminParseTrait;
 use garmin_lib::parsers::garmin_parse_tcx;
+use garmin_lib::utils::iso_8601_datetime::convert_datetime_to_str;
+use garmin_lib::utils::sport_types::SportTypes;
 
 #[test]
 fn test_garmin_parse_tcx() {
@@ -14,9 +16,12 @@ fn test_garmin_parse_tcx() {
         .with_file("tests/data/test.tcx", &corr_map)
         .unwrap();
     assert_eq!(gfile.filename, "test.tcx");
-    assert_eq!(gfile.sport.unwrap(), "biking");
+    assert_eq!(gfile.sport, SportTypes::Biking);
     assert_eq!(gfile.filetype, "tcx");
-    assert_eq!(gfile.begin_datetime, "2012-11-05T11:52:21Z");
+    assert_eq!(
+        convert_datetime_to_str(gfile.begin_datetime),
+        "2012-11-05T11:52:21Z"
+    );
     assert_eq!(gfile.total_calories, 285);
     assert_eq!(gfile.laps.len(), 1);
     assert_eq!(gfile.laps[0].lap_duration, 1037.53);
@@ -36,9 +41,9 @@ fn test_garmin_parse_fit() {
         .with_file("tests/data/test.fit", &corr_map)
         .unwrap();
     assert_eq!(gfile.filename, "test.fit");
-    assert_eq!(gfile.sport.unwrap(), "running");
+    assert_eq!(gfile.sport, SportTypes::Running);
     assert_eq!(gfile.filetype, "tcx");
-    assert_eq!(gfile.begin_datetime, "2014-01-12T16:00:05Z");
+    assert_eq!(convert_datetime_to_str( gfile.begin_datetime), "2014-01-12T16:00:05Z");
     assert_eq!(gfile.total_calories, 351);
     assert_eq!(gfile.laps.len(), 1);
     assert_eq!(gfile.laps[0].lap_duration, 1451.55);

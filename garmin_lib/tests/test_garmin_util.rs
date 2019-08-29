@@ -1,7 +1,7 @@
 use garmin_lib::utils::garmin_util::{
     convert_time_string, convert_xml_local_time_to_utc, titlecase,
 };
-use garmin_lib::utils::iso_8601_datetime::convert_str_to_datetime;
+use garmin_lib::utils::iso_8601_datetime::convert_datetime_to_str;
 use garmin_lib::utils::plot_graph;
 use garmin_lib::utils::plot_opts;
 

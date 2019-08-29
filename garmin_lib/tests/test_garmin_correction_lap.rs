@@ -1,8 +1,8 @@
 extern crate tempfile;
 
 use garmin_lib::common::garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList};
+use garmin_lib::utils::iso_8601_datetime::convert_str_to_datetime;
 use garmin_lib::utils::sport_types::SportTypes;
-use garmin_lib::utils::iso_8601_datetime::{convert_str_to_datetime};
 
 #[test]
 fn test_garmin_correction_lap_new() {
@@ -171,11 +171,11 @@ fn test_dump_read_corr_list() {
 fn test_add_mislabeled_times_to_corr_list() {
     let mut corr_list = GarminCorrectionList::from_vec(vec![
         GarminCorrectionLap::new()
-            .with_start_time("2010-11-20T19:55:34Z")
+            .with_start_time(convert_str_to_datetime("2010-11-20T19:55:34Z").unwrap())
             .with_distance(10.0)
             .with_lap_number(0),
         GarminCorrectionLap::new()
-            .with_start_time("2010-11-20T19:55:34Z")
+            .with_start_time(convert_str_to_datetime("2010-11-20T19:55:34Z").unwrap())
             .with_distance(5.0)
             .with_lap_number(1),
     ]);
@@ -190,11 +190,11 @@ fn test_add_mislabeled_times_to_corr_list() {
 
     assert_eq!(
         corr_map
-            .get(&("2010-11-20T19:55:34Z".to_string(), 0))
+            .get(&(convert_str_to_datetime("2010-11-20T19:55:34Z").unwrap(), 0))
             .unwrap(),
         &GarminCorrectionLap {
             id: -1,
-            start_time: "2010-11-20T19:55:34Z".to_string(),
+            start_time: convert_str_to_datetime("2010-11-20T19:55:34Z").unwrap(),
             lap_number: 0,
             sport: Some("biking".to_string()),
             distance: Some(10.0),
@@ -203,11 +203,11 @@ fn test_add_mislabeled_times_to_corr_list() {
     );
     assert_eq!(
         corr_map
-            .get(&("2010-11-20T19:55:34Z".to_string(), 1))
+            .get(&(convert_str_to_datetime("2010-11-20T19:55:34Z").unwrap(), 1))
             .unwrap(),
         &GarminCorrectionLap {
             id: -1,
-            start_time: "2010-11-20T19:55:34Z".to_string(),
+            start_time: convert_str_to_datetime("2010-11-20T19:55:34Z").unwrap(),
             lap_number: 1,
             sport: Some("biking".to_string()),
             distance: Some(5.0),

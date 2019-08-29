@@ -4,6 +4,8 @@ extern crate approx;
 use garmin_lib::common::garmin_correction_lap::GarminCorrectionList;
 use garmin_lib::parsers::garmin_parse::GarminParseTrait;
 use garmin_lib::parsers::garmin_parse_txt;
+use garmin_lib::utils::sport_types::SportTypes;
+use garmin_lib::utils::iso_8601_datetime::convert_datetime_to_str;
 
 #[test]
 fn test_garmin_parse_txt() {
@@ -14,9 +16,9 @@ fn test_garmin_parse_txt() {
         .with_file("tests/data/test.txt", &corr_map)
         .unwrap();
     assert_eq!(gfile.filename, "test.txt");
-    assert_eq!(gfile.sport.unwrap(), "elliptical");
+    assert_eq!(gfile.sport, SportTypes::Elliptical);
     assert_eq!(gfile.filetype, "txt");
-    assert_eq!(gfile.begin_datetime, "2013-01-16T13:30:00Z");
+    assert_eq!(convert_datetime_to_str(gfile.begin_datetime), "2013-01-16T13:30:00Z");
     assert_eq!(gfile.total_calories, 2700);
     assert_eq!(gfile.laps.get(0).unwrap().lap_index, 0);
     assert_eq!(gfile.laps.get(1).unwrap().lap_index, 1);

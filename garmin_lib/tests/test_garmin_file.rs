@@ -5,6 +5,8 @@ use garmin_lib::common::garmin_correction_lap::GarminCorrectionList;
 use garmin_lib::common::garmin_file;
 use garmin_lib::parsers::garmin_parse::GarminParseTrait;
 use garmin_lib::parsers::garmin_parse_tcx;
+use garmin_lib::utils::iso_8601_datetime::convert_datetime_to_str;
+use garmin_lib::utils::sport_types::SportTypes;
 
 #[test]
 fn test_garmin_file_test_avro() {
@@ -28,7 +30,7 @@ fn test_garmin_file_test_avro() {
             println!("Success");
             assert_eq!(gfile.sport, g.sport);
             assert_eq!(gfile.filename, g.filename);
-            assert_eq!(gfile.sport.unwrap(), g.sport.unwrap());
+            assert_eq!(gfile.sport, g.sport);
             assert_eq!(gfile.filetype, g.filetype);
             assert_eq!(gfile.begin_datetime, g.begin_datetime);
             assert_eq!(gfile.total_calories, g.total_calories);

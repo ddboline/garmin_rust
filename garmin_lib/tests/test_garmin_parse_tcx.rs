@@ -43,7 +43,10 @@ fn test_garmin_parse_fit() {
     assert_eq!(gfile.filename, "test.fit");
     assert_eq!(gfile.sport, SportTypes::Running);
     assert_eq!(gfile.filetype, "tcx");
-    assert_eq!(convert_datetime_to_str( gfile.begin_datetime), "2014-01-12T16:00:05Z");
+    assert_eq!(
+        convert_datetime_to_str(gfile.begin_datetime),
+        "2014-01-12T16:00:05Z"
+    );
     assert_eq!(gfile.total_calories, 351);
     assert_eq!(gfile.laps.len(), 1);
     assert_eq!(gfile.laps[0].lap_duration, 1451.55);

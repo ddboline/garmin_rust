@@ -4,7 +4,7 @@ extern crate approx;
 use garmin_lib::common::garmin_correction_lap::GarminCorrectionList;
 use garmin_lib::parsers::garmin_parse::GarminParseTrait;
 use garmin_lib::parsers::garmin_parse_gmn;
-use garmin_lib::utils::iso_8601_datetime::{convert_str_to_datetime, convert_datetime_to_str};
+use garmin_lib::utils::iso_8601_datetime::{convert_datetime_to_str, convert_str_to_datetime};
 use garmin_lib::utils::sport_types::SportTypes;
 
 #[test]
@@ -18,7 +18,10 @@ fn test_garmin_parse_gmn() {
     assert_eq!(gfile.filename, "test.gmn");
     assert_eq!(gfile.sport, SportTypes::Running);
     assert_eq!(gfile.filetype, "gmn");
-    assert_eq!(convert_datetime_to_str(gfile.begin_datetime), "2011-05-07T19:43:08Z");
+    assert_eq!(
+        convert_datetime_to_str(gfile.begin_datetime),
+        "2011-05-07T19:43:08Z"
+    );
     assert_eq!(gfile.total_calories, 122);
     assert_eq!(gfile.laps.len(), 1);
     assert_eq!(gfile.points.len(), 44);

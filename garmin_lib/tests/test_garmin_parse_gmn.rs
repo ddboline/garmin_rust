@@ -4,7 +4,7 @@ extern crate approx;
 use garmin_lib::common::garmin_correction_lap::GarminCorrectionList;
 use garmin_lib::parsers::garmin_parse::GarminParseTrait;
 use garmin_lib::parsers::garmin_parse_gmn;
-use garmin_lib::utils::iso_8601_datetime::{convert_datetime_to_str, convert_str_to_datetime};
+use garmin_lib::utils::iso_8601_datetime::convert_datetime_to_str;
 use garmin_lib::utils::sport_types::SportTypes;
 
 #[test]

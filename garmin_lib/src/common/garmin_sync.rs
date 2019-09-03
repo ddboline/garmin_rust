@@ -1,7 +1,7 @@
 use chrono::DateTime;
 use failure::{err_msg, Error};
 use log::debug;
-use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rusoto_core::Region;
 use rusoto_s3::{
     GetObjectRequest, ListObjectsV2Request, Object as S3Object, PutObjectRequest, S3Client, S3,
@@ -67,9 +67,7 @@ impl GarminSync<S3Client> {
 
     pub fn get_list_of_keys(&self, bucket: &str) -> Result<Vec<KeyItem>, Error> {
         let mut continuation_token = None;
-
         let mut list_of_keys = Vec::new();
-
         loop {
             let current_list = exponential_retry(|| {
                 self.s3_client
@@ -87,7 +85,6 @@ impl GarminSync<S3Client> {
                     .sync()
                     .map_err(err_msg)
             })?;
-
             continuation_token = current_list.next_continuation_token.clone();
 
             match current_list.key_count {
@@ -100,13 +97,11 @@ impl GarminSync<S3Client> {
                 }
                 None => (),
             };
-
             match &continuation_token {
                 Some(_) => (),
                 None => break,
             };
         }
-
         Ok(list_of_keys)
     }
 
@@ -118,7 +113,7 @@ impl GarminSync<S3Client> {
     ) -> Result<(), Error> {
         let path = Path::new(local_dir);
 
-        let file_list: Vec<String> = path
+        let file_list: Result<Vec<_>, Error> = path
             .read_dir()?
             .filter_map(|dir_line| {
                 dir_line.ok().and_then(|entry| {
@@ -128,10 +123,6 @@ impl GarminSync<S3Client> {
                         .map(|input_file| input_file.to_string())
                 })
             })
-            .collect();
-
-        let results: Result<Vec<_>, Error> = file_list
-            .into_par_iter()
             .map(|f| {
                 let modified = fs::metadata(&f)?
                     .modified()?
@@ -141,9 +132,7 @@ impl GarminSync<S3Client> {
                 Ok((f.to_string(), modified))
             })
             .collect();
-
-        let file_list = results?;
-
+        let file_list = file_list?;
         let file_set: HashMap<_, _> = file_list
             .iter()
             .filter_map(|(x, t)| x.split('/').last().map(|x| (x.to_string(), *t)))
@@ -168,9 +157,7 @@ impl GarminSync<S3Client> {
                     Some(x) => x.to_string(),
                     None => return None,
                 };
-
                 let mut do_upload = false;
-
                 if key_set.contains_key(&file_name) {
                     let item = &key_set[&file_name];
                     if *tmod != item.timestamp && check_md5sum {
@@ -191,17 +178,14 @@ impl GarminSync<S3Client> {
                 } else {
                     do_upload = true;
                 }
-
                 if do_upload {
                     debug!("upload file {}", file_name);
-
                     Some(self.upload_file(&file, &s3_bucket, &file_name))
                 } else {
                     None
                 }
             })
             .collect();
-
         results?;
 
         let results: Result<Vec<_>, Error> = key_list
@@ -238,7 +222,6 @@ impl GarminSync<S3Client> {
                 }
             })
             .collect();
-
         results.map(|_| ())
     }
 

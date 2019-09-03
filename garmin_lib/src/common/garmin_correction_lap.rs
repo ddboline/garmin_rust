@@ -405,7 +405,7 @@ impl GarminCorrectionList {
 
     pub fn read_corrections_from_db(&self) -> Result<Self, Error> {
         let conn = self.get_pool()?.get()?;
-        let results: Result<Vec<_>, Error> = conn.query(
+        let corr_list: Result<Vec<_>, Error> = conn.query(
             "select id, start_time, lap_number, sport, distance, duration from garmin_corrections_laps",
             &[],
         )?
@@ -419,8 +419,7 @@ impl GarminCorrectionList {
                 duration: row.get_idx(5)?,
             }))
             .collect();
-
-        let corr_list = results?;
+        let corr_list = corr_list?;
 
         Ok(Self::from_vec(corr_list))
     }

@@ -38,9 +38,9 @@ impl FitbitClient {
         Default::default()
     }
 
-    pub fn from_file(config: &GarminConfig) -> Result<Self, Error> {
+    pub fn from_file(config: GarminConfig) -> Result<Self, Error> {
         let mut client = FitbitClient {
-            config: config.clone(),
+            config,
             ..Default::default()
         };
         let f = File::open(&client.config.fitbit_tokenfile)?;
@@ -234,7 +234,7 @@ mod tests {
     #[test]
     fn test_fitbit_client_from_file() {
         let config = GarminConfig::get_config(None).unwrap();
-        let client = FitbitClient::from_file(&config).unwrap();
+        let client = FitbitClient::from_file(config).unwrap();
         let url = client.get_fitbit_auth_url().unwrap();
         println!("{:?} {}", client, url);
         assert!(url.len() > 0);

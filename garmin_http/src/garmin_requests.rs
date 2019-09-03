@@ -138,7 +138,7 @@ impl Handler<StravaSyncRequest> for PgPool {
                 None => None,
             };
 
-            let client = StravaClient::from_file(&config, Some(StravaAuthType::Read))?;
+            let client = StravaClient::from_file(config, Some(StravaAuthType::Read))?;
             let activities = client.get_strava_activites(max_datetime, None)?;
 
             upsert_strava_id(&activities, &self)
@@ -171,7 +171,7 @@ impl Handler<FitbitAuthRequest> for PgPool {
     type Result = Result<String, Error>;
     fn handle(&mut self, _: FitbitAuthRequest, _: &mut Self::Context) -> Self::Result {
         let config = GarminConfig::get_config(None)?;
-        let client = FitbitClient::from_file(&config)?;
+        let client = FitbitClient::from_file(config)?;
         let url = client.get_fitbit_auth_url()?;
         Ok(url)
     }
@@ -190,7 +190,7 @@ impl Handler<FitbitCallbackRequest> for PgPool {
     type Result = Result<String, Error>;
     fn handle(&mut self, msg: FitbitCallbackRequest, _: &mut Self::Context) -> Self::Result {
         let config = GarminConfig::get_config(None)?;
-        let mut client = FitbitClient::from_file(&config)?;
+        let mut client = FitbitClient::from_file(config)?;
         let url = client.get_fitbit_access_token(&msg.code)?;
         client.to_file()?;
         Ok(url)
@@ -210,7 +210,7 @@ impl Handler<FitbitHeartrateApiRequest> for PgPool {
     type Result = Result<Vec<FitbitHeartRate>, Error>;
     fn handle(&mut self, msg: FitbitHeartrateApiRequest, _: &mut Self::Context) -> Self::Result {
         let config = GarminConfig::get_config(None)?;
-        let client = FitbitClient::from_file(&config)?;
+        let client = FitbitClient::from_file(config)?;
         client.get_fitbit_intraday_time_series_heartrate(&msg.date)
     }
 }
@@ -244,7 +244,7 @@ impl Handler<FitbitSyncRequest> for PgPool {
     type Result = Result<(), Error>;
     fn handle(&mut self, msg: FitbitSyncRequest, _: &mut Self::Context) -> Self::Result {
         let config = GarminConfig::get_config(None)?;
-        let client = FitbitClient::from_file(&config)?;
+        let client = FitbitClient::from_file(config)?;
         client.import_fitbit_heartrate(&msg.date, self)?;
         Ok(())
     }
@@ -281,7 +281,7 @@ impl Handler<StravaAuthRequest> for PgPool {
             "write" => Some(StravaAuthType::Write),
             _ => None,
         });
-        let client = StravaClient::from_file(&config, auth_type)?;
+        let client = StravaClient::from_file(config, auth_type)?;
         client.get_authorization_url()
     }
 }
@@ -300,7 +300,7 @@ impl Handler<StravaCallbackRequest> for PgPool {
     type Result = Result<String, Error>;
     fn handle(&mut self, msg: StravaCallbackRequest, _: &mut Self::Context) -> Self::Result {
         let config = GarminConfig::get_config(None)?;
-        let mut client = StravaClient::from_file(&config, None)?;
+        let mut client = StravaClient::from_file(config, None)?;
         client.process_callback(&msg.code, &msg.state)?;
         client.to_file()?;
         let body = r#"
@@ -325,7 +325,7 @@ impl Handler<StravaActivitiesRequest> for PgPool {
     type Result = Result<HashMap<String, StravaItem>, Error>;
     fn handle(&mut self, msg: StravaActivitiesRequest, _: &mut Self::Context) -> Self::Result {
         let config = GarminConfig::get_config(None)?;
-        let client = StravaClient::from_file(&config, Some(StravaAuthType::Read))?;
+        let client = StravaClient::from_file(config, Some(StravaAuthType::Read))?;
         client.get_strava_activites(msg.start_date, msg.end_date)
     }
 }
@@ -353,7 +353,7 @@ impl Handler<StravaUploadRequest> for PgPool {
         let sport = msg.activity_type.parse()?;
 
         let config = GarminConfig::get_config(None)?;
-        let client = StravaClient::from_file(&config, Some(StravaAuthType::Write))?;
+        let client = StravaClient::from_file(config, Some(StravaAuthType::Write))?;
         client
             .upload_strava_activity(
                 &filepath,
@@ -385,7 +385,7 @@ impl Handler<StravaUpdateRequest> for PgPool {
         let sport = msg.activity_type.parse()?;
 
         let config = GarminConfig::get_config(None)?;
-        let client = StravaClient::from_file(&config, Some(StravaAuthType::Write))?;
+        let client = StravaClient::from_file(config, Some(StravaAuthType::Write))?;
         client.update_strava_activity(
             &msg.activity_id,
             &msg.title,

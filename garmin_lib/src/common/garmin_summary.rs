@@ -329,7 +329,6 @@ impl GarminSummaryList {
                 single_summary.dump_summary_to_avro(&summary_avro_fname)
             })
             .collect();
-
         results.map(|_| ())
     }
 
@@ -338,12 +337,12 @@ impl GarminSummaryList {
 
         let file_list: Vec<String> = get_file_list(&path);
 
-        let results: Result<Vec<_>, Error> = file_list
+        let gsum_result_list: Result<Vec<_>, Error> = file_list
             .par_iter()
             .map(|f| GarminSummaryList::read_summary_from_avro(f))
             .collect();
 
-        let gsum_result_list: Vec<_> = results?
+        let gsum_result_list: Vec<_> = gsum_result_list?
             .into_iter()
             .map(|g| g.summary_list)
             .flatten()
@@ -407,7 +406,6 @@ impl GarminSummaryList {
                 )?)
             })
             .collect();
-
         results?;
 
         let insert_query = format!(

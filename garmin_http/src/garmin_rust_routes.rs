@@ -405,26 +405,24 @@ pub fn garmin_get_hr_data(
                             .get(0)
                             .ok_or_else(|| err_msg("This shouldn't be happening..."))?;
                         let avro_file = format!("{}/{}.avro", &config.cache_dir, file_name);
-                        let gfile = match GarminFile::read_avro(&avro_file) {
+                        match GarminFile::read_avro(&avro_file) {
                             Ok(g) => g,
                             Err(_) => {
                                 let gps_file = format!("{}/{}", &config.gps_dir, file_name);
                                 let corr_map = res1.map(|c| c.corr_map)?;
                                 GarminParse::new().with_file(&gps_file, &corr_map)?
                             }
-                        };
-
-                        gfile
-                            .points
-                            .iter()
-                            .filter_map(|point| match point.heart_rate {
-                                Some(heart_rate) => Some(TimeValue {
-                                    time: convert_datetime_to_str(point.time),
-                                    value: heart_rate,
-                                }),
-                                None => None,
-                            })
-                            .collect()
+                        }
+                        .points
+                        .iter()
+                        .filter_map(|point| match point.heart_rate {
+                            Some(heart_rate) => Some(TimeValue {
+                                time: convert_datetime_to_str(point.time),
+                                value: heart_rate,
+                            }),
+                            None => None,
+                        })
+                        .collect()
                     }
                     _ => Vec::new(),
                 };

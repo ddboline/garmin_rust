@@ -67,11 +67,11 @@ impl StravaClient {
     }
 
     pub fn from_file(
-        config: &GarminConfig,
+        config: GarminConfig,
         auth_type: Option<StravaAuthType>,
     ) -> Result<Self, Error> {
         let mut client = StravaClient {
-            config: config.clone(),
+            config,
             auth_type,
             ..Default::default()
         };

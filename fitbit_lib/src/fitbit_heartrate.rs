@@ -110,7 +110,7 @@ pub fn process_fitbit_json_file(fname: &Path) -> Result<Vec<FitbitHeartRate>, Er
     let result: Vec<JsonHeartRateEntry> = serde_json::from_reader(f)?;
     result
         .into_par_iter()
-        .map(|entry| FitbitHeartRate::from_json_heartrate_entry(entry))
+        .map(FitbitHeartRate::from_json_heartrate_entry)
         .collect()
 }
 

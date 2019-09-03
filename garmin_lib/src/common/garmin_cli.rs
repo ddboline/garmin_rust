@@ -306,11 +306,11 @@ impl GarminCli {
                         }
                     })
                     .map(|f| {
-                        Ok(GarminSummary::process_single_gps_file(
+                        GarminSummary::process_single_gps_file(
                             &f,
                             &self.get_config().cache_dir,
                             &corr_map,
-                        )?)
+                        )
                     })
                     .collect();
                 GarminSummaryList::from_vec(proc_list?)
@@ -587,7 +587,6 @@ impl GarminCli {
                     .map_err(err_msg)
             })
             .collect();
-
         results.map(|_| ())
     }
 
@@ -598,8 +597,9 @@ impl GarminCli {
                 let command = format!("/usr/bin/garmin-connect-download {}", max_datetime);
                 let stream = Exec::shell(command).stream_stdout()?;
                 let reader = BufReader::new(stream);
-                let results: Result<Vec<_>, Error> = reader.lines().map(|line| Ok(line?)).collect();
-                let filenames: Vec<_> = results?;
+                let filenames: Result<Vec<_>, Error> =
+                    reader.lines().map(|line| Ok(line?)).collect();
+                let filenames: Vec<_> = filenames?;
                 self.extract_zip_files(&filenames)?;
                 return Ok(filenames);
             }

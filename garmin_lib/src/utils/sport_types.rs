@@ -117,6 +117,7 @@ pub fn convert_sport_name_to_activity_type(sport: &str) -> Option<String> {
         .map(|s: SportTypes| s.to_strava_activity())
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)]
 pub fn serialize<S>(sport: &SportTypes, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,

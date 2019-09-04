@@ -2,7 +2,7 @@ use actix::{Handler, Message};
 use chrono::{Duration, SecondsFormat};
 use failure::Error;
 use log::debug;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 use fitbit_lib::fitbit_client::FitbitClient;
@@ -260,6 +260,35 @@ impl Handler<ScaleMeasurementRequest> for PgPool {
     type Result = Result<Vec<ScaleMeasurement>, Error>;
     fn handle(&mut self, _: ScaleMeasurementRequest, _: &mut Self::Context) -> Self::Result {
         ScaleMeasurement::read_from_db(self)
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ScaleMeasurementUpdateRequest {
+    pub measurements: Vec<ScaleMeasurement>,
+}
+
+impl Message for ScaleMeasurementUpdateRequest {
+    type Result = Result<(), Error>;
+}
+
+impl Handler<ScaleMeasurementUpdateRequest> for PgPool {
+    type Result = Result<(), Error>;
+    fn handle(
+        &mut self,
+        msg: ScaleMeasurementUpdateRequest,
+        _: &mut Self::Context,
+    ) -> Self::Result {
+        let measurement_set: HashSet<_> = ScaleMeasurement::read_from_db(self)?
+            .into_iter()
+            .map(|d| d.datetime)
+            .collect();
+        for meas in &msg.measurements {
+            if !measurement_set.contains(&meas.datetime) {
+                meas.insert_into_db(self)?;
+            }
+        }
+        Ok(())
     }
 }
 

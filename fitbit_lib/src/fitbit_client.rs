@@ -52,9 +52,9 @@ impl FitbitClient {
                 let key = items[0];
                 let val = items[1];
                 match key {
-                    "user_id" => client.user_id = val.trim().to_string(),
-                    "access_token" => client.access_token = val.trim().to_string(),
-                    "refresh_token" => client.refresh_token = val.trim().to_string(),
+                    "user_id" => client.user_id = val.trim().into(),
+                    "access_token" => client.access_token = val.trim().into(),
+                    "refresh_token" => client.refresh_token = val.trim().into(),
                     _ => {}
                 }
             }
@@ -133,7 +133,7 @@ impl FitbitClient {
         let success = r#"
             <h1>You are now authorized to access the Fitbit API!</h1>
             <br/><h3>You can close this window</h3>"#
-            .to_string();
+            .into();
         Ok(success)
     }
 

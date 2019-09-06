@@ -336,7 +336,7 @@ impl Handler<StravaCallbackRequest> for PgPool {
             <title>Strava auth code received!</title>
             This window can be closed.
             <script language="JavaScript" type="text/javascript">window.close()</script>"#;
-        Ok(body.to_string())
+        Ok(body.into())
     }
 }
 
@@ -387,7 +387,7 @@ impl Handler<StravaUploadRequest> for PgPool {
             .upload_strava_activity(
                 &filepath,
                 &msg.title,
-                msg.description.as_ref().unwrap_or(&"".to_string()),
+                &msg.description.clone().unwrap_or_else(|| "".to_string()),
                 msg.is_private.unwrap_or(false),
                 sport,
             )

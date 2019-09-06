@@ -390,10 +390,7 @@ impl GarminCli {
                 let strings: Vec<String> = patterns.map(|x| x.to_string()).collect();
                 Self::process_pattern(&strings)
             }
-            None => {
-                let default_patterns = vec!["year".to_string()];
-                Self::process_pattern(&default_patterns)
-            }
+            None => Self::process_pattern(&["year".to_string()]),
         };
 
         self.run_cli(&req.options, &req.constraints)
@@ -568,7 +565,7 @@ impl GarminCli {
                 let filename = if filename.ends_with(".zip") {
                     extract_zip_from_garmin_connect(&filename, &ziptmpdir)?
                 } else {
-                    filename.to_string()
+                    filename.into()
                 };
                 assert!(Path::new(&filename).exists(), "No such file");
                 assert!(filename.ends_with(".fit"), "Only fit files are supported");

@@ -121,7 +121,7 @@ pub fn garmin_sync(
                     return Ok(HttpResponse::Unauthorized()
                         .json(format!("Unauthorized {:?}", state.user_list)));
                 }
-                Ok(form_http_response("finished".to_string()))
+                Ok(form_http_response("finished".into()))
             })
         })
 }
@@ -140,7 +140,7 @@ pub fn strava_sync(
                     return Ok(HttpResponse::Unauthorized()
                         .json(format!("Unauthorized {:?}", state.user_list)));
                 }
-                Ok(form_http_response("finished".to_string()))
+                Ok(form_http_response("finished".into()))
             })
         })
 }
@@ -312,7 +312,7 @@ pub fn fitbit_sync(
                 return Ok(HttpResponse::Unauthorized()
                     .json(format!("Unauthorized {:?}", state.user_list)));
             }
-            Ok(form_http_response("finished".to_string()))
+            Ok(form_http_response("finished".into()))
         })
     })
 }
@@ -348,7 +348,7 @@ pub fn scale_measurement_update(
                 return Ok(HttpResponse::Unauthorized()
                     .json(format!("Unauthorized {:?}", state.user_list)));
             }
-            Ok(form_http_response("finished".to_string()))
+            Ok(form_http_response("finished".into()))
         })
     })
 }

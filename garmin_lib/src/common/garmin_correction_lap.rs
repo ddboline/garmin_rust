@@ -1,6 +1,5 @@
 #![allow(clippy::wrong_self_convention)]
 
-use avro_rs::{from_value, Codec, Reader, Schema, Writer};
 use chrono::{DateTime, Utc};
 use failure::{err_msg, Error};
 use json::{parse, JsonValue};
@@ -8,7 +7,7 @@ use log::debug;
 use std::collections::HashMap;
 use std::fs::File;
 use std::hash::BuildHasher;
-use std::io::{stdout, Read, Write};
+use std::io::Read;
 use std::str;
 
 use super::garmin_lap::GarminLap;
@@ -16,23 +15,7 @@ use super::pgpool::PgPool;
 use crate::utils::garmin_util::METERS_PER_MILE;
 use crate::utils::iso_8601_datetime::{self, convert_str_to_datetime, sentinel_datetime};
 use crate::utils::row_index_trait::RowIndexTrait;
-use crate::utils::sport_types::SportTypes;
-
-pub const GARMIN_CORRECTION_LAP_AVRO_SCHEMA: &str = r#"
-    {
-        "namespace": "garmin.avro",
-        "type": "record",
-        "name": "GarminCorrectionLap",
-        "fields": [
-            {"name": "id", "type": "int"},
-            {"name": "start_time", "type": "string"},
-            {"name": "lap_number", "type": "int"},
-            {"name": "sport", "type": ["string", "null"]},
-            {"name": "distance", "type": ["double", "null"]},
-            {"name": "duration", "type": ["double", "null"]}
-        ]
-    }
-"#;
+use crate::utils::sport_types::{self, SportTypes};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GarminCorrectionLap {
@@ -40,7 +23,8 @@ pub struct GarminCorrectionLap {
     #[serde(with = "iso_8601_datetime")]
     pub start_time: DateTime<Utc>,
     pub lap_number: i32,
-    pub sport: Option<String>,
+    #[serde(with = "sport_types")]
+    pub sport: SportTypes,
     pub distance: Option<f64>,
     pub duration: Option<f64>,
 }
@@ -57,7 +41,7 @@ impl GarminCorrectionLap {
             id: -1,
             start_time: sentinel_datetime(),
             lap_number: -1,
-            sport: None,
+            sport: SportTypes::None,
             distance: None,
             duration: None,
         }
@@ -78,8 +62,8 @@ impl GarminCorrectionLap {
         self
     }
 
-    pub fn with_sport(mut self, sport: Option<SportTypes>) -> GarminCorrectionLap {
-        self.sport = sport.map(|s| s.to_string());
+    pub fn with_sport(mut self, sport: SportTypes) -> GarminCorrectionLap {
+        self.sport = sport;
         self
     }
 
@@ -220,40 +204,6 @@ impl GarminCorrectionList {
         }
     }
 
-    pub fn dump_corr_list_to_avro(&self, output_filename: &str) -> Result<(), Error> {
-        let garmin_file_avro_schema = GARMIN_CORRECTION_LAP_AVRO_SCHEMA;
-        let schema = Schema::parse_str(&garmin_file_avro_schema)?;
-
-        let output_file = File::create(output_filename)?;
-
-        let mut writer = Writer::with_codec(&schema, output_file, Codec::Snappy);
-
-        writer.extend_ser(self.get_corr_list())?;
-        writer.flush()?;
-
-        Ok(())
-    }
-
-    pub fn read_corr_list_from_avro(input_filename: &str) -> Result<Self, Error> {
-        let garmin_file_avro_schema = GARMIN_CORRECTION_LAP_AVRO_SCHEMA;
-        let schema = Schema::parse_str(&garmin_file_avro_schema)?;
-
-        let input_file = File::open(input_filename)?;
-
-        let reader = Reader::with_schema(&schema, input_file)?;
-
-        let corr_list: Result<Vec<_>, Error> = reader
-            .map(|record| match from_value::<GarminCorrectionLap>(&record?) {
-                Ok(v) => Ok(v),
-                Err(e) => Err(err_msg(e)),
-            })
-            .collect();
-
-        let corr_list = corr_list?;
-
-        Ok(Self::from_vec(corr_list))
-    }
-
     pub fn add_mislabeled_times_to_corr_list(&mut self) -> Self {
         let corr_list_map = self.get_corr_list_map_mut();
 
@@ -306,7 +256,7 @@ impl GarminCorrectionList {
         ];
 
         for (sport, times_list) in mislabeled_times {
-            let sport: Option<SportTypes> = sport.parse().ok();
+            let sport: SportTypes = sport.parse().unwrap_or(SportTypes::None);
             for time in times_list {
                 let time = convert_str_to_datetime(time).expect("Invalid time string");
                 let lap_list: Vec<_> = corr_list_map
@@ -379,6 +329,10 @@ impl GarminCorrectionList {
         let stmt_update = conn.prepare(query_update)?;
         for corr in self.get_corr_list() {
             let unique_key = format!("{}_{}", corr.start_time, corr.lap_number);
+            let sport: Option<String> = match corr.sport {
+                SportTypes::None => None,
+                s => Some(s.to_string()),
+            };
 
             if conn.query(query_unique_key, &[&unique_key])?.iter().len() == 0 {
                 stmt_insert.execute(&[
@@ -387,7 +341,7 @@ impl GarminCorrectionList {
                     &corr.distance,
                     &corr.duration,
                     &unique_key,
-                    &corr.sport,
+                    &sport,
                 ])?;
             } else {
                 stmt_update.execute(&[
@@ -396,7 +350,7 @@ impl GarminCorrectionList {
                     &corr.distance,
                     &corr.duration,
                     &unique_key,
-                    &corr.sport,
+                    &sport,
                 ])?;
             }
         }
@@ -410,39 +364,29 @@ impl GarminCorrectionList {
             &[],
         )?
             .iter()
-            .map(|row| Ok(GarminCorrectionLap {
+            .map(|row| {
+                let sport: Option<String> = row.get_idx(3)?;
+                let sport: SportTypes = sport.and_then(|s| s.parse().ok()).unwrap_or(SportTypes::None);
+            Ok(GarminCorrectionLap {
                 id: row.get_idx(0)?,
                 start_time: row.get_idx(1)?,
                 lap_number: row.get_idx(2)?,
-                sport: row.get_idx(3)?,
+                sport,
                 distance: row.get_idx(4)?,
                 duration: row.get_idx(5)?,
-            }))
+            })})
             .collect();
         let corr_list = corr_list?;
 
         Ok(Self::from_vec(corr_list))
     }
-
-    pub fn read_corrections_from_db_dump_to_avro(&self) -> Result<(), Error> {
-        let corr_list = self.read_corrections_from_db()?;
-
-        writeln!(stdout().lock(), "{}", corr_list.get_corr_list().len())?;
-
-        corr_list.dump_corr_list_to_avro("garmin_correction.avro")?;
-
-        let corr_list = Self::read_corr_list_from_avro("garmin_correction.avro")?;
-
-        writeln!(stdout().lock(), "{}", corr_list.get_corr_list().len())?;
-        Ok(())
-    }
 }
 
 pub fn apply_lap_corrections<S: BuildHasher + Sync>(
     lap_list: &[GarminLap],
-    sport: Option<SportTypes>,
+    sport: SportTypes,
     corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap, S>,
-) -> (Vec<GarminLap>, Option<SportTypes>) {
+) -> (Vec<GarminLap>, SportTypes) {
     let mut new_sport = sport;
     match lap_list.get(0) {
         Some(l) => {
@@ -457,12 +401,12 @@ pub fn apply_lap_corrections<S: BuildHasher + Sync>(
                     match &corr_map.get(&(lap_start, lap_number)) {
                         Some(corr) => {
                             let mut new_lap = lap.clone();
-                            new_sport = match &corr.sport {
-                                Some(s) => {
+                            new_sport = match corr.sport {
+                                SportTypes::None => sport,
+                                s => {
                                     debug!("change sport {} {:?} {}", lap_start, lap.lap_type, s);
-                                    s.parse().ok()
+                                    s
                                 }
-                                None => sport,
                             };
                             new_lap.lap_duration = match &corr.duration {
                                 Some(dur) => {

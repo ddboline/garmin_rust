@@ -238,11 +238,7 @@ impl GarminCli {
 
         if !gsum_list.summary_list.is_empty() {
             gsum_list.write_summary_to_avro_files(&self.get_config().summary_cache)?;
-            gsum_list.write_summary_to_postgres()?;
-            corr_list.dump_corr_list_to_avro(&format!(
-                "{}/garmin_correction.avro",
-                &self.get_config().cache_dir
-            ))
+            gsum_list.write_summary_to_postgres()
         } else {
             Ok(())
         }
@@ -321,26 +317,7 @@ impl GarminCli {
     }
 
     pub fn run_bootstrap(&self) -> Result<(), Error> {
-        let pg_conn = self.get_pool()?;
-
-        self.sync_everything(true)?;
-
-        writeln!(stdout().lock(), "Read corrections from avro file")?;
-        let corr_list = GarminCorrectionList::read_corr_list_from_avro(&format!(
-            "{}/garmin_correction.avro",
-            &self.get_config().cache_dir
-        ))?
-        .with_pool(&pg_conn);
-
-        writeln!(stdout().lock(), "Write corrections to postgres")?;
-        corr_list.dump_corrections_to_db()?;
-
-        writeln!(stdout().lock(), "Read summaries from avro files")?;
-        let cache = &self.get_config().summary_cache;
-        let gsum_list = GarminSummaryList::from_avro_files(cache)?.with_pool(&pg_conn);
-
-        writeln!(stdout().lock(), "Write summaries to postgres")?;
-        gsum_list.write_summary_to_postgres()
+        self.sync_everything(true)
     }
 
     pub fn sync_everything(&self, check_md5: bool) -> Result<(), Error> {

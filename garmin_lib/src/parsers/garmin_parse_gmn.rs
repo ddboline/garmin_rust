@@ -37,10 +37,6 @@ impl GarminParseTrait for GarminParseGmn {
         let gmn_output = self.parse_file(filename)?;
         let (lap_list, sport) =
             apply_lap_corrections(&gmn_output.lap_list, gmn_output.sport, corr_map);
-        let sport = match sport {
-            Some(s) => s,
-            None => SportTypes::None,
-        };
         let first_lap = lap_list.get(0).ok_or_else(|| err_msg("No laps"))?;
         let gfile = GarminFile {
             filename: file_name,
@@ -81,13 +77,13 @@ impl GarminParseTrait for GarminParseGmn {
 
         let mut lap_list = Vec::new();
         let mut point_list = Vec::new();
-        let mut sport: Option<SportTypes> = None;
+        let mut sport = SportTypes::None;
 
         for d in doc.root().descendants() {
             if d.node_type() == NodeType::Element && d.tag_name().name() == "run" {
                 for a in d.attributes() {
                     if a.name() == "sport" {
-                        sport = a.value().parse().ok();
+                        sport = a.value().parse().unwrap_or(SportTypes::None);
                     }
                 }
             }

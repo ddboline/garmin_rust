@@ -36,19 +36,16 @@ impl GarminParseTrait for GarminParseTxt {
             .into_string()
             .unwrap_or_else(|_| filename.to_string());
         let txt_output = self.parse_file(filename)?;
-        let sport: Option<SportTypes> = txt_output
+        let sport: SportTypes = txt_output
             .lap_list
             .get(0)
             .ok_or_else(|| err_msg("No laps"))?
             .lap_type
             .as_ref()
-            .and_then(|s| s.parse().ok());
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(SportTypes::None);
         let (lap_list, sport) = apply_lap_corrections(&txt_output.lap_list, sport, corr_map);
         let first_lap = lap_list.get(0).ok_or_else(|| err_msg("No laps"))?;
-        let sport = match sport {
-            Some(s) => s,
-            None => SportTypes::None,
-        };
         let gfile = GarminFile {
             filename: file_name,
             filetype: "txt".to_string(),
@@ -178,7 +175,7 @@ impl GarminParseTrait for GarminParseTxt {
         Ok(ParseOutput {
             lap_list,
             point_list,
-            sport: None,
+            sport: SportTypes::None,
         })
     }
 }

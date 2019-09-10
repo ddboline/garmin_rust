@@ -3,6 +3,7 @@ use cpython::{exc, FromPyObject, PyDict, PyErr, PyResult, Python};
 use failure::Error;
 use glob::glob;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use serde::{self, Deserialize, Deserializer};
 use std::collections::HashSet;
 use std::fs::File;
 use std::path::Path;
@@ -46,9 +47,23 @@ pub struct JsonHeartRateValue {
 
 #[derive(Deserialize)]
 pub struct JsonHeartRateEntry {
-    #[serde(alias = "dateTime")]
-    pub datetime: String,
+    #[serde(alias = "dateTime", deserialize_with = "deserialize_json_mdyhms")]
+    pub datetime: DateTime<Utc>,
     pub value: JsonHeartRateValue,
+}
+
+pub fn deserialize_json_mdyhms<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    String::deserialize(deserializer).and_then(|s| {
+        NaiveDateTime::parse_from_str(&s, "%m/%d/%y %H:%M:%S")
+            .map(|datetime| {
+                let offset = Local.offset_from_utc_datetime(&datetime);
+                DateTime::<FixedOffset>::from_utc(datetime, offset).with_timezone(&Utc)
+            })
+            .map_err(serde::de::Error::custom)
+    })
 }
 
 impl FitbitHeartRate {
@@ -75,14 +90,11 @@ impl FitbitHeartRate {
         Ok(())
     }
 
-    pub fn from_json_heartrate_entry(entry: JsonHeartRateEntry) -> Result<Self, Error> {
-        let datetime = NaiveDateTime::parse_from_str(&entry.datetime, "%m/%d/%y %H:%M:%S")?;
-        let offset = Local.offset_from_utc_datetime(&datetime);
-        let datetime = DateTime::<FixedOffset>::from_utc(datetime, offset).with_timezone(&Utc);
-        Ok(Self {
-            datetime,
+    pub fn from_json_heartrate_entry(entry: JsonHeartRateEntry) -> Self {
+        Self {
+            datetime: entry.datetime,
             value: entry.value.bpm,
-        })
+        }
     }
 
     pub fn read_from_db(pool: &PgPool, date: &str) -> Result<Vec<Self>, Error> {
@@ -108,10 +120,11 @@ impl FitbitHeartRate {
 pub fn process_fitbit_json_file(fname: &Path) -> Result<Vec<FitbitHeartRate>, Error> {
     let f = File::open(fname)?;
     let result: Vec<JsonHeartRateEntry> = serde_json::from_reader(f)?;
-    result
+    let result: Vec<_> = result
         .into_par_iter()
         .map(FitbitHeartRate::from_json_heartrate_entry)
-        .collect()
+        .collect();
+    Ok(result)
 }
 
 pub fn import_fitbit_json_files(directory: &str) -> Result<(), Error> {

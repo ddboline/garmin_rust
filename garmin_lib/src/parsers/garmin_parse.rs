@@ -51,7 +51,7 @@ impl GarminParseTrait for GarminParse {
 pub struct ParseOutput {
     pub lap_list: Vec<GarminLap>,
     pub point_list: Vec<GarminPoint>,
-    pub sport: Option<SportTypes>,
+    pub sport: SportTypes,
 }
 
 pub trait GarminParseTrait

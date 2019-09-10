@@ -25,6 +25,12 @@ pub enum SportTypes {
     None,
 }
 
+impl Default for SportTypes {
+    fn default() -> Self {
+        SportTypes::None
+    }
+}
+
 impl fmt::Display for SportTypes {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let sport_str = match self {

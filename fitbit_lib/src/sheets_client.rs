@@ -1,4 +1,4 @@
-use failure::{err_msg, Error};
+use failure::{err_msg, format_err, Error};
 use google_sheets4::{Sheet, Sheets};
 use hyper::net::HttpsConnector;
 use hyper::Client;
@@ -77,7 +77,7 @@ impl SheetsClient {
             .get(sheet_id)
             .include_grid_data(true)
             .doit()
-            .map_err(|e| err_msg(format!("{:#?}", e)))?;
+            .map_err(|e| format_err!("{:#?}", e))?;
         sheets.sheets.ok_or_else(|| err_msg("No sheets"))
     }
 }

@@ -1,4 +1,4 @@
-use failure::{err_msg, Error};
+use failure::{format_err, Error};
 use serde::{self, Deserialize, Deserializer, Serializer};
 use std::collections::HashMap;
 use std::fmt;
@@ -79,7 +79,7 @@ impl FromStr for SportTypes {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match SPORT_TYPE_MAP.get(&s.to_lowercase()) {
             Some(sport) => Ok(*sport),
-            None => Err(err_msg(format!("Invalid Sport Type {}", s))),
+            None => Err(format_err!("Invalid Sport Type {}", s)),
         }
     }
 }

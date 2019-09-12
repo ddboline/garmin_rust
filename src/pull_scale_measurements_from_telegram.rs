@@ -1,5 +1,5 @@
 use crossbeam_utils::thread;
-use failure::err_msg;
+use failure::format_err;
 
 use fitbit_lib::telegram_bot::run_bot;
 use garmin_lib::common::garmin_config::GarminConfig;
@@ -10,7 +10,7 @@ fn main() {
     let config = GarminConfig::get_config(None).unwrap();
     let pool = PgPool::new(&config.pgurl);
     thread::scope(|scope| run_bot(&config.telegram_bot_token, pool, scope))
-        .map_err(|x| err_msg(format!("{:?}", x)))
+        .map_err(|x| format_err!("{:?}", x))
         .and_then(|r| r)
         .unwrap();
 }

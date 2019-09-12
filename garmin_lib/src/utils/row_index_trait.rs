@@ -1,4 +1,4 @@
-use failure::{err_msg, Error};
+use failure::{err_msg, format_err, Error};
 use postgres::rows::{Row, RowIndex};
 use postgres::types::FromSql;
 use std::fmt::Debug;
@@ -17,7 +17,7 @@ impl<'a> RowIndexTrait for Row<'a> {
         T: FromSql,
     {
         self.get_opt(idx)
-            .ok_or_else(|| err_msg(format!("Invalid index {:?}", idx)))
+            .ok_or_else(|| format_err!("Invalid index {:?}", idx))
             .and_then(|x| x.map_err(err_msg))
     }
 }

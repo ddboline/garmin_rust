@@ -1,6 +1,6 @@
 use avro_rs::{from_value, Codec, Reader, Schema, Writer};
 use chrono::{DateTime, Utc};
-use failure::{err_msg, Error};
+use failure::{err_msg, format_err, Error};
 use log::debug;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use std::collections::HashMap;
@@ -78,7 +78,7 @@ impl GarminSummary {
             filename
                 .split('/')
                 .last()
-                .ok_or_else(|| err_msg(format!("Failed to split filename {}", filename)))?
+                .ok_or_else(|| format_err!("Failed to split filename {}", filename))?
         );
 
         writeln!(stdout().lock(), "Get md5sum {} ", filename)?;
@@ -89,10 +89,10 @@ impl GarminSummary {
 
         match gfile.laps.get(0) {
             Some(l) if l.lap_start == sentinel_datetime() => {
-                return Err(err_msg(format!("{} has empty lap start?", &gfile.filename)));
+                return Err(format_err!("{} has empty lap start?", &gfile.filename));
             }
             Some(_) => (),
-            None => return Err(err_msg(format!("{} has no laps?", gfile.filename))),
+            None => return Err(format_err!("{} has no laps?", gfile.filename)),
         };
         gfile.dump_avro(&cache_file)?;
         writeln!(
@@ -195,26 +195,28 @@ impl GarminSummaryList {
                 let cache_file = format!(
                     "{}/{}.avro",
                     cache_dir,
-                    input_file.split('/').last().ok_or_else(|| err_msg(format!(
-                        "Failed to split input_file {}",
-                        input_file
-                    )))?
+                    input_file
+                        .split('/')
+                        .last()
+                        .ok_or_else(|| format_err!("Failed to split input_file {}", input_file))?
                 );
                 let md5sum = get_md5sum(&input_file)?;
                 let gfile = GarminParse::new().with_file(&input_file, &corr_map)?;
                 match gfile.laps.get(0) {
                     Some(l) if l.lap_start == sentinel_datetime() => {
-                        return Err(err_msg(format!(
+                        return Err(format_err!(
                             "{} {} has empty lap start?",
-                            &input_file, &gfile.filename
-                        )));
+                            &input_file,
+                            &gfile.filename
+                        ));
                     }
                     Some(_) => (),
                     None => {
-                        return Err(err_msg(format!(
+                        return Err(format_err!(
                             "{} {} has no laps?",
-                            &input_file, &gfile.filename
-                        )));
+                            &input_file,
+                            &gfile.filename
+                        ));
                     }
                 };
                 gfile.dump_avro(&cache_file)?;

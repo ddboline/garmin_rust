@@ -1,7 +1,7 @@
 #![allow(clippy::wrong_self_convention)]
 
 use chrono::{DateTime, Utc};
-use failure::{err_msg, Error};
+use failure::{err_msg, format_err, Error};
 use json::{parse, JsonValue};
 use log::debug;
 use std::collections::HashMap;
@@ -174,7 +174,7 @@ impl GarminCorrectionList {
                                     None => corr,
                                 })
                             }
-                            _ => Err(err_msg(format!("something unexpected {}", result))),
+                            _ => Err(format_err!("something unexpected {}", result)),
                         })
                         .collect(),
                     _ => Vec::new(),
@@ -199,7 +199,7 @@ impl GarminCorrectionList {
         let mut buffer = Vec::new();
 
         match file.read_to_end(&mut buffer)? {
-            0 => Err(err_msg(format!("Zero bytes read from {}", json_filename))),
+            0 => Err(format_err!("Zero bytes read from {}", json_filename)),
             _ => Self::corr_list_from_buffer(&buffer),
         }
     }

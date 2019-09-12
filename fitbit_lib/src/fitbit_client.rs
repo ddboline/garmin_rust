@@ -3,7 +3,7 @@ use cpython::{
     FromPyObject, ObjectProtocol, PyDict, PyList, PyObject, PyResult, PyTuple, Python,
     PythonObject, ToPyObject,
 };
-use failure::{err_msg, Error};
+use failure::{format_err, Error};
 use log::debug;
 use rayon::prelude::*;
 use std::collections::HashSet;
@@ -112,7 +112,7 @@ impl FitbitClient {
         let py = gil.python();
 
         self._get_fitbit_auth_url(py)
-            .map_err(|e| err_msg(format!("{:?}", e)))
+            .map_err(|e| format_err!("{:?}", e))
     }
 
     fn _get_fitbit_access_token(&mut self, py: Python, code: &str) -> PyResult<String> {
@@ -142,7 +142,7 @@ impl FitbitClient {
         let py = gil.python();
 
         self._get_fitbit_access_token(py, code)
-            .map_err(|e| err_msg(format!("{:?}", e)))
+            .map_err(|e| format_err!("{:?}", e))
     }
 
     fn _get_fitbit_intraday_time_series_heartrate(
@@ -186,7 +186,7 @@ impl FitbitClient {
         let naivedate = NaiveDate::parse_from_str(date, "%Y-%m-%d")?;
         let offset = Local.offset_from_local_date(&naivedate).unwrap();
         self._get_fitbit_intraday_time_series_heartrate(py, date, offset)
-            .map_err(|e| err_msg(format!("{:?}", e)))
+            .map_err(|e| format_err!("{:?}", e))
     }
 
     pub fn import_fitbit_heartrate(&self, date: &str, pool: &PgPool) -> Result<(), Error> {

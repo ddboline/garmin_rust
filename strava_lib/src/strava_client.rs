@@ -2,7 +2,7 @@ use cpython::{
     exc, FromPyObject, ObjectProtocol, PyDict, PyErr, PyIterator, PyObject, PyResult, PyTuple,
     Python, PythonObject, ToPyObject,
 };
-use failure::{err_msg, Error};
+use failure::{err_msg, format_err, Error};
 use log::debug;
 use std::collections::HashMap;
 use std::fs::File;
@@ -167,7 +167,7 @@ impl StravaClient {
         let py = gil.python();
 
         self._get_authorization_url(py)
-            .map_err(|e| err_msg(format!("{:?}", e)))
+            .map_err(|e| format_err!("{:?}", e))
     }
 
     fn _exchange_code_for_token(&self, py: Python, code: &str) -> PyResult<Option<String>> {
@@ -196,7 +196,7 @@ impl StravaClient {
 
         let code = self
             ._exchange_code_for_token(py, code)
-            .map_err(|e| err_msg(format!("{:?}", e)))
+            .map_err(|e| format_err!("{:?}", e))
             .and_then(|o| o.ok_or_else(|| err_msg("No code received")))?;
         self.auth_type = match state {
             "YWN0aXZpdHk6cmVhZF9hbGw=" => {
@@ -251,7 +251,7 @@ impl StravaClient {
         let py = gil.python();
 
         self._get_strava_activites(py, start_date, end_date)
-            .map_err(|e| err_msg(format!("{:?}", e)))
+            .map_err(|e| format_err!("{:?}", e))
     }
 
     fn _upload_strava_activity(
@@ -379,7 +379,7 @@ impl StravaClient {
         };
 
         match self._upload_strava_activity(py, &filename, title, description, is_private, sport) {
-            Ok(x) => x.ok_or_else(|| err_msg(format!("Bad extension {}", filename))),
+            Ok(x) => x.ok_or_else(|| format_err!("Bad extension {}", filename)),
             Err(e) => {
                 let err = format!("{:?}", e);
                 if err.contains("duplicate of activity") {
@@ -441,6 +441,6 @@ impl StravaClient {
         let py = gil.python();
 
         self._update_strava_activity(py, activity_id, title, description, is_private, sport)
-            .map_err(|e| err_msg(format!("{:?}", e)))
+            .map_err(|e| format_err!("{:?}", e))
     }
 }

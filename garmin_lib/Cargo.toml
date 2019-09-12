@@ -20,8 +20,7 @@ rusoto_core = {version = "0.39", default_features = false, features=["rustls"]}
 rusoto_s3 = {version = "0.39", default_features = false, features=["rustls"]}
 futures = "0.1"
 s4 = { git = "https://github.com/ddboline/s4.git", branch = "upgrade_rusoto_0.39" }
-num = "0.2"
-config = "0.9"
+num-traits = "0.2"
 tempdir = "0.3"
 tempfile = "3.1"
 rand = "0.7"

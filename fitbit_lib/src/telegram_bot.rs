@@ -1,6 +1,6 @@
 use crossbeam_channel::{unbounded, Receiver};
 use crossbeam_utils::thread::Scope;
-use failure::{err_msg, Error};
+use failure::{format_err, Error};
 use futures::Stream;
 use log::debug;
 use parking_lot::RwLock;
@@ -33,7 +33,7 @@ pub fn run_bot(telegram_bot_token: &str, pool: PgPool, scope: &Scope) -> Result<
 
     let api = Api::configure(telegram_bot_token)
         .build(core.handle())
-        .map_err(|e| err_msg(format!("{}", e)))?;
+        .map_err(|e| format_err!("{}", e))?;
 
     // Fetch new updates via long poll method
     let future = api.stream().for_each(|update| {
@@ -78,7 +78,7 @@ pub fn run_bot(telegram_bot_token: &str, pool: PgPool, scope: &Scope) -> Result<
         Ok(())
     });
 
-    core.run(future).map_err(|e| err_msg(format!("{}", e)))?;
+    core.run(future).map_err(|e| format_err!("{}", e))?;
     drop(message_handle);
     drop(userid_handle);
     Ok(())

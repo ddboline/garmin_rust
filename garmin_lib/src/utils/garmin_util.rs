@@ -1,7 +1,7 @@
 use chrono::{DateTime, TimeZone, Utc};
-use failure::{err_msg, Error};
+use failure::{err_msg, format_err, Error};
 use log::debug;
-use num::traits::Pow;
+use num_traits::pow::Pow;
 use rand::distributions::{Alphanumeric, Distribution, Uniform};
 use rand::thread_rng;
 use std::io::{stdout, BufRead, BufReader, Read, Write};
@@ -164,10 +164,7 @@ pub fn extract_zip_from_garmin_connect(filename: &str, ziptmpdir: &str) -> Resul
             f.read_to_string(&mut buf)?;
             writeln!(stdout().lock(), "{}", buf)?;
         }
-        return Err(err_msg(format!(
-            "Failed with exit status {:?}",
-            exit_status
-        )));
+        return Err(format_err!("Failed with exit status {:?}", exit_status));
     }
     let new_filename = format!("{}/{}", ziptmpdir, new_filename);
     Ok(new_filename)
@@ -183,10 +180,7 @@ pub fn gzip_file(input_filename: &str, output_filename: &str) -> Result<(), Erro
             f.read_to_string(&mut buf)?;
             writeln!(stdout().lock(), "{}", buf)?;
         }
-        return Err(err_msg(format!(
-            "Failed with exit status {:?}",
-            exit_status
-        )));
+        return Err(format_err!("Failed with exit status {:?}", exit_status));
     }
     Ok(())
 }

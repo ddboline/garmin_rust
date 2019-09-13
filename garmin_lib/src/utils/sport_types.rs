@@ -1,4 +1,5 @@
 use failure::{format_err, Error};
+use lazy_static::lazy_static;
 use serde::{self, Deserialize, Deserializer, Serializer};
 use std::collections::HashMap;
 use std::fmt;

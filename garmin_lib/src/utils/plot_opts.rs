@@ -1,3 +1,5 @@
+use serde::Serialize;
+
 #[derive(Serialize, Default)]
 pub struct PlotOpts<'a> {
     pub name: String,

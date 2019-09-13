@@ -2,6 +2,7 @@ use chrono::{DateTime, Utc};
 use failure::Error;
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 use roxmltree::{Node, NodeType};
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use crate::utils::garmin_util::{convert_time_string, convert_xml_local_time_to_utc};

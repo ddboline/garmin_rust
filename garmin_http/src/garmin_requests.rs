@@ -2,6 +2,7 @@ use actix::{Handler, Message};
 use chrono::{Duration, SecondsFormat};
 use failure::Error;
 use log::debug;
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 

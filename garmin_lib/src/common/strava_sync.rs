@@ -2,6 +2,7 @@ use chrono::{DateTime, Utc};
 use failure::Error;
 use log::debug;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::hash::BuildHasher;
 

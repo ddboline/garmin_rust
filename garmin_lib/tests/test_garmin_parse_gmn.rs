@@ -1,6 +1,4 @@
-#[macro_use]
-extern crate approx;
-
+use approx::assert_abs_diff_eq;
 use garmin_lib::common::garmin_correction_lap::GarminCorrectionList;
 use garmin_lib::parsers::garmin_parse::GarminParseTrait;
 use garmin_lib::parsers::garmin_parse_gmn;

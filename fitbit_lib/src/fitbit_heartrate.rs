@@ -3,7 +3,7 @@ use cpython::{exc, FromPyObject, PyDict, PyErr, PyResult, Python};
 use failure::Error;
 use glob::glob;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
-use serde::{self, Deserialize, Deserializer};
+use serde::{self, Deserialize, Deserializer, Serialize};
 use std::collections::HashSet;
 use std::fs::File;
 use std::path::Path;

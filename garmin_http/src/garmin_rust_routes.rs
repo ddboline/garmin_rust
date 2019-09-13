@@ -6,7 +6,7 @@ use actix_web::HttpResponse;
 use chrono::{Date, Datelike, Local};
 use failure::{err_msg, Error};
 use futures::future::Future;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::string::ToString;
 
 use garmin_lib::common::garmin_cli::{GarminCli, GarminRequest};

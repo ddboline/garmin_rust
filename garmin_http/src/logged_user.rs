@@ -4,6 +4,7 @@ use chrono::{DateTime, Utc};
 use failure::{err_msg, Error};
 use jsonwebtoken::{decode, Validation};
 use parking_lot::RwLock;
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::convert::From;
 use std::env;

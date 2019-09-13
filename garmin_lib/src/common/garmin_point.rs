@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use failure::{err_msg, Error};
 use roxmltree::{Node, NodeType};
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use crate::utils::garmin_util::{convert_xml_local_time_to_utc, METERS_PER_MILE};

@@ -3,6 +3,7 @@ use chrono::{DateTime, Utc};
 use failure::{err_msg, Error};
 use google_sheets4::RowData;
 use log::debug;
+use serde::{self, Deserialize, Serialize};
 use std::fmt;
 
 use garmin_lib::common::pgpool::PgPool;

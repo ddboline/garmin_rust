@@ -3,6 +3,7 @@ use chrono::{DateTime, Utc};
 use failure::{err_msg, format_err, Error};
 use log::debug;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 use std::fs::File;

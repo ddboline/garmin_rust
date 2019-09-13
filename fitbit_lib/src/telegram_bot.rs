@@ -2,6 +2,7 @@ use crossbeam_channel::{unbounded, Receiver};
 use crossbeam_utils::thread::Scope;
 use failure::{format_err, Error};
 use futures::Stream;
+use lazy_static::lazy_static;
 use log::debug;
 use parking_lot::RwLock;
 use std::collections::HashSet;

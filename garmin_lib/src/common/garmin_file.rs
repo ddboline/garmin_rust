@@ -1,6 +1,7 @@
 use avro_rs::{from_value, Codec, Reader, Schema, Writer};
 use chrono::{DateTime, Utc};
 use failure::{err_msg, Error};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::File;
 

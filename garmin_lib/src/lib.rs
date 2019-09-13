@@ -1,9 +1,3 @@
-#[macro_use]
-extern crate serde_derive;
-
-#[macro_use]
-extern crate lazy_static;
-
 pub mod common;
 pub mod parsers;
 pub mod reports;

@@ -4,6 +4,7 @@ use chrono::{DateTime, Utc};
 use failure::{err_msg, format_err, Error};
 use json::{parse, JsonValue};
 use log::debug;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::File;
 use std::hash::BuildHasher;

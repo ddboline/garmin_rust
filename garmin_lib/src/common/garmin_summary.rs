@@ -56,7 +56,7 @@ pub struct GarminSummary {
 impl GarminSummary {
     pub fn new(gfile: &GarminFile, md5sum: &str) -> GarminSummary {
         GarminSummary {
-            filename: gfile.filename.clone(),
+            filename: gfile.filename.to_string(),
             begin_datetime: gfile.begin_datetime,
             sport: gfile.sport,
             total_calories: gfile.total_calories,

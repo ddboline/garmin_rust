@@ -37,8 +37,8 @@ impl Default for GarminFile {
 impl GarminFile {
     pub fn new() -> GarminFile {
         GarminFile {
-            filename: "".to_string(),
-            filetype: "".to_string(),
+            filename: "".into(),
+            filetype: "".into(),
             begin_datetime: sentinel_datetime(),
             sport: SportTypes::None,
             total_calories: 0,
@@ -52,8 +52,8 @@ impl GarminFile {
     }
 
     pub fn clear(&mut self) {
-        self.filename = "".to_string();
-        self.filetype = "".to_string();
+        self.filename = "".into();
+        self.filetype = "".into();
         self.begin_datetime = sentinel_datetime();
         self.sport = SportTypes::None;
         self.total_calories = 0;

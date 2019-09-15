@@ -33,19 +33,19 @@ macro_rules! get_pydict_item {
     };
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Copy, Clone)]
 pub struct FitbitHeartRate {
     pub datetime: DateTime<Utc>,
     pub value: i32,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Copy, Clone)]
 pub struct JsonHeartRateValue {
     pub bpm: i32,
     pub confidence: i32,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Copy, Clone)]
 pub struct JsonHeartRateEntry {
     #[serde(alias = "dateTime", deserialize_with = "deserialize_json_mdyhms")]
     pub datetime: DateTime<Utc>,

@@ -17,10 +17,12 @@ use crate::scale_measurement::ScaleMeasurement;
 use garmin_lib::common::pgpool::PgPool;
 use garmin_lib::utils::row_index_trait::RowIndexTrait;
 
+type WeightLock = Arc<RwLock<Option<ScaleMeasurement>>>;
+type Userids = Arc<RwLock<HashSet<UserId>>>;
+
 lazy_static! {
-    static ref LAST_WEIGHT: Arc<RwLock<Option<ScaleMeasurement>>> = Arc::new(RwLock::new(None));
-    static ref TELEGRAM_USERIDS: Arc<RwLock<HashSet<UserId>>> =
-        Arc::new(RwLock::new(HashSet::new()));
+    static ref LAST_WEIGHT: WeightLock = Arc::new(RwLock::new(None));
+    static ref USERIDS: Userids = Arc::new(RwLock::new(HashSet::new()));
 }
 
 pub fn run_bot(telegram_bot_token: &str, pool: PgPool, scope: &Scope) -> Result<(), Error> {
@@ -43,7 +45,7 @@ pub fn run_bot(telegram_bot_token: &str, pool: PgPool, scope: &Scope) -> Result<
             if let MessageKind::Text { ref data, .. } = message.kind {
                 // Print received text message to stdout.
                 debug!("{:?}", message);
-                if TELEGRAM_USERIDS.read().contains(&message.from.id) {
+                if USERIDS.read().contains(&message.from.id) {
                     match data.to_lowercase().as_str() {
                         "check" => match *LAST_WEIGHT.read() {
                             Some(meas) => {
@@ -111,7 +113,7 @@ fn process_messages(r: Receiver<ScaleMeasurement>, pool: PgPool) {
 fn fill_telegram_user_ids(pool: PgPool) {
     loop {
         if let Ok(telegram_userids) = list_of_telegram_user_ids(&pool) {
-            let mut telegram_userid_set = TELEGRAM_USERIDS.write();
+            let mut telegram_userid_set = USERIDS.write();
             telegram_userid_set.clear();
             for userid in telegram_userids {
                 telegram_userid_set.insert(UserId::new(userid));

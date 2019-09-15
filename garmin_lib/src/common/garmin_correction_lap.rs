@@ -18,7 +18,7 @@ use crate::utils::iso_8601_datetime::{self, convert_str_to_datetime, sentinel_da
 use crate::utils::row_index_trait::RowIndexTrait;
 use crate::utils::sport_types::{self, SportTypes};
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub struct GarminCorrectionLap {
     pub id: i32,
     #[serde(with = "iso_8601_datetime")]

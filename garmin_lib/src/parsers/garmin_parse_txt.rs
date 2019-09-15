@@ -25,7 +25,7 @@ impl GarminParseTxt {
 
 impl GarminParseTrait for GarminParseTxt {
     fn with_file(
-        &self,
+        self,
         filename: &str,
         corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
     ) -> Result<GarminFile, Error> {
@@ -47,8 +47,8 @@ impl GarminParseTrait for GarminParseTxt {
         let (lap_list, sport) = apply_lap_corrections(&txt_output.lap_list, sport, corr_map);
         let first_lap = lap_list.get(0).ok_or_else(|| err_msg("No laps"))?;
         let gfile = GarminFile {
-            filename: file_name,
-            filetype: "txt".to_string(),
+            filename: file_name.into(),
+            filetype: "txt".into(),
             begin_datetime: first_lap.lap_start,
             sport,
             total_calories: lap_list.iter().map(|lap| lap.lap_calories).sum(),

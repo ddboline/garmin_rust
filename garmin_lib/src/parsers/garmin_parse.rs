@@ -23,7 +23,7 @@ impl GarminParse {
 
 impl GarminParseTrait for GarminParse {
     fn with_file(
-        &self,
+        self,
         filename: &str,
         corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
     ) -> Result<GarminFile, Error> {
@@ -59,7 +59,7 @@ where
     Self: Send + Sync,
 {
     fn with_file(
-        &self,
+        self,
         filename: &str,
         corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
     ) -> Result<GarminFile, Error>;

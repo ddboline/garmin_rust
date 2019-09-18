@@ -2,55 +2,85 @@ use failure::{err_msg, Error};
 use parking_lot::Mutex;
 use rand::distributions::{Distribution, Uniform};
 use rand::thread_rng;
-use reqwest::{cookie::Cookie, header::HeaderMap, Client, Response, Url};
-use std::borrow::Cow;
+use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
+use reqwest::{Client, Response, Url};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::thread::sleep;
 use std::time::Duration;
 
+use super::garmin_config::GarminConfig;
+
 #[derive(Debug)]
-struct GarminConnectClientInner<'a> {
+struct GarminConnectClientInner {
     client: Client,
     headers: HeaderMap,
-    cookies: HashMap<String, Cookie<'a>>,
 }
 
-pub struct GarminConnect<'a> {
-    client: Arc<Mutex<GarminConnectClientInner<'a>>>,
+pub struct GarminConnect {
+    client: Arc<Mutex<GarminConnectClientInner>>,
 }
 
-impl Default for GarminConnect<'_> {
+impl Default for GarminConnect {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<'a> GarminConnectClientInner<'a> {
-    pub fn merge_cookies(&mut self, cookies: Vec<Cookie<'a>>) {
-        for cookie in cookies {
-            if !self.cookies.contains_key(cookie.name()) {
-                self.cookies.insert(cookie.name().into(), cookie);
-            }
+impl GarminConnectClientInner {
+    pub fn set_default_headers(&mut self, headers: HashMap<String, String>) -> Result<(), Error> {
+        headers
+            .into_iter()
+            .map(|(k, v)| {
+                let name: HeaderName = k.parse()?;
+                let val: HeaderValue = v.parse()?;
+                self.headers.insert(name, val);
+                Ok(())
+            })
+            .collect()
+    }
+
+    pub fn get(&mut self, url: Url, headers: HeaderMap) -> Result<Response, Error> {
+        let mut headers: HeaderMap = self.headers.clone();
+        for (k, v) in headers.into_iter() {
+            println!("{}", k);
+            headers.insert(k, v);
         }
+        self.client
+            .get(url)
+            .headers(headers)
+            .send()
+            .map_err(err_msg)
     }
 
-    pub fn set_headers(&mut self, headers: HashMap<String, String>) -> Result<(), Error> {
-        Ok(())
-    }
-
-    pub fn get(&mut self, url: Url) -> Result<Response, Error> {
-        self.client.get(url).send().map_err(err_msg)
+    pub fn post(
+        &mut self,
+        url: Url,
+        headers: HeaderMap,
+        form: HashMap<String, String>,
+    ) -> Result<Response, Error> {
+        let mut headers = self.headers.clone();
+        for (k, v) in headers.iter() {
+            let _: Option<HeaderName> = headers.insert(k, v);
+        }
+        self.client
+            .post(url)
+            .headers(headers)
+            .form(&form)
+            .send()
+            .map_err(err_msg)
     }
 }
 
-impl<'a> GarminConnect<'a> {
+impl GarminConnect {
     pub fn new() -> Self {
         GarminConnect {
             client: Arc::new(Mutex::new(GarminConnectClientInner {
-                client: Client::new(),
+                client: Client::builder()
+                    .cookie_store(true)
+                    .build()
+                    .expect("Failed to build client"),
                 headers: HeaderMap::new(),
-                cookies: HashMap::new(),
             })),
         }
     }

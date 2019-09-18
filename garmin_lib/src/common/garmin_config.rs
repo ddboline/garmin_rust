@@ -29,6 +29,8 @@ pub struct GarminConfigInner {
     pub fitbit_clientsecret: String,
     pub fitbit_tokenfile: String,
     pub strava_tokenfile: String,
+    pub garmin_connect_email: String,
+    pub garmin_connect_password: String,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -92,6 +94,8 @@ impl GarminConfigInner {
         set_config_from_env!(self, fitbit_clientsecret, "FITBIT_CLIENTSECRET");
         set_config_from_env!(self, fitbit_tokenfile, "FITBIT_TOKENFILE");
         set_config_from_env!(self, strava_tokenfile, "STRAVA_TOKENFILE");
+        set_config_from_env!(self, garmin_connect_email, "GARMIN_CONNECT_EMAIL");
+        set_config_from_env!(self, garmin_connect_password, "GARMIN_CONNECT_PASSWORD");
         self
     }
 }

@@ -316,14 +316,11 @@ impl GarminSummaryList {
         let mut writer = Writer::with_codec(&schema, output_file, Codec::Snappy);
 
         writer.extend_ser(self.summary_list)?;
-        writer.flush()?;
-
-        Ok(())
+        writer.flush().map(|_| ())
     }
 
     pub fn write_summary_to_avro_files(&self, summary_cache_dir: &str) -> Result<(), Error> {
-        let results: Result<Vec<_>, Error> = self
-            .summary_list
+        self.summary_list
             .par_iter()
             .map(|gsum| {
                 let summary_avro_fname =
@@ -331,8 +328,7 @@ impl GarminSummaryList {
                 let single_summary = GarminSummaryList::from_vec(vec![gsum.clone()]);
                 single_summary.dump_summary_to_avro(&summary_avro_fname)
             })
-            .collect();
-        results.map(|_| ())
+            .collect()
     }
 
     pub fn from_avro_files(summary_cache_dir: &str) -> Result<GarminSummaryList, Error> {
@@ -444,9 +440,9 @@ impl GarminSummaryList {
 
         conn.execute(&insert_query, &[])?;
         conn.execute(&update_query, &[])?;
-        conn.execute(&drop_table_query, &[])?;
-
-        Ok(())
+        conn.execute(&drop_table_query, &[])
+            .map(|_| ())
+            .map_err(err_msg)
     }
 
     pub fn dump_summary_from_postgres_to_avro(pool: &PgPool) -> Result<(), Error> {

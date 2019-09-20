@@ -246,8 +246,7 @@ impl Handler<FitbitSyncRequest> for PgPool {
     fn handle(&mut self, msg: FitbitSyncRequest, _: &mut Self::Context) -> Self::Result {
         let config = GarminConfig::get_config(None)?;
         let client = FitbitClient::from_file(config)?;
-        client.import_fitbit_heartrate(&msg.date, self)?;
-        Ok(())
+        client.import_fitbit_heartrate(&msg.date, self)
     }
 }
 
@@ -284,12 +283,15 @@ impl Handler<ScaleMeasurementUpdateRequest> for PgPool {
             .into_iter()
             .map(|d| d.datetime)
             .collect();
-        for meas in &msg.measurements {
-            if !measurement_set.contains(&meas.datetime) {
-                meas.insert_into_db(self)?;
-            }
-        }
-        Ok(())
+        msg.measurements
+            .iter()
+            .map(|meas| {
+                if !measurement_set.contains(&meas.datetime) {
+                    meas.insert_into_db(self)?;
+                }
+                Ok(())
+            })
+            .collect()
     }
 }
 

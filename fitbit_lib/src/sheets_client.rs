@@ -103,15 +103,18 @@ pub fn run_sync_sheets() -> Result<(), Error> {
         .filter_map(|row| ScaleMeasurement::from_row_data(row).ok())
         .collect();
     println!("{} {} {}", data.len(), row_data.len(), measurements.len());
-    for meas in measurements {
-        if !current_measurements.contains_key(&meas.datetime) {
-            println!("insert {:?}", meas);
-            meas.insert_into_db(&pool)?;
-        } else {
-            println!("exists {:?}", meas);
-        }
-    }
-    Ok(())
+    measurements
+        .into_iter()
+        .map(|meas| {
+            if !current_measurements.contains_key(&meas.datetime) {
+                println!("insert {:?}", meas);
+                meas.insert_into_db(&pool)?;
+            } else {
+                println!("exists {:?}", meas);
+            }
+            Ok(())
+        })
+        .collect()
 }
 
 #[cfg(test)]

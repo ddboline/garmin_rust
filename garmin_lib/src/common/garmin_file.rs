@@ -100,9 +100,7 @@ impl GarminFile {
         let mut writer = Writer::with_codec(&schema, output_file, Codec::Snappy);
 
         writer.append_ser(&self)?;
-        writer.flush()?;
-
-        Ok(())
+        writer.flush().map(|_| ())
     }
 
     pub fn read_avro(input_filename: &str) -> Result<GarminFile, Error> {

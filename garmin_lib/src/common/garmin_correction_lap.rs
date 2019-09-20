@@ -328,34 +328,37 @@ impl GarminCorrectionList {
         let conn = self.get_pool()?.get()?;
         let stmt_insert = conn.prepare(query_insert)?;
         let stmt_update = conn.prepare(query_update)?;
-        for corr in self.get_corr_list() {
-            let unique_key = format!("{}_{}", corr.start_time, corr.lap_number);
-            let sport: Option<String> = match corr.sport {
-                SportTypes::None => None,
-                s => Some(s.to_string()),
-            };
+        self.get_corr_list()
+            .into_iter()
+            .map(|corr| {
+                let unique_key = format!("{}_{}", corr.start_time, corr.lap_number);
+                let sport: Option<String> = match corr.sport {
+                    SportTypes::None => None,
+                    s => Some(s.to_string()),
+                };
 
-            if conn.query(query_unique_key, &[&unique_key])?.iter().len() == 0 {
-                stmt_insert.execute(&[
-                    &corr.start_time,
-                    &corr.lap_number,
-                    &corr.distance,
-                    &corr.duration,
-                    &unique_key,
-                    &sport,
-                ])?;
-            } else {
-                stmt_update.execute(&[
-                    &corr.start_time,
-                    &corr.lap_number,
-                    &corr.distance,
-                    &corr.duration,
-                    &unique_key,
-                    &sport,
-                ])?;
-            }
-        }
-        Ok(())
+                if conn.query(query_unique_key, &[&unique_key])?.iter().len() == 0 {
+                    stmt_insert.execute(&[
+                        &corr.start_time,
+                        &corr.lap_number,
+                        &corr.distance,
+                        &corr.duration,
+                        &unique_key,
+                        &sport,
+                    ])?;
+                } else {
+                    stmt_update.execute(&[
+                        &corr.start_time,
+                        &corr.lap_number,
+                        &corr.distance,
+                        &corr.duration,
+                        &unique_key,
+                        &sport,
+                    ])?;
+                };
+                Ok(())
+            })
+            .collect()
     }
 
     pub fn read_corrections_from_db(&self) -> Result<Self, Error> {

@@ -345,14 +345,13 @@ impl GarminCli {
             ),
         ];
 
-        let results: Result<Vec<_>, Error> = options
+        options
             .into_par_iter()
             .map(|(title, local_dir, s3_bucket, check_md5)| {
                 writeln!(stdout().lock(), "{}", title)?;
                 gsync.sync_dir(local_dir, s3_bucket, check_md5)
             })
-            .collect();
-        results.map(|_| ())
+            .collect()
     }
 
     pub fn cli_garmin_report(&self) -> Result<(), Error> {
@@ -536,7 +535,7 @@ impl GarminCli {
             .to_str()
             .ok_or_else(|| err_msg("Path is invalid unicode somehow"))?;
 
-        let results: Result<Vec<_>, Error> = filenames
+        filenames
             .par_iter()
             .filter(|f| (f.ends_with(".zip") || f.ends_with(".fit")) && Path::new(f).exists())
             .map(|filename| {
@@ -561,8 +560,7 @@ impl GarminCli {
                     .or_else(|_| copy(&filename, &outfile).map(|_| ()))
                     .map_err(err_msg)
             })
-            .collect();
-        results.map(|_| ())
+            .collect()
     }
 
     pub fn sync_with_garmin_connect(&self) -> Result<Vec<String>, Error> {

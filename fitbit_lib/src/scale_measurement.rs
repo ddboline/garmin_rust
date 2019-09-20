@@ -124,8 +124,9 @@ impl ScaleMeasurement {
                 &self.muscle_pct,
                 &self.bone_pct,
             ],
-        )?;
-        Ok(())
+        )
+        .map(|_| ())
+        .map_err(err_msg)
     }
 
     pub fn read_from_db(pool: &PgPool) -> Result<Vec<Self>, Error> {

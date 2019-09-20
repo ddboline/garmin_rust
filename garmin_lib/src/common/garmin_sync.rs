@@ -188,23 +188,23 @@ impl GarminSync<S3Client> {
             .collect();
         results?;
 
-        let results: Result<Vec<_>, Error> = key_list
+        key_list
             .par_iter()
-            .filter_map(|item| {
+            .map(|item| {
                 let mut do_download = false;
 
                 if file_set.contains_key(&item.key) {
                     let tmod_ = file_set[&item.key];
                     if item.timestamp > tmod_ && check_md5sum {
                         let file_name = format!("{}/{}", local_dir, item.key);
-                        let md5_ = get_md5sum(&file_name).expect("Failed md5sum");
+                        let md5_ = get_md5sum(&file_name)?;
                         if md5_ != item.etag {
                             debug!(
                                 "download md5 {} {} {} {} {} ",
                                 item.key, md5_, item.etag, item.timestamp, tmod_
                             );
                             let file_name = format!("{}/{}", local_dir, item.key);
-                            fs::remove_file(&file_name).expect("Failed to remove existing file");
+                            fs::remove_file(&file_name)?;
                             do_download = true;
                         }
                     }
@@ -216,13 +216,11 @@ impl GarminSync<S3Client> {
                     let file_name = format!("{}/{}", local_dir, item.key);
                     debug!("download {} {}", s3_bucket, item.key);
 
-                    Some(self.download_file(&file_name, &s3_bucket, &item.key))
-                } else {
-                    None
+                    self.download_file(&file_name, &s3_bucket, &item.key)?;
                 }
+                Ok(())
             })
-            .collect();
-        results.map(|_| ())
+            .collect()
     }
 
     pub fn download_file(
@@ -278,7 +276,7 @@ impl GarminSync<S3Client> {
                 )
             }
             .map_err(err_msg)
-        })?;
-        Ok(())
+        })
+        .map(|_| ())
     }
 }

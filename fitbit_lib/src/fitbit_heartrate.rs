@@ -1,6 +1,6 @@
 use chrono::{DateTime, Datelike, FixedOffset, Local, NaiveDateTime, TimeZone, Utc};
 use cpython::{exc, FromPyObject, PyDict, PyErr, PyResult, Python};
-use failure::Error;
+use failure::{err_msg, Error};
 use glob::glob;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use serde::{self, Deserialize, Deserializer, Serialize};
@@ -86,8 +86,9 @@ impl FitbitHeartRate {
     pub fn insert_into_db(&self, pool: &PgPool) -> Result<(), Error> {
         let conn = pool.get()?;
         let query = "INSERT INTO fitbit_heartrate (datetime, bpm) VALUES ($1, $2)";
-        conn.execute(query, &[&self.datetime, &self.value])?;
-        Ok(())
+        conn.execute(query, &[&self.datetime, &self.value])
+            .map(|_| ())
+            .map_err(err_msg)
     }
 
     pub fn from_json_heartrate_entry(entry: JsonHeartRateEntry) -> Self {
@@ -130,45 +131,47 @@ pub fn process_fitbit_json_file(fname: &Path) -> Result<Vec<FitbitHeartRate>, Er
 pub fn import_fitbit_json_files(directory: &str) -> Result<(), Error> {
     let config = GarminConfig::get_config(None)?;
     let pool = PgPool::new(&config.pgurl);
-    for fname in glob(&format!("{}/heart_rate-*.json", directory))? {
-        let fname = fname?;
-        let heartrates = process_fitbit_json_file(&fname)?;
-        let dates: HashSet<_> = heartrates
-            .par_iter()
-            .map(|entry| {
-                format!(
-                    "{:04}-{:02}-{:02}",
-                    entry.datetime.year(),
-                    entry.datetime.month(),
-                    entry.datetime.day()
-                )
-            })
-            .collect();
-        let mut current_datetimes = HashSet::new();
-        for date in &dates {
-            for entry in FitbitHeartRate::read_from_db(&pool, &date).unwrap() {
-                current_datetimes.insert(entry.datetime);
-            }
-        }
-        println!(
-            "fname {:?} {} {} {}",
-            fname,
-            heartrates.len(),
-            dates.len(),
-            current_datetimes.len()
-        );
-        let results: Result<Vec<_>, Error> = heartrates
-            .par_iter()
-            .map(|entry| {
-                if !current_datetimes.contains(&entry.datetime) {
-                    entry.insert_into_db(&pool.clone())?;
+    let filenames: Vec<_> = glob(&format!("{}/heart_rate-*.json", directory))?.collect();
+    filenames
+        .into_par_iter()
+        .map(|fname| {
+            let fname = fname?;
+            let heartrates = process_fitbit_json_file(&fname)?;
+            let dates: HashSet<_> = heartrates
+                .par_iter()
+                .map(|entry| {
+                    format!(
+                        "{:04}-{:02}-{:02}",
+                        entry.datetime.year(),
+                        entry.datetime.month(),
+                        entry.datetime.day()
+                    )
+                })
+                .collect();
+            let mut current_datetimes = HashSet::new();
+            for date in &dates {
+                for entry in FitbitHeartRate::read_from_db(&pool, &date).unwrap() {
+                    current_datetimes.insert(entry.datetime);
                 }
-                Ok(())
-            })
-            .collect();
-        results?;
-    }
-    Ok(())
+            }
+            println!(
+                "fname {:?} {} {} {}",
+                fname,
+                heartrates.len(),
+                dates.len(),
+                current_datetimes.len()
+            );
+            heartrates
+                .par_iter()
+                .map(|entry| {
+                    if !current_datetimes.contains(&entry.datetime) {
+                        entry.insert_into_db(&pool.clone())?;
+                    }
+                    Ok(())
+                })
+                .collect::<Result<(), Error>>()
+        })
+        .collect()
 }
 
 #[cfg(test)]

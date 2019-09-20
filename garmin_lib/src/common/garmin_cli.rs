@@ -155,7 +155,8 @@ impl GarminCli {
                     .short("c")
                     .long("connect")
                     .value_name("CONNECT")
-                    .help("Download new files from Garmin Connect"),
+                    .help("Download new files from Garmin Connect")
+                    .takes_value(false),
             )
             .get_matches();
 

@@ -1,5 +1,14 @@
-use failure::{err_msg, Error};
+use chrono::{DateTime, NaiveDateTime, Utc};
+use failure::{err_msg, format_err, Error};
 use maplit::hashmap;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
+use reqwest::Url;
+use serde_json::Value;
+use std::collections::HashMap;
+use std::fs::File;
+use std::thread::sleep;
+use std::time::Duration;
 
 use super::garmin_config::GarminConfig;
 use super::reqwest_session::ReqwestSession;
@@ -32,11 +41,135 @@ impl GarminConnectClient {
             "consumeServiceTicket"=>"false",
         };
 
-        // let session = 
+        let session = ReqwestSession::new(false);
 
-        Ok(Self {
-            config,
-            session: ReqwestSession::new(true),
-        })
+        let url = Url::parse_with_params("https://sso.garmin.com/sso/signin", params.iter())?;
+        let mut pre_resp = session.get(&url, HeaderMap::new())?;
+        if pre_resp.status() != 200 {
+            return Err(format_err!(
+                "SSO prestart error {} {}",
+                pre_resp.status(),
+                pre_resp.text()?
+            ));
+        }
+
+        let mut signin_headers = HeaderMap::new();
+        for (k, v) in garmin_signin_headers.into_iter() {
+            let name: HeaderName = k.parse()?;
+            let val: HeaderValue = v.parse()?;
+            signin_headers.insert(name, val);
+        }
+
+        let mut sso_resp = session.post(&url, signin_headers, &data)?;
+        if sso_resp.status() != 200 {
+            return Err(format_err!(
+                "SSO error {} {}",
+                sso_resp.status(),
+                sso_resp.text()?
+            ));
+        }
+
+        let sso_text = sso_resp.text()?;
+
+        if sso_text.contains("temporarily unavailable") {
+            return Err(format_err!("SSO error {} {}", sso_resp.status(), sso_text));
+        } else if sso_text.contains(">sendEvent('FAIL')") {
+            return Err(err_msg("Invalid login"));
+        } else if sso_text.contains(">sendEvent('ACCOUNT_LOCKED')") {
+            return Err(err_msg("Account Locked"));
+        } else if sso_text.contains("renewPassword") {
+            return Err(err_msg("Reset password"));
+        }
+
+        let mut gc_redeem_resp = session.get(
+            &"https://connect.garmin.com/modern".parse()?,
+            HeaderMap::new(),
+        )?;
+        if gc_redeem_resp.status() != 302 {
+            return Err(format_err!(
+                "GC redeem-start error {} {}",
+                gc_redeem_resp.status(),
+                gc_redeem_resp.text()?
+            ));
+        }
+
+        let mut url_prefix = "https://connect.garmin.com".to_string();
+
+        let max_redirect_count = 7;
+        let mut current_redirect_count = 1;
+        loop {
+            sleep(Duration::from_secs(2));
+            let url = gc_redeem_resp
+                .headers()
+                .get("location")
+                .expect("No location")
+                .to_str()?;
+            let url = if url.starts_with("/") {
+                format!("{}{}", url_prefix, url)
+            } else {
+                url.to_string()
+            };
+            url_prefix = url.split("/").take(3).collect::<Vec<_>>().join("/");
+
+            let url: Url = url.parse()?;
+            gc_redeem_resp = session.get(&url, HeaderMap::new())?;
+            let status = gc_redeem_resp.status();
+            if current_redirect_count >= max_redirect_count && status != 200 {
+                return Err(format_err!(
+                    "GC redeem {}/{} err {} {}",
+                    current_redirect_count,
+                    max_redirect_count,
+                    status,
+                    gc_redeem_resp.text()?
+                ));
+            } else if status == 200 || status == 404 {
+                break;
+            }
+            current_redirect_count += 1;
+            if current_redirect_count > max_redirect_count {
+                break;
+            }
+        }
+
+        session.set_default_headers(obligatory_headers)?;
+
+        Ok(Self { config, session })
+    }
+
+    pub fn get_activities(&self, max_timestamp: DateTime<Utc>) -> Result<Vec<String>, Error> {
+        let url: Url = "https://connect.garmin.com/modern/proxy/activitylist-service/activities/search/activities".parse()?;
+        let entries: Vec<HashMap<String, Value>> =
+            self.session.get(&url, HeaderMap::new())?.json()?;
+        entries
+            .into_par_iter()
+            .map(|entry| {
+                if let Some(activity_id) = entry.get("activityId") {
+                    if let Some(start_time_gmt) = entry.get("startTimeGMT").and_then(|x| x.as_str())
+                    {
+                        let start_time: DateTime<Utc> =
+                            NaiveDateTime::parse_from_str(start_time_gmt, "%Y-%m-%d %H:%M:%S")
+                                .map(|datetime| DateTime::from_utc(datetime, Utc))?;
+                        if start_time > max_timestamp {
+                            println!("{} {}", activity_id, start_time);
+                            let fname =
+                                format!("{}/Downloads/{}.zip", self.config.home_dir, activity_id);
+                            let url: Url = format!(
+                                "{}/{}/{}",
+                                "https://connect.garmin.com",
+                                "modern/proxy/download-service/files/activity",
+                                activity_id
+                            )
+                            .parse()?;
+                            let mut f = File::create(&fname)?;
+                            let mut resp = self.session.get(&url, HeaderMap::new())?;
+                            resp.copy_to(&mut f)?;
+                            return Ok(Some(fname));
+                        }
+                    }
+                }
+                Ok(None)
+            })
+            .filter_map(|x| x.transpose())
+            .collect()
     }
 }

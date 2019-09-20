@@ -9,8 +9,6 @@ use std::sync::Arc;
 use std::thread::sleep;
 use std::time::Duration;
 
-use super::garmin_config::GarminConfig;
-
 #[derive(Debug)]
 struct ReqwestSessionInner {
     client: Client,
@@ -28,18 +26,6 @@ impl Default for ReqwestSession {
 }
 
 impl ReqwestSessionInner {
-    pub fn set_default_headers(&mut self, headers: HashMap<String, String>) -> Result<(), Error> {
-        headers
-            .into_iter()
-            .map(|(k, v)| {
-                let name: HeaderName = k.parse()?;
-                let val: HeaderValue = v.parse()?;
-                self.headers.insert(name, val);
-                Ok(())
-            })
-            .collect()
-    }
-
     pub fn get(&mut self, url: Url, mut headers: HeaderMap) -> Result<Response, Error> {
         for (k, v) in &self.headers {
             headers.insert(k, v.into());
@@ -55,7 +41,7 @@ impl ReqwestSessionInner {
         &mut self,
         url: Url,
         mut headers: HeaderMap,
-        form: &HashMap<String, String>,
+        form: &HashMap<&str, &str>,
     ) -> Result<Response, Error> {
         for (k, v) in &self.headers {
             headers.insert(k, v.into());
@@ -121,11 +107,23 @@ impl ReqwestSession {
         &self,
         url: &Url,
         headers: HeaderMap,
-        form: &HashMap<String, String>,
+        form: &HashMap<&str, &str>,
     ) -> Result<Response, Error> {
         self.exponential_retry(|| {
             let mut client = self.client.lock();
             client.post(url.clone(), headers.clone(), form)
         })
+    }
+
+    pub fn set_default_headers(&self, headers: HashMap<&str, &str>) -> Result<(), Error> {
+        headers
+            .into_iter()
+            .map(|(k, v)| {
+                let name: HeaderName = k.parse()?;
+                let val: HeaderValue = v.parse()?;
+                self.client.lock().headers.insert(name, val);
+                Ok(())
+            })
+            .collect()
     }
 }

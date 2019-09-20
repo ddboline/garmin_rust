@@ -7,7 +7,7 @@ build_type := release
 all:
 	mkdir -p build/ && \
 	cp Dockerfile.build.ubuntu18.04 build/Dockerfile && \
-	cp -a Cargo.toml src scripts Makefile python templates garmin_lib garmin_http fitbit_lib strava_lib build/ && \
+	cp -a Cargo.toml src scripts Makefile templates garmin_lib garmin_http fitbit_lib strava_lib build/ && \
 	cd build/ && \
 	docker build -t garmin_rust/build_rust:ubuntu18.04 . && \
 	cd ../ && \
@@ -16,7 +16,7 @@ all:
 xenial:
 	mkdir -p build/ && \
 	cp Dockerfile.build.ubuntu16.04 build/Dockerfile && \
-	cp -a Cargo.toml src scripts Makefile python templates garmin_lib garmin_http fitbit_lib strava_lib build/ && \
+	cp -a Cargo.toml src scripts Makefile templates garmin_lib garmin_http fitbit_lib strava_lib build/ && \
 	cd build/ && \
 	docker build -t garmin_rust/build_rust:ubuntu16.04 . && \
 	cd ../ && \
@@ -56,7 +56,6 @@ install:
 	cp target/$(build_type)/garmin-rust-report /usr/bin/garmin-rust-report
 	cp target/$(build_type)/garmin-rust-http /usr/bin/garmin-rust-http
 	cp target/$(build_type)/pull-scale-measurements-from-telegram /usr/bin/pull-scale-measurements-from-telegram
-	cp python/garmin_connect.py /usr/bin/garmin-connect-download
 
 pull:
 	`aws ecr --region us-east-1 get-login --no-include-email`

@@ -1,6 +1,6 @@
 [package]
 name = "garmin_lib"
-version = "0.4.32"
+version = "0.4.34"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 

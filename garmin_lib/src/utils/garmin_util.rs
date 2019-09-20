@@ -4,6 +4,7 @@ use log::debug;
 use num_traits::pow::Pow;
 use rand::distributions::{Alphanumeric, Distribution, Uniform};
 use rand::thread_rng;
+use std::fs::remove_file;
 use std::io::{stdout, BufRead, BufReader, Read, Write};
 use std::path::Path;
 use std::thread::sleep;
@@ -167,6 +168,7 @@ pub fn extract_zip_from_garmin_connect(filename: &str, ziptmpdir: &str) -> Resul
         return Err(format_err!("Failed with exit status {:?}", exit_status));
     }
     let new_filename = format!("{}/{}", ziptmpdir, new_filename);
+    remove_file(&filename)?;
     Ok(new_filename)
 }
 

@@ -6,17 +6,10 @@ use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterato
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs::{copy, rename};
-use std::io::{stdout, BufRead, BufReader, Write};
+use std::io::{stdout, Write};
 use std::path::Path;
-use subprocess::Exec;
 use tempdir::TempDir;
 
-use super::garmin_config::GarminConfig;
-use super::garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList};
-use super::garmin_file;
-use super::garmin_summary::{get_list_of_files_from_db, GarminSummary, GarminSummaryList};
-use super::garmin_sync::GarminSync;
-use super::pgpool::PgPool;
 use crate::common::garmin_summary::get_maximum_begin_datetime;
 use crate::parsers::garmin_parse::{GarminParse, GarminParseTrait};
 use crate::reports::garmin_file_report_html::file_report_html;
@@ -25,8 +18,15 @@ use crate::reports::garmin_report_options::{GarminReportAgg, GarminReportOptions
 use crate::reports::garmin_summary_report_html::summary_report_html;
 use crate::reports::garmin_summary_report_txt::create_report_query;
 use crate::utils::garmin_util::{extract_zip_from_garmin_connect, get_file_list};
-use crate::utils::iso_8601_datetime::convert_datetime_to_str;
 use crate::utils::sport_types::get_sport_type_map;
+
+use super::garmin_config::GarminConfig;
+use super::garmin_connect_client::GarminConnectClient;
+use super::garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList};
+use super::garmin_file;
+use super::garmin_summary::{get_list_of_files_from_db, GarminSummary, GarminSummaryList};
+use super::garmin_sync::GarminSync;
+use super::pgpool::PgPool;
 
 fn get_version_number() -> String {
     format!(
@@ -567,13 +567,8 @@ impl GarminCli {
     pub fn sync_with_garmin_connect(&self) -> Result<Vec<String>, Error> {
         if let Some(pool) = self.pool.as_ref() {
             if let Some(max_datetime) = get_maximum_begin_datetime(&pool)? {
-                let max_datetime = convert_datetime_to_str(max_datetime);
-                let command = format!("/usr/bin/garmin-connect-download {}", max_datetime);
-                let stream = Exec::shell(command).stream_stdout()?;
-                let reader = BufReader::new(stream);
-                let filenames: Result<Vec<_>, Error> =
-                    reader.lines().map(|line| Ok(line?)).collect();
-                let filenames: Vec<_> = filenames?;
+                let session = GarminConnectClient::get_session(self.config.clone())?;
+                let filenames = session.get_activities(max_datetime)?;
                 self.extract_zip_files(&filenames)?;
                 return Ok(filenames);
             }

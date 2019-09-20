@@ -10,6 +10,7 @@ use std::sync::Arc;
 /// see the dotenv crate for more information about the config file format.
 #[derive(Default, Debug)]
 pub struct GarminConfigInner {
+    pub home_dir: String,
     pub pgurl: String,
     pub maps_api_key: String,
     pub gps_bucket: String,
@@ -63,12 +64,14 @@ impl GarminConfigInner {
             domain: "localhost".to_string(),
             fitbit_tokenfile: format!("{}/.fitbit_tokens", home_dir),
             strava_tokenfile: format!("{}/.stravacli", home_dir),
+            home_dir,
             ..Default::default()
         }
     }
 
     /// Each variable maps to an environment variable, if the variable exists, use it.
     pub fn from_env(mut self) -> GarminConfigInner {
+        set_config_from_env!(self, home_dir, "HOME");
         set_config_from_env!(self, pgurl, "PGURL");
         set_config_from_env!(self, maps_api_key, "MAPS_API_KEY");
         set_config_from_env!(self, gps_bucket, "GPS_BUCKET");

@@ -104,12 +104,12 @@ impl GarminConnectClient {
                 .get("location")
                 .expect("No location")
                 .to_str()?;
-            let url = if url.starts_with("/") {
+            let url = if url.starts_with('/') {
                 format!("{}{}", url_prefix, url)
             } else {
                 url.to_string()
             };
-            url_prefix = url.split("/").take(3).collect::<Vec<_>>().join("/");
+            url_prefix = url.split('/').take(3).collect::<Vec<_>>().join("/");
 
             let url: Url = url.parse()?;
             gc_redeem_resp = session.get(&url, HeaderMap::new())?;

@@ -47,7 +47,7 @@ impl GarminParseTrait for GarminParseTxt {
         let (lap_list, sport) = apply_lap_corrections(&txt_output.lap_list, sport, corr_map);
         let first_lap = lap_list.get(0).ok_or_else(|| err_msg("No laps"))?;
         let gfile = GarminFile {
-            filename: file_name.into(),
+            filename: file_name,
             filetype: "txt".into(),
             begin_datetime: first_lap.lap_start,
             sport,

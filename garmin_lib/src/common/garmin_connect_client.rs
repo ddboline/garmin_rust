@@ -1,7 +1,7 @@
 use chrono::{DateTime, NaiveDateTime, Utc};
 use failure::{err_msg, format_err, Error};
+use log::debug;
 use maplit::hashmap;
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use reqwest::Url;
 use serde_json::Value;
@@ -137,12 +137,27 @@ impl GarminConnectClient {
     }
 
     pub fn get_activities(&self, max_timestamp: DateTime<Utc>) -> Result<Vec<String>, Error> {
-        let url: Url = "https://connect.garmin.com/modern/proxy/activitylist-service/activities/search/activities".parse()?;
-        let entries: Vec<HashMap<String, Value>> =
-            self.session.get(&url, HeaderMap::new())?.json()?;
-        entries
-            .into_par_iter()
-            .map(|entry| {
+        let url_prefix = "https://connect.garmin.com/modern/proxy/activitylist-service/activities/search/activities";
+        let mut entries = Vec::new();
+        let mut current_start = 0;
+        let limit = 10;
+        loop {
+            let url = Url::parse_with_params(
+                url_prefix,
+                &[
+                    ("start", current_start.to_string()),
+                    ("limit", limit.to_string()),
+                ],
+            )?;
+            current_start += limit;
+            debug!("Call {}", url);
+            let new_entries: Vec<HashMap<String, Value>> =
+                self.session.get(&url, HeaderMap::new())?.json()?;
+            if new_entries.is_empty() {
+                debug!("Empty result {} returning {} results", url, entries.len());
+                return Ok(entries);
+            }
+            for entry in &new_entries {
                 if let Some(activity_id) = entry.get("activityId") {
                     if let Some(start_time_gmt) = entry.get("startTimeGMT").and_then(|x| x.as_str())
                     {
@@ -163,13 +178,14 @@ impl GarminConnectClient {
                             let mut f = File::create(&fname)?;
                             let mut resp = self.session.get(&url, HeaderMap::new())?;
                             resp.copy_to(&mut f)?;
-                            return Ok(Some(fname));
+                            entries.push(fname);
+                        } else {
+                            debug!("Returning {} results", entries.len());
+                            return Ok(entries);
                         }
                     }
                 }
-                Ok(None)
-            })
-            .filter_map(|x| x.transpose())
-            .collect()
+            }
+        }
     }
 }

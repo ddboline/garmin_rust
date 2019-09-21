@@ -1,4 +1,4 @@
-use crossbeam_channel::{unbounded, Receiver};
+use crossbeam_channel::{unbounded, Receiver, Sender};
 use crossbeam_utils::thread::Scope;
 use failure::{format_err, Error};
 use futures::Stream;
@@ -26,12 +26,23 @@ lazy_static! {
 }
 
 pub fn run_bot(telegram_bot_token: &str, pool: PgPool, scope: &Scope) -> Result<(), Error> {
+    let telegram_bot_token: String = telegram_bot_token.into();
     let (s, r) = unbounded();
 
     let pool_ = pool.clone();
     let userid_handle = scope.spawn(move |_| fill_telegram_user_ids(pool_));
     let message_handle = scope.spawn(move |_| process_messages(r, pool));
+    let telegram_handle = scope.spawn(move |_| telegram_worker(&telegram_bot_token, s));
 
+    if userid_handle.join().is_err() {
+        panic!("Userid thread paniced, kill everything");
+    }
+    telegram_handle.join().expect("Telegram handle paniced")?;
+    drop(message_handle);
+    Ok(())
+}
+
+fn telegram_worker(telegram_bot_token: &str, s: Sender<ScaleMeasurement>) -> Result<(), Error> {
     let mut core = Core::new()?;
 
     let api = Api::configure(telegram_bot_token)
@@ -81,10 +92,9 @@ pub fn run_bot(telegram_bot_token: &str, pool: PgPool, scope: &Scope) -> Result<
         Ok(())
     });
 
-    core.run(future).map_err(|e| format_err!("{}", e))?;
-    drop(message_handle);
-    drop(userid_handle);
-    Ok(())
+    core.run(future)
+        .map_err(|e| format_err!("{}", e))
+        .map(|_| ())
 }
 
 fn process_messages(r: Receiver<ScaleMeasurement>, pool: PgPool) {
@@ -112,12 +122,11 @@ fn process_messages(r: Receiver<ScaleMeasurement>, pool: PgPool) {
 
 fn fill_telegram_user_ids(pool: PgPool) {
     loop {
-        if let Ok(telegram_userids) = list_of_telegram_user_ids(&pool) {
-            let mut telegram_userid_set = USERIDS.write();
-            telegram_userid_set.clear();
-            for userid in telegram_userids {
-                telegram_userid_set.insert(UserId::new(userid));
-            }
+        let telegram_userids = list_of_telegram_user_ids(&pool).expect("get list failed");
+        let mut telegram_userid_set = USERIDS.write();
+        telegram_userid_set.clear();
+        for userid in telegram_userids {
+            telegram_userid_set.insert(UserId::new(userid));
         }
         sleep(Duration::from_secs(60));
     }

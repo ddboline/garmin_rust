@@ -116,12 +116,9 @@ impl GarminSync<S3Client> {
         let file_list: Result<Vec<_>, Error> = path
             .read_dir()?
             .filter_map(|dir_line| {
-                dir_line.ok().and_then(|entry| {
-                    entry
-                        .path()
-                        .to_str()
-                        .map(|input_file| input_file.to_string())
-                })
+                dir_line
+                    .ok()
+                    .map(|entry| entry.path().to_string_lossy().to_string())
             })
             .map(|f| {
                 let modified = fs::metadata(&f)?

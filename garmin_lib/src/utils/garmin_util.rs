@@ -116,7 +116,7 @@ pub fn get_file_list(path: &Path) -> Vec<String> {
     match path.read_dir() {
         Ok(it) => it
             .filter_map(|dir_line| match dir_line {
-                Ok(entry) => entry.path().to_str().map(|x| x.to_string()),
+                Ok(entry) => Some(entry.path().to_string_lossy().to_string()),
                 Err(_) => None,
             })
             .collect(),
@@ -153,8 +153,7 @@ pub fn extract_zip_from_garmin_connect(filename: &str, ziptmpdir: &str) -> Resul
     let new_filename = Path::new(filename)
         .file_name()
         .ok_or_else(|| err_msg("Bad filename"))?
-        .to_str()
-        .ok_or_else(|| err_msg("Bad string"))?;
+        .to_string_lossy();
     let new_filename = new_filename.replace(".zip", ".fit");
     let command = format!("unzip {} -d {}", filename, ziptmpdir);
     let mut process = Exec::shell(command).stdout(Redirection::Pipe).popen()?;

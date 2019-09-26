@@ -530,10 +530,7 @@ impl GarminCli {
 
     pub fn extract_zip_files(&self, filenames: &[String]) -> Result<(), Error> {
         let tempdir = TempDir::new("garmin_zip")?;
-        let ziptmpdir = tempdir
-            .path()
-            .to_str()
-            .ok_or_else(|| err_msg("Path is invalid unicode somehow"))?;
+        let ziptmpdir = tempdir.path().to_string_lossy().to_string();
 
         filenames
             .par_iter()

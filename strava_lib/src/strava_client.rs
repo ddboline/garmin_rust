@@ -350,28 +350,15 @@ impl StravaClient {
         let ext = filepath
             .extension()
             .ok_or_else(|| err_msg("No extension"))?
-            .to_str()
-            .ok_or_else(|| err_msg("OsStr to Str conversion error"))?
+            .to_string_lossy()
             .to_string();
 
         let filename = match ext.as_str() {
-            "gz" => filepath
-                .canonicalize()?
-                .to_str()
-                .ok_or_else(|| err_msg("OsStr to Str conversion error"))?
-                .to_string(),
+            "gz" => filepath.canonicalize()?.to_string_lossy().to_string(),
             _ => {
                 let tfile = Builder::new().suffix(&format!("{}.gz", ext)).tempfile()?;
-                let infname = filepath
-                    .canonicalize()?
-                    .to_str()
-                    .ok_or_else(|| err_msg("OsStr to Str conversion error"))?
-                    .to_string();
-                let outfname = tfile
-                    .path()
-                    .to_str()
-                    .ok_or_else(|| err_msg("OsStr to Str conversion error"))?
-                    .to_string();
+                let infname = filepath.canonicalize()?.to_string_lossy().to_string();
+                let outfname = tfile.path().to_string_lossy().to_string();
                 gzip_file(&infname, &outfname)?;
                 _tempfile = Some(tfile);
                 outfname

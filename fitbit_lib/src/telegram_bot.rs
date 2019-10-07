@@ -122,11 +122,12 @@ fn process_messages(r: Receiver<ScaleMeasurement>, pool: PgPool) {
 
 fn fill_telegram_user_ids(pool: PgPool) {
     loop {
-        let telegram_userids = list_of_telegram_user_ids(&pool).expect("get list failed");
-        let mut telegram_userid_set = USERIDS.write();
-        telegram_userid_set.clear();
-        for userid in telegram_userids {
-            telegram_userid_set.insert(UserId::new(userid));
+        if let Ok(telegram_userids) = list_of_telegram_user_ids(&pool) {
+            let mut telegram_userid_set = USERIDS.write();
+            telegram_userid_set.clear();
+            for userid in telegram_userids {
+                telegram_userid_set.insert(UserId::new(userid));
+            }
         }
         sleep(Duration::from_secs(60));
     }

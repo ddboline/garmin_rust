@@ -248,10 +248,7 @@ impl Handler<FitbitHeartrateDbUpdateRequest> for PgPool {
         msg: FitbitHeartrateDbUpdateRequest,
         _: &mut Self::Context,
     ) -> Self::Result {
-        updates
-            .into_iter()
-            .map(|update| update.insert_into_db(self))
-            .collect()
+        FitbitHeartRate::insert_slice_into_db(&msg.updates, self)
     }
 }
 

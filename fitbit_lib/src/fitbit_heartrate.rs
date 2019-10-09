@@ -118,6 +118,13 @@ impl FitbitHeartRate {
             })
             .collect()
     }
+
+    pub fn insert_slice_into_db(slice: &[Self], pool: &PgPool) -> Result<(), Error> {
+        slice
+            .into_par_iter()
+            .map(|entry| entry.insert_into_db(pool))
+            .collect()
+    }
 }
 
 pub fn process_fitbit_json_file(fname: &Path) -> Result<Vec<FitbitHeartRate>, Error> {

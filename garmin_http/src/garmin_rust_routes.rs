@@ -20,10 +20,10 @@ use super::logged_user::LoggedUser;
 use super::garmin_rust_app::AppState;
 use crate::garmin_requests::{
     FitbitAuthRequest, FitbitCallbackRequest, FitbitHeartrateApiRequest, FitbitHeartrateDbRequest,
-    FitbitSyncRequest, GarminConnectSyncRequest, GarminCorrRequest, GarminHtmlRequest,
-    GarminListRequest, GarminSyncRequest, ScaleMeasurementRequest, ScaleMeasurementUpdateRequest,
-    StravaActivitiesRequest, StravaAuthRequest, StravaCallbackRequest, StravaSyncRequest,
-    StravaUpdateRequest, StravaUploadRequest,
+    FitbitHeartrateDbUpdateRequest, FitbitSyncRequest, GarminConnectSyncRequest, GarminCorrRequest,
+    GarminHtmlRequest, GarminListRequest, GarminSyncRequest, ScaleMeasurementRequest,
+    ScaleMeasurementUpdateRequest, StravaActivitiesRequest, StravaAuthRequest,
+    StravaCallbackRequest, StravaSyncRequest, StravaUpdateRequest, StravaUploadRequest,
 };
 use crate::CONFIG;
 
@@ -284,12 +284,11 @@ pub fn fitbit_heartrate_db(
 }
 
 pub fn fitbit_heartrate_db_update(
-    data: Json<Vec<FitbitHeartRate>>,
+    data: Json<FitbitHeartrateDbUpdateRequest>,
     user: LoggedUser,
     state: Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    let updates = data.into_inner();
-    let req = FitbitHeartrateDbUpdateRequest{updates};
+    let req = data.into_inner();
     state.db.send(req).from_err().and_then(move |res| {
         res.and_then(|_| {
             if !state.user_list.is_authorized(&user) {

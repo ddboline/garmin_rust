@@ -85,7 +85,11 @@ impl FitbitHeartRate {
 
     pub fn insert_into_db(&self, pool: &PgPool) -> Result<(), Error> {
         let conn = pool.get()?;
-        let query = "INSERT INTO fitbit_heartrate (datetime, bpm) VALUES ($1, $2)";
+        let query = "
+            INSERT INTO fitbit_heartrate (datetime, bpm)
+            SELECT $1, $2
+            WHERE NOT EXISTS
+            (SELECT datetime FROM fitbit_heartrate WHERE datetime = $1)";
         conn.execute(query, &[&self.datetime, &self.value])
             .map(|_| ())
             .map_err(err_msg)

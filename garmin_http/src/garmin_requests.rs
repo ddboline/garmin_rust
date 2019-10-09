@@ -233,6 +233,29 @@ impl Handler<FitbitHeartrateDbRequest> for PgPool {
 }
 
 #[derive(Serialize, Deserialize)]
+pub struct FitbitHeartrateDbUpdateRequest {
+    updates: Vec<FitbitHeartRate>,
+}
+
+impl Message for FitbitHeartrateDbUpdateRequest {
+    type Result = Result<(), Error>;
+}
+
+impl Handler<FitbitHeartrateDbUpdateRequest> for PgPool {
+    type Result = Result<(), Error>;
+    fn handle(
+        &mut self,
+        msg: FitbitHeartrateDbUpdateRequest,
+        _: &mut Self::Context,
+    ) -> Self::Result {
+        updates
+            .into_iter()
+            .map(|update| update.insert_into_db(self))
+            .collect()
+    }
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct FitbitSyncRequest {
     date: NaiveDate,
 }

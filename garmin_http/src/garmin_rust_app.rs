@@ -14,10 +14,11 @@ use garmin_lib::common::pgpool::PgPool;
 
 use super::logged_user::AuthorizedUsers;
 use crate::garmin_rust_routes::{
-    fitbit_auth, fitbit_callback, fitbit_heartrate_api, fitbit_heartrate_db, fitbit_sync, garmin,
-    garmin_connect_sync, garmin_get_hr_data, garmin_get_hr_pace, garmin_list_gps_tracks,
-    garmin_sync, scale_measurement, scale_measurement_update, strava_activities, strava_auth,
-    strava_callback, strava_sync, strava_update, strava_upload,
+    fitbit_auth, fitbit_callback, fitbit_heartrate_api, fitbit_heartrate_db,
+    fitbit_heartrate_db_update, fitbit_sync, garmin, garmin_connect_sync, garmin_get_hr_data,
+    garmin_get_hr_pace, garmin_list_gps_tracks, garmin_sync, scale_measurement,
+    scale_measurement_update, strava_activities, strava_auth, strava_callback, strava_sync,
+    strava_update, strava_upload,
 };
 use crate::CONFIG;
 
@@ -99,7 +100,8 @@ pub fn start_app() {
             )
             .service(
                 web::resource("/garmin/fitbit/heartrate_db")
-                    .route(web::get().to_async(fitbit_heartrate_db)),
+                    .route(web::get().to_async(fitbit_heartrate_db))
+                    .route(web::post().to_async(fitbit_heartrate_db_update)),
             )
             .service(web::resource("/garmin/fitbit/sync").route(web::get().to_async(fitbit_sync)))
             .service(

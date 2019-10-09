@@ -1,5 +1,5 @@
 use actix::{Handler, Message};
-use chrono::{Duration, SecondsFormat};
+use chrono::{Duration, NaiveDate, SecondsFormat};
 use failure::Error;
 use log::debug;
 use serde::{Deserialize, Serialize};
@@ -200,7 +200,7 @@ impl Handler<FitbitCallbackRequest> for PgPool {
 
 #[derive(Serialize, Deserialize)]
 pub struct FitbitHeartrateApiRequest {
-    date: String,
+    date: NaiveDate,
 }
 
 impl Message for FitbitHeartrateApiRequest {
@@ -212,13 +212,13 @@ impl Handler<FitbitHeartrateApiRequest> for PgPool {
     fn handle(&mut self, msg: FitbitHeartrateApiRequest, _: &mut Self::Context) -> Self::Result {
         let config = GarminConfig::get_config(None)?;
         let client = FitbitClient::from_file(config)?;
-        client.get_fitbit_intraday_time_series_heartrate(&msg.date)
+        client.get_fitbit_intraday_time_series_heartrate(msg.date)
     }
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct FitbitHeartrateDbRequest {
-    date: String,
+    date: NaiveDate,
 }
 
 impl Message for FitbitHeartrateDbRequest {
@@ -228,13 +228,13 @@ impl Message for FitbitHeartrateDbRequest {
 impl Handler<FitbitHeartrateDbRequest> for PgPool {
     type Result = Result<Vec<FitbitHeartRate>, Error>;
     fn handle(&mut self, msg: FitbitHeartrateDbRequest, _: &mut Self::Context) -> Self::Result {
-        FitbitHeartRate::read_from_db(self, &msg.date)
+        FitbitHeartRate::read_from_db(self, msg.date)
     }
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct FitbitSyncRequest {
-    date: String,
+    date: NaiveDate,
 }
 
 impl Message for FitbitSyncRequest {
@@ -246,7 +246,7 @@ impl Handler<FitbitSyncRequest> for PgPool {
     fn handle(&mut self, msg: FitbitSyncRequest, _: &mut Self::Context) -> Self::Result {
         let config = GarminConfig::get_config(None)?;
         let client = FitbitClient::from_file(config)?;
-        client.import_fitbit_heartrate(&msg.date, self)
+        client.import_fitbit_heartrate(msg.date, self)
     }
 }
 

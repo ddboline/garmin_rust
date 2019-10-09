@@ -1,4 +1,4 @@
-use chrono::{DateTime, Datelike, FixedOffset, Local, NaiveDateTime, TimeZone, Utc};
+use chrono::{DateTime, FixedOffset, Local, NaiveDate, NaiveDateTime, TimeZone, Utc};
 use cpython::{exc, FromPyObject, PyDict, PyErr, PyResult, Python};
 use failure::{err_msg, Error};
 use glob::glob;
@@ -98,16 +98,14 @@ impl FitbitHeartRate {
         }
     }
 
-    pub fn read_from_db(pool: &PgPool, date: &str) -> Result<Vec<Self>, Error> {
-        let query = format!(
-            "
+    pub fn read_from_db(pool: &PgPool, date: NaiveDate) -> Result<Vec<Self>, Error> {
+        let query = "
             SELECT datetime, bpm
             FROM fitbit_heartrate
-            WHERE date(datetime) = '{}'",
-            date
-        );
+            WHERE date(datetime) = $1
+            ORDER BY datetime";
         let conn = pool.get()?;
-        conn.query(&query, &[])?
+        conn.query(&query, &[&date])?
             .iter()
             .map(|row| {
                 let datetime = row.get_idx(0)?;
@@ -139,18 +137,11 @@ pub fn import_fitbit_json_files(directory: &str) -> Result<(), Error> {
             let heartrates = process_fitbit_json_file(&fname)?;
             let dates: HashSet<_> = heartrates
                 .par_iter()
-                .map(|entry| {
-                    format!(
-                        "{:04}-{:02}-{:02}",
-                        entry.datetime.year(),
-                        entry.datetime.month(),
-                        entry.datetime.day()
-                    )
-                })
+                .map(|entry| entry.datetime.date().naive_local())
                 .collect();
             let mut current_datetimes = HashSet::new();
             for date in &dates {
-                for entry in FitbitHeartRate::read_from_db(&pool, &date).unwrap() {
+                for entry in FitbitHeartRate::read_from_db(&pool, *date).unwrap() {
                     current_datetimes.insert(entry.datetime);
                 }
             }

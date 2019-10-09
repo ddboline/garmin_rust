@@ -132,7 +132,8 @@ impl ScaleMeasurement {
     pub fn read_from_db(pool: &PgPool) -> Result<Vec<Self>, Error> {
         let query = "
             SELECT datetime, mass, fat_pct, water_pct, muscle_pct, bone_pct
-            FROM scale_measurements";
+            FROM scale_measurements
+            ORDER BY datetime";
         let conn = pool.get()?;
         conn.query(query, &[])?
             .iter()

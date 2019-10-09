@@ -1,4 +1,4 @@
-use chrono::{Datelike, FixedOffset, Local, NaiveDate, TimeZone};
+use chrono::{FixedOffset, Local, NaiveDate, TimeZone};
 use cpython::{
     FromPyObject, ObjectProtocol, PyDict, PyList, PyObject, PyResult, PyTuple, Python,
     PythonObject, ToPyObject,
@@ -148,13 +148,14 @@ impl FitbitClient {
     fn _get_fitbit_intraday_time_series_heartrate(
         &self,
         py: Python,
-        date: &str,
+        date: NaiveDate,
         offset: FixedOffset,
     ) -> PyResult<Vec<FitbitHeartRate>> {
         let client = self.get_fitbit_client(py, false)?;
         client.call_method(py, "user_profile_get", PyTuple::empty(py), None)?;
         let args = PyDict::new(py);
-        args.set_item(py, "base_date", date)?;
+        let date = date.to_string();
+        args.set_item(py, "base_date", &date)?;
         let result = client.call_method(
             py,
             "intraday_time_series",
@@ -171,40 +172,32 @@ impl FitbitClient {
         let mut results = Vec::new();
         for item in dataset.iter(py) {
             let dict = PyDict::extract(py, &item)?;
-            results.push(FitbitHeartRate::from_pydict(py, dict, date, offset)?);
+            results.push(FitbitHeartRate::from_pydict(py, dict, &date, offset)?);
         }
         Ok(results)
     }
 
     pub fn get_fitbit_intraday_time_series_heartrate(
         &self,
-        date: &str,
+        date: NaiveDate,
     ) -> Result<Vec<FitbitHeartRate>, Error> {
         let gil = Python::acquire_gil();
         let py = gil.python();
 
-        let naivedate = NaiveDate::parse_from_str(date, "%Y-%m-%d")?;
-        let offset = Local.offset_from_local_date(&naivedate).unwrap();
+        let offset = Local.offset_from_local_date(&date).unwrap();
         self._get_fitbit_intraday_time_series_heartrate(py, date, offset)
             .map_err(|e| format_err!("{:?}", e))
     }
 
-    pub fn import_fitbit_heartrate(&self, date: &str, pool: &PgPool) -> Result<(), Error> {
+    pub fn import_fitbit_heartrate(&self, date: NaiveDate, pool: &PgPool) -> Result<(), Error> {
         let heartrates = self.get_fitbit_intraday_time_series_heartrate(date)?;
         let dates: HashSet<_> = heartrates
             .par_iter()
-            .map(|entry| {
-                format!(
-                    "{:04}-{:02}-{:02}",
-                    entry.datetime.year(),
-                    entry.datetime.month(),
-                    entry.datetime.day()
-                )
-            })
+            .map(|entry| entry.datetime.date().naive_local())
             .collect();
         let mut current_datetimes = HashSet::new();
         for date in &dates {
-            for entry in FitbitHeartRate::read_from_db(&pool, &date).unwrap() {
+            for entry in FitbitHeartRate::read_from_db(&pool, *date).unwrap() {
                 current_datetimes.insert(entry.datetime);
             }
         }

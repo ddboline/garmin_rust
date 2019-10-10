@@ -146,7 +146,7 @@ impl FitbitHeartRate {
             SELECT a.datetime, a.bpm
             FROM fitbit_heartrate_temp a
             WHERE NOT EXISTS (
-                SELECT b.datetime FROM fitbit_heatrate b WHERE a.datetime = b.datetime
+                SELECT b.datetime FROM fitbit_heartrate b WHERE a.datetime = b.datetime
             )
         ";
         trans.execute(query, &[])?;

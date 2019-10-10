@@ -12,7 +12,7 @@ use tokio_timer::Interval;
 
 use garmin_lib::common::pgpool::PgPool;
 
-use super::logged_user::AuthorizedUsers;
+use super::logged_user::AUTHORIZED_USERS;
 use crate::garmin_rust_routes::{
     fitbit_auth, fitbit_callback, fitbit_heartrate_api, fitbit_heartrate_db,
     fitbit_heartrate_db_update, fitbit_sync, garmin, garmin_connect_sync, garmin_get_hr_data,
@@ -27,7 +27,6 @@ use crate::CONFIG;
 /// user_list contains a shared cache of previously authorized users
 pub struct AppState {
     pub db: Addr<PgPool>,
-    pub user_list: AuthorizedUsers,
 }
 
 /// Create the actix-web server.
@@ -42,9 +41,7 @@ pub fn start_app() {
     let config = &CONFIG;
     let pool = PgPool::new(&config.pgurl);
 
-    let user_list = AuthorizedUsers::new();
-
-    let _u = user_list.clone();
+    let _u = AUTHORIZED_USERS.clone();
     let _p = pool.clone();
 
     actix_rt::spawn(
@@ -60,10 +57,7 @@ pub fn start_app() {
 
     HttpServer::new(move || {
         App::new()
-            .data(AppState {
-                db: addr.clone(),
-                user_list: user_list.clone(),
-            })
+            .data(AppState { db: addr.clone() })
             .wrap(IdentityService::new(
                 CookieIdentityPolicy::new(config.secret_key.as_bytes())
                     .name("auth")

@@ -71,303 +71,215 @@ fn form_http_response(body: String) -> HttpResponse {
 
 pub fn garmin(
     query: Query<FilterRequest>,
-    user: LoggedUser,
+    _: LoggedUser,
     state: Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let query = query.into_inner();
     let grec = proc_pattern_wrapper(query);
 
-    state.db.send(grec).from_err().and_then(move |res| {
-        res.and_then(|body| {
-            if !state.user_list.is_authorized(&user) {
-                return Ok(HttpResponse::Unauthorized()
-                    .json(format!("Unauthorized {:?}", state.user_list)));
-            }
-            Ok(form_http_response(body))
-        })
-    })
+    state
+        .db
+        .send(grec)
+        .from_err()
+        .and_then(move |res| res.and_then(|body| Ok(form_http_response(body))))
 }
 
 pub fn garmin_connect_sync(
-    user: LoggedUser,
+    _: LoggedUser,
     state: Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     state
         .db
         .send(GarminConnectSyncRequest {})
         .from_err()
-        .and_then(move |res| {
-            res.and_then(|flist| {
-                if !state.user_list.is_authorized(&user) {
-                    return Ok(HttpResponse::Unauthorized()
-                        .json(format!("Unauthorized {:?}", state.user_list)));
-                }
-                to_json(&flist)
-            })
-        })
+        .and_then(move |res| res.and_then(|flist| to_json(&flist)))
 }
 
 pub fn garmin_sync(
-    user: LoggedUser,
+    _: LoggedUser,
     state: Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     state
         .db
         .send(GarminSyncRequest {})
         .from_err()
-        .and_then(move |res| {
-            res.and_then(|_| {
-                if !state.user_list.is_authorized(&user) {
-                    return Ok(HttpResponse::Unauthorized()
-                        .json(format!("Unauthorized {:?}", state.user_list)));
-                }
-                Ok(form_http_response("finished".into()))
-            })
-        })
+        .and_then(move |res| res.and_then(|_| Ok(form_http_response("finished".into()))))
 }
 
 pub fn strava_sync(
-    user: LoggedUser,
+    _: LoggedUser,
     state: Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     state
         .db
         .send(StravaSyncRequest {})
         .from_err()
-        .and_then(move |res| {
-            res.and_then(|_| {
-                if !state.user_list.is_authorized(&user) {
-                    return Ok(HttpResponse::Unauthorized()
-                        .json(format!("Unauthorized {:?}", state.user_list)));
-                }
-                Ok(form_http_response("finished".into()))
-            })
-        })
+        .and_then(move |res| res.and_then(|_| Ok(form_http_response("finished".into()))))
 }
 
 pub fn strava_auth(
     query: Query<StravaAuthRequest>,
-    user: LoggedUser,
+    _: LoggedUser,
     state: Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let query = query.into_inner();
-    state.db.send(query).from_err().and_then(move |res| {
-        res.and_then(|url| {
-            if !state.user_list.is_authorized(&user) {
-                return Ok(HttpResponse::Unauthorized()
-                    .json(format!("Unauthorized {:?}", state.user_list)));
-            }
-            Ok(form_http_response(url))
-        })
-    })
+    state
+        .db
+        .send(query)
+        .from_err()
+        .and_then(move |res| res.and_then(|url| Ok(form_http_response(url))))
 }
 
 pub fn strava_callback(
     query: Query<StravaCallbackRequest>,
-    user: LoggedUser,
+    _: LoggedUser,
     state: Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let query = query.into_inner();
-    state.db.send(query).from_err().and_then(move |res| {
-        res.and_then(|body| {
-            if !state.user_list.is_authorized(&user) {
-                return Ok(HttpResponse::Unauthorized()
-                    .json(format!("Unauthorized {:?}", state.user_list)));
-            }
-            Ok(form_http_response(body))
-        })
-    })
+    state
+        .db
+        .send(query)
+        .from_err()
+        .and_then(move |res| res.and_then(|body| Ok(form_http_response(body))))
 }
 
 pub fn strava_activities(
     query: Query<StravaActivitiesRequest>,
-    user: LoggedUser,
+    _: LoggedUser,
     state: Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let query = query.into_inner();
-    state.db.send(query).from_err().and_then(move |res| {
-        res.and_then(|alist| {
-            if !state.user_list.is_authorized(&user) {
-                return Ok(HttpResponse::Unauthorized()
-                    .json(format!("Unauthorized {:?}", state.user_list)));
-            }
-            to_json(&alist)
-        })
-    })
+    state
+        .db
+        .send(query)
+        .from_err()
+        .and_then(move |res| res.and_then(|alist| to_json(&alist)))
 }
 
 pub fn strava_upload(
     payload: Json<StravaUploadRequest>,
-    user: LoggedUser,
+    _: LoggedUser,
     state: Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let payload = payload.into_inner();
-    state.db.send(payload).from_err().and_then(move |res| {
-        res.and_then(|body| {
-            if !state.user_list.is_authorized(&user) {
-                return Ok(HttpResponse::Unauthorized()
-                    .json(format!("Unauthorized {:?}", state.user_list)));
-            }
-            Ok(form_http_response(body))
-        })
-    })
+    state
+        .db
+        .send(payload)
+        .from_err()
+        .and_then(move |res| res.and_then(|body| Ok(form_http_response(body))))
 }
 
 pub fn strava_update(
     payload: Json<StravaUpdateRequest>,
-    user: LoggedUser,
+    _: LoggedUser,
     state: Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let payload = payload.into_inner();
-    state.db.send(payload).from_err().and_then(move |res| {
-        res.and_then(|url| {
-            if !state.user_list.is_authorized(&user) {
-                return Ok(HttpResponse::Unauthorized()
-                    .json(format!("Unauthorized {:?}", state.user_list)));
-            }
-            Ok(form_http_response(url))
-        })
-    })
+    state
+        .db
+        .send(payload)
+        .from_err()
+        .and_then(move |res| res.and_then(|url| Ok(form_http_response(url))))
 }
 
 pub fn fitbit_auth(
-    user: LoggedUser,
+    _: LoggedUser,
     state: Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     state
         .db
         .send(FitbitAuthRequest {})
         .from_err()
-        .and_then(move |res| {
-            res.and_then(|body| {
-                if !state.user_list.is_authorized(&user) {
-                    return Ok(HttpResponse::Unauthorized()
-                        .json(format!("Unauthorized {:?}", state.user_list)));
-                }
-                Ok(form_http_response(body))
-            })
-        })
+        .and_then(move |res| res.and_then(|body| Ok(form_http_response(body))))
 }
 
 pub fn fitbit_heartrate_api(
     query: Query<FitbitHeartrateApiRequest>,
-    user: LoggedUser,
+    _: LoggedUser,
     state: Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let query = query.into_inner();
-    state.db.send(query).from_err().and_then(move |res| {
-        res.and_then(|hlist| {
-            if !state.user_list.is_authorized(&user) {
-                return Ok(HttpResponse::Unauthorized()
-                    .json(format!("Unauthorized {:?}", state.user_list)));
-            }
-            to_json(&hlist)
-        })
-    })
+    state
+        .db
+        .send(query)
+        .from_err()
+        .and_then(move |res| res.and_then(|hlist| to_json(&hlist)))
 }
 
 pub fn fitbit_heartrate_db(
     query: Query<FitbitHeartrateDbRequest>,
-    user: LoggedUser,
+    _: LoggedUser,
     state: Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let query = query.into_inner();
-    state.db.send(query).from_err().and_then(move |res| {
-        res.and_then(|hlist| {
-            if !state.user_list.is_authorized(&user) {
-                return Ok(HttpResponse::Unauthorized()
-                    .json(format!("Unauthorized {:?}", state.user_list)));
-            }
-            to_json(&hlist)
-        })
-    })
+    state
+        .db
+        .send(query)
+        .from_err()
+        .and_then(move |res| res.and_then(|hlist| to_json(&hlist)))
 }
 
 pub fn fitbit_heartrate_db_update(
     data: Json<FitbitHeartrateDbUpdateRequest>,
-    user: LoggedUser,
+    _: LoggedUser,
     state: Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let req = data.into_inner();
-    state.db.send(req).from_err().and_then(move |res| {
-        res.and_then(|_| {
-            if !state.user_list.is_authorized(&user) {
-                return Ok(HttpResponse::Unauthorized()
-                    .json(format!("Unauthorized {:?}", state.user_list)));
-            }
-            Ok(form_http_response("finished".into()))
-        })
-    })
+    state
+        .db
+        .send(req)
+        .from_err()
+        .and_then(move |res| res.and_then(|_| Ok(form_http_response("finished".into()))))
 }
 
 pub fn fitbit_callback(
     query: Query<FitbitCallbackRequest>,
-    user: LoggedUser,
+    _: LoggedUser,
     state: Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let query = query.into_inner();
-    state.db.send(query).from_err().and_then(move |res| {
-        res.and_then(|body| {
-            if !state.user_list.is_authorized(&user) {
-                return Ok(HttpResponse::Unauthorized()
-                    .json(format!("Unauthorized {:?}", state.user_list)));
-            }
-            Ok(form_http_response(body))
-        })
-    })
+    state
+        .db
+        .send(query)
+        .from_err()
+        .and_then(move |res| res.and_then(|body| Ok(form_http_response(body))))
 }
 
 pub fn fitbit_sync(
     query: Query<FitbitSyncRequest>,
-    user: LoggedUser,
+    _: LoggedUser,
     state: Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let query = query.into_inner();
-    state.db.send(query).from_err().and_then(move |res| {
-        res.and_then(|_| {
-            if !state.user_list.is_authorized(&user) {
-                return Ok(HttpResponse::Unauthorized()
-                    .json(format!("Unauthorized {:?}", state.user_list)));
-            }
-            Ok(form_http_response("finished".into()))
-        })
-    })
+    state
+        .db
+        .send(query)
+        .from_err()
+        .and_then(move |res| res.and_then(|_| Ok(form_http_response("finished".into()))))
 }
 
 pub fn scale_measurement(
-    user: LoggedUser,
+    _: LoggedUser,
     state: Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     state
         .db
         .send(ScaleMeasurementRequest {})
         .from_err()
-        .and_then(move |res| {
-            res.and_then(|slist| {
-                if !state.user_list.is_authorized(&user) {
-                    return Ok(HttpResponse::Unauthorized()
-                        .json(format!("Unauthorized {:?}", state.user_list)));
-                }
-                to_json(&slist)
-            })
-        })
+        .and_then(move |res| res.and_then(|slist| to_json(&slist)))
 }
 
 pub fn scale_measurement_update(
     data: Json<ScaleMeasurementUpdateRequest>,
-    user: LoggedUser,
+    _: LoggedUser,
     state: Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let measurements = data.into_inner();
-    state.db.send(measurements).from_err().and_then(move |res| {
-        res.and_then(|_| {
-            if !state.user_list.is_authorized(&user) {
-                return Ok(HttpResponse::Unauthorized()
-                    .json(format!("Unauthorized {:?}", state.user_list)));
-            }
-            Ok(form_http_response("finished".into()))
-        })
-    })
+    state
+        .db
+        .send(measurements)
+        .from_err()
+        .and_then(move |res| res.and_then(|_| Ok(form_http_response("finished".into()))))
 }
 
 #[derive(Serialize)]
@@ -390,7 +302,7 @@ where
 
 pub fn garmin_list_gps_tracks(
     query: Query<FilterRequest>,
-    user: LoggedUser,
+    _: LoggedUser,
     state: Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let query = query.into_inner();
@@ -399,9 +311,6 @@ pub fn garmin_list_gps_tracks(
 
     state.db.send(greq).from_err().and_then(move |res| {
         res.and_then(|gps_list| {
-            if !state.user_list.is_authorized(&user) {
-                return Ok(HttpResponse::Unauthorized().json("Unauthorized"));
-            }
             let glist = GpsList { gps_list };
             to_json(&glist)
         })
@@ -415,7 +324,7 @@ pub struct HrData {
 
 pub fn garmin_get_hr_data(
     query: Query<FilterRequest>,
-    user: LoggedUser,
+    _: LoggedUser,
     state: Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let query = query.into_inner();
@@ -429,9 +338,6 @@ pub fn garmin_get_hr_data(
         .join(state.db.send(GarminCorrRequest {}).from_err())
         .and_then(move |(res0, res1)| {
             res0.and_then(|file_list| {
-                if !state.user_list.is_authorized(&user) {
-                    return Ok(HttpResponse::Unauthorized().json("Unauthorized"));
-                }
                 let hr_data = match file_list.len() {
                     1 => {
                         let config = &CONFIG;
@@ -479,7 +385,7 @@ pub struct HrPaceList {
 
 pub fn garmin_get_hr_pace(
     query: Query<FilterRequest>,
-    user: LoggedUser,
+    _: LoggedUser,
     state: Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let query = query.into_inner();
@@ -493,10 +399,6 @@ pub fn garmin_get_hr_pace(
         .join(state.db.send(GarminCorrRequest {}).from_err())
         .and_then(move |(res0, res1)| {
             res0.and_then(|file_list| {
-                if !state.user_list.is_authorized(&user) {
-                    return Ok(HttpResponse::Unauthorized().json("Unauthorized"));
-                }
-
                 let hrpace = match file_list.len() {
                     1 => {
                         let config = &CONFIG;

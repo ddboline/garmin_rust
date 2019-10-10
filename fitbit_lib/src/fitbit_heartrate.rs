@@ -120,10 +120,40 @@ impl FitbitHeartRate {
     }
 
     pub fn insert_slice_into_db(slice: &[Self], pool: &PgPool) -> Result<(), Error> {
-        slice
-            .into_par_iter()
-            .map(|entry| entry.insert_into_db(pool))
-            .collect()
+        let conn = pool.get()?;
+        let trans = conn.transaction()?;
+        let query = "
+            CREATE TABLE fitbit_heartrate_temp
+            AS (SELECT datetime, bpm FROM fitbit_heartrate limit 0)";
+        trans.execute(query, &[])?;
+        let query = "
+            INSERT INTO fitbit_heartrate (datetime, bpm)
+            SELECT $1, $2
+            WHERE NOT EXISTS
+            (SELECT datetime FROM fitbit_heartrate_temp WHERE datetime = $1)";
+        let results: Result<_, Error> = slice
+            .into_iter()
+            .map(|entry| {
+                trans
+                    .execute(query, &[&entry.datetime, &entry.value])
+                    .map_err(err_msg)
+                    .map(|_| ())
+            })
+            .collect();
+        results?;
+        let query = "
+            INSERT INTO fitbit_heartrate (datetime, bpm)
+            SELECT a.datetime, a.bpm
+            FROM fitbit_heartrate_temp a
+            WHERE NOT EXISTS (
+                SELECT b.datetime FROM fitbit_heatrate b WHERE a.datetime = b.datetime
+            )
+        ";
+        trans.execute(query, &[])?;
+        let query = "DROP TABLE fitbit_heartrate_temp";
+        trans.execute(query, &[])?;
+        trans.commit()?;
+        Ok(())
     }
 }
 

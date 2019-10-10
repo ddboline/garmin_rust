@@ -197,7 +197,7 @@ impl FitbitClient {
             .collect();
         let mut current_datetimes = HashSet::new();
         for date in &dates {
-            for entry in FitbitHeartRate::read_from_db(&pool, *date).unwrap() {
+            for entry in FitbitHeartRate::read_from_db(pool, *date).unwrap() {
                 current_datetimes.insert(entry.datetime);
             }
         }
@@ -207,15 +207,7 @@ impl FitbitClient {
             dates.len(),
             current_datetimes.len()
         );
-        heartrates
-            .par_iter()
-            .map(|entry| {
-                if !current_datetimes.contains(&entry.datetime) {
-                    entry.insert_into_db(&pool.clone())?;
-                }
-                Ok(())
-            })
-            .collect()
+        FitbitHeartRate::insert_slice_into_db(&heartrates, pool)
     }
 }
 

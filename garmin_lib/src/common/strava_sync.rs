@@ -82,7 +82,7 @@ pub fn upsert_strava_id<S: BuildHasher>(
         .filter_map(|(id, new_item)| {
             strava_id_map.get(id).and_then(|item| {
                 if new_item != item {
-                    Some((id.clone(), new_item.clone()))
+                    Some((id, new_item))
                 } else {
                     None
                 }
@@ -99,7 +99,7 @@ pub fn upsert_strava_id<S: BuildHasher>(
         .map(|(key, val)| {
             let conn = pool.get()?;
             conn.execute(query, &[&key, &val.title])?;
-            Ok(key)
+            Ok(key.to_string())
         })
         .collect();
     let mut output: Vec<_> = items?;
@@ -114,11 +114,12 @@ pub fn upsert_strava_id<S: BuildHasher>(
         .map(|(key, val)| {
             let conn = pool.get()?;
             conn.execute(query, &[&key, &val.begin_datetime, &val.title])?;
-            Ok(key.to_owned())
+            Ok(key.to_string())
         })
         .collect();
 
     let items: Vec<_> = items?;
+
     output.extend(items);
     Ok(output)
 }

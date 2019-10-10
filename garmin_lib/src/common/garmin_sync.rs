@@ -144,7 +144,7 @@ impl GarminSync<S3Client> {
         )?;
         let key_set: HashMap<_, _> = key_list
             .iter()
-            .map(|item| (item.key.to_string(), item.clone()))
+            .map(|item| (item.key.to_string(), item))
             .collect();
 
         let results: Result<Vec<_>, Error> = file_list

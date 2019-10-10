@@ -97,10 +97,7 @@ impl ReqwestSession {
     }
 
     pub fn get(&self, url: &Url, headers: HeaderMap) -> Result<Response, Error> {
-        self.exponential_retry(|| {
-            let mut client = self.client.lock();
-            client.get(url.clone(), headers.clone())
-        })
+        self.exponential_retry(|| self.client.lock().get(url.clone(), headers.clone()))
     }
 
     pub fn post(
@@ -109,10 +106,7 @@ impl ReqwestSession {
         headers: HeaderMap,
         form: &HashMap<&str, &str>,
     ) -> Result<Response, Error> {
-        self.exponential_retry(|| {
-            let mut client = self.client.lock();
-            client.post(url.clone(), headers.clone(), form)
-        })
+        self.exponential_retry(|| self.client.lock().post(url.clone(), headers.clone(), form))
     }
 
     pub fn set_default_headers(&self, headers: HashMap<&str, &str>) -> Result<(), Error> {

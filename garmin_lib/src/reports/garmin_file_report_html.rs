@@ -531,9 +531,7 @@ fn get_map_tempate_vec(
                     .to_string(),
             );
         } else if line.contains("INSERTOTHERIMAGESHERE") {
-            for uri in graphs {
-                htmlvec.push(uri.clone());
-            }
+            htmlvec.extend_from_slice(graphs)
         } else if line.contains("MAPSAPIKEY") {
             htmlvec.push(line.replace("MAPSAPIKEY", &config.maps_api_key).to_string());
         } else if line.contains("HISTORYBUTTONS") {

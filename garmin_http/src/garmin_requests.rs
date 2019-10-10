@@ -410,7 +410,7 @@ impl Handler<StravaUploadRequest> for PgPool {
             .upload_strava_activity(
                 &filepath,
                 &msg.title,
-                &msg.description.clone().unwrap_or_else(|| "".to_string()),
+                msg.description.as_ref().map(|x| x.as_str()).unwrap_or(""),
                 msg.is_private.unwrap_or(false),
                 sport,
             )

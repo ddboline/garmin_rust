@@ -169,6 +169,25 @@ impl GarminLap {
 
 impl fmt::Display for GarminLap {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let lap_type = self.lap_type.as_ref().map(|x| x.as_str()).unwrap_or("None");
+        let lap_trigger = self
+            .lap_trigger
+            .as_ref()
+            .map(|x| x.as_str())
+            .unwrap_or("None");
+        let lap_intensity = self
+            .lap_intensity
+            .as_ref()
+            .map(|x| x.as_str())
+            .unwrap_or("None");
+        let lap_start_string = self
+            .lap_start_string
+            .as_ref()
+            .map(|x| x.as_str())
+            .unwrap_or("None");
+        let lap_max_speed = self.lap_max_speed.unwrap_or(-1.0);
+        let lap_avg_hr = self.lap_avg_hr.unwrap_or(-1.0);
+        let lap_max_hr = self.lap_max_hr.unwrap_or(-1);
         let keys = vec![
             "lap_type",
             "lap_index",
@@ -184,26 +203,20 @@ impl fmt::Display for GarminLap {
             "lap_number",
             "lap_start_string",
         ];
-        let vals = vec![
-            self.lap_type.clone().unwrap_or_else(|| "None".to_string()),
-            self.lap_index.to_string(),
-            self.lap_start.to_string(),
-            self.lap_duration.to_string(),
-            self.lap_distance.to_string(),
-            self.lap_trigger
-                .clone()
-                .unwrap_or_else(|| "None".to_string()),
-            self.lap_max_speed.unwrap_or(-1.0).to_string(),
-            self.lap_calories.to_string(),
-            self.lap_avg_hr.unwrap_or(-1.0).to_string(),
-            self.lap_max_hr.unwrap_or(-1).to_string(),
-            self.lap_intensity
-                .clone()
-                .unwrap_or_else(|| "None".to_string()),
-            self.lap_number.to_string(),
-            self.lap_start_string
-                .clone()
-                .unwrap_or_else(|| "None".to_string()),
+        let vals: Vec<&dyn fmt::Display> = vec![
+            &lap_type,
+            &self.lap_index,
+            &self.lap_start,
+            &self.lap_duration,
+            &self.lap_distance,
+            &lap_trigger,
+            &lap_max_speed,
+            &self.lap_calories,
+            &lap_avg_hr,
+            &lap_max_hr,
+            &lap_intensity,
+            &self.lap_number,
+            &lap_start_string,
         ];
         write!(
             f,

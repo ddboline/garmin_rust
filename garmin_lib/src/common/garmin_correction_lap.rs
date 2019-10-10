@@ -273,7 +273,7 @@ impl GarminCorrectionList {
 
                 for lap_number in lap_list {
                     let new_corr = match corr_list_map.get(&(time, lap_number)) {
-                        Some(v) => v.clone().with_sport(sport),
+                        Some(v) => v.with_sport(sport),
                         None => GarminCorrectionLap::new()
                             .with_start_time(time)
                             .with_lap_number(lap_number)

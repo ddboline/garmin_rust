@@ -63,10 +63,17 @@ fn proc_pattern_wrapper(request: FilterRequest) -> GarminHtmlRequest {
     })
 }
 
-fn form_http_response(body: String) -> HttpResponse {
-    HttpResponse::build(StatusCode::OK)
+fn form_http_response(body: String) -> Result<HttpResponse, Error> {
+    Ok(HttpResponse::build(StatusCode::OK)
         .content_type("text/html; charset=utf-8")
-        .body(body)
+        .body(body))
+}
+
+fn to_json<T>(js: &T) -> Result<HttpResponse, Error>
+where
+    T: Serialize,
+{
+    Ok(HttpResponse::Ok().json2(js))
 }
 
 pub fn garmin(
@@ -81,7 +88,7 @@ pub fn garmin(
         .db
         .send(grec)
         .from_err()
-        .and_then(move |res| res.and_then(|body| Ok(form_http_response(body))))
+        .and_then(move |res| res.and_then(form_http_response))
 }
 
 pub fn garmin_connect_sync(
@@ -103,7 +110,7 @@ pub fn garmin_sync(
         .db
         .send(GarminSyncRequest {})
         .from_err()
-        .and_then(move |res| res.and_then(|_| Ok(form_http_response("finished".into()))))
+        .and_then(move |res| res.and_then(|_| form_http_response("finished".into())))
 }
 
 pub fn strava_sync(
@@ -114,7 +121,7 @@ pub fn strava_sync(
         .db
         .send(StravaSyncRequest {})
         .from_err()
-        .and_then(move |res| res.and_then(|_| Ok(form_http_response("finished".into()))))
+        .and_then(move |res| res.and_then(|_| form_http_response("finished".into())))
 }
 
 pub fn strava_auth(
@@ -127,7 +134,7 @@ pub fn strava_auth(
         .db
         .send(query)
         .from_err()
-        .and_then(move |res| res.and_then(|url| Ok(form_http_response(url))))
+        .and_then(move |res| res.and_then(form_http_response))
 }
 
 pub fn strava_callback(
@@ -140,7 +147,7 @@ pub fn strava_callback(
         .db
         .send(query)
         .from_err()
-        .and_then(move |res| res.and_then(|body| Ok(form_http_response(body))))
+        .and_then(move |res| res.and_then(form_http_response))
 }
 
 pub fn strava_activities(
@@ -166,7 +173,7 @@ pub fn strava_upload(
         .db
         .send(payload)
         .from_err()
-        .and_then(move |res| res.and_then(|body| Ok(form_http_response(body))))
+        .and_then(move |res| res.and_then(form_http_response))
 }
 
 pub fn strava_update(
@@ -179,7 +186,7 @@ pub fn strava_update(
         .db
         .send(payload)
         .from_err()
-        .and_then(move |res| res.and_then(|url| Ok(form_http_response(url))))
+        .and_then(move |res| res.and_then(form_http_response))
 }
 
 pub fn fitbit_auth(
@@ -190,7 +197,7 @@ pub fn fitbit_auth(
         .db
         .send(FitbitAuthRequest {})
         .from_err()
-        .and_then(move |res| res.and_then(|body| Ok(form_http_response(body))))
+        .and_then(move |res| res.and_then(form_http_response))
 }
 
 pub fn fitbit_heartrate_api(
@@ -229,7 +236,7 @@ pub fn fitbit_heartrate_db_update(
         .db
         .send(req)
         .from_err()
-        .and_then(move |res| res.and_then(|_| Ok(form_http_response("finished".into()))))
+        .and_then(move |res| res.and_then(|_| form_http_response("finished".into())))
 }
 
 pub fn fitbit_callback(
@@ -242,7 +249,7 @@ pub fn fitbit_callback(
         .db
         .send(query)
         .from_err()
-        .and_then(move |res| res.and_then(|body| Ok(form_http_response(body))))
+        .and_then(move |res| res.and_then(form_http_response))
 }
 
 pub fn fitbit_sync(
@@ -255,7 +262,7 @@ pub fn fitbit_sync(
         .db
         .send(query)
         .from_err()
-        .and_then(move |res| res.and_then(|_| Ok(form_http_response("finished".into()))))
+        .and_then(move |res| res.and_then(|_| form_http_response("finished".into())))
 }
 
 pub fn scale_measurement(
@@ -279,7 +286,7 @@ pub fn scale_measurement_update(
         .db
         .send(measurements)
         .from_err()
-        .and_then(move |res| res.and_then(|_| Ok(form_http_response("finished".into()))))
+        .and_then(move |res| res.and_then(|_| form_http_response("finished".into())))
 }
 
 #[derive(Serialize)]
@@ -291,13 +298,6 @@ pub struct GpsList {
 pub struct TimeValue {
     pub time: String,
     pub value: f64,
-}
-
-fn to_json<T>(js: &T) -> Result<HttpResponse, Error>
-where
-    T: Serialize,
-{
-    Ok(HttpResponse::Ok().json2(js))
 }
 
 pub fn garmin_list_gps_tracks(

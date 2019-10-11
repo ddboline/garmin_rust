@@ -396,11 +396,13 @@ impl GarminCli {
                     None => {
                         if pat.contains('w') {
                             let vals: Vec<_> = pat.split('w').collect();
-                            if let Ok(year) = vals[0].parse::<i32>() {
-                                if let Ok(week) = vals[1].parse::<i32>() {
-                                    constraints.push(format!(
-                                        "(EXTRACT(isoyear from begin_datetime at time zone 'localtime') = {} AND
-                                        EXTRACT(week from begin_datetime at time zone 'localtime') = {})", year, week));
+                            if vals.len() >= 2 {
+                                if let Ok(year) = vals[0].parse::<i32>() {
+                                    if let Ok(week) = vals[1].parse::<i32>() {
+                                        constraints.push(format!(
+                                            "(EXTRACT(isoyear from begin_datetime at time zone 'localtime') = {} AND
+                                            EXTRACT(week from begin_datetime at time zone 'localtime') = {})", year, week));
+                                    }
                                 }
                             }
                         } else {

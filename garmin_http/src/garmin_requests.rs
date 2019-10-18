@@ -150,15 +150,16 @@ impl Handler<StravaSyncRequest> for PgPool {
 pub struct GarminSyncRequest {}
 
 impl Message for GarminSyncRequest {
-    type Result = Result<(), Error>;
+    type Result = Result<Vec<String>, Error>;
 }
 
 impl Handler<GarminSyncRequest> for PgPool {
-    type Result = Result<(), Error>;
+    type Result = Result<Vec<String>, Error>;
     fn handle(&mut self, _: GarminSyncRequest, _: &mut Self::Context) -> Self::Result {
         let gcli = GarminCli::from_pool(&self)?;
-        gcli.sync_everything(false)?;
-        gcli.proc_everything()
+        let mut output = gcli.sync_everything(false)?;
+        output.extend_from_slice(&gcli.proc_everything()?);
+        Ok(output)
     }
 }
 

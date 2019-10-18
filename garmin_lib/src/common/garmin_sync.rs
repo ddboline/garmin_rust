@@ -110,7 +110,9 @@ impl GarminSync<S3Client> {
         local_dir: &str,
         s3_bucket: &str,
         check_md5sum: bool,
-    ) -> Result<(), Error> {
+    ) -> Result<Vec<String>, Error> {
+        let mut output = Vec::new();
+
         let path = Path::new(local_dir);
 
         let file_list: Result<Vec<_>, Error> = path
@@ -136,12 +138,9 @@ impl GarminSync<S3Client> {
             .collect();
 
         let key_list = self.get_list_of_keys(s3_bucket)?;
-        writeln!(
-            stdout().lock(),
-            "{} s3_bucketnkeys {}",
-            s3_bucket,
-            key_list.len()
-        )?;
+        let msg = format!("{} s3_bucketnkeys {}", s3_bucket, key_list.len());
+        writeln!(stdout().lock(), "{}", msg)?;
+        output.push(msg);
         let key_set: HashMap<_, _> = key_list
             .iter()
             .map(|item| (item.key.to_string(), item))
@@ -185,7 +184,7 @@ impl GarminSync<S3Client> {
             .collect();
         results?;
 
-        key_list
+        let result: Result<(), Error> = key_list
             .par_iter()
             .map(|item| {
                 let mut do_download = false;
@@ -212,12 +211,13 @@ impl GarminSync<S3Client> {
                 if do_download {
                     let file_name = format!("{}/{}", local_dir, item.key);
                     debug!("download {} {}", s3_bucket, item.key);
-
                     self.download_file(&file_name, &s3_bucket, &item.key)?;
                 }
                 Ok(())
             })
-            .collect()
+            .collect();
+        result?;
+        Ok(output)
     }
 
     pub fn download_file(

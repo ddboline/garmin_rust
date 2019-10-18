@@ -215,7 +215,7 @@ impl GarminCli {
         &self.parser
     }
 
-    pub fn garmin_proc(&self) -> Result<(), Error> {
+    pub fn garmin_proc(&self) -> Result<Vec<String>, Error> {
         if let Some(GarminCliOptions::Connect) = self.get_opts() {
             self.sync_with_garmin_connect()?;
         }
@@ -231,7 +231,7 @@ impl GarminCli {
         }
     }
 
-    pub fn proc_everything(&self) -> Result<(), Error> {
+    pub fn proc_everything(&self) -> Result<Vec<String>, Error> {
         let corr_list = self.get_corr().read_corrections_from_db()?;
         let corr_map = corr_list.get_corr_list_map();
 
@@ -239,9 +239,9 @@ impl GarminCli {
 
         if !gsum_list.summary_list.is_empty() {
             gsum_list.write_summary_to_avro_files(&self.get_config().summary_cache)?;
-            gsum_list.write_summary_to_postgres()
+            gsum_list.write_summary_to_postgres().map(|_| Vec::new())
         } else {
-            Ok(())
+            Ok(Vec::new())
         }
     }
 
@@ -317,11 +317,11 @@ impl GarminCli {
         Ok(gsum_list)
     }
 
-    pub fn run_bootstrap(&self) -> Result<(), Error> {
+    pub fn run_bootstrap(&self) -> Result<Vec<String>, Error> {
         self.sync_everything(true)
     }
 
-    pub fn sync_everything(&self, check_md5: bool) -> Result<(), Error> {
+    pub fn sync_everything(&self, check_md5: bool) -> Result<Vec<String>, Error> {
         let gsync = GarminSync::new();
 
         let options = vec![
@@ -349,7 +349,9 @@ impl GarminCli {
             .into_par_iter()
             .map(|(title, local_dir, s3_bucket, check_md5)| {
                 writeln!(stdout().lock(), "{}", title)?;
-                gsync.sync_dir(local_dir, s3_bucket, check_md5)
+                let mut output = vec![title.to_string()];
+                output.extend_from_slice(&gsync.sync_dir(local_dir, s3_bucket, check_md5)?);
+                Ok(output.join("\n"))
             })
             .collect()
     }

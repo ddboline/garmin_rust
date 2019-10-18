@@ -110,7 +110,15 @@ pub fn garmin_sync(
         .db
         .send(GarminSyncRequest {})
         .from_err()
-        .and_then(move |res| res.and_then(|_| form_http_response("finished".into())))
+        .and_then(move |res| {
+            res.and_then(|body| {
+                let body = format!(
+                    r#"<textarea cols=100 rows=40>{}</textarea>"#,
+                    body.join("\n")
+                );
+                form_http_response(body)
+            })
+        })
 }
 
 pub fn strava_sync(
@@ -121,7 +129,15 @@ pub fn strava_sync(
         .db
         .send(StravaSyncRequest {})
         .from_err()
-        .and_then(move |res| res.and_then(|_| form_http_response("finished".into())))
+        .and_then(move |res| {
+            res.and_then(|body| {
+                let body = format!(
+                    r#"<textarea cols=100 rows=40>{}</textarea>"#,
+                    body.join("\n")
+                );
+                form_http_response(body)
+            })
+        })
 }
 
 pub fn strava_auth(

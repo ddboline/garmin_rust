@@ -444,19 +444,6 @@ impl GarminSummaryList {
             .map(|_| ())
             .map_err(err_msg)
     }
-
-    pub fn dump_summary_from_postgres_to_avro(pool: &PgPool) -> Result<(), Error> {
-        let gsum_list = GarminSummaryList::from_pool(pool).read_summary_from_postgres("")?;
-
-        writeln!(stdout().lock(), "{}", gsum_list.summary_list.len())?;
-
-        gsum_list.dump_summary_to_avro("garmin_summary.avro")?;
-
-        let gsum_list = GarminSummaryList::read_summary_from_avro("garmin_summary.avro")?;
-
-        writeln!(stdout().lock(), "{}", gsum_list.summary_list.len())?;
-        Ok(())
-    }
 }
 
 pub fn get_list_of_files_from_db(

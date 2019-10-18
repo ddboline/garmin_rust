@@ -23,7 +23,7 @@ HISTORYBUTTONS
 <input type="button" name="submitGARMIN" value="Search" onclick="processFormData();"/>
 </form>
 
-<pre>
+<pre id="garmin_text_box">
 <table border="0">
 INSERTTEXTHERE
 </table>
@@ -44,6 +44,7 @@ INSERTTEXTHERE
         xmlhttp.open("GET", ostr, true);
         xmlhttp.onload = function nothing() {
             document.getElementById("garminconnectoutput").innerHTML = "done";
+            document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
         }
         xmlhttp.send(null);
         document.getElementById("garminconnectoutput").innerHTML = "syncing";
@@ -54,6 +55,7 @@ INSERTTEXTHERE
         xmlhttp.open("GET", ostr, true);
         xmlhttp.onload = function nothing() {
             document.getElementById("garminconnectoutput").innerHTML = "done";
+            document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
         }
         xmlhttp.send(null);
         document.getElementById("garminconnectoutput").innerHTML = "syncing";
@@ -74,6 +76,7 @@ INSERTTEXTHERE
         xmlhttp.open("GET", ostr, true);
         xmlhttp.onload = function nothing() {
             document.getElementById("garminconnectoutput").innerHTML = "done";
+            document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
         }
         xmlhttp.send(null);
         document.getElementById("garminconnectoutput").innerHTML = "syncing";

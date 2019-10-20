@@ -169,12 +169,13 @@ impl FitbitClient {
         let dataset = activities_heart_intraday.get_item(py, "dataset")?;
         let dataset = PyList::extract(py, &dataset)?;
 
-        let mut results = Vec::new();
-        for item in dataset.iter(py) {
-            let dict = PyDict::extract(py, &item)?;
-            results.push(FitbitHeartRate::from_pydict(py, dict, &date, offset)?);
-        }
-        Ok(results)
+        dataset
+            .iter(py)
+            .map(|item| {
+                let dict = PyDict::extract(py, &item)?;
+                FitbitHeartRate::from_pydict(py, dict, &date, offset)
+            })
+            .collect()
     }
 
     pub fn get_fitbit_intraday_time_series_heartrate(

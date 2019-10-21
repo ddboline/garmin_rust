@@ -111,8 +111,6 @@ impl GarminSync<S3Client> {
         s3_bucket: &str,
         check_md5sum: bool,
     ) -> Result<Vec<String>, Error> {
-        let mut output = Vec::new();
-
         let path = Path::new(local_dir);
 
         let file_list: Result<Vec<_>, Error> = path
@@ -140,7 +138,7 @@ impl GarminSync<S3Client> {
         let key_list = self.get_list_of_keys(s3_bucket)?;
         let msg = format!("{} s3_bucketnkeys {}", s3_bucket, key_list.len());
         writeln!(stdout().lock(), "{}", msg)?;
-        output.push(msg);
+        let output = vec![msg];
         let key_set: HashMap<_, _> = key_list
             .iter()
             .map(|item| (item.key.to_string(), item))

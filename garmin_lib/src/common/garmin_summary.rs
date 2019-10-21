@@ -1,4 +1,4 @@
-use avro_rs::{from_value, Codec, Reader, Schema, Writer};
+use avro_rs::{Codec, Schema, Writer};
 use chrono::{DateTime, Utc};
 use failure::{err_msg, format_err, Error};
 use log::debug;
@@ -228,38 +228,6 @@ impl GarminSummaryList {
         Ok(GarminSummaryList::from_vec(gsum_result_list?))
     }
 
-    pub fn read_summary_from_avro(input_filename: &str) -> Result<GarminSummaryList, Error> {
-        let garmin_summary_avro_schema = GARMIN_SUMMARY_AVRO_SCHEMA;
-        let schema = Schema::parse_str(&garmin_summary_avro_schema)?;
-
-        let input_file = File::open(input_filename)?;
-
-        let reader = Reader::with_schema(&schema, input_file)?;
-
-        let mut gsum_list = Vec::new();
-
-        for record in reader {
-            match record {
-                Ok(r) => match from_value::<GarminSummary>(&r) {
-                    Ok(v) => {
-                        debug!("{:?}", v);
-                        gsum_list.push(v);
-                    }
-                    Err(e) => {
-                        debug!("got here 0 {:?}", e);
-                        continue;
-                    }
-                },
-                Err(e) => {
-                    debug!("got here 1 {:?}", e);
-                    continue;
-                }
-            };
-        }
-
-        Ok(GarminSummaryList::from_vec(gsum_list))
-    }
-
     pub fn read_summary_from_postgres(&self, pattern: &str) -> Result<GarminSummaryList, Error> {
         let where_str = if !pattern.is_empty() {
             format!("WHERE filename like '%{}%'", pattern)
@@ -329,25 +297,6 @@ impl GarminSummaryList {
                 single_summary.dump_summary_to_avro(&summary_avro_fname)
             })
             .collect()
-    }
-
-    pub fn from_avro_files(summary_cache_dir: &str) -> Result<GarminSummaryList, Error> {
-        let path = Path::new(summary_cache_dir);
-
-        let file_list: Vec<String> = get_file_list(&path);
-
-        let gsum_result_list: Result<Vec<_>, Error> = file_list
-            .par_iter()
-            .map(|f| GarminSummaryList::read_summary_from_avro(f))
-            .collect();
-
-        let gsum_result_list: Vec<_> = gsum_result_list?
-            .into_iter()
-            .map(|g| g.summary_list)
-            .flatten()
-            .collect();
-
-        Ok(GarminSummaryList::from_vec(gsum_result_list))
     }
 
     pub fn write_summary_to_postgres(&self) -> Result<(), Error> {

@@ -66,29 +66,28 @@ impl GarminFile {
     }
 
     fn get_avro_schema() -> String {
-        r#"{
-            "namespace": "garmin.avro",
-            "type": "record",
-            "name": "GarminFile",
-            "fields": [
-                {"name": "filename", "type": "string"},
-                {"name": "filetype", "type": "string"},
-                {"name": "begin_datetime", "type": "string"},
-                {"name": "sport", "type": "string"},
-                {"name": "total_calories", "type": "int"},
-                {"name": "total_distance", "type": "double"},
-                {"name": "total_duration", "type": "double"},
-                {"name": "total_hr_dur", "type": "double"},
-                {"name": "total_hr_dis", "type": "double"},
-                {"name": "laps", "type": {"type": "array", "items":"#
-            .to_string()
-            + &GARMIN_LAP_AVRO_SCHEMA.to_string()
-            + r#"}},
-                {"name": "points", "type": {"type": "array", "items": "#
-            + &GARMIN_POINT_AVRO_SCHEMA.to_string()
-            + r#"}}]
-            }
-        "#
+        format!(
+            "{}{}{}{}{}",
+            r#"{
+                "namespace": "garmin.avro",
+                "type": "record",
+                "name": "GarminFile",
+                "fields": [
+                    {"name": "filename", "type": "string"},
+                    {"name": "filetype", "type": "string"},
+                    {"name": "begin_datetime", "type": "string"},
+                    {"name": "sport", "type": "string"},
+                    {"name": "total_calories", "type": "int"},
+                    {"name": "total_distance", "type": "double"},
+                    {"name": "total_duration", "type": "double"},
+                    {"name": "total_hr_dur", "type": "double"},
+                    {"name": "total_hr_dis", "type": "double"},
+                    {"name": "laps", "type": {"type": "array", "items":"#,
+            GARMIN_LAP_AVRO_SCHEMA,
+            r#"}},{"name": "points", "type": {"type": "array", "items": "#,
+            GARMIN_POINT_AVRO_SCHEMA,
+            r#"}}]}"#,
+        )
     }
 
     pub fn dump_avro(&self, output_filename: &str) -> Result<(), Error> {
@@ -104,12 +103,9 @@ impl GarminFile {
     }
 
     pub fn read_avro(input_filename: &str) -> Result<GarminFile, Error> {
-        let garmin_file_avro_schema = GarminFile::get_avro_schema();
-        let schema = Schema::parse_str(&garmin_file_avro_schema)?;
-
         let input_file = File::open(input_filename)?;
 
-        let mut reader = Reader::with_schema(&schema, input_file)?;
+        let mut reader = Reader::new(input_file)?;
 
         if let Some(record) = reader.next() {
             return match from_value::<GarminFile>(&record?) {

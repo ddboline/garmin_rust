@@ -41,13 +41,12 @@ pub fn start_app() {
     let config = &CONFIG;
     let pool = PgPool::new(&config.pgurl);
 
-    let _u = AUTHORIZED_USERS.clone();
     let _p = pool.clone();
 
     actix_rt::spawn(
         Interval::new(time::Instant::now(), time::Duration::from_secs(60))
             .for_each(move |_| {
-                _u.fill_from_db(&_p).unwrap_or(());
+                AUTHORIZED_USERS.fill_from_db(&_p).unwrap_or(());
                 Ok(())
             })
             .map_err(|e| panic!("error {:?}", e)),

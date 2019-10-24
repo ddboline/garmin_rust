@@ -6,7 +6,6 @@ use lazy_static::lazy_static;
 use log::debug;
 use parking_lot::RwLock;
 use std::collections::HashSet;
-use std::sync::Arc;
 use std::thread::sleep;
 use std::time::Duration;
 use telegram_bot::types::refs::UserId;
@@ -17,12 +16,12 @@ use crate::scale_measurement::ScaleMeasurement;
 use garmin_lib::common::pgpool::PgPool;
 use garmin_lib::utils::row_index_trait::RowIndexTrait;
 
-type WeightLock = Arc<RwLock<Option<ScaleMeasurement>>>;
-type Userids = Arc<RwLock<HashSet<UserId>>>;
+type WeightLock = RwLock<Option<ScaleMeasurement>>;
+type Userids = RwLock<HashSet<UserId>>;
 
 lazy_static! {
-    static ref LAST_WEIGHT: WeightLock = Arc::new(RwLock::new(None));
-    static ref USERIDS: Userids = Arc::new(RwLock::new(HashSet::new()));
+    static ref LAST_WEIGHT: WeightLock = RwLock::new(None);
+    static ref USERIDS: Userids = RwLock::new(HashSet::new());
 }
 
 pub fn run_bot(telegram_bot_token: &str, pool: PgPool, scope: &Scope) -> Result<(), Error> {

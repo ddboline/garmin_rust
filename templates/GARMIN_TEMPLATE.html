@@ -3,8 +3,38 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <title>SPORTTITLEDATE</title>
+<meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+<meta charset="utf-8">
 <meta name="generator" content="HTML::TextToHTML v2.51"/>
 <meta http-equiv="Cache-Control" content="no-store" />
+<style>
+    html, body, #map-canvas {
+      height: 80%;
+      width: 80%;
+    }
+  body { font: 12px Arial;}
+  path {
+      stroke: steelblue;
+      stroke-width: 2;
+      fill: none;
+  }
+  .axis path,
+  .axis line {
+      fill: none;
+      stroke-width: 1;
+      shape-rendering: crispEdges;
+
+      stroke: #000;
+  }
+  .label {
+  font-weight: bold;
+  }
+
+  .tile {
+  shape-rendering: crispEdges;
+  }
+
+  </style>
 </head>
 <body>
 
@@ -14,6 +44,8 @@
     <button type="submit" id="ID" onclick="stravaAuth();">read auth Strava</button>
     <button type="submit" id="ID" onclick="strava_sync();">sync with Strava</button>
     <button name="garminconnectoutput" id="garminconnectoutput"> &nbsp; </button>
+    <button type="submit" onclick="send_command('filter=latest');"> latest </button>
+    <button type="submit" onclick="send_command('filter=sport');"> sport </button>
 </H3>
 
 HISTORYBUTTONS

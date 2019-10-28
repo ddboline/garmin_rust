@@ -1,5 +1,7 @@
+use chrono::{Date, Datelike, Local};
 use failure::Error;
 use log::debug;
+use std::collections::HashSet;
 
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
@@ -15,35 +17,42 @@ use crate::utils::plot_graph::generate_d3_plot;
 use crate::utils::plot_opts::PlotOpts;
 use crate::utils::sport_types::SportTypes;
 
-pub fn generate_history_buttons(history: &str) -> String {
-    let mut history_vec: Vec<String> = history.split(';').map(|s| s.to_string()).collect();
-    let mut history_buttons: Vec<String> = Vec::new();
+pub fn generate_history_buttons(history_vec: &[String]) -> String {
+    let local: Date<Local> = Local::today();
+    let year = local.year();
+    let month = local.month();
+    let (prev_year, prev_month) = if month > 1 {
+        (year, month - 1)
+    } else {
+        (year - 1, 12)
+    };
+    let default_string = format!(
+        "{:04}-{:02},{:04}-{:02},week",
+        prev_year, prev_month, year, month
+    );
+    let mut used_buttons: HashSet<String> = HashSet::new();
 
-    while !history_vec.is_empty() {
-        let most_recent = history_vec.pop().unwrap_or_else(|| "sport".to_string());
-        let history_str = if !history_vec.is_empty() {
-            history_vec.join(";")
-        } else {
-            "latest;sport".to_string()
-        };
+    let history_buttons: Vec<_> = vec![default_string]
+        .iter()
+        .chain(history_vec.iter())
+        .filter_map(|most_recent| {
+            if !used_buttons.contains(most_recent) {
+                used_buttons.insert(most_recent.clone());
+                Some(format!(
+                    "{}{}{}{}{}",
+                    r#"<button type="submit" onclick="send_command('filter="#,
+                    most_recent,
+                    r#"');"> "#,
+                    most_recent,
+                    " </button>"
+                ))
+            } else {
+                None
+            }
+        })
+        .collect();
 
-        history_buttons.push(format!(
-            "{}{}{}{}{}{}{}",
-            r#"<button type="submit" onclick="send_command('filter="#,
-            most_recent,
-            r#"&history="#,
-            history_str,
-            r#"');"> "#,
-            most_recent,
-            " </button>"
-        ));
-    }
-
-    let mut reversed_history_buttons = Vec::new();
-    for b in history_buttons.into_iter().rev() {
-        reversed_history_buttons.push(b);
-    }
-    reversed_history_buttons.join("\n")
+    history_buttons.join("\n")
 }
 
 #[derive(Default)]
@@ -69,7 +78,7 @@ struct ReportObjects {
 pub fn file_report_html(
     config: &GarminConfig,
     gfile: &GarminFile,
-    history: &str,
+    history: &[String],
     pool: Option<&PgPool>,
 ) -> Result<String, Error> {
     let report_objs = extract_report_objects_from_file(&gfile)?;
@@ -315,7 +324,7 @@ fn get_html_string(
     report_objs: &ReportObjects,
     graphs: &[String],
     sport: SportTypes,
-    history: &str,
+    history: &[String],
     pool: Option<&PgPool>,
 ) -> Result<String, Error> {
     let strava_id_title = match pool {
@@ -348,7 +357,7 @@ fn get_garmin_template_vec(
     gfile: &GarminFile,
     sport: SportTypes,
     strava_id_title: Option<(String, String)>,
-    history: &str,
+    history: &[String],
 ) -> Result<Vec<String>, Error> {
     let mut htmlvec = Vec::new();
 
@@ -385,7 +394,7 @@ fn get_garmin_template_vec(
             };
             htmlvec.push(line.replace("SPORTTITLELINK", &newtitle).to_string());
         } else if line.contains("HISTORYBUTTONS") {
-            let history_button = generate_history_buttons(&history);
+            let history_button = generate_history_buttons(history);
             htmlvec.push(line.replace("HISTORYBUTTONS", &history_button).to_string());
         } else if line.contains("DOMAIN") {
             htmlvec.push(line.replace("DOMAIN", domain));
@@ -405,7 +414,7 @@ fn get_map_tempate_vec(
     gfile: &GarminFile,
     sport: SportTypes,
     strava_id_title: Option<(String, String)>,
-    history: &str,
+    history: &[String],
     graphs: &[String],
     config: &GarminConfig,
 ) -> Result<Vec<String>, Error> {
@@ -531,7 +540,7 @@ fn get_map_tempate_vec(
         } else if line.contains("MAPSAPIKEY") {
             htmlvec.push(line.replace("MAPSAPIKEY", &config.maps_api_key).to_string());
         } else if line.contains("HISTORYBUTTONS") {
-            let history_button = generate_history_buttons(&history);
+            let history_button = generate_history_buttons(history);
             htmlvec.push(line.replace("HISTORYBUTTONS", &history_button).to_string());
         } else if line.contains("FILENAME") | line.contains("ACTIVITYTYPE") {
             let filename = format!("{}/{}", &config.gps_dir, &gfile.filename);

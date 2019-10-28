@@ -90,23 +90,16 @@ pub fn summary_report_html(
     domain: &str,
     retval: &[String],
     options: &GarminReportOptions,
-    filter: &str,
-    history: &str,
+    history: &[String],
 ) -> Result<String, Error> {
     let htmlostr: Vec<_> = retval
         .iter()
         .map(|ent| {
-            let mut history_vec: Vec<String> = history.split(';').map(|s| s.to_string()).collect();
-            if !history.contains(filter) {
-                history_vec.push(filter.to_string());
-            }
             let cmd = generate_url_string(&ent, &options);
             format!(
-                "<tr><td>{}{}{}{}{}{}{}{}</td></tr>",
+                "<tr><td>{}{}{}{}{}{}</td></tr>",
                 r#"<button type="submit" onclick="send_command('filter="#,
                 cmd,
-                r#"&history="#,
-                history_vec.join(";"),
                 r#"');">"#,
                 cmd,
                 "</button></td><td>",
@@ -126,7 +119,7 @@ pub fn summary_report_html(
             let newtitle = "Garmin Summary";
             htmlvec.push(line.replace("SPORTTITLEDATE", newtitle).to_string());
         } else if line.contains("HISTORYBUTTONS") {
-            let history_button = generate_history_buttons(&history);
+            let history_button = generate_history_buttons(history);
             htmlvec.push(line.replace("HISTORYBUTTONS", &history_button).to_string());
         } else if line.contains("DOMAIN") {
             htmlvec.push(line.replace("DOMAIN", domain));

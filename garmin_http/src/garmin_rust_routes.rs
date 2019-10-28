@@ -3,7 +3,6 @@
 use actix_web::http::StatusCode;
 use actix_web::web::{Data, Json, Query};
 use actix_web::HttpResponse;
-use chrono::{Date, Datelike, Local};
 use failure::{err_msg, Error};
 use futures::future::Future;
 use serde::{Deserialize, Serialize};
@@ -30,27 +29,10 @@ use crate::CONFIG;
 #[derive(Deserialize)]
 pub struct FilterRequest {
     pub filter: Option<String>,
-    pub history: Option<String>,
 }
 
-fn proc_pattern_wrapper(request: FilterRequest) -> GarminHtmlRequest {
-    let local: Date<Local> = Local::today();
-    let year = local.year();
-    let month = local.month();
-    let (prev_year, prev_month) = if month > 1 {
-        (year, month - 1)
-    } else {
-        (year - 1, 12)
-    };
-    let default_string = format!(
-        "{:04}-{:02},{:04}-{:02},week",
-        prev_year, prev_month, year, month
-    );
-
+fn proc_pattern_wrapper(request: FilterRequest, history: &[String]) -> GarminHtmlRequest {
     let filter = request.filter.unwrap_or_else(|| "sport".to_string());
-    let history = request
-        .history
-        .unwrap_or_else(|| format!("{};latest;sport", default_string));
 
     let filter_vec: Vec<String> = filter.split(',').map(ToString::to_string).collect();
 
@@ -58,7 +40,7 @@ fn proc_pattern_wrapper(request: FilterRequest) -> GarminHtmlRequest {
 
     GarminHtmlRequest(GarminRequest {
         filter,
-        history,
+        history: history.to_vec(),
         ..req
     })
 }
@@ -82,7 +64,12 @@ pub fn garmin(
     state: Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let query = query.into_inner();
-    let grec = proc_pattern_wrapper(query);
+    let grec = proc_pattern_wrapper(query, &state.history.read());
+    let history_size = state.history.read().len();
+    if history_size > 5 {
+        state.history.write().remove(0);
+    }
+    state.history.write().push(grec.0.filter.clone());
 
     state
         .db
@@ -323,7 +310,7 @@ pub fn garmin_list_gps_tracks(
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let query = query.into_inner();
 
-    let greq: GarminListRequest = proc_pattern_wrapper(query).into();
+    let greq: GarminListRequest = proc_pattern_wrapper(query, &state.history.read()).into();
 
     state.db.send(greq).from_err().and_then(move |res| {
         res.and_then(|gps_list| {
@@ -345,7 +332,7 @@ pub fn garmin_get_hr_data(
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let query = query.into_inner();
 
-    let greq: GarminListRequest = proc_pattern_wrapper(query).into();
+    let greq: GarminListRequest = proc_pattern_wrapper(query, &state.history.read()).into();
 
     state
         .db
@@ -406,7 +393,7 @@ pub fn garmin_get_hr_pace(
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let query = query.into_inner();
 
-    let greq: GarminListRequest = proc_pattern_wrapper(query).into();
+    let greq: GarminListRequest = proc_pattern_wrapper(query, &state.history.read()).into();
 
     state
         .db

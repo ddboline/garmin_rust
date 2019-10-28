@@ -7,6 +7,8 @@ use actix_web::{web, App, HttpServer};
 use chrono::Duration;
 use futures::future::Future;
 use futures::stream::Stream;
+use parking_lot::RwLock;
+use std::sync::Arc;
 use std::time;
 use tokio_timer::Interval;
 
@@ -27,6 +29,7 @@ use crate::CONFIG;
 /// user_list contains a shared cache of previously authorized users
 pub struct AppState {
     pub db: Addr<PgPool>,
+    pub history: Arc<RwLock<Vec<String>>>,
 }
 
 /// Create the actix-web server.
@@ -53,10 +56,14 @@ pub fn start_app() {
     );
 
     let addr: Addr<PgPool> = SyncArbiter::start(config.n_db_workers, move || pool.clone());
+    let history = Arc::new(RwLock::new(Vec::new()));
 
     HttpServer::new(move || {
         App::new()
-            .data(AppState { db: addr.clone() })
+            .data(AppState {
+                db: addr.clone(),
+                history: history.clone(),
+            })
             .wrap(IdentityService::new(
                 CookieIdentityPolicy::new(config.secret_key.as_bytes())
                     .name("auth")

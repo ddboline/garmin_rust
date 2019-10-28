@@ -525,7 +525,6 @@ impl GarminCli {
                     &self.get_config().domain,
                     &txt_result,
                     &req.options,
-                    &req.filter,
                     &req.history,
                 )
             }
@@ -580,7 +579,7 @@ impl GarminCli {
 #[derive(Debug, Default)]
 pub struct GarminRequest {
     pub filter: String,
-    pub history: String,
+    pub history: Vec<String>,
     pub options: GarminReportOptions,
     pub constraints: Vec<String>,
 }

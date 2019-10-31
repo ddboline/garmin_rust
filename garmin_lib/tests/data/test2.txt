@@ -1,0 +1,1 @@
+date=20130117 type=running dis=2mi dur=00:20:00 cal=900

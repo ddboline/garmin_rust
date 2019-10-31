@@ -5,7 +5,7 @@ JWT_SECRET=`head -c1000 /dev/urandom | tr -dc [:alpha:][:digit:] | head -c 32; e
 SECRET_KEY=`head -c1000 /dev/urandom | tr -dc [:alpha:][:digit:] | head -c 32; echo ;`
 DB=garmin_summary
 
-sudo apt-get install -y postgresql
+sudo apt-get install -y postgresql garmin-forerunner-tools fit2tcx python3-fitbit python3-stravalib
 
 sudo -u postgres createuser -E -e $USER
 sudo -u postgres psql -c "CREATE ROLE $USER PASSWORD '$PASSWORD' NOSUPERUSER NOCREATEDB NOCREATEROLE INHERIT LOGIN;"

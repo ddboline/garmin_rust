@@ -410,13 +410,13 @@ impl GarminCli {
                         } else {
                             constraints.push(
                                     format!(
-                                        "replace({}, '%', 'T') like '%{}%'",
+                                        "replace({}, '%', 'T') like '{}%'",
                                         "to_char(begin_datetime at time zone 'utc', 'YYYY-MM-DD%HH24:MI:SSZ')",
                                         pat
                                     )
                                 );
                         }
-                        constraints.push(format!("filename like '%{}%'", pat));
+                        constraints.push(format!("filename like '{}%'", pat));
                     }
                 },
             };

@@ -132,7 +132,7 @@ impl FitbitHeartRate {
             WHERE NOT EXISTS
             (SELECT datetime FROM fitbit_heartrate_temp WHERE datetime = $1)";
         let results: Result<_, Error> = slice
-            .into_iter()
+            .iter()
             .map(|entry| {
                 trans
                     .execute(query, &[&entry.datetime, &entry.value])

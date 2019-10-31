@@ -214,10 +214,10 @@ impl GarminParseTxt {
                         },
                         None => (h.parse()?, 0, 0),
                     },
-                    None => (0, 0, 0),
+                    None => (12, 0, 0),
                 }
             }
-            None => (0, 0, 0),
+            None => (12, 0, 0),
         };
 
         let lap_start = convert_str_to_datetime(&format!(

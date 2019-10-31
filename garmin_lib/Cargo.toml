@@ -34,10 +34,7 @@ reqwest = "0.9"
 parking_lot = "0.9"
 maplit = "1.0"
 retry = "0.5"
-
-[dependencies.avro-rs]
-version = "0.6.5"
-features = ["snappy"]
+avro-rs = {version = "0.6.5", features = ["snappy"]}
 
 [dev-dependencies]
 approx = "0.3.2"

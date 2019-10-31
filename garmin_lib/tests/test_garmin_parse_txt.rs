@@ -30,3 +30,17 @@ fn test_garmin_parse_txt() {
     assert_abs_diff_eq!(gfile.total_hr_dur, 1881000.0);
     assert_abs_diff_eq!(gfile.total_hr_dis, 6600.0);
 }
+
+#[test]
+fn test_garmin_parse_txt_default_time() {
+    let corr_list =
+        GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json").unwrap();
+    let corr_map = corr_list.get_corr_list_map();
+    let gfile = garmin_parse_txt::GarminParseTxt::new()
+        .with_file("tests/data/test2.txt", &corr_map)
+        .unwrap();
+    assert_eq!(
+        convert_datetime_to_str(gfile.begin_datetime),
+        "2013-01-17T12:00:00Z"
+    );
+}

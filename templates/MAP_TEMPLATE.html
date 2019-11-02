@@ -7,7 +7,7 @@
     <meta charset="utf-8">
     <meta http-equiv="Cache-Control" content="no-store" />
     <style>
-      html, body, #map-canvas {
+      html, body, #garmin_text_box {
         height: 80%;
         width: 80%;
       }
@@ -44,7 +44,7 @@
           zoom: ZOOMVALUE ,
           mapTypeId: google.maps.MapTypeId.SATELLITE
         };
-        var map = new google.maps.Map(document.getElementById('map-canvas'),
+        var map = new google.maps.Map(document.getElementById('garmin_text_box'),
             mapOptions);
         var runningRouteCoordinates = [
             INSERTMAPSEGMENTSHERE
@@ -88,7 +88,7 @@ STRAVAUPLOADBUTTON
 
 <h1><center><b>SPORTTITLELINK</b></center></h1>
 
-<div id="map-canvas"></div>
+<div id="garmin_text_box"></div>
 
 <div>
     INSERTTABLESHERE

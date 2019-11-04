@@ -7,6 +7,7 @@ use serde::{self, Deserialize, Deserializer, Serialize};
 use std::collections::HashSet;
 use std::fs::File;
 use std::path::Path;
+use structopt::StructOpt;
 
 use garmin_lib::common::garmin_config::GarminConfig;
 use garmin_lib::common::pgpool::PgPool;
@@ -167,6 +168,12 @@ pub fn process_fitbit_json_file(fname: &Path) -> Result<Vec<FitbitHeartRate>, Er
     Ok(result)
 }
 
+#[derive(StructOpt, Debug, Clone)]
+pub struct JsonImportOpts {
+    #[structopt(short = "d", long = "directory")]
+    pub directory: String,
+}
+
 pub fn import_fitbit_json_files(directory: &str) -> Result<(), Error> {
     let config = GarminConfig::get_config(None)?;
     let pool = PgPool::new(&config.pgurl);
@@ -208,50 +215,36 @@ pub fn import_fitbit_json_files(directory: &str) -> Result<(), Error> {
 
 #[cfg(test)]
 mod tests {
-    use chrono::Datelike;
     use std::collections::HashSet;
     use std::path::Path;
 
-    // use garmin_lib::common::garmin_config::GarminConfig;
-    // use garmin_lib::common::pgpool::PgPool;
+    use garmin_lib::common::garmin_config::GarminConfig;
+    use garmin_lib::common::pgpool::PgPool;
 
-    use crate::fitbit_heartrate::process_fitbit_json_file;
+    use crate::fitbit_heartrate::{process_fitbit_json_file, FitbitHeartRate};
 
     #[test]
     fn test_process_fitbit_json_file() {
-        // let config = GarminConfig::get_config(None).unwrap();
-        // let pool = PgPool::new(&config.pgurl);
-        let path = Path::new(
-            "/home/ddboline/Downloads/tmp/DanielBoline/user-site-export/heart_rate-2019-01-01.json",
-        );
+        let config = GarminConfig::get_config(None).unwrap();
+        let pool = PgPool::new(&config.pgurl);
+        let path = Path::new("tests/data/test_heartrate_data.json");
         let result = process_fitbit_json_file(&path).unwrap();
         println!("{}", result.len());
 
         let dates: HashSet<_> = result
             .iter()
-            .map(|entry| {
-                format!(
-                    "{:04}-{:02}-{:02}",
-                    entry.datetime.year(),
-                    entry.datetime.month(),
-                    entry.datetime.day()
-                )
-            })
+            .map(|entry| entry.datetime.date().naive_local())
             .collect();
-        assert_eq!(result.len(), 10168);
-        assert_eq!(dates.len(), 2);
-        // let mut current_datetimes = HashSet::new();
-        // for date in dates {
-        //     for entry in FitbitHeartRate::read_from_db(&pool, &date).unwrap() {
-        //         current_datetimes.insert(entry.datetime);
-        //     }
-        // }
-        // println!("{}", current_datetimes.len());
-        // for entry in &result {
-        //     if !current_datetimes.contains(&entry.datetime) {
-        //         entry.insert_into_db(&pool).unwrap();
-        //     }
-        // }
+        assert_eq!(result.len(), 3);
+        assert_eq!(dates.len(), 1);
+        let mut current_datetimes = HashSet::new();
+        for date in dates {
+            for entry in FitbitHeartRate::read_from_db(&pool, date).unwrap() {
+                current_datetimes.insert(entry.datetime);
+            }
+        }
+        println!("{}", current_datetimes.len());
+        assert_eq!(current_datetimes.len(), 10232);
     }
 
     // #[test]

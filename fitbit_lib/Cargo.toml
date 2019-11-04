@@ -1,6 +1,6 @@
 [package]
 name = "fitbit_lib"
-version = "0.4.51"
+version = "0.4.52"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -29,3 +29,4 @@ log = "0.4"
 lazy_static = "1.4"
 parking_lot = "0.9"
 crossbeam-utils = "0.6"
+structopt = "0.3"

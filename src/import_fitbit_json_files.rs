@@ -1,6 +1,9 @@
-use fitbit_lib::fitbit_heartrate::import_fitbit_json_files;
+use structopt::StructOpt;
+
+use fitbit_lib::fitbit_heartrate::{JsonImportOpts, import_fitbit_json_files};
 
 fn main() {
     env_logger::init();
-    import_fitbit_json_files("/home/ddboline/Downloads/tmp/DanielBoline/user-site-export").unwrap();
+    let opts = JsonImportOpts::from_args();
+    import_fitbit_json_files(&opts.directory).unwrap();
 }

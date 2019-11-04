@@ -56,6 +56,7 @@ install:
 	cp target/$(build_type)/garmin-rust-report /usr/bin/garmin-rust-report
 	cp target/$(build_type)/garmin-rust-http /usr/bin/garmin-rust-http
 	cp target/$(build_type)/pull-scale-measurements-from-telegram /usr/bin/pull-scale-measurements-from-telegram
+	cp target/$(build_type)/import-fitbit-json-files /usr/bin/import-fitbit-json-files
 
 pull:
 	`aws ecr --region us-east-1 get-login --no-include-email`

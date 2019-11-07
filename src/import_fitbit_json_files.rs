@@ -1,6 +1,6 @@
 use structopt::StructOpt;
 
-use fitbit_lib::fitbit_heartrate::{JsonImportOpts, import_fitbit_json_files};
+use fitbit_lib::fitbit_heartrate::{import_fitbit_json_files, JsonImportOpts};
 
 fn main() {
     env_logger::init();

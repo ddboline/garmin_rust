@@ -23,3 +23,5 @@ fitbit_lib = {path="../fitbit_lib/"}
 strava_lib = {path="../strava_lib/"}
 log = "0.4"
 parking_lot = "0.9"
+actix-multipart = "0.1"
+tempfile = "3.1"

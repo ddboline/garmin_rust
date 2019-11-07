@@ -18,7 +18,7 @@ use super::logged_user::AUTHORIZED_USERS;
 use crate::garmin_rust_routes::{
     fitbit_auth, fitbit_callback, fitbit_heartrate_api, fitbit_heartrate_db,
     fitbit_heartrate_db_update, fitbit_sync, garmin, garmin_connect_sync, garmin_get_hr_data,
-    garmin_get_hr_pace, garmin_list_gps_tracks, garmin_sync, scale_measurement,
+    garmin_get_hr_pace, garmin_list_gps_tracks, garmin_sync, garmin_upload, scale_measurement,
     scale_measurement_update, strava_activities, strava_auth, strava_callback, strava_sync,
     strava_update, strava_upload,
 };
@@ -73,6 +73,9 @@ pub fn start_app() {
                     .secure(false), // this can only be true if you have https
             ))
             .service(web::resource("/garmin").route(web::get().to_async(garmin)))
+            .service(
+                web::resource("/garmin/upload_file").route(web::post().to_async(garmin_upload)),
+            )
             .service(
                 web::resource("/garmin/list_gps_tracks")
                     .route(web::get().to_async(garmin_list_gps_tracks)),

@@ -1,12 +1,17 @@
 #![allow(clippy::needless_pass_by_value)]
 
+use actix_multipart::{Field, Multipart, MultipartError};
 use actix_web::http::StatusCode;
-use actix_web::web::{Data, Json, Query};
+use actix_web::web::{block, Data, Json, Query};
 use actix_web::HttpResponse;
-use failure::{err_msg, Error};
-use futures::future::Future;
+use failure::{err_msg, format_err, Error};
+use futures::future::{err, Either, Future};
+use futures::stream::Stream;
 use serde::{Deserialize, Serialize};
+use std::fs::File;
+use std::io::Write;
 use std::string::ToString;
+use tempfile::Builder;
 
 use garmin_lib::common::garmin_cli::{GarminCli, GarminRequest};
 use garmin_lib::common::garmin_file::GarminFile;
@@ -76,6 +81,49 @@ pub fn garmin(
         .send(grec)
         .from_err()
         .and_then(move |res| res.and_then(form_http_response))
+}
+
+fn save_file(file_path: String, field: Field) -> impl Future<Item = i64, Error = Error> {
+    let file = match File::create(file_path) {
+        Ok(file) => file,
+        Err(e) => return Either::A(err(format_err!("{:?}", e))),
+    };
+    Either::B(
+        field
+            .fold((file, 0i64), move |(mut file, mut acc), bytes| {
+                // fs operations are blocking, we have to execute writes
+                // on threadpool
+                block(move || {
+                    file.write_all(bytes.as_ref()).map_err(|e| {
+                        MultipartError::Payload(actix_web::error::PayloadError::Io(e))
+                    })?;
+                    acc += bytes.len() as i64;
+                    Ok((file, acc))
+                })
+                .map_err(|e: actix_web::error::BlockingError<MultipartError>| {
+                    match e {
+                        actix_web::error::BlockingError::Error(e) => e,
+                        actix_web::error::BlockingError::Canceled => MultipartError::Incomplete,
+                    }
+                })
+            })
+            .map(|(_, acc)| acc)
+            .map_err(|e| format_err!("{:?}", e)),
+    )
+}
+
+pub fn garmin_upload(
+    multipart: Multipart,
+    _: LoggedUser,
+    state: Data<AppState>,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let tfile = "/tmp/tempfile".to_string();
+    multipart
+        .map_err(err_msg)
+        .map(move |field| save_file(tfile.clone(), field).into_stream())
+        .flatten()
+        .collect()
+        .and_then(|sizes| to_json(&sizes))
 }
 
 pub fn garmin_connect_sync(

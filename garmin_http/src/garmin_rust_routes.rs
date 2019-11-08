@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::Write;
 use std::string::ToString;
-use tempfile::Builder;
+use tempdir::TempDir;
 
 use garmin_lib::common::garmin_cli::{GarminCli, GarminRequest};
 use garmin_lib::common::garmin_file::GarminFile;
@@ -25,9 +25,10 @@ use super::garmin_rust_app::AppState;
 use crate::garmin_requests::{
     FitbitAuthRequest, FitbitCallbackRequest, FitbitHeartrateApiRequest, FitbitHeartrateDbRequest,
     FitbitHeartrateDbUpdateRequest, FitbitSyncRequest, GarminConnectSyncRequest, GarminCorrRequest,
-    GarminHtmlRequest, GarminListRequest, GarminSyncRequest, ScaleMeasurementRequest,
-    ScaleMeasurementUpdateRequest, StravaActivitiesRequest, StravaAuthRequest,
-    StravaCallbackRequest, StravaSyncRequest, StravaUpdateRequest, StravaUploadRequest,
+    GarminHtmlRequest, GarminListRequest, GarminSyncRequest, GarminUploadRequest,
+    ScaleMeasurementRequest, ScaleMeasurementUpdateRequest, StravaActivitiesRequest,
+    StravaAuthRequest, StravaCallbackRequest, StravaSyncRequest, StravaUpdateRequest,
+    StravaUploadRequest,
 };
 use crate::CONFIG;
 
@@ -113,17 +114,39 @@ fn save_file(file_path: String, field: Field) -> impl Future<Item = i64, Error =
 }
 
 pub fn garmin_upload(
+    query: Query<GarminUploadRequest>,
     multipart: Multipart,
     _: LoggedUser,
     state: Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    let tfile = "/tmp/tempfile".to_string();
-    multipart
+    let tempdir = match TempDir::new("garmin") {
+        Ok(d) => d,
+        Err(e) => return Either::A(err(format_err!("{:?}", e))),
+    };
+    let tempdir_str = tempdir.path().to_string_lossy().to_string();
+
+    let query = query.into_inner();
+    let fname = format!("{}/{}", tempdir_str, query.filename);
+
+    match multipart
         .map_err(err_msg)
-        .map(move |field| save_file(tfile.clone(), field).into_stream())
+        .map(move |field| save_file(fname.clone(), field).into_stream())
         .flatten()
         .collect()
-        .and_then(|sizes| to_json(&sizes))
+        .wait()
+    {
+        Ok(_) => (),
+        Err(e) => return Either::A(err(format_err!("{:?}", e))),
+    };
+
+    let fname = format!("{}/{}", tempdir_str, query.filename);
+    Either::B(
+        state
+            .db
+            .send(GarminUploadRequest { filename: fname })
+            .from_err()
+            .and_then(move |res| res.and_then(|flist| to_json(&flist))),
+    )
 }
 
 pub fn garmin_connect_sync(

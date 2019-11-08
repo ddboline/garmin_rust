@@ -101,6 +101,26 @@ impl Handler<AuthorizedUserRequest> for PgPool {
     }
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct GarminUploadRequest {
+    pub filename: String,
+}
+
+impl Message for GarminUploadRequest {
+    type Result = Result<Vec<String>, Error>;
+}
+
+impl Handler<GarminUploadRequest> for PgPool {
+    type Result = Result<Vec<String>, Error>;
+    fn handle(&mut self, req: GarminUploadRequest, _: &mut Self::Context) -> Self::Result {
+        let gcli = GarminCli::from_pool(&self)?;
+        let filenames = vec![req.filename];
+        gcli.process_filenames(&filenames)?;
+        gcli.proc_everything()?;
+        Ok(filenames)
+    }
+}
+
 pub struct GarminConnectSyncRequest {}
 
 impl Message for GarminConnectSyncRequest {

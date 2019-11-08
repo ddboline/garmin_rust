@@ -46,14 +46,18 @@
     <button name="garminconnectoutput" id="garminconnectoutput"> &nbsp; </button>
     <button type="submit" onclick="send_command('filter=latest');"> latest </button>
     <button type="submit" onclick="send_command('filter=sport');"> sport </button>
+    <form action="/garmin/upload_file">
+        <input type="file" name="filename">
+        <input type="submit">
+    </form>
 </H3>
-
-HISTORYBUTTONS
 
 <form>
 <input type="text" name="filter" id="garmin_filter"/>
 <input type="button" name="submitGARMIN" value="Search" onclick="processFormData();"/>
 </form>
+
+HISTORYBUTTONS
 
 <pre id="garmin_text_box">
 <table border="0">

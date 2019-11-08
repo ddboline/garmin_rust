@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use clap::{App, Arg};
-use failure::{err_msg, Error};
+use failure::{err_msg, format_err, Error};
 use log::debug;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use std::collections::HashMap;
@@ -221,7 +221,7 @@ impl GarminCli {
         }
 
         if let Some(GarminCliOptions::ImportFileNames(filenames)) = self.get_opts() {
-            self.extract_zip_files(filenames)?;
+            self.process_filenames(filenames)?;
         }
 
         match self.get_opts() {
@@ -531,21 +531,25 @@ impl GarminCli {
         }
     }
 
-    pub fn extract_zip_files(&self, filenames: &[String]) -> Result<(), Error> {
+    pub fn process_filenames(&self, filenames: &[String]) -> Result<(), Error> {
         let tempdir = TempDir::new("garmin_zip")?;
         let ziptmpdir = tempdir.path().to_string_lossy().to_string();
 
-        filenames
-            .par_iter()
-            .filter(|f| (f.ends_with(".zip") || f.ends_with(".fit")) && Path::new(f).exists())
+        let filenames: Result<Vec<_>, Error> = filenames
+            .iter()
+            .map(|filename| match filename.to_lowercase().split(".").last() {
+                Some("zip") => extract_zip_from_garmin_connect(filename, &ziptmpdir),
+                Some("fit") => Ok(filename.to_string()),
+                Some("tcx") => Ok(filename.to_string()),
+                Some("txt") => Ok(filename.to_string()),
+                _ => Err(format_err!("Bad filename {}", filename)),
+            })
+            .collect();
+
+        filenames?
+            .into_iter()
             .map(|filename| {
-                let filename = if filename.ends_with(".zip") {
-                    extract_zip_from_garmin_connect(&filename, &ziptmpdir)?
-                } else {
-                    filename.into()
-                };
                 assert!(Path::new(&filename).exists(), "No such file");
-                assert!(filename.ends_with(".fit"), "Only fit files are supported");
                 let gfile = GarminParse::new().with_file(&filename, &HashMap::new())?;
 
                 let outfile = format!(
@@ -555,6 +559,10 @@ impl GarminCli {
                 );
 
                 writeln!(stdout().lock(), "{} {}", filename, outfile)?;
+
+                if Path::new(&outfile).exists() {
+                    return Ok(());
+                }
 
                 rename(&filename, &outfile)
                     .or_else(|_| copy(&filename, &outfile).map(|_| ()))
@@ -568,7 +576,7 @@ impl GarminCli {
             if let Some(max_datetime) = get_maximum_begin_datetime(&pool)? {
                 let session = GarminConnectClient::get_session(self.config.clone())?;
                 let filenames = session.get_activities(max_datetime)?;
-                self.extract_zip_files(&filenames)?;
+                self.process_filenames(&filenames)?;
                 return Ok(filenames);
             }
         }

@@ -70,17 +70,21 @@
         <button type="submit" id="ID" onclick="strava_sync();">sync with Strava</button>
         <button name="garminconnectoutput" id="garminconnectoutput"> &nbsp; </button>
         <button type="submit" onclick="send_command('filter=latest');"> latest </button>
-        <button type="submit" onclick="send_command('filter=sport');"> sport </button>   
+        <button type="submit" onclick="send_command('filter=sport');"> sport </button>
+        <form action="/garmin/upload_file">
+            <input type="file" name="filename">
+            <input type="submit">
+        </form>
     </H3>
-
-HISTORYBUTTONS
 
 <form>
 <input type="text" name="cmd" id="garmin_cmd"/>
 <input type="button" name="submitGARMIN" value="Search" onclick="processFormData();"/>
 </form>
 
-    <button type="submit" id="ID" onclick="stravaAuth();">write auth Strava</button>
+HISTORYBUTTONS
+
+<button type="submit" id="ID" onclick="stravaAuth();">write auth Strava</button>
 
 STRAVAUPLOADBUTTON
 

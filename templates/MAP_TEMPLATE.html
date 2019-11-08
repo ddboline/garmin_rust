@@ -66,7 +66,7 @@
     <H3>
         <button type="submit" id="ID" onclick="garmin_sync();">sync with S3</button>
         <button type="submit" id="ID" onclick="garmin_connect_sync();">sync with Garmin Connect</button>
-        <button type="submit" id="ID" onclick="stravaAuth();">read auth Strava</button>
+        <button type="submit" id="ID" onclick="stravaAuthRead();">read auth Strava</button>
         <button type="submit" id="ID" onclick="strava_sync();">sync with Strava</button>
         <button name="garminconnectoutput" id="garminconnectoutput"> &nbsp; </button>
         <button type="submit" onclick="send_command('filter=latest');"> latest </button>
@@ -84,7 +84,8 @@
 
 HISTORYBUTTONS
 
-<button type="submit" id="ID" onclick="stravaAuth();">write auth Strava</button>
+<br>
+<button type="submit" id="ID" onclick="stravaAuthWrite();">write auth Strava</button>
 
 STRAVAUPLOADBUTTON
 
@@ -110,7 +111,7 @@ STRAVAUPLOADBUTTON
         var ostr = '../garmin?' + command;
         location.replace(ostr);
     }
-    function stravaAuth() {
+    function stravaAuthWrite() {
         var ostr = "../garmin/strava/auth?auth_type=write";
         var xmlhttp = new XMLHttpRequest();
         xmlhttp.onload = function() {
@@ -184,7 +185,7 @@ STRAVAUPLOADBUTTON
         xmlhttp.send(null);
         document.getElementById("garminconnectoutput").innerHTML = "syncing";
     }
-    function stravaAuth() {
+    function stravaAuthRead() {
         var ostr = "../garmin/strava/auth?auth_type=read";
         var xmlhttp = new XMLHttpRequest();
         xmlhttp.onload = function() {

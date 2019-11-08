@@ -39,17 +39,17 @@
     </script>
     <script type="text/javascript">
       function initialize() {
-        var mapOptions = {
+        let mapOptions = {
           center: { lat: CENTRALLAT, lng: CENTRALLON},
           zoom: ZOOMVALUE ,
           mapTypeId: google.maps.MapTypeId.SATELLITE
         };
-        var map = new google.maps.Map(document.getElementById('garmin_text_box'),
+        let map = new google.maps.Map(document.getElementById('garmin_text_box'),
             mapOptions);
-        var runningRouteCoordinates = [
+        let runningRouteCoordinates = [
             INSERTMAPSEGMENTSHERE
             ];
-        var runningRoute = new google.maps.Polyline({
+        let runningRoute = new google.maps.Polyline({
             path: runningRouteCoordinates,
             geodesic: true,
             strokeColor: '#FF0000',
@@ -108,36 +108,36 @@ STRAVAUPLOADBUTTON
 
 <script language="JavaScript" type="text/javascript">
     function send_command( command ) {
-        var ostr = '../garmin?' + command;
+        let ostr = '../garmin?' + command;
         location.replace(ostr);
     }
     function stravaAuthWrite() {
-        var ostr = "../garmin/strava/auth?auth_type=write";
-        var xmlhttp = new XMLHttpRequest();
+        let ostr = "../garmin/strava/auth?auth_type=write";
+        let xmlhttp = new XMLHttpRequest();
         xmlhttp.onload = function() {
-            var win = window.open(xmlhttp.responseText, '_blank');
+            let win = window.open(xmlhttp.responseText, '_blank');
             win.focus()
         }
         xmlhttp.open( "GET", ostr, true );
         xmlhttp.send(null);
     }
     function processFormData() {
-        var garmin_cmd = document.getElementById( 'garmin_cmd' );
+        let garmin_cmd = document.getElementById( 'garmin_cmd' );
         send_command( 'filter=' + garmin_cmd.value );
     }
     function processStravaData() {
-        var strava_title = document.getElementById( 'strava_upload' );
-        var ostr = '../garmin/strava/upload';
-        var data = JSON.stringify(
+        let strava_title = document.getElementById( 'strava_upload' );
+        let ostr = '../garmin/strava/upload';
+        let data = JSON.stringify(
             {
                 "filename": "FILENAME",
                 "title": strava_title.value,
                 "activity_type": "ACTIVITYTYPE"
             }
         );
-        var xmlhttp = new XMLHttpRequest();
+        let xmlhttp = new XMLHttpRequest();
         xmlhttp.onload = function() {
-            var win = window.open(xmlhttp.responseText, '_blank');
+            let win = window.open(xmlhttp.responseText, '_blank');
             win.focus()
         }
         xmlhttp.open( "POST", ostr , true );
@@ -145,27 +145,32 @@ STRAVAUPLOADBUTTON
         xmlhttp.send(data);
     }
     function processStravaUpdate(activity_id) {
-        var strava_title = document.getElementById( 'strava_upload' );
-        var ostr = '../garmin/strava/update';
-        var data = JSON.stringify(
+        let strava_title = document.getElementById( 'strava_upload' );
+        let ostr = '../garmin/strava/update';
+        let data = JSON.stringify(
             {
                 "activity_id": activity_id,
                 "title": strava_title.value,
                 "activity_type": "ACTIVITYTYPE"
             }
         );
-        var xmlhttp = new XMLHttpRequest();
+        let xmlhttp = new XMLHttpRequest();
         xmlhttp.onload = function() {
-            var win = window.open(xmlhttp.responseText, '_blank');
-            win.focus()
+            let xmlhttp2 = new XMLHttpRequest();
+            xmlhttp2.onload = function() {
+                location.reload()
+            }
+            xmlhttp2.open("GET", xmlhttp.responseText, true);
+            xmlhttp2.send(null);
+            document.getElementById("garminconnectoutput").innerHTML = "syncing";
         }
         xmlhttp.open( "POST", ostr , true );
         xmlhttp.setRequestHeader("Content-Type", "application/json");
         xmlhttp.send(data);
     }
     function garmin_sync() {
-        var ostr = '../garmin/garmin_sync';
-        var xmlhttp = new XMLHttpRequest();
+        let ostr = '../garmin/garmin_sync';
+        let xmlhttp = new XMLHttpRequest();
         xmlhttp.open("GET", ostr, true);
         xmlhttp.onload = function nothing() {
             document.getElementById("garminconnectoutput").innerHTML = "done";
@@ -175,8 +180,8 @@ STRAVAUPLOADBUTTON
         document.getElementById("garminconnectoutput").innerHTML = "syncing";
     }
     function garmin_connect_sync() {
-        var ostr = '../garmin/garmin_connect_sync';
-        var xmlhttp = new XMLHttpRequest();
+        let ostr = '../garmin/garmin_connect_sync';
+        let xmlhttp = new XMLHttpRequest();
         xmlhttp.open("GET", ostr, true);
         xmlhttp.onload = function nothing() {
             document.getElementById("garminconnectoutput").innerHTML = "done";
@@ -186,18 +191,18 @@ STRAVAUPLOADBUTTON
         document.getElementById("garminconnectoutput").innerHTML = "syncing";
     }
     function stravaAuthRead() {
-        var ostr = "../garmin/strava/auth?auth_type=read";
-        var xmlhttp = new XMLHttpRequest();
+        let ostr = "../garmin/strava/auth?auth_type=read";
+        let xmlhttp = new XMLHttpRequest();
         xmlhttp.onload = function() {
-            var win = window.open(xmlhttp.responseText, '_blank');
+            let win = window.open(xmlhttp.responseText, '_blank');
             win.focus()
         }
         xmlhttp.open( "GET", ostr, true );
         xmlhttp.send(null);
     }
     function strava_sync() {
-        var ostr = '../garmin/strava_sync';
-        var xmlhttp = new XMLHttpRequest();
+        let ostr = '../garmin/strava_sync';
+        let xmlhttp = new XMLHttpRequest();
         xmlhttp.open("GET", ostr, true);
         xmlhttp.onload = function nothing() {
             document.getElementById("garminconnectoutput").innerHTML = "done";

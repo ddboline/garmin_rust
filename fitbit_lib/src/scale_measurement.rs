@@ -1,5 +1,5 @@
 use chrono::offset::TimeZone;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use failure::{err_msg, Error};
 use google_sheets4::RowData;
 use log::debug;
@@ -129,13 +129,34 @@ impl ScaleMeasurement {
         .map_err(err_msg)
     }
 
-    pub fn read_from_db(pool: &PgPool) -> Result<Vec<Self>, Error> {
+    pub fn read_from_db(
+        pool: &PgPool,
+        start_date: Option<NaiveDate>,
+        end_date: Option<NaiveDate>,
+    ) -> Result<Vec<Self>, Error> {
         let query = "
             SELECT datetime, mass, fat_pct, water_pct, muscle_pct, bone_pct
             FROM scale_measurements
-            ORDER BY datetime";
+        ";
+        let mut conditions = Vec::new();
+        if let Some(d) = start_date {
+            conditions.push(format!("datetime >= '{}'", d));
+        }
+        if let Some(d) = end_date {
+            conditions.push(format!("datetime <= '{}'", d));
+        }
+        let query = format!(
+            "{} {} ORDER BY datetime",
+            query,
+            if conditions.is_empty() {
+                "".to_string()
+            } else {
+                conditions.join(" AND ")
+            }
+        );
+        debug!("query:\n{}", query);
         let conn = pool.get()?;
-        conn.query(query, &[])?
+        conn.query(&query, &[])?
             .iter()
             .map(|row| {
                 let datetime: DateTime<Utc> = row.get_idx(0)?;

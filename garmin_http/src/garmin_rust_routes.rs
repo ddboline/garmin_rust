@@ -340,12 +340,14 @@ pub fn fitbit_sync(
 }
 
 pub fn scale_measurement(
+    query: Query<ScaleMeasurementRequest>,
     _: LoggedUser,
     state: Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
+    let query = query.into_inner();
     state
         .db
-        .send(ScaleMeasurementRequest {})
+        .send(query)
         .from_err()
         .and_then(move |res| res.and_then(|slist| to_json(&slist)))
 }

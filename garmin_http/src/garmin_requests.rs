@@ -291,7 +291,11 @@ impl Handler<FitbitSyncRequest> for PgPool {
     }
 }
 
-pub struct ScaleMeasurementRequest {}
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ScaleMeasurementRequest {
+    pub start_date: Option<NaiveDate>,
+    pub end_date: Option<NaiveDate>,
+}
 
 impl Message for ScaleMeasurementRequest {
     type Result = Result<Vec<ScaleMeasurement>, Error>;
@@ -299,8 +303,8 @@ impl Message for ScaleMeasurementRequest {
 
 impl Handler<ScaleMeasurementRequest> for PgPool {
     type Result = Result<Vec<ScaleMeasurement>, Error>;
-    fn handle(&mut self, _: ScaleMeasurementRequest, _: &mut Self::Context) -> Self::Result {
-        ScaleMeasurement::read_from_db(self)
+    fn handle(&mut self, req: ScaleMeasurementRequest, _: &mut Self::Context) -> Self::Result {
+        ScaleMeasurement::read_from_db(self, req.start_date, req.end_date)
     }
 }
 
@@ -320,7 +324,7 @@ impl Handler<ScaleMeasurementUpdateRequest> for PgPool {
         msg: ScaleMeasurementUpdateRequest,
         _: &mut Self::Context,
     ) -> Self::Result {
-        let measurement_set: HashSet<_> = ScaleMeasurement::read_from_db(self)?
+        let measurement_set: HashSet<_> = ScaleMeasurement::read_from_db(self, None, None)?
             .into_iter()
             .map(|d| d.datetime)
             .collect();

@@ -85,7 +85,7 @@ impl SheetsClient {
 pub fn run_sync_sheets() -> Result<(), Error> {
     let config = GarminConfig::get_config(None)?;
     let pool = PgPool::new(&config.pgurl);
-    let current_measurements: HashMap<_, _> = ScaleMeasurement::read_from_db(&pool)?
+    let current_measurements: HashMap<_, _> = ScaleMeasurement::read_from_db(&pool, None, None)?
         .into_iter()
         .map(|meas| (meas.datetime, meas))
         .collect();

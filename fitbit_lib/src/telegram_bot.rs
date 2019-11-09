@@ -97,7 +97,7 @@ fn telegram_worker(telegram_bot_token: &str, s: Sender<ScaleMeasurement>) -> Res
 }
 
 fn process_messages(r: Receiver<ScaleMeasurement>, pool: PgPool) {
-    if let Ok(meas_list) = ScaleMeasurement::read_from_db(&pool) {
+    if let Ok(meas_list) = ScaleMeasurement::read_from_db(&pool, None, None) {
         for meas in meas_list {
             let current_dt = meas.datetime;
             let last_meas = LAST_WEIGHT.write().replace(meas);

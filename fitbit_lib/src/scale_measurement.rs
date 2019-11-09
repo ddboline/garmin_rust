@@ -151,7 +151,7 @@ impl ScaleMeasurement {
             if conditions.is_empty() {
                 "".to_string()
             } else {
-                conditions.join(" AND ")
+                format!("WHERE {}", conditions.join(" AND "))
             }
         );
         debug!("query:\n{}", query);

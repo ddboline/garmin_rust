@@ -249,11 +249,11 @@ impl FitbitClient {
             .iter()
             .map(|update| {
                 let date = update.datetime.date().naive_local();
-                let time = update.datetime.naive_local().time();
+                let time = update.datetime.naive_local().format("%H:%M:%S").to_string();
                 let url = "https://api.fitbit.com/1/user/-/body/log/weight.json";
                 let data = PyDict::new(py);
                 data.set_item(py, "date", &date.to_string())?;
-                data.set_item(py, "time", &time.to_string())?;
+                data.set_item(py, "time", &time)?;
                 data.set_item(py, "weight", &update.mass.to_string())?;
                 let args = PyDict::new(py);
                 args.set_item(py, "data", data)?;
@@ -262,7 +262,7 @@ impl FitbitClient {
                 let url = "https://api.fitbit.com/1/user/-/body/log/fat.json";
                 let data = PyDict::new(py);
                 data.set_item(py, "date", &date.to_string())?;
-                data.set_item(py, "time", &time.to_string())?;
+                data.set_item(py, "time", &time)?;
                 data.set_item(py, "fat", &update.fat_pct.to_string())?;
                 let args = PyDict::new(py);
                 args.set_item(py, "data", data)?;

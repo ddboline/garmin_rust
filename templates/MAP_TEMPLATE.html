@@ -71,6 +71,7 @@ shape-rendering: crispEdges;
     <button type="submit" id="ID" onclick="strava_sync();">sync with Strava</button>
     <button type="submit" id="ID" onclick="fitbitAuth();">Fitbit Auth</button>
     <button type="submit" id="ID" onclick="fitbitSync();">Fitbit Sync</button>
+    <button type="submit" id="ID" onclick="scale_measurement_plots();">Scale Plots</button>
     <br>
     <button name="garminconnectoutput" id="garminconnectoutput"> &nbsp; </button>
     <button type="submit" onclick="send_command('filter=latest');"> latest </button>
@@ -89,13 +90,16 @@ shape-rendering: crispEdges;
 HISTORYBUTTONS
 
 <br>
+
 <button type="submit" id="ID" onclick="stravaAuthWrite();">write auth Strava</button>
 
 STRAVAUPLOADBUTTON
 
-</p>
+<br>
 
 <h1><center><b>SPORTTITLELINK</b></center></h1>
+
+<script src="https://d3js.org/d3.v3.min.js"></script>
 
 <div id="garmin_text_box"></div>
 
@@ -103,20 +107,17 @@ STRAVAUPLOADBUTTON
     INSERTTABLESHERE
 </div>
 
-<!-- load the d3.js library -->
-<script src="https://d3js.org/d3.v3.min.js"></script>
-
 <div>
     INSERTOTHERIMAGESHERE
 </div>
 
 <script language="JavaScript" type="text/javascript">
     function send_command( command ) {
-        let ostr = '../garmin?' + command;
+        let ostr = '/garmin?' + command;
         location.replace(ostr);
     }
     function stravaAuthWrite() {
-        let ostr = "../garmin/strava/auth?auth_type=write";
+        let ostr = "/garmin/strava/auth?auth_type=write";
         let xmlhttp = new XMLHttpRequest();
         xmlhttp.onload = function() {
             let win = window.open(xmlhttp.responseText, '_blank');
@@ -131,7 +132,7 @@ STRAVAUPLOADBUTTON
     }
     function processStravaData() {
         let strava_title = document.getElementById( 'strava_upload' );
-        let ostr = '../garmin/strava/upload';
+        let ostr = '/garmin/strava/upload';
         let data = JSON.stringify(
             {
                 "filename": "FILENAME",
@@ -150,7 +151,7 @@ STRAVAUPLOADBUTTON
     }
     function processStravaUpdate(activity_id) {
         let strava_title = document.getElementById( 'strava_upload' );
-        let ostr = '../garmin/strava/update';
+        let ostr = '/garmin/strava/update';
         let data = JSON.stringify(
             {
                 "activity_id": activity_id,
@@ -173,7 +174,7 @@ STRAVAUPLOADBUTTON
         xmlhttp.send(data);
     }
     function garmin_sync() {
-        let ostr = '../garmin/garmin_sync';
+        let ostr = '/garmin/garmin_sync';
         let xmlhttp = new XMLHttpRequest();
         xmlhttp.open("GET", ostr, true);
         xmlhttp.onload = function nothing() {
@@ -184,7 +185,7 @@ STRAVAUPLOADBUTTON
         document.getElementById("garminconnectoutput").innerHTML = "syncing";
     }
     function garmin_connect_sync() {
-        let ostr = '../garmin/garmin_connect_sync';
+        let ostr = '/garmin/garmin_connect_sync';
         let xmlhttp = new XMLHttpRequest();
         xmlhttp.open("GET", ostr, true);
         xmlhttp.onload = function nothing() {
@@ -195,7 +196,7 @@ STRAVAUPLOADBUTTON
         document.getElementById("garminconnectoutput").innerHTML = "syncing";
     }
     function stravaAuthRead() {
-        let ostr = "../garmin/strava/auth?auth_type=read";
+        let ostr = "/garmin/strava/auth?auth_type=read";
         let xmlhttp = new XMLHttpRequest();
         xmlhttp.onload = function() {
             let win = window.open(xmlhttp.responseText, '_blank');
@@ -205,7 +206,7 @@ STRAVAUPLOADBUTTON
         xmlhttp.send(null);
     }
     function strava_sync() {
-        let ostr = '../garmin/strava_sync';
+        let ostr = '/garmin/strava_sync';
         let xmlhttp = new XMLHttpRequest();
         xmlhttp.open("GET", ostr, true);
         xmlhttp.onload = function nothing() {
@@ -216,7 +217,7 @@ STRAVAUPLOADBUTTON
         document.getElementById("garminconnectoutput").innerHTML = "syncing";
     }
     function fitbitAuth() {
-        let url = '../garmin/fitbit/auth';
+        let url = '/garmin/fitbit/auth';
         let xmlhttp = new XMLHttpRequest();
         xmlhttp.onload = function() {
             let win = window.open(xmlhttp.responseText, '_blank');
@@ -226,7 +227,7 @@ STRAVAUPLOADBUTTON
         xmlhttp.send(null);
     }
     function fitbitSync() {
-        let url = '../garmin/fitbit/bodyweight_sync';
+        let url = '/garmin/fitbit/bodyweight_sync';
         let xmlhttp = new XMLHttpRequest();
         xmlhttp.open("GET", url, true);
         xmlhttp.onload = function nothing() {
@@ -235,6 +236,10 @@ STRAVAUPLOADBUTTON
         }
         xmlhttp.send(null);
         document.getElementById("garminconnectoutput").innerHTML = "syncing";
+    }
+    function scale_measurement_plots() {
+        let ostr = '/garmin/fitbit/plots';
+        location.replace(ostr)
     }
 </script>
 

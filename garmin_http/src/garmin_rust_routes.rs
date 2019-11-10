@@ -16,6 +16,7 @@ use tempdir::TempDir;
 use garmin_lib::common::garmin_cli::{GarminCli, GarminRequest};
 use garmin_lib::common::garmin_file::GarminFile;
 use garmin_lib::parsers::garmin_parse::{GarminParse, GarminParseTrait};
+use garmin_lib::reports::garmin_file_report_html::generate_history_buttons;
 use garmin_lib::reports::garmin_file_report_txt::get_splits;
 use garmin_lib::utils::iso_8601_datetime::convert_datetime_to_str;
 
@@ -27,9 +28,9 @@ use crate::garmin_requests::{
     FitbitCallbackRequest, FitbitHeartrateApiRequest, FitbitHeartrateDbRequest,
     FitbitHeartrateDbUpdateRequest, FitbitSyncRequest, GarminConnectSyncRequest, GarminCorrRequest,
     GarminHtmlRequest, GarminListRequest, GarminSyncRequest, GarminUploadRequest,
-    ScaleMeasurementRequest, ScaleMeasurementUpdateRequest, StravaActivitiesRequest,
-    StravaAuthRequest, StravaCallbackRequest, StravaSyncRequest, StravaUpdateRequest,
-    StravaUploadRequest,
+    ScaleMeasurementPlotRequest, ScaleMeasurementRequest, ScaleMeasurementUpdateRequest,
+    StravaActivitiesRequest, StravaAuthRequest, StravaCallbackRequest, StravaSyncRequest,
+    StravaUpdateRequest, StravaUploadRequest,
 };
 use crate::CONFIG;
 
@@ -360,6 +361,23 @@ pub fn fitbit_sync(
         .send(query)
         .from_err()
         .and_then(move |res| res.and_then(|_| form_http_response("finished".into())))
+}
+
+pub fn fitbit_plots(
+    query: Query<ScaleMeasurementRequest>,
+    _: LoggedUser,
+    state: Data<AppState>,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let query: ScaleMeasurementPlotRequest = query.into_inner().into();
+    state.db.send(query).from_err().and_then(move |res| {
+        res.and_then(|body| {
+            let body = body.replace(
+                "HISTORYBUTTONS",
+                &generate_history_buttons(&state.history.read()),
+            );
+            form_http_response(body)
+        })
+    })
 }
 
 pub fn scale_measurement(

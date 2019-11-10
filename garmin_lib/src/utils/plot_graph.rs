@@ -108,7 +108,7 @@ pub fn generate_d3_plot(opts: &PlotOpts) -> Result<String, Error> {
             })
             .collect::<Vec<_>>()
             .join("\n");
-        format!("<script>{}</script>", js_str)
+        format!("<script>\n{}\n</script>", js_str)
     } else {
         let js_str = LINEPLOTTEMPLATE
             .split('\n')
@@ -130,7 +130,7 @@ pub fn generate_d3_plot(opts: &PlotOpts) -> Result<String, Error> {
             })
             .collect::<Vec<_>>()
             .join("\n");
-        format!("<script>{}</script>", js_str)
+        format!("<script>\n{}\n</script>", js_str)
     };
     Ok(body)
 }

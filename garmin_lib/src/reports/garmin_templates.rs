@@ -5,3 +5,5 @@ pub static MAP_TEMPLATE: &str = include_str!("../../../templates/MAP_TEMPLATE.ht
 pub static LINEPLOTTEMPLATE: &str = include_str!("../../../templates/LINEPLOTTEMPLATE.js");
 
 pub static SCATTERPLOTTEMPLATE: &str = include_str!("../../../templates/SCATTERPLOTTEMPLATE.js");
+
+pub static PLOT_TEMPLATE: &str = include_str!("../../../templates/PLOT_TEMPLATE.html");

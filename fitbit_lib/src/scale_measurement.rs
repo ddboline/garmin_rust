@@ -7,7 +7,10 @@ use serde::{self, Deserialize, Serialize};
 use std::fmt;
 
 use garmin_lib::common::pgpool::PgPool;
+use garmin_lib::reports::garmin_templates::PLOT_TEMPLATE;
 use garmin_lib::utils::iso_8601_datetime::convert_datetime_to_str;
+use garmin_lib::utils::plot_graph::generate_d3_plot;
+use garmin_lib::utils::plot_opts::PlotOpts;
 use garmin_lib::utils::row_index_trait::RowIndexTrait;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Copy)]
@@ -175,5 +178,85 @@ impl ScaleMeasurement {
                 })
             })
             .collect()
+    }
+
+    pub fn get_scale_measurement_plots(measurements: &[ScaleMeasurement]) -> Result<String, Error> {
+        if measurements.is_empty() {
+            return Ok("".to_string());
+        }
+        let mut graphs = Vec::new();
+        let start_datetime = measurements[0].datetime;
+
+        let mass: Vec<_> = measurements
+            .iter()
+            .map(|meas| {
+                let days = (meas.datetime - start_datetime).num_days();
+                (days as f64, meas.mass)
+            })
+            .collect();
+        let plot_opt = PlotOpts::new()
+            .with_name("weight")
+            .with_title("Weight")
+            .with_data(&mass)
+            .with_labels("days", "Weight [lbs]");
+        graphs.push(generate_d3_plot(&plot_opt)?);
+
+        let fat: Vec<_> = measurements
+            .iter()
+            .map(|meas| {
+                let days = (meas.datetime - start_datetime).num_days();
+                (days as f64, meas.fat_pct)
+            })
+            .collect();
+        let plot_opt = PlotOpts::new()
+            .with_name("fat")
+            .with_title("Fat %")
+            .with_data(&fat)
+            .with_labels("days", "Fat %");
+        graphs.push(generate_d3_plot(&plot_opt)?);
+
+        let water: Vec<_> = measurements
+            .iter()
+            .map(|meas| {
+                let days = (meas.datetime - start_datetime).num_days();
+                (days as f64, meas.water_pct)
+            })
+            .collect();
+        let plot_opt = PlotOpts::new()
+            .with_name("water")
+            .with_title("Water %")
+            .with_data(&water)
+            .with_labels("days", "Water %");
+        graphs.push(generate_d3_plot(&plot_opt)?);
+
+        let muscle: Vec<_> = measurements
+            .iter()
+            .map(|meas| {
+                let days = (meas.datetime - start_datetime).num_days();
+                (days as f64, meas.muscle_pct)
+            })
+            .collect();
+        let plot_opt = PlotOpts::new()
+            .with_name("muscle")
+            .with_title("Muscle %")
+            .with_data(&muscle)
+            .with_labels("days", "Muscle %");
+        graphs.push(generate_d3_plot(&plot_opt)?);
+
+        let bone: Vec<_> = measurements
+            .iter()
+            .map(|meas| {
+                let days = (meas.datetime - start_datetime).num_days();
+                (days as f64, meas.bone_pct)
+            })
+            .collect();
+        let plot_opt = PlotOpts::new()
+            .with_name("bone")
+            .with_title("Bone %")
+            .with_data(&bone)
+            .with_labels("days", "Bone %");
+        graphs.push(generate_d3_plot(&plot_opt)?);
+        let body = PLOT_TEMPLATE.replace("INSERTOTHERIMAGESHERE", &graphs.join("\n"));
+        Ok(body)
     }
 }

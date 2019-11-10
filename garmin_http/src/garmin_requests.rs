@@ -360,6 +360,26 @@ impl Handler<ScaleMeasurementRequest> for PgPool {
     }
 }
 
+pub struct ScaleMeasurementPlotRequest(ScaleMeasurementRequest);
+
+impl From<ScaleMeasurementRequest> for ScaleMeasurementPlotRequest {
+    fn from(item: ScaleMeasurementRequest) -> Self {
+        Self(item)
+    }
+}
+
+impl Message for ScaleMeasurementPlotRequest {
+    type Result = Result<String, Error>;
+}
+
+impl Handler<ScaleMeasurementPlotRequest> for PgPool {
+    type Result = Result<String, Error>;
+    fn handle(&mut self, req: ScaleMeasurementPlotRequest, _: &mut Self::Context) -> Self::Result {
+        let measurements = ScaleMeasurement::read_from_db(self, req.0.start_date, req.0.end_date)?;
+        ScaleMeasurement::get_scale_measurement_plots(&measurements)
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ScaleMeasurementUpdateRequest {
     pub measurements: Vec<ScaleMeasurement>,

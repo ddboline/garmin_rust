@@ -1,5 +1,5 @@
 use actix::{Handler, Message};
-use chrono::{Duration, NaiveDate, SecondsFormat};
+use chrono::{Duration, Local, NaiveDate, SecondsFormat};
 use failure::Error;
 use log::debug;
 use serde::{Deserialize, Serialize};
@@ -7,7 +7,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 use fitbit_lib::fitbit_client::FitbitClient;
-use fitbit_lib::fitbit_heartrate::FitbitHeartRate;
+use fitbit_lib::fitbit_heartrate::{FitbitBodyWeightFat, FitbitHeartRate};
 use fitbit_lib::scale_measurement::ScaleMeasurement;
 
 use strava_lib::strava_client::{StravaAuthType, StravaClient};
@@ -234,6 +234,58 @@ impl Handler<FitbitHeartrateApiRequest> for PgPool {
         let config = GarminConfig::get_config(None)?;
         let client = FitbitClient::from_file(config)?;
         client.get_fitbit_intraday_time_series_heartrate(msg.date)
+    }
+}
+
+pub struct FitbitBodyWeightFatRequest {}
+
+impl Message for FitbitBodyWeightFatRequest {
+    type Result = Result<Vec<FitbitBodyWeightFat>, Error>;
+}
+
+impl Handler<FitbitBodyWeightFatRequest> for PgPool {
+    type Result = Result<Vec<FitbitBodyWeightFat>, Error>;
+    fn handle(&mut self, _: FitbitBodyWeightFatRequest, _: &mut Self::Context) -> Self::Result {
+        let config = GarminConfig::get_config(None)?;
+        let client = FitbitClient::from_file(config)?;
+        client.get_fitbit_bodyweightfat()
+    }
+}
+
+pub struct FitbitBodyWeightFatUpdateRequest {}
+
+impl Message for FitbitBodyWeightFatUpdateRequest {
+    type Result = Result<(), Error>;
+}
+
+impl Handler<FitbitBodyWeightFatUpdateRequest> for PgPool {
+    type Result = Result<(), Error>;
+    fn handle(
+        &mut self,
+        _: FitbitBodyWeightFatUpdateRequest,
+        _: &mut Self::Context,
+    ) -> Self::Result {
+        let start_date: NaiveDate = (Local::now() - Duration::days(30)).naive_local().date();
+        let config = GarminConfig::get_config(None)?;
+        let client = FitbitClient::from_file(config)?;
+        let existing_map: HashMap<NaiveDate, _> = client
+            .get_fitbit_bodyweightfat()?
+            .into_iter()
+            .map(|entry| (entry.date, entry))
+            .collect();
+        let new_measurements: Vec<_> =
+            ScaleMeasurement::read_from_db(self, Some(start_date), None)?
+                .into_iter()
+                .filter_map(|entry| {
+                    let date = entry.datetime.date().naive_local();
+                    match existing_map.get(&date) {
+                        Some(_) => None,
+                        None => Some(entry),
+                    }
+                })
+                .collect();
+        println!("{:?}", new_measurements);
+        Ok(())
     }
 }
 

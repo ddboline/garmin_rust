@@ -13,7 +13,8 @@ use std::io::{BufRead, BufReader, Write};
 use garmin_lib::common::garmin_config::GarminConfig;
 use garmin_lib::common::pgpool::PgPool;
 
-use crate::fitbit_heartrate::FitbitHeartRate;
+use crate::fitbit_heartrate::{FitbitBodyWeightFat, FitbitHeartRate};
+use crate::scale_measurement::ScaleMeasurement;
 
 #[derive(Default, Debug)]
 pub struct FitbitClient {
@@ -209,6 +210,75 @@ impl FitbitClient {
             current_datetimes.len()
         );
         FitbitHeartRate::insert_slice_into_db(&heartrates, pool)
+    }
+
+    fn _get_fitbit_bodyweightfat(&self, py: Python) -> PyResult<Vec<FitbitBodyWeightFat>> {
+        let client = self.get_fitbit_client(py, false)?;
+        client.call_method(py, "user_profile_get", PyTuple::empty(py), None)?;
+        let args = PyDict::new(py);
+        args.set_item(py, "period", "30d")?;
+        let result = client.call_method(py, "get_bodyweight", PyTuple::empty(py), Some(&args))?;
+        let dataset = result.get_item(py, "weight".to_py_object(py).into_object())?;
+        let dataset = PyList::extract(py, &dataset)?;
+
+        dataset
+            .iter(py)
+            .map(|item| {
+                let dict = PyDict::extract(py, &item)?;
+                FitbitBodyWeightFat::from_pydict(py, dict)
+            })
+            .collect()
+    }
+
+    pub fn get_fitbit_bodyweightfat(&self) -> Result<Vec<FitbitBodyWeightFat>, Error> {
+        let gil = Python::acquire_gil();
+        let py = gil.python();
+
+        self._get_fitbit_bodyweightfat(py)
+            .map_err(|e| format_err!("{:?}", e))
+    }
+
+    fn _update_fitbit_bodyweightfat(
+        &self,
+        py: Python,
+        updates: &[ScaleMeasurement],
+    ) -> PyResult<()> {
+        let client = self.get_fitbit_client(py, false)?;
+        client.call_method(py, "user_profile_get", PyTuple::empty(py), None)?;
+        updates
+            .iter()
+            .map(|update| {
+                let date = update.datetime.date().naive_local();
+                let time = update.datetime.naive_local().time();
+                let url = "https://api.fitbit.com/1/user/-/body/log/weight.json";
+                let data = PyDict::new(py);
+                data.set_item(py, "date", &date.to_string())?;
+                data.set_item(py, "time", &time.to_string())?;
+                data.set_item(py, "weight", &update.mass.to_string())?;
+                let args = PyDict::new(py);
+                args.set_item(py, "data", data)?;
+                args.set_item(py, "method", "POST")?;
+                client.call_method(py, "make_request", (url,), Some(&args))?;
+                let url = "https://api.fitbit.com/1/user/-/body/log/fat.json";
+                let data = PyDict::new(py);
+                data.set_item(py, "date", &date.to_string())?;
+                data.set_item(py, "time", &time.to_string())?;
+                data.set_item(py, "fat", &update.fat_pct.to_string())?;
+                let args = PyDict::new(py);
+                args.set_item(py, "data", data)?;
+                args.set_item(py, "method", "POST")?;
+                client.call_method(py, "make_request", (url,), Some(&args))?;
+                Ok(())
+            })
+            .collect()
+    }
+
+    pub fn update_fitbit_bodyweightfat(&self, updates: &[ScaleMeasurement]) -> Result<(), Error> {
+        let gil = Python::acquire_gil();
+        let py = gil.python();
+
+        self._update_fitbit_bodyweightfat(py, updates)
+            .map_err(|e| format_err!("{:?}", e))
     }
 }
 

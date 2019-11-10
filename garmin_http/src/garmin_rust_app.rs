@@ -16,11 +16,11 @@ use garmin_lib::common::pgpool::PgPool;
 
 use super::logged_user::AUTHORIZED_USERS;
 use crate::garmin_rust_routes::{
-    fitbit_auth, fitbit_callback, fitbit_heartrate_api, fitbit_heartrate_db,
-    fitbit_heartrate_db_update, fitbit_sync, garmin, garmin_connect_sync, garmin_get_hr_data,
-    garmin_get_hr_pace, garmin_list_gps_tracks, garmin_sync, garmin_upload, scale_measurement,
-    scale_measurement_update, strava_activities, strava_auth, strava_callback, strava_sync,
-    strava_update, strava_upload,
+    fitbit_auth, fitbit_bodyweight, fitbit_bodyweight_sync, fitbit_callback, fitbit_heartrate_api,
+    fitbit_heartrate_db, fitbit_heartrate_db_update, fitbit_sync, garmin, garmin_connect_sync,
+    garmin_get_hr_data, garmin_get_hr_pace, garmin_list_gps_tracks, garmin_sync, garmin_upload,
+    scale_measurement, scale_measurement_update, strava_activities, strava_auth, strava_callback,
+    strava_sync, strava_update, strava_upload,
 };
 use crate::CONFIG;
 
@@ -107,6 +107,14 @@ pub fn start_app() {
                     .route(web::post().to_async(fitbit_heartrate_db_update)),
             )
             .service(web::resource("/garmin/fitbit/sync").route(web::get().to_async(fitbit_sync)))
+            .service(
+                web::resource("/garmin/fitbit/bodyweight")
+                    .route(web::get().to_async(fitbit_bodyweight)),
+            )
+            .service(
+                web::resource("/garmin/fitbit/bodyweight_sync")
+                    .route(web::get().to_async(fitbit_bodyweight_sync)),
+            )
             .service(
                 web::resource("/garmin/scale_measurements")
                     .route(web::get().to_async(scale_measurement))

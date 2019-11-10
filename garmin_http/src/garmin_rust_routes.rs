@@ -23,7 +23,8 @@ use super::logged_user::LoggedUser;
 
 use super::garmin_rust_app::AppState;
 use crate::garmin_requests::{
-    FitbitAuthRequest, FitbitCallbackRequest, FitbitHeartrateApiRequest, FitbitHeartrateDbRequest,
+    FitbitAuthRequest, FitbitBodyWeightFatRequest, FitbitBodyWeightFatUpdateRequest,
+    FitbitCallbackRequest, FitbitHeartrateApiRequest, FitbitHeartrateDbRequest,
     FitbitHeartrateDbUpdateRequest, FitbitSyncRequest, GarminConnectSyncRequest, GarminCorrRequest,
     GarminHtmlRequest, GarminListRequest, GarminSyncRequest, GarminUploadRequest,
     ScaleMeasurementRequest, ScaleMeasurementUpdateRequest, StravaActivitiesRequest,
@@ -285,6 +286,28 @@ pub fn fitbit_heartrate_api(
         .send(query)
         .from_err()
         .and_then(move |res| res.and_then(|hlist| to_json(&hlist)))
+}
+
+pub fn fitbit_bodyweight(
+    _: LoggedUser,
+    state: Data<AppState>,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    state
+        .db
+        .send(FitbitBodyWeightFatRequest {})
+        .from_err()
+        .and_then(move |res| res.and_then(|hlist| to_json(&hlist)))
+}
+
+pub fn fitbit_bodyweight_sync(
+    _: LoggedUser,
+    state: Data<AppState>,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    state
+        .db
+        .send(FitbitBodyWeightFatUpdateRequest {})
+        .from_err()
+        .and_then(move |res| res.and_then(|_| form_http_response("finished".into())))
 }
 
 pub fn fitbit_heartrate_db(

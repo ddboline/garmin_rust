@@ -213,6 +213,22 @@ pub fn import_fitbit_json_files(directory: &str) -> Result<(), Error> {
         .collect()
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct FitbitBodyWeightFat {
+    pub date: NaiveDate,
+    pub weight: f64,
+    pub fat: f64,
+}
+
+impl FitbitBodyWeightFat {
+    pub fn from_pydict(py: Python, dict: PyDict) -> PyResult<FitbitBodyWeightFat> {
+        let date: NaiveDate = get_pydict_item!(py, dict, date, String)?.parse().unwrap();
+        let weight = get_pydict_item!(py, dict, weight, f64)?;
+        let fat = get_pydict_item!(py, dict, fat, f64)?;
+        Ok(FitbitBodyWeightFat { date, weight, fat })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;

@@ -255,11 +255,11 @@ impl Handler<FitbitBodyWeightFatRequest> for PgPool {
 pub struct FitbitBodyWeightFatUpdateRequest {}
 
 impl Message for FitbitBodyWeightFatUpdateRequest {
-    type Result = Result<(), Error>;
+    type Result = Result<Vec<ScaleMeasurement>, Error>;
 }
 
 impl Handler<FitbitBodyWeightFatUpdateRequest> for PgPool {
-    type Result = Result<(), Error>;
+    type Result = Result<Vec<ScaleMeasurement>, Error>;
     fn handle(
         &mut self,
         _: FitbitBodyWeightFatUpdateRequest,
@@ -284,8 +284,8 @@ impl Handler<FitbitBodyWeightFatUpdateRequest> for PgPool {
                     }
                 })
                 .collect();
-        println!("{:?}", new_measurements);
-        Ok(())
+        client.update_fitbit_bodyweightfat(&new_measurements)?;
+        Ok(new_measurements)
     }
 }
 

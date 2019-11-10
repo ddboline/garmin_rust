@@ -307,7 +307,7 @@ pub fn fitbit_bodyweight_sync(
         .db
         .send(FitbitBodyWeightFatUpdateRequest {})
         .from_err()
-        .and_then(move |res| res.and_then(|_| form_http_response("finished".into())))
+        .and_then(move |res| res.and_then(|hlist| to_json(&hlist)))
 }
 
 pub fn fitbit_heartrate_db(

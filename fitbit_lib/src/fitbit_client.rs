@@ -248,8 +248,9 @@ impl FitbitClient {
         updates
             .iter()
             .map(|update| {
-                let date = update.datetime.date().naive_local();
-                let time = update.datetime.naive_local().format("%H:%M:%S").to_string();
+                let datetime = update.datetime.with_timezone(&Local);
+                let date = datetime.date().naive_local();
+                let time = datetime.naive_local().format("%H:%M:%S").to_string();
                 let url = "https://api.fitbit.com/1/user/-/body/log/weight.json";
                 let data = PyDict::new(py);
                 data.set_item(py, "date", &date.to_string())?;

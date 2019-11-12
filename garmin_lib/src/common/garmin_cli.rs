@@ -537,7 +537,7 @@ impl GarminCli {
 
         let filenames: Result<Vec<_>, Error> = filenames
             .iter()
-            .map(|filename| match filename.to_lowercase().split(".").last() {
+            .map(|filename| match filename.to_lowercase().split('.').last() {
                 Some("zip") => extract_zip_from_garmin_connect(filename, &ziptmpdir),
                 Some("fit") => Ok(filename.to_string()),
                 Some("tcx") => Ok(filename.to_string()),

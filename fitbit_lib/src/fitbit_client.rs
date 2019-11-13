@@ -226,7 +226,7 @@ impl FitbitClient {
 
     fn _get_fitbit_bodyweightfat(&self, py: Python) -> PyResult<Vec<FitbitBodyWeightFat>> {
         let client = self.get_fitbit_client(py, false)?;
-        self.get_client_offset(py, &client)?;
+        let offset = self.get_client_offset(py, &client)?;
         let args = PyDict::new(py);
         args.set_item(py, "period", "30d")?;
         let result = client.call_method(py, "get_bodyweight", PyTuple::empty(py), Some(&args))?;
@@ -237,7 +237,7 @@ impl FitbitClient {
             .iter(py)
             .map(|item| {
                 let dict = PyDict::extract(py, &item)?;
-                FitbitBodyWeightFat::from_pydict(py, dict)
+                FitbitBodyWeightFat::from_pydict(py, dict, offset)
             })
             .collect()
     }

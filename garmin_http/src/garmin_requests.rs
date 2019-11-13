@@ -271,7 +271,10 @@ impl Handler<FitbitBodyWeightFatUpdateRequest> for PgPool {
         let existing_map: HashMap<NaiveDate, _> = client
             .get_fitbit_bodyweightfat()?
             .into_iter()
-            .map(|entry| (entry.date, entry))
+            .map(|entry| {
+                let date = entry.datetime.with_timezone(&Local).naive_local().date();
+                (date, entry)
+            })
             .collect();
         let new_measurements: Vec<_> =
             ScaleMeasurement::read_from_db(self, Some(start_date), None)?

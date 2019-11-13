@@ -1,4 +1,4 @@
-use chrono::{DateTime, FixedOffset, Local, NaiveDate, NaiveDateTime, TimeZone, Utc};
+use chrono::{DateTime, FixedOffset, Local, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
 use cpython::{exc, FromPyObject, PyDict, PyErr, PyResult, Python};
 use failure::{err_msg, Error};
 use glob::glob;
@@ -215,17 +215,30 @@ pub fn import_fitbit_json_files(directory: &str) -> Result<(), Error> {
 
 #[derive(Serialize, Deserialize)]
 pub struct FitbitBodyWeightFat {
-    pub date: NaiveDate,
+    pub datetime: DateTime<Utc>,
     pub weight: f64,
     pub fat: f64,
 }
 
 impl FitbitBodyWeightFat {
-    pub fn from_pydict(py: Python, dict: PyDict) -> PyResult<FitbitBodyWeightFat> {
+    pub fn from_pydict(
+        py: Python,
+        dict: PyDict,
+        offset: FixedOffset,
+    ) -> PyResult<FitbitBodyWeightFat> {
         let date: NaiveDate = get_pydict_item!(py, dict, date, String)?.parse().unwrap();
+        let time: NaiveTime = get_pydict_item!(py, dict, time, String)?.parse().unwrap();
+        let datetime = format!("{}T{}{}", date, time, offset);
+        let datetime = DateTime::parse_from_rfc3339(&datetime)
+            .unwrap()
+            .with_timezone(&Utc);
         let weight = get_pydict_item!(py, dict, weight, f64)?;
         let fat = get_pydict_item!(py, dict, fat, f64)?;
-        Ok(FitbitBodyWeightFat { date, weight, fat })
+        Ok(FitbitBodyWeightFat {
+            datetime,
+            weight,
+            fat,
+        })
     }
 }
 

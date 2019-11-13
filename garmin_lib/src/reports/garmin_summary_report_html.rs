@@ -114,6 +114,7 @@ pub fn summary_report_html(
 
     for line in GARMIN_TEMPLATE.split('\n') {
         if line.contains("INSERTTEXTHERE") {
+            htmlvec.push(r#"<table border="0">"#.to_string());
             htmlvec.push(htmlostr.to_string());
         } else if line.contains("SPORTTITLEDATE") {
             let newtitle = "Garmin Summary";

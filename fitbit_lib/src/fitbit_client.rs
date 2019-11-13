@@ -1,4 +1,4 @@
-use chrono::{FixedOffset, Local, NaiveDate, TimeZone};
+use chrono::{FixedOffset, NaiveDate};
 use cpython::{
     FromPyObject, ObjectProtocol, PyDict, PyList, PyObject, PyResult, PyTuple, Python,
     PythonObject, ToPyObject,
@@ -71,7 +71,7 @@ impl FitbitClient {
         Ok(())
     }
 
-    pub fn get_fitbit_client(&self, py: Python, do_auth: bool) -> PyResult<PyObject> {
+    fn get_fitbit_client(&self, py: Python, do_auth: bool) -> PyResult<PyObject> {
         let redirect_uri = format!("https://{}/garmin/fitbit/callback", self.config.domain);
         let fitbit = py.import("fitbit.api")?;
         let args = PyDict::new(py);
@@ -97,6 +97,20 @@ impl FitbitClient {
             ),
             Some(&args),
         )
+    }
+
+    fn get_client_offset(&self, py: Python, client: &PyObject) -> PyResult<FixedOffset> {
+        let result = client
+            .call_method(py, "user_profile_get", PyTuple::empty(py), None)?
+            .get_item(py, "user")?;
+        let result = PyDict::extract(py, &result)?;
+        let offset = match result.get_item(py, "offsetFromUTCMillis") {
+            Some(r) => i64::extract(py, &r)?,
+            None => 0,
+        };
+        let offset = (offset / 1000) as i32;
+        let offset = FixedOffset::east(offset);
+        Ok(offset)
     }
 
     fn _get_fitbit_auth_url(&self, py: Python) -> PyResult<String> {
@@ -150,10 +164,9 @@ impl FitbitClient {
         &self,
         py: Python,
         date: NaiveDate,
-        offset: FixedOffset,
     ) -> PyResult<Vec<FitbitHeartRate>> {
         let client = self.get_fitbit_client(py, false)?;
-        client.call_method(py, "user_profile_get", PyTuple::empty(py), None)?;
+        let offset = self.get_client_offset(py, &client)?;
         let args = PyDict::new(py);
         let date = date.to_string();
         args.set_item(py, "base_date", &date)?;
@@ -186,8 +199,7 @@ impl FitbitClient {
         let gil = Python::acquire_gil();
         let py = gil.python();
 
-        let offset = Local.offset_from_local_date(&date).unwrap();
-        self._get_fitbit_intraday_time_series_heartrate(py, date, offset)
+        self._get_fitbit_intraday_time_series_heartrate(py, date)
             .map_err(|e| format_err!("{:?}", e))
     }
 
@@ -214,7 +226,7 @@ impl FitbitClient {
 
     fn _get_fitbit_bodyweightfat(&self, py: Python) -> PyResult<Vec<FitbitBodyWeightFat>> {
         let client = self.get_fitbit_client(py, false)?;
-        client.call_method(py, "user_profile_get", PyTuple::empty(py), None)?;
+        self.get_client_offset(py, &client)?;
         let args = PyDict::new(py);
         args.set_item(py, "period", "30d")?;
         let result = client.call_method(py, "get_bodyweight", PyTuple::empty(py), Some(&args))?;
@@ -244,11 +256,11 @@ impl FitbitClient {
         updates: &[ScaleMeasurement],
     ) -> PyResult<()> {
         let client = self.get_fitbit_client(py, false)?;
-        client.call_method(py, "user_profile_get", PyTuple::empty(py), None)?;
+        let offset = self.get_client_offset(py, &client)?;
         updates
             .iter()
             .map(|update| {
-                let datetime = update.datetime.with_timezone(&Local);
+                let datetime = update.datetime.with_timezone(&offset);
                 let date = datetime.date().naive_local();
                 let time = datetime.naive_local().format("%H:%M:%S").to_string();
                 let url = "https://api.fitbit.com/1/user/-/body/log/weight.json";

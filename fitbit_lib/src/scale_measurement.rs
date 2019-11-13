@@ -1,5 +1,5 @@
 use chrono::offset::TimeZone;
-use chrono::{DateTime, NaiveDate, Utc};
+use chrono::{DateTime, Local, NaiveDate, Utc};
 use failure::{err_msg, Error};
 use google_sheets4::RowData;
 use log::debug;
@@ -182,7 +182,10 @@ impl ScaleMeasurement {
 
     pub fn get_scale_measurement_plots(measurements: &[ScaleMeasurement]) -> Result<String, Error> {
         if measurements.is_empty() {
-            return Ok("".to_string());
+            let body = PLOT_TEMPLATE
+                .replace("INSERTOTHERIMAGESHERE", "")
+                .replace("INSERTTEXTHERE", "");
+            return Ok(body);
         }
         let mut graphs = Vec::new();
         let start_datetime = measurements[0].datetime;
@@ -256,7 +259,37 @@ impl ScaleMeasurement {
             .with_data(&bone)
             .with_labels("days", "Bone %");
         graphs.push(generate_d3_plot(&plot_opt)?);
-        let body = PLOT_TEMPLATE.replace("INSERTOTHERIMAGESHERE", &graphs.join("\n"));
+
+        let n = measurements.len();
+        let entries: Vec<_> = measurements[n - 10..n]
+            .iter()
+            .map(|meas| {
+                let date = meas.datetime.with_timezone(&Local).date().naive_local();
+                format!(
+                    r#"
+                    <td>{}</td><td>{:3.1}</td><td>{:2.1}</td><td>{:2.1}</td>
+                    <td>{:2.1}</td><td>{:2.1}</td>"#,
+                    date, meas.mass, meas.fat_pct, meas.water_pct, meas.muscle_pct, meas.bone_pct,
+                )
+            })
+            .collect();
+        let entries = format!(
+            r#"
+            <table border=1>
+            <thead>
+            <th>Date</th><th>Weight</th><th>Fat %</th><th>Water %</th>
+            <th>Muscle %</th><th>Bone %</th>
+            </thead>
+            <tbody>
+            <tr>{}</tr>
+            </tbody>
+            </table>"#,
+            entries.join("</tr><tr>")
+        );
+
+        let body = PLOT_TEMPLATE
+            .replace("INSERTOTHERIMAGESHERE", &graphs.join("\n"))
+            .replace("INSERTTEXTHERE", &entries);
         Ok(body)
     }
 }

@@ -343,10 +343,25 @@ impl Handler<FitbitSyncRequest> for PgPool {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct ScaleMeasurementRequest {
     pub start_date: Option<NaiveDate>,
     pub end_date: Option<NaiveDate>,
+}
+
+impl ScaleMeasurementRequest {
+    fn add_default(&self, ndays: i64) -> Self {
+        Self {
+            start_date: match self.start_date {
+                Some(d) => Some(d),
+                None => Some((Local::now() - Duration::days(ndays)).naive_local().date()),
+            },
+            end_date: match self.end_date{
+                Some(d) => Some(d),
+                None => Some(Local::now().naive_local().date()),
+            },
+        }
+    }
 }
 
 impl Message for ScaleMeasurementRequest {
@@ -364,6 +379,7 @@ pub struct ScaleMeasurementPlotRequest(ScaleMeasurementRequest);
 
 impl From<ScaleMeasurementRequest> for ScaleMeasurementPlotRequest {
     fn from(item: ScaleMeasurementRequest) -> Self {
+        let item = item.add_default(365);
         Self(item)
     }
 }
@@ -377,6 +393,33 @@ impl Handler<ScaleMeasurementPlotRequest> for PgPool {
     fn handle(&mut self, req: ScaleMeasurementPlotRequest, _: &mut Self::Context) -> Self::Result {
         let measurements = ScaleMeasurement::read_from_db(self, req.0.start_date, req.0.end_date)?;
         ScaleMeasurement::get_scale_measurement_plots(&measurements)
+    }
+}
+
+pub struct FitbitHeartratePlotRequest{
+    pub start_date: NaiveDate,
+    pub end_date: NaiveDate,
+}
+
+impl From<ScaleMeasurementRequest> for FitbitHeartratePlotRequest {
+    fn from(item: ScaleMeasurementRequest) -> Self {
+        let item = item.add_default(365);
+        Self{
+            start_date: item.start_date.expect("this should be impossible"),
+            end_date: item.end_date.expect("this should be impossible"),
+        }
+    }
+}
+
+impl Message for FitbitHeartratePlotRequest {
+    type Result = Result<String, Error>;
+}
+
+impl Handler<FitbitHeartratePlotRequest> for PgPool {
+    type Result = Result<String, Error>;
+    fn handle(&mut self, req: FitbitHeartratePlotRequest, _: &mut Self::Context) -> Self::Result {
+
+        Ok("".to_string())
     }
 }
 

@@ -1,7 +1,10 @@
-use chrono::{DateTime, FixedOffset, Local, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
+use chrono::{
+    DateTime, Duration, FixedOffset, Local, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc,
+};
 use cpython::{exc, FromPyObject, PyDict, PyErr, PyResult, Python};
 use failure::{err_msg, Error};
 use glob::glob;
+use itertools::Itertools;
 use log::debug;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use serde::{self, Deserialize, Deserializer, Serialize};
@@ -11,7 +14,10 @@ use std::path::Path;
 use structopt::StructOpt;
 
 use garmin_lib::common::garmin_config::GarminConfig;
+use garmin_lib::common::garmin_file::GarminFile;
+use garmin_lib::common::garmin_summary::get_list_of_files_from_db;
 use garmin_lib::common::pgpool::PgPool;
+use garmin_lib::reports::garmin_templates::{PLOT_TEMPLATE, TIMESERIESTEMPLATE};
 use garmin_lib::utils::row_index_trait::RowIndexTrait;
 
 fn exception(py: Python, msg: &str) -> PyErr {
@@ -182,6 +188,79 @@ impl FitbitHeartRate {
                 Ok(Self { datetime, value })
             })
             .collect()
+    }
+
+    pub fn get_heartrate_plot(
+        pool: &PgPool,
+        start_date: NaiveDate,
+        end_date: NaiveDate,
+    ) -> Result<String, Error> {
+        let nminutes = 5;
+        let config = GarminConfig::get_config(None)?;
+        let ndays = (end_date - start_date).num_days();
+        let heartrate_values: Result<Vec<_>, Error> = (0..=ndays)
+            .into_par_iter()
+            .map(|i| {
+                let mut heartrate_values = Vec::new();
+                let date = start_date + Duration::days(i);
+                let values: Vec<_> = FitbitHeartRate::read_from_db_resample(pool, date, nminutes)?
+                    .into_iter()
+                    .map(|h| (h.datetime, h.value))
+                    .collect();
+                heartrate_values.extend_from_slice(&values);
+                let constraint = format!("date(begin_datetime at time zone 'utc') = '{}'", date);
+                for filename in get_list_of_files_from_db(&[constraint], pool)? {
+                    let avro_file = format!("{}/{}.avro", &config.cache_dir, filename);
+                    let points: Vec<_> = GarminFile::read_avro(&avro_file)?
+                        .points
+                        .into_iter()
+                        .filter_map(|p| p.heart_rate.map(|h| (p.time, h as i32)))
+                        .collect();
+                    heartrate_values.extend_from_slice(&points);
+                }
+                Ok(heartrate_values)
+            })
+            .collect();
+        let heartrate_values: Vec<_> = heartrate_values?.into_iter().flatten().collect();
+        let mut final_values = Vec::new();
+        for (_, group) in &heartrate_values
+            .into_iter()
+            .group_by(|(d, _)| d.timestamp() / (nminutes as i64 * 60))
+        {
+            let g: Vec<_> = group.collect();
+            let d = g.iter().map(|(d, _)| *d).min();
+            if let Some(d) = d {
+                let v = g.iter().map(|(_, v)| v).sum::<i32>() / g.len() as i32;
+                let d = d.format("%Y-%m-%dT%H:%M:%SZ").to_string();
+                final_values.push((d, v));
+            }
+        }
+        final_values.sort();
+        let js_str = serde_json::to_string(&final_values).unwrap_or_else(|_| "".to_string());
+        let plots = TIMESERIESTEMPLATE
+            .replace("DATA", &js_str)
+            .replace("EXAMPLETITLE", "Heart Rate")
+            .replace("XAXIS", "Date")
+            .replace("YAXIS", "Heart Rate");
+        let plots = format!("<script>\n{}\n</script>", plots);
+        let buttons: Vec<_> = (0..10)
+            .into_iter()
+            .map(|i| {
+                let date = Local::today().naive_local() - Duration::days(i);
+                format!(
+                    r#"
+            <button type="submit" id="ID"
+             onclick="heartrate_plot_date('{date}','{date}');"">Plot {date}</button>
+            <button type="submit" id="ID"
+             onclick="heartrate_sync('{date}');">Sync {date}</button><br>"#,
+                    date = date
+                )
+            })
+            .collect();
+        let body = PLOT_TEMPLATE
+            .replace("INSERTOTHERIMAGESHERE", &plots)
+            .replace("INSERTTEXTHERE", &buttons.join("\n"));
+        Ok(body)
     }
 }
 

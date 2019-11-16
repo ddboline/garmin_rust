@@ -46,6 +46,7 @@ shape-rendering: crispEdges;
     <button type="submit" id="ID" onclick="fitbitAuth();">Fitbit Auth</button>
     <button type="submit" id="ID" onclick="fitbitSync();">Fitbit Sync</button>
     <button type="submit" id="ID" onclick="scale_measurement_plots();">Scale Plots</button>
+    <button type="submit" id="ID" onclick="heartrate_plot();">Hear Rate Plot</button>
     <br>
     <button name="garminconnectoutput" id="garminconnectoutput"> &nbsp; </button>
     <button type="submit" onclick="send_command('filter=latest');"> latest </button>
@@ -203,6 +204,10 @@ HISTORYBUTTONS
     }
     function scale_measurement_plots() {
         let ostr = '/garmin/fitbit/plots';
+        location.replace(ostr)
+    }
+    function heartrate_plot() {
+        let ostr = '/garmin/fitbit/heartrate_plots';
         location.replace(ostr)
     }
 </script>

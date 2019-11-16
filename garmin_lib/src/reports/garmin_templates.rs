@@ -6,4 +6,6 @@ pub static LINEPLOTTEMPLATE: &str = include_str!("../../../templates/LINEPLOTTEM
 
 pub static SCATTERPLOTTEMPLATE: &str = include_str!("../../../templates/SCATTERPLOTTEMPLATE.js");
 
+pub static TIMESERIESTEMPLATE: &str = include_str!("../../../templates/TIMESERIESTEMPLATE.js");
+
 pub static PLOT_TEMPLATE: &str = include_str!("../../../templates/PLOT_TEMPLATE.html");

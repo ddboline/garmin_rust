@@ -26,11 +26,11 @@ use super::garmin_rust_app::AppState;
 use crate::garmin_requests::{
     FitbitAuthRequest, FitbitBodyWeightFatRequest, FitbitBodyWeightFatUpdateRequest,
     FitbitCallbackRequest, FitbitHeartrateApiRequest, FitbitHeartrateDbRequest,
-    FitbitHeartrateDbUpdateRequest, FitbitSyncRequest, GarminConnectSyncRequest, GarminCorrRequest,
-    GarminHtmlRequest, GarminListRequest, GarminSyncRequest, GarminUploadRequest,
-    ScaleMeasurementPlotRequest, ScaleMeasurementRequest, ScaleMeasurementUpdateRequest,
-    StravaActivitiesRequest, StravaAuthRequest, StravaCallbackRequest, StravaSyncRequest,
-    StravaUpdateRequest, StravaUploadRequest,
+    FitbitHeartrateDbUpdateRequest, FitbitHeartratePlotRequest, FitbitSyncRequest,
+    GarminConnectSyncRequest, GarminCorrRequest, GarminHtmlRequest, GarminListRequest,
+    GarminSyncRequest, GarminUploadRequest, ScaleMeasurementPlotRequest, ScaleMeasurementRequest,
+    ScaleMeasurementUpdateRequest, StravaActivitiesRequest, StravaAuthRequest,
+    StravaCallbackRequest, StravaSyncRequest, StravaUpdateRequest, StravaUploadRequest,
 };
 use crate::CONFIG;
 
@@ -369,6 +369,23 @@ pub fn fitbit_plots(
     state: Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let query: ScaleMeasurementPlotRequest = query.into_inner().into();
+    state.db.send(query).from_err().and_then(move |res| {
+        res.and_then(|body| {
+            let body = body.replace(
+                "HISTORYBUTTONS",
+                &generate_history_buttons(&state.history.read()),
+            );
+            form_http_response(body)
+        })
+    })
+}
+
+pub fn heartrate_plots(
+    query: Query<ScaleMeasurementRequest>,
+    _: LoggedUser,
+    state: Data<AppState>,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let query: FitbitHeartratePlotRequest = query.into_inner().into();
     state.db.send(query).from_err().and_then(move |res| {
         res.and_then(|body| {
             let body = body.replace(

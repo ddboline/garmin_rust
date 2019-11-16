@@ -156,6 +156,31 @@ impl FitbitHeartRate {
         trans.commit()?;
         Ok(())
     }
+
+    pub fn read_from_db_resample(
+        pool: &PgPool,
+        date: NaiveDate,
+        nminutes: usize,
+    ) -> Result<Vec<Self>, Error> {
+        let query = format!("
+            SELECT min(datetime), cast(avg(bpm) as int)
+            FROM fitbit_heartrate
+            WHERE date(datetime) = $1
+            GROUP BY cast(extract(epoch from datetime)/({}*60) as int)
+            ORDER BY 1",
+            nminutes
+        );
+        dbg!("{}", &query);
+        let conn = pool.get()?;
+        conn.query(&query, &[&date])?
+            .iter()
+            .map(|row| {
+                let datetime = row.get_idx(0)?;
+                let value = row.get_idx(1)?;
+                Ok(Self { datetime, value })
+            })
+            .collect()
+    }
 }
 
 pub fn process_fitbit_json_file(fname: &Path) -> Result<Vec<FitbitHeartRate>, Error> {

@@ -2,6 +2,7 @@ use chrono::{DateTime, FixedOffset, Local, NaiveDate, NaiveDateTime, NaiveTime, 
 use cpython::{exc, FromPyObject, PyDict, PyErr, PyResult, Python};
 use failure::{err_msg, Error};
 use glob::glob;
+use log::debug;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use serde::{self, Deserialize, Deserializer, Serialize};
 use std::collections::HashSet;
@@ -162,7 +163,8 @@ impl FitbitHeartRate {
         date: NaiveDate,
         nminutes: usize,
     ) -> Result<Vec<Self>, Error> {
-        let query = format!("
+        let query = format!(
+            "
             SELECT min(datetime), cast(avg(bpm) as int)
             FROM fitbit_heartrate
             WHERE date(datetime) = $1
@@ -170,7 +172,7 @@ impl FitbitHeartRate {
             ORDER BY 1",
             nminutes
         );
-        dbg!("{}", &query);
+        debug!("{}", &query);
         let conn = pool.get()?;
         conn.query(&query, &[&date])?
             .iter()

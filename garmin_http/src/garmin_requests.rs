@@ -462,6 +462,7 @@ impl Handler<FitbitHeartratePlotRequest> for PgPool {
                 final_values.push((d, v));
             }
         }
+        final_values.sort();
         let js_str = serde_json::to_string(&final_values).unwrap_or_else(|_| "".to_string());
         let plots = TIMESERIESTEMPLATE
             .replace("DATA", &js_str)

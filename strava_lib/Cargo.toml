@@ -1,6 +1,6 @@
 [package]
 name = "strava_lib"
-version = "0.4.61"
+version = "0.4.62"
 authors = ["Daniel Boline <dboline@mediamath.com>"]
 edition = "2018"
 

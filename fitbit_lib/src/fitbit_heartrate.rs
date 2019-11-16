@@ -244,7 +244,6 @@ impl FitbitHeartRate {
             .replace("YAXIS", "Heart Rate");
         let plots = format!("<script>\n{}\n</script>", plots);
         let buttons: Vec<_> = (0..10)
-            .into_iter()
             .map(|i| {
                 let date = Local::today().naive_local() - Duration::days(i);
                 format!(

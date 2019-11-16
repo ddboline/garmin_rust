@@ -143,10 +143,10 @@ impl ScaleMeasurement {
         ";
         let mut conditions = Vec::new();
         if let Some(d) = start_date {
-            conditions.push(format!("datetime >= '{}'", d));
+            conditions.push(format!("date(datetime) >= '{}'", d));
         }
         if let Some(d) = end_date {
-            conditions.push(format!("datetime <= '{}'", d));
+            conditions.push(format!("date(datetime) <= '{}'", d));
         }
         let query = format!(
             "{} {} ORDER BY datetime",

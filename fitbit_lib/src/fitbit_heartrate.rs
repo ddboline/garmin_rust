@@ -148,7 +148,6 @@ impl FitbitHeartRate {
     }
 
     pub fn insert_slice_into_db(slice: &[Self], pool: &PgPool) -> Result<(), Error> {
-        println!("insert {}", slice.len());
         let conn = pool.get()?;
         let trans = conn.transaction()?;
         let query = "
@@ -175,8 +174,8 @@ impl FitbitHeartRate {
             LEFT JOIN fitbit_heartrate b ON a.datetime = b.datetime
             WHERE b.datetime is NULL";
         trans.execute(query, &[])?;
-        // let query = "DROP TABLE fitbit_heartrate_temp";
-        // trans.execute(query, &[])?;
+        let query = "DROP TABLE fitbit_heartrate_temp";
+        trans.execute(query, &[])?;
         trans.commit()?;
         Ok(())
     }

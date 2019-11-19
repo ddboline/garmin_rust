@@ -151,7 +151,7 @@ impl FitbitHeartRate {
         let conn = pool.get()?;
         let trans = conn.transaction()?;
         let query = "
-            CREATE TABLE fitbit_heartrate_temp
+            CREATE TEMP TABLE fitbit_heartrate_temp
             AS (SELECT datetime, bpm FROM fitbit_heartrate limit 0)";
         trans.execute(query, &[])?;
         let query = "

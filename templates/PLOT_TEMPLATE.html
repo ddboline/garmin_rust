@@ -49,6 +49,7 @@ shape-rendering: crispEdges;
     <br>
     <button type="submit" id="ID" onclick="scale_measurement_plots();">Scale Plots</button>
     <button type="submit" id="ID" onclick="heartrate_plot();">Hear Rate Plot</button>
+    <button type="submit" id="ID" onclick="heartrateSync();">Scale Sync</button>
     <br>
     <button name="garminconnectoutput" id="garminconnectoutput"> &nbsp; </button>
     <button type="submit" onclick="send_command('filter=latest');"> latest </button>
@@ -220,6 +221,17 @@ HISTORYBUTTONS
         let url = '/garmin/fitbit/sync?date=' + date;
         let xmlhttp = new XMLHttpRequest();
         xmlhttp.open("GET", url, true);
+        xmlhttp.onload = function nothing() {
+            document.getElementById("garminconnectoutput").innerHTML = "done";
+            document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
+        }
+        xmlhttp.send(null);
+        document.getElementById("garminconnectoutput").innerHTML = "syncing";
+    }
+    function heartrateSync() {
+        let ostr = '/sync/sync_garmin';
+        let xmlhttp = new XMLHttpRequest();
+        xmlhttp.open("GET", ostr, true);
         xmlhttp.onload = function nothing() {
             document.getElementById("garminconnectoutput").innerHTML = "done";
             document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;

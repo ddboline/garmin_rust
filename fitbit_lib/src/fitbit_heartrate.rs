@@ -135,15 +135,13 @@ impl FitbitHeartRate {
             AS (SELECT datetime, bpm FROM fitbit_heartrate limit 0)";
         trans.execute(query, &[])?;
         let query = "
-            INSERT INTO fitbit_heartrate (datetime, bpm)
-            SELECT $1, $2
-            WHERE NOT EXISTS
-            (SELECT datetime FROM fitbit_heartrate_temp WHERE datetime = $1)";
+            INSERT INTO fitbit_heartrate_temp (datetime, bpm)
+            SELECT $1, $2";
+        let stmt = trans.prepare(query)?;
         let results: Result<_, Error> = slice
             .iter()
             .map(|entry| {
-                trans
-                    .execute(query, &[&entry.datetime, &entry.value])
+                stmt.execute(&[&entry.datetime, &entry.value])
                     .map_err(err_msg)
                     .map(|_| ())
             })

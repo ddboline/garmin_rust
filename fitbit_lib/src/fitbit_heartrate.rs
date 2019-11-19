@@ -171,10 +171,8 @@ impl FitbitHeartRate {
             INSERT INTO fitbit_heartrate (datetime, bpm)
             SELECT a.datetime, a.bpm
             FROM fitbit_heartrate_temp a
-            WHERE NOT EXISTS (
-                SELECT b.datetime FROM fitbit_heartrate b WHERE a.datetime = b.datetime
-            )
-        ";
+            LEFT JOIN fitbit_heartrate b ON a.datetime = b.datetime
+            WHERE b.datetime is NULL";
         trans.execute(query, &[])?;
         let query = "DROP TABLE fitbit_heartrate_temp";
         trans.execute(query, &[])?;

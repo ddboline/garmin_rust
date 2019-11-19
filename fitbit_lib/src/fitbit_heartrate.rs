@@ -148,6 +148,7 @@ impl FitbitHeartRate {
     }
 
     pub fn insert_slice_into_db(slice: &[Self], pool: &PgPool) -> Result<(), Error> {
+        println!("insert {}", slice.len());
         let conn = pool.get()?;
         let trans = conn.transaction()?;
         let query = "

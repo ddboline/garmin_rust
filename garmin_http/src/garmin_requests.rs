@@ -305,6 +305,32 @@ impl Handler<FitbitHeartrateDbRequest> for PgPool {
     }
 }
 
+pub struct FitbitHeartrateCountRequest {
+    pub start_date: NaiveDate,
+    pub end_date: NaiveDate,
+}
+
+impl From<ScaleMeasurementRequest> for FitbitHeartrateCountRequest {
+    fn from(item: ScaleMeasurementRequest) -> Self {
+        let item = item.add_default(3);
+        Self {
+            start_date: item.start_date.expect("this should be impossible"),
+            end_date: item.end_date.expect("this should be impossible"),
+        }
+    }
+}
+
+impl Message for FitbitHeartrateCountRequest {
+    type Result = Result<Vec<(NaiveDate, i64)>, Error>;
+}
+
+impl Handler<FitbitHeartrateCountRequest> for PgPool {
+    type Result = Result<Vec<(NaiveDate, i64)>, Error>;
+    fn handle(&mut self, msg: FitbitHeartrateCountRequest, _: &mut Self::Context) -> Self::Result {
+        FitbitHeartRate::read_count_from_db(self, msg.start_date, msg.end_date)
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct FitbitHeartrateDbUpdateRequest {
     updates: Vec<FitbitHeartRate>,

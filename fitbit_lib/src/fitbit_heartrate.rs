@@ -127,6 +127,26 @@ impl FitbitHeartRate {
             .collect()
     }
 
+    pub fn read_count_from_db(
+        pool: &PgPool,
+        start_date: NaiveDate,
+        end_date: NaiveDate,
+    ) -> Result<Vec<(NaiveDate, i64)>, Error> {
+        let query = "
+            SELECT date(datetime), count(*) FROM fitbit_heartrate
+            WHERE date(datetime) >= $1 AND date(datetime) <= $2
+            GROUP BY 1 ORDER BY 1";
+        let conn = pool.get()?;
+        conn.query(&query, &[&start_date, &end_date])?
+            .iter()
+            .map(|row| {
+                let date: NaiveDate = row.get_idx(0)?;
+                let count: i64 = row.get_idx(1)?;
+                Ok((date, count))
+            })
+            .collect()
+    }
+
     pub fn insert_slice_into_db(slice: &[Self], pool: &PgPool) -> Result<(), Error> {
         let conn = pool.get()?;
         let trans = conn.transaction()?;

@@ -25,12 +25,13 @@ use super::logged_user::LoggedUser;
 use super::garmin_rust_app::AppState;
 use crate::garmin_requests::{
     FitbitAuthRequest, FitbitBodyWeightFatRequest, FitbitBodyWeightFatUpdateRequest,
-    FitbitCallbackRequest, FitbitHeartrateApiRequest, FitbitHeartrateDbRequest,
-    FitbitHeartrateDbUpdateRequest, FitbitHeartratePlotRequest, FitbitSyncRequest,
-    GarminConnectSyncRequest, GarminCorrRequest, GarminHtmlRequest, GarminListRequest,
-    GarminSyncRequest, GarminUploadRequest, ScaleMeasurementPlotRequest, ScaleMeasurementRequest,
-    ScaleMeasurementUpdateRequest, StravaActivitiesRequest, StravaAuthRequest,
-    StravaCallbackRequest, StravaSyncRequest, StravaUpdateRequest, StravaUploadRequest,
+    FitbitCallbackRequest, FitbitHeartrateApiRequest, FitbitHeartrateCountRequest,
+    FitbitHeartrateDbRequest, FitbitHeartrateDbUpdateRequest, FitbitHeartratePlotRequest,
+    FitbitSyncRequest, GarminConnectSyncRequest, GarminCorrRequest, GarminHtmlRequest,
+    GarminListRequest, GarminSyncRequest, GarminUploadRequest, ScaleMeasurementPlotRequest,
+    ScaleMeasurementRequest, ScaleMeasurementUpdateRequest, StravaActivitiesRequest,
+    StravaAuthRequest, StravaCallbackRequest, StravaSyncRequest, StravaUpdateRequest,
+    StravaUploadRequest,
 };
 use crate::CONFIG;
 
@@ -335,6 +336,19 @@ pub fn fitbit_heartrate_db_update(
         .send(req)
         .from_err()
         .and_then(move |res| res.and_then(|_| form_http_response("finished".into())))
+}
+
+pub fn fitbit_heartrate_count(
+    query: Query<ScaleMeasurementRequest>,
+    _: LoggedUser,
+    state: Data<AppState>,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let query: FitbitHeartrateCountRequest = query.into_inner().into();
+    state
+        .db
+        .send(query)
+        .from_err()
+        .and_then(move |res| res.and_then(|hlist| to_json(&hlist)))
 }
 
 pub fn fitbit_callback(

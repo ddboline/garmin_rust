@@ -172,7 +172,7 @@ impl FitbitHeartRate {
             SELECT a.datetime, a.bpm
             FROM fitbit_heartrate_temp a
             LEFT JOIN fitbit_heartrate b
-                ON cast(extract(epoch from a.datetime)) = cast(extract(epoch from b.datetime))
+                ON cast(extract(epoch from a.datetime) as int) = cast(extract(epoch from b.datetime) as int)
             WHERE b.datetime is NULL";
         trans.execute(query, &[])?;
         let query = "DROP TABLE fitbit_heartrate_temp";

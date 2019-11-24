@@ -4,7 +4,7 @@ use garmin_lib::common::garmin_file;
 use garmin_lib::parsers::garmin_parse::GarminParseTrait;
 use garmin_lib::parsers::garmin_parse_tcx;
 
-#[test]
+#[test] #[ignore]
 fn test_garmin_file_test_avro() {
     let corr_list =
         GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json").unwrap();

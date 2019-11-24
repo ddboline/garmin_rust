@@ -30,7 +30,7 @@ fn test_garmin_parse_tcx() {
     assert_abs_diff_eq!(gfile.total_hr_dis, 1037.53);
 }
 
-#[test]
+#[test] #[ignore]
 fn test_garmin_parse_fit() {
     let corr_list =
         GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json").unwrap();

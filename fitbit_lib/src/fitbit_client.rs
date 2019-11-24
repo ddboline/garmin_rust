@@ -300,7 +300,7 @@ mod tests {
     use crate::fitbit_client::FitbitClient;
     use garmin_lib::common::garmin_config::GarminConfig;
 
-    #[test]
+    #[test] #[ignore]
     fn test_fitbit_client_from_file() {
         let config = GarminConfig::get_config(None).unwrap();
         let client = FitbitClient::from_file(config).unwrap();

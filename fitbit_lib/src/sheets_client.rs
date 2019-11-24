@@ -122,7 +122,7 @@ mod tests {
     use crate::sheets_client::SheetsClient;
     use garmin_lib::common::garmin_config::GarminConfig;
 
-    #[test]
+    #[test] #[ignore]
     fn test_sheets_client() {
         let config = GarminConfig::get_config(None).unwrap();
         let c = SheetsClient::new(&config, "ddboline@gmail.com");

@@ -29,6 +29,8 @@ pub struct GarminConfigInner {
     pub fitbit_clientid: String,
     pub fitbit_clientsecret: String,
     pub fitbit_tokenfile: String,
+    pub fitbit_cachedir: String,
+    pub fitbit_bucket: String,
     pub strava_tokenfile: String,
     pub garmin_connect_email: String,
     pub garmin_connect_password: String,
@@ -53,6 +55,7 @@ impl GarminConfigInner {
         let default_gps_dir = format!("{}/.garmin_cache/run/gps_tracks", home_dir);
         let default_cache_dir = format!("{}/.garmin_cache/run/cache", home_dir);
         let default_summary_cache = format!("{}/.garmin_cache/run/summary_cache", home_dir);
+        let default_fitbit_dir = format!("{}/.garmin_cache/run/fitbit_cache", home_dir);
 
         GarminConfigInner {
             gps_dir: default_gps_dir,
@@ -64,6 +67,7 @@ impl GarminConfigInner {
             domain: "localhost".to_string(),
             fitbit_tokenfile: format!("{}/.fitbit_tokens", home_dir),
             strava_tokenfile: format!("{}/.stravacli", home_dir),
+            fitbit_cachedir: default_fitbit_dir,
             home_dir,
             ..Default::default()
         }
@@ -96,6 +100,8 @@ impl GarminConfigInner {
         set_config_from_env!(self, fitbit_clientid, "FITBIT_CLIENTID");
         set_config_from_env!(self, fitbit_clientsecret, "FITBIT_CLIENTSECRET");
         set_config_from_env!(self, fitbit_tokenfile, "FITBIT_TOKENFILE");
+        set_config_from_env!(self, fitbit_cachedir, "FITBIT_CACHEDIR");
+        set_config_from_env!(self, fitbit_bucket, "FITBIT_BUCKET");
         set_config_from_env!(self, strava_tokenfile, "STRAVA_TOKENFILE");
         set_config_from_env!(self, garmin_connect_email, "GARMIN_CONNECT_EMAIL");
         set_config_from_env!(self, garmin_connect_password, "GARMIN_CONNECT_PASSWORD");

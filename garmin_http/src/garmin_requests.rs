@@ -444,7 +444,8 @@ impl Message for FitbitHeartratePlotRequest {
 impl Handler<FitbitHeartratePlotRequest> for PgPool {
     type Result = Result<String, Error>;
     fn handle(&mut self, req: FitbitHeartratePlotRequest, _: &mut Self::Context) -> Self::Result {
-        FitbitHeartRate::get_heartrate_plot(self, req.start_date, req.end_date)
+        let config = GarminConfig::get_config(None)?;
+        FitbitHeartRate::get_heartrate_plot(&config, self, req.start_date, req.end_date)
     }
 }
 

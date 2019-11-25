@@ -276,8 +276,7 @@ impl GarminSummaryList {
     }
 
     pub fn dump_summary_to_avro(self, output_filename: &str) -> Result<(), Error> {
-        let garmin_summary_avro_schema = GARMIN_SUMMARY_AVRO_SCHEMA;
-        let schema = Schema::parse_str(&garmin_summary_avro_schema)?;
+        let schema = Schema::parse_str(GARMIN_SUMMARY_AVRO_SCHEMA)?;
 
         let output_file = File::create(output_filename)?;
 

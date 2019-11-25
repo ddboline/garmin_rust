@@ -1,3 +1,4 @@
+use avro_rs::{from_value, Codec, Reader, Schema, Writer};
 use chrono::{
     DateTime, Duration, FixedOffset, Local, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc,
 };
@@ -18,6 +19,7 @@ use garmin_lib::common::garmin_file::GarminFile;
 use garmin_lib::common::garmin_summary::get_list_of_files_from_db;
 use garmin_lib::common::pgpool::PgPool;
 use garmin_lib::reports::garmin_templates::{PLOT_TEMPLATE, TIMESERIESTEMPLATE};
+use garmin_lib::utils::iso_8601_datetime;
 use garmin_lib::utils::row_index_trait::RowIndexTrait;
 
 fn exception(py: Python, msg: &str) -> PyErr {
@@ -43,9 +45,26 @@ macro_rules! get_pydict_item {
 
 #[derive(Serialize, Deserialize, Copy, Clone)]
 pub struct FitbitHeartRate {
+    #[serde(with = "iso_8601_datetime")]
     pub datetime: DateTime<Utc>,
     pub value: i32,
 }
+
+pub const FITBITHEARTRATE_SCHEMA: &str = r#"
+    {
+        "namespace": "fitbit.avro",
+        "type": "array",
+        "items": {
+            "namespace": "fitbit.avro",
+            "type": "record",
+            "name": "FitbitHeartRatePoint",
+            "fields": [
+                {"name": "datetime", "type": "string"},
+                {"name": "value", "type": "int"}
+            ]
+        }
+    }
+"#;
 
 #[derive(Deserialize, Copy, Clone)]
 pub struct JsonHeartRateValue {
@@ -147,6 +166,22 @@ impl FitbitHeartRate {
             .collect()
     }
 
+    pub fn get_min_max_from_db(pool: &PgPool) -> Result<Option<(NaiveDate, NaiveDate)>, Error> {
+        let query = "
+            SELECT date(min(datetime)) as min_date, date(max(datetime)) as max_date
+            FROM fitbit_heartrate";
+        let conn = pool.get()?;
+        conn.query(query, &[])?
+            .iter()
+            .nth(0)
+            .map(|row| {
+                let min_date: NaiveDate = row.get_idx(0)?;
+                let max_date: NaiveDate = row.get_idx(1)?;
+                Ok((min_date, max_date))
+            })
+            .transpose()
+    }
+
     pub fn insert_slice_into_db(slice: &[Self], pool: &PgPool) -> Result<(), Error> {
         let conn = pool.get()?;
         let trans = conn.transaction()?;
@@ -208,19 +243,19 @@ impl FitbitHeartRate {
     }
 
     pub fn get_heartrate_plot(
+        config: &GarminConfig,
         pool: &PgPool,
         start_date: NaiveDate,
         end_date: NaiveDate,
     ) -> Result<String, Error> {
         let nminutes = 5;
-        let config = GarminConfig::get_config(None)?;
         let ndays = (end_date - start_date).num_days();
         let heartrate_values: Result<Vec<_>, Error> = (0..=ndays)
             .into_par_iter()
             .map(|i| {
                 let mut heartrate_values = Vec::new();
                 let date = start_date + Duration::days(i);
-                let values: Vec<_> = FitbitHeartRate::read_from_db_resample(pool, date, nminutes)?
+                let values: Vec<_> = Self::read_from_db_resample(pool, date, nminutes)?
                     .into_iter()
                     .map(|h| (h.datetime, h.value))
                     .collect();
@@ -277,6 +312,51 @@ impl FitbitHeartRate {
             .replace("INSERTOTHERIMAGESHERE", &plots)
             .replace("INSERTTEXTHERE", &buttons.join("\n"));
         Ok(body)
+    }
+
+    pub fn dump_summary_to_avro(values: &[Self], output_filename: &str) -> Result<(), Error> {
+        let schema = Schema::parse_str(FITBITHEARTRATE_SCHEMA)?;
+
+        let output_file = File::create(output_filename)?;
+
+        let mut writer = Writer::with_codec(&schema, output_file, Codec::Snappy);
+
+        writer.append_ser(values)?;
+        writer.flush().map(|_| ())
+    }
+
+    pub fn read_avro(input_filename: &str) -> Result<Vec<Self>, Error> {
+        let input_file = File::open(input_filename)?;
+
+        Reader::new(input_file)?
+            .nth(0)
+            .map(|record| from_value::<Vec<Self>>(&record?).map_err(err_msg))
+            .transpose()
+            .map(|x| x.unwrap_or_else(|| Vec::new()))
+    }
+
+    pub fn export_db_to_avro(config: &GarminConfig, pool: &PgPool) -> Result<(), Error> {
+        let (min_date, max_date) = Self::get_min_max_from_db(&pool)?.unwrap_or_else(|| {
+            (
+                NaiveDate::from_ymd(1980, 1, 1),
+                Local::now().naive_local().date(),
+            )
+        });
+        Self::read_count_from_db(&pool, min_date, max_date)?
+            .into_par_iter()
+            .filter_map(|(date, _)| {
+                let output_filename = format!("{}/{}.avro", config.fitbit_cachedir, date);
+                if Path::new(&output_filename).exists() {
+                    None
+                } else {
+                    Some((date, output_filename))
+                }
+            })
+            .map(|(date, output_filename)| {
+                let values = Self::read_from_db(&pool, date)?;
+                Self::dump_summary_to_avro(&values, &output_filename)
+            })
+            .collect()
     }
 }
 
@@ -366,6 +446,7 @@ impl FitbitBodyWeightFat {
 
 #[cfg(test)]
 mod tests {
+    use chrono::NaiveDate;
     use std::collections::HashSet;
     use std::path::Path;
 
@@ -405,4 +486,26 @@ mod tests {
     //         .unwrap();
     //     assert!(false);
     // }
+
+    #[test]
+    #[ignore]
+    fn test_get_min_max_from_db() {
+        let config = GarminConfig::get_config(None).unwrap();
+        let pool = PgPool::new(&config.pgurl);
+        let (min_date, max_date) = FitbitHeartRate::get_min_max_from_db(&pool)
+            .unwrap()
+            .unwrap();
+        println!("{:?}", max_date);
+        assert_eq!(min_date, NaiveDate::from_ymd(2017, 3, 10));
+    }
+
+    #[test] #[ignore]
+    fn test_export_db_to_avro() {
+        let config = GarminConfig::get_config(None).unwrap();
+        let pool = PgPool::new(&config.pgurl);
+
+        FitbitHeartRate::export_db_to_avro(&config, &pool).unwrap();
+
+        assert!(false);
+    }
 }

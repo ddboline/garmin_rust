@@ -5,7 +5,8 @@ use garmin_lib::parsers::garmin_parse_gmn;
 use garmin_lib::utils::iso_8601_datetime::convert_datetime_to_str;
 use garmin_lib::utils::sport_types::SportTypes;
 
-#[test] #[ignore]
+#[test]
+#[ignore]
 fn test_garmin_parse_gmn() {
     let corr_list =
         GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json").unwrap();

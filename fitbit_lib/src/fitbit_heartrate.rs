@@ -374,7 +374,8 @@ mod tests {
 
     use crate::fitbit_heartrate::{process_fitbit_json_file, FitbitHeartRate};
 
-    #[test] #[ignore]
+    #[test]
+    #[ignore]
     fn test_process_fitbit_json_file() {
         let config = GarminConfig::get_config(None).unwrap();
         let pool = PgPool::new(&config.pgurl);

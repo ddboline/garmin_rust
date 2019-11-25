@@ -1,6 +1,7 @@
 use avro_rs::{from_value, Codec, Reader, Schema, Writer};
 use chrono::{DateTime, Utc};
 use failure::{err_msg, Error};
+use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::File;
@@ -10,6 +11,10 @@ use crate::utils::sport_types::{self, SportTypes};
 
 use super::garmin_lap::{GarminLap, GARMIN_LAP_AVRO_SCHEMA};
 use super::garmin_point::{GarminPoint, GARMIN_POINT_AVRO_SCHEMA};
+
+lazy_static! {
+    static ref GARMIN_FILE_AVRO_SCHEMA: String = GarminFile::get_avro_schema();
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GarminFile {
@@ -91,8 +96,7 @@ impl GarminFile {
     }
 
     pub fn dump_avro(&self, output_filename: &str) -> Result<(), Error> {
-        let garmin_file_avro_schema = GarminFile::get_avro_schema();
-        let schema = Schema::parse_str(&garmin_file_avro_schema)?;
+        let schema = Schema::parse_str(&GARMIN_FILE_AVRO_SCHEMA)?;
 
         let output_file = File::create(output_filename)?;
 

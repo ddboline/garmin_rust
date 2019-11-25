@@ -5,7 +5,8 @@ use garmin_lib::parsers::garmin_parse_tcx;
 use garmin_lib::utils::iso_8601_datetime::convert_datetime_to_str;
 use garmin_lib::utils::sport_types::SportTypes;
 
-#[test] #[ignore]
+#[test]
+#[ignore]
 fn test_garmin_parse_tcx() {
     let corr_list =
         GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json").unwrap();
@@ -30,7 +31,8 @@ fn test_garmin_parse_tcx() {
     assert_abs_diff_eq!(gfile.total_hr_dis, 1037.53);
 }
 
-#[test] #[ignore]
+#[test]
+#[ignore]
 fn test_garmin_parse_fit() {
     let corr_list =
         GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json").unwrap();

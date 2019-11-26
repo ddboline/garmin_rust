@@ -256,7 +256,7 @@ impl FitbitHeartRate {
                 let mut heartrate_values = Vec::new();
                 let date = start_date + Duration::days(i);
                 let input_filename = format!("{}/{}.avro", config.fitbit_cachedir, date);
-                let values = Self::read_avro(&input_filename)?;
+                let values = Self::read_avro(&input_filename).unwrap_or_else(|_| Vec::new());
                 let values = if values.is_empty() {
                     Self::read_from_db_resample(pool, date, nminutes)?
                 } else {

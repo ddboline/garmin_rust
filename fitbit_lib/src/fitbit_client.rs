@@ -221,7 +221,8 @@ impl FitbitClient {
             dates.len(),
             current_datetimes.len()
         );
-        FitbitHeartRate::insert_slice_into_db(&heartrates, pool)
+        FitbitHeartRate::insert_slice_into_db(&heartrates, pool)?;
+        FitbitHeartRate::export_date_to_avro(&self.config, pool, date)
     }
 
     fn _get_fitbit_bodyweightfat(&self, py: Python) -> PyResult<Vec<FitbitBodyWeightFat>> {

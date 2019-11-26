@@ -255,10 +255,14 @@ impl FitbitHeartRate {
             .map(|i| {
                 let mut heartrate_values = Vec::new();
                 let date = start_date + Duration::days(i);
-                let values: Vec<_> = Self::read_from_db_resample(pool, date, nminutes)?
-                    .into_iter()
-                    .map(|h| (h.datetime, h.value))
-                    .collect();
+                let input_filename = format!("{}/{}.avro", config.fitbit_cachedir, date);
+                let values = Self::read_avro(&input_filename)?;
+                let values = if values.is_empty() {
+                    Self::read_from_db_resample(pool, date, nminutes)?
+                } else {
+                    values
+                };
+                let values: Vec<_> = values.into_iter().map(|h| (h.datetime, h.value)).collect();
                 heartrate_values.extend_from_slice(&values);
                 let constraint = format!("date(begin_datetime at time zone 'utc') = '{}'", date);
                 for filename in get_list_of_files_from_db(&[constraint], pool)? {
@@ -314,7 +318,7 @@ impl FitbitHeartRate {
         Ok(body)
     }
 
-    pub fn dump_summary_to_avro(values: &[Self], output_filename: &str) -> Result<(), Error> {
+    pub fn dump_to_avro(values: &[Self], output_filename: &str) -> Result<(), Error> {
         let schema = Schema::parse_str(FITBITHEARTRATE_SCHEMA)?;
 
         let output_file = File::create(output_filename)?;
@@ -333,6 +337,16 @@ impl FitbitHeartRate {
             .map(|record| from_value::<Vec<Self>>(&record?).map_err(err_msg))
             .transpose()
             .map(|x| x.unwrap_or_else(|| Vec::new()))
+    }
+
+    pub fn export_date_to_avro(
+        config: &GarminConfig,
+        pool: &PgPool,
+        date: NaiveDate,
+    ) -> Result<(), Error> {
+        let output_filename = format!("{}/{}.avro", config.fitbit_cachedir, date);
+        let values = Self::read_from_db(&pool, date)?;
+        Self::dump_to_avro(&values, &output_filename)
     }
 
     pub fn export_db_to_avro(config: &GarminConfig, pool: &PgPool) -> Result<(), Error> {
@@ -354,7 +368,7 @@ impl FitbitHeartRate {
             })
             .map(|(date, output_filename)| {
                 let values = Self::read_from_db(&pool, date)?;
-                Self::dump_summary_to_avro(&values, &output_filename)
+                Self::dump_to_avro(&values, &output_filename)
             })
             .collect()
     }
@@ -499,7 +513,8 @@ mod tests {
         assert_eq!(min_date, NaiveDate::from_ymd(2017, 3, 10));
     }
 
-    #[test] #[ignore]
+    #[test]
+    #[ignore]
     fn test_export_db_to_avro() {
         let config = GarminConfig::get_config(None).unwrap();
         let pool = PgPool::new(&config.pgurl);

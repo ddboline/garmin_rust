@@ -256,13 +256,11 @@ impl FitbitHeartRate {
                 let mut heartrate_values = Vec::new();
                 let date = start_date + Duration::days(i);
                 let input_filename = format!("{}/{}.avro", config.fitbit_cachedir, date);
-                let values = Self::read_avro(&input_filename).unwrap_or_else(|_| Vec::new());
-                let values = if values.is_empty() {
-                    Self::read_from_db_resample(pool, date, nminutes)?
-                } else {
-                    values
-                };
-                let values: Vec<_> = values.into_iter().map(|h| (h.datetime, h.value)).collect();
+                let values: Vec<_> = Self::read_avro(&input_filename)
+                    .unwrap_or_else(|_| Vec::new())
+                    .into_iter()
+                    .map(|h| (h.datetime, h.value))
+                    .collect();
                 heartrate_values.extend_from_slice(&values);
                 let constraint = format!("date(begin_datetime at time zone 'utc') = '{}'", date);
                 for filename in get_list_of_files_from_db(&[constraint], pool)? {

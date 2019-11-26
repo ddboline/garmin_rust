@@ -480,8 +480,11 @@ mod tests {
             .iter()
             .map(|entry| entry.datetime.date().naive_local())
             .collect();
+        println!("{:?}", dates);
+        let dates = vec![NaiveDate::from_ymd(2019, 11, 1)];
         assert_eq!(result.len(), 3);
         assert_eq!(dates.len(), 1);
+
         let mut current_datetimes = HashSet::new();
         for date in dates {
             for entry in FitbitHeartRate::read_from_db(&pool, date).unwrap() {
@@ -489,7 +492,7 @@ mod tests {
             }
         }
         println!("{}", current_datetimes.len());
-        assert_eq!(current_datetimes.len(), 10232);
+        assert_eq!(current_datetimes.len(), 1174);
     }
 
     // #[test]
@@ -508,7 +511,7 @@ mod tests {
             .unwrap()
             .unwrap();
         println!("{:?}", max_date);
-        assert_eq!(min_date, NaiveDate::from_ymd(2017, 3, 10));
+        assert_eq!(min_date, NaiveDate::from_ymd(2019, 11, 1));
     }
 
     #[test]
@@ -518,7 +521,5 @@ mod tests {
         let pool = PgPool::new(&config.pgurl);
 
         FitbitHeartRate::export_db_to_avro(&config, &pool).unwrap();
-
-        assert!(false);
     }
 }

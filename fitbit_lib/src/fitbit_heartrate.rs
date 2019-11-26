@@ -334,7 +334,7 @@ impl FitbitHeartRate {
             .nth(0)
             .map(|record| from_value::<Vec<Self>>(&record?).map_err(err_msg))
             .transpose()
-            .map(|x| x.unwrap_or_else(|| Vec::new()))
+            .map(|x| x.unwrap_or_else(Vec::new))
     }
 
     pub fn export_date_to_avro(

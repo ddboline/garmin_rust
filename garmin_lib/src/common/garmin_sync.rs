@@ -40,13 +40,13 @@ fn process_s3_item(mut item: S3Object) -> Option<KeyItem> {
     item.key.take().and_then(|key| {
         item.e_tag.take().and_then(|etag| {
             item.last_modified.as_ref().and_then(|last_mod| {
-                DateTime::parse_from_rfc3339(last_mod).ok().and_then(|lm| {
-                    Some(KeyItem {
+                DateTime::parse_from_rfc3339(last_mod)
+                    .ok()
+                    .map(|lm| KeyItem {
                         key,
                         etag: etag.trim_matches('"').to_string(),
                         timestamp: lm.timestamp(),
                     })
-                })
             })
         })
     })

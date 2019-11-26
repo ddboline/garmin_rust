@@ -1,4 +1,5 @@
 #![allow(clippy::wrong_self_convention)]
+#![allow(clippy::cognitive_complexity)]
 
 use failure::{err_msg, Error};
 use std::env::var;

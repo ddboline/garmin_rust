@@ -8,7 +8,6 @@ garmin_corrections_laps
 garmin_summary
 strava_id_cache
 scale_measurements
-fitbit_heartrate
 "
 
 mkdir -p backup/
@@ -21,4 +20,3 @@ done
 
 psql $DB -c "select setval('garmin_corrections_laps_id_seq', (select max(id) from garmin_corrections_laps), TRUE)"
 psql $DB -c "select setval('scale_measurements_id_seq', (select max(id) from scale_measurements), TRUE)"
-psql $DB -c "select setval('fitbit_heartrate_id_seq', (select max(id) from fitbit_heartrate), TRUE)"

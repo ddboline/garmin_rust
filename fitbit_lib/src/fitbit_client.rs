@@ -4,14 +4,10 @@ use cpython::{
     PythonObject, ToPyObject,
 };
 use failure::{format_err, Error};
-use log::debug;
-use rayon::prelude::*;
-use std::collections::HashSet;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 
 use garmin_lib::common::garmin_config::GarminConfig;
-use garmin_lib::common::pgpool::PgPool;
 
 use crate::fitbit_heartrate::{FitbitBodyWeightFat, FitbitHeartRate};
 use crate::scale_measurement::ScaleMeasurement;
@@ -203,26 +199,13 @@ impl FitbitClient {
             .map_err(|e| format_err!("{:?}", e))
     }
 
-    pub fn import_fitbit_heartrate(&self, date: NaiveDate, pool: &PgPool) -> Result<(), Error> {
+    pub fn import_fitbit_heartrate(
+        &self,
+        date: NaiveDate,
+        config: &GarminConfig,
+    ) -> Result<(), Error> {
         let heartrates = self.get_fitbit_intraday_time_series_heartrate(date)?;
-        let dates: HashSet<_> = heartrates
-            .par_iter()
-            .map(|entry| entry.datetime.date().naive_local())
-            .collect();
-        let mut current_datetimes = HashSet::new();
-        for date in &dates {
-            for entry in FitbitHeartRate::read_from_db(pool, *date).unwrap() {
-                current_datetimes.insert(entry.datetime);
-            }
-        }
-        debug!(
-            "{} {} {}",
-            heartrates.len(),
-            dates.len(),
-            current_datetimes.len()
-        );
-        FitbitHeartRate::insert_slice_into_db(&heartrates, pool)?;
-        FitbitHeartRate::export_date_to_avro(&self.config, pool, date)
+        FitbitHeartRate::merge_slice_to_avro(config, &heartrates)
     }
 
     fn _get_fitbit_bodyweightfat(&self, py: Python) -> PyResult<Vec<FitbitBodyWeightFat>> {

@@ -6,10 +6,9 @@ use cpython::{exc, FromPyObject, PyDict, PyErr, PyResult, Python};
 use failure::{err_msg, Error};
 use glob::glob;
 use itertools::Itertools;
-use log::debug;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use serde::{self, Deserialize, Deserializer, Serialize};
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 use std::fs::File;
 use std::path::Path;
 use structopt::StructOpt;
@@ -20,7 +19,6 @@ use garmin_lib::common::garmin_summary::get_list_of_files_from_db;
 use garmin_lib::common::pgpool::PgPool;
 use garmin_lib::reports::garmin_templates::{PLOT_TEMPLATE, TIMESERIESTEMPLATE};
 use garmin_lib::utils::iso_8601_datetime;
-use garmin_lib::utils::row_index_trait::RowIndexTrait;
 
 fn exception(py: Python, msg: &str) -> PyErr {
     PyErr::new::<exc::Exception, _>(py, msg)
@@ -110,136 +108,11 @@ impl FitbitHeartRate {
         Ok(hre)
     }
 
-    pub fn insert_into_db(&self, pool: &PgPool) -> Result<(), Error> {
-        let conn = pool.get()?;
-        let query = "
-            INSERT INTO fitbit_heartrate (datetime, bpm)
-            SELECT $1, $2
-            WHERE NOT EXISTS
-            (SELECT datetime FROM fitbit_heartrate WHERE datetime = $1)";
-        conn.execute(query, &[&self.datetime, &self.value])
-            .map(|_| ())
-            .map_err(err_msg)
-    }
-
     pub fn from_json_heartrate_entry(entry: JsonHeartRateEntry) -> Self {
         Self {
             datetime: entry.datetime,
             value: entry.value.bpm,
         }
-    }
-
-    pub fn read_from_db(pool: &PgPool, date: NaiveDate) -> Result<Vec<Self>, Error> {
-        let query = "
-            SELECT datetime, bpm
-            FROM fitbit_heartrate
-            WHERE date(datetime) = $1
-            ORDER BY datetime";
-        let conn = pool.get()?;
-        conn.query(&query, &[&date])?
-            .iter()
-            .map(|row| {
-                let datetime = row.get_idx(0)?;
-                let value = row.get_idx(1)?;
-                Ok(Self { datetime, value })
-            })
-            .collect()
-    }
-
-    pub fn read_count_from_db(
-        pool: &PgPool,
-        start_date: NaiveDate,
-        end_date: NaiveDate,
-    ) -> Result<Vec<(NaiveDate, i64)>, Error> {
-        let query = "
-            SELECT date(datetime), count(*) FROM fitbit_heartrate
-            WHERE date(datetime) >= $1 AND date(datetime) <= $2
-            GROUP BY 1 ORDER BY 1";
-        let conn = pool.get()?;
-        conn.query(&query, &[&start_date, &end_date])?
-            .iter()
-            .map(|row| {
-                let date: NaiveDate = row.get_idx(0)?;
-                let count: i64 = row.get_idx(1)?;
-                Ok((date, count))
-            })
-            .collect()
-    }
-
-    pub fn get_min_max_from_db(pool: &PgPool) -> Result<Option<(NaiveDate, NaiveDate)>, Error> {
-        let query = "
-            SELECT date(min(datetime)) as min_date, date(max(datetime)) as max_date
-            FROM fitbit_heartrate";
-        let conn = pool.get()?;
-        conn.query(query, &[])?
-            .iter()
-            .nth(0)
-            .map(|row| {
-                let min_date: NaiveDate = row.get_idx(0)?;
-                let max_date: NaiveDate = row.get_idx(1)?;
-                Ok((min_date, max_date))
-            })
-            .transpose()
-    }
-
-    pub fn insert_slice_into_db(slice: &[Self], pool: &PgPool) -> Result<(), Error> {
-        let conn = pool.get()?;
-        let trans = conn.transaction()?;
-        let query = "
-            CREATE TEMP TABLE fitbit_heartrate_temp
-            AS (SELECT datetime, bpm FROM fitbit_heartrate limit 0)";
-        trans.execute(query, &[])?;
-        let query = "
-            INSERT INTO fitbit_heartrate_temp (datetime, bpm)
-            SELECT $1, $2";
-        let stmt = trans.prepare(query)?;
-        let results: Result<_, Error> = slice
-            .iter()
-            .map(|entry| {
-                stmt.execute(&[&entry.datetime, &entry.value])
-                    .map_err(err_msg)
-                    .map(|_| ())
-            })
-            .collect();
-        results?;
-        let query = "
-            INSERT INTO fitbit_heartrate (datetime, bpm)
-            SELECT a.datetime, a.bpm
-            FROM fitbit_heartrate_temp a
-            LEFT JOIN fitbit_heartrate b
-                ON cast(extract(epoch from a.datetime) as int) = cast(extract(epoch from b.datetime) as int)
-            WHERE b.datetime is NULL";
-        trans.execute(query, &[])?;
-        let query = "DROP TABLE fitbit_heartrate_temp";
-        trans.execute(query, &[])?;
-        trans.commit()?;
-        Ok(())
-    }
-
-    pub fn read_from_db_resample(
-        pool: &PgPool,
-        date: NaiveDate,
-        nminutes: usize,
-    ) -> Result<Vec<Self>, Error> {
-        let query = format!(
-            "
-            SELECT min(datetime), cast(avg(bpm) as int)
-            FROM fitbit_heartrate
-            WHERE date(datetime) = $1
-            GROUP BY cast(extract(epoch from datetime)/({}*60) as int)
-            ORDER BY 1",
-            nminutes
-        );
-        debug!("{}", &query);
-        let conn = pool.get()?;
-        conn.query(&query, &[&date])?
-            .iter()
-            .map(|row| {
-                let datetime = row.get_idx(0)?;
-                let value = row.get_idx(1)?;
-                Ok(Self { datetime, value })
-            })
-            .collect()
     }
 
     pub fn get_heartrate_plot(
@@ -327,6 +200,15 @@ impl FitbitHeartRate {
         writer.flush().map(|_| ())
     }
 
+    pub fn read_avro_by_date(config: &GarminConfig, date: NaiveDate) -> Result<Vec<Self>, Error> {
+        let input_filename = format!("{}/{}.avro", config.fitbit_cachedir, date);
+        if Path::new(&input_filename).exists() {
+            Self::read_avro(&input_filename)
+        } else {
+            Ok(Vec::new())
+        }
+    }
+
     pub fn read_avro(input_filename: &str) -> Result<Vec<Self>, Error> {
         let input_file = File::open(input_filename)?;
 
@@ -337,38 +219,29 @@ impl FitbitHeartRate {
             .map(|x| x.unwrap_or_else(Vec::new))
     }
 
-    pub fn export_date_to_avro(
-        config: &GarminConfig,
-        pool: &PgPool,
-        date: NaiveDate,
-    ) -> Result<(), Error> {
-        let output_filename = format!("{}/{}.avro", config.fitbit_cachedir, date);
-        let values = Self::read_from_db(&pool, date)?;
-        Self::dump_to_avro(&values, &output_filename)
-    }
-
-    pub fn export_db_to_avro(config: &GarminConfig, pool: &PgPool) -> Result<(), Error> {
-        let (min_date, max_date) = Self::get_min_max_from_db(&pool)?.unwrap_or_else(|| {
-            (
-                NaiveDate::from_ymd(1980, 1, 1),
-                Local::now().naive_local().date(),
-            )
-        });
-        Self::read_count_from_db(&pool, min_date, max_date)?
-            .into_par_iter()
-            .filter_map(|(date, _)| {
-                let output_filename = format!("{}/{}.avro", config.fitbit_cachedir, date);
-                if Path::new(&output_filename).exists() {
-                    None
+    pub fn merge_slice_to_avro(config: &GarminConfig, values: &[Self]) -> Result<(), Error> {
+        let dates: HashSet<_> = values
+            .par_iter()
+            .map(|entry| entry.datetime.naive_utc().date())
+            .collect();
+        for date in dates {
+            let new_values = values.par_iter().filter_map(|entry| {
+                if entry.datetime.naive_utc().date() == date {
+                    Some(*entry)
                 } else {
-                    Some((date, output_filename))
+                    None
                 }
-            })
-            .map(|(date, output_filename)| {
-                let values = Self::read_from_db(&pool, date)?;
-                Self::dump_to_avro(&values, &output_filename)
-            })
-            .collect()
+            });
+            let merged_values: BTreeMap<_, _> = Self::read_avro_by_date(config, date)?
+                .into_par_iter()
+                .chain(new_values)
+                .map(|entry| (entry.datetime.timestamp(), entry))
+                .collect();
+            let input_filename = format!("{}/{}.avro", config.fitbit_cachedir, date);
+            let merged_values: Vec<_> = merged_values.values().copied().collect();
+            Self::dump_to_avro(&merged_values, &input_filename)?;
+        }
+        Ok(())
     }
 }
 
@@ -390,39 +263,14 @@ pub struct JsonImportOpts {
 
 pub fn import_fitbit_json_files(directory: &str) -> Result<(), Error> {
     let config = GarminConfig::get_config(None)?;
-    let pool = PgPool::new(&config.pgurl);
     let filenames: Vec<_> = glob(&format!("{}/heart_rate-*.json", directory))?.collect();
     filenames
         .into_par_iter()
         .map(|fname| {
             let fname = fname?;
             let heartrates = process_fitbit_json_file(&fname)?;
-            let dates: HashSet<_> = heartrates
-                .par_iter()
-                .map(|entry| entry.datetime.date().naive_local())
-                .collect();
-            let mut current_datetimes = HashSet::new();
-            for date in &dates {
-                for entry in FitbitHeartRate::read_from_db(&pool, *date).unwrap() {
-                    current_datetimes.insert(entry.datetime);
-                }
-            }
-            println!(
-                "fname {:?} {} {} {}",
-                fname,
-                heartrates.len(),
-                dates.len(),
-                current_datetimes.len()
-            );
-            heartrates
-                .par_iter()
-                .map(|entry| {
-                    if !current_datetimes.contains(&entry.datetime) {
-                        entry.insert_into_db(&pool.clone())?;
-                    }
-                    Ok(())
-                })
-                .collect::<Result<(), Error>>()
+
+            FitbitHeartRate::merge_slice_to_avro(&config, &heartrates)
         })
         .collect()
 }
@@ -463,7 +311,6 @@ mod tests {
     use std::path::Path;
 
     use garmin_lib::common::garmin_config::GarminConfig;
-    use garmin_lib::common::pgpool::PgPool;
 
     use crate::fitbit_heartrate::{process_fitbit_json_file, FitbitHeartRate};
 
@@ -471,7 +318,6 @@ mod tests {
     #[ignore]
     fn test_process_fitbit_json_file() {
         let config = GarminConfig::get_config(None).unwrap();
-        let pool = PgPool::new(&config.pgurl);
         let path = Path::new("tests/data/test_heartrate_data.json");
         let result = process_fitbit_json_file(&path).unwrap();
         println!("{}", result.len());
@@ -487,7 +333,7 @@ mod tests {
 
         let mut current_datetimes = HashSet::new();
         for date in dates {
-            for entry in FitbitHeartRate::read_from_db(&pool, date).unwrap() {
+            for entry in FitbitHeartRate::read_avro_by_date(&config, date).unwrap() {
                 current_datetimes.insert(entry.datetime);
             }
         }
@@ -501,25 +347,4 @@ mod tests {
     //         .unwrap();
     //     assert!(false);
     // }
-
-    #[test]
-    #[ignore]
-    fn test_get_min_max_from_db() {
-        let config = GarminConfig::get_config(None).unwrap();
-        let pool = PgPool::new(&config.pgurl);
-        let (min_date, max_date) = FitbitHeartRate::get_min_max_from_db(&pool)
-            .unwrap()
-            .unwrap();
-        println!("{:?}", max_date);
-        assert_eq!(min_date, NaiveDate::from_ymd(2019, 11, 1));
-    }
-
-    #[test]
-    #[ignore]
-    fn test_export_db_to_avro() {
-        let config = GarminConfig::get_config(None).unwrap();
-        let pool = PgPool::new(&config.pgurl);
-
-        FitbitHeartRate::export_db_to_avro(&config, &pool).unwrap();
-    }
 }

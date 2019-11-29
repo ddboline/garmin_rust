@@ -237,6 +237,23 @@ impl Handler<FitbitHeartrateApiRequest> for PgPool {
     }
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct FitbitHeartrateCacheRequest {
+    date: NaiveDate,
+}
+
+impl Message for FitbitHeartrateCacheRequest {
+    type Result = Result<Vec<FitbitHeartRate>, Error>;
+}
+
+impl Handler<FitbitHeartrateCacheRequest> for PgPool {
+    type Result = Result<Vec<FitbitHeartRate>, Error>;
+    fn handle(&mut self, msg: FitbitHeartrateCacheRequest, _: &mut Self::Context) -> Self::Result {
+        let config = GarminConfig::get_config(None)?;
+        FitbitHeartRate::read_avro_by_date(&config, msg.date)
+    }
+}
+
 pub struct FitbitBodyWeightFatRequest {}
 
 impl Message for FitbitBodyWeightFatRequest {

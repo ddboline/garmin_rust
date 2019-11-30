@@ -102,7 +102,7 @@ pub fn start_app() {
                     .route(web::get().to_async(fitbit_heartrate_api)),
             )
             .service(
-                web::resource("/garmin/fitibit/heartrate_cache")
+                web::resource("/garmin/fitbit/heartrate_cache")
                     .route(web::get().to_async(fitbit_heartrate_cache)),
             )
             .service(web::resource("/garmin/fitbit/sync").route(web::get().to_async(fitbit_sync)))

@@ -12,6 +12,7 @@ use std::collections::{BTreeMap, HashSet};
 use std::fs::File;
 use std::path::Path;
 use structopt::StructOpt;
+use log::debug;
 
 use garmin_lib::common::garmin_config::GarminConfig;
 use garmin_lib::common::garmin_file::GarminFile;
@@ -202,6 +203,7 @@ impl FitbitHeartRate {
 
     pub fn read_avro_by_date(config: &GarminConfig, date: NaiveDate) -> Result<Vec<Self>, Error> {
         let input_filename = format!("{}/{}.avro", config.fitbit_cachedir, date);
+        debug!("avro {}", input_filename);
         if Path::new(&input_filename).exists() {
             Self::read_avro(&input_filename)
         } else {

@@ -6,13 +6,13 @@ use cpython::{exc, FromPyObject, PyDict, PyErr, PyResult, Python};
 use failure::{err_msg, Error};
 use glob::glob;
 use itertools::Itertools;
+use log::debug;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use serde::{self, Deserialize, Deserializer, Serialize};
 use std::collections::{BTreeMap, HashSet};
 use std::fs::File;
 use std::path::Path;
 use structopt::StructOpt;
-use log::debug;
 
 use garmin_lib::common::garmin_config::GarminConfig;
 use garmin_lib::common::garmin_file::GarminFile;
@@ -313,6 +313,7 @@ mod tests {
     use std::path::Path;
 
     use garmin_lib::common::garmin_config::GarminConfig;
+    use garmin_lib::common::pgpool::PgPool;
 
     use crate::fitbit_heartrate::{process_fitbit_json_file, FitbitHeartRate};
 
@@ -341,6 +342,17 @@ mod tests {
         }
         println!("{}", current_datetimes.len());
         assert_eq!(current_datetimes.len(), 1174);
+    }
+
+    #[test]
+    fn test_get_heartrate_plot() {
+        let config = GarminConfig::get_config(None).unwrap();
+        let pool = PgPool::new(&config.pgurl);
+        let start_date = NaiveDate::from_ymd(2019, 8, 1);
+        let end_date = NaiveDate::from_ymd(2019, 8, 2);
+        let results = FitbitHeartRate::get_heartrate_plot(&config, &pool, start_date, end_date).unwrap();
+        println!("{}", results);
+        assert!(false);
     }
 
     // #[test]

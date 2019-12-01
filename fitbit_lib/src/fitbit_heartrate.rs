@@ -345,14 +345,16 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_get_heartrate_plot() {
         let config = GarminConfig::get_config(None).unwrap();
         let pool = PgPool::new(&config.pgurl);
         let start_date = NaiveDate::from_ymd(2019, 8, 1);
         let end_date = NaiveDate::from_ymd(2019, 8, 2);
-        let results = FitbitHeartRate::get_heartrate_plot(&config, &pool, start_date, end_date).unwrap();
+        let results =
+            FitbitHeartRate::get_heartrate_plot(&config, &pool, start_date, end_date).unwrap();
         println!("{}", results);
-        assert!(false);
+        assert!(results.len() > 0);
     }
 
     // #[test]

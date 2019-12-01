@@ -484,7 +484,9 @@ pub fn garmin_get_hr_data(
                             Err(_) => {
                                 let gps_file = format!("{}/{}", &config.gps_dir, file_name);
                                 let corr_map = res1.map(|c| c.corr_map)?;
-                                GarminParse::new().with_file(&gps_file, &corr_map)?
+                                let gfile = GarminParse::new().with_file(&gps_file, &corr_map)?;
+                                gfile.dump_avro(&avro_file)?;
+                                gfile
                             }
                         }
                         .points

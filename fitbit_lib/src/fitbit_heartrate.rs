@@ -153,7 +153,7 @@ impl FitbitHeartRate {
         let mut final_values = Vec::new();
         for (_, group) in &heartrate_values
             .into_iter()
-            .group_by(|(d, _)| d.timestamp() / (nminutes as i64 * 60))
+            .group_by(|(d, _)| d.timestamp() / (i64::from(nminutes) * 60))
         {
             let g: Vec<_> = group.collect();
             let d = g.iter().map(|(d, _)| *d).min();

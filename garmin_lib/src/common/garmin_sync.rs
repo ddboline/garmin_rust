@@ -212,10 +212,12 @@ impl GarminSync<S3Client> {
                                 do_download = true;
                             }
                         } else if item.size > size_ {
+                            let file_name = format!("{}/{}", local_dir, item.key);
                             debug!(
                                 "download size {} {} {} {} {}",
                                 item.key, size_, item.size, item.timestamp, tmod_
                             );
+                            fs::remove_file(&file_name)?;
                             do_download = true;
                         }
                     }

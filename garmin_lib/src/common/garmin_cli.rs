@@ -347,7 +347,7 @@ impl GarminCli {
                 "Syncing Fitbit Cache",
                 &self.get_config().fitbit_cachedir,
                 &self.get_config().fitbit_bucket,
-                check_md5,
+                true,
             ),
         ];
 

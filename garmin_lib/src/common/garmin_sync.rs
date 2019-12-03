@@ -28,6 +28,7 @@ pub struct KeyItem {
     pub key: String,
     pub etag: String,
     pub timestamp: i64,
+    pub size: u64,
 }
 
 impl Default for GarminSync<S3Client> {
@@ -46,6 +47,7 @@ fn process_s3_item(mut item: S3Object) -> Option<KeyItem> {
                         key,
                         etag: etag.trim_matches('"').to_string(),
                         timestamp: lm.timestamp(),
+                        size: item.size.unwrap_or(0) as u64,
                     })
             })
         })
@@ -121,18 +123,20 @@ impl GarminSync<S3Client> {
                     .map(|entry| entry.path().to_string_lossy().to_string())
             })
             .map(|f| {
-                let modified = fs::metadata(&f)?
+                let metadata = fs::metadata(&f)?;
+                let modified = metadata
                     .modified()?
                     .duration_since(SystemTime::UNIX_EPOCH)?
                     .as_secs() as i64;
+                let size = metadata.len();
 
-                Ok((f.to_string(), modified))
+                Ok((f.to_string(), modified, size))
             })
             .collect();
         let file_list = file_list?;
         let file_set: HashMap<_, _> = file_list
             .iter()
-            .filter_map(|(x, t)| x.split('/').last().map(|x| (x.to_string(), *t)))
+            .filter_map(|(x, t, s)| x.split('/').last().map(|x| (x.to_string(), (*t, *s))))
             .collect();
 
         let key_list = self.get_list_of_keys(s3_bucket)?;
@@ -146,7 +150,7 @@ impl GarminSync<S3Client> {
 
         let results: Result<Vec<_>, Error> = file_list
             .par_iter()
-            .filter_map(|(file, tmod)| {
+            .filter_map(|(file, tmod, size)| {
                 let file_name = match file.split('/').last() {
                     Some(x) => x.to_string(),
                     None => return None,
@@ -154,21 +158,26 @@ impl GarminSync<S3Client> {
                 let mut do_upload = false;
                 if key_set.contains_key(&file_name) {
                     let item = &key_set[&file_name];
-                    if *tmod != item.timestamp && check_md5sum {
-                        if let Ok(md5) = get_md5sum(&file) {
-                            println!(
-                                "tmod {} timestamp {} md5sum {} {}",
-                                *tmod, item.timestamp, md5, item.etag
-                            );
-                            if item.etag != md5 {
-                                debug!(
-                                    "upload md5 {} {} {} {} {}",
-                                    file_name, item.etag, md5, item.timestamp, tmod
-                                );
-                                do_upload = true;
+                    if *tmod != item.timestamp {
+                        if check_md5sum {
+                            if let Ok(md5) = get_md5sum(&file) {
+                                if item.etag != md5 {
+                                    debug!(
+                                        "upload md5 {} {} {} {} {}",
+                                        file_name, item.etag, md5, item.timestamp, tmod
+                                    );
+                                    do_upload = true;
+                                }
                             }
+                        } else if *size > item.size {
+                            debug!(
+                                "upload size {} {} {} {} {}",
+                                file_name, item.etag, size, item.timestamp, item.size
+                            );
+                            do_upload = true;
                         }
                     }
+                    if *tmod != item.timestamp && check_md5sum {}
                 } else {
                     do_upload = true;
                 }
@@ -188,16 +197,26 @@ impl GarminSync<S3Client> {
                 let mut do_download = false;
 
                 if file_set.contains_key(&item.key) {
-                    let tmod_ = file_set[&item.key];
-                    if item.timestamp > tmod_ && check_md5sum {
-                        let file_name = format!("{}/{}", local_dir, item.key);
-                        let md5_ = get_md5sum(&file_name)?;
-                        if md5_ != item.etag {
-                            debug!(
-                                "download md5 {} {} {} {} {} ",
-                                item.key, md5_, item.etag, item.timestamp, tmod_
-                            );
+                    let (tmod_, size_) = file_set[&item.key];
+                    if item.timestamp > tmod_ {
+                        if check_md5sum {
                             let file_name = format!("{}/{}", local_dir, item.key);
+                            let md5_ = get_md5sum(&file_name)?;
+                            if md5_ != item.etag {
+                                debug!(
+                                    "download md5 {} {} {} {} {} ",
+                                    item.key, md5_, item.etag, item.timestamp, tmod_
+                                );
+                                let file_name = format!("{}/{}", local_dir, item.key);
+                                fs::remove_file(&file_name)?;
+                                do_download = true;
+                            }
+                        } else if item.size > size_ {
+                            let file_name = format!("{}/{}", local_dir, item.key);
+                            debug!(
+                                "download size {} {} {} {} {}",
+                                item.key, size_, item.size, item.timestamp, tmod_
+                            );
                             fs::remove_file(&file_name)?;
                             do_download = true;
                         }

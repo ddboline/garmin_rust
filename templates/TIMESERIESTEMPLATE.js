@@ -4,7 +4,7 @@ var margin = {top: 30, right: 20, bottom: 30, left: 50},
     height = 270 - margin.top - margin.bottom;
 
 // Parse the date / time
-var parseDateTime = d3.time.format("%Y-%m-%dT%H:%M:%SZ").parse;
+var parseDateTime = d3.time.format("%Y-%m-%dT%H:%M:%S%Z").parse;
 
 // Set the ranges
 var x = d3.time.scale().range([0, width]);

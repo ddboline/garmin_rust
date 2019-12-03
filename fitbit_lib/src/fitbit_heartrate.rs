@@ -159,7 +159,7 @@ impl FitbitHeartRate {
             let d = g.iter().map(|(d, _)| *d).min();
             if let Some(d) = d {
                 let v = g.iter().map(|(_, v)| v).sum::<i32>() / g.len() as i32;
-                let d = d.format("%Y-%m-%dT%H:%M:%SZ").to_string();
+                let d = d.format("%Y-%m-%dT%H:%M:%S%z").to_string();
                 final_values.push((d, v));
             }
         }

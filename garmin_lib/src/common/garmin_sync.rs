@@ -140,15 +140,14 @@ impl GarminSync<S3Client> {
             .collect();
 
         let key_list = self.get_list_of_keys(s3_bucket)?;
-        let msg = format!("{} s3_bucketnkeys {}", s3_bucket, key_list.len());
-        writeln!(stdout().lock(), "{}", msg)?;
-        let output = vec![msg];
+        let n_keys = key_list.len();
+
         let key_set: HashMap<_, _> = key_list
             .iter()
             .map(|item| (item.key.to_string(), item))
             .collect();
 
-        let results: Result<Vec<_>, Error> = file_list
+        let uploaded: Result<Vec<_>, Error> = file_list
             .par_iter()
             .filter_map(|(file, tmod, size)| {
                 let file_name = match file.split('/').last() {
@@ -189,9 +188,10 @@ impl GarminSync<S3Client> {
                 }
             })
             .collect();
-        results?;
+        let uploaded = uploaded?;
+        debug!("uploaded {:?}", uploaded);
 
-        let result: Result<(), Error> = key_list
+        let downloaded: Result<Vec<_>, Error> = key_list
             .par_iter()
             .map(|item| {
                 let mut do_download = false;
@@ -229,12 +229,22 @@ impl GarminSync<S3Client> {
                     let file_name = format!("{}/{}", local_dir, item.key);
                     debug!("download {} {}", s3_bucket, item.key);
                     self.download_file(&file_name, &s3_bucket, &item.key)?;
+                    Ok(Some(file_name))
+                } else {
+                    Ok(None)
                 }
-                Ok(())
-            })
+            }).filter_map(|x| x.transpose())
             .collect();
-        result?;
-        Ok(output)
+        let downloaded = downloaded?;
+        debug!("downloaded {:?}", downloaded);
+
+        let msg = format!(
+            "{} s3_bucketnkeys {} uploaded {} downloaded {}",
+            s3_bucket, n_keys, uploaded.len(), downloaded.len()
+        );
+        writeln!(stdout().lock(), "{}", msg)?;
+
+        Ok(vec![msg])
     }
 
     pub fn download_file(

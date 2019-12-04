@@ -143,7 +143,9 @@ impl FitbitClient {
         set_attr_from_dict!(token, py, self, refresh_token)?;
         let success = r#"
             <h1>You are now authorized to access the Fitbit API!</h1>
-            <br/><h3>You can close this window</h3>"#
+            <br/><h3>You can close this window</h3>
+            <script language="JavaScript" type="text/javascript">window.close()</script>
+            "#
             .into();
         Ok(success)
     }

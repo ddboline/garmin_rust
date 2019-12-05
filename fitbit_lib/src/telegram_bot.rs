@@ -98,14 +98,18 @@ fn telegram_worker(telegram_bot_token: &str, s: Sender<ScaleMeasurement>) -> Res
 
 fn process_messages(r: Receiver<ScaleMeasurement>, pool: PgPool) {
     if let Ok(meas_list) = ScaleMeasurement::read_from_db(&pool, None, None) {
+        let mut last_weight = LAST_WEIGHT.read().clone();
         for meas in meas_list {
             let current_dt = meas.datetime;
-            let last_meas = LAST_WEIGHT.write().replace(meas);
+            let last_meas = last_weight.replace(meas);
             if let Some(last) = last_meas {
                 if last.datetime > current_dt {
-                    LAST_WEIGHT.write().replace(last);
+                    last_weight.replace(last);
                 }
             }
+        }
+        if let Some(last) = last_weight {
+            LAST_WEIGHT.write().replace(last);
         }
     }
     debug!("LAST_WEIGHT {:?}", *LAST_WEIGHT.read());

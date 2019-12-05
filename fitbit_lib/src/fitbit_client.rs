@@ -146,7 +146,7 @@ impl FitbitClient {
             <br/><h3>You can close this window</h3>
             <script language="JavaScript" type="text/javascript">window.close()</script>
             "#
-            .into();
+        .into();
         Ok(success)
     }
 

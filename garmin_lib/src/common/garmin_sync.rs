@@ -233,14 +233,18 @@ impl GarminSync<S3Client> {
                 } else {
                     Ok(None)
                 }
-            }).filter_map(|x| x.transpose())
+            })
+            .filter_map(|x| x.transpose())
             .collect();
         let downloaded = downloaded?;
         debug!("downloaded {:?}", downloaded);
 
         let msg = format!(
             "{} s3_bucketnkeys {} uploaded {} downloaded {}",
-            s3_bucket, n_keys, uploaded.len(), downloaded.len()
+            s3_bucket,
+            n_keys,
+            uploaded.len(),
+            downloaded.len()
         );
         writeln!(stdout().lock(), "{}", msg)?;
 

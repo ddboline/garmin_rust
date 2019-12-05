@@ -415,14 +415,20 @@ impl GarminCli {
                             }
                         } else {
                             constraints.push(
+                                format!(
+                                    "replace({}, '%', 'T') = '{}'",
+                                    "to_char(begin_datetime at time zone 'utc', 'YYYY-MM-DD%HH24:MI:SSZ')",
+                                    pat
+                                )
+                            );
+                            constraints.push(
                                     format!(
                                         "replace({}, '%', 'T') like '{}%'",
-                                        "to_char(begin_datetime at time zone 'utc', 'YYYY-MM-DD%HH24:MI:SSZ')",
+                                        "to_char(begin_datetime at time zone 'localtime', 'YYYY-MM-DD%HH24:MI:SS')",
                                         pat
                                     )
                                 );
                         }
-                        constraints.push(format!("filename like '{}%'", pat));
                     }
                 },
             };

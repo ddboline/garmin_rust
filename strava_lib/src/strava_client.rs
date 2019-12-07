@@ -1,3 +1,4 @@
+use chrono::{DateTime, SecondsFormat, Utc};
 use cpython::{
     exc, FromPyObject, ObjectProtocol, PyDict, PyErr, PyIterator, PyObject, PyResult, PyTuple,
     Python, PythonObject, ToPyObject,
@@ -215,16 +216,24 @@ impl StravaClient {
     fn _get_strava_activites(
         &self,
         py: Python,
-        start_date: Option<String>,
-        end_date: Option<String>,
+        start_date: Option<DateTime<Utc>>,
+        end_date: Option<DateTime<Utc>>,
     ) -> PyResult<HashMap<String, StravaItem>> {
         let client = self.get_strava_client(py)?;
         let args = PyDict::new(py);
         if let Some(start_date) = start_date {
-            args.set_item(py, "after", &start_date)?;
+            args.set_item(
+                py,
+                "after",
+                start_date.to_rfc3339_opts(SecondsFormat::Secs, true),
+            )?;
         }
         if let Some(end_date) = end_date {
-            args.set_item(py, "before", &end_date)?;
+            args.set_item(
+                py,
+                "before",
+                end_date.to_rfc3339_opts(SecondsFormat::Secs, true),
+            )?;
         }
         let activities =
             client.call_method(py, "get_activities", PyTuple::empty(py), Some(&args))?;
@@ -244,8 +253,8 @@ impl StravaClient {
 
     pub fn get_strava_activites(
         &self,
-        start_date: Option<String>,
-        end_date: Option<String>,
+        start_date: Option<DateTime<Utc>>,
+        end_date: Option<DateTime<Utc>>,
     ) -> Result<HashMap<String, StravaItem>, Error> {
         let gil = Python::acquire_gil();
         let py = gil.python();

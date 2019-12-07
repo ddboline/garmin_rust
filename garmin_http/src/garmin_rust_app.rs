@@ -19,8 +19,9 @@ use crate::garmin_rust_routes::{
     fitbit_auth, fitbit_bodyweight, fitbit_bodyweight_sync, fitbit_callback, fitbit_heartrate_api,
     fitbit_heartrate_cache, fitbit_plots, fitbit_sync, garmin, garmin_connect_sync,
     garmin_get_hr_data, garmin_get_hr_pace, garmin_list_gps_tracks, garmin_sync, garmin_upload,
-    heartrate_plots, scale_measurement, scale_measurement_update, strava_activities, strava_auth,
-    strava_callback, strava_sync, strava_update, strava_upload,
+    heartrate_plots, scale_measurement, scale_measurement_update, strava_activities,
+    strava_activities_db, strava_activities_db_update, strava_auth, strava_callback, strava_sync,
+    strava_update, strava_upload,
 };
 use crate::CONFIG;
 
@@ -132,6 +133,11 @@ pub fn start_app() {
             .service(
                 web::resource("/garmin/strava/activities")
                     .route(web::get().to_async(strava_activities)),
+            )
+            .service(
+                web::resource("/garmin/strava/activities_db")
+                    .route(web::get().to_async(strava_activities_db))
+                    .route(web::post().to_async(strava_activities_db_update)),
             )
             .service(
                 web::resource("/garmin/strava/upload").route(web::post().to_async(strava_upload)),

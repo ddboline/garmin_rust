@@ -29,8 +29,9 @@ use crate::garmin_requests::{
     FitbitHeartrateDbRequest, FitbitHeartratePlotRequest, FitbitSyncRequest,
     GarminConnectSyncRequest, GarminCorrRequest, GarminHtmlRequest, GarminListRequest,
     GarminSyncRequest, GarminUploadRequest, ScaleMeasurementPlotRequest, ScaleMeasurementRequest,
-    ScaleMeasurementUpdateRequest, StravaActivitiesRequest, StravaAuthRequest,
-    StravaCallbackRequest, StravaSyncRequest, StravaUpdateRequest, StravaUploadRequest,
+    ScaleMeasurementUpdateRequest, StravaActiviesDBUpdateRequest, StravaActivitiesDBRequest,
+    StravaActivitiesRequest, StravaAuthRequest, StravaCallbackRequest, StravaSyncRequest,
+    StravaUpdateRequest, StravaUploadRequest,
 };
 use crate::CONFIG;
 
@@ -237,6 +238,32 @@ pub fn strava_activities(
         .send(query)
         .from_err()
         .and_then(move |res| res.and_then(|alist| to_json(&alist)))
+}
+
+pub fn strava_activities_db(
+    query: Query<StravaActivitiesDBRequest>,
+    _: LoggedUser,
+    state: Data<AppState>,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let query = query.into_inner();
+    state
+        .db
+        .send(query)
+        .from_err()
+        .and_then(move |res| res.and_then(|alist| to_json(&alist)))
+}
+
+pub fn strava_activities_db_update(
+    payload: Json<StravaActiviesDBUpdateRequest>,
+    _: LoggedUser,
+    state: Data<AppState>,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let req = payload.into_inner();
+    state
+        .db
+        .send(req)
+        .from_err()
+        .and_then(move |res| res.and_then(|body| form_http_response(body.join("\n"))))
 }
 
 pub fn strava_upload(

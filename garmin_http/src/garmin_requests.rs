@@ -1,5 +1,5 @@
 use actix::{Handler, Message};
-use chrono::{Duration, Local, NaiveDate, SecondsFormat};
+use chrono::{DateTime, Duration, Local, NaiveDate, Utc};
 use failure::Error;
 use log::debug;
 use serde::{Deserialize, Serialize};
@@ -18,7 +18,7 @@ use garmin_lib::common::garmin_correction_lap::GarminCorrectionList;
 use garmin_lib::common::garmin_summary::get_list_of_files_from_db;
 use garmin_lib::common::pgpool::PgPool;
 use garmin_lib::common::strava_sync::{
-    get_strava_id_maximum_begin_datetime, upsert_strava_id, StravaItem,
+    get_strava_id_maximum_begin_datetime, get_strava_ids, upsert_strava_id, StravaItem,
 };
 
 use super::logged_user::LoggedUser;
@@ -152,7 +152,6 @@ impl Handler<StravaSyncRequest> for PgPool {
             let max_datetime = match max_datetime {
                 Some(dt) => {
                     let max_datetime = dt - Duration::days(14);
-                    let max_datetime = max_datetime.to_rfc3339_opts(SecondsFormat::Secs, true);
                     debug!("max_datetime {}", max_datetime);
                     Some(max_datetime)
                 }
@@ -503,8 +502,8 @@ impl Handler<StravaCallbackRequest> for PgPool {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StravaActivitiesRequest {
-    pub start_date: Option<String>,
-    pub end_date: Option<String>,
+    pub start_date: Option<DateTime<Utc>>,
+    pub end_date: Option<DateTime<Utc>>,
 }
 
 impl Message for StravaActivitiesRequest {
@@ -517,6 +516,40 @@ impl Handler<StravaActivitiesRequest> for PgPool {
         let config = GarminConfig::get_config(None)?;
         let client = StravaClient::from_file(config, Some(StravaAuthType::Read))?;
         client.get_strava_activites(msg.start_date, msg.end_date)
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct StravaActivitiesDBRequest(StravaActivitiesRequest);
+
+impl Message for StravaActivitiesDBRequest {
+    type Result = Result<HashMap<String, StravaItem>, Error>;
+}
+
+impl Handler<StravaActivitiesDBRequest> for PgPool {
+    type Result = Result<HashMap<String, StravaItem>, Error>;
+    fn handle(&mut self, msg: StravaActivitiesDBRequest, _: &mut Self::Context) -> Self::Result {
+        get_strava_ids(self, msg.0.start_date, msg.0.end_date)
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct StravaActiviesDBUpdateRequest {
+    pub updates: HashMap<String, StravaItem>,
+}
+
+impl Message for StravaActiviesDBUpdateRequest {
+    type Result = Result<Vec<String>, Error>;
+}
+
+impl Handler<StravaActiviesDBUpdateRequest> for PgPool {
+    type Result = Result<Vec<String>, Error>;
+    fn handle(
+        &mut self,
+        msg: StravaActiviesDBUpdateRequest,
+        _: &mut Self::Context,
+    ) -> Self::Result {
+        upsert_strava_id(&msg.updates, self)
     }
 }
 

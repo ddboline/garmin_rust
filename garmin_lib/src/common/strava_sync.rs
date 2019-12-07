@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use failure::Error;
 use log::debug;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
@@ -49,6 +49,42 @@ pub fn get_strava_id_maximum_begin_datetime(pool: &PgPool) -> Result<Option<Date
 
 pub fn get_strava_id_map(pool: &PgPool) -> Result<HashMap<String, StravaItem>, Error> {
     let query = "SELECT strava_id, begin_datetime, strava_title FROM strava_id_cache";
+    let conn = pool.get()?;
+    conn.query(&query, &[])?
+        .iter()
+        .map(|row| {
+            let strava_id: String = row.get_idx(0)?;
+            let begin_datetime: DateTime<Utc> = row.get_idx(1)?;
+            let strava_title: String = row.get_idx(2)?;
+            Ok((
+                strava_id,
+                StravaItem {
+                    begin_datetime,
+                    title: strava_title,
+                },
+            ))
+        })
+        .collect()
+}
+
+pub fn get_strava_ids(
+    pool: &PgPool,
+    start_date: Option<DateTime<Utc>>,
+    end_date: Option<DateTime<Utc>>,
+) -> Result<HashMap<String, StravaItem>, Error> {
+    let mut constraints = Vec::new();
+    if let Some(start_date) = start_date {
+        constraints.push(format!("begin_datetime >= '{}'", start_date.to_rfc3339()));
+    }
+    if let Some(end_date) = end_date {
+        constraints.push(format!("begin_datetime <= '{}'", end_date.to_rfc3339()));
+    }
+    let query = format!(
+        "SELECT strava_id, begin_datetime, strava_title FROM strava_id_cache {} ORDER BY begin_datetime",
+        if !constraints.is_empty() {
+            format!("WHERE {}", constraints.join(" OR "))
+        } else {"".to_string()},
+    );
     let conn = pool.get()?;
     conn.query(&query, &[])?
         .iter()

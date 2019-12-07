@@ -241,14 +241,14 @@ pub fn strava_activities(
 }
 
 pub fn strava_activities_db(
-    query: Query<StravaActivitiesDBRequest>,
+    query: Query<StravaActivitiesRequest>,
     _: LoggedUser,
     state: Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let query = query.into_inner();
     state
         .db
-        .send(query)
+        .send(StravaActivitiesDBRequest(query))
         .from_err()
         .and_then(move |res| res.and_then(|alist| to_json(&alist)))
 }

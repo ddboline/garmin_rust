@@ -520,7 +520,10 @@ impl Handler<StravaActivitiesRequest> for PgPool {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct StravaActivitiesDBRequest(StravaActivitiesRequest);
+pub struct StravaActivitiesDBRequest {
+    pub start_date: Option<DateTime<Utc>>,
+    pub end_date: Option<DateTime<Utc>>,
+}
 
 impl Message for StravaActivitiesDBRequest {
     type Result = Result<HashMap<String, StravaItem>, Error>;

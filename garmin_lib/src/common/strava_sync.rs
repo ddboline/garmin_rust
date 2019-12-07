@@ -1,4 +1,4 @@
-use chrono::{DateTime, NaiveDate, Utc};
+use chrono::{DateTime, Utc};
 use failure::Error;
 use log::debug;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};

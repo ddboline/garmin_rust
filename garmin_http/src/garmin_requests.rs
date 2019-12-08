@@ -1,5 +1,5 @@
 use actix::{Handler, Message};
-use chrono::{DateTime, Duration, Local, NaiveDate, Utc};
+use chrono::{DateTime, Duration, Local, NaiveDate, NaiveDateTime, NaiveTime, Utc};
 use failure::Error;
 use log::debug;
 use serde::{Deserialize, Serialize};
@@ -502,8 +502,8 @@ impl Handler<StravaCallbackRequest> for PgPool {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StravaActivitiesRequest {
-    pub start_date: Option<DateTime<Utc>>,
-    pub end_date: Option<DateTime<Utc>>,
+    pub start_date: Option<NaiveDate>,
+    pub end_date: Option<NaiveDate>,
 }
 
 impl Message for StravaActivitiesRequest {
@@ -515,7 +515,13 @@ impl Handler<StravaActivitiesRequest> for PgPool {
     fn handle(&mut self, msg: StravaActivitiesRequest, _: &mut Self::Context) -> Self::Result {
         let config = GarminConfig::get_config(None)?;
         let client = StravaClient::from_file(config, Some(StravaAuthType::Read))?;
-        client.get_strava_activites(msg.start_date, msg.end_date)
+        let start_date = msg
+            .start_date
+            .map(|s| DateTime::from_utc(NaiveDateTime::new(s, NaiveTime::from_hms(0, 0, 0)), Utc));
+        let end_date = msg.end_date.map(|s| {
+            DateTime::from_utc(NaiveDateTime::new(s, NaiveTime::from_hms(23, 59, 59)), Utc)
+        });
+        client.get_strava_activites(start_date, end_date)
     }
 }
 
@@ -528,7 +534,13 @@ impl Message for StravaActivitiesDBRequest {
 impl Handler<StravaActivitiesDBRequest> for PgPool {
     type Result = Result<HashMap<String, StravaItem>, Error>;
     fn handle(&mut self, msg: StravaActivitiesDBRequest, _: &mut Self::Context) -> Self::Result {
-        get_strava_ids(self, msg.0.start_date, msg.0.end_date)
+        let start_date = msg.0
+            .start_date
+            .map(|s| DateTime::from_utc(NaiveDateTime::new(s, NaiveTime::from_hms(0, 0, 0)), Utc));
+        let end_date = msg.0.end_date.map(|s| {
+            DateTime::from_utc(NaiveDateTime::new(s, NaiveTime::from_hms(23, 59, 59)), Utc)
+        });
+        get_strava_ids(self, start_date, end_date)
     }
 }
 

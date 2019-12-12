@@ -120,11 +120,14 @@ impl GarminFile {
         Err(err_msg("Failed to find file"))
     }
 
-    pub fn get_standardized_name(&self) -> Result<String, Error> {
-        Ok(self
-            .begin_datetime
-            .format("%Y-%m-%d_%H-%M-%S_1_1.fit")
-            .to_string())
+    pub fn get_standardized_name(&self, suffix: &str) -> Result<String, Error> {
+        Ok(format!(
+            "{}.{}",
+            self.begin_datetime
+                .format("%Y-%m-%d_%H-%M-%S_1_1")
+                .to_string(),
+            suffix
+        ))
     }
 }
 

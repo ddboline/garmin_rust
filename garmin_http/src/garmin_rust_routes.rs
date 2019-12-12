@@ -4,6 +4,7 @@ use actix_multipart::{Field, Multipart, MultipartError};
 use actix_web::http::StatusCode;
 use actix_web::web::{block, Data, Json, Query};
 use actix_web::HttpResponse;
+use chrono::Utc;
 use failure::{err_msg, format_err, Error};
 use futures::future::{err, Either, Future};
 use futures::stream::Stream;
@@ -117,7 +118,6 @@ fn save_file(file_path: String, field: Field) -> impl Future<Item = i64, Error =
 }
 
 pub fn garmin_upload(
-    query: Query<GarminUploadRequest>,
     multipart: Multipart,
     _: LoggedUser,
     state: Data<AppState>,
@@ -128,12 +128,16 @@ pub fn garmin_upload(
     };
     let tempdir_str = tempdir.path().to_string_lossy().to_string();
 
-    let query = query.into_inner();
-    let fname = format!("{}/{}", tempdir_str, query.filename);
+    let fname = format!(
+        "{}/{}",
+        tempdir_str,
+        Utc::now().format("%Y-%m-%d_%H-%M-%S").to_string()
+    );
 
+    let _fname = &fname;
     match multipart
         .map_err(err_msg)
-        .map(move |field| save_file(fname.clone(), field).into_stream())
+        .map(move |field| save_file(_fname.clone(), field).into_stream())
         .flatten()
         .collect()
         .wait()
@@ -142,7 +146,6 @@ pub fn garmin_upload(
         Err(e) => return Either::A(err(format_err!("{:?}", e))),
     };
 
-    let fname = format!("{}/{}", tempdir_str, query.filename);
     Either::B(
         state
             .db

@@ -12,6 +12,9 @@ use tempdir::TempDir;
 
 use crate::common::garmin_summary::get_maximum_begin_datetime;
 use crate::parsers::garmin_parse::{GarminParse, GarminParseTrait};
+use crate::parsers::garmin_parse_gmn::GarminParseGmn;
+use crate::parsers::garmin_parse_tcx::GarminParseTcx;
+use crate::parsers::garmin_parse_txt::GarminParseTxt;
 use crate::reports::garmin_file_report_html::file_report_html;
 use crate::reports::garmin_file_report_txt::generate_txt_report;
 use crate::reports::garmin_report_options::{GarminReportAgg, GarminReportOptions};
@@ -543,6 +546,25 @@ impl GarminCli {
         }
     }
 
+    fn transform_file_name(filename: &str) -> Result<String, Error> {
+        macro_rules! check_filename {
+            ($suffix:expr, $T:expr) => {
+                let fname = format!("{}.{}", filename, $suffix);
+                rename(&filename, &fname)?;
+                if $T.with_file(&fname, &HashMap::new()).is_ok() {
+                    return Ok(fname);
+                }
+                rename(&fname, &filename)?;
+            };
+        }
+        check_filename!("fit", GarminParseTcx::new(true));
+        check_filename!("tcx", GarminParseTcx::new(false));
+        check_filename!("txt", GarminParseTxt::new());
+        check_filename!("gmn", GarminParseGmn::new());
+
+        Err(format_err!("Bad filename {}", filename))
+    }
+
     pub fn process_filenames(&self, filenames: &[String]) -> Result<(), Error> {
         let tempdir = TempDir::new("garmin_zip")?;
         let ziptmpdir = tempdir.path().to_string_lossy().to_string();
@@ -554,7 +576,7 @@ impl GarminCli {
                 Some("fit") => Ok(filename.to_string()),
                 Some("tcx") => Ok(filename.to_string()),
                 Some("txt") => Ok(filename.to_string()),
-                _ => Err(format_err!("Bad filename {}", filename)),
+                _ => Self::transform_file_name(&filename),
             })
             .collect();
 
@@ -562,12 +584,19 @@ impl GarminCli {
             .into_iter()
             .map(|filename| {
                 assert!(Path::new(&filename).exists(), "No such file");
+                let suffix = match filename.to_lowercase().split('.').last() {
+                    Some("fit") => "fit",
+                    Some("tcx") => "tcx",
+                    Some("txt") => "txt",
+                    Some("gmn") => "gmn",
+                    _ => return Err(format_err!("Bad filename {}", filename)),
+                };
                 let gfile = GarminParse::new().with_file(&filename, &HashMap::new())?;
 
                 let outfile = format!(
                     "{}/{}",
                     &self.get_config().gps_dir,
-                    gfile.get_standardized_name()?
+                    gfile.get_standardized_name(suffix)?
                 );
 
                 writeln!(stdout().lock(), "{} {}", filename, outfile)?;

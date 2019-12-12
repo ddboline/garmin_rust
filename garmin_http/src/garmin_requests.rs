@@ -534,7 +534,8 @@ impl Message for StravaActivitiesDBRequest {
 impl Handler<StravaActivitiesDBRequest> for PgPool {
     type Result = Result<HashMap<String, StravaItem>, Error>;
     fn handle(&mut self, msg: StravaActivitiesDBRequest, _: &mut Self::Context) -> Self::Result {
-        let start_date = msg.0
+        let start_date = msg
+            .0
             .start_date
             .map(|s| DateTime::from_utc(NaiveDateTime::new(s, NaiveTime::from_hms(0, 0, 0)), Utc));
         let end_date = msg.0.end_date.map(|s| {

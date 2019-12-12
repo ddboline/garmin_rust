@@ -53,7 +53,7 @@ shape-rendering: crispEdges;
     <button name="garminconnectoutput" id="garminconnectoutput"> &nbsp; </button>
     <button type="submit" onclick="send_command('filter=latest');"> latest </button>
     <button type="submit" onclick="send_command('filter=sport');"> sport </button>
-    <form action="/garmin/upload_file">
+    <form action="/garmin/upload_file" method="post" enctype="multipart/form-data">
         <input type="file" name="filename">
         <input type="submit">
     </form>

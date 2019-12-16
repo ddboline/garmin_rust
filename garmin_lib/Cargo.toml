@@ -31,7 +31,7 @@ actix = "0.8.3"
 lazy_static = "1.4"
 roxmltree = "0.7"
 reqwest = "0.9"
-parking_lot = "0.9"
+parking_lot = "0.10"
 maplit = "1.0"
 retry = "0.5"
 avro-rs = {version = "0.6.5", features = ["snappy"]}

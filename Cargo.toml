@@ -13,7 +13,7 @@ actix = "0.8.3"
 actix-rt = "0.2"
 log = "0.4"
 env_logger = "0.7"
-crossbeam-utils = "0.6"
+crossbeam-utils = "0.7"
 failure = "0.1"
 structopt = "0.3"
 

@@ -340,6 +340,21 @@ impl Handler<FitbitSyncRequest> for PgPool {
     }
 }
 
+pub struct FitbitTcxSyncRequest {}
+
+impl Message for FitbitTcxSyncRequest {
+    type Result = Result<Vec<String>, Error>;
+}
+
+impl Handler<FitbitTcxSyncRequest> for PgPool {
+    type Result = Result<Vec<String>, Error>;
+    fn handle(&mut self, _: FitbitTcxSyncRequest, &mut Self::Context) -> Self::Result {
+        let config = GarminConfig::get_config(None)?;
+        let client = FitbitClient::from_file(config)?;
+        Ok(Vec::new())
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct ScaleMeasurementRequest {
     pub start_date: Option<NaiveDate>,

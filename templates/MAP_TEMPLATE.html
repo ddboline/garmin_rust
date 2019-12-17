@@ -66,6 +66,7 @@ shape-rendering: crispEdges;
 <H3>
     <button type="submit" id="ID" onclick="garmin_sync();">sync with S3</button>
     <button type="submit" id="ID" onclick="garmin_connect_sync();">sync with Garmin Connect</button>
+    <button type="submit" id="ID" onclick="fitbit_tcx_sync();">sync with Fitbit TCX</button>
     <br>
     <button type="submit" id="ID" onclick="stravaAuthRead();">read auth Strava</button>
     <button type="submit" id="ID" onclick="strava_sync();">sync with Strava</button>
@@ -189,6 +190,17 @@ STRAVAUPLOADBUTTON
     }
     function garmin_connect_sync() {
         let ostr = '/garmin/garmin_connect_sync';
+        let xmlhttp = new XMLHttpRequest();
+        xmlhttp.open("GET", ostr, true);
+        xmlhttp.onload = function nothing() {
+            document.getElementById("garminconnectoutput").innerHTML = "done";
+            document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
+        }
+        xmlhttp.send(null);
+        document.getElementById("garminconnectoutput").innerHTML = "syncing";
+    }
+    function fitbit_tcx_sync() {
+        let ostr = '/garmin/fitbit/fitbit_tcx_sync';
         let xmlhttp = new XMLHttpRequest();
         xmlhttp.open("GET", ostr, true);
         xmlhttp.onload = function nothing() {

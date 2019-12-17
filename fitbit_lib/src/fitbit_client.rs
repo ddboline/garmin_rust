@@ -3,7 +3,7 @@ use cpython::{
     FromPyObject, ObjectProtocol, PyDict, PyList, PyObject, PyResult, PyTuple, Python,
     PythonObject, ToPyObject,
 };
-use failure::{format_err, Error};
+use failure::{err_msg, format_err, Error};
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 
@@ -279,10 +279,77 @@ impl FitbitClient {
         self._update_fitbit_bodyweightfat(py, updates)
             .map_err(|e| format_err!("{:?}", e))
     }
+
+    pub fn _get_tcx_urls(&self, py: Python, start_date: NaiveDate) -> PyResult<Vec<String>> {
+        let client = self.get_fitbit_client(py, false)?;
+        let url = format!(
+            "https://api.fitbit.com/1/user/-/activities/list.json?afterDate={}&offset=0&limit=20&sort=asc",
+            start_date,
+        );
+        let args = PyDict::new(py);
+        args.set_item(py, "method", "GET")?;
+        let result = client.call_method(py, "make_request", (&url,), Some(&args))?;
+        let result = PyDict::extract(py, &result)?;
+        let activities = result.get_item(py, "activities").unwrap();
+        let activities = PyList::extract(py, &activities)?;
+
+        activities
+            .iter(py)
+            .map(|item| {
+                let dict = PyDict::extract(py, &item)?;
+                let log_type = match dict.get_item(py, "logType").as_ref() {
+                    Some(l) => String::extract(py, l)?,
+                    None => return Ok(None),
+                };
+                if log_type != "tracker" {
+                    return Ok(None);
+                }
+                match dict.get_item(py, "tcxLink").as_ref() {
+                    Some(l) => Ok(Some(String::extract(py, l)?)),
+                    None => Ok(None),
+                }
+            })
+            .filter_map(|x| x.transpose())
+            .collect()
+    }
+
+    pub fn get_tcx_urls(&self, start_date: NaiveDate) -> Result<Vec<String>, Error> {
+        let gil = Python::acquire_gil();
+        let py = gil.python();
+        self._get_tcx_urls(py, start_date)
+            .map_err(|e| format_err!("{:?}", e))
+    }
+
+    pub fn _download_tcx(&self, py: Python, tcx_url: &str) -> PyResult<Vec<u8>> {
+        let client = self.get_fitbit_client(py, false)?;
+        let system = String::extract(py, &client.getattr(py, "system")?)?;
+        let client = client.getattr(py, "client")?;
+        let headers = PyDict::new(py);
+        headers.set_item(py, "Accept-Language", &system)?;
+        let args = PyDict::new(py);
+        args.set_item(py, "headers", &headers)?;
+        args.set_item(py, "method", "GET")?;
+        let resp = client.call_method(py, "make_request", (tcx_url,), Some(&args))?;
+        resp.call_method(py, "raise_for_status", PyTuple::new(py, &[]), None)?;
+        let data = resp.getattr(py, "content")?;
+        <Vec<u8>>::extract(py, &data)
+    }
+
+    pub fn download_tcx<T: Write>(&self, tcx_url: &str, outfile: &mut T) -> Result<(), Error> {
+        let gil = Python::acquire_gil();
+        let py = gil.python();
+        let mut data = self
+            ._download_tcx(py, tcx_url)
+            .map_err(|e| format_err!("{:?}", e))?;
+        outfile.write_all(&mut data).map_err(err_msg)
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use chrono::NaiveDate;
+    use tempfile::NamedTempFile;
+
     use crate::fitbit_client::FitbitClient;
     use garmin_lib::common::garmin_config::GarminConfig;
 
@@ -294,5 +361,23 @@ mod tests {
         let url = client.get_fitbit_auth_url().unwrap();
         println!("{:?} {}", client, url);
         assert!(url.len() > 0);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_get_tcx_urls() {
+        let config = GarminConfig::get_config(None).unwrap();
+        let client = FitbitClient::from_file(config).unwrap();
+        let start_date = NaiveDate::from_ymd(2019, 12, 1);
+        let results = client.get_tcx_urls(start_date).unwrap();
+        println!("{:?}", results);
+        for tcx_url in results {
+            let mut f = NamedTempFile::new().unwrap();
+            client.download_tcx(&tcx_url, &mut f).unwrap();
+            let metadata = f.as_file().metadata().unwrap();
+            println!("{:?} {}", metadata, metadata.len());
+            assert!(metadata.len() > 0);
+            break;
+        }
     }
 }

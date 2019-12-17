@@ -1,5 +1,3 @@
-extern crate tempfile;
-
 use garmin_lib::common::garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList};
 use garmin_lib::utils::iso_8601_datetime::convert_str_to_datetime;
 use garmin_lib::utils::sport_types::SportTypes;

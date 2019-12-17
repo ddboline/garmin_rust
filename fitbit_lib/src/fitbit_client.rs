@@ -1,4 +1,4 @@
-use chrono::{FixedOffset, NaiveDate};
+use chrono::{DateTime, FixedOffset, NaiveDate, Utc};
 use cpython::{
     FromPyObject, ObjectProtocol, PyDict, PyList, PyObject, PyResult, PyTuple, Python,
     PythonObject, ToPyObject,
@@ -280,7 +280,11 @@ impl FitbitClient {
             .map_err(|e| format_err!("{:?}", e))
     }
 
-    pub fn _get_tcx_urls(&self, py: Python, start_date: NaiveDate) -> PyResult<Vec<String>> {
+    pub fn _get_tcx_urls(
+        &self,
+        py: Python,
+        start_date: NaiveDate,
+    ) -> PyResult<Vec<(DateTime<Utc>, String)>> {
         let client = self.get_fitbit_client(py, false)?;
         let url = format!(
             "https://api.fitbit.com/1/user/-/activities/list.json?afterDate={}&offset=0&limit=20&sort=asc",
@@ -304,8 +308,17 @@ impl FitbitClient {
                 if log_type != "tracker" {
                     return Ok(None);
                 }
+                let start_time = match dict.get_item(py, "startTime").as_ref() {
+                    Some(t) => {
+                        let start_time = String::extract(py, t)?;
+                        DateTime::parse_from_rfc3339(&start_time)
+                            .unwrap()
+                            .with_timezone(&Utc)
+                    }
+                    None => return Ok(None),
+                };
                 match dict.get_item(py, "tcxLink").as_ref() {
-                    Some(l) => Ok(Some(String::extract(py, l)?)),
+                    Some(l) => Ok(Some((start_time, String::extract(py, l)?))),
                     None => Ok(None),
                 }
             })
@@ -313,7 +326,10 @@ impl FitbitClient {
             .collect()
     }
 
-    pub fn get_tcx_urls(&self, start_date: NaiveDate) -> Result<Vec<String>, Error> {
+    pub fn get_tcx_urls(
+        &self,
+        start_date: NaiveDate,
+    ) -> Result<Vec<(DateTime<Utc>, String)>, Error> {
         let gil = Python::acquire_gil();
         let py = gil.python();
         self._get_tcx_urls(py, start_date)
@@ -371,11 +387,11 @@ mod tests {
         let start_date = NaiveDate::from_ymd(2019, 12, 1);
         let results = client.get_tcx_urls(start_date).unwrap();
         println!("{:?}", results);
-        for tcx_url in results {
+        for (start_time, tcx_url) in results {
             let mut f = NamedTempFile::new().unwrap();
             client.download_tcx(&tcx_url, &mut f).unwrap();
             let metadata = f.as_file().metadata().unwrap();
-            println!("{:?} {}", metadata, metadata.len());
+            println!("{} {:?} {}", start_time, metadata, metadata.len());
             assert!(metadata.len() > 0);
             break;
         }

@@ -4,6 +4,7 @@ use failure::Error;
 use log::debug;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
+use std::fs::File;
 use std::path::Path;
 
 use fitbit_lib::fitbit_client::FitbitClient;
@@ -340,7 +341,10 @@ impl Handler<FitbitSyncRequest> for PgPool {
     }
 }
 
-pub struct FitbitTcxSyncRequest {}
+#[derive(Serialize, Deserialize)]
+pub struct FitbitTcxSyncRequest {
+    pub start_date: Option<NaiveDate>,
+}
 
 impl Message for FitbitTcxSyncRequest {
     type Result = Result<Vec<String>, Error>;
@@ -348,10 +352,30 @@ impl Message for FitbitTcxSyncRequest {
 
 impl Handler<FitbitTcxSyncRequest> for PgPool {
     type Result = Result<Vec<String>, Error>;
-    fn handle(&mut self, _: FitbitTcxSyncRequest, &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: FitbitTcxSyncRequest, _: &mut Self::Context) -> Self::Result {
         let config = GarminConfig::get_config(None)?;
-        let client = FitbitClient::from_file(config)?;
-        Ok(Vec::new())
+        let client = FitbitClient::from_file(config.clone())?;
+        let start_date = msg
+            .start_date
+            .unwrap_or_else(|| (Utc::now() - Duration::days(10)).naive_utc().date());
+        client
+            .get_tcx_urls(start_date)?
+            .into_iter()
+            .map(|(start_time, tcx_url)| {
+                let fname = format!(
+                    "{}/{}.tcx",
+                    config.gps_dir,
+                    start_time.format("%Y-%m-%d_%H-%M-%S_1_1").to_string(),
+                );
+                if Path::new(&fname).exists() {
+                    client.download_tcx(&tcx_url, &mut File::create(&fname)?)?;
+                    Ok(Some(fname))
+                } else {
+                    Ok(None)
+                }
+            })
+            .filter_map(|x| x.transpose())
+            .collect()
     }
 }
 

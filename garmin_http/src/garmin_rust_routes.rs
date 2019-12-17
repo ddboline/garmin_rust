@@ -27,12 +27,12 @@ use super::garmin_rust_app::AppState;
 use crate::garmin_requests::{
     FitbitAuthRequest, FitbitBodyWeightFatRequest, FitbitBodyWeightFatUpdateRequest,
     FitbitCallbackRequest, FitbitHeartrateApiRequest, FitbitHeartrateCacheRequest,
-    FitbitHeartrateDbRequest, FitbitHeartratePlotRequest, FitbitSyncRequest,
+    FitbitHeartrateDbRequest, FitbitHeartratePlotRequest, FitbitSyncRequest, FitbitTcxSyncRequest,
     GarminConnectSyncRequest, GarminCorrRequest, GarminHtmlRequest, GarminListRequest,
     GarminSyncRequest, GarminUploadRequest, ScaleMeasurementPlotRequest, ScaleMeasurementRequest,
     ScaleMeasurementUpdateRequest, StravaActiviesDBUpdateRequest, StravaActivitiesDBRequest,
     StravaActivitiesRequest, StravaAuthRequest, StravaCallbackRequest, StravaSyncRequest,
-    StravaUpdateRequest, StravaUploadRequest, FitbitTcxSyncRequest,
+    StravaUpdateRequest, StravaUploadRequest,
 };
 use crate::CONFIG;
 
@@ -428,12 +428,17 @@ pub fn heartrate_plots(
 }
 
 pub fn fitbit_tcx_sync(
+    query: Query<FitbitTcxSyncRequest>,
     _: LoggedUser,
     state: Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    state.db.send(FitbitTcxSyncRequest {})
-    .from_err()
-    .and_then(move |res| res.and_then(|flist| to_json(&flist)))
+    let query = query.into_inner();
+
+    state
+        .db
+        .send(query)
+        .from_err()
+        .and_then(move |res| res.and_then(|flist| to_json(&flist)))
 }
 
 pub fn scale_measurement(

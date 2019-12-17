@@ -354,15 +354,16 @@ impl FitbitClient {
     pub fn download_tcx<T: Write>(&self, tcx_url: &str, outfile: &mut T) -> Result<(), Error> {
         let gil = Python::acquire_gil();
         let py = gil.python();
-        let mut data = self
+        let data = self
             ._download_tcx(py, tcx_url)
             .map_err(|e| format_err!("{:?}", e))?;
-        outfile.write_all(&mut data).map_err(err_msg)
+        outfile.write_all(&data).map_err(err_msg)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
     use chrono::NaiveDate;
     use tempfile::NamedTempFile;
 
@@ -383,11 +384,22 @@ mod tests {
     #[ignore]
     fn test_get_tcx_urls() {
         let config = GarminConfig::get_config(None).unwrap();
-        let client = FitbitClient::from_file(config).unwrap();
+        let client = FitbitClient::from_file(config.clone()).unwrap();
         let start_date = NaiveDate::from_ymd(2019, 12, 1);
         let results = client.get_tcx_urls(start_date).unwrap();
         println!("{:?}", results);
         for (start_time, tcx_url) in results {
+            let fname = format!(
+                "{}/{}.tcx",
+                config.gps_dir,
+                start_time.format("%Y-%m-%d_%H-%M-%S_1_1").to_string(),
+            );
+            if Path::new(&fname).exists() {
+                println!("{} exists", fname);
+            } else {
+                println!("{} does not exist", fname)
+            };
+
             let mut f = NamedTempFile::new().unwrap();
             client.download_tcx(&tcx_url, &mut f).unwrap();
             let metadata = f.as_file().metadata().unwrap();

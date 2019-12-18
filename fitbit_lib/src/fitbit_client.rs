@@ -363,8 +363,8 @@ impl FitbitClient {
 
 #[cfg(test)]
 mod tests {
+    use chrono::{Local, NaiveDate};
     use std::path::Path;
-    use chrono::NaiveDate;
     use tempfile::NamedTempFile;
 
     use crate::fitbit_client::FitbitClient;
@@ -392,7 +392,10 @@ mod tests {
             let fname = format!(
                 "{}/{}.tcx",
                 config.gps_dir,
-                start_time.format("%Y-%m-%d_%H-%M-%S_1_1").to_string(),
+                start_time
+                    .with_timezone(&Local)
+                    .format("%Y-%m-%d_%H-%M-%S_1_1")
+                    .to_string(),
             );
             if Path::new(&fname).exists() {
                 println!("{} exists", fname);
@@ -407,5 +410,6 @@ mod tests {
             assert!(metadata.len() > 0);
             break;
         }
+        assert!(false);
     }
 }

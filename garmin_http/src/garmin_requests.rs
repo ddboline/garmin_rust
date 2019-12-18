@@ -358,7 +358,7 @@ impl Handler<FitbitTcxSyncRequest> for PgPool {
         let start_date = msg
             .start_date
             .unwrap_or_else(|| (Utc::now() - Duration::days(10)).naive_utc().date());
-        client
+        let results: Result<Vec<_>, Error> = client
             .get_tcx_urls(start_date)?
             .into_iter()
             .map(|(start_time, tcx_url)| {
@@ -367,7 +367,7 @@ impl Handler<FitbitTcxSyncRequest> for PgPool {
                     config.gps_dir,
                     start_time.format("%Y-%m-%d_%H-%M-%S_1_1").to_string(),
                 );
-                if Path::new(&fname).exists() {
+                if !Path::new(&fname).exists() {
                     client.download_tcx(&tcx_url, &mut File::create(&fname)?)?;
                     Ok(Some(fname))
                 } else {
@@ -375,7 +375,10 @@ impl Handler<FitbitTcxSyncRequest> for PgPool {
                 }
             })
             .filter_map(|x| x.transpose())
-            .collect()
+            .collect();
+        let gcli = GarminCli::from_pool(&self)?;
+        gcli.proc_everything()?;
+        results
     }
 }
 

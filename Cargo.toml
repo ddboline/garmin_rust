@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 fitbit_lib = {path="fitbit_lib"}
+garmin_cli = {path="garmin_cli"}
 garmin_lib = { path = "garmin_lib" }
 garmin_http = { path = "garmin_http" }
 strava_lib = { path = "strava_lib" }
@@ -23,6 +24,7 @@ approx = "0.3.2"
 [workspace]
 members = [
     "fitbit_lib",
+    "garmin_cli",
     "garmin_lib",
     "garmin_http",
     "strava_lib",
@@ -56,4 +58,9 @@ doc = false
 [[bin]]
 name = "import-fitbit-json-files"
 path = "src/import_fitbit_json_files.rs"
+doc = false
+
+[[bin]]
+name = "garmin-rust"
+path = "src/garmin_rust_cli.rs"
 doc = false

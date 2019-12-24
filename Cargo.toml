@@ -51,6 +51,6 @@ path = "src/import_fitbit_json_files.rs"
 doc = false
 
 [[bin]]
-name = "garmin-rust"
+name = "garmin-rust-cli"
 path = "src/garmin_rust_cli.rs"
 doc = false

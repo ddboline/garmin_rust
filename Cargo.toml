@@ -31,16 +31,6 @@ members = [
 ]
 
 [[bin]]
-name = "garmin-rust-proc"
-path = "src/garmin_rust_proc.rs"
-doc = false
-
-[[bin]]
-name = "garmin-rust-report"
-path = "src/garmin_rust_report.rs"
-doc = false
-
-[[bin]]
 name = "garmin-rust-http"
 path = "src/garmin_rust_http.rs"
 doc = false

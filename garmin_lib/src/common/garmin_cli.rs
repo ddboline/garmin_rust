@@ -100,101 +100,6 @@ impl GarminCli {
         Ok(obj)
     }
 
-    pub fn with_cli_proc() -> Result<GarminCli, Error> {
-        let matches = App::new("Garmin Rust Proc")
-            .version(get_version_number().as_str())
-            .author("Daniel Boline <ddboline@gmail.com>")
-            .about("Convert GPS files to avro format, dump stuff to postgres")
-            .arg(
-                Arg::with_name("filename")
-                    .short("f")
-                    .long("filename")
-                    .value_name("FILENAME")
-                    .multiple(true)
-                    .help("Convert (a) file(s)"),
-            )
-            .arg(
-                Arg::with_name("all")
-                    .short("a")
-                    .long("all")
-                    .value_name("ALL")
-                    .takes_value(false)
-                    .help("Convert all files in gps dir"),
-            )
-            .arg(
-                Arg::with_name("sync")
-                    .short("s")
-                    .long("sync")
-                    .value_name("SYNC")
-                    .help("Sync gps_files and cache with s3")
-                    .takes_value(false),
-            )
-            .arg(
-                Arg::with_name("check_md5sum")
-                    .short("m")
-                    .long("check_md5sum")
-                    .value_name("CHECK_MD5SUM")
-                    .help("Check file md5sums")
-                    .takes_value(false),
-            )
-            .arg(
-                Arg::with_name("bootstrap")
-                    .short("b")
-                    .long("bootstrap")
-                    .value_name("BOOTSTRAP")
-                    .help("Bootstrap a new node")
-                    .takes_value(false),
-            )
-            .arg(
-                Arg::with_name("import")
-                    .short("i")
-                    .long("import")
-                    .value_name("IMPORT")
-                    .multiple(true)
-                    .help("Import fit file(s) rename and copy to cache"),
-            )
-            .arg(
-                Arg::with_name("connect")
-                    .short("c")
-                    .long("connect")
-                    .value_name("CONNECT")
-                    .help("Download new files from Garmin Connect")
-                    .takes_value(false),
-            )
-            .get_matches();
-
-        let obj = GarminCli {
-            opts: if matches.is_present("sync") {
-                let check_md5sum = matches.is_present("check_md5sum");
-                Some(GarminCliOptions::Sync(check_md5sum))
-            } else if matches.is_present("all") {
-                Some(GarminCliOptions::All)
-            } else if matches.is_present("bootstrap") {
-                Some(GarminCliOptions::Bootstrap)
-            } else if matches.is_present("filename") {
-                match matches
-                    .values_of("filename")
-                    .map(|f| f.map(|f| f.to_string()).collect())
-                {
-                    Some(v) => Some(GarminCliOptions::FileNames(v)),
-                    None => None,
-                }
-            } else if matches.is_present("connect") {
-                Some(GarminCliOptions::Connect)
-            } else {
-                match matches
-                    .values_of("import")
-                    .map(|f| f.map(|f| f.to_string()).collect())
-                {
-                    Some(v) => Some(GarminCliOptions::ImportFileNames(v)),
-                    None => None,
-                }
-            },
-            ..GarminCli::with_config()?
-        };
-        Ok(obj)
-    }
-
     pub fn get_pool(&self) -> Result<PgPool, Error> {
         self.pool
             .as_ref()
@@ -363,25 +268,6 @@ impl GarminCli {
                 Ok(output.join("\n"))
             })
             .collect()
-    }
-
-    pub fn cli_garmin_report(&self) -> Result<(), Error> {
-        let matches = App::new("Garmin Rust Report")
-            .version(get_version_number().as_str())
-            .author("Daniel Boline <ddboline@gmail.com>")
-            .about("Convert GPS files to avro format, dump stuff to postgres")
-            .arg(Arg::with_name("patterns").multiple(true))
-            .get_matches();
-
-        let req = match matches.values_of("patterns") {
-            Some(patterns) => {
-                let strings: Vec<String> = patterns.map(|x| x.to_string()).collect();
-                Self::process_pattern(&strings)
-            }
-            None => Self::process_pattern(&["year".to_string()]),
-        };
-
-        self.run_cli(&req.options, &req.constraints)
     }
 
     pub fn process_pattern(patterns: &[String]) -> GarminRequest {

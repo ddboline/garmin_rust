@@ -10,3 +10,5 @@ edition = "2018"
 structopt = "0.3"
 garmin_lib = {path="../garmin_lib"}
 failure = "0.1"
+fitbit_lib = {path="../fitbit_lib"}
+chrono = "0.4"

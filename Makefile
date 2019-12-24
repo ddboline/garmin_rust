@@ -7,7 +7,8 @@ build_type := release
 all:
 	mkdir -p build/ && \
 	cp Dockerfile.build.ubuntu18.04 build/Dockerfile && \
-	cp -a Cargo.toml src scripts Makefile templates garmin_lib garmin_http fitbit_lib strava_lib build/ && \
+	cp -a Cargo.toml src scripts Makefile templates garmin_cli \
+		garmin_lib garmin_http fitbit_lib strava_lib build/ && \
 	cd build/ && \
 	docker build -t garmin_rust/build_rust:ubuntu18.04 . && \
 	cd ../ && \
@@ -16,7 +17,8 @@ all:
 xenial:
 	mkdir -p build/ && \
 	cp Dockerfile.build.ubuntu16.04 build/Dockerfile && \
-	cp -a Cargo.toml src scripts Makefile templates garmin_lib garmin_http fitbit_lib strava_lib build/ && \
+	cp -a Cargo.toml src scripts Makefile templates garmin_cli \
+		garmin_lib garmin_http fitbit_lib strava_lib build/ && \
 	cd build/ && \
 	docker build -t garmin_rust/build_rust:ubuntu16.04 . && \
 	cd ../ && \

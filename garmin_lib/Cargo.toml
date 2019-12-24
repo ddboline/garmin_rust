@@ -35,6 +35,3 @@ parking_lot = "0.10"
 maplit = "1.0"
 retry = "0.5"
 avro-rs = {version = "0.6.5", features = ["snappy"]}
-
-[dev-dependencies]
-approx = "0.3.2"

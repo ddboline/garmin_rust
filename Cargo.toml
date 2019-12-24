@@ -17,6 +17,9 @@ crossbeam-utils = "0.7"
 failure = "0.1"
 structopt = "0.3"
 
+[dev-dependencies]
+approx = "0.3.2"
+
 [workspace]
 members = [
     "fitbit_lib",

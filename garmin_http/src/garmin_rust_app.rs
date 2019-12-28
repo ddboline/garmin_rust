@@ -1,6 +1,7 @@
 #![allow(clippy::needless_pass_by_value)]
 
 use actix_identity::{CookieIdentityPolicy, IdentityService};
+use actix_web::web::block;
 use actix_web::{web, App, HttpServer};
 use chrono::Duration;
 use parking_lot::RwLock;
@@ -45,7 +46,10 @@ pub async fn start_app() {
         let mut i = interval(time::Duration::from_secs(60));
         loop {
             i.tick().await;
-            AUTHORIZED_USERS.fill_from_db(&pool).unwrap_or(());
+            let _p = pool.clone();
+            block(move || AUTHORIZED_USERS.fill_from_db(&_p))
+                .await
+                .unwrap_or(());
         }
     }
 

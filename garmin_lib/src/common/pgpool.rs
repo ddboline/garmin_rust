@@ -1,8 +1,7 @@
-use actix::sync::SyncContext;
-use actix::Actor;
 use failure::{err_msg, Error};
+use postgres::NoTls;
 use r2d2::{Pool, PooledConnection};
-use r2d2_postgres::{PostgresConnectionManager, TlsMode};
+use r2d2_postgres::PostgresConnectionManager;
 use std::fmt;
 
 /// Wrapper around r2d2::Pool, two pools are considered equal if they have the same connection string
@@ -10,7 +9,7 @@ use std::fmt;
 #[derive(Clone)]
 pub struct PgPool {
     pgurl: String,
-    pool: Pool<PostgresConnectionManager>,
+    pool: Pool<PostgresConnectionManager<NoTls>>,
 }
 
 impl fmt::Debug for PgPool {
@@ -27,19 +26,17 @@ impl PartialEq for PgPool {
 
 impl PgPool {
     pub fn new(pgurl: &str) -> PgPool {
-        let manager = PostgresConnectionManager::new(pgurl, TlsMode::None)
-            .expect("Failed to open DB connection");
+        let manager = PostgresConnectionManager::new(
+            pgurl.parse().expect("Failed to parse connection string"),
+            NoTls,
+        );
         PgPool {
             pgurl: pgurl.to_string(),
             pool: Pool::new(manager).expect("Failed to open DB connection"),
         }
     }
 
-    pub fn get(&self) -> Result<PooledConnection<PostgresConnectionManager>, Error> {
+    pub fn get(&self) -> Result<PooledConnection<PostgresConnectionManager<NoTls>>, Error> {
         self.pool.get().map_err(err_msg)
     }
-}
-
-impl Actor for PgPool {
-    type Context = SyncContext<Self>;
 }

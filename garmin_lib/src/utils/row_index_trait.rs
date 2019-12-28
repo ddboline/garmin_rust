@@ -1,23 +1,22 @@
-use failure::{err_msg, format_err, Error};
-use postgres::rows::{Row, RowIndex};
+use failure::{format_err, Error};
+use postgres::row::{Row, RowIndex};
 use postgres::types::FromSql;
-use std::fmt::Debug;
+use std::fmt::Display;
 
-pub trait RowIndexTrait {
-    fn get_idx<I, T>(&self, idx: I) -> Result<T, Error>
+pub trait RowIndexTrait<'a> {
+    fn get_idx<I, T>(&'a self, idx: I) -> Result<T, Error>
     where
-        I: RowIndex + Debug + Copy,
-        T: FromSql;
+        I: RowIndex + Display + Copy,
+        T: FromSql<'a>;
 }
 
-impl<'a> RowIndexTrait for Row<'a> {
-    fn get_idx<I, T>(&self, idx: I) -> Result<T, Error>
+impl<'a> RowIndexTrait<'a> for Row {
+    fn get_idx<I, T>(&'a self, idx: I) -> Result<T, Error>
     where
-        I: RowIndex + Debug + Copy,
-        T: FromSql,
+        I: RowIndex + Display + Copy,
+        T: FromSql<'a>,
     {
-        self.get_opt(idx)
-            .ok_or_else(|| format_err!("Invalid index {:?}", idx))
-            .and_then(|x| x.map_err(err_msg))
+        self.try_get(idx)
+            .map_err(|_| format_err!("Invalid index {}", idx))
     }
 }

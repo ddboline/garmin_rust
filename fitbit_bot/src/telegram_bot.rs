@@ -1,7 +1,7 @@
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use crossbeam_utils::thread::Scope;
-use failure::{format_err, Error};
-use futures::Stream;
+use failure::Error;
+use futures::StreamExt;
 use lazy_static::lazy_static;
 use log::debug;
 use parking_lot::RwLock;
@@ -10,9 +10,9 @@ use std::thread::sleep;
 use std::time::Duration;
 use telegram_bot::types::refs::UserId;
 use telegram_bot::{Api, CanReplySendMessage, MessageKind, UpdateKind};
-use tokio_core::reactor::Core;
+use tokio::runtime::Runtime;
 
-use crate::scale_measurement::ScaleMeasurement;
+use fitbit_lib::scale_measurement::ScaleMeasurement;
 use garmin_lib::common::pgpool::PgPool;
 use garmin_lib::utils::row_index_trait::RowIndexTrait;
 
@@ -42,16 +42,20 @@ pub fn run_bot(telegram_bot_token: &str, pool: PgPool, scope: &Scope) -> Result<
 }
 
 fn telegram_worker(telegram_bot_token: &str, s: Sender<ScaleMeasurement>) -> Result<(), Error> {
-    let mut core = Core::new()?;
+    let mut rt = Runtime::new()?;
 
-    let api = Api::configure(telegram_bot_token)
-        .build(core.handle())
-        .map_err(|e| format_err!("{}", e))?;
+    rt.block_on(_telegram_worker(telegram_bot_token, s))
+}
 
-    // Fetch new updates via long poll method
-    let future = api.stream().for_each(|update| {
+async fn _telegram_worker(
+    telegram_bot_token: &str,
+    s: Sender<ScaleMeasurement>,
+) -> Result<(), Error> {
+    let api = Api::new(telegram_bot_token);
+    let mut stream = api.stream();
+    while let Some(update) = stream.next().await {
         // If the received update contains a new message...
-        if let UpdateKind::Message(message) = update.kind {
+        if let UpdateKind::Message(message) = update?.kind {
             if let MessageKind::Text { ref data, .. } = message.kind {
                 // Print received text message to stdout.
                 debug!("{:?}", message);
@@ -87,13 +91,8 @@ fn telegram_worker(telegram_bot_token: &str, s: Sender<ScaleMeasurement>) -> Res
                 }
             }
         }
-
-        Ok(())
-    });
-
-    core.run(future)
-        .map_err(|e| format_err!("{}", e))
-        .map(|_| ())
+    }
+    Ok(())
 }
 
 fn process_messages(r: Receiver<ScaleMeasurement>, pool: PgPool) {

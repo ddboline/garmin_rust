@@ -5,23 +5,23 @@ authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-actix-web = "1.0.9"
-actix = "0.8.3"
-actix-identity = "0.1"
-actix-rt = "0.2"
+actix-web = "2.0"
+actix = "0.9"
+actix-identity = "0.2"
+actix-rt = "1.0"
 garmin_lib = {path = "../garmin_lib"}
 failure = "0.1"
 chrono = "0.4"
-futures = "0.1"
+futures = "0.3"
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
-jsonwebtoken = "6.0"
+jsonwebtoken = "7.0.0-alpha.2"
 lazy_static = "1.4"
-tokio-timer = "0.2"
+tokio = {version="0.2", features=["time"]}
 fitbit_lib = {path="../fitbit_lib/"}
 strava_lib = {path="../strava_lib/"}
 log = "0.4"
 parking_lot = "0.10"
-actix-multipart = "0.1"
+actix-multipart = "0.2"
 tempdir = "0.3"

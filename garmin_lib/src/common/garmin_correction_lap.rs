@@ -294,7 +294,7 @@ impl GarminCorrectionList {
             from garmin_corrections_laps a
             join garmin_summary b on a.start_time = b.begin_datetime
         ";
-        let conn = self.get_pool()?.get()?;
+        let mut conn = self.get_pool()?.get()?;
         conn.query(query, &[])?
             .iter()
             .map(|row| {
@@ -325,7 +325,7 @@ impl GarminCorrectionList {
             UPDATE garmin_corrections_laps SET start_time=$1, lap_number=$2, distance=$3, duration=$4, sport=$6
             WHERE unique_key=$5
         ";
-        let conn = self.get_pool()?.get()?;
+        let mut conn = self.get_pool()?.get()?;
         let stmt_insert = conn.prepare(query_insert)?;
         let stmt_update = conn.prepare(query_update)?;
         self.get_corr_list()
@@ -338,23 +338,29 @@ impl GarminCorrectionList {
                 };
 
                 if conn.query(query_unique_key, &[&unique_key])?.iter().len() == 0 {
-                    stmt_insert.execute(&[
-                        &corr.start_time,
-                        &corr.lap_number,
-                        &corr.distance,
-                        &corr.duration,
-                        &unique_key,
-                        &sport,
-                    ])?;
+                    conn.execute(
+                        &stmt_insert,
+                        &[
+                            &corr.start_time,
+                            &corr.lap_number,
+                            &corr.distance,
+                            &corr.duration,
+                            &unique_key,
+                            &sport,
+                        ],
+                    )?;
                 } else {
-                    stmt_update.execute(&[
-                        &corr.start_time,
-                        &corr.lap_number,
-                        &corr.distance,
-                        &corr.duration,
-                        &unique_key,
-                        &sport,
-                    ])?;
+                    conn.execute(
+                        &stmt_update,
+                        &[
+                            &corr.start_time,
+                            &corr.lap_number,
+                            &corr.distance,
+                            &corr.duration,
+                            &unique_key,
+                            &sport,
+                        ],
+                    )?;
                 };
                 Ok(())
             })
@@ -362,7 +368,7 @@ impl GarminCorrectionList {
     }
 
     pub fn read_corrections_from_db(&self) -> Result<Self, Error> {
-        let conn = self.get_pool()?.get()?;
+        let mut conn = self.get_pool()?.get()?;
         let corr_list: Result<Vec<_>, Error> = conn.query(
             "select id, start_time, lap_number, sport, distance, duration from garmin_corrections_laps",
             &[],

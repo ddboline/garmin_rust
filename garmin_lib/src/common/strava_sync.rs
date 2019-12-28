@@ -23,8 +23,8 @@ pub fn get_strava_id_from_begin_datetime(
 ) -> Result<Option<(String, String)>, Error> {
     let query = "SELECT strava_id, strava_title FROM strava_id_cache WHERE begin_datetime = $1";
 
-    let conn = pool.get()?;
-    conn.query(&query, &[&begin_datetime])?
+    let mut conn = pool.get()?;
+    conn.query(query, &[&begin_datetime])?
         .iter()
         .nth(0)
         .map(|row| {
@@ -38,9 +38,9 @@ pub fn get_strava_id_from_begin_datetime(
 pub fn get_strava_id_maximum_begin_datetime(pool: &PgPool) -> Result<Option<DateTime<Utc>>, Error> {
     let query = "SELECT MAX(begin_datetime) FROM strava_id_cache";
 
-    let conn = pool.get()?;
+    let mut conn = pool.get()?;
 
-    conn.query(&query, &[])?
+    conn.query(query, &[])?
         .iter()
         .nth(0)
         .map(|row| row.get_idx(0))
@@ -49,8 +49,8 @@ pub fn get_strava_id_maximum_begin_datetime(pool: &PgPool) -> Result<Option<Date
 
 pub fn get_strava_id_map(pool: &PgPool) -> Result<HashMap<String, StravaItem>, Error> {
     let query = "SELECT strava_id, begin_datetime, strava_title FROM strava_id_cache";
-    let conn = pool.get()?;
-    conn.query(&query, &[])?
+    let mut conn = pool.get()?;
+    conn.query(query, &[])?
         .iter()
         .map(|row| {
             let strava_id: String = row.get_idx(0)?;
@@ -85,8 +85,8 @@ pub fn get_strava_ids(
             format!("WHERE {}", constraints.join(" OR "))
         } else {"".to_string()},
     );
-    let conn = pool.get()?;
-    conn.query(&query, &[])?
+    let mut conn = pool.get()?;
+    conn.query(query.as_str(), &[])?
         .iter()
         .map(|row| {
             let strava_id: String = row.get_idx(0)?;
@@ -133,7 +133,7 @@ pub fn upsert_strava_id<S: BuildHasher>(
     let items: Result<Vec<_>, Error> = update_items
         .into_par_iter()
         .map(|(key, val)| {
-            let conn = pool.get()?;
+            let mut conn = pool.get()?;
             conn.execute(query, &[&key, &val.title])?;
             Ok(key.to_string())
         })
@@ -148,7 +148,7 @@ pub fn upsert_strava_id<S: BuildHasher>(
     let items: Result<Vec<_>, Error> = insert_items
         .into_par_iter()
         .map(|(key, val)| {
-            let conn = pool.get()?;
+            let mut conn = pool.get()?;
             conn.execute(query, &[&key, &val.begin_datetime, &val.title])?;
             Ok(key.to_string())
         })

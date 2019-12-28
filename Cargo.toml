@@ -10,8 +10,9 @@ garmin_cli = {path="garmin_cli"}
 garmin_lib = { path = "garmin_lib" }
 garmin_http = { path = "garmin_http" }
 strava_lib = { path = "strava_lib" }
-actix = "0.8.3"
-actix-rt = "0.2"
+fitbit_bot = {path="fitbit_bot"}
+actix = "0.9"
+actix-rt = "1.0"
 log = "0.4"
 env_logger = "0.7"
 crossbeam-utils = "0.7"
@@ -19,7 +20,7 @@ failure = "0.1"
 structopt = "0.3"
 
 [dev-dependencies]
-approx = "0.3.2"
+approx = "0.3"
 
 [workspace]
 members = [
@@ -28,16 +29,12 @@ members = [
     "garmin_lib",
     "garmin_http",
     "strava_lib",
+    "fitbit_bot",
 ]
 
 [[bin]]
 name = "garmin-rust-http"
 path = "src/garmin_rust_http.rs"
-doc = false
-
-[[bin]]
-name = "pull-scale-measurements-from-sheets"
-path = "src/pull_scale_measurements_from_sheets.rs"
 doc = false
 
 [[bin]]
@@ -53,4 +50,9 @@ doc = false
 [[bin]]
 name = "garmin-rust-cli"
 path = "src/garmin_rust_cli.rs"
+doc = false
+
+[[bin]]
+name = "pull-scale-measurements-from-sheets"
+path = "src/pull_scale_measurements_from_sheets.rs"
 doc = false

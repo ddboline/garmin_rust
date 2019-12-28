@@ -1,0 +1,20 @@
+[package]
+name = "fitbit_bot"
+version = "0.1.0"
+authors = ["Daniel Boline <ddboline@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+fitbit_lib = {path="../fitbit_lib"}
+garmin_lib = {path="../garmin_lib"}
+telegram-bot = {git = "https://github.com/telegram-rs/telegram-bot.git", branch="master"}
+futures = "0.3"
+tokio = "0.2"
+crossbeam-channel = "0.4"
+crossbeam-utils = "0.7"
+lazy_static = "1.4"
+parking_lot = "0.10"
+failure = "0.1"
+log = "0.4"

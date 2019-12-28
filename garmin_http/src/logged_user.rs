@@ -1,7 +1,9 @@
 use actix_identity::Identity;
 use actix_web::{dev::Payload, FromRequest, HttpRequest};
 use chrono::{DateTime, Utc};
-use failure::{err_msg, Error};
+use failure::{err_msg, format_err, Error};
+use futures::executor::block_on;
+use futures::future::{ready, Ready};
 use jsonwebtoken::{decode, Validation};
 use lazy_static::lazy_static;
 use parking_lot::RwLock;
@@ -66,19 +68,26 @@ impl LoggedUser {
     }
 }
 
+fn _from_request(req: &HttpRequest, pl: &mut Payload) -> Result<LoggedUser, actix_web::Error> {
+    if let Some(identity) = block_on(Identity::from_request(req, pl))
+        .map_err(|e| format_err!("{:?}", e))?
+        .identity()
+    {
+        let user: LoggedUser = decode_token(&identity)?;
+        if AUTHORIZED_USERS.is_authorized(&user) {
+            return Ok(user);
+        }
+    }
+    Err(ServiceError::Unauthorized.into())
+}
+
 impl FromRequest for LoggedUser {
     type Error = actix_web::Error;
-    type Future = Result<LoggedUser, actix_web::Error>;
+    type Future = Ready<Result<LoggedUser, actix_web::Error>>;
     type Config = ();
 
     fn from_request(req: &HttpRequest, pl: &mut Payload) -> Self::Future {
-        if let Some(identity) = Identity::from_request(req, pl)?.identity() {
-            let user: LoggedUser = decode_token(&identity)?;
-            if AUTHORIZED_USERS.is_authorized(&user) {
-                return Ok(user);
-            }
-        }
-        Err(ServiceError::Unauthorized.into())
+        ready(_from_request(req, pl))
     }
 }
 

@@ -116,7 +116,7 @@ impl ScaleMeasurement {
         let query = "
             INSERT INTO scale_measurements (datetime, mass, fat_pct, water_pct, muscle_pct, bone_pct)
             VALUES ($1,$2,$3,$4,$5,$6)";
-        let conn = pool.get()?;
+        let mut conn = pool.get()?;
         conn.execute(
             query,
             &[
@@ -158,8 +158,8 @@ impl ScaleMeasurement {
             }
         );
         debug!("query:\n{}", query);
-        let conn = pool.get()?;
-        conn.query(&query, &[])?
+        let mut conn = pool.get()?;
+        conn.query(query.as_str(), &[])?
             .iter()
             .map(|row| {
                 let datetime: DateTime<Utc> = row.get_idx(0)?;

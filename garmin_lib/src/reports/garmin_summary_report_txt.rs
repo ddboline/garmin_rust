@@ -84,7 +84,7 @@ fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, 
 
     debug!("{}", query);
 
-    for row in pool.get()?.query(&query, &[])?.iter() {
+    for row in pool.get()?.query(query.as_str(), &[])?.iter() {
         let datetime: DateTime<Utc> = row.get_idx(0)?;
         let week: f64 = row.get_idx(1)?;
         let dow: f64 = row.get_idx(2)?;
@@ -221,7 +221,7 @@ fn day_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, E
 
     debug!("{}", query);
 
-    for row in pool.get()?.query(&query, &[])?.iter() {
+    for row in pool.get()?.query(query.as_str(), &[])?.iter() {
         let date: String = row.get_idx(0)?;
         let week: f64 = row.get_idx(1)?;
         let dow: f64 = row.get_idx(2)?;
@@ -357,7 +357,7 @@ fn week_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, 
 
     debug!("{}", query);
 
-    for row in pool.get()?.query(&query, &[])?.iter() {
+    for row in pool.get()?.query(query.as_str(), &[])?.iter() {
         let year: f64 = row.get_idx(0)?;
         let week: f64 = row.get_idx(1)?;
         let sport: String = row.get_idx(2)?;
@@ -485,7 +485,7 @@ fn month_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>,
 
     debug!("{}", query);
 
-    for row in pool.get()?.query(&query, &[])?.iter() {
+    for row in pool.get()?.query(query.as_str(), &[])?.iter() {
         let year: f64 = row.get_idx(0)?;
         let month: f64 = row.get_idx(1)?;
         let sport: String = row.get_idx(2)?;
@@ -603,7 +603,7 @@ fn sport_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>,
     );
     debug!("{}", query);
 
-    for row in pool.get()?.query(&query, &[])?.iter() {
+    for row in pool.get()?.query(query.as_str(), &[])?.iter() {
         let sport: String = row.get_idx(0)?;
         let total_calories: i64 = row.get_idx(1)?;
         let total_distance: f64 = row.get_idx(2)?;
@@ -702,7 +702,7 @@ fn year_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, 
     );
     debug!("{}", query);
 
-    for row in pool.get()?.query(&query, &[])?.iter() {
+    for row in pool.get()?.query(query.as_str(), &[])?.iter() {
         let year: f64 = row.get_idx(0)?;
         let sport: String = row.get_idx(1)?;
         let total_calories: i64 = row.get_idx(2)?;

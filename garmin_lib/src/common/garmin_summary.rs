@@ -251,10 +251,10 @@ impl GarminSummaryList {
             where_str
         );
         let pool = self.get_pool()?;
-        let conn = pool.get()?;
+        let mut conn = pool.get()?;
 
         let gsum_list: Result<Vec<_>, Error> = conn
-            .query(&query, &[])?
+            .query(query.as_str(), &[])?
             .iter()
             .map(|row| {
                 let sport: String = row.get_idx(2)?;
@@ -317,9 +317,9 @@ impl GarminSummaryList {
             );",
             temp_table_name
         );
-        let conn = self.get_pool()?.get()?;
+        let mut conn = self.get_pool()?.get()?;
 
-        conn.execute(&create_table_query, &[])?;
+        conn.execute(create_table_query.as_str(), &[])?;
 
         let insert_query = format!(
             "
@@ -336,9 +336,9 @@ impl GarminSummaryList {
             .summary_list
             .par_iter()
             .map(|gsum| {
-                let conn = self.get_pool()?.get()?;
+                let mut conn = self.get_pool()?.get()?;
                 Ok(conn.execute(
-                    &insert_query,
+                    insert_query.as_str(),
                     &[
                         &gsum.filename,
                         &gsum.begin_datetime,
@@ -386,9 +386,9 @@ impl GarminSummaryList {
 
         let drop_table_query = format!("DROP TABLE {}", temp_table_name);
 
-        conn.execute(&insert_query, &[])?;
-        conn.execute(&update_query, &[])?;
-        conn.execute(&drop_table_query, &[])
+        conn.execute(insert_query.as_str(), &[])?;
+        conn.execute(update_query.as_str(), &[])?;
+        conn.execute(drop_table_query.as_str(), &[])
             .map(|_| ())
             .map_err(err_msg)
     }
@@ -408,9 +408,9 @@ pub fn get_list_of_files_from_db(
 
     debug!("{}", query);
 
-    let conn = pool.get()?;
+    let mut conn = pool.get()?;
 
-    conn.query(&query, &[])?
+    conn.query(query.as_str(), &[])?
         .iter()
         .map(|row| row.get_idx(0))
         .collect()
@@ -419,9 +419,9 @@ pub fn get_list_of_files_from_db(
 pub fn get_maximum_begin_datetime(pool: &PgPool) -> Result<Option<DateTime<Utc>>, Error> {
     let query = "SELECT MAX(begin_datetime) FROM garmin_summary";
 
-    let conn = pool.get()?;
+    let mut conn = pool.get()?;
 
-    conn.query(&query, &[])?
+    conn.query(query, &[])?
         .iter()
         .nth(0)
         .map(|row| row.get_idx(0))

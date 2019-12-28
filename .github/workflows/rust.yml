@@ -9,6 +9,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
+    - name: Install deps
+      run: rustup update
     - name: Clippy
       run: cargo clippy
     - name: Build

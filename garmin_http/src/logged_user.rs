@@ -57,8 +57,7 @@ impl LoggedUser {
         let query = "SELECT count(*) FROM authorized_users WHERE email = $1";
         pool.get()?
             .query(query, &[&self.email])?
-            .iter()
-            .nth(0)
+            .get(0)
             .map(|row| {
                 let count: i64 = row.get_idx(0)?;
                 Ok(count > 0)

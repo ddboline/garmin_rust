@@ -422,8 +422,7 @@ pub fn get_maximum_begin_datetime(pool: &PgPool) -> Result<Option<DateTime<Utc>>
     let mut conn = pool.get()?;
 
     conn.query(query, &[])?
-        .iter()
-        .nth(0)
+        .get(0)
         .map(|row| row.get_idx(0))
         .transpose()
 }

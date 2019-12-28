@@ -109,7 +109,7 @@ pub fn get_sport_type_map() -> HashMap<String, SportTypes> {
         ("none", SportTypes::None),
     ]
     .iter()
-    .map(|(k, v)| (k.to_string(), *v))
+    .map(|(k, v)| ((*k).to_string(), *v))
     .collect()
 }
 

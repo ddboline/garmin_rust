@@ -149,7 +149,7 @@ pub fn get_file_type_map() -> HashMap<String, GarminFileTypes> {
         ("gmn", GarminFileTypes::Gmn),
     ]
     .iter()
-    .map(|(k, v)| (k.to_string(), *v))
+    .map(|(k, v)| ((*k).to_string(), *v))
     .collect()
 }
 

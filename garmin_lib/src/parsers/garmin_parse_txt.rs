@@ -190,7 +190,7 @@ impl GarminParseTxt {
                 let entries: Vec<_> = x.split('=').collect();
                 match entries.get(0) {
                     Some(key) => match entries.get(1) {
-                        Some(val) => Some((key.to_string(), val.trim().to_string())),
+                        Some(val) => Some(((*key).to_string(), val.trim().to_string())),
                         _ => None,
                     },
                     _ => None,

@@ -130,7 +130,7 @@ impl GarminSync<S3Client> {
                     .as_secs() as i64;
                 let size = metadata.len();
 
-                Ok((f.to_string(), modified, size))
+                Ok((f, modified, size))
             })
             .collect();
         let file_list = file_list?;

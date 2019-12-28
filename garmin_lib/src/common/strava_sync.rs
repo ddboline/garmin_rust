@@ -25,8 +25,7 @@ pub fn get_strava_id_from_begin_datetime(
 
     let mut conn = pool.get()?;
     conn.query(query, &[&begin_datetime])?
-        .iter()
-        .nth(0)
+        .get(0)
         .map(|row| {
             let id = row.get_idx(0)?;
             let title = row.get_idx(1)?;
@@ -41,8 +40,7 @@ pub fn get_strava_id_maximum_begin_datetime(pool: &PgPool) -> Result<Option<Date
     let mut conn = pool.get()?;
 
     conn.query(query, &[])?
-        .iter()
-        .nth(0)
+        .get(0)
         .map(|row| row.get_idx(0))
         .transpose()
 }

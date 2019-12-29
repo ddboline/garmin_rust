@@ -285,40 +285,39 @@ impl GarminCli {
             let gps_file = format!("{}/{}", &config.gps_dir, pat);
             if Path::new(&gps_file).exists() {
                 constraints.push(format!("filename = '{}'", pat));
-            }
-            if DateTime::parse_from_rfc3339(&pat.replace("Z", "+00:00")).is_ok() {
+            } else if DateTime::parse_from_rfc3339(&pat.replace("Z", "+00:00")).is_ok() {
                 constraints.push(format!(
                     "replace({}, '%', 'T') = '{}'",
                     "to_char(begin_datetime at time zone 'utc', 'YYYY-MM-DD%HH24:MI:SSZ')", pat
                 ));
-            }
-
-            let mut datelike_str = Vec::new();
-            if YMD_REG.is_match(pat) {
-                for cap in YMD_REG.captures_iter(pat) {
-                    let year = cap.name("year").map(|x| x.as_str()).unwrap_or_else(|| "");
-                    let month = cap.name("month").map(|x| x.as_str()).unwrap_or_else(|| "");
-                    let day = cap.name("day").map(|x| x.as_str()).unwrap_or_else(|| "");
-                    datelike_str.push(format!("{}-{}-{}", year, month, day));
+            } else {
+                let mut datelike_str = Vec::new();
+                if YMD_REG.is_match(pat) {
+                    for cap in YMD_REG.captures_iter(pat) {
+                        let year = cap.name("year").map(|x| x.as_str()).unwrap_or_else(|| "");
+                        let month = cap.name("month").map(|x| x.as_str()).unwrap_or_else(|| "");
+                        let day = cap.name("day").map(|x| x.as_str()).unwrap_or_else(|| "");
+                        datelike_str.push(format!("{}-{}-{}", year, month, day));
+                    }
+                } else if YM_REG.is_match(pat) {
+                    for cap in YM_REG.captures_iter(pat) {
+                        let year = cap.name("year").map(|x| x.as_str()).unwrap_or_else(|| "");
+                        let month = cap.name("month").map(|x| x.as_str()).unwrap_or_else(|| "");
+                        datelike_str.push(format!("{}-{}", year, month));
+                    }
+                } else if Y_REG.is_match(pat) {
+                    for cap in Y_REG.captures_iter(pat) {
+                        let year = cap.name("year").map(|x| x.as_str()).unwrap_or_else(|| "");
+                        datelike_str.push(year.to_string());
+                    }
                 }
-            } else if YM_REG.is_match(pat) {
-                for cap in YM_REG.captures_iter(pat) {
-                    let year = cap.name("year").map(|x| x.as_str()).unwrap_or_else(|| "");
-                    let month = cap.name("month").map(|x| x.as_str()).unwrap_or_else(|| "");
-                    datelike_str.push(format!("{}-{}", year, month));
+                for dstr in datelike_str {
+                    constraints.push(format!(
+                        "replace({}, '%', 'T') like '{}%'",
+                        "to_char(begin_datetime at time zone 'localtime', 'YYYY-MM-DD%HH24:MI:SS')",
+                        dstr
+                    ));
                 }
-            } else if Y_REG.is_match(pat) {
-                for cap in Y_REG.captures_iter(pat) {
-                    let year = cap.name("year").map(|x| x.as_str()).unwrap_or_else(|| "");
-                    datelike_str.push(year.to_string());
-                }
-            }
-            for dstr in datelike_str {
-                constraints.push(format!(
-                    "replace({}, '%', 'T') like '{}%'",
-                    "to_char(begin_datetime at time zone 'localtime', 'YYYY-MM-DD%HH24:MI:SS')",
-                    dstr
-                ));
             }
         }
         constraints

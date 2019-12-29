@@ -5,8 +5,8 @@ use std::path::Path;
 use structopt::StructOpt;
 
 use fitbit_lib::fitbit_client::FitbitClient;
-use garmin_lib::common::garmin_config::GarminConfig;
 use garmin_lib::common::garmin_cli::{GarminCli, GarminCliOptions};
+use garmin_lib::common::garmin_config::GarminConfig;
 
 #[derive(StructOpt)]
 pub enum GarminCliOpts {

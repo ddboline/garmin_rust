@@ -268,7 +268,7 @@ impl GarminCli {
             .collect()
     }
 
-    fn match_patterns(pat: &str) -> Vec<String> {
+    fn match_patterns(config: &GarminConfig, pat: &str) -> Vec<String> {
         let mut constraints = Vec::new();
         if pat.contains('w') {
             let vals: Vec<_> = pat.split('w').collect();
@@ -282,6 +282,10 @@ impl GarminCli {
                 }
             }
         } else {
+            let gps_file = format!("{}/{}", &config.gps_dir, pat);
+            if Path::new(&gps_file).exists() {
+                constraints.push(format!("filename = '{}'", pat));
+            }
             if DateTime::parse_from_rfc3339(&pat.replace("Z", "+00:00")).is_ok() {
                 constraints.push(format!(
                     "replace({}, '%', 'T') = '{}'",
@@ -320,7 +324,7 @@ impl GarminCli {
         constraints
     }
 
-    pub fn process_pattern(patterns: &[String]) -> GarminRequest {
+    pub fn process_pattern(config: &GarminConfig, patterns: &[String]) -> GarminRequest {
         let mut options = GarminReportOptions::new();
 
         let sport_type_map = get_sport_type_map();
@@ -341,7 +345,7 @@ impl GarminCli {
                 pat => match sport_type_map.get(pat) {
                     Some(&x) => options.do_sport = Some(x),
                     None => {
-                        constraints.extend_from_slice(&Self::match_patterns(pat));
+                        constraints.extend_from_slice(&Self::match_patterns(config, pat));
                     }
                 },
             };

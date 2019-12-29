@@ -45,7 +45,7 @@ fn proc_pattern_wrapper(request: FilterRequest, history: &[String]) -> GarminHtm
 
     let filter_vec: Vec<String> = filter.split(',').map(ToString::to_string).collect();
 
-    let req = GarminCli::process_pattern(&filter_vec);
+    let req = GarminCli::process_pattern(&CONFIG, &filter_vec);
 
     GarminHtmlRequest(GarminRequest {
         filter,
@@ -69,7 +69,6 @@ where
 
 pub async fn garmin(
     query: Query<FilterRequest>,
-    _: LoggedUser,
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
@@ -194,7 +193,6 @@ pub async fn strava_activities(
 
 pub async fn strava_activities_db(
     query: Query<StravaActivitiesRequest>,
-    _: LoggedUser,
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let query = StravaActivitiesDBRequest(query.into_inner());
@@ -258,7 +256,6 @@ pub async fn fitbit_heartrate_api(
 
 pub async fn fitbit_heartrate_cache(
     query: Query<FitbitHeartrateCacheRequest>,
-    _: LoggedUser,
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
@@ -367,7 +364,6 @@ pub async fn fitbit_tcx_sync(
 
 pub async fn scale_measurement(
     query: Query<ScaleMeasurementRequest>,
-    _: LoggedUser,
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
@@ -436,9 +432,7 @@ pub async fn garmin_get_hr_data(
     let hr_data = match file_list.len() {
         1 => {
             let config = &CONFIG;
-            let file_name = file_list
-                .get(0)
-                .ok_or_else(|| err_msg("This shouldn't be happening..."))?;
+            let file_name = &file_list[0];
             let avro_file = format!("{}/{}.avro", &config.cache_dir, file_name);
             let _a = avro_file.clone();
             match block(move || GarminFile::read_avro(&_a)).await {

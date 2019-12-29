@@ -5,6 +5,7 @@ use std::path::Path;
 use structopt::StructOpt;
 
 use fitbit_lib::fitbit_client::FitbitClient;
+use garmin_lib::common::garmin_config::GarminConfig;
 use garmin_lib::common::garmin_cli::{GarminCli, GarminCliOptions};
 
 #[derive(StructOpt)]
@@ -27,14 +28,15 @@ pub enum GarminCliOpts {
 
 impl GarminCliOpts {
     pub fn process_args() -> Result<(), Error> {
+        let config = GarminConfig::get_config(None)?;
         let opts = match GarminCliOpts::from_args() {
             GarminCliOpts::Bootstrap => GarminCliOptions::Bootstrap,
             GarminCliOpts::Proc { filename } => GarminCliOptions::ImportFileNames(filename),
             GarminCliOpts::Report { patterns } => {
                 let req = if patterns.is_empty() {
-                    GarminCli::process_pattern(&["year".to_string()])
+                    GarminCli::process_pattern(&config, &["year".to_string()])
                 } else {
-                    GarminCli::process_pattern(&patterns)
+                    GarminCli::process_pattern(&config, &patterns)
                 };
                 return GarminCli::with_config()?.run_cli(&req.options, &req.constraints);
             }

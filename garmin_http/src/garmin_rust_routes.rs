@@ -337,7 +337,6 @@ pub async fn fitbit_plots(
 
 pub async fn heartrate_plots(
     query: Query<ScaleMeasurementRequest>,
-    _: LoggedUser,
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let query: FitbitHeartratePlotRequest = query.into_inner().into();

@@ -68,6 +68,11 @@ impl LoggedUser {
 }
 
 fn _from_request(req: &HttpRequest, pl: &mut Payload) -> Result<LoggedUser, actix_web::Error> {
+    if let Ok(s) = env::var("TESTENV") {
+        if &s == "true" {
+            return Ok(LoggedUser { email: "user@test".to_string() });
+        }
+    }
     if let Some(identity) = block_on(Identity::from_request(req, pl))
         .map_err(|e| format_err!("{:?}", e))?
         .identity()
@@ -142,11 +147,6 @@ impl AuthorizedUsers {
     }
 
     pub fn is_authorized(&self, user: &LoggedUser) -> bool {
-        if let Ok(s) = env::var("TESTENV") {
-            if &s == "true" {
-                return true;
-            }
-        }
         if let Some(AuthStatus::Authorized(last_time)) = self.0.read().get(user) {
             let current_time = Utc::now();
             if (current_time - *last_time).num_minutes() < 15 {

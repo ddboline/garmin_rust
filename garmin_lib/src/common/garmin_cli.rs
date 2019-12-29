@@ -306,7 +306,7 @@ impl GarminCli {
             } else if Y_REG.is_match(pat) {
                 for cap in Y_REG.captures_iter(pat) {
                     let year = cap.name("year").map(|x| x.as_str()).unwrap_or_else(|| "");
-                    datelike_str.push(format!("{}", year));
+                    datelike_str.push(year.to_string());
                 }
             }
             for dstr in datelike_str {

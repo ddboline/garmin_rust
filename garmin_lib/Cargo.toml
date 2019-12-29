@@ -34,3 +34,4 @@ parking_lot = "0.10"
 maplit = "1.0"
 retry = "0.5"
 avro-rs = {version = "0.6.6", features = ["snappy"]}
+regex = "1.3"

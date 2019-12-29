@@ -1,7 +1,9 @@
 use chrono::{DateTime, Utc};
 use failure::{err_msg, format_err, Error};
+use lazy_static::lazy_static;
 use log::debug;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use regex::Regex;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs::{copy, rename};
@@ -29,6 +31,13 @@ use super::garmin_file;
 use super::garmin_summary::{get_list_of_files_from_db, GarminSummary, GarminSummaryList};
 use super::garmin_sync::GarminSync;
 use super::pgpool::PgPool;
+
+lazy_static! {
+    static ref YMD_REG: Regex =
+        Regex::new(r"(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})").expect("Bad regex");
+    static ref YM_REG: Regex = Regex::new(r"(?P<year>\d{4})-(?P<month>\d{2})").expect("Bad regex");
+    static ref Y_REG: Regex = Regex::new(r"(?P<year>\d{4})").expect("Bad regex");
+}
 
 #[derive(Debug, PartialEq)]
 pub enum GarminCliOptions {
@@ -259,6 +268,58 @@ impl GarminCli {
             .collect()
     }
 
+    fn match_patterns(pat: &str) -> Vec<String> {
+        let mut constraints = Vec::new();
+        if pat.contains('w') {
+            let vals: Vec<_> = pat.split('w').collect();
+            if vals.len() >= 2 {
+                if let Ok(year) = vals[0].parse::<i32>() {
+                    if let Ok(week) = vals[1].parse::<i32>() {
+                        constraints.push(format!(
+                            "(EXTRACT(isoyear from begin_datetime at time zone 'localtime') = {} AND
+                            EXTRACT(week from begin_datetime at time zone 'localtime') = {})", year, week));
+                    }
+                }
+            }
+        } else {
+            if DateTime::parse_from_rfc3339(&pat.replace("Z", "+00:00")).is_ok() {
+                constraints.push(format!(
+                    "replace({}, '%', 'T') = '{}'",
+                    "to_char(begin_datetime at time zone 'utc', 'YYYY-MM-DD%HH24:MI:SSZ')", pat
+                ));
+            }
+
+            let mut datelike_str = Vec::new();
+            if YMD_REG.is_match(pat) {
+                for cap in YMD_REG.captures_iter(pat) {
+                    let year = cap.name("year").map(|x| x.as_str()).unwrap_or_else(|| "");
+                    let month = cap.name("month").map(|x| x.as_str()).unwrap_or_else(|| "");
+                    let day = cap.name("day").map(|x| x.as_str()).unwrap_or_else(|| "");
+                    datelike_str.push(format!("{}-{}-{}", year, month, day));
+                }
+            } else if YM_REG.is_match(pat) {
+                for cap in YM_REG.captures_iter(pat) {
+                    let year = cap.name("year").map(|x| x.as_str()).unwrap_or_else(|| "");
+                    let month = cap.name("month").map(|x| x.as_str()).unwrap_or_else(|| "");
+                    datelike_str.push(format!("{}-{}", year, month));
+                }
+            } else if Y_REG.is_match(pat) {
+                for cap in Y_REG.captures_iter(pat) {
+                    let year = cap.name("year").map(|x| x.as_str()).unwrap_or_else(|| "");
+                    datelike_str.push(format!("{}", year));
+                }
+            }
+            for dstr in datelike_str {
+                constraints.push(format!(
+                    "replace({}, '%', 'T') like '{}%'",
+                    "to_char(begin_datetime at time zone 'localtime', 'YYYY-MM-DD%HH24:MI:SS')",
+                    dstr
+                ));
+            }
+        }
+        constraints
+    }
+
     pub fn process_pattern(patterns: &[String]) -> GarminRequest {
         let mut options = GarminReportOptions::new();
 
@@ -280,33 +341,7 @@ impl GarminCli {
                 pat => match sport_type_map.get(pat) {
                     Some(&x) => options.do_sport = Some(x),
                     None => {
-                        if pat.contains('w') {
-                            let vals: Vec<_> = pat.split('w').collect();
-                            if vals.len() >= 2 {
-                                if let Ok(year) = vals[0].parse::<i32>() {
-                                    if let Ok(week) = vals[1].parse::<i32>() {
-                                        constraints.push(format!(
-                                            "(EXTRACT(isoyear from begin_datetime at time zone 'localtime') = {} AND
-                                            EXTRACT(week from begin_datetime at time zone 'localtime') = {})", year, week));
-                                    }
-                                }
-                            }
-                        } else {
-                            constraints.push(
-                                format!(
-                                    "replace({}, '%', 'T') = '{}'",
-                                    "to_char(begin_datetime at time zone 'utc', 'YYYY-MM-DD%HH24:MI:SSZ')",
-                                    pat
-                                )
-                            );
-                            constraints.push(
-                                    format!(
-                                        "replace({}, '%', 'T') like '{}%'",
-                                        "to_char(begin_datetime at time zone 'localtime', 'YYYY-MM-DD%HH24:MI:SS')",
-                                        pat
-                                    )
-                                );
-                        }
+                        constraints.extend_from_slice(&Self::match_patterns(pat));
                     }
                 },
             };

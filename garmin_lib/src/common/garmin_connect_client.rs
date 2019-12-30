@@ -44,7 +44,7 @@ impl GarminConnectClient {
         let session = ReqwestSession::new(false);
 
         let url = Url::parse_with_params("https://sso.garmin.com/sso/signin", params.iter())?;
-        let mut pre_resp = session.get(&url, HeaderMap::new())?;
+        let pre_resp = session.get(&url, HeaderMap::new())?;
         if pre_resp.status() != 200 {
             return Err(format_err!(
                 "SSO prestart error {} {}",
@@ -60,11 +60,12 @@ impl GarminConnectClient {
             signin_headers.insert(name, val);
         }
 
-        let mut sso_resp = session.post(&url, signin_headers, &data)?;
-        if sso_resp.status() != 200 {
+        let sso_resp = session.post(&url, signin_headers, &data)?;
+        let status = sso_resp.status();
+        if status != 200 {
             return Err(format_err!(
                 "SSO error {} {}",
-                sso_resp.status(),
+                status,
                 sso_resp.text()?
             ));
         }
@@ -72,7 +73,7 @@ impl GarminConnectClient {
         let sso_text = sso_resp.text()?;
 
         if sso_text.contains("temporarily unavailable") {
-            return Err(format_err!("SSO error {} {}", sso_resp.status(), sso_text));
+            return Err(format_err!("SSO error {} {}", status, sso_text));
         } else if sso_text.contains(">sendEvent('FAIL')") {
             return Err(err_msg("Invalid login"));
         } else if sso_text.contains(">sendEvent('ACCOUNT_LOCKED')") {

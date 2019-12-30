@@ -9,7 +9,6 @@ use std::hash::BuildHasher;
 use crate::common::pgpool::PgPool;
 use crate::utils::iso_8601_datetime;
 
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct StravaItem {
     #[serde(with = "iso_8601_datetime")]

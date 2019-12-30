@@ -15,7 +15,6 @@ use tokio::runtime::Runtime;
 use fitbit_lib::scale_measurement::ScaleMeasurement;
 use garmin_lib::common::pgpool::PgPool;
 
-
 type WeightLock = RwLock<Option<ScaleMeasurement>>;
 type Userids = RwLock<HashSet<UserId>>;
 

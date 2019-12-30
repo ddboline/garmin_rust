@@ -14,7 +14,6 @@ use std::env;
 
 use garmin_lib::common::pgpool::PgPool;
 
-
 use super::errors::ServiceError;
 
 lazy_static! {

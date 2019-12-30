@@ -29,7 +29,7 @@ dotenv = "0.15"
 actix = "0.9"
 lazy_static = "1.4"
 roxmltree = "0.8"
-reqwest = "0.9"
+reqwest = {version="0.10", features=["cookies", "blocking", "json"]}
 parking_lot = "0.10"
 maplit = "1.0"
 retry = "0.5"

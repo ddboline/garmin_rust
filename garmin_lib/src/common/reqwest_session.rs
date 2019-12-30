@@ -3,7 +3,9 @@ use parking_lot::Mutex;
 use rand::distributions::{Distribution, Uniform};
 use rand::thread_rng;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
-use reqwest::{Client, RedirectPolicy, Response, Url};
+use reqwest::redirect::Policy;
+use reqwest::blocking::{Response, Client};
+use reqwest::{ Url};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::thread::sleep;
@@ -58,9 +60,9 @@ impl ReqwestSessionInner {
 impl ReqwestSession {
     pub fn new(allow_redirects: bool) -> Self {
         let redirect_policy = if allow_redirects {
-            RedirectPolicy::default()
+            Policy::default()
         } else {
-            RedirectPolicy::none()
+            Policy::none()
         };
         ReqwestSession {
             client: Arc::new(Mutex::new(ReqwestSessionInner {

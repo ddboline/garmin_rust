@@ -12,7 +12,6 @@ use garmin_lib::utils::iso_8601_datetime::convert_datetime_to_str;
 use garmin_lib::utils::plot_graph::generate_d3_plot;
 use garmin_lib::utils::plot_opts::PlotOpts;
 
-
 #[derive(Debug, Clone, Serialize, Deserialize, Copy)]
 pub struct ScaleMeasurement {
     pub datetime: DateTime<Utc>,

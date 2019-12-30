@@ -15,7 +15,7 @@ use super::garmin_lap::GarminLap;
 use super::pgpool::PgPool;
 use crate::utils::garmin_util::METERS_PER_MILE;
 use crate::utils::iso_8601_datetime::{self, convert_str_to_datetime, sentinel_datetime};
-use crate::utils::row_index_trait::RowIndexTrait;
+
 use crate::utils::sport_types::{self, SportTypes};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
@@ -298,8 +298,8 @@ impl GarminCorrectionList {
         conn.query(query, &[])?
             .iter()
             .map(|row| {
-                let filename: String = row.get_idx(0)?;
-                let unique_key: String = row.get_idx(1)?;
+                let filename: String = row.try_get(0)?;
+                let unique_key: String = row.try_get(1)?;
                 let start_time: String = unique_key
                     .split('_')
                     .nth(0)
@@ -375,15 +375,15 @@ impl GarminCorrectionList {
         )?
             .iter()
             .map(|row| {
-                let sport: Option<String> = row.get_idx(3)?;
+                let sport: Option<String> = row.try_get(3)?;
                 let sport: SportTypes = sport.and_then(|s| s.parse().ok()).unwrap_or(SportTypes::None);
             Ok(GarminCorrectionLap {
-                id: row.get_idx(0)?,
-                start_time: row.get_idx(1)?,
-                lap_number: row.get_idx(2)?,
+                id: row.try_get(0)?,
+                start_time: row.try_get(1)?,
+                lap_number: row.try_get(2)?,
                 sport,
-                distance: row.get_idx(4)?,
-                duration: row.get_idx(5)?,
+                distance: row.try_get(4)?,
+                duration: row.try_get(5)?,
             })})
             .collect();
         let corr_list = corr_list?;

@@ -16,7 +16,7 @@ use super::pgpool::PgPool;
 use crate::parsers::garmin_parse::{GarminParse, GarminParseTrait};
 use crate::utils::garmin_util::{generate_random_string, get_file_list, get_md5sum};
 use crate::utils::iso_8601_datetime::{self, convert_datetime_to_str, sentinel_datetime};
-use crate::utils::row_index_trait::RowIndexTrait;
+
 use crate::utils::sport_types::{self, SportTypes};
 
 pub const GARMIN_SUMMARY_AVRO_SCHEMA: &str = r#"
@@ -257,17 +257,17 @@ impl GarminSummaryList {
             .query(query.as_str(), &[])?
             .iter()
             .map(|row| {
-                let sport: String = row.get_idx(2)?;
+                let sport: String = row.try_get(2)?;
                 Ok(GarminSummary {
-                    filename: row.get_idx(0)?,
-                    begin_datetime: row.get_idx(1)?,
+                    filename: row.try_get(0)?,
+                    begin_datetime: row.try_get(1)?,
                     sport: sport.parse()?,
-                    total_calories: row.get_idx(3)?,
-                    total_distance: row.get_idx(4)?,
-                    total_duration: row.get_idx(5)?,
-                    total_hr_dur: row.get_idx(6)?,
-                    total_hr_dis: row.get_idx(7)?,
-                    md5sum: row.get_idx(8)?,
+                    total_calories: row.try_get(3)?,
+                    total_distance: row.try_get(4)?,
+                    total_duration: row.try_get(5)?,
+                    total_hr_dur: row.try_get(6)?,
+                    total_hr_dis: row.try_get(7)?,
+                    md5sum: row.try_get(8)?,
                 })
             })
             .collect();
@@ -412,7 +412,7 @@ pub fn get_list_of_files_from_db(
 
     conn.query(query.as_str(), &[])?
         .iter()
-        .map(|row| row.get_idx(0))
+        .map(|row| row.try_get(0).map_err(err_msg))
         .collect()
 }
 
@@ -423,6 +423,6 @@ pub fn get_maximum_begin_datetime(pool: &PgPool) -> Result<Option<DateTime<Utc>>
 
     conn.query(query, &[])?
         .get(0)
-        .map(|row| row.get_idx(0))
+        .map(|row| row.try_get(0).map_err(err_msg))
         .transpose()
 }

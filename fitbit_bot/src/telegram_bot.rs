@@ -14,7 +14,7 @@ use tokio::runtime::Runtime;
 
 use fitbit_lib::scale_measurement::ScaleMeasurement;
 use garmin_lib::common::pgpool::PgPool;
-use garmin_lib::utils::row_index_trait::RowIndexTrait;
+
 
 type WeightLock = RwLock<Option<ScaleMeasurement>>;
 type Userids = RwLock<HashSet<UserId>>;
@@ -145,7 +145,7 @@ fn list_of_telegram_user_ids(pool: &PgPool) -> Result<Vec<i64>, Error> {
         .query(query, &[])?
         .iter()
         .map(|row| {
-            let telegram_userid: i64 = row.get_idx(0)?;
+            let telegram_userid: i64 = row.try_get(0)?;
             Ok(telegram_userid)
         })
         .collect()

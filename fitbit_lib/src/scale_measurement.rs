@@ -11,7 +11,7 @@ use garmin_lib::reports::garmin_templates::PLOT_TEMPLATE;
 use garmin_lib::utils::iso_8601_datetime::convert_datetime_to_str;
 use garmin_lib::utils::plot_graph::generate_d3_plot;
 use garmin_lib::utils::plot_opts::PlotOpts;
-use garmin_lib::utils::row_index_trait::RowIndexTrait;
+
 
 #[derive(Debug, Clone, Serialize, Deserialize, Copy)]
 pub struct ScaleMeasurement {
@@ -162,12 +162,12 @@ impl ScaleMeasurement {
         conn.query(query.as_str(), &[])?
             .iter()
             .map(|row| {
-                let datetime: DateTime<Utc> = row.get_idx(0)?;
-                let mass: f64 = row.get_idx(1)?;
-                let fat_pct: f64 = row.get_idx(2)?;
-                let water_pct: f64 = row.get_idx(3)?;
-                let muscle_pct: f64 = row.get_idx(4)?;
-                let bone_pct: f64 = row.get_idx(5)?;
+                let datetime: DateTime<Utc> = row.try_get(0)?;
+                let mass: f64 = row.try_get(1)?;
+                let fat_pct: f64 = row.try_get(2)?;
+                let water_pct: f64 = row.try_get(3)?;
+                let muscle_pct: f64 = row.try_get(4)?;
+                let bone_pct: f64 = row.try_get(5)?;
                 Ok(Self {
                     datetime,
                     mass,

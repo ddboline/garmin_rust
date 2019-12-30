@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use failure::Error;
+use failure::{err_msg, Error};
 use log::debug;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
@@ -8,7 +8,7 @@ use std::hash::BuildHasher;
 
 use crate::common::pgpool::PgPool;
 use crate::utils::iso_8601_datetime;
-use crate::utils::row_index_trait::RowIndexTrait;
+
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct StravaItem {
@@ -27,8 +27,8 @@ pub fn get_strava_id_from_begin_datetime(
     conn.query(query, &[&begin_datetime])?
         .get(0)
         .map(|row| {
-            let id = row.get_idx(0)?;
-            let title = row.get_idx(1)?;
+            let id = row.try_get(0)?;
+            let title = row.try_get(1)?;
             Ok((id, title))
         })
         .transpose()
@@ -41,7 +41,7 @@ pub fn get_strava_id_maximum_begin_datetime(pool: &PgPool) -> Result<Option<Date
 
     conn.query(query, &[])?
         .get(0)
-        .map(|row| row.get_idx(0))
+        .map(|row| row.try_get(0).map_err(err_msg))
         .transpose()
 }
 
@@ -51,9 +51,9 @@ pub fn get_strava_id_map(pool: &PgPool) -> Result<HashMap<String, StravaItem>, E
     conn.query(query, &[])?
         .iter()
         .map(|row| {
-            let strava_id: String = row.get_idx(0)?;
-            let begin_datetime: DateTime<Utc> = row.get_idx(1)?;
-            let strava_title: String = row.get_idx(2)?;
+            let strava_id: String = row.try_get(0)?;
+            let begin_datetime: DateTime<Utc> = row.try_get(1)?;
+            let strava_title: String = row.try_get(2)?;
             Ok((
                 strava_id,
                 StravaItem {
@@ -87,9 +87,9 @@ pub fn get_strava_ids(
     conn.query(query.as_str(), &[])?
         .iter()
         .map(|row| {
-            let strava_id: String = row.get_idx(0)?;
-            let begin_datetime: DateTime<Utc> = row.get_idx(1)?;
-            let strava_title: String = row.get_idx(2)?;
+            let strava_id: String = row.try_get(0)?;
+            let begin_datetime: DateTime<Utc> = row.try_get(1)?;
+            let strava_title: String = row.try_get(2)?;
             Ok((
                 strava_id,
                 StravaItem {

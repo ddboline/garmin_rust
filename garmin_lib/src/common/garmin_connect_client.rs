@@ -63,11 +63,7 @@ impl GarminConnectClient {
         let sso_resp = session.post(&url, signin_headers, &data)?;
         let status = sso_resp.status();
         if status != 200 {
-            return Err(format_err!(
-                "SSO error {} {}",
-                status,
-                sso_resp.text()?
-            ));
+            return Err(format_err!("SSO error {} {}", status, sso_resp.text()?));
         }
 
         let sso_text = sso_resp.text()?;

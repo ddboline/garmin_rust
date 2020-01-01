@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 use std::fs::File;
-use std::io::{stdout, Write};
+use std::io::{stdout, Write, BufWriter};
 use std::path::Path;
 
 use super::garmin_correction_lap::GarminCorrectionLap;
@@ -81,11 +81,12 @@ impl GarminSummary {
                 .last()
                 .ok_or_else(|| format_err!("Failed to split filename {}", filename))?
         );
+        let mut stdout = BufWriter::new(stdout());
 
-        writeln!(stdout().lock(), "Get md5sum {} ", filename)?;
+        writeln!(stdout, "Get md5sum {} ", filename)?;
         let md5sum = get_md5sum(&filename)?;
 
-        writeln!(stdout().lock(), "{} Found md5sum {} ", filename, md5sum)?;
+        writeln!(stdout, "{} Found md5sum {} ", filename, md5sum)?;
         let gfile = GarminParse::new().with_file(&filename, &corr_map)?;
 
         match gfile.laps.get(0) {
@@ -97,7 +98,7 @@ impl GarminSummary {
         };
         gfile.dump_avro(&cache_file)?;
         writeln!(
-            stdout().lock(),
+            stdout,
             "{} Found md5sum {} success",
             filename,
             md5sum

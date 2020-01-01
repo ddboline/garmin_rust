@@ -7,7 +7,7 @@ use regex::Regex;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs::{copy, rename};
-use std::io::{stdout, Write};
+use std::io::{stdout, Write, BufWriter};
 use std::path::Path;
 use tempdir::TempDir;
 
@@ -366,6 +366,8 @@ impl GarminCli {
 
         let file_list = get_list_of_files_from_db(constraints, &pg_conn)?;
 
+        let mut stdout = BufWriter::new(stdout());
+
         match file_list.len() {
             0 => (),
             1 => {
@@ -391,7 +393,7 @@ impl GarminCli {
                 };
                 debug!("gfile {} {}", gfile.laps.len(), gfile.points.len());
                 writeln!(
-                    stdout().lock(),
+                    stdout,
                     "{}",
                     generate_txt_report(&gfile)?.join("\n")
                 )?;
@@ -403,7 +405,7 @@ impl GarminCli {
                     .map(|x| x.join(" "))
                     .collect();
 
-                writeln!(stdout().lock(), "{}", txt_result.join("\n"))?;
+                writeln!(stdout, "{}", txt_result.join("\n"))?;
             }
         };
         Ok(())
@@ -494,7 +496,7 @@ impl GarminCli {
             .collect();
 
         filenames?
-            .into_iter()
+            .into_par_iter()
             .map(|filename| {
                 assert!(Path::new(&filename).exists(), "No such file");
                 let suffix = match filename.to_lowercase().split('.').last() {

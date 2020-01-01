@@ -410,6 +410,5 @@ mod tests {
             assert!(metadata.len() > 0);
             break;
         }
-        assert!(false);
     }
 }

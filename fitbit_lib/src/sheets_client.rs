@@ -5,6 +5,7 @@ use hyper::Client;
 use hyper_native_tls::NativeTlsClient;
 use std::collections::HashMap;
 use std::fs::{create_dir_all, File};
+use std::io::{stdout, BufWriter, Write};
 use std::path::Path;
 use std::rc::Rc;
 use yup_oauth2::{
@@ -82,15 +83,13 @@ impl SheetsClient {
     }
 }
 
-pub fn run_sync_sheets() -> Result<(), Error> {
-    let config = GarminConfig::get_config(None)?;
-    let pool = PgPool::new(&config.pgurl);
-    let current_measurements: HashMap<_, _> = ScaleMeasurement::read_from_db(&pool, None, None)?
+pub fn run_sync_sheets(config: &GarminConfig, pool: &PgPool) -> Result<(), Error> {
+    let current_measurements: HashMap<_, _> = ScaleMeasurement::read_from_db(pool, None, None)?
         .into_iter()
         .map(|meas| (meas.datetime, meas))
         .collect();
 
-    let c = SheetsClient::new(&config, "ddboline@gmail.com");
+    let c = SheetsClient::new(config, "ddboline@gmail.com");
     let sheets = c.get_sheets("1MG8so2pFKoOIpt0Vo9pUAtoNk-Y1SnHq9DiEFi-m5Uw")?;
     let sheet = &sheets[0];
     let data = sheet.data.as_ref().ok_or_else(|| err_msg("No data"))?;
@@ -102,15 +101,22 @@ pub fn run_sync_sheets() -> Result<(), Error> {
         .iter()
         .filter_map(|row| ScaleMeasurement::from_row_data(row).ok())
         .collect();
-    println!("{} {} {}", data.len(), row_data.len(), measurements.len());
+    let mut stdout = BufWriter::new(stdout());
+    writeln!(
+        stdout,
+        "{} {} {}",
+        data.len(),
+        row_data.len(),
+        measurements.len()
+    )?;
     measurements
         .into_iter()
         .map(|meas| {
             if !current_measurements.contains_key(&meas.datetime) {
-                println!("insert {:?}", meas);
-                meas.insert_into_db(&pool)?;
+                writeln!(stdout, "insert {:?}", meas)?;
+                meas.insert_into_db(pool)?;
             } else {
-                println!("exists {:?}", meas);
+                writeln!(stdout, "exists {:?}", meas)?;
             }
             Ok(())
         })

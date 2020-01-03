@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 use std::fs::File;
-use std::io::{stdout, Write, BufWriter};
+use std::io::{stdout, BufWriter, Write};
 use std::path::Path;
 
 use super::garmin_correction_lap::GarminCorrectionLap;
@@ -97,12 +97,7 @@ impl GarminSummary {
             None => return Err(format_err!("{} has no laps?", gfile.filename)),
         };
         gfile.dump_avro(&cache_file)?;
-        writeln!(
-            stdout,
-            "{} Found md5sum {} success",
-            filename,
-            md5sum
-        )?;
+        writeln!(stdout, "{} Found md5sum {} success", filename, md5sum)?;
         Ok(GarminSummary::new(&gfile, &md5sum))
     }
 }

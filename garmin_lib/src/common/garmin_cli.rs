@@ -7,7 +7,7 @@ use regex::Regex;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs::{copy, rename};
-use std::io::{stdout, Write, BufWriter};
+use std::io::{stdout, BufWriter, Write};
 use std::path::Path;
 use tempdir::TempDir;
 
@@ -392,11 +392,7 @@ impl GarminCli {
                     }
                 };
                 debug!("gfile {} {}", gfile.laps.len(), gfile.points.len());
-                writeln!(
-                    stdout,
-                    "{}",
-                    generate_txt_report(&gfile)?.join("\n")
-                )?;
+                writeln!(stdout, "{}", generate_txt_report(&gfile)?.join("\n"))?;
             }
             _ => {
                 debug!("{:?}", options);

@@ -11,6 +11,7 @@ use std::time::Duration;
 use telegram_bot::types::refs::UserId;
 use telegram_bot::{Api, CanReplySendMessage, MessageKind, UpdateKind};
 use tokio::runtime::Runtime;
+use tokio::task::block_in_place;
 
 use fitbit_lib::scale_measurement::ScaleMeasurement;
 use garmin_lib::common::pgpool::PgPool;
@@ -25,12 +26,12 @@ lazy_static! {
 
 pub fn run_bot(telegram_bot_token: &str, pool: PgPool, scope: &Scope) -> Result<(), Error> {
     let telegram_bot_token: String = telegram_bot_token.into();
-    let (s, r) = unbounded();
+    let (send, recv) = unbounded();
 
     let pool_ = pool.clone();
     let userid_handle = scope.spawn(move |_| fill_telegram_user_ids(pool_));
-    let message_handle = scope.spawn(move |_| process_messages(r, pool));
-    let telegram_handle = scope.spawn(move |_| telegram_worker(&telegram_bot_token, s));
+    let message_handle = scope.spawn(move |_| process_messages(recv, pool));
+    let telegram_handle = scope.spawn(move |_| telegram_worker(&telegram_bot_token, send));
 
     if userid_handle.join().is_err() {
         panic!("Userid thread paniced, kill everything");
@@ -40,15 +41,15 @@ pub fn run_bot(telegram_bot_token: &str, pool: PgPool, scope: &Scope) -> Result<
     Ok(())
 }
 
-fn telegram_worker(telegram_bot_token: &str, s: Sender<ScaleMeasurement>) -> Result<(), Error> {
+fn telegram_worker(telegram_bot_token: &str, send: Sender<ScaleMeasurement>) -> Result<(), Error> {
     let mut rt = Runtime::new()?;
 
-    rt.block_on(_telegram_worker(telegram_bot_token, s))
+    rt.block_on(_telegram_worker(telegram_bot_token, send))
 }
 
 async fn _telegram_worker(
     telegram_bot_token: &str,
-    s: Sender<ScaleMeasurement>,
+    send: Sender<ScaleMeasurement>,
 ) -> Result<(), Error> {
     let api = Api::new(telegram_bot_token);
     let mut stream = api.stream();
@@ -58,9 +59,9 @@ async fn _telegram_worker(
             if let MessageKind::Text { ref data, .. } = message.kind {
                 // Print received text message to stdout.
                 debug!("{:?}", message);
-                if USERIDS.read().contains(&message.from.id) {
+                if block_in_place(|| USERIDS.read().contains(&message.from.id)) {
                     match data.to_lowercase().as_str() {
-                        "check" => match *LAST_WEIGHT.read() {
+                        "check" => match block_in_place(|| *LAST_WEIGHT.read()) {
                             Some(meas) => {
                                 api.spawn(
                                     message.text_reply(format!("latest measurement {}", meas)),
@@ -71,7 +72,7 @@ async fn _telegram_worker(
                             }
                         },
                         _ => match ScaleMeasurement::from_telegram_text(data) {
-                            Ok(meas) => match s.try_send(meas) {
+                            Ok(meas) => match block_in_place(|| send.try_send(meas)) {
                                 Ok(_) => api
                                     .spawn(message.text_reply(format!("sent to the db {}", meas))),
                                 Err(e) => {
@@ -94,7 +95,7 @@ async fn _telegram_worker(
     Ok(())
 }
 
-fn process_messages(r: Receiver<ScaleMeasurement>, pool: PgPool) {
+fn process_messages(recv: Receiver<ScaleMeasurement>, pool: PgPool) {
     if let Ok(meas_list) = ScaleMeasurement::read_from_db(&pool, None, None) {
         let mut last_weight = *LAST_WEIGHT.read();
         for meas in meas_list {
@@ -112,7 +113,7 @@ fn process_messages(r: Receiver<ScaleMeasurement>, pool: PgPool) {
     }
     debug!("LAST_WEIGHT {:?}", *LAST_WEIGHT.read());
     loop {
-        if let Ok(meas) = r.recv() {
+        if let Ok(meas) = recv.recv() {
             if meas.insert_into_db(&pool).is_ok() {
                 debug!("{:?}", meas);
                 LAST_WEIGHT.write().replace(meas);

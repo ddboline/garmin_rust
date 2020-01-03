@@ -10,7 +10,7 @@ use std::thread::sleep;
 use std::time::Duration;
 use telegram_bot::types::refs::UserId;
 use telegram_bot::{Api, CanReplySendMessage, MessageKind, UpdateKind};
-use tokio::runtime::Builder;
+use tokio::runtime::Runtime;
 
 use fitbit_lib::scale_measurement::ScaleMeasurement;
 use garmin_lib::common::pgpool::PgPool;
@@ -41,7 +41,7 @@ pub fn run_bot(telegram_bot_token: &str, pool: PgPool, scope: &Scope) -> Result<
 }
 
 fn telegram_worker(telegram_bot_token: &str, send: Sender<ScaleMeasurement>) -> Result<(), Error> {
-    let mut rt = Builder::new().threaded_scheduler().build()?;
+    let mut rt = Runtime::new()?;
 
     rt.block_on(_telegram_worker(telegram_bot_token, send))
 }

@@ -1,3 +1,5 @@
+use std::io::{stdout, Write};
+
 use garmin_lib::common::garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList};
 use garmin_lib::utils::iso_8601_datetime::convert_str_to_datetime;
 use garmin_lib::utils::sport_types::SportTypes;
@@ -8,7 +10,7 @@ fn test_garmin_correction_lap_new() {
 
     assert_eq!(gc.id, -1);
     assert_eq!(gc.lap_number, -1);
-    assert_eq!(gc.sport, SportTypes::None);
+    assert_eq!(gc.sport, None);
     assert_eq!(gc.distance, None);
     assert_eq!(gc.duration, None);
 
@@ -20,7 +22,7 @@ fn test_garmin_correction_lap_new() {
         .with_duration(6.2);
     assert_eq!(gc.id, 5);
     assert_eq!(gc.lap_number, 3);
-    assert_eq!(gc.sport, SportTypes::Running);
+    assert_eq!(gc.sport, Some(SportTypes::Running));
     assert_eq!(gc.distance, Some(5.3));
     assert_eq!(gc.duration, Some(6.2));
 }
@@ -81,7 +83,7 @@ fn test_corr_list_from_buffer() {
             id: -1,
             start_time: convert_str_to_datetime("2011-07-04T08:58:27Z").unwrap(),
             lap_number: 0,
-            sport: SportTypes::None,
+            sport: None,
             distance: Some(3.10685596118667),
             duration: None
         }
@@ -92,7 +94,7 @@ fn test_corr_list_from_buffer() {
             id: -1,
             start_time: convert_str_to_datetime("2013-01-17T16:14:32Z").unwrap(),
             lap_number: 0,
-            sport: SportTypes::None,
+            sport: None,
             distance: Some(0.507143),
             duration: None
         }
@@ -103,7 +105,7 @@ fn test_corr_list_from_buffer() {
             id: -1,
             start_time: convert_str_to_datetime("2013-01-17T16:14:32Z").unwrap(),
             lap_number: 1,
-            sport: SportTypes::None,
+            sport: None,
             distance: Some(0.190476),
             duration: None
         }
@@ -114,7 +116,7 @@ fn test_corr_list_from_buffer() {
             id: -1,
             start_time: convert_str_to_datetime("2014-08-23T10:17:14Z").unwrap(),
             lap_number: 0,
-            sport: SportTypes::None,
+            sport: None,
             distance: Some(6.5),
             duration: Some(4099.0)
         }
@@ -149,7 +151,7 @@ fn test_add_mislabeled_times_to_corr_list() {
 
     let corr_map = corr_list.get_corr_list_map();
 
-    println!("{:?}", corr_list);
+    writeln!(stdout(),"{:?}", corr_list).unwrap();
 
     assert_eq!(corr_list.corr_map.len(), 26);
 
@@ -161,7 +163,7 @@ fn test_add_mislabeled_times_to_corr_list() {
             id: -1,
             start_time: convert_str_to_datetime("2010-11-20T19:55:34Z").unwrap(),
             lap_number: 0,
-            sport: SportTypes::Biking,
+            sport: Some(SportTypes::Biking),
             distance: Some(10.0),
             duration: None
         }
@@ -174,7 +176,7 @@ fn test_add_mislabeled_times_to_corr_list() {
             id: -1,
             start_time: convert_str_to_datetime("2010-11-20T19:55:34Z").unwrap(),
             lap_number: 1,
-            sport: SportTypes::Biking,
+            sport: Some(SportTypes::Biking),
             distance: Some(5.0),
             duration: None
         }

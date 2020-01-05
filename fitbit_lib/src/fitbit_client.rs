@@ -366,6 +366,7 @@ mod tests {
     use chrono::{Local, NaiveDate};
     use std::path::Path;
     use tempfile::NamedTempFile;
+    use std::io::{stdout, Write};
 
     use crate::fitbit_client::FitbitClient;
     use garmin_lib::common::garmin_config::GarminConfig;
@@ -376,7 +377,7 @@ mod tests {
         let config = GarminConfig::get_config(None).unwrap();
         let client = FitbitClient::from_file(config).unwrap();
         let url = client.get_fitbit_auth_url().unwrap();
-        println!("{:?} {}", client, url);
+        writeln!(stdout(),"{:?} {}", client, url).unwrap();
         assert!(url.len() > 0);
     }
 
@@ -387,7 +388,7 @@ mod tests {
         let client = FitbitClient::from_file(config.clone()).unwrap();
         let start_date = NaiveDate::from_ymd(2019, 12, 1);
         let results = client.get_tcx_urls(start_date).unwrap();
-        println!("{:?}", results);
+        writeln!(stdout(),"{:?}", results).unwrap();
         for (start_time, tcx_url) in results {
             let fname = format!(
                 "{}/{}.tcx",
@@ -398,15 +399,15 @@ mod tests {
                     .to_string(),
             );
             if Path::new(&fname).exists() {
-                println!("{} exists", fname);
+                writeln!(stdout(),"{} exists", fname).unwrap();
             } else {
-                println!("{} does not exist", fname)
-            };
+                writeln!(stdout(),"{} does not exist", fname).unwrap();
+            }
 
             let mut f = NamedTempFile::new().unwrap();
             client.download_tcx(&tcx_url, &mut f).unwrap();
             let metadata = f.as_file().metadata().unwrap();
-            println!("{} {:?} {}", start_time, metadata, metadata.len());
+            writeln!(stdout(),"{} {:?} {}", start_time, metadata, metadata.len()).unwrap();
             assert!(metadata.len() > 0);
             break;
         }

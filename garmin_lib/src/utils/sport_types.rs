@@ -1,5 +1,7 @@
+use bytes::BytesMut;
 use failure::{format_err, Error};
 use lazy_static::lazy_static;
+use postgres::types::{FromSql, IsNull, ToSql, Type};
 use serde::{self, Deserialize, Deserializer, Serializer};
 use std::collections::HashMap;
 use std::fmt;
@@ -28,26 +30,26 @@ pub enum SportTypes {
 
 impl Default for SportTypes {
     fn default() -> Self {
-        SportTypes::None
+        Self::None
     }
 }
 
 impl fmt::Display for SportTypes {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let sport_str = match self {
-            SportTypes::Running => "running",
-            SportTypes::Biking => "biking",
-            SportTypes::Walking => "walking",
-            SportTypes::Hiking => "hiking",
-            SportTypes::Ultimate => "ultimate",
-            SportTypes::Elliptical => "elliptical",
-            SportTypes::Stairs => "stairs",
-            SportTypes::Lifting => "lifting",
-            SportTypes::Swimming => "swimming",
-            SportTypes::Other => "other",
-            SportTypes::Snowshoeing => "snowshoeing",
-            SportTypes::Skiing => "skiing",
-            SportTypes::None => "none",
+            Self::Running => "running",
+            Self::Biking => "biking",
+            Self::Walking => "walking",
+            Self::Hiking => "hiking",
+            Self::Ultimate => "ultimate",
+            Self::Elliptical => "elliptical",
+            Self::Stairs => "stairs",
+            Self::Lifting => "lifting",
+            Self::Swimming => "swimming",
+            Self::Other => "other",
+            Self::Snowshoeing => "snowshoeing",
+            Self::Skiing => "skiing",
+            Self::None => "none",
         };
         write!(f, "{}", sport_str)
     }
@@ -56,19 +58,19 @@ impl fmt::Display for SportTypes {
 impl SportTypes {
     pub fn to_strava_activity(self) -> String {
         match self {
-            SportTypes::Running => "run",
-            SportTypes::Biking => "ride",
-            SportTypes::Walking => "walk",
-            SportTypes::Hiking => "hike",
-            SportTypes::Ultimate => "ultimate",
-            SportTypes::Elliptical => "elliptical",
-            SportTypes::Stairs => "stairs",
-            SportTypes::Lifting => "lifting",
-            SportTypes::Swimming => "swim",
-            SportTypes::Other => "other",
-            SportTypes::Snowshoeing => "snowshoe",
-            SportTypes::Skiing => "nordicski",
-            SportTypes::None => "none",
+            Self::Running => "run",
+            Self::Biking => "ride",
+            Self::Walking => "walk",
+            Self::Hiking => "hike",
+            Self::Ultimate => "ultimate",
+            Self::Elliptical => "elliptical",
+            Self::Stairs => "stairs",
+            Self::Lifting => "lifting",
+            Self::Swimming => "swim",
+            Self::Other => "other",
+            Self::Snowshoeing => "snowshoe",
+            Self::Skiing => "nordicski",
+            Self::None => "none",
         }
         .to_string()
     }
@@ -138,4 +140,46 @@ where
 {
     let s = String::deserialize(deserializer)?;
     s.parse().map_err(serde::de::Error::custom)
+}
+
+impl<'a> FromSql<'a> for SportTypes {
+    fn from_sql(
+        ty: &Type,
+        raw: &'a [u8],
+    ) -> Result<Self, Box<dyn std::error::Error + 'static + Send + Sync>> {
+        let s = String::from_sql(ty, raw)?.parse()?;
+        Ok(s)
+    }
+
+    fn accepts(ty: &Type) -> bool {
+        <String as FromSql>::accepts(ty)
+    }
+}
+
+impl ToSql for SportTypes {
+    fn to_sql(
+        &self,
+        ty: &Type,
+        out: &mut BytesMut,
+    ) -> Result<IsNull, Box<dyn std::error::Error + Sync + Send>>
+    where
+        Self: Sized,
+    {
+        self.to_string().to_sql(ty, out)
+    }
+
+    fn accepts(ty: &Type) -> bool
+    where
+        Self: Sized,
+    {
+        <String as ToSql>::accepts(ty)
+    }
+
+    fn to_sql_checked(
+        &self,
+        ty: &Type,
+        out: &mut BytesMut,
+    ) -> Result<IsNull, Box<dyn std::error::Error + Sync + Send>> {
+        self.to_string().to_sql_checked(ty, out)
+    }
 }

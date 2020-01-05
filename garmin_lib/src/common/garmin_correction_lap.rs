@@ -4,7 +4,7 @@ use chrono::{DateTime, Utc};
 use failure::{err_msg, format_err, Error};
 use json::{parse, JsonValue};
 use log::debug;
-use serde::{Deserialize, Serialize};
+use postgres_query::FromSqlRow;
 use std::collections::HashMap;
 use std::fs::File;
 use std::hash::BuildHasher;
@@ -14,18 +14,16 @@ use std::str;
 use super::garmin_lap::GarminLap;
 use super::pgpool::PgPool;
 use crate::utils::garmin_util::METERS_PER_MILE;
-use crate::utils::iso_8601_datetime::{self, convert_str_to_datetime, sentinel_datetime};
+use crate::utils::iso_8601_datetime::{convert_str_to_datetime, sentinel_datetime};
 
-use crate::utils::sport_types::{self, SportTypes};
+use crate::utils::sport_types::SportTypes;
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, FromSqlRow)]
 pub struct GarminCorrectionLap {
     pub id: i32,
-    #[serde(with = "iso_8601_datetime")]
     pub start_time: DateTime<Utc>,
     pub lap_number: i32,
-    #[serde(with = "sport_types")]
-    pub sport: SportTypes,
+    pub sport: Option<SportTypes>,
     pub distance: Option<f64>,
     pub duration: Option<f64>,
 }
@@ -42,7 +40,7 @@ impl GarminCorrectionLap {
             id: -1,
             start_time: sentinel_datetime(),
             lap_number: -1,
-            sport: SportTypes::None,
+            sport: None,
             distance: None,
             duration: None,
         }
@@ -64,7 +62,7 @@ impl GarminCorrectionLap {
     }
 
     pub fn with_sport(mut self, sport: SportTypes) -> GarminCorrectionLap {
-        self.sport = sport;
+        self.sport = Some(sport);
         self
     }
 
@@ -289,6 +287,12 @@ impl GarminCorrectionList {
     }
 
     pub fn get_filename_start_map(&self) -> Result<HashMap<String, (String, i32)>, Error> {
+        #[derive(FromSqlRow)]
+        struct FileNameUniqueKey {
+            filename: String,
+            unique_key: String,
+        }
+
         let query = "
             select filename, unique_key
             from garmin_corrections_laps a
@@ -298,19 +302,20 @@ impl GarminCorrectionList {
         conn.query(query, &[])?
             .iter()
             .map(|row| {
-                let filename: String = row.try_get(0)?;
-                let unique_key: String = row.try_get(1)?;
-                let start_time: String = unique_key
+                let val = FileNameUniqueKey::from_row(row)?;
+                let start_time: String = val
+                    .unique_key
                     .split('_')
                     .nth(0)
                     .map(|x| x.to_string())
                     .unwrap_or_else(|| "".to_string());
-                let lap_number: i32 = unique_key
+                let lap_number: i32 = val
+                    .unique_key
                     .split('_')
                     .last()
                     .map(|x| x.parse().unwrap_or(0))
                     .unwrap_or(0);
-                Ok((filename, (start_time, lap_number)))
+                Ok((val.filename, (start_time, lap_number)))
             })
             .collect()
     }
@@ -332,10 +337,10 @@ impl GarminCorrectionList {
             .into_iter()
             .map(|corr| {
                 let unique_key = format!("{}_{}", corr.start_time, corr.lap_number);
-                let sport: Option<String> = match corr.sport {
+                let sport: Option<String> = corr.sport.and_then(|s| match s {
                     SportTypes::None => None,
                     s => Some(s.to_string()),
-                };
+                });
 
                 if conn.query(query_unique_key, &[&unique_key])?.iter().len() == 0 {
                     conn.execute(
@@ -375,16 +380,8 @@ impl GarminCorrectionList {
         )?
             .iter()
             .map(|row| {
-                let sport: Option<String> = row.try_get(3)?;
-                let sport: SportTypes = sport.and_then(|s| s.parse().ok()).unwrap_or(SportTypes::None);
-            Ok(GarminCorrectionLap {
-                id: row.try_get(0)?,
-                start_time: row.try_get(1)?,
-                lap_number: row.try_get(2)?,
-                sport,
-                distance: row.try_get(4)?,
-                duration: row.try_get(5)?,
-            })})
+                GarminCorrectionLap::from_row(row).map_err(err_msg)
+            })
             .collect();
         let corr_list = corr_list?;
 
@@ -412,8 +409,8 @@ pub fn apply_lap_corrections<S: BuildHasher + Sync>(
                         Some(corr) => {
                             let mut new_lap = lap.clone();
                             new_sport = match corr.sport {
-                                SportTypes::None => sport,
-                                s => {
+                                None => SportTypes::None,
+                                Some(s) => {
                                     debug!("change sport {} {:?} {}", lap_start, lap.lap_type, s);
                                     s
                                 }

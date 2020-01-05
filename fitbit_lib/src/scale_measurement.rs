@@ -3,6 +3,7 @@ use chrono::{DateTime, Local, NaiveDate, Utc};
 use failure::{err_msg, Error};
 use google_sheets4::RowData;
 use log::debug;
+use postgres_query::FromSqlRow;
 use serde::{self, Deserialize, Serialize};
 use std::fmt;
 
@@ -12,7 +13,7 @@ use garmin_lib::utils::iso_8601_datetime::convert_datetime_to_str;
 use garmin_lib::utils::plot_graph::generate_d3_plot;
 use garmin_lib::utils::plot_opts::PlotOpts;
 
-#[derive(Debug, Clone, Serialize, Deserialize, Copy)]
+#[derive(Debug, Clone, Serialize, Deserialize, Copy, FromSqlRow)]
 pub struct ScaleMeasurement {
     pub datetime: DateTime<Utc>,
     pub mass: f64,
@@ -112,23 +113,22 @@ impl ScaleMeasurement {
     }
 
     pub fn insert_into_db(&self, pool: &PgPool) -> Result<(), Error> {
-        let query = "
+        let query = postgres_query::query!("
             INSERT INTO scale_measurements (datetime, mass, fat_pct, water_pct, muscle_pct, bone_pct)
-            VALUES ($1,$2,$3,$4,$5,$6)";
+            VALUES ($datetime,$mass,$fat,$water,$muscle,$bone)",
+            datetime = self.datetime,
+            mass = self.mass,
+            fat = self.fat_pct,
+            water = self.water_pct,
+            muscle = self.muscle_pct,
+            bone = self.bone_pct,
+        );
+
         let mut conn = pool.get()?;
-        conn.execute(
-            query,
-            &[
-                &self.datetime,
-                &self.mass,
-                &self.fat_pct,
-                &self.water_pct,
-                &self.muscle_pct,
-                &self.bone_pct,
-            ],
-        )
-        .map(|_| ())
-        .map_err(err_msg)
+
+        conn.execute(query.sql, &query.parameters)
+            .map(|_| ())
+            .map_err(err_msg)
     }
 
     pub fn read_from_db(
@@ -160,22 +160,7 @@ impl ScaleMeasurement {
         let mut conn = pool.get()?;
         conn.query(query.as_str(), &[])?
             .iter()
-            .map(|row| {
-                let datetime: DateTime<Utc> = row.try_get(0)?;
-                let mass: f64 = row.try_get(1)?;
-                let fat_pct: f64 = row.try_get(2)?;
-                let water_pct: f64 = row.try_get(3)?;
-                let muscle_pct: f64 = row.try_get(4)?;
-                let bone_pct: f64 = row.try_get(5)?;
-                Ok(Self {
-                    datetime,
-                    mass,
-                    fat_pct,
-                    water_pct,
-                    muscle_pct,
-                    bone_pct,
-                })
-            })
+            .map(|r| Self::from_row(r).map_err(err_msg))
             .collect()
     }
 

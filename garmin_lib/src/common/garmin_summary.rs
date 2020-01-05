@@ -2,6 +2,7 @@ use avro_rs::{Codec, Schema, Writer};
 use chrono::{DateTime, Utc};
 use failure::{err_msg, format_err, Error};
 use log::debug;
+use postgres_query::FromSqlRow;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -51,6 +52,35 @@ pub struct GarminSummary {
     pub total_hr_dur: f64,
     pub total_hr_dis: f64,
     pub md5sum: String,
+}
+
+#[derive(FromSqlRow)]
+pub struct GarminSummaryDB {
+    pub filename: String,
+    pub begin_datetime: DateTime<Utc>,
+    pub sport: SportTypes,
+    pub total_calories: Option<i32>,
+    pub total_distance: Option<f64>,
+    pub total_duration: Option<f64>,
+    pub total_hr_dur: Option<f64>,
+    pub total_hr_dis: Option<f64>,
+    pub md5sum: Option<String>,
+}
+
+impl From<GarminSummaryDB> for GarminSummary {
+    fn from(item: GarminSummaryDB) -> Self {
+        Self {
+            filename: item.filename,
+            begin_datetime: item.begin_datetime,
+            sport: item.sport,
+            total_calories: item.total_calories.unwrap_or(0),
+            total_distance: item.total_distance.unwrap_or(0.0),
+            total_duration: item.total_duration.unwrap_or(0.0),
+            total_hr_dur: item.total_hr_dur.unwrap_or(0.0),
+            total_hr_dis: item.total_hr_dis.unwrap_or(0.0),
+            md5sum: item.md5sum.unwrap_or_else(|| "".to_string()),
+        }
+    }
 }
 
 impl GarminSummary {
@@ -253,18 +283,8 @@ impl GarminSummaryList {
             .query(query.as_str(), &[])?
             .iter()
             .map(|row| {
-                let sport: String = row.try_get(2)?;
-                Ok(GarminSummary {
-                    filename: row.try_get(0)?,
-                    begin_datetime: row.try_get(1)?,
-                    sport: sport.parse()?,
-                    total_calories: row.try_get(3)?,
-                    total_distance: row.try_get(4)?,
-                    total_duration: row.try_get(5)?,
-                    total_hr_dur: row.try_get(6)?,
-                    total_hr_dis: row.try_get(7)?,
-                    md5sum: row.try_get(8)?,
-                })
+                let val = GarminSummaryDB::from_row(row)?;
+                Ok(val.into())
             })
             .collect();
 

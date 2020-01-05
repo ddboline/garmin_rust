@@ -36,3 +36,5 @@ retry = "0.5"
 avro-rs = {version = "0.6.6", features = ["snappy"]}
 regex = "1.3"
 sts_profile_auth = { git = "https://github.com/ddboline/sts_profile_auth.git", tag="0.1.3" }
+postgres_query = "0.2"
+bytes = "0.5"

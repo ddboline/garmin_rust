@@ -11,7 +11,6 @@ use std::time::Duration;
 use telegram_bot::types::refs::UserId;
 use telegram_bot::{Api, CanReplySendMessage, MessageKind, UpdateKind};
 use tokio::runtime::Runtime;
-use tokio::task::block_in_place;
 
 use fitbit_lib::scale_measurement::ScaleMeasurement;
 use garmin_lib::common::pgpool::PgPool;
@@ -59,9 +58,9 @@ async fn _telegram_worker(
             if let MessageKind::Text { ref data, .. } = message.kind {
                 // Print received text message to stdout.
                 debug!("{:?}", message);
-                if block_in_place(|| USERIDS.read().contains(&message.from.id)) {
+                if USERIDS.read().contains(&message.from.id) {
                     match data.to_lowercase().as_str() {
-                        "check" => match block_in_place(|| *LAST_WEIGHT.read()) {
+                        "check" => match *LAST_WEIGHT.read() {
                             Some(meas) => {
                                 api.spawn(
                                     message.text_reply(format!("latest measurement {}", meas)),
@@ -72,7 +71,7 @@ async fn _telegram_worker(
                             }
                         },
                         _ => match ScaleMeasurement::from_telegram_text(data) {
-                            Ok(meas) => match block_in_place(|| send.try_send(meas)) {
+                            Ok(meas) => match send.try_send(meas) {
                                 Ok(_) => api
                                     .spawn(message.text_reply(format!("sent to the db {}", meas))),
                                 Err(e) => {

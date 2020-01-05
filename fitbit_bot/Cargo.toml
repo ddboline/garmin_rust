@@ -1,6 +1,6 @@
 [package]
 name = "fitbit_bot"
-version = "0.6.2"
+version = "0.6.3"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -11,7 +11,7 @@ fitbit_lib = {path="../fitbit_lib"}
 garmin_lib = {path="../garmin_lib"}
 telegram-bot = {git = "https://github.com/telegram-rs/telegram-bot.git", branch="master"}
 futures = "0.3"
-tokio = {version="0.2", features=["blocking", "rt-threaded"]}
+tokio = {version="0.2", features=["blocking", "rt-threaded", "rt-core"]}
 crossbeam-channel = "0.4"
 crossbeam-utils = "0.7"
 lazy_static = "1.4"

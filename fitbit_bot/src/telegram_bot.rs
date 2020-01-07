@@ -1,11 +1,12 @@
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use crossbeam_utils::thread::Scope;
-use failure::Error;
+use failure::{format_err, Error};
 use futures::StreamExt;
 use lazy_static::lazy_static;
 use log::debug;
 use parking_lot::RwLock;
 use std::collections::HashSet;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::sleep;
 use std::time::Duration;
 use telegram_bot::types::refs::UserId;
@@ -21,6 +22,7 @@ type Userids = RwLock<HashSet<UserId>>;
 lazy_static! {
     static ref LAST_WEIGHT: WeightLock = RwLock::new(None);
     static ref USERIDS: Userids = RwLock::new(HashSet::new());
+    static ref KILLSWITCH: AtomicBool = AtomicBool::new(false);
 }
 
 pub fn run_bot(telegram_bot_token: &str, pool: PgPool, scope: &Scope) -> Result<(), Error> {
@@ -43,7 +45,9 @@ pub fn run_bot(telegram_bot_token: &str, pool: PgPool, scope: &Scope) -> Result<
 fn telegram_worker(telegram_bot_token: &str, send: Sender<ScaleMeasurement>) -> Result<(), Error> {
     let mut rt = Runtime::new()?;
 
-    rt.block_on(_telegram_worker(telegram_bot_token, send))
+    rt.block_on(_telegram_worker(telegram_bot_token, send))?;
+    KILLSWITCH.store(true, Ordering::SeqCst);
+    Ok(())
 }
 
 async fn _telegram_worker(
@@ -53,6 +57,9 @@ async fn _telegram_worker(
     let api = Api::new(telegram_bot_token);
     let mut stream = api.stream();
     while let Some(update) = stream.next().await {
+        if KILLSWITCH.load(Ordering::SeqCst) {
+            return Ok(());
+        }
         // If the received update contains a new message...
         if let UpdateKind::Message(message) = update?.kind {
             if let MessageKind::Text { ref data, .. } = message.kind {
@@ -94,28 +101,46 @@ async fn _telegram_worker(
     Ok(())
 }
 
-fn process_messages(recv: Receiver<ScaleMeasurement>, pool: PgPool) {
-    if let Ok(meas_list) = ScaleMeasurement::read_from_db(&pool, None, None) {
-        let mut last_weight = *LAST_WEIGHT.read();
-        for meas in meas_list {
-            let current_dt = meas.datetime;
-            let last_meas = last_weight.replace(meas);
-            if let Some(last) = last_meas {
-                if last.datetime > current_dt {
-                    last_weight.replace(last);
-                }
+fn process_messages(recv: Receiver<ScaleMeasurement>, pool: PgPool) -> Result<(), Error> {
+    let meas_list = ScaleMeasurement::read_from_db(&pool, None, None)?;
+    let mut last_weight = *LAST_WEIGHT.read();
+    for meas in meas_list {
+        let current_dt = meas.datetime;
+        let last_meas = last_weight.replace(meas);
+        if let Some(last) = last_meas {
+            if last.datetime > current_dt {
+                last_weight.replace(last);
             }
         }
-        if let Some(last) = last_weight {
-            LAST_WEIGHT.write().replace(last);
-        }
     }
+    if let Some(last) = last_weight {
+        LAST_WEIGHT.write().replace(last);
+    }
+
+    let mut failure_count = 0;
     debug!("LAST_WEIGHT {:?}", *LAST_WEIGHT.read());
     loop {
-        if let Ok(meas) = recv.recv() {
-            if meas.insert_into_db(&pool).is_ok() {
-                debug!("{:?}", meas);
-                LAST_WEIGHT.write().replace(meas);
+        if KILLSWITCH.load(Ordering::SeqCst) {
+            return Ok(());
+        }
+        match recv.recv() {
+            Ok(meas) => {
+                if meas.insert_into_db(&pool).is_ok() {
+                    debug!("{:?}", meas);
+                    LAST_WEIGHT.write().replace(meas);
+                }
+                failure_count = 0;
+            }
+            Err(e) => {
+                failure_count += 1;
+                if failure_count > 5 {
+                    KILLSWITCH.store(true, Ordering::SeqCst);
+                    return Err(format_err!(
+                        "Failed with {} after retrying {} times",
+                        e,
+                        failure_count
+                    ));
+                }
             }
         }
     }

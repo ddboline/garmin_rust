@@ -66,34 +66,34 @@ impl GarminCli {
     /// let gcli = GarminCli::new();
     /// assert_eq!(gcli.opts, None);
     /// ```
-    pub fn new() -> GarminCli {
-        GarminCli {
+    pub fn new() -> Self {
+        Self {
             config: GarminConfig::new(),
-            ..Default::default()
+            ..Self::default()
         }
     }
 
-    pub fn with_config() -> Result<GarminCli, Error> {
+    pub fn with_config() -> Result<Self, Error> {
         let config = GarminConfig::get_config(None)?;
         let pool = PgPool::new(&config.pgurl);
         let corr = GarminCorrectionList::from_pool(&pool);
-        let obj = GarminCli {
+        let obj = Self {
             config,
             pool: Some(pool),
             corr,
-            ..Default::default()
+            ..Self::default()
         };
         Ok(obj)
     }
 
-    pub fn from_pool(pool: &PgPool) -> Result<GarminCli, Error> {
+    pub fn from_pool(pool: &PgPool) -> Result<Self, Error> {
         let config = GarminConfig::get_config(None)?;
         let corr = GarminCorrectionList::from_pool(&pool);
-        let obj = GarminCli {
+        let obj = Self {
             config,
             pool: Some(pool.clone()),
             corr,
-            ..Default::default()
+            ..Self::default()
         };
         Ok(obj)
     }
@@ -143,11 +143,11 @@ impl GarminCli {
 
         let gsum_list = self.get_summary_list(&corr_map)?;
 
-        if !gsum_list.summary_list.is_empty() {
+        if gsum_list.summary_list.is_empty() {
+            Ok(Vec::new())
+        } else {
             gsum_list.write_summary_to_avro_files(&self.get_config().summary_cache)?;
             gsum_list.write_summary_to_postgres().map(|_| Vec::new())
-        } else {
-            Ok(Vec::new())
         }
     }
 
@@ -353,7 +353,7 @@ impl GarminCli {
         GarminRequest {
             options,
             constraints,
-            ..Default::default()
+            ..GarminRequest::default()
         }
     }
 

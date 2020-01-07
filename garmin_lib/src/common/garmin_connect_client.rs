@@ -7,9 +7,9 @@ use reqwest::Url;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fs::File;
+use std::io::{stdout, Write};
 use std::thread::sleep;
 use std::time::Duration;
-use std::io::{stdout, Write};
 
 use super::garmin_config::GarminConfig;
 use super::reqwest_session::ReqwestSession;
@@ -163,7 +163,7 @@ impl GarminConnectClient {
                             NaiveDateTime::parse_from_str(start_time_gmt, "%Y-%m-%d %H:%M:%S")
                                 .map(|datetime| DateTime::from_utc(datetime, Utc))?;
                         if start_time > max_timestamp {
-                            writeln!(stdout(),"{} {}", activity_id, start_time)?;
+                            writeln!(stdout(), "{} {}", activity_id, start_time)?;
                             let fname =
                                 format!("{}/Downloads/{}.zip", self.config.home_dir, activity_id);
                             let url: Url = format!(

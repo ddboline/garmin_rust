@@ -78,9 +78,9 @@ pub fn get_strava_ids(
     }
     let query = format!(
         "SELECT strava_id, begin_datetime, strava_title FROM strava_id_cache {} ORDER BY begin_datetime",
-        if !constraints.is_empty() {
+        if constraints.is_empty() {"".to_string()} else {
             format!("WHERE {}", constraints.join(" OR "))
-        } else {"".to_string()},
+        } ,
     );
     let mut conn = pool.get()?;
     conn.query(query.as_str(), &[])?
@@ -114,10 +114,10 @@ pub fn upsert_strava_id<S: BuildHasher>(
         .into_iter()
         .filter_map(|(id, new_item)| {
             strava_id_map.get(id).and_then(|item| {
-                if new_item != item {
-                    Some((id, new_item))
-                } else {
+                if new_item == item {
                     None
+                } else {
+                    Some((id, new_item))
                 }
             })
         })

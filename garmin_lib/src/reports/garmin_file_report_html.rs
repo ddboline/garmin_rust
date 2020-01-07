@@ -36,7 +36,9 @@ pub fn generate_history_buttons(history_vec: &[String]) -> String {
         .iter()
         .chain(history_vec.iter())
         .filter_map(|most_recent| {
-            if !used_buttons.contains(most_recent) {
+            if used_buttons.contains(most_recent) {
+                None
+            } else {
                 used_buttons.insert(most_recent.clone());
                 Some(format!(
                     "{}{}{}{}{}",
@@ -46,8 +48,6 @@ pub fn generate_history_buttons(history_vec: &[String]) -> String {
                     most_recent,
                     " </button>"
                 ))
-            } else {
-                None
             }
         })
         .collect();

@@ -263,10 +263,10 @@ impl GarminCorrectionList {
                     .filter_map(|(t, n)| if *t == time { Some(*n) } else { None })
                     .collect();
 
-                let lap_list = if !lap_list.is_empty() {
-                    lap_list
-                } else {
+                let lap_list = if lap_list.is_empty() {
                     vec![0]
+                } else {
+                    lap_list
                 };
 
                 for lap_number in lap_list {

@@ -255,10 +255,10 @@ impl GarminSummaryList {
     }
 
     pub fn read_summary_from_postgres(&self, pattern: &str) -> Result<GarminSummaryList, Error> {
-        let where_str = if !pattern.is_empty() {
-            format!("WHERE filename like '%{}%'", pattern)
-        } else {
+        let where_str = if pattern.is_empty() {
             "".to_string()
+        } else {
+            format!("WHERE filename like '%{}%'", pattern)
         };
 
         let query = format!(

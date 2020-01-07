@@ -310,8 +310,8 @@ impl FitbitBodyWeightFat {
 mod tests {
     use chrono::NaiveDate;
     use std::collections::HashSet;
-    use std::path::Path;
     use std::io::{stdout, Write};
+    use std::path::Path;
 
     use garmin_lib::common::garmin_config::GarminConfig;
     use garmin_lib::common::pgpool::PgPool;
@@ -324,13 +324,13 @@ mod tests {
         let config = GarminConfig::get_config(None).unwrap();
         let path = Path::new("tests/data/test_heartrate_data.json");
         let result = process_fitbit_json_file(&path).unwrap();
-        writeln!(stdout(),"{}", result.len()).unwrap();
+        writeln!(stdout(), "{}", result.len()).unwrap();
 
         let dates: HashSet<_> = result
             .iter()
             .map(|entry| entry.datetime.date().naive_local())
             .collect();
-        writeln!(stdout(),"{:?}", dates).unwrap();
+        writeln!(stdout(), "{:?}", dates).unwrap();
         let dates = vec![NaiveDate::from_ymd(2019, 11, 1)];
         assert_eq!(result.len(), 3);
         assert_eq!(dates.len(), 1);
@@ -341,7 +341,7 @@ mod tests {
                 current_datetimes.insert(entry.datetime);
             }
         }
-        writeln!(stdout(),"{}", current_datetimes.len()).unwrap();
+        writeln!(stdout(), "{}", current_datetimes.len()).unwrap();
         assert_eq!(current_datetimes.len(), 1361);
     }
 
@@ -354,7 +354,7 @@ mod tests {
         let end_date = NaiveDate::from_ymd(2019, 8, 2);
         let results =
             FitbitHeartRate::get_heartrate_plot(&config, &pool, start_date, end_date).unwrap();
-        writeln!(stdout(),"{}", results).unwrap();
+        writeln!(stdout(), "{}", results).unwrap();
         assert!(results.len() > 0);
     }
 

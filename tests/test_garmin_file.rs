@@ -17,16 +17,16 @@ fn test_garmin_file_test_avro() {
         .unwrap();
     match gfile.dump_avro("temp.avro.gz") {
         Ok(()) => {
-            writeln!(stdout(),"Success").unwrap();
+            writeln!(stdout(), "Success").unwrap();
         }
         Err(e) => {
-            writeln!(stdout(),"{}", e).unwrap();
+            writeln!(stdout(), "{}", e).unwrap();
         }
     }
 
     match garmin_file::GarminFile::read_avro("temp.avro.gz") {
         Ok(g) => {
-            writeln!(stdout(),"Success").unwrap();
+            writeln!(stdout(), "Success").unwrap();
             assert_eq!(gfile.sport, g.sport);
             assert_eq!(gfile.filename, g.filename);
             assert_eq!(gfile.sport, g.sport);
@@ -41,7 +41,7 @@ fn test_garmin_file_test_avro() {
             assert_abs_diff_eq!(gfile.total_hr_dis, g.total_hr_dis);
         }
         Err(e) => {
-            writeln!(stdout(),"{}", e).unwrap();
+            writeln!(stdout(), "{}", e).unwrap();
             assert!(false);
         }
     }

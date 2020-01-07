@@ -151,7 +151,7 @@ fn test_add_mislabeled_times_to_corr_list() {
 
     let corr_map = corr_list.get_corr_list_map();
 
-    writeln!(stdout(),"{:?}", corr_list).unwrap();
+    writeln!(stdout(), "{:?}", corr_list).unwrap();
 
     assert_eq!(corr_list.corr_map.len(), 26);
 

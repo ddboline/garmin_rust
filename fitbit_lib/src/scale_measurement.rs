@@ -46,7 +46,7 @@ impl ScaleMeasurement {
             .ok_or_else(|| err_msg("No values"))?;
         let values: Vec<_> = values
             .iter()
-            .filter_map(|x| x.formatted_value.as_ref().map(|s| s.as_str()))
+            .filter_map(|x| x.formatted_value.as_ref().map(String::as_str))
             .collect();
         if values.len() > 5 {
             let datetime = Utc

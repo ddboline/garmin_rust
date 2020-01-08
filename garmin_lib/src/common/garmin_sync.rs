@@ -1,5 +1,5 @@
+use anyhow::Error;
 use chrono::DateTime;
-use failure::{err_msg, Error};
 use log::debug;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rusoto_core::Region;
@@ -88,7 +88,7 @@ impl GarminSync<S3Client> {
                         start_after: None,
                     })
                     .sync()
-                    .map_err(err_msg)
+                    .map_err(Into::into)
             })?;
             continuation_token = current_list.next_continuation_token.clone();
 
@@ -262,16 +262,17 @@ impl GarminSync<S3Client> {
     ) -> Result<String, Error> {
         let etag = exponential_retry(|| {
             {
-                self.s3_client.download_to_file(
-                    GetObjectRequest {
-                        bucket: s3_bucket.to_string(),
-                        key: s3_key.to_string(),
-                        ..Default::default()
-                    },
-                    local_file,
-                )
+                self.s3_client
+                    .download_to_file(
+                        GetObjectRequest {
+                            bucket: s3_bucket.to_string(),
+                            key: s3_key.to_string(),
+                            ..Default::default()
+                        },
+                        local_file,
+                    )
+                    .map_err(Into::into)
             }
-            .map_err(err_msg)
         })?
         .e_tag
         .unwrap_or_else(|| "".to_string());
@@ -296,17 +297,18 @@ impl GarminSync<S3Client> {
     ) -> Result<(), Error> {
         exponential_retry(|| {
             {
-                self.s3_client.upload_from_file(
-                    &local_file,
-                    PutObjectRequest {
-                        bucket: s3_bucket.to_string(),
-                        key: s3_key.to_string(),
-                        acl: acl.clone(),
-                        ..Default::default()
-                    },
-                )
+                self.s3_client
+                    .upload_from_file(
+                        &local_file,
+                        PutObjectRequest {
+                            bucket: s3_bucket.to_string(),
+                            key: s3_key.to_string(),
+                            acl: acl.clone(),
+                            ..Default::default()
+                        },
+                    )
+                    .map_err(Into::into)
             }
-            .map_err(err_msg)
         })
         .map(|_| ())
     }

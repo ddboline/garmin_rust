@@ -1,9 +1,9 @@
+use anyhow::{format_err, Error};
 use avro_rs::{from_value, Codec, Reader, Schema, Writer};
 use chrono::{
     DateTime, Duration, FixedOffset, Local, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc,
 };
 use cpython::{exc, FromPyObject, PyDict, PyErr, PyResult, Python};
-use failure::{err_msg, Error};
 use glob::glob;
 use itertools::Itertools;
 use log::debug;
@@ -191,14 +191,16 @@ impl FitbitHeartRate {
     }
 
     pub fn dump_to_avro(values: &[Self], output_filename: &str) -> Result<(), Error> {
-        let schema = Schema::parse_str(FITBITHEARTRATE_SCHEMA)?;
+        let schema = Schema::parse_str(FITBITHEARTRATE_SCHEMA).map_err(|e| format_err!("{}", e))?;
 
         let output_file = File::create(output_filename)?;
 
         let mut writer = Writer::with_codec(&schema, output_file, Codec::Snappy);
 
-        writer.append_ser(values)?;
-        writer.flush().map(|_| ())
+        writer
+            .append_ser(values)
+            .and_then(|_| writer.flush().map(|_| ()))
+            .map_err(|e| format_err!("{}", e))
     }
 
     pub fn read_avro_by_date(config: &GarminConfig, date: NaiveDate) -> Result<Vec<Self>, Error> {
@@ -214,11 +216,16 @@ impl FitbitHeartRate {
     pub fn read_avro(input_filename: &str) -> Result<Vec<Self>, Error> {
         let input_file = File::open(input_filename)?;
 
-        Reader::new(input_file)?
+        Reader::new(input_file)
+            .map_err(|e| format_err!("{}", e))?
             .nth(0)
-            .map(|record| from_value::<Vec<Self>>(&record?).map_err(err_msg))
+            .map(|record| {
+                let record = record.map_err(|e| format_err!("{}", e))?;
+                from_value::<Vec<Self>>(&record).map_err(|e| format_err!("{}", e))
+            })
             .transpose()
             .map(|x| x.unwrap_or_else(Vec::new))
+            .map_err(|e| format_err!("{}", e))
     }
 
     pub fn merge_slice_to_avro(config: &GarminConfig, values: &[Self]) -> Result<(), Error> {

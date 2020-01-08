@@ -1,5 +1,5 @@
+use anyhow::{format_err, Error};
 use chrono::{DateTime, TimeZone, Utc};
-use failure::{err_msg, format_err, Error};
 use log::debug;
 use log::error;
 use num_traits::pow::Pow;
@@ -38,7 +38,7 @@ pub fn convert_time_string(time_str: &str) -> Result<f64, Error> {
 pub fn convert_xml_local_time_to_utc(xml_local_time: &str) -> Result<DateTime<Utc>, Error> {
     DateTime::parse_from_rfc3339(xml_local_time)
         .map(|x| x.with_timezone(&Utc))
-        .map_err(err_msg)
+        .map_err(Into::into)
 }
 
 pub fn get_md5sum(filename: &str) -> Result<String, Error> {
@@ -68,7 +68,7 @@ pub fn print_h_m_s(second: f64, do_hours: bool) -> Result<String, Error> {
     } else if hours == 0 {
         Ok(format!("{:02}:{:02}", minutes, seconds))
     } else {
-        Err(err_msg("Negative result!"))
+        Err(format_err!("Negative result!"))
     }
 }
 
@@ -149,7 +149,7 @@ where
 pub fn extract_zip_from_garmin_connect(filename: &str, ziptmpdir: &str) -> Result<String, Error> {
     let new_filename = Path::new(filename)
         .file_name()
-        .ok_or_else(|| err_msg("Bad filename"))?
+        .ok_or_else(|| format_err!("Bad filename"))?
         .to_string_lossy();
     let new_filename = new_filename.replace(".zip", ".fit");
     let command = format!("unzip {} -d {}", filename, ziptmpdir);

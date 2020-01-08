@@ -1,5 +1,5 @@
+use anyhow::{format_err, Error};
 use chrono::{DateTime, Utc};
-use failure::{err_msg, Error};
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -36,9 +36,9 @@ impl GarminParseTrait for GarminParse {
                     GarminParseTcx::new(false).with_file(filename, corr_map)
                 }
                 Some("gmn") => GarminParseGmn::new().with_file(filename, corr_map),
-                _ => Err(err_msg("Invalid extension")),
+                _ => Err(format_err!("Invalid extension")),
             },
-            _ => Err(err_msg("No extension?")),
+            _ => Err(format_err!("No extension?")),
         }
     }
 

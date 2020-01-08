@@ -5,7 +5,6 @@ use actix_web::http::StatusCode;
 use actix_web::web::{block, Data, Json, Query};
 use actix_web::HttpResponse;
 use chrono::Utc;
-use failure::{err_msg, format_err, Error};
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::Write;
@@ -20,6 +19,7 @@ use garmin_lib::reports::garmin_file_report_html::generate_history_buttons;
 use garmin_lib::reports::garmin_file_report_txt::get_splits;
 use garmin_lib::utils::iso_8601_datetime::convert_datetime_to_str;
 
+use super::errors::ServiceError as Error;
 use super::logged_user::LoggedUser;
 
 use super::garmin_rust_app::AppState;
@@ -79,21 +79,17 @@ pub async fn garmin(
     }
     state.history.write().push(grec.0.filter.clone());
 
-    let body = block(move || state.db.handle(grec))
-        .await
-        .map_err(err_msg)?;
+    let body = block(move || state.db.handle(grec)).await?;
 
     form_http_response(body)
 }
 
 async fn save_file(file_path: String, mut field: Field) -> Result<(), Error> {
-    let mut file = block(|| File::create(file_path)).await.map_err(err_msg)?;
+    let mut file = block(|| File::create(file_path)).await?;
 
     while let Some(chunk) = field.next().await {
-        let data = chunk.map_err(err_msg)?;
-        file = block(move || file.write_all(&data).map(|_| file))
-            .await
-            .map_err(err_msg)?;
+        let data = chunk?;
+        file = block(move || file.write_all(&data).map(|_| file)).await?;
     }
     Ok(())
 }
@@ -103,7 +99,7 @@ pub async fn garmin_upload(
     _: LoggedUser,
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
-    let tempdir = TempDir::new("garmin").map_err(|e| format_err!("{:?}", e))?;
+    let tempdir = TempDir::new("garmin")?;
     let tempdir_str = tempdir.path().to_string_lossy().to_string();
 
     let fname = format!(
@@ -113,13 +109,11 @@ pub async fn garmin_upload(
     );
 
     while let Some(item) = multipart.next().await {
-        let field = item.map_err(err_msg)?;
+        let field = item?;
         save_file(fname.clone(), field).await?;
     }
 
-    let flist = block(move || state.db.handle(GarminUploadRequest { filename: fname }))
-        .await
-        .map_err(err_msg)?;
+    let flist = block(move || state.db.handle(GarminUploadRequest { filename: fname })).await?;
     to_json(&flist)
 }
 
@@ -127,16 +121,12 @@ pub async fn garmin_connect_sync(
     _: LoggedUser,
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
-    let flist = block(move || state.db.handle(GarminConnectSyncRequest {}))
-        .await
-        .map_err(err_msg)?;
+    let flist = block(move || state.db.handle(GarminConnectSyncRequest {})).await?;
     to_json(&flist)
 }
 
 pub async fn garmin_sync(_: LoggedUser, state: Data<AppState>) -> Result<HttpResponse, Error> {
-    let body = block(move || state.db.handle(GarminSyncRequest {}))
-        .await
-        .map_err(err_msg)?;
+    let body = block(move || state.db.handle(GarminSyncRequest {})).await?;
     let body = format!(
         r#"<textarea cols=100 rows=40>{}</textarea>"#,
         body.join("\n")
@@ -145,9 +135,7 @@ pub async fn garmin_sync(_: LoggedUser, state: Data<AppState>) -> Result<HttpRes
 }
 
 pub async fn strava_sync(_: LoggedUser, state: Data<AppState>) -> Result<HttpResponse, Error> {
-    let body = block(move || state.db.handle(StravaSyncRequest {}))
-        .await
-        .map_err(err_msg)?;
+    let body = block(move || state.db.handle(StravaSyncRequest {})).await?;
     let body = format!(
         r#"<textarea cols=100 rows=40>{}</textarea>"#,
         body.join("\n")
@@ -161,9 +149,7 @@ pub async fn strava_auth(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
-    let body = block(move || state.db.handle(query))
-        .await
-        .map_err(err_msg)?;
+    let body = block(move || state.db.handle(query)).await?;
     form_http_response(body)
 }
 
@@ -173,9 +159,7 @@ pub async fn strava_callback(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
-    let body = block(move || state.db.handle(query))
-        .await
-        .map_err(err_msg)?;
+    let body = block(move || state.db.handle(query)).await?;
     form_http_response(body)
 }
 
@@ -185,9 +169,7 @@ pub async fn strava_activities(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
-    let alist = block(move || state.db.handle(query))
-        .await
-        .map_err(err_msg)?;
+    let alist = block(move || state.db.handle(query)).await?;
     to_json(&alist)
 }
 
@@ -196,9 +178,7 @@ pub async fn strava_activities_db(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let query = StravaActivitiesDBRequest(query.into_inner());
-    let alist = block(move || state.db.handle(query))
-        .await
-        .map_err(err_msg)?;
+    let alist = block(move || state.db.handle(query)).await?;
     to_json(&alist)
 }
 
@@ -208,7 +188,7 @@ pub async fn strava_activities_db_update(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let req = payload.into_inner();
-    let body = block(move || state.db.handle(req)).await.map_err(err_msg)?;
+    let body = block(move || state.db.handle(req)).await?;
     form_http_response(body.join("\n"))
 }
 
@@ -218,9 +198,7 @@ pub async fn strava_upload(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let payload = payload.into_inner();
-    let body = block(move || state.db.handle(payload))
-        .await
-        .map_err(err_msg)?;
+    let body = block(move || state.db.handle(payload)).await?;
     form_http_response(body)
 }
 
@@ -230,15 +208,13 @@ pub async fn strava_update(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let payload = payload.into_inner();
-    let body = block(move || state.db.handle(payload))
-        .await
-        .map_err(err_msg)?;
+    let body = block(move || state.db.handle(payload)).await?;
     form_http_response(body)
 }
 
 pub async fn fitbit_auth(_: LoggedUser, state: Data<AppState>) -> Result<HttpResponse, Error> {
     let req = FitbitAuthRequest {};
-    let body = block(move || state.db.handle(req)).await.map_err(err_msg)?;
+    let body = block(move || state.db.handle(req)).await?;
     form_http_response(body)
 }
 
@@ -248,9 +224,7 @@ pub async fn fitbit_heartrate_api(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
-    let hlist = block(move || state.db.handle(query))
-        .await
-        .map_err(err_msg)?;
+    let hlist = block(move || state.db.handle(query)).await?;
     to_json(&hlist)
 }
 
@@ -259,9 +233,7 @@ pub async fn fitbit_heartrate_cache(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
-    let hlist = block(move || state.db.handle(query))
-        .await
-        .map_err(err_msg)?;
+    let hlist = block(move || state.db.handle(query)).await?;
     to_json(&hlist)
 }
 
@@ -270,7 +242,7 @@ pub async fn fitbit_bodyweight(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let req = FitbitBodyWeightFatRequest {};
-    let hlist = block(move || state.db.handle(req)).await.map_err(err_msg)?;
+    let hlist = block(move || state.db.handle(req)).await?;
     to_json(&hlist)
 }
 
@@ -279,7 +251,7 @@ pub async fn fitbit_bodyweight_sync(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let req = FitbitBodyWeightFatUpdateRequest {};
-    let hlist = block(move || state.db.handle(req)).await.map_err(err_msg)?;
+    let hlist = block(move || state.db.handle(req)).await?;
     to_json(&hlist)
 }
 
@@ -289,9 +261,7 @@ pub async fn fitbit_heartrate_db(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
-    let hlist = block(move || state.db.handle(query))
-        .await
-        .map_err(err_msg)?;
+    let hlist = block(move || state.db.handle(query)).await?;
     to_json(&hlist)
 }
 
@@ -301,9 +271,7 @@ pub async fn fitbit_callback(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
-    let body = block(move || state.db.handle(query))
-        .await
-        .map_err(err_msg)?;
+    let body = block(move || state.db.handle(query)).await?;
     form_http_response(body)
 }
 
@@ -313,9 +281,7 @@ pub async fn fitbit_sync(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
-    block(move || state.db.handle(query))
-        .await
-        .map_err(err_msg)?;
+    block(move || state.db.handle(query)).await?;
     form_http_response("finished".into())
 }
 
@@ -326,7 +292,7 @@ pub async fn fitbit_plots(
 ) -> Result<HttpResponse, Error> {
     let query: ScaleMeasurementPlotRequest = query.into_inner().into();
     let _s = state.clone();
-    let body = block(move || _s.db.handle(query)).await.map_err(err_msg)?;
+    let body = block(move || _s.db.handle(query)).await?;
 
     let body = body.replace(
         "HISTORYBUTTONS",
@@ -341,7 +307,7 @@ pub async fn heartrate_plots(
 ) -> Result<HttpResponse, Error> {
     let query: FitbitHeartratePlotRequest = query.into_inner().into();
     let _s = state.clone();
-    let body = block(move || _s.db.handle(query)).await.map_err(err_msg)?;
+    let body = block(move || _s.db.handle(query)).await?;
     let body = body.replace(
         "HISTORYBUTTONS",
         &generate_history_buttons(&state.history.read()),
@@ -355,9 +321,7 @@ pub async fn fitbit_tcx_sync(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
-    let flist = block(move || state.db.handle(query))
-        .await
-        .map_err(err_msg)?;
+    let flist = block(move || state.db.handle(query)).await?;
     to_json(&flist)
 }
 
@@ -366,9 +330,7 @@ pub async fn scale_measurement(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
-    let slist = block(move || state.db.handle(query))
-        .await
-        .map_err(err_msg)?;
+    let slist = block(move || state.db.handle(query)).await?;
     to_json(&slist)
 }
 
@@ -378,9 +340,7 @@ pub async fn scale_measurement_update(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let measurements = data.into_inner();
-    block(move || state.db.handle(measurements))
-        .await
-        .map_err(err_msg)?;
+    block(move || state.db.handle(measurements)).await?;
     form_http_response("finished".into())
 }
 
@@ -404,9 +364,7 @@ pub async fn garmin_list_gps_tracks(
 
     let greq: GarminListRequest = proc_pattern_wrapper(query, &state.history.read()).into();
 
-    let gps_list = block(move || state.db.handle(greq))
-        .await
-        .map_err(err_msg)?;
+    let gps_list = block(move || state.db.handle(greq)).await?;
     let glist = GpsList { gps_list };
     to_json(&glist)
 }
@@ -426,7 +384,7 @@ pub async fn garmin_get_hr_data(
     let greq: GarminListRequest = proc_pattern_wrapper(query, &state.history.read()).into();
 
     let _s = state.clone();
-    let file_list = block(move || _s.db.handle(greq)).await.map_err(err_msg)?;
+    let file_list = block(move || _s.db.handle(greq)).await?;
 
     let hr_data = match file_list.len() {
         1 => {
@@ -439,15 +397,11 @@ pub async fn garmin_get_hr_data(
                 Err(_) => {
                     let gps_file = format!("{}/{}", &config.gps_dir, file_name);
                     let corr_map = block(move || state.db.handle(GarminCorrRequest {}))
-                        .await
-                        .map_err(err_msg)?
+                        .await?
                         .corr_map;
-                    let gfile = block(move || GarminParse::new().with_file(&gps_file, &corr_map))
-                        .await
-                        .map_err(err_msg)?;
-                    block(move || gfile.dump_avro(&avro_file).map(|_| gfile))
-                        .await
-                        .map_err(err_msg)?
+                    let gfile =
+                        block(move || GarminParse::new().with_file(&gps_file, &corr_map)).await?;
+                    block(move || gfile.dump_avro(&avro_file).map(|_| gfile)).await?
                 }
             }
             .points
@@ -488,7 +442,7 @@ pub async fn garmin_get_hr_pace(
     let greq: GarminListRequest = proc_pattern_wrapper(query, &state.history.read()).into();
 
     let _s = state.clone();
-    let file_list = block(move || _s.db.handle(greq)).await.map_err(err_msg)?;
+    let file_list = block(move || _s.db.handle(greq)).await?;
 
     let hrpace = match file_list.len() {
         1 => {
@@ -501,13 +455,10 @@ pub async fn garmin_get_hr_pace(
                     let gps_file = format!("{}/{}", &config.gps_dir, file_name);
 
                     let corr_map = block(move || state.db.handle(GarminCorrRequest {}))
-                        .await
-                        .map_err(err_msg)?
+                        .await?
                         .corr_map;
 
-                    block(move || GarminParse::new().with_file(&gps_file, &corr_map))
-                        .await
-                        .map_err(err_msg)?
+                    block(move || GarminParse::new().with_file(&gps_file, &corr_map)).await?
                 }
             };
 

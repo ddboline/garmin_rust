@@ -1,4 +1,4 @@
-use failure::{err_msg, Error};
+use anyhow::Error;
 use postgres::NoTls;
 use r2d2::{Pool, PooledConnection};
 use r2d2_postgres::PostgresConnectionManager;
@@ -37,6 +37,6 @@ impl PgPool {
     }
 
     pub fn get(&self) -> Result<PooledConnection<PostgresConnectionManager<NoTls>>, Error> {
-        self.pool.get().map_err(err_msg)
+        self.pool.get().map_err(Into::into)
     }
 }

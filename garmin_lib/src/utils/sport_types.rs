@@ -1,5 +1,5 @@
+use anyhow::{format_err, Error};
 use bytes::BytesMut;
-use failure::{format_err, Error};
 use lazy_static::lazy_static;
 use postgres::types::{FromSql, IsNull, ToSql, Type};
 use serde::{self, Deserialize, Deserializer, Serializer};

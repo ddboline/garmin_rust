@@ -1,7 +1,7 @@
 #![allow(clippy::wrong_self_convention)]
 
+use anyhow::{format_err, Error};
 use chrono::{DateTime, Utc};
-use failure::{err_msg, format_err, Error};
 use json::{parse, JsonValue};
 use log::debug;
 use postgres_query::FromSqlRow;
@@ -114,7 +114,7 @@ impl GarminCorrectionList {
     pub fn get_pool(&self) -> Result<&PgPool, Error> {
         self.pool
             .as_ref()
-            .ok_or_else(|| err_msg("No Database Connection"))
+            .ok_or_else(|| format_err!("No Database Connection"))
     }
 
     pub fn get_corr_list(&self) -> Vec<GarminCorrectionLap> {
@@ -380,7 +380,7 @@ impl GarminCorrectionList {
         )?
             .iter()
             .map(|row| {
-                GarminCorrectionLap::from_row(row).map_err(err_msg)
+                GarminCorrectionLap::from_row(row).map_err(Into::into)
             })
             .collect();
         let corr_list = corr_list?;

@@ -1,5 +1,5 @@
+use anyhow::{format_err, Error};
 use chrono::{DateTime, Utc};
-use failure::{err_msg, Error};
 use roxmltree::{Document, NodeType};
 use std::collections::HashMap;
 use std::env::var;
@@ -37,7 +37,7 @@ impl GarminParseTrait for GarminParseGmn {
         let gmn_output = self.parse_file(filename)?;
         let (lap_list, sport) =
             apply_lap_corrections(&gmn_output.lap_list, gmn_output.sport, corr_map);
-        let first_lap = lap_list.get(0).ok_or_else(|| err_msg("No laps"))?;
+        let first_lap = lap_list.get(0).ok_or_else(|| format_err!("No laps"))?;
         let gfile = GarminFile {
             filename: file_name,
             filetype: "gmn".into(),

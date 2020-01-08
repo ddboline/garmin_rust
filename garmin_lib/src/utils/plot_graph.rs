@@ -1,4 +1,4 @@
-use failure::{err_msg, Error};
+use anyhow::{format_err, Error};
 use std::collections::HashMap;
 use std::io::{stdout, Write};
 
@@ -11,12 +11,12 @@ pub fn generate_d3_plot(opts: &PlotOpts) -> Result<String, Error> {
     let data = match opts.data.as_ref() {
         Some(x) => {
             if x.is_empty() {
-                return Err(err_msg(err_str));
+                return Err(format_err!(err_str));
             } else {
                 x
             }
         }
-        None => return Err(err_msg(err_str)),
+        None => return Err(format_err!(err_str)),
     };
 
     let body = if opts.do_scatter {

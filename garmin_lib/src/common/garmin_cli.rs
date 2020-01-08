@@ -1,5 +1,5 @@
+use anyhow::{format_err, Error};
 use chrono::{DateTime, Utc};
-use failure::{err_msg, format_err, Error};
 use lazy_static::lazy_static;
 use log::debug;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
@@ -101,7 +101,7 @@ impl GarminCli {
     pub fn get_pool(&self) -> Result<PgPool, Error> {
         self.pool
             .as_ref()
-            .ok_or_else(|| err_msg("No Database Connection"))
+            .ok_or_else(|| format_err!("No Database Connection"))
             .map(|x| x.clone())
     }
 
@@ -373,7 +373,7 @@ impl GarminCli {
             1 => {
                 let file_name = file_list
                     .get(0)
-                    .ok_or_else(|| err_msg("This shouldn't be happening..."))?;
+                    .ok_or_else(|| format_err!("This shouldn't be happening..."))?;
                 debug!("{}", &file_name);
                 let avro_file = format!("{}/{}.avro", &self.get_config().cache_dir, file_name);
                 let gfile = match garmin_file::GarminFile::read_avro(&avro_file) {
@@ -417,7 +417,7 @@ impl GarminCli {
             1 => {
                 let file_name = file_list
                     .get(0)
-                    .ok_or_else(|| err_msg("This shouldn't be happening..."))?;
+                    .ok_or_else(|| format_err!("This shouldn't be happening..."))?;
                 debug!("{}", &file_name);
                 let avro_file = format!("{}/{}.avro", self.get_config().cache_dir, file_name);
                 let gfile = match garmin_file::GarminFile::read_avro(&avro_file) {
@@ -518,7 +518,7 @@ impl GarminCli {
 
                 rename(&filename, &outfile)
                     .or_else(|_| copy(&filename, &outfile).map(|_| ()))
-                    .map_err(err_msg)
+                    .map_err(Into::into)
             })
             .collect()
     }

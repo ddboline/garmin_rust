@@ -1,5 +1,5 @@
+use anyhow::Error;
 use chrono::{DateTime, Utc};
-use failure::Error;
 use log::debug;
 
 use crate::common::pgpool::PgPool;

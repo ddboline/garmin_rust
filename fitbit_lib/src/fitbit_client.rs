@@ -1,9 +1,9 @@
+use anyhow::{format_err, Error};
 use chrono::{DateTime, FixedOffset, NaiveDate, Utc};
 use cpython::{
     FromPyObject, ObjectProtocol, PyDict, PyList, PyObject, PyResult, PyTuple, Python,
     PythonObject, ToPyObject,
 };
-use failure::{err_msg, format_err, Error};
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 
@@ -357,7 +357,7 @@ impl FitbitClient {
         let data = self
             ._download_tcx(py, tcx_url)
             .map_err(|e| format_err!("{:?}", e))?;
-        outfile.write_all(&data).map_err(err_msg)
+        outfile.write_all(&data).map_err(Into::into)
     }
 }
 

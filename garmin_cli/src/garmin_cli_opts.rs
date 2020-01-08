@@ -1,5 +1,5 @@
+use anyhow::Error;
 use chrono::{Duration, Utc};
-use failure::Error;
 use std::fs::File;
 use std::path::Path;
 use structopt::StructOpt;

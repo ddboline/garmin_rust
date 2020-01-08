@@ -1,5 +1,5 @@
+use anyhow::format_err;
 use crossbeam_utils::thread;
-use failure::format_err;
 
 use fitbit_bot::telegram_bot::run_bot;
 use garmin_lib::common::garmin_config::GarminConfig;

@@ -1,6 +1,6 @@
+use anyhow::{format_err, Error};
 use avro_rs::{Codec, Schema, Writer};
 use chrono::{DateTime, Utc};
-use failure::{err_msg, format_err, Error};
 use log::debug;
 use postgres_query::FromSqlRow;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
@@ -204,7 +204,7 @@ impl GarminSummaryList {
     pub fn get_pool(&self) -> Result<PgPool, Error> {
         self.pool
             .as_ref()
-            .ok_or_else(|| err_msg("No Database Connection"))
+            .ok_or_else(|| format_err!("No Database Connection"))
             .map(|x| x.clone())
     }
 
@@ -292,14 +292,17 @@ impl GarminSummaryList {
     }
 
     pub fn dump_summary_to_avro(self, output_filename: &str) -> Result<(), Error> {
-        let schema = Schema::parse_str(GARMIN_SUMMARY_AVRO_SCHEMA)?;
+        let schema =
+            Schema::parse_str(GARMIN_SUMMARY_AVRO_SCHEMA).map_err(|e| format_err!("{}", e))?;
 
         let output_file = File::create(output_filename)?;
 
         let mut writer = Writer::with_codec(&schema, output_file, Codec::Snappy);
 
-        writer.extend_ser(self.summary_list)?;
-        writer.flush().map(|_| ())
+        writer
+            .extend_ser(self.summary_list)
+            .and_then(|_| writer.flush().map(|_| ()))
+            .map_err(|e| format_err!("{}", e))
     }
 
     pub fn write_summary_to_avro_files(&self, summary_cache_dir: &str) -> Result<(), Error> {
@@ -406,7 +409,7 @@ impl GarminSummaryList {
         conn.execute(update_query.as_str(), &[])?;
         conn.execute(drop_table_query.as_str(), &[])
             .map(|_| ())
-            .map_err(err_msg)
+            .map_err(Into::into)
     }
 }
 
@@ -428,7 +431,7 @@ pub fn get_list_of_files_from_db(
 
     conn.query(query.as_str(), &[])?
         .iter()
-        .map(|row| row.try_get(0).map_err(err_msg))
+        .map(|row| row.try_get(0).map_err(Into::into))
         .collect()
 }
 
@@ -439,6 +442,7 @@ pub fn get_maximum_begin_datetime(pool: &PgPool) -> Result<Option<DateTime<Utc>>
 
     conn.query(query, &[])?
         .get(0)
-        .map(|row| row.try_get(0).map_err(err_msg))
+        .map(|row| row.try_get(0))
         .transpose()
+        .map_err(Into::into)
 }

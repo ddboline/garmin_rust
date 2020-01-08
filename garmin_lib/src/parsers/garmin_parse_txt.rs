@@ -1,5 +1,5 @@
+use anyhow::{format_err, Error};
 use chrono::{DateTime, Utc};
-use failure::{err_msg, Error};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -39,13 +39,13 @@ impl GarminParseTrait for GarminParseTxt {
         let sport: SportTypes = txt_output
             .lap_list
             .get(0)
-            .ok_or_else(|| err_msg("No laps"))?
+            .ok_or_else(|| format_err!("No laps"))?
             .lap_type
             .as_ref()
             .and_then(|s| s.parse().ok())
             .unwrap_or(SportTypes::None);
         let (lap_list, sport) = apply_lap_corrections(&txt_output.lap_list, sport, corr_map);
-        let first_lap = lap_list.get(0).ok_or_else(|| err_msg("No laps"))?;
+        let first_lap = lap_list.get(0).ok_or_else(|| format_err!("No laps"))?;
         let gfile = GarminFile {
             filename: file_name,
             filetype: "txt".into(),

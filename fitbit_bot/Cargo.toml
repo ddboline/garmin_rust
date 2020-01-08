@@ -1,6 +1,6 @@
 [package]
 name = "fitbit_bot"
-version = "0.6.4"
+version = "0.6.5"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -16,5 +16,7 @@ crossbeam-channel = "0.4"
 crossbeam-utils = "0.7"
 lazy_static = "1.4"
 parking_lot = "0.10"
-failure = "0.1"
 log = "0.4"
+anyhow = "1.0"
+thiserror = "1.0"
+actix-threadpool = "0.3"

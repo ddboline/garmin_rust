@@ -1,7 +1,7 @@
 #![allow(clippy::wrong_self_convention)]
 #![allow(clippy::cognitive_complexity)]
 
-use failure::{err_msg, Error};
+use anyhow::{format_err, Error};
 use std::env::var;
 use std::ops::Deref;
 use std::path::Path;
@@ -120,7 +120,7 @@ impl GarminConfig {
     /// if that doesn't exist fall back on the default behaviour of dotenv
     /// Panic if required variables aren't set appropriately.
     pub fn get_config(fname: Option<&str>) -> Result<GarminConfig, Error> {
-        let home_dir = var("HOME").map_err(|_| err_msg("No HOME directory..."))?;
+        let home_dir = var("HOME").map_err(|_| format_err!("No HOME directory..."))?;
 
         let default_fname = format!("{}/.config/garmin_rust/config.env", home_dir);
 
@@ -140,13 +140,13 @@ impl GarminConfig {
         let conf = GarminConfigInner::new().from_env();
 
         if &conf.pgurl == "" {
-            Err(err_msg("No PGURL specified"))
+            Err(format_err!("No PGURL specified"))
         } else if &conf.gps_bucket == "" {
-            Err(err_msg("No GPS_BUCKET specified"))
+            Err(format_err!("No GPS_BUCKET specified"))
         } else if &conf.cache_bucket == "" {
-            Err(err_msg("No CACHE_BUCKET specified"))
+            Err(format_err!("No CACHE_BUCKET specified"))
         } else if &conf.summary_bucket == "" {
-            Err(err_msg("No SUMMARY_BUCKET specified"))
+            Err(format_err!("No SUMMARY_BUCKET specified"))
         } else {
             Ok(GarminConfig(Arc::new(conf)))
         }

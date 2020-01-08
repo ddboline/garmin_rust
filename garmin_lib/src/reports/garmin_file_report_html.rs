@@ -1,5 +1,5 @@
+use anyhow::Error;
 use chrono::{Date, Datelike, Local};
-use failure::Error;
 use log::debug;
 use std::collections::HashSet;
 

@@ -1,6 +1,6 @@
+use anyhow::Error;
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use crossbeam_utils::thread::Scope;
-use failure::Error;
 use futures::StreamExt;
 use lazy_static::lazy_static;
 use log::debug;

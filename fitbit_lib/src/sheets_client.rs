@@ -1,4 +1,4 @@
-use failure::{err_msg, format_err, Error};
+use anyhow::{format_err, Error};
 use google_sheets4::{Sheet, Sheets};
 use hyper::net::HttpsConnector;
 use hyper::Client;
@@ -41,7 +41,7 @@ impl SheetsClient {
         let secret: ConsoleApplicationSecret = serde_json::from_reader(secret_file)?;
         let secret = secret
             .installed
-            .ok_or_else(|| err_msg("ConsoleApplicationSecret.installed is None"))?;
+            .ok_or_else(|| format_err!("ConsoleApplicationSecret.installed is None"))?;
         let token_file = format!("{}/{}.json", config.google_token_path, session_name);
 
         let parent = Path::new(&config.google_token_path);
@@ -79,7 +79,7 @@ impl SheetsClient {
             .include_grid_data(true)
             .doit()
             .map_err(|e| format_err!("{:#?}", e))?;
-        sheets.sheets.ok_or_else(|| err_msg("No sheets"))
+        sheets.sheets.ok_or_else(|| format_err!("No sheets"))
     }
 }
 
@@ -92,11 +92,11 @@ pub fn run_sync_sheets(config: &GarminConfig, pool: &PgPool) -> Result<(), Error
     let c = SheetsClient::new(config, "ddboline@gmail.com");
     let sheets = c.get_sheets("1MG8so2pFKoOIpt0Vo9pUAtoNk-Y1SnHq9DiEFi-m5Uw")?;
     let sheet = &sheets[0];
-    let data = sheet.data.as_ref().ok_or_else(|| err_msg("No data"))?;
+    let data = sheet.data.as_ref().ok_or_else(|| format_err!("No data"))?;
     let row_data = &data[0]
         .row_data
         .as_ref()
-        .ok_or_else(|| err_msg("No row_data"))?;
+        .ok_or_else(|| format_err!("No row_data"))?;
     let measurements: Vec<ScaleMeasurement> = row_data[1..]
         .iter()
         .filter_map(|row| ScaleMeasurement::from_row_data(row).ok())

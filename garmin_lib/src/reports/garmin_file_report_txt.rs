@@ -1,4 +1,4 @@
-use failure::Error;
+use anyhow::Error;
 use log::debug;
 
 use crate::common::garmin_file::GarminFile;

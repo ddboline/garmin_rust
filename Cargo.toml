@@ -1,6 +1,6 @@
 [package]
 name = "garmin_rust"
-version = "0.6.4"
+version = "0.6.5"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -16,8 +16,9 @@ actix-rt = "1.0"
 log = "0.4"
 env_logger = "0.7"
 crossbeam-utils = "0.7"
-failure = "0.1"
 structopt = "0.3"
+anyhow = "1.0"
+thiserror = "1.0"
 
 [dev-dependencies]
 approx = "0.3"

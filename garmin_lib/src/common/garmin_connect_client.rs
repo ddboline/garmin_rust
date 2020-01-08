@@ -1,5 +1,5 @@
+use anyhow::{format_err, Error};
 use chrono::{DateTime, NaiveDateTime, Utc};
-use failure::{err_msg, format_err, Error};
 use log::debug;
 use maplit::hashmap;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
@@ -72,11 +72,11 @@ impl GarminConnectClient {
         if sso_text.contains("temporarily unavailable") {
             return Err(format_err!("SSO error {} {}", status, sso_text));
         } else if sso_text.contains(">sendEvent('FAIL')") {
-            return Err(err_msg("Invalid login"));
+            return Err(format_err!("Invalid login"));
         } else if sso_text.contains(">sendEvent('ACCOUNT_LOCKED')") {
-            return Err(err_msg("Account Locked"));
+            return Err(format_err!("Account Locked"));
         } else if sso_text.contains("renewPassword") {
-            return Err(err_msg("Reset password"));
+            return Err(format_err!("Reset password"));
         }
 
         let mut gc_redeem_resp = session.get(

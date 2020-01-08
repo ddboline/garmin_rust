@@ -1,6 +1,6 @@
+use anyhow::{format_err, Error};
 use chrono::offset::TimeZone;
 use chrono::{DateTime, Local, NaiveDate, Utc};
-use failure::{err_msg, Error};
 use google_sheets4::RowData;
 use log::debug;
 use postgres_query::FromSqlRow;
@@ -43,7 +43,7 @@ impl ScaleMeasurement {
         let values = row_data
             .values
             .as_ref()
-            .ok_or_else(|| err_msg("No values"))?;
+            .ok_or_else(|| format_err!("No values"))?;
         let values: Vec<_> = values
             .iter()
             .filter_map(|x| x.formatted_value.as_ref().map(String::as_str))
@@ -76,7 +76,7 @@ impl ScaleMeasurement {
                 bone_pct,
             })
         } else {
-            Err(err_msg("Too few entries"))
+            Err(format_err!("Too few entries"))
         }
     }
 
@@ -89,7 +89,7 @@ impl ScaleMeasurement {
         } else if msg.contains('=') {
             msg.split('=')
         } else {
-            return Err(err_msg("Bad message"));
+            return Err(format_err!("Bad message"));
         }
         .map(|x| {
             let y: i32 = x.parse()?;
@@ -100,7 +100,7 @@ impl ScaleMeasurement {
         let items = items?;
 
         if items.len() < 5 {
-            return Err(err_msg("Bad message"));
+            return Err(format_err!("Bad message"));
         }
         Ok(Self {
             datetime,
@@ -128,7 +128,7 @@ impl ScaleMeasurement {
 
         conn.execute(query.sql, &query.parameters)
             .map(|_| ())
-            .map_err(err_msg)
+            .map_err(Into::into)
     }
 
     pub fn read_from_db(
@@ -160,7 +160,7 @@ impl ScaleMeasurement {
         let mut conn = pool.get()?;
         conn.query(query.as_str(), &[])?
             .iter()
-            .map(|r| Self::from_row(r).map_err(err_msg))
+            .map(|r| Self::from_row(r).map_err(Into::into))
             .collect()
     }
 

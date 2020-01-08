@@ -1,5 +1,5 @@
 use chrono::{DateTime, Duration, Local, NaiveDate, NaiveDateTime, NaiveTime, Utc};
-use failure::Error;
+
 use log::debug;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -20,6 +20,7 @@ use garmin_lib::common::strava_sync::{
     get_strava_id_maximum_begin_datetime, get_strava_ids, upsert_strava_id, StravaItem,
 };
 
+use crate::errors::ServiceError as Error;
 use crate::logged_user::LoggedUser;
 use crate::CONFIG;
 
@@ -33,7 +34,9 @@ pub struct GarminCorrRequest {}
 impl HandleRequest<GarminCorrRequest> for PgPool {
     type Result = Result<GarminCorrectionList, Error>;
     fn handle(&self, _: GarminCorrRequest) -> Self::Result {
-        GarminCorrectionList::from_pool(&self).read_corrections_from_db()
+        GarminCorrectionList::from_pool(&self)
+            .read_corrections_from_db()
+            .map_err(Into::into)
     }
 }
 
@@ -49,7 +52,7 @@ impl HandleRequest<GarminHtmlRequest> for PgPool {
 
 impl GarminHtmlRequest {
     pub fn get_list_of_files_from_db(&self, pool: &PgPool) -> Result<Vec<String>, Error> {
-        get_list_of_files_from_db(&self.0.constraints, &pool)
+        get_list_of_files_from_db(&self.0.constraints, &pool).map_err(Into::into)
     }
 }
 
@@ -68,7 +71,7 @@ impl Into<GarminListRequest> for GarminHtmlRequest {
 
 impl GarminListRequest {
     pub fn get_list_of_files_from_db(&self, pool: &PgPool) -> Result<Vec<String>, Error> {
-        get_list_of_files_from_db(&self.constraints, &pool)
+        get_list_of_files_from_db(&self.constraints, &pool).map_err(Into::into)
     }
 }
 
@@ -86,7 +89,7 @@ pub struct AuthorizedUserRequest {
 impl HandleRequest<AuthorizedUserRequest> for PgPool {
     type Result = Result<bool, Error>;
     fn handle(&self, msg: AuthorizedUserRequest) -> Self::Result {
-        msg.user.is_authorized(self)
+        msg.user.is_authorized(self).map_err(Into::into)
     }
 }
 
@@ -125,21 +128,23 @@ impl HandleRequest<StravaSyncRequest> for PgPool {
     fn handle(&self, _: StravaSyncRequest) -> Self::Result {
         let config = CONFIG.clone();
 
-        get_strava_id_maximum_begin_datetime(&self).and_then(|max_datetime| {
-            let max_datetime = match max_datetime {
-                Some(dt) => {
-                    let max_datetime = dt - Duration::days(14);
-                    debug!("max_datetime {}", max_datetime);
-                    Some(max_datetime)
-                }
-                None => None,
-            };
+        get_strava_id_maximum_begin_datetime(&self)
+            .and_then(|max_datetime| {
+                let max_datetime = match max_datetime {
+                    Some(dt) => {
+                        let max_datetime = dt - Duration::days(14);
+                        debug!("max_datetime {}", max_datetime);
+                        Some(max_datetime)
+                    }
+                    None => None,
+                };
 
-            let client = StravaClient::from_file(config, Some(StravaAuthType::Read))?;
-            let activities = client.get_strava_activites(max_datetime, None)?;
+                let client = StravaClient::from_file(config, Some(StravaAuthType::Read))?;
+                let activities = client.get_strava_activites(max_datetime, None)?;
 
-            upsert_strava_id(&activities, &self)
-        })
+                upsert_strava_id(&activities, &self)
+            })
+            .map_err(Into::into)
     }
 }
 
@@ -193,7 +198,9 @@ impl HandleRequest<FitbitHeartrateApiRequest> for PgPool {
     fn handle(&self, msg: FitbitHeartrateApiRequest) -> Self::Result {
         let config = CONFIG.clone();
         let client = FitbitClient::from_file(config)?;
-        client.get_fitbit_intraday_time_series_heartrate(msg.date)
+        client
+            .get_fitbit_intraday_time_series_heartrate(msg.date)
+            .map_err(Into::into)
     }
 }
 
@@ -206,7 +213,7 @@ impl HandleRequest<FitbitHeartrateCacheRequest> for PgPool {
     type Result = Result<Vec<FitbitHeartRate>, Error>;
     fn handle(&self, msg: FitbitHeartrateCacheRequest) -> Self::Result {
         let config = CONFIG.clone();
-        FitbitHeartRate::read_avro_by_date(&config, msg.date)
+        FitbitHeartRate::read_avro_by_date(&config, msg.date).map_err(Into::into)
     }
 }
 
@@ -217,7 +224,7 @@ impl HandleRequest<FitbitBodyWeightFatRequest> for PgPool {
     fn handle(&self, _: FitbitBodyWeightFatRequest) -> Self::Result {
         let config = CONFIG.clone();
         let client = FitbitClient::from_file(config)?;
-        client.get_fitbit_bodyweightfat()
+        client.get_fitbit_bodyweightfat().map_err(Into::into)
     }
 }
 
@@ -259,7 +266,7 @@ impl HandleRequest<FitbitHeartrateDbRequest> for PgPool {
     type Result = Result<Vec<FitbitHeartRate>, Error>;
     fn handle(&self, msg: FitbitHeartrateDbRequest) -> Self::Result {
         let config = CONFIG.clone();
-        FitbitHeartRate::read_avro_by_date(&config, msg.date)
+        FitbitHeartRate::read_avro_by_date(&config, msg.date).map_err(Into::into)
     }
 }
 
@@ -273,7 +280,9 @@ impl HandleRequest<FitbitSyncRequest> for PgPool {
     fn handle(&self, msg: FitbitSyncRequest) -> Self::Result {
         let config = CONFIG.clone();
         let client = FitbitClient::from_file(config)?;
-        client.import_fitbit_heartrate(msg.date, &client.config)
+        client
+            .import_fitbit_heartrate(msg.date, &client.config)
+            .map_err(Into::into)
     }
 }
 
@@ -338,7 +347,7 @@ impl ScaleMeasurementRequest {
 impl HandleRequest<ScaleMeasurementRequest> for PgPool {
     type Result = Result<Vec<ScaleMeasurement>, Error>;
     fn handle(&self, req: ScaleMeasurementRequest) -> Self::Result {
-        ScaleMeasurement::read_from_db(self, req.start_date, req.end_date)
+        ScaleMeasurement::read_from_db(self, req.start_date, req.end_date).map_err(Into::into)
     }
 }
 
@@ -355,7 +364,7 @@ impl HandleRequest<ScaleMeasurementPlotRequest> for PgPool {
     type Result = Result<String, Error>;
     fn handle(&self, req: ScaleMeasurementPlotRequest) -> Self::Result {
         let measurements = ScaleMeasurement::read_from_db(self, req.0.start_date, req.0.end_date)?;
-        ScaleMeasurement::get_scale_measurement_plots(&measurements)
+        ScaleMeasurement::get_scale_measurement_plots(&measurements).map_err(Into::into)
     }
 }
 
@@ -379,6 +388,7 @@ impl HandleRequest<FitbitHeartratePlotRequest> for PgPool {
     fn handle(&self, req: FitbitHeartratePlotRequest) -> Self::Result {
         let config = CONFIG.clone();
         FitbitHeartRate::get_heartrate_plot(&config, self, req.start_date, req.end_date)
+            .map_err(Into::into)
     }
 }
 
@@ -421,7 +431,7 @@ impl HandleRequest<StravaAuthRequest> for PgPool {
             _ => None,
         });
         let client = StravaClient::from_file(config, auth_type)?;
-        client.get_authorization_url()
+        client.get_authorization_url().map_err(Into::into)
     }
 }
 
@@ -463,7 +473,9 @@ impl HandleRequest<StravaActivitiesRequest> for PgPool {
         let end_date = msg.end_date.map(|s| {
             DateTime::from_utc(NaiveDateTime::new(s, NaiveTime::from_hms(23, 59, 59)), Utc)
         });
-        client.get_strava_activites(start_date, end_date)
+        client
+            .get_strava_activites(start_date, end_date)
+            .map_err(Into::into)
     }
 }
 
@@ -479,7 +491,7 @@ impl HandleRequest<StravaActivitiesDBRequest> for PgPool {
         let end_date = msg.0.end_date.map(|s| {
             DateTime::from_utc(NaiveDateTime::new(s, NaiveTime::from_hms(23, 59, 59)), Utc)
         });
-        get_strava_ids(self, start_date, end_date)
+        get_strava_ids(self, start_date, end_date).map_err(Into::into)
     }
 }
 
@@ -491,7 +503,7 @@ pub struct StravaActiviesDBUpdateRequest {
 impl HandleRequest<StravaActiviesDBUpdateRequest> for PgPool {
     type Result = Result<Vec<String>, Error>;
     fn handle(&self, msg: StravaActiviesDBUpdateRequest) -> Self::Result {
-        upsert_strava_id(&msg.updates, self)
+        upsert_strava_id(&msg.updates, self).map_err(Into::into)
     }
 }
 
@@ -524,6 +536,7 @@ impl HandleRequest<StravaUploadRequest> for PgPool {
                 sport,
             )
             .map(|id| format!("http://strava.com/activities/{}", id))
+            .map_err(Into::into)
     }
 }
 
@@ -543,12 +556,14 @@ impl HandleRequest<StravaUpdateRequest> for PgPool {
 
         let config = CONFIG.clone();
         let client = StravaClient::from_file(config, Some(StravaAuthType::Write))?;
-        client.update_strava_activity(
-            &msg.activity_id,
-            &msg.title,
-            msg.description.as_ref().map(|x| x.as_str()),
-            msg.is_private,
-            sport,
-        )
+        client
+            .update_strava_activity(
+                &msg.activity_id,
+                &msg.title,
+                msg.description.as_ref().map(|x| x.as_str()),
+                msg.is_private,
+                sport,
+            )
+            .map_err(Into::into)
     }
 }

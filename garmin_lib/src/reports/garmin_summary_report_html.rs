@@ -1,5 +1,5 @@
+use anyhow::Error;
 use chrono::{Datelike, Utc};
-use failure::Error;
 
 use crate::reports::garmin_file_report_html::generate_history_buttons;
 use crate::reports::garmin_report_options::{GarminReportAgg, GarminReportOptions};

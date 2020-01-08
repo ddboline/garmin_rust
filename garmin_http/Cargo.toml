@@ -1,6 +1,6 @@
 [package]
 name = "garmin_http"
-version = "0.6.4"
+version = "0.6.5"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -10,7 +10,6 @@ actix = "0.9"
 actix-identity = "0.2"
 actix-rt = "1.0"
 garmin_lib = {path = "../garmin_lib"}
-failure = "0.1"
 chrono = "0.4"
 futures = "0.3"
 serde = "1.0"
@@ -25,3 +24,6 @@ log = "0.4"
 parking_lot = "0.10"
 actix-multipart = "0.2"
 tempdir = "0.3"
+anyhow = "1.0"
+thiserror = "1.0"
+actix-threadpool = "0.3"

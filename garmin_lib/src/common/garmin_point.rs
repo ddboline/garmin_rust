@@ -1,5 +1,5 @@
+use anyhow::{format_err, Error};
 use chrono::{DateTime, Utc};
-use failure::{err_msg, Error};
 use roxmltree::{Node, NodeType};
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -89,7 +89,7 @@ impl GarminPoint {
                 match d.tag_name().name() {
                     "Time" => {
                         new_point.time = convert_xml_local_time_to_utc(
-                            d.text().ok_or_else(|| err_msg("Malformed time"))?,
+                            d.text().ok_or_else(|| format_err!("Malformed time"))?,
                         )?
                     }
                     "AltitudeMeters" => new_point.altitude = d.text().and_then(|x| x.parse().ok()),

@@ -1,6 +1,6 @@
+use anyhow::{format_err, Error};
 use avro_rs::{from_value, Codec, Reader, Schema, Writer};
 use chrono::{DateTime, Utc};
-use failure::{err_msg, Error};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -96,28 +96,29 @@ impl GarminFile {
     }
 
     pub fn dump_avro(&self, output_filename: &str) -> Result<(), Error> {
-        let schema = Schema::parse_str(&GARMIN_FILE_AVRO_SCHEMA)?;
+        let schema =
+            Schema::parse_str(&GARMIN_FILE_AVRO_SCHEMA).map_err(|e| format_err!("{}", e))?;
 
         let output_file = File::create(output_filename)?;
 
         let mut writer = Writer::with_codec(&schema, output_file, Codec::Snappy);
 
-        writer.append_ser(&self)?;
-        writer.flush().map(|_| ())
+        writer
+            .append_ser(&self)
+            .and_then(|_| writer.flush().map(|_| ()))
+            .map_err(|e| format_err!("{}", e))
     }
 
     pub fn read_avro(input_filename: &str) -> Result<GarminFile, Error> {
         let input_file = File::open(input_filename)?;
 
-        let mut reader = Reader::new(input_file)?;
+        let mut reader = Reader::new(input_file).map_err(|e| format_err!("{}", e))?;
 
         if let Some(record) = reader.next() {
-            return match from_value::<GarminFile>(&record?) {
-                Ok(v) => Ok(v),
-                Err(e) => Err(err_msg(e)),
-            };
+            return from_value::<GarminFile>(&record.map_err(|e| format_err!("{}", e))?)
+                .map_err(|e| format_err!("{}", e));
         }
-        Err(err_msg("Failed to find file"))
+        Err(format_err!("Failed to find file"))
     }
 
     pub fn get_standardized_name(&self, suffix: &str) -> Result<String, Error> {

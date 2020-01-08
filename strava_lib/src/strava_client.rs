@@ -1,9 +1,9 @@
+use anyhow::{format_err, Error};
 use chrono::{DateTime, SecondsFormat, Utc};
 use cpython::{
     exc, FromPyObject, ObjectProtocol, PyDict, PyErr, PyIterator, PyObject, PyResult, PyTuple,
     Python, PythonObject, ToPyObject,
 };
-use failure::{err_msg, format_err, Error};
 use log::debug;
 use std::collections::HashMap;
 use std::fs::File;
@@ -198,7 +198,7 @@ impl StravaClient {
         let code = self
             ._exchange_code_for_token(py, code)
             .map_err(|e| format_err!("{:?}", e))
-            .and_then(|o| o.ok_or_else(|| err_msg("No code received")))?;
+            .and_then(|o| o.ok_or_else(|| format_err!("No code received")))?;
         self.auth_type = match state {
             "YWN0aXZpdHk6cmVhZF9hbGw=" => {
                 self.read_access_token = Some(code);
@@ -358,7 +358,7 @@ impl StravaClient {
 
         let ext = filepath
             .extension()
-            .ok_or_else(|| err_msg("No extension"))?
+            .ok_or_else(|| format_err!("No extension"))?
             .to_string_lossy()
             .to_string();
 
@@ -386,9 +386,9 @@ impl StravaClient {
                         .split_whitespace()
                         .nth(0)
                         .map(|x| x.to_string())
-                        .ok_or_else(|| err_msg("No id"))
+                        .ok_or_else(|| format_err!("No id"))
                 } else {
-                    Err(err_msg(err))
+                    Err(format_err!(err))
                 }
             }
         }

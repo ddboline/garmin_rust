@@ -1,5 +1,5 @@
+use anyhow::Error;
 use chrono::{DateTime, Utc};
-use failure::{err_msg, Error};
 use log::debug;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
@@ -40,8 +40,9 @@ pub fn get_strava_id_maximum_begin_datetime(pool: &PgPool) -> Result<Option<Date
 
     conn.query(query, &[])?
         .get(0)
-        .map(|row| row.try_get(0).map_err(err_msg))
+        .map(|row| row.try_get(0))
         .transpose()
+        .map_err(Into::into)
 }
 
 pub fn get_strava_id_map(pool: &PgPool) -> Result<HashMap<String, StravaItem>, Error> {

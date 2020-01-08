@@ -267,7 +267,7 @@ impl GarminSync<S3Client> {
                         GetObjectRequest {
                             bucket: s3_bucket.to_string(),
                             key: s3_key.to_string(),
-                            ..Default::default()
+                            ..GetObjectRequest::default()
                         },
                         local_file,
                     )
@@ -304,7 +304,7 @@ impl GarminSync<S3Client> {
                             bucket: s3_bucket.to_string(),
                             key: s3_key.to_string(),
                             acl: acl.clone(),
-                            ..Default::default()
+                            ..PutObjectRequest::default()
                         },
                     )
                     .map_err(Into::into)

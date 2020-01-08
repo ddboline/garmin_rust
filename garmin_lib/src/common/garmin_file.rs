@@ -109,13 +109,13 @@ impl GarminFile {
             .map_err(|e| format_err!("{}", e))
     }
 
-    pub fn read_avro(input_filename: &str) -> Result<GarminFile, Error> {
+    pub fn read_avro(input_filename: &str) -> Result<Self, Error> {
         let input_file = File::open(input_filename)?;
 
         let mut reader = Reader::new(input_file).map_err(|e| format_err!("{}", e))?;
 
         if let Some(record) = reader.next() {
-            return from_value::<GarminFile>(&record.map_err(|e| format_err!("{}", e))?)
+            return from_value::<Self>(&record.map_err(|e| format_err!("{}", e))?)
                 .map_err(|e| format_err!("{}", e));
         }
         Err(format_err!("Failed to find file"))

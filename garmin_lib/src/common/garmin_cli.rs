@@ -102,7 +102,7 @@ impl GarminCli {
         self.pool
             .as_ref()
             .ok_or_else(|| format_err!("No Database Connection"))
-            .map(|x| x.clone())
+            .map(Clone::clone)
     }
 
     pub fn get_config(&self) -> &GarminConfig {

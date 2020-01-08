@@ -291,8 +291,8 @@ pub async fn fitbit_plots(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let query: ScaleMeasurementPlotRequest = query.into_inner().into();
-    let _s = state.clone();
-    let body = block(move || _s.db.handle(query)).await?;
+    let s = state.clone();
+    let body = block(move || s.db.handle(query)).await?;
 
     let body = body.replace(
         "HISTORYBUTTONS",
@@ -306,8 +306,8 @@ pub async fn heartrate_plots(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let query: FitbitHeartratePlotRequest = query.into_inner().into();
-    let _s = state.clone();
-    let body = block(move || _s.db.handle(query)).await?;
+    let s = state.clone();
+    let body = block(move || s.db.handle(query)).await?;
     let body = body.replace(
         "HISTORYBUTTONS",
         &generate_history_buttons(&state.history.read()),
@@ -383,8 +383,8 @@ pub async fn garmin_get_hr_data(
 
     let greq: GarminListRequest = proc_pattern_wrapper(query, &state.history.read()).into();
 
-    let _s = state.clone();
-    let file_list = block(move || _s.db.handle(greq)).await?;
+    let s = state.clone();
+    let file_list = block(move || s.db.handle(greq)).await?;
 
     let hr_data = match file_list.len() {
         1 => {
@@ -441,8 +441,8 @@ pub async fn garmin_get_hr_pace(
 
     let greq: GarminListRequest = proc_pattern_wrapper(query, &state.history.read()).into();
 
-    let _s = state.clone();
-    let file_list = block(move || _s.db.handle(greq)).await?;
+    let s = state.clone();
+    let file_list = block(move || s.db.handle(greq)).await?;
 
     let hrpace = match file_list.len() {
         1 => {

@@ -12,14 +12,12 @@ use std::fs;
 use std::io::{stdout, Write};
 use std::path::Path;
 use std::time::SystemTime;
-use sts_profile_auth::sts_instance::StsInstance;
+use sts_profile_auth::get_client_sts;
 
 use crate::utils::garmin_util::{exponential_retry, get_md5sum};
 
 pub fn get_s3_client() -> S3Client {
-    let sts = StsInstance::new(None).expect("Failed to obtain client");
-    sts.get_s3_client(Region::UsEast1)
-        .expect("Failed to obtain client")
+    get_client_sts!(S3Client, Region::UsEast1).expect("Failed to obtain client")
 }
 
 pub struct GarminSync<T: S3> {

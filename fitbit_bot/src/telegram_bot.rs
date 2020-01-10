@@ -30,7 +30,7 @@ pub fn run_bot(telegram_bot_token: &str, pool: PgPool, scope: &Scope) -> Result<
     let (send, recv) = unbounded();
 
     let pool_ = pool.clone();
-    let userid_handle = scope.spawn(move |_| fill_telegram_user_ids(pool_));
+    let userid_handle = scope.spawn(move |_| fill_telegram_user_ids(&pool_));
     let message_handle = scope.spawn(move |_| process_messages(recv, pool));
     let telegram_handle = scope.spawn(move |_| telegram_worker(&telegram_bot_token, send));
 
@@ -129,7 +129,7 @@ fn process_messages(recv: Receiver<ScaleMeasurement>, pool: PgPool) -> Result<()
     Ok(())
 }
 
-fn fill_telegram_user_ids(pool: PgPool) -> Result<(), Error> {
+fn fill_telegram_user_ids(pool: &PgPool) -> Result<(), Error> {
     loop {
         if FAILURE_COUNT.load(Ordering::SeqCst) > 5 {
             return Err(format_err!("Failed after retrying 5 times",));

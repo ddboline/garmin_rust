@@ -119,31 +119,27 @@ fn process_messages(recv: Receiver<ScaleMeasurement>, pool: PgPool) -> Result<()
 
     let mut failure_count = 0;
     debug!("LAST_WEIGHT {:?}", *LAST_WEIGHT.read());
-    loop {
+    while let Ok(meas) = recv.recv() {
         if KILLSWITCH.load(Ordering::SeqCst) {
             return Ok(());
         }
-        match recv.recv() {
-            Ok(meas) => {
-                if meas.insert_into_db(&pool).is_ok() {
-                    debug!("{:?}", meas);
-                    LAST_WEIGHT.write().replace(meas);
-                }
-                failure_count = 0;
-            }
-            Err(e) => {
-                failure_count += 1;
-                if failure_count > 5 {
-                    KILLSWITCH.store(true, Ordering::SeqCst);
-                    return Err(format_err!(
-                        "Failed with {} after retrying {} times",
-                        e,
-                        failure_count
-                    ));
-                }
+        if meas.insert_into_db(&pool).is_ok() {
+            debug!("{:?}", meas);
+            LAST_WEIGHT.write().replace(meas);
+            failure_count = 0;
+        } else {
+            failure_count += 1;
+            if failure_count > 5 {
+                KILLSWITCH.store(true, Ordering::SeqCst);
+                return Err(format_err!(
+                    "Failed with {} after retrying {} times",
+                    e,
+                    failure_count
+                ));
             }
         }
     }
+    Ok(())
 }
 
 fn fill_telegram_user_ids(pool: PgPool) {

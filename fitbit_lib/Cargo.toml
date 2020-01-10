@@ -27,7 +27,7 @@ parking_lot = "0.10"
 crossbeam-utils = "0.7"
 structopt = "0.3"
 itertools = "0.8"
-avro-rs = "0.6"
+avro-rs = {version = "0.6", features = ["snappy"]}
 tempfile = "3.1"
 postgres_query = "0.2"
 anyhow = "1.0"

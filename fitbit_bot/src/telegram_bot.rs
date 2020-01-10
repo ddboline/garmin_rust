@@ -6,7 +6,7 @@ use lazy_static::lazy_static;
 use log::debug;
 use parking_lot::RwLock;
 use std::collections::HashSet;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread::sleep;
 use std::time::Duration;
 use telegram_bot::types::refs::UserId;
@@ -22,7 +22,7 @@ type Userids = RwLock<HashSet<UserId>>;
 lazy_static! {
     static ref LAST_WEIGHT: WeightLock = RwLock::new(None);
     static ref USERIDS: Userids = RwLock::new(HashSet::new());
-    static ref KILLSWITCH: AtomicBool = AtomicBool::new(false);
+    static ref FAILURE_COUNT: AtomicUsize = AtomicUsize::new(0);
 }
 
 pub fn run_bot(telegram_bot_token: &str, pool: PgPool, scope: &Scope) -> Result<(), Error> {
@@ -46,7 +46,6 @@ fn telegram_worker(telegram_bot_token: &str, send: Sender<ScaleMeasurement>) -> 
     let mut rt = Runtime::new()?;
 
     rt.block_on(_telegram_worker(telegram_bot_token, send))?;
-    KILLSWITCH.store(true, Ordering::SeqCst);
     Ok(())
 }
 
@@ -57,8 +56,8 @@ async fn _telegram_worker(
     let api = Api::new(telegram_bot_token);
     let mut stream = api.stream();
     while let Some(update) = stream.next().await {
-        if KILLSWITCH.load(Ordering::SeqCst) {
-            return Ok(());
+        if FAILURE_COUNT.load(Ordering::SeqCst) > 5 {
+            return Err(format_err!("Failed after retrying 5 times",));
         }
         // If the received update contains a new message...
         if let UpdateKind::Message(message) = update?.kind {
@@ -117,39 +116,33 @@ fn process_messages(recv: Receiver<ScaleMeasurement>, pool: PgPool) -> Result<()
         LAST_WEIGHT.write().replace(last);
     }
 
-    let mut failure_count = 0;
     debug!("LAST_WEIGHT {:?}", *LAST_WEIGHT.read());
     while let Ok(meas) = recv.recv() {
-        if KILLSWITCH.load(Ordering::SeqCst) {
-            return Ok(());
-        }
         if meas.insert_into_db(&pool).is_ok() {
             debug!("{:?}", meas);
             LAST_WEIGHT.write().replace(meas);
-            failure_count = 0;
+            FAILURE_COUNT.store(0, Ordering::SeqCst);
         } else {
-            failure_count += 1;
-            if failure_count > 5 {
-                KILLSWITCH.store(true, Ordering::SeqCst);
-                return Err(format_err!(
-                    "Failed with {} after retrying {} times",
-                    e,
-                    failure_count
-                ));
-            }
+            FAILURE_COUNT.fetch_add(1, Ordering::SeqCst);
         }
     }
     Ok(())
 }
 
-fn fill_telegram_user_ids(pool: PgPool) {
+fn fill_telegram_user_ids(pool: PgPool) -> Result<(), Error> {
     loop {
+        if FAILURE_COUNT.load(Ordering::SeqCst) > 5 {
+            return Err(format_err!("Failed after retrying 5 times",));
+        }
         if let Ok(telegram_userids) = list_of_telegram_user_ids(&pool) {
             let mut telegram_userid_set = USERIDS.write();
             telegram_userid_set.clear();
             for userid in telegram_userids {
                 telegram_userid_set.insert(UserId::new(userid));
             }
+            FAILURE_COUNT.store(0, Ordering::SeqCst);
+        } else {
+            FAILURE_COUNT.fetch_add(1, Ordering::SeqCst);
         }
         sleep(Duration::from_secs(60));
     }

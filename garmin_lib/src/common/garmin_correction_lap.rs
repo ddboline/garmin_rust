@@ -323,11 +323,14 @@ impl GarminCorrectionList {
     pub fn dump_corrections_to_db(&self) -> Result<(), Error> {
         let query_unique_key = "SELECT unique_key FROM garmin_corrections_laps WHERE unique_key=$1";
         let query_insert = "
-            INSERT INTO garmin_corrections_laps (start_time, lap_number, distance, duration, unique_key, sport)
-            VALUES ($1, $2, $3, $4, $5, $6)
+            INSERT INTO garmin_corrections_laps
+            (start_time, lap_number, distance, duration, unique_key, sport)
+            VALUES
+            ($1, $2, $3, $4, $5, $6)
         ";
         let query_update = "
-            UPDATE garmin_corrections_laps SET start_time=$1, lap_number=$2, distance=$3, duration=$4, sport=$6
+            UPDATE garmin_corrections_laps
+            SET start_time=$1, lap_number=$2, distance=$3, duration=$4, sport=$6
             WHERE unique_key=$5
         ";
         let mut conn = self.get_pool()?.get()?;

@@ -3,7 +3,7 @@ use chrono::offset::TimeZone;
 use chrono::{DateTime, Local, NaiveDate, Utc};
 use google_sheets4::RowData;
 use log::debug;
-use postgres_query::FromSqlRow;
+use postgres_query::{FromSqlRow, Parameter};
 use serde::{self, Deserialize, Serialize};
 use std::fmt;
 
@@ -126,7 +126,7 @@ impl ScaleMeasurement {
 
         let mut conn = pool.get()?;
 
-        conn.execute(query.sql, &query.parameters)
+        conn.execute(query.sql(), query.parameters())
             .map(|_| ())
             .map_err(Into::into)
     }
@@ -141,11 +141,14 @@ impl ScaleMeasurement {
             FROM scale_measurements
         ";
         let mut conditions = Vec::new();
+        let mut bindings = Vec::new();
         if let Some(d) = start_date {
-            conditions.push(format!("date(datetime) >= '{}'", d));
+            conditions.push("date(datetime) >= $start_date".to_string());
+            bindings.push(("start_date", d));
         }
         if let Some(d) = end_date {
-            conditions.push(format!("date(datetime) <= '{}'", d));
+            conditions.push("date(datetime) <= $end_date".to_string());
+            bindings.push(("end_date", d));
         }
         let query = format!(
             "{} {} ORDER BY datetime",
@@ -156,9 +159,11 @@ impl ScaleMeasurement {
                 format!("WHERE {}", conditions.join(" AND "))
             }
         );
+        let query_bindings: Vec<_> = bindings.iter().map(|(k, v)| (*k, v as Parameter)).collect();
         debug!("query:\n{}", query);
+        let query = postgres_query::query_dyn!(&query, ..query_bindings)?;
         let mut conn = pool.get()?;
-        conn.query(query.as_str(), &[])?
+        conn.query(query.sql(), query.parameters())?
             .iter()
             .map(|r| Self::from_row(r).map_err(Into::into))
             .collect()

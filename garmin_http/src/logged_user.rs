@@ -4,9 +4,9 @@ use anyhow::{format_err, Error};
 use chrono::{DateTime, Utc};
 use futures::executor::block_on;
 use futures::future::{ready, Ready};
-use jsonwebtoken::{decode, Validation};
 use lazy_static::lazy_static;
 use parking_lot::RwLock;
+use rust_auth_server::utils::{decode_token, Claim};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::convert::From;
@@ -20,30 +20,12 @@ lazy_static! {
     pub static ref AUTHORIZED_USERS: AuthorizedUsers = AuthorizedUsers::new();
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct Claims {
-    // issuer
-    iss: String,
-    // subject
-    sub: String,
-    //issued at
-    iat: i64,
-    // expiry
-    exp: i64,
-    // user email
-    email: String,
-}
-
-impl From<Claims> for LoggedUser {
-    fn from(claims: Claims) -> Self {
+impl From<Claim> for LoggedUser {
+    fn from(claims: Claim) -> Self {
         LoggedUser {
-            email: claims.email,
+            email: claims.get_email(),
         }
     }
-}
-
-fn get_secret() -> String {
-    env::var("JWT_SECRET").unwrap_or_else(|_| "my secret".into())
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
@@ -75,7 +57,7 @@ fn _from_request(req: &HttpRequest, pl: &mut Payload) -> Result<LoggedUser, acti
         }
     }
     if let Some(identity) = block_on(Identity::from_request(req, pl))?.identity() {
-        let user: LoggedUser = decode_token(&identity)?;
+        let user: LoggedUser = decode_token(&identity)?.into();
         if AUTHORIZED_USERS.is_authorized(&user) {
             return Ok(user);
         }
@@ -91,12 +73,6 @@ impl FromRequest for LoggedUser {
     fn from_request(req: &HttpRequest, pl: &mut Payload) -> Self::Future {
         ready(_from_request(req, pl))
     }
-}
-
-pub fn decode_token(token: &str) -> Result<LoggedUser, ServiceError> {
-    decode::<Claims>(token, get_secret().as_ref(), &Validation::default())
-        .map(|data| Ok(data.claims.into()))
-        .map_err(|_err| ServiceError::Unauthorized)?
 }
 
 #[derive(Clone, Debug, Copy)]

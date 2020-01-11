@@ -15,7 +15,6 @@ futures = "0.3"
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
-jsonwebtoken = "7.0.0-alpha.2"
 lazy_static = "1.4"
 tokio = {version="0.2", features=["time"]}
 fitbit_lib = {path="../fitbit_lib/"}
@@ -27,3 +26,4 @@ tempdir = "0.3"
 anyhow = "1.0"
 thiserror = "1.0"
 actix-threadpool = "0.3"
+rust_auth_server = { git = "https://github.com/ddboline/rust-auth-server.git", tag="0.3.6" }

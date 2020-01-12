@@ -1,5 +1,6 @@
 use anyhow::{format_err, Error};
 use crossbeam_channel::{unbounded, Receiver, Sender};
+use crossbeam_utils::atomic::AtomicCell;
 use crossbeam_utils::thread::Scope;
 use futures::StreamExt;
 use lazy_static::lazy_static;
@@ -16,11 +17,11 @@ use tokio::runtime::Runtime;
 use fitbit_lib::scale_measurement::ScaleMeasurement;
 use garmin_lib::common::pgpool::PgPool;
 
-type WeightLock = RwLock<Option<ScaleMeasurement>>;
+type WeightLock = AtomicCell<Option<ScaleMeasurement>>;
 type Userids = RwLock<HashSet<UserId>>;
 
 lazy_static! {
-    static ref LAST_WEIGHT: WeightLock = RwLock::new(None);
+    static ref LAST_WEIGHT: WeightLock = AtomicCell::new(None);
     static ref USERIDS: Userids = RwLock::new(HashSet::new());
     static ref FAILURE_COUNT: AtomicUsize = AtomicUsize::new(0);
 }
@@ -66,7 +67,7 @@ async fn _telegram_worker(
                 debug!("{:?}", message);
                 if USERIDS.read().contains(&message.from.id) {
                     match data.to_lowercase().as_str() {
-                        "check" => match *LAST_WEIGHT.read() {
+                        "check" => match LAST_WEIGHT.load() {
                             Some(meas) => {
                                 api.spawn(
                                     message.text_reply(format!("latest measurement {}", meas)),
@@ -102,7 +103,7 @@ async fn _telegram_worker(
 
 fn process_messages(recv: Receiver<ScaleMeasurement>, pool: PgPool) -> Result<(), Error> {
     let meas_list = ScaleMeasurement::read_from_db(&pool, None, None)?;
-    let mut last_weight = *LAST_WEIGHT.read();
+    let mut last_weight = LAST_WEIGHT.load();
     for meas in meas_list {
         let current_dt = meas.datetime;
         let last_meas = last_weight.replace(meas);
@@ -112,15 +113,15 @@ fn process_messages(recv: Receiver<ScaleMeasurement>, pool: PgPool) -> Result<()
             }
         }
     }
-    if let Some(last) = last_weight {
-        LAST_WEIGHT.write().replace(last);
+    if last_weight.is_some() {
+        LAST_WEIGHT.store(last_weight);
     }
 
-    debug!("LAST_WEIGHT {:?}", *LAST_WEIGHT.read());
+    debug!("LAST_WEIGHT {:?}", LAST_WEIGHT.load());
     while let Ok(meas) = recv.recv() {
         if meas.insert_into_db(&pool).is_ok() {
             debug!("{:?}", meas);
-            LAST_WEIGHT.write().replace(meas);
+            LAST_WEIGHT.store(Some(meas));
             FAILURE_COUNT.store(0, Ordering::SeqCst);
         } else {
             FAILURE_COUNT.fetch_add(1, Ordering::SeqCst);

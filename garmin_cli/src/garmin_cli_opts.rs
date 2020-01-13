@@ -29,10 +29,10 @@ pub enum GarminCliOpts {
 impl GarminCliOpts {
     pub fn process_args() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
-        let opts = match GarminCliOpts::from_args() {
-            GarminCliOpts::Bootstrap => GarminCliOptions::Bootstrap,
-            GarminCliOpts::Proc { filename } => GarminCliOptions::ImportFileNames(filename),
-            GarminCliOpts::Report { patterns } => {
+        let opts = match Self::from_args() {
+            Self::Bootstrap => GarminCliOptions::Bootstrap,
+            Self::Proc { filename } => GarminCliOptions::ImportFileNames(filename),
+            Self::Report { patterns } => {
                 let req = if patterns.is_empty() {
                     GarminCli::process_pattern(&config, &["year".to_string()])
                 } else {
@@ -40,8 +40,8 @@ impl GarminCliOpts {
                 };
                 return GarminCli::with_config()?.run_cli(&req.options, &req.constraints);
             }
-            GarminCliOpts::Connect => GarminCliOptions::Connect,
-            GarminCliOpts::Sync { md5sum } => GarminCliOptions::Sync(md5sum),
+            Self::Connect => GarminCliOptions::Connect,
+            Self::Sync { md5sum } => GarminCliOptions::Sync(md5sum),
         };
 
         let cli = GarminCli {
@@ -55,20 +55,22 @@ impl GarminCliOpts {
             let results: Result<Vec<_>, Error> = client
                 .get_tcx_urls(start_date)?
                 .into_iter()
-                .map(|(start_time, tcx_url)| {
-                    let fname = format!(
-                        "{}/{}.tcx",
-                        cli.config.gps_dir,
-                        start_time.format("%Y-%m-%d_%H-%M-%S_1_1").to_string(),
-                    );
-                    if !Path::new(&fname).exists() {
-                        client.download_tcx(&tcx_url, &mut File::create(&fname)?)?;
-                        Ok(Some(fname))
-                    } else {
-                        Ok(None)
-                    }
+                .filter_map(|(start_time, tcx_url)| {
+                    let res = || {
+                        let fname = format!(
+                            "{}/{}.tcx",
+                            cli.config.gps_dir,
+                            start_time.format("%Y-%m-%d_%H-%M-%S_1_1").to_string(),
+                        );
+                        if Path::new(&fname).exists() {
+                            Ok(None)
+                        } else {
+                            client.download_tcx(&tcx_url, &mut File::create(&fname)?)?;
+                            Ok(Some(fname))
+                        }
+                    };
+                    res().transpose()
                 })
-                .filter_map(|x| x.transpose())
                 .collect();
             results?;
         }

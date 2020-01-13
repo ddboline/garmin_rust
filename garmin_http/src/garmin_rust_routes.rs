@@ -391,8 +391,8 @@ pub async fn garmin_get_hr_data(
             let config = &CONFIG;
             let file_name = &file_list[0];
             let avro_file = format!("{}/{}.avro", &config.cache_dir, file_name);
-            let _a = avro_file.clone();
-            match block(move || GarminFile::read_avro(&_a)).await {
+            let a = avro_file.clone();
+            match block(move || GarminFile::read_avro(&a)).await {
                 Ok(g) => g,
                 Err(_) => {
                     let gps_file = format!("{}/{}", &config.gps_dir, file_name);

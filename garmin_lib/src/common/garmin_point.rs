@@ -32,8 +32,8 @@ impl Default for GarminPoint {
 }
 
 impl GarminPoint {
-    pub fn new() -> GarminPoint {
-        GarminPoint {
+    pub fn new() -> Self {
+        Self {
             time: sentinel_datetime(),
             latitude: None,
             longitude: None,
@@ -66,8 +66,8 @@ impl GarminPoint {
         self.avg_speed_value_mph = 0.0;
     }
 
-    pub fn read_point_xml(entries: &Node) -> Result<GarminPoint, Error> {
-        let mut new_point = GarminPoint::new();
+    pub fn read_point_xml(entries: &Node) -> Result<Self, Error> {
+        let mut new_point = Self::new();
         for entry in entries.attributes() {
             match entry.name() {
                 "time" => new_point.time = convert_xml_local_time_to_utc(entry.value())?,
@@ -82,8 +82,8 @@ impl GarminPoint {
         Ok(new_point)
     }
 
-    pub fn read_point_tcx(entries: &Node) -> Result<GarminPoint, Error> {
-        let mut new_point = GarminPoint::new();
+    pub fn read_point_tcx(entries: &Node) -> Result<Self, Error> {
+        let mut new_point = Self::new();
         for d in entries.descendants() {
             if d.node_type() == NodeType::Element {
                 match d.tag_name().name() {
@@ -130,7 +130,7 @@ impl GarminPoint {
         Ok(new_point)
     }
 
-    pub fn calculate_durations(point_list: &[GarminPoint]) -> Vec<GarminPoint> {
+    pub fn calculate_durations(point_list: &[Self]) -> Vec<Self> {
         point_list
             .iter()
             .enumerate()
@@ -142,7 +142,7 @@ impl GarminPoint {
                 *time_from_begin += duration_from_last;
                 let duration_from_begin = *time_from_begin;
 
-                let new_point = GarminPoint {
+                let new_point = Self {
                     duration_from_begin,
                     duration_from_last,
                     ..*point

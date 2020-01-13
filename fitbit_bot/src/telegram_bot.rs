@@ -32,7 +32,7 @@ pub fn run_bot(telegram_bot_token: &str, pool: PgPool, scope: &Scope) -> Result<
 
     let pool_ = pool.clone();
     let userid_handle = scope.spawn(move |_| fill_telegram_user_ids(&pool_));
-    let message_handle = scope.spawn(move |_| process_messages(recv, pool));
+    let message_handle = scope.spawn(move |_| process_messages(&recv, &pool));
     let telegram_handle = scope.spawn(move |_| telegram_worker(&telegram_bot_token, send));
 
     if userid_handle.join().is_err() {
@@ -101,7 +101,7 @@ async fn _telegram_worker(
     Ok(())
 }
 
-fn process_messages(recv: Receiver<ScaleMeasurement>, pool: PgPool) -> Result<(), Error> {
+fn process_messages(recv: &Receiver<ScaleMeasurement>, pool: &PgPool) -> Result<(), Error> {
     let meas_list = ScaleMeasurement::read_from_db(&pool, None, None)?;
     let mut last_weight = LAST_WEIGHT.load();
     for meas in meas_list {
@@ -119,7 +119,7 @@ fn process_messages(recv: Receiver<ScaleMeasurement>, pool: PgPool) -> Result<()
 
     debug!("LAST_WEIGHT {:?}", LAST_WEIGHT.load());
     while let Ok(meas) = recv.recv() {
-        if meas.insert_into_db(&pool).is_ok() {
+        if meas.insert_into_db(pool).is_ok() {
             debug!("{:?}", meas);
             LAST_WEIGHT.store(Some(meas));
             FAILURE_COUNT.store(0, Ordering::SeqCst);

@@ -18,8 +18,8 @@ use crate::utils::sport_types::{get_sport_type_map, SportTypes};
 pub struct GarminParseTxt {}
 
 impl GarminParseTxt {
-    pub fn new() -> GarminParseTxt {
-        GarminParseTxt {}
+    pub fn new() -> Self {
+        Self {}
     }
 }
 
@@ -72,7 +72,7 @@ impl GarminParseTrait for GarminParseTxt {
         let lap_list: Vec<_> = reader
             .lines()
             .filter_map(|line| match line {
-                Ok(l) => match GarminParseTxt::parse_line(&l) {
+                Ok(l) => match Self::parse_line(&l) {
                     Ok(pl) => Some(pl),
                     Err(_) => None,
                 },

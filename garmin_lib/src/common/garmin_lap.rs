@@ -33,8 +33,8 @@ impl Default for GarminLap {
 }
 
 impl GarminLap {
-    pub fn new() -> GarminLap {
-        GarminLap {
+    pub fn new() -> Self {
+        Self {
             lap_type: None,
             lap_index: -1,
             lap_start: sentinel_datetime(),
@@ -76,7 +76,7 @@ impl GarminLap {
                     "calories" => {
                         new_lap.lap_calories = d.text().and_then(|x| x.parse().ok()).unwrap_or(0)
                     }
-                    "intensity" => new_lap.lap_intensity = d.text().map(|s| s.to_string()),
+                    "intensity" => new_lap.lap_intensity = d.text().map(ToString::to_string),
                     _ => (),
                 }
             }
@@ -101,8 +101,8 @@ impl GarminLap {
         Ok(new_lap)
     }
 
-    pub fn read_lap_tcx(entries: &Node) -> Result<GarminLap, Error> {
-        let mut new_lap = GarminLap::new();
+    pub fn read_lap_tcx(entries: &Node) -> Result<Self, Error> {
+        let mut new_lap = Self::new();
         for d in entries.children() {
             if d.node_type() == NodeType::Element {
                 match d.tag_name().name() {
@@ -113,11 +113,11 @@ impl GarminLap {
                         new_lap.lap_distance = d.text().and_then(|x| x.parse().ok()).unwrap_or(0.0)
                     }
                     "MaximumSpeed" => new_lap.lap_max_speed = d.text().and_then(|x| x.parse().ok()),
-                    "TriggerMethod" => new_lap.lap_trigger = d.text().map(|s| s.to_string()),
+                    "TriggerMethod" => new_lap.lap_trigger = d.text().map(ToString::to_string),
                     "Calories" => {
                         new_lap.lap_calories = d.text().and_then(|x| x.parse().ok()).unwrap_or(0)
                     }
-                    "Intensity" => new_lap.lap_intensity = d.text().map(|s| s.to_string()),
+                    "Intensity" => new_lap.lap_intensity = d.text().map(ToString::to_string),
                     "AverageHeartRateBpm" => {
                         for entry in d.descendants() {
                             if entry.node_type() == NodeType::Element
@@ -149,7 +149,7 @@ impl GarminLap {
         Ok(new_lap)
     }
 
-    pub fn fix_lap_number(lap_list: Vec<GarminLap>) -> Vec<GarminLap> {
+    pub fn fix_lap_number(lap_list: Vec<Self>) -> Vec<Self> {
         lap_list
             .into_par_iter()
             .enumerate()
@@ -169,22 +169,13 @@ impl GarminLap {
 
 impl fmt::Display for GarminLap {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let lap_type = self.lap_type.as_ref().map(|x| x.as_str()).unwrap_or("None");
-        let lap_trigger = self
-            .lap_trigger
-            .as_ref()
-            .map(|x| x.as_str())
-            .unwrap_or("None");
-        let lap_intensity = self
-            .lap_intensity
-            .as_ref()
-            .map(|x| x.as_str())
-            .unwrap_or("None");
+        let lap_type = self.lap_type.as_ref().map_or("None", String::as_str);
+        let lap_trigger = self.lap_trigger.as_ref().map_or("None", String::as_str);
+        let lap_intensity = self.lap_intensity.as_ref().map_or("None", String::as_str);
         let lap_start_string = self
             .lap_start_string
             .as_ref()
-            .map(|x| x.as_str())
-            .unwrap_or("None");
+            .map_or("None", String::as_str);
         let lap_max_speed = self.lap_max_speed.unwrap_or(-1.0);
         let lap_avg_hr = self.lap_avg_hr.unwrap_or(-1.0);
         let lap_max_hr = self.lap_max_hr.unwrap_or(-1);

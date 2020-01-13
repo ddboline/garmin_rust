@@ -20,8 +20,8 @@ pub fn get_s3_client() -> S3Client {
     get_client_sts!(S3Client, Region::UsEast1).expect("Failed to obtain client")
 }
 
-pub struct GarminSync<T: S3> {
-    s3_client: T,
+pub struct GarminSync {
+    s3_client: S3Client,
 }
 
 #[derive(Debug, Clone)]
@@ -32,9 +32,9 @@ pub struct KeyItem {
     pub size: u64,
 }
 
-impl Default for GarminSync<S3Client> {
-    fn default() -> GarminSync<S3Client> {
-        GarminSync::new()
+impl Default for GarminSync {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -55,14 +55,14 @@ fn process_s3_item(mut item: S3Object) -> Option<KeyItem> {
     })
 }
 
-impl GarminSync<S3Client> {
-    pub fn new() -> GarminSync<S3Client> {
-        GarminSync {
+impl GarminSync {
+    pub fn new() -> Self {
+        Self {
             s3_client: get_s3_client(),
         }
     }
 
-    pub fn from_client(s3client: S3Client) -> GarminSync<S3Client> {
+    pub fn from_client(s3client: S3Client) -> Self {
         GarminSync {
             s3_client: s3client,
         }
@@ -91,14 +91,13 @@ impl GarminSync<S3Client> {
             continuation_token = current_list.next_continuation_token.clone();
 
             match current_list.key_count {
-                Some(0) => (),
+                Some(0) | None => (),
                 Some(_) => {
                     if let Some(c) = current_list.contents {
                         let contents: Vec<_> = c.into_iter().filter_map(process_s3_item).collect();
                         list_of_keys.extend_from_slice(&contents)
                     };
                 }
-                None => (),
             };
             match &continuation_token {
                 Some(_) => (),
@@ -122,16 +121,15 @@ impl GarminSync<S3Client> {
                 dir_line
                     .ok()
                     .map(|entry| entry.path().to_string_lossy().to_string())
-            })
-            .map(|f| {
-                let metadata = fs::metadata(&f)?;
-                let modified = metadata
-                    .modified()?
-                    .duration_since(SystemTime::UNIX_EPOCH)?
-                    .as_secs() as i64;
-                let size = metadata.len();
-
-                Ok((f, modified, size))
+                    .map(|f| {
+                        let metadata = fs::metadata(&f)?;
+                        let modified = metadata
+                            .modified()?
+                            .duration_since(SystemTime::UNIX_EPOCH)?
+                            .as_secs() as i64;
+                        let size = metadata.len();
+                        Ok((f, modified, size))
+                    })
             })
             .collect();
         let file_list = file_list?;
@@ -194,48 +192,50 @@ impl GarminSync<S3Client> {
 
         let downloaded: Result<Vec<_>, Error> = key_list
             .par_iter()
-            .map(|item| {
-                let mut do_download = false;
+            .filter_map(|item| {
+                let res = || {
+                    let mut do_download = false;
 
-                if file_set.contains_key(&item.key) {
-                    let (tmod_, size_) = file_set[&item.key];
-                    if item.timestamp > tmod_ {
-                        if check_md5sum {
-                            let file_name = format!("{}/{}", local_dir, item.key);
-                            let md5_ = get_md5sum(&file_name)?;
-                            if md5_ != item.etag {
-                                debug!(
-                                    "download md5 {} {} {} {} {} ",
-                                    item.key, md5_, item.etag, item.timestamp, tmod_
-                                );
+                    if file_set.contains_key(&item.key) {
+                        let (tmod_, size_) = file_set[&item.key];
+                        if item.timestamp > tmod_ {
+                            if check_md5sum {
                                 let file_name = format!("{}/{}", local_dir, item.key);
+                                let md5_ = get_md5sum(&file_name)?;
+                                if md5_ != item.etag {
+                                    debug!(
+                                        "download md5 {} {} {} {} {} ",
+                                        item.key, md5_, item.etag, item.timestamp, tmod_
+                                    );
+                                    let file_name = format!("{}/{}", local_dir, item.key);
+                                    fs::remove_file(&file_name)?;
+                                    do_download = true;
+                                }
+                            } else if item.size > size_ {
+                                let file_name = format!("{}/{}", local_dir, item.key);
+                                debug!(
+                                    "download size {} {} {} {} {}",
+                                    item.key, size_, item.size, item.timestamp, tmod_
+                                );
                                 fs::remove_file(&file_name)?;
                                 do_download = true;
                             }
-                        } else if item.size > size_ {
-                            let file_name = format!("{}/{}", local_dir, item.key);
-                            debug!(
-                                "download size {} {} {} {} {}",
-                                item.key, size_, item.size, item.timestamp, tmod_
-                            );
-                            fs::remove_file(&file_name)?;
-                            do_download = true;
                         }
-                    }
-                } else {
-                    do_download = true;
-                };
+                    } else {
+                        do_download = true;
+                    };
 
-                if do_download {
-                    let file_name = format!("{}/{}", local_dir, item.key);
-                    debug!("download {} {}", s3_bucket, item.key);
-                    self.download_file(&file_name, &s3_bucket, &item.key)?;
-                    Ok(Some(file_name))
-                } else {
-                    Ok(None)
-                }
+                    if do_download {
+                        let file_name = format!("{}/{}", local_dir, item.key);
+                        debug!("download {} {}", s3_bucket, item.key);
+                        self.download_file(&file_name, &s3_bucket, &item.key)?;
+                        Ok(Some(file_name))
+                    } else {
+                        Ok(None)
+                    }
+                };
+                res().transpose()
             })
-            .filter_map(|x| x.transpose())
             .collect();
         let downloaded = downloaded?;
         debug!("downloaded {:?}", downloaded);
@@ -283,7 +283,7 @@ impl GarminSync<S3Client> {
         s3_bucket: &str,
         s3_key: &str,
     ) -> Result<(), Error> {
-        self.upload_file_acl(local_file, s3_bucket, s3_key, None)
+        self.upload_file_acl(local_file, s3_bucket, s3_key, &None)
     }
 
     pub fn upload_file_acl(
@@ -291,7 +291,7 @@ impl GarminSync<S3Client> {
         local_file: &str,
         s3_bucket: &str,
         s3_key: &str,
-        acl: Option<String>,
+        acl: &Option<String>,
     ) -> Result<(), Error> {
         exponential_retry(|| {
             {

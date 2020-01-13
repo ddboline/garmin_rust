@@ -19,8 +19,8 @@ pub struct GarminParseTcx {
 }
 
 impl GarminParseTcx {
-    pub fn new(is_fit_file: bool) -> GarminParseTcx {
-        GarminParseTcx { is_fit_file }
+    pub fn new(is_fit_file: bool) -> Self {
+        Self { is_fit_file }
     }
 }
 

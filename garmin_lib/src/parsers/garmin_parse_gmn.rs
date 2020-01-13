@@ -17,8 +17,8 @@ use crate::utils::sport_types::SportTypes;
 pub struct GarminParseGmn {}
 
 impl GarminParseGmn {
-    pub fn new() -> GarminParseGmn {
-        GarminParseGmn {}
+    pub fn new() -> Self {
+        Self {}
     }
 }
 

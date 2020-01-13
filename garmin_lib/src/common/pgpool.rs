@@ -4,8 +4,8 @@ use r2d2::{Pool, PooledConnection};
 use r2d2_postgres::PostgresConnectionManager;
 use std::fmt;
 
-/// Wrapper around r2d2::Pool, two pools are considered equal if they have the same connection string
-/// The only way to use PgPool is through the get method, which returns a PooledConnection object
+/// Wrapper around `r2d2::Pool`, two pools are considered equal if they have the same connection string
+/// The only way to use `PgPool` is through the get method, which returns a `PooledConnection` object
 #[derive(Clone)]
 pub struct PgPool {
     pgurl: String,
@@ -19,18 +19,18 @@ impl fmt::Debug for PgPool {
 }
 
 impl PartialEq for PgPool {
-    fn eq(&self, other: &PgPool) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         self.pgurl == other.pgurl
     }
 }
 
 impl PgPool {
-    pub fn new(pgurl: &str) -> PgPool {
+    pub fn new(pgurl: &str) -> Self {
         let manager = PostgresConnectionManager::new(
             pgurl.parse().expect("Failed to parse connection string"),
             NoTls,
         );
-        PgPool {
+        Self {
             pgurl: pgurl.to_string(),
             pool: Pool::new(manager).expect("Failed to open DB connection"),
         }

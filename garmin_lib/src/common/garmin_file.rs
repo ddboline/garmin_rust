@@ -40,8 +40,8 @@ impl Default for GarminFile {
 }
 
 impl GarminFile {
-    pub fn new() -> GarminFile {
-        GarminFile {
+    pub fn new() -> Self {
+        Self {
             filename: "".into(),
             filetype: "".into(),
             begin_datetime: sentinel_datetime(),

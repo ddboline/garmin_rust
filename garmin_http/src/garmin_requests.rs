@@ -302,20 +302,22 @@ impl HandleRequest<FitbitTcxSyncRequest> for PgPool {
         let results: Result<Vec<_>, Error> = client
             .get_tcx_urls(start_date)?
             .into_iter()
-            .map(|(start_time, tcx_url)| {
-                let fname = format!(
-                    "{}/{}.tcx",
-                    config.gps_dir,
-                    start_time.format("%Y-%m-%d_%H-%M-%S_1_1").to_string(),
-                );
-                if !Path::new(&fname).exists() {
-                    client.download_tcx(&tcx_url, &mut File::create(&fname)?)?;
-                    Ok(Some(fname))
-                } else {
-                    Ok(None)
-                }
+            .filter_map(|(start_time, tcx_url)| {
+                let res = || {
+                    let fname = format!(
+                        "{}/{}.tcx",
+                        config.gps_dir,
+                        start_time.format("%Y-%m-%d_%H-%M-%S_1_1").to_string(),
+                    );
+                    if Path::new(&fname).exists() {
+                        Ok(None)
+                    } else {
+                        client.download_tcx(&tcx_url, &mut File::create(&fname)?)?;
+                        Ok(Some(fname))
+                    }
+                };
+                res().transpose()
             })
-            .filter_map(|x| x.transpose())
             .collect();
         let gcli = GarminCli::from_pool(&self)?;
         gcli.proc_everything()?;
@@ -531,7 +533,7 @@ impl HandleRequest<StravaUploadRequest> for PgPool {
             .upload_strava_activity(
                 &filepath,
                 &msg.title,
-                msg.description.as_ref().map(|x| x.as_str()).unwrap_or(""),
+                msg.description.as_ref().map_or("", String::as_str),
                 msg.is_private.unwrap_or(false),
                 sport,
             )

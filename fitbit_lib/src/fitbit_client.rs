@@ -32,13 +32,13 @@ macro_rules! set_attr_from_dict {
 
 impl FitbitClient {
     pub fn new() -> Self {
-        Default::default()
+        Self::default()
     }
 
     pub fn from_file(config: GarminConfig) -> Result<Self, Error> {
-        let mut client = FitbitClient {
+        let mut client = Self {
             config,
-            ..Default::default()
+            ..Self::default()
         };
         let f = File::open(&client.config.fitbit_tokenfile)?;
         let b = BufReader::new(f);
@@ -95,7 +95,7 @@ impl FitbitClient {
         )
     }
 
-    fn get_client_offset(&self, py: Python, client: &PyObject) -> PyResult<FixedOffset> {
+    fn get_client_offset(py: Python, client: &PyObject) -> PyResult<FixedOffset> {
         let result = client
             .call_method(py, "user_profile_get", PyTuple::empty(py), None)?
             .get_item(py, "user")?;
@@ -164,7 +164,7 @@ impl FitbitClient {
         date: NaiveDate,
     ) -> PyResult<Vec<FitbitHeartRate>> {
         let client = self.get_fitbit_client(py, false)?;
-        let offset = self.get_client_offset(py, &client)?;
+        let offset = Self::get_client_offset(py, &client)?;
         let args = PyDict::new(py);
         let date = date.to_string();
         args.set_item(py, "base_date", &date)?;
@@ -185,7 +185,7 @@ impl FitbitClient {
             .iter(py)
             .map(|item| {
                 let dict = PyDict::extract(py, &item)?;
-                FitbitHeartRate::from_pydict(py, dict, &date, offset)
+                FitbitHeartRate::from_pydict(py, &dict, &date, offset)
             })
             .collect()
     }
@@ -212,7 +212,7 @@ impl FitbitClient {
 
     fn _get_fitbit_bodyweightfat(&self, py: Python) -> PyResult<Vec<FitbitBodyWeightFat>> {
         let client = self.get_fitbit_client(py, false)?;
-        let offset = self.get_client_offset(py, &client)?;
+        let offset = Self::get_client_offset(py, &client)?;
         let args = PyDict::new(py);
         args.set_item(py, "period", "30d")?;
         let result = client.call_method(py, "get_bodyweight", PyTuple::empty(py), Some(&args))?;
@@ -223,7 +223,7 @@ impl FitbitClient {
             .iter(py)
             .map(|item| {
                 let dict = PyDict::extract(py, &item)?;
-                FitbitBodyWeightFat::from_pydict(py, dict, offset)
+                FitbitBodyWeightFat::from_pydict(py, &dict, offset)
             })
             .collect()
     }
@@ -242,7 +242,7 @@ impl FitbitClient {
         updates: &[ScaleMeasurement],
     ) -> PyResult<()> {
         let client = self.get_fitbit_client(py, false)?;
-        let offset = self.get_client_offset(py, &client)?;
+        let offset = Self::get_client_offset(py, &client)?;
         updates
             .iter()
             .map(|update| {
@@ -299,30 +299,32 @@ impl FitbitClient {
 
         activities
             .iter(py)
-            .map(|item| {
-                let dict = PyDict::extract(py, &item)?;
-                let log_type = match dict.get_item(py, "logType").as_ref() {
-                    Some(l) => String::extract(py, l)?,
-                    None => return Ok(None),
-                };
-                if log_type != "tracker" {
-                    return Ok(None);
-                }
-                let start_time = match dict.get_item(py, "startTime").as_ref() {
-                    Some(t) => {
-                        let start_time = String::extract(py, t)?;
-                        DateTime::parse_from_rfc3339(&start_time)
-                            .unwrap()
-                            .with_timezone(&Utc)
+            .filter_map(|item| {
+                let res = || {
+                    let dict = PyDict::extract(py, &item)?;
+                    let log_type = match dict.get_item(py, "logType").as_ref() {
+                        Some(l) => String::extract(py, l)?,
+                        None => return Ok(None),
+                    };
+                    if log_type != "tracker" {
+                        return Ok(None);
                     }
-                    None => return Ok(None),
+                    let start_time = match dict.get_item(py, "startTime").as_ref() {
+                        Some(t) => {
+                            let start_time = String::extract(py, t)?;
+                            DateTime::parse_from_rfc3339(&start_time)
+                                .unwrap()
+                                .with_timezone(&Utc)
+                        }
+                        None => return Ok(None),
+                    };
+                    match dict.get_item(py, "tcxLink").as_ref() {
+                        Some(l) => Ok(Some((start_time, String::extract(py, l)?))),
+                        None => Ok(None),
+                    }
                 };
-                match dict.get_item(py, "tcxLink").as_ref() {
-                    Some(l) => Ok(Some((start_time, String::extract(py, l)?))),
-                    None => Ok(None),
-                }
+                res().transpose()
             })
-            .filter_map(|x| x.transpose())
             .collect()
     }
 

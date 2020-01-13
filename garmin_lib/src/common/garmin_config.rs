@@ -7,7 +7,7 @@ use std::ops::Deref;
 use std::path::Path;
 use std::sync::Arc;
 
-/// GarminConfig holds configuration information which can be set either through environment variables or the config.env file,
+/// `GarminConfig` holds configuration information which can be set either through environment variables or the config.env file,
 /// see the dotenv crate for more information about the config file format.
 #[derive(Default, Debug)]
 pub struct GarminConfigInner {
@@ -50,7 +50,7 @@ macro_rules! set_config_from_env {
 
 impl GarminConfigInner {
     /// Some variables have natural default values, which we set in the new() method.
-    pub fn new() -> GarminConfigInner {
+    pub fn new() -> Self {
         let home_dir = var("HOME").unwrap_or_else(|_| "/tmp".to_string());
 
         let default_gps_dir = format!("{}/.garmin_cache/run/gps_tracks", home_dir);
@@ -58,7 +58,7 @@ impl GarminConfigInner {
         let default_summary_cache = format!("{}/.garmin_cache/run/summary_cache", home_dir);
         let default_fitbit_dir = format!("{}/.garmin_cache/run/fitbit_cache", home_dir);
 
-        GarminConfigInner {
+        Self {
             gps_dir: default_gps_dir,
             cache_dir: default_cache_dir,
             summary_cache: default_summary_cache,
@@ -70,12 +70,12 @@ impl GarminConfigInner {
             strava_tokenfile: format!("{}/.stravacli", home_dir),
             fitbit_cachedir: default_fitbit_dir,
             home_dir,
-            ..Default::default()
+            ..Self::default()
         }
     }
 
     /// Each variable maps to an environment variable, if the variable exists, use it.
-    pub fn from_env(mut self) -> GarminConfigInner {
+    pub fn from_env(mut self) -> Self {
         set_config_from_env!(self, home_dir, "HOME");
         set_config_from_env!(self, pgurl, "PGURL");
         set_config_from_env!(self, maps_api_key, "MAPS_API_KEY");
@@ -111,15 +111,15 @@ impl GarminConfigInner {
 }
 
 impl GarminConfig {
-    pub fn new() -> GarminConfig {
-        GarminConfig(Arc::new(GarminConfigInner::new()))
+    pub fn new() -> Self {
+        Self(Arc::new(GarminConfigInner::new()))
     }
 
     /// Pull configuration from a file if it exists, first look for a config.env file in the current directory,
     /// then try ${HOME}/.config/garmin_rust/config.env,
     /// if that doesn't exist fall back on the default behaviour of dotenv
     /// Panic if required variables aren't set appropriately.
-    pub fn get_config(fname: Option<&str>) -> Result<GarminConfig, Error> {
+    pub fn get_config(fname: Option<&str>) -> Result<Self, Error> {
         let home_dir = var("HOME").map_err(|_| format_err!("No HOME directory..."))?;
 
         let default_fname = format!("{}/.config/garmin_rust/config.env", home_dir);
@@ -148,7 +148,7 @@ impl GarminConfig {
         } else if &conf.summary_bucket == "" {
             Err(format_err!("No SUMMARY_BUCKET specified"))
         } else {
-            Ok(GarminConfig(Arc::new(conf)))
+            Ok(Self(Arc::new(conf)))
         }
     }
 }

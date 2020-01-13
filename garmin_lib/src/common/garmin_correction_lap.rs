@@ -35,8 +35,8 @@ impl Default for GarminCorrectionLap {
 }
 
 impl GarminCorrectionLap {
-    pub fn new() -> GarminCorrectionLap {
-        GarminCorrectionLap {
+    pub fn new() -> Self {
+        Self {
             id: -1,
             start_time: sentinel_datetime(),
             lap_number: -1,
@@ -46,32 +46,32 @@ impl GarminCorrectionLap {
         }
     }
 
-    pub fn with_id(mut self, id: i32) -> GarminCorrectionLap {
+    pub fn with_id(mut self, id: i32) -> Self {
         self.id = id;
         self
     }
 
-    pub fn with_start_time(mut self, start_time: DateTime<Utc>) -> GarminCorrectionLap {
+    pub fn with_start_time(mut self, start_time: DateTime<Utc>) -> Self {
         self.start_time = start_time;
         self
     }
 
-    pub fn with_lap_number(mut self, lap_number: i32) -> GarminCorrectionLap {
+    pub fn with_lap_number(mut self, lap_number: i32) -> Self {
         self.lap_number = lap_number;
         self
     }
 
-    pub fn with_sport(mut self, sport: SportTypes) -> GarminCorrectionLap {
+    pub fn with_sport(mut self, sport: SportTypes) -> Self {
         self.sport = Some(sport);
         self
     }
 
-    pub fn with_distance(mut self, distance: f64) -> GarminCorrectionLap {
+    pub fn with_distance(mut self, distance: f64) -> Self {
         self.distance = Some(distance);
         self
     }
 
-    pub fn with_duration(mut self, duration: f64) -> GarminCorrectionLap {
+    pub fn with_duration(mut self, duration: f64) -> Self {
         self.duration = Some(duration);
         self
     }
@@ -84,14 +84,14 @@ pub struct GarminCorrectionList {
 }
 
 impl GarminCorrectionList {
-    pub fn new() -> GarminCorrectionList {
-        GarminCorrectionList {
+    pub fn new() -> Self {
+        Self {
             corr_map: HashMap::new(),
             pool: None,
         }
     }
 
-    pub fn with_vec(mut self, corr_list: Vec<GarminCorrectionLap>) -> GarminCorrectionList {
+    pub fn with_vec(mut self, corr_list: Vec<GarminCorrectionLap>) -> Self {
         self.corr_map = corr_list
             .into_iter()
             .map(|corr| ((corr.start_time, corr.lap_number), corr))
@@ -99,15 +99,15 @@ impl GarminCorrectionList {
         self
     }
 
-    pub fn with_pool(mut self, pool: &PgPool) -> GarminCorrectionList {
+    pub fn with_pool(mut self, pool: &PgPool) -> Self {
         self.pool = Some(pool.clone());
         self
     }
 
-    pub fn from_pool(pool: &PgPool) -> GarminCorrectionList {
-        GarminCorrectionList {
+    pub fn from_pool(pool: &PgPool) -> Self {
+        Self {
             pool: Some(pool.clone()),
-            ..Default::default()
+            ..Self::default()
         }
     }
 
@@ -121,8 +121,8 @@ impl GarminCorrectionList {
         self.corr_map.values().cloned().collect()
     }
 
-    pub fn from_vec(corr_list: Vec<GarminCorrectionLap>) -> GarminCorrectionList {
-        GarminCorrectionList::default().with_vec(corr_list)
+    pub fn from_vec(corr_list: Vec<GarminCorrectionLap>) -> Self {
+        Self::default().with_vec(corr_list)
     }
 
     pub fn get_corr_list_map(&self) -> &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap> {
@@ -307,14 +307,12 @@ impl GarminCorrectionList {
                     .unique_key
                     .split('_')
                     .nth(0)
-                    .map(|x| x.to_string())
-                    .unwrap_or_else(|| "".to_string());
+                    .map_or_else(|| "".to_string(), ToString::to_string);
                 let lap_number: i32 = val
                     .unique_key
                     .split('_')
                     .last()
-                    .map(|x| x.parse().unwrap_or(0))
-                    .unwrap_or(0);
+                    .map_or(0, |x| x.parse().unwrap_or(0));
                 Ok((val.filename, (start_time, lap_number)))
             })
             .collect()

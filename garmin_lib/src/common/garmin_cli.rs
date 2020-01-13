@@ -185,7 +185,7 @@ impl GarminCli {
                         if f.contains("garmin_correction.avro") {
                             None
                         } else {
-                            f.split('/').last().map(|x| x.to_string())
+                            f.split('/').last().map(ToString::to_string)
                         }
                     })
                     .collect();
@@ -197,7 +197,7 @@ impl GarminCli {
                 let path = Path::new(&self.get_config().gps_dir);
                 let proc_list: Result<Vec<_>, Error> = get_file_list(&path)
                     .into_par_iter()
-                    .filter_map(|f| f.split('/').last().map(|x| x.to_string()))
+                    .filter_map(|f| f.split('/').last().map(ToString::to_string))
                     .filter_map(|f| {
                         let cachefile = format!("{}.avro", f);
                         if dbset.contains(&f) && cacheset.contains(&cachefile) {
@@ -294,20 +294,20 @@ impl GarminCli {
                 let mut datelike_str = Vec::new();
                 if YMD_REG.is_match(pat) {
                     for cap in YMD_REG.captures_iter(pat) {
-                        let year = cap.name("year").map(|x| x.as_str()).unwrap_or_else(|| "");
-                        let month = cap.name("month").map(|x| x.as_str()).unwrap_or_else(|| "");
-                        let day = cap.name("day").map(|x| x.as_str()).unwrap_or_else(|| "");
+                        let year = cap.name("year").map_or_else(|| "", |s| s.as_str());
+                        let month = cap.name("month").map_or_else(|| "", |s| s.as_str());
+                        let day = cap.name("day").map_or_else(|| "", |s| s.as_str());
                         datelike_str.push(format!("{}-{}-{}", year, month, day));
                     }
                 } else if YM_REG.is_match(pat) {
                     for cap in YM_REG.captures_iter(pat) {
-                        let year = cap.name("year").map(|x| x.as_str()).unwrap_or_else(|| "");
-                        let month = cap.name("month").map(|x| x.as_str()).unwrap_or_else(|| "");
+                        let year = cap.name("year").map_or_else(|| "", |s| s.as_str());
+                        let month = cap.name("month").map_or_else(|| "", |s| s.as_str());
                         datelike_str.push(format!("{}-{}", year, month));
                     }
                 } else if Y_REG.is_match(pat) {
                     for cap in Y_REG.captures_iter(pat) {
-                        let year = cap.name("year").map(|x| x.as_str()).unwrap_or_else(|| "");
+                        let year = cap.name("year").map_or_else(|| "", |s| s.as_str());
                         datelike_str.push(year.to_string());
                     }
                 }
@@ -484,9 +484,7 @@ impl GarminCli {
             .iter()
             .map(|filename| match filename.to_lowercase().split('.').last() {
                 Some("zip") => extract_zip_from_garmin_connect(filename, &ziptmpdir),
-                Some("fit") => Ok(filename.to_string()),
-                Some("tcx") => Ok(filename.to_string()),
-                Some("txt") => Ok(filename.to_string()),
+                Some("fit") | Some("tcx") | Some("txt") => Ok(filename.to_string()),
                 _ => Self::transform_file_name(&filename),
             })
             .collect();

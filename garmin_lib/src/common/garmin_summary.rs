@@ -84,8 +84,8 @@ impl From<GarminSummaryDB> for GarminSummary {
 }
 
 impl GarminSummary {
-    pub fn new(gfile: &GarminFile, md5sum: &str) -> GarminSummary {
-        GarminSummary {
+    pub fn new(gfile: &GarminFile, md5sum: &str) -> Self {
+        Self {
             filename: gfile.filename.to_string(),
             begin_datetime: gfile.begin_datetime,
             sport: gfile.sport,
@@ -102,7 +102,7 @@ impl GarminSummary {
         filename: &str,
         cache_dir: &str,
         corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
-    ) -> Result<GarminSummary, Error> {
+    ) -> Result<Self, Error> {
         let cache_file = format!(
             "{}/{}.avro",
             cache_dir,
@@ -128,7 +128,7 @@ impl GarminSummary {
         };
         gfile.dump_avro(&cache_file)?;
         writeln!(stdout, "{} Found md5sum {} success", filename, md5sum)?;
-        Ok(GarminSummary::new(&gfile, &md5sum))
+        Ok(Self::new(&gfile, &md5sum))
     }
 }
 
@@ -175,27 +175,27 @@ pub struct GarminSummaryList {
 }
 
 impl GarminSummaryList {
-    pub fn new() -> GarminSummaryList {
-        GarminSummaryList {
+    pub fn new() -> Self {
+        Self {
             summary_list: Vec::new(),
             pool: None,
         }
     }
 
-    pub fn from_vec(summary_list: Vec<GarminSummary>) -> GarminSummaryList {
-        GarminSummaryList {
+    pub fn from_vec(summary_list: Vec<GarminSummary>) -> Self {
+        Self {
             summary_list,
             pool: None,
         }
     }
 
-    pub fn with_pool(mut self, pool: &PgPool) -> GarminSummaryList {
+    pub fn with_pool(mut self, pool: &PgPool) -> Self {
         self.pool = Some(pool.clone());
         self
     }
 
-    pub fn from_pool(pool: &PgPool) -> GarminSummaryList {
-        GarminSummaryList {
+    pub fn from_pool(pool: &PgPool) -> Self {
+        Self {
             summary_list: Vec::new(),
             pool: Some(pool.clone()),
         }
@@ -212,7 +212,7 @@ impl GarminSummaryList {
         gps_dir: &str,
         cache_dir: &str,
         corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
-    ) -> Result<GarminSummaryList, Error> {
+    ) -> Result<Self, Error> {
         let path = Path::new(gps_dir);
 
         let gsum_result_list: Result<Vec<_>, Error> = get_file_list(&path)
@@ -251,10 +251,10 @@ impl GarminSummaryList {
             })
             .collect();
 
-        Ok(GarminSummaryList::from_vec(gsum_result_list?))
+        Ok(Self::from_vec(gsum_result_list?))
     }
 
-    pub fn read_summary_from_postgres(&self, pattern: &str) -> Result<GarminSummaryList, Error> {
+    pub fn read_summary_from_postgres(&self, pattern: &str) -> Result<Self, Error> {
         let where_str = if pattern.is_empty() {
             "".to_string()
         } else {
@@ -288,7 +288,7 @@ impl GarminSummaryList {
             })
             .collect();
 
-        Ok(GarminSummaryList::from_vec(gsum_list?).with_pool(&pool))
+        Ok(Self::from_vec(gsum_list?).with_pool(&pool))
     }
 
     pub fn dump_summary_to_avro(self, output_filename: &str) -> Result<(), Error> {
@@ -311,7 +311,7 @@ impl GarminSummaryList {
             .map(|gsum| {
                 let summary_avro_fname =
                     format!("{}/{}.summary.avro", &summary_cache_dir, &gsum.filename);
-                let single_summary = GarminSummaryList::from_vec(vec![gsum.clone()]);
+                let single_summary = Self::from_vec(vec![gsum.clone()]);
                 single_summary.dump_summary_to_avro(&summary_avro_fname)
             })
             .collect()

@@ -1,15 +1,13 @@
 use anyhow::Error;
 use parking_lot::Mutex;
-use rand::distributions::{Distribution, Uniform};
-use rand::thread_rng;
 use reqwest::blocking::{Client, Response};
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use reqwest::redirect::Policy;
 use reqwest::Url;
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::thread::sleep;
-use std::time::Duration;
+
+use crate::utils::garmin_util::exponential_retry;
 
 #[derive(Debug)]
 struct ReqwestSessionInner {
@@ -64,7 +62,7 @@ impl ReqwestSession {
         } else {
             Policy::none()
         };
-        ReqwestSession {
+        Self {
             client: Arc::new(Mutex::new(ReqwestSessionInner {
                 client: Client::builder()
                     .cookie_store(true)
@@ -76,39 +74,17 @@ impl ReqwestSession {
         }
     }
 
-    fn exponential_retry<T, U>(&self, f: T) -> Result<U, Error>
-    where
-        T: Fn() -> Result<U, Error>,
-    {
-        let mut timeout: f64 = 1.0;
-        let mut rng = thread_rng();
-        let range = Uniform::from(0..1000);
-        loop {
-            let resp = f();
-            match resp {
-                Ok(x) => return Ok(x),
-                Err(e) => {
-                    sleep(Duration::from_millis((timeout * 1000.0) as u64));
-                    timeout *= 4.0 * f64::from(range.sample(&mut rng)) / 1000.0;
-                    if timeout >= 64.0 {
-                        return Err(e);
-                    }
-                }
-            }
-        }
-    }
-
-    pub fn get(&self, url: &Url, headers: HeaderMap) -> Result<Response, Error> {
-        self.exponential_retry(|| self.client.lock().get(url.clone(), headers.clone()))
+    pub fn get(&self, url: &Url, headers: &HeaderMap) -> Result<Response, Error> {
+        exponential_retry(|| self.client.lock().get(url.clone(), headers.clone()))
     }
 
     pub fn post(
         &self,
         url: &Url,
-        headers: HeaderMap,
+        headers: &HeaderMap,
         form: &HashMap<&str, &str>,
     ) -> Result<Response, Error> {
-        self.exponential_retry(|| self.client.lock().post(url.clone(), headers.clone(), form))
+        exponential_retry(|| self.client.lock().post(url.clone(), headers.clone(), form))
     }
 
     pub fn set_default_headers(&self, headers: HashMap<&str, &str>) -> Result<(), Error> {

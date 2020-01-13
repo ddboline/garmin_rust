@@ -45,7 +45,7 @@ impl GarminConnectClient {
         let session = ReqwestSession::new(false);
 
         let url = Url::parse_with_params("https://sso.garmin.com/sso/signin", params.iter())?;
-        let pre_resp = session.get(&url, HeaderMap::new())?;
+        let pre_resp = session.get(&url, &HeaderMap::new())?;
         if pre_resp.status() != 200 {
             return Err(format_err!(
                 "SSO prestart error {} {}",
@@ -54,14 +54,17 @@ impl GarminConnectClient {
             ));
         }
 
-        let mut signin_headers = HeaderMap::new();
-        for (k, v) in garmin_signin_headers.into_iter() {
-            let name: HeaderName = k.parse()?;
-            let val: HeaderValue = v.parse()?;
-            signin_headers.insert(name, val);
-        }
+        let result: Result<HeaderMap<_>, Error> = garmin_signin_headers
+            .into_iter()
+            .map(|(k, v)| {
+                let name: HeaderName = k.parse()?;
+                let val: HeaderValue = v.parse()?;
+                Ok((name, val))
+            })
+            .collect();
+        let signin_headers = result?;
 
-        let sso_resp = session.post(&url, signin_headers, &data)?;
+        let sso_resp = session.post(&url, &signin_headers, &data)?;
         let status = sso_resp.status();
         if status != 200 {
             return Err(format_err!("SSO error {} {}", status, sso_resp.text()?));
@@ -81,7 +84,7 @@ impl GarminConnectClient {
 
         let mut gc_redeem_resp = session.get(
             &"https://connect.garmin.com/modern".parse()?,
-            HeaderMap::new(),
+            &HeaderMap::new(),
         )?;
         if gc_redeem_resp.status() != 302 {
             return Err(format_err!(
@@ -110,7 +113,7 @@ impl GarminConnectClient {
             url_prefix = url.split('/').take(3).collect::<Vec<_>>().join("/");
 
             let url: Url = url.parse()?;
-            gc_redeem_resp = session.get(&url, HeaderMap::new())?;
+            gc_redeem_resp = session.get(&url, &HeaderMap::new())?;
             let status = gc_redeem_resp.status();
             if current_redirect_count >= max_redirect_count && status != 200 {
                 return Err(format_err!(
@@ -150,14 +153,14 @@ impl GarminConnectClient {
             current_start += limit;
             debug!("Call {}", url);
             let new_entries: Vec<HashMap<String, Value>> =
-                self.session.get(&url, HeaderMap::new())?.json()?;
+                self.session.get(&url, &HeaderMap::new())?.json()?;
             if new_entries.is_empty() {
                 debug!("Empty result {} returning {} results", url, entries.len());
                 return Ok(entries);
             }
             for entry in &new_entries {
                 if let Some(activity_id) = entry.get("activityId") {
-                    if let Some(start_time_gmt) = entry.get("startTimeGMT").and_then(|x| x.as_str())
+                    if let Some(start_time_gmt) = entry.get("startTimeGMT").and_then(Value::as_str)
                     {
                         let start_time: DateTime<Utc> =
                             NaiveDateTime::parse_from_str(start_time_gmt, "%Y-%m-%d %H:%M:%S")
@@ -174,7 +177,7 @@ impl GarminConnectClient {
                             )
                             .parse()?;
                             let mut f = File::create(&fname)?;
-                            let mut resp = self.session.get(&url, HeaderMap::new())?;
+                            let mut resp = self.session.get(&url, &HeaderMap::new())?;
                             resp.copy_to(&mut f)?;
                             entries.push(fname);
                         } else {

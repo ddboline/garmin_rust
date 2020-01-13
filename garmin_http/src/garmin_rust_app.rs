@@ -22,22 +22,20 @@ use crate::garmin_rust_routes::{
 };
 use crate::CONFIG;
 
-/// AppState is the application state shared between all the handlers
+/// `AppState` is the application state shared between all the handlers
 /// db can be used to send messages to the database workers, each running on their own thread
-/// user_list contains a shared cache of previously authorized users
+/// `user_list` contains a shared cache of previously authorized users
 pub struct AppState {
     pub db: PgPool,
     pub history: Arc<RwLock<Vec<String>>>,
 }
 
 /// Create the actix-web server.
-/// Configuration is done through environment variables, see GarminConfig for more information.
-/// SyncArbiter spins up config.n_db_workers workers, each on their own thread,
-/// PgPool is a wrapper around a connection pool.
-/// Addr is a handle through which a message can be sent to an actor.
+/// Configuration is done through environment variables, see `GarminConfig` for more information.
+/// `PgPool` is a wrapper around a connection pool.
 /// We create several routes:
-///    /garmin is the main route, providing the same functionality as the CLI interface, while adding the ability of upload to strava.
-///    /garmin/list_gps_tracks, /garmin/get_hr_data and /garmin/get_hr_pace return structured json intended for separate analysis
+///    `/garmin` is the main route, providing the same functionality as the CLI interface, while adding the ability of upload to strava.
+///    `/garmin/list_gps_tracks`, `/garmin/get_hr_data` and `/garmin/get_hr_pace` return structured json intended for separate analysis
 pub async fn start_app() {
     let config = &CONFIG;
     let pool = PgPool::new(&config.pgurl);
@@ -46,8 +44,8 @@ pub async fn start_app() {
         let mut i = interval(time::Duration::from_secs(60));
         loop {
             i.tick().await;
-            let _p = pool.clone();
-            block(move || AUTHORIZED_USERS.fill_from_db(&_p))
+            let p = pool.clone();
+            block(move || AUTHORIZED_USERS.fill_from_db(&p))
                 .await
                 .unwrap_or(());
         }

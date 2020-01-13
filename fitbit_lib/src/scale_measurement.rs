@@ -169,7 +169,7 @@ impl ScaleMeasurement {
             .collect()
     }
 
-    pub fn get_scale_measurement_plots(measurements: &[ScaleMeasurement]) -> Result<String, Error> {
+    pub fn get_scale_measurement_plots(measurements: &[Self]) -> Result<String, Error> {
         if measurements.is_empty() {
             let body = PLOT_TEMPLATE
                 .replace("INSERTOTHERIMAGESHERE", "")

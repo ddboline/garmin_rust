@@ -36,7 +36,7 @@ impl<'a> FromPyObject<'a> for LocalStravaItem {
                 .map_err(|e| exception(py, &e.to_string()))?,
             title,
         };
-        Ok(LocalStravaItem(item))
+        Ok(Self(item))
     }
 }
 
@@ -48,7 +48,7 @@ pub enum StravaAuthType {
 
 impl Default for StravaAuthType {
     fn default() -> Self {
-        StravaAuthType::Read
+        Self::Read
     }
 }
 
@@ -64,17 +64,17 @@ pub struct StravaClient {
 
 impl StravaClient {
     pub fn new() -> Self {
-        Default::default()
+        Self::default()
     }
 
     pub fn from_file(
         config: GarminConfig,
         auth_type: Option<StravaAuthType>,
     ) -> Result<Self, Error> {
-        let mut client = StravaClient {
+        let mut client = Self {
             config,
             auth_type,
-            ..Default::default()
+            ..Self::default()
         };
         let f = File::open(&client.config.strava_tokenfile)?;
         let b = BufReader::new(f);
@@ -385,7 +385,7 @@ impl StravaClient {
                         .unwrap_or("")
                         .split_whitespace()
                         .nth(0)
-                        .map(|x| x.to_string())
+                        .map(ToString::to_string)
                         .ok_or_else(|| format_err!("No id"))
                 } else {
                     Err(format_err!(err))

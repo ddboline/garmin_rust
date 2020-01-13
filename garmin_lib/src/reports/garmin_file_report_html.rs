@@ -340,13 +340,13 @@ fn get_html_string(
             report_objs,
             gfile,
             sport,
-            strava_id_title,
+            &strava_id_title,
             history,
             graphs,
             config,
         )?
     } else {
-        get_garmin_template_vec(&config.domain, gfile, sport, strava_id_title, history)?
+        get_garmin_template_vec(&config.domain, gfile, sport, &strava_id_title, history)?
     };
 
     Ok(htmlvec.join("\n"))
@@ -356,7 +356,7 @@ fn get_garmin_template_vec(
     domain: &str,
     gfile: &GarminFile,
     sport: SportTypes,
-    strava_id_title: Option<(String, String)>,
+    strava_id_title: &Option<(String, String)>,
     history: &[String],
 ) -> Result<Vec<String>, Error> {
     let mut htmlvec = Vec::new();
@@ -413,7 +413,7 @@ fn get_map_tempate_vec(
     report_objs: &ReportObjects,
     gfile: &GarminFile,
     sport: SportTypes,
-    strava_id_title: Option<(String, String)>,
+    strava_id_title: &Option<(String, String)>,
     history: &[String],
     graphs: &[String],
     config: &GarminConfig,

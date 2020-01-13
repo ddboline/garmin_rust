@@ -95,7 +95,7 @@ where
 impl FitbitHeartRate {
     pub fn from_pydict(
         py: Python,
-        dict: PyDict,
+        dict: &PyDict,
         date: &str,
         offset: FixedOffset,
     ) -> PyResult<Self> {
@@ -292,11 +292,7 @@ pub struct FitbitBodyWeightFat {
 }
 
 impl FitbitBodyWeightFat {
-    pub fn from_pydict(
-        py: Python,
-        dict: PyDict,
-        offset: FixedOffset,
-    ) -> PyResult<FitbitBodyWeightFat> {
+    pub fn from_pydict(py: Python, dict: &PyDict, offset: FixedOffset) -> PyResult<Self> {
         let date: NaiveDate = get_pydict_item!(py, dict, date, String)?.parse().unwrap();
         let time: NaiveTime = get_pydict_item!(py, dict, time, String)?.parse().unwrap();
         let datetime = format!("{}T{}{}", date, time, offset);
@@ -305,7 +301,7 @@ impl FitbitBodyWeightFat {
             .with_timezone(&Utc);
         let weight = get_pydict_item!(py, dict, weight, f64)?;
         let fat = get_pydict_item!(py, dict, fat, f64)?;
-        Ok(FitbitBodyWeightFat {
+        Ok(Self {
             datetime,
             weight,
             fat,

@@ -4,6 +4,7 @@ use chrono::{DateTime, Local, NaiveDate, Utc};
 use google_sheets4::RowData;
 use log::debug;
 use postgres_query::{FromSqlRow, Parameter};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use serde::{self, Deserialize, Serialize};
 use std::fmt;
 
@@ -164,7 +165,7 @@ impl ScaleMeasurement {
         let query = postgres_query::query_dyn!(&query, ..query_bindings)?;
         let mut conn = pool.get()?;
         conn.query(query.sql(), query.parameters())?
-            .iter()
+            .par_iter()
             .map(|r| Self::from_row(r).map_err(Into::into))
             .collect()
     }

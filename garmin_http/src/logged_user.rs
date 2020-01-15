@@ -37,8 +37,7 @@ impl LoggedUser {
     pub fn is_authorized(&self, pool: &PgPool) -> Result<bool, Error> {
         let query = "SELECT count(*) FROM authorized_users WHERE email = $1";
         pool.get()?
-            .query(query, &[&self.email])?
-            .get(0)
+            .query_opt(query, &[&self.email])?
             .map(|row| {
                 let count: i64 = row.try_get(0)?;
                 Ok(count > 0)
@@ -94,7 +93,7 @@ impl AuthorizedUsers {
         let results: Result<HashSet<_>, Error> = pool
             .get()?
             .query(query, &[])?
-            .iter()
+            .into_iter()
             .map(|row| {
                 let email: String = row.try_get(0)?;
                 Ok(LoggedUser { email })

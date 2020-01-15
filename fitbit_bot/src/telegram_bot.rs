@@ -6,6 +6,7 @@ use futures::StreamExt;
 use lazy_static::lazy_static;
 use log::debug;
 use parking_lot::RwLock;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::collections::HashSet;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread::sleep;
@@ -157,9 +158,9 @@ fn list_of_telegram_user_ids(pool: &PgPool) -> Result<Vec<i64>, Error> {
     ";
     pool.get()?
         .query(query, &[])?
-        .iter()
+        .into_par_iter()
         .map(|row| {
-            let telegram_userid: i64 = row.try_get(0)?;
+            let telegram_userid: i64 = row.try_get("telegram_userid")?;
             Ok(telegram_userid)
         })
         .collect()

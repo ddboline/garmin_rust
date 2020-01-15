@@ -1,6 +1,7 @@
 use anyhow::Error;
 use chrono::{DateTime, Utc};
 use log::debug;
+use postgres_query::FromSqlRow;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -26,8 +27,8 @@ pub fn get_strava_id_from_begin_datetime(
     conn.query(query, &[&begin_datetime])?
         .get(0)
         .map(|row| {
-            let id = row.try_get(0)?;
-            let title = row.try_get(1)?;
+            let id = row.try_get("strava_id")?;
+            let title = row.try_get("strava_title")?;
             Ok((id, title))
         })
         .transpose()
@@ -38,11 +39,17 @@ pub fn get_strava_id_maximum_begin_datetime(pool: &PgPool) -> Result<Option<Date
 
     let mut conn = pool.get()?;
 
-    conn.query(query, &[])?
-        .get(0)
+    conn.query_opt(query, &[])?
         .map(|row| row.try_get(0))
         .transpose()
         .map_err(Into::into)
+}
+
+#[derive(FromSqlRow)]
+struct StravaIdCache {
+    strava_id: String,
+    begin_datetime: DateTime<Utc>,
+    strava_title: String,
 }
 
 pub fn get_strava_id_map(pool: &PgPool) -> Result<HashMap<String, StravaItem>, Error> {
@@ -51,14 +58,12 @@ pub fn get_strava_id_map(pool: &PgPool) -> Result<HashMap<String, StravaItem>, E
     conn.query(query, &[])?
         .iter()
         .map(|row| {
-            let strava_id: String = row.try_get(0)?;
-            let begin_datetime: DateTime<Utc> = row.try_get(1)?;
-            let strava_title: String = row.try_get(2)?;
+            let c = StravaIdCache::from_row(row)?;
             Ok((
-                strava_id,
+                c.strava_id,
                 StravaItem {
-                    begin_datetime,
-                    title: strava_title,
+                    begin_datetime: c.begin_datetime,
+                    title: c.strava_title,
                 },
             ))
         })
@@ -87,14 +92,12 @@ pub fn get_strava_ids(
     conn.query(query.as_str(), &[])?
         .iter()
         .map(|row| {
-            let strava_id: String = row.try_get(0)?;
-            let begin_datetime: DateTime<Utc> = row.try_get(1)?;
-            let strava_title: String = row.try_get(2)?;
+            let c = StravaIdCache::from_row(row)?;
             Ok((
-                strava_id,
+                c.strava_id,
                 StravaItem {
-                    begin_datetime,
-                    title: strava_title,
+                    begin_datetime: c.begin_datetime,
+                    title: c.strava_title,
                 },
             ))
         })

@@ -1,6 +1,7 @@
 use anyhow::Error;
 use chrono::{DateTime, Utc};
 use log::debug;
+use postgres_query::FromSqlRow;
 
 use crate::common::pgpool::PgPool;
 use crate::reports::garmin_report_options::{GarminReportAgg, GarminReportOptions};
@@ -82,105 +83,102 @@ fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, 
 
     debug!("{}", query);
 
+    #[derive(FromSqlRow, Debug)]
+    struct FileSummaryReport {
+        datetime: DateTime<Utc>,
+        week: f64,
+        isodow: f64,
+        sport: String,
+        total_calories: i64,
+        total_distance: f64,
+        total_duration: f64,
+        total_hr_dur: f64,
+        total_hr_dis: f64,
+    }
+
     pool.get()?
         .query(query.as_str(), &[])?
         .iter()
         .map(|row| {
-            let datetime: DateTime<Utc> = row.try_get("datetime")?;
-            let week: f64 = row.try_get("week")?;
-            let dow: f64 = row.try_get("dow")?;
-            let sport: String = row.try_get("sport")?;
-            let total_calories: i64 = row.try_get("total_calories")?;
-            let total_distance: f64 = row.try_get("total_distance")?;
-            let total_duration: f64 = row.try_get("total_duration")?;
-            let total_hr_dur: f64 = row.try_get("total_hr_dur")?;
-            let total_hr_dis: f64 = row.try_get("total_hr_dis")?;
+            let row = FileSummaryReport::from_row(row)?;
 
-            let weekdayname = WEEKDAY_NAMES[dow as usize - 1];
-            let datetime = convert_datetime_to_str(datetime);
+            let weekdayname = WEEKDAY_NAMES[row.isodow as usize - 1];
+            let datetime = convert_datetime_to_str(row.datetime);
 
-            debug!(
-                "{} {} {} {} {} {} {} {} {}",
-                datetime,
-                week,
-                dow,
-                sport,
-                total_calories,
-                total_distance,
-                total_duration,
-                total_hr_dur,
-                total_hr_dis,
-            );
+            debug!("{} {:?}", datetime, row);
 
             let mut tmp_vec = Vec::new();
 
-            match sport.as_str() {
+            match row.sport.as_str() {
                 "running" | "walking" => {
-                    if total_distance > 0.0 {
+                    if row.total_distance > 0.0 {
                         tmp_vec.push(format!(
                             "{:27} {:10} {:10} {:10} {:10} {:10} {:10}",
-                            format!("{:20} {:02} {:3}", datetime, week, weekdayname),
-                            sport,
-                            format!("{:.2} mi", total_distance / METERS_PER_MILE),
-                            format!("{} cal", total_calories),
+                            format!("{:20} {:02} {:3}", datetime, row.week, weekdayname),
+                            row.sport,
+                            format!("{:.2} mi", row.total_distance / METERS_PER_MILE),
+                            format!("{} cal", row.total_calories),
                             format!(
                                 "{} / mi",
                                 print_h_m_s(
-                                    total_duration / (total_distance / METERS_PER_MILE),
+                                    row.total_duration / (row.total_distance / METERS_PER_MILE),
                                     false
                                 )?
                             ),
                             format!(
                                 "{} / km",
-                                print_h_m_s(total_duration / (total_distance / 1000.), false)?
+                                print_h_m_s(
+                                    row.total_duration / (row.total_distance / 1000.),
+                                    false
+                                )?
                             ),
-                            print_h_m_s(total_duration, true)?
+                            print_h_m_s(row.total_duration, true)?
                         ));
                     } else {
                         tmp_vec.push(format!(
                             "{:17} {:10} {:10} {:10} {:10} {:10} {:10}",
-                            format!("{:10} {:02} {:3}", datetime, week, weekdayname),
-                            sport,
-                            format!("{:.2} mi", total_distance / METERS_PER_MILE),
-                            format!("{} cal", total_calories),
+                            format!("{:10} {:02} {:3}", datetime, row.week, weekdayname),
+                            row.sport,
+                            format!("{:.2} mi", row.total_distance / METERS_PER_MILE),
+                            format!("{} cal", row.total_calories),
                             "".to_string(),
                             "".to_string(),
-                            print_h_m_s(total_duration, true)?
+                            print_h_m_s(row.total_duration, true)?
                         ));
                     }
                 }
                 "biking" => {
                     tmp_vec.push(format!(
                         "{:17} {:10} {:10} {:10} {:10} {:10} {:10}",
-                        format!("{:10} {:02} {:3}", datetime, week, weekdayname),
-                        sport,
-                        format!("{:.2} mi", total_distance / METERS_PER_MILE),
-                        format!("{} cal", total_calories),
+                        format!("{:10} {:02} {:3}", datetime, row.week, weekdayname),
+                        row.sport,
+                        format!("{:.2} mi", row.total_distance / METERS_PER_MILE),
+                        format!("{} cal", row.total_calories),
                         format!(
                             "{:.2} mph",
-                            (total_distance / METERS_PER_MILE) / (total_duration / 3600.)
+                            (row.total_distance / METERS_PER_MILE) / (row.total_duration / 3600.)
                         ),
                         "".to_string(),
-                        print_h_m_s(total_duration, true)?
+                        print_h_m_s(row.total_duration, true)?
                     ));
                 }
                 _ => {
                     tmp_vec.push(format!(
                         "{:17} {:10} {:10} {:10} {:10} {:10} {:10}",
-                        format!("{:10} {:02} {:3}", datetime, week, weekdayname),
-                        sport,
-                        format!("{:.2} mi", total_distance / METERS_PER_MILE),
-                        format!("{} cal", total_calories),
+                        format!("{:10} {:02} {:3}", datetime, row.week, weekdayname),
+                        row.sport,
+                        format!("{:.2} mi", row.total_distance / METERS_PER_MILE),
+                        format!("{} cal", row.total_calories),
                         "".to_string(),
                         "".to_string(),
-                        print_h_m_s(total_duration, true)?
+                        print_h_m_s(row.total_duration, true)?
                     ));
                 }
             };
-            if total_hr_dur > total_hr_dis {
+            if row.total_hr_dur > row.total_hr_dis {
                 tmp_vec.push(format!(
                     "\t {:7}",
-                    format!("{} bpm", (total_hr_dur / total_hr_dis) as i32)
+                    format!("{} bpm", (row.total_hr_dur / row.total_hr_dis) as i32)
                 ));
             }
             Ok(tmp_vec)
@@ -221,104 +219,101 @@ fn day_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, E
 
     debug!("{}", query);
 
+    #[derive(FromSqlRow, Debug)]
+    struct DaySummaryReport {
+        date: String,
+        week: f64,
+        isodow: f64,
+        sport: String,
+        total_calories: i64,
+        total_distance: f64,
+        total_duration: f64,
+        total_hr_dur: f64,
+        total_hr_dis: f64,
+    }
+
     pool.get()?
         .query(query.as_str(), &[])?
         .iter()
         .map(|row| {
-            let date: String = row.try_get("date")?;
-            let week: f64 = row.try_get("week")?;
-            let dow: f64 = row.try_get("isodow")?;
-            let sport: String = row.try_get("sport")?;
-            let total_calories: i64 = row.try_get("total_calories")?;
-            let total_distance: f64 = row.try_get("total_distance")?;
-            let total_duration: f64 = row.try_get("total_duration")?;
-            let total_hr_dur: f64 = row.try_get("total_hr_dur")?;
-            let total_hr_dis: f64 = row.try_get("total_hr_dis")?;
+            let row = DaySummaryReport::from_row(row)?;
 
-            let weekdayname = WEEKDAY_NAMES[dow as usize - 1];
+            let weekdayname = WEEKDAY_NAMES[row.isodow as usize - 1];
 
-            debug!(
-                "{} {} {} {} {} {} {} {} {}",
-                date,
-                week,
-                dow,
-                sport,
-                total_calories,
-                total_distance,
-                total_duration,
-                total_hr_dur,
-                total_hr_dis,
-            );
+            debug!("{:?}", row);
 
             let mut tmp_vec = Vec::new();
 
-            match sport.as_str() {
+            match row.sport.as_str() {
                 "running" | "walking" => {
-                    if total_distance > 0.0 {
+                    if row.total_distance > 0.0 {
                         tmp_vec.push(format!(
                             "{:17} {:10} {:10} {:10} {:10} {:10} {:10}",
-                            format!("{:10} {:02} {:3}", date, week, weekdayname),
-                            sport,
-                            format!("{:.2} mi", total_distance / METERS_PER_MILE),
-                            format!("{} cal", total_calories),
+                            format!("{:10} {:02} {:3}", row.date, row.week, weekdayname),
+                            row.sport,
+                            format!("{:.2} mi", row.total_distance / METERS_PER_MILE),
+                            format!("{} cal", row.total_calories),
                             format!(
                                 "{} / mi",
                                 print_h_m_s(
-                                    total_duration / (total_distance / METERS_PER_MILE),
+                                    row.total_duration / (row.total_distance / METERS_PER_MILE),
                                     false
                                 )?
                             ),
                             format!(
                                 "{} / km",
-                                print_h_m_s(total_duration / (total_distance / 1000.), false)?
+                                print_h_m_s(
+                                    row.total_duration / (row.total_distance / 1000.),
+                                    false
+                                )?
                             ),
-                            print_h_m_s(total_duration, true)?
+                            print_h_m_s(row.total_duration, true)?
                         ));
                     } else {
                         tmp_vec.push(format!(
                             "{:17} {:10} {:10} {:10} {:10} {:10} {:10}",
-                            format!("{:10} {:02} {:3}", date, week, weekdayname),
-                            sport,
-                            format!("{:.2} mi", total_distance / METERS_PER_MILE),
-                            format!("{} cal", total_calories),
+                            format!("{:10} {:02} {:3}", row.date, row.week, weekdayname),
+                            row.sport,
+                            format!("{:.2} mi", row.total_distance / METERS_PER_MILE),
+                            format!("{} cal", row.total_calories),
                             "".to_string(),
                             "".to_string(),
-                            print_h_m_s(total_duration, true)?
+                            print_h_m_s(row.total_duration, true)?
                         ));
                     }
                 }
                 "biking" => {
                     tmp_vec.push(format!(
                         "{:17} {:10} {:10} {:10} {:10} {:10} {:10}",
-                        format!("{:10} {:02} {:3}", date, week, weekdayname),
-                        sport,
-                        format!("{:.2} mi", total_distance / METERS_PER_MILE),
-                        format!("{} cal", total_calories),
+                        format!("{:10} {:02} {:3}", row.date, row.week, weekdayname),
+                        row.sport,
+                        format!("{:.2} mi", row.total_distance / METERS_PER_MILE),
+                        format!("{} cal", row.total_calories),
                         format!(
                             "{:.2} mph",
-                            (total_distance / METERS_PER_MILE) / (total_duration / 3600.)
+                            (row.total_distance / METERS_PER_MILE) / (row.total_duration / 3600.)
                         ),
                         "".to_string(),
-                        print_h_m_s(total_duration, true)?
+                        print_h_m_s(row.total_duration, true)?
                     ));
                 }
                 _ => {
                     tmp_vec.push(format!(
                         "{:17} {:10} {:10} {:10} {:10} {:10} {:10}",
-                        format!("{:10} {:02} {:3}", date, week, weekdayname),
-                        sport,
-                        format!("{:.2} mi", total_distance / METERS_PER_MILE),
-                        format!("{} cal", total_calories),
+                        format!("{:10} {:02} {:3}", row.date, row.week, weekdayname),
+                        row.sport,
+                        format!("{:.2} mi", row.total_distance / METERS_PER_MILE),
+                        format!("{} cal", row.total_calories),
                         "".to_string(),
                         "".to_string(),
-                        print_h_m_s(total_duration, true)?
+                        print_h_m_s(row.total_duration, true)?
                     ));
                 }
             };
-            if total_hr_dur > total_hr_dis {
+            if row.total_hr_dur > row.total_hr_dis {
                 tmp_vec.push(format!(
                     "\t {:7}",
-                    format!("{} bpm", (total_hr_dur / total_hr_dis) as i32)
+                    format!("{} bpm", (row.total_hr_dur / row.total_hr_dis) as i32)
                 ));
             }
             Ok(tmp_vec)
@@ -359,54 +354,48 @@ fn week_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, 
 
     debug!("{}", query);
 
+    #[derive(FromSqlRow, Debug)]
+    struct WeekSummaryReport {
+        year: f64,
+        week: f64,
+        sport: String,
+        total_calories: i64,
+        total_distance: f64,
+        total_duration: f64,
+        total_hr_dur: f64,
+        total_hr_dis: f64,
+        number_of_days: i64,
+    }
+
     pool.get()?
         .query(query.as_str(), &[])?
         .iter()
         .map(|row| {
-            let year: f64 = row.try_get("year")?;
-            let week: f64 = row.try_get("week")?;
-            let sport: String = row.try_get("sport")?;
-            let total_calories: i64 = row.try_get("total_calories")?;
-            let total_distance: f64 = row.try_get("total_distance")?;
-            let total_duration: f64 = row.try_get("total_duration")?;
-            let total_hr_dur: f64 = row.try_get("total_hr_dur")?;
-            let total_hr_dis: f64 = row.try_get("total_hr_dis")?;
-            let number_of_days: i64 = row.try_get("number_of_days")?;
+            let row = WeekSummaryReport::from_row(row)?;
 
             let total_days = 7;
 
-            debug!(
-                "{} {} {} {} {} {} {} {} {}",
-                year,
-                week,
-                sport,
-                total_calories,
-                total_distance,
-                total_duration,
-                total_hr_dur,
-                total_hr_dis,
-                number_of_days
-            );
+            debug!("{:?}", row);
 
             let mut tmp_vec = Vec::new();
 
             tmp_vec.push(format!(
                 "{:15} {:7} {:10} {:10} \t",
-                format!("{} week {:02}", year, week),
-                sport,
-                format!("{:4.2} mi", total_distance / METERS_PER_MILE),
-                format!("{} cal", total_calories)
+                format!("{} week {:02}", row.year, row.week),
+                row.sport,
+                format!("{:4.2} mi", row.total_distance / METERS_PER_MILE),
+                format!("{} cal", row.total_calories)
             ));
 
-            match sport.as_str() {
+            match row.sport.as_str() {
                 "running" | "walking" => {
-                    if total_distance > 0.0 {
+                    if row.total_distance > 0.0 {
                         tmp_vec.push(format!(
                             " {:10} \t",
                             format!(
                                 "{} / mi",
                                 print_h_m_s(
-                                    total_duration / (total_distance / METERS_PER_MILE),
+                                    row.total_duration / (row.total_distance / METERS_PER_MILE),
                                     false
                                 )?
                             )
@@ -415,7 +404,10 @@ fn week_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, 
                             " {:10} \t",
                             format!(
                                 "{} / km",
-                                print_h_m_s(total_duration / (total_distance / 1000.), false)?
+                                print_h_m_s(
+                                    row.total_duration / (row.total_distance / 1000.),
+                                    false
+                                )?
                             )
                         ));
                     } else {
@@ -428,7 +420,7 @@ fn week_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, 
                         " {:10} \t",
                         format!(
                             "{:.2} mph",
-                            (total_distance / METERS_PER_MILE) / (total_duration / 3600.)
+                            (row.total_distance / METERS_PER_MILE) / (row.total_duration / 3600.)
                         )
                     ));
                 }
@@ -436,11 +428,11 @@ fn week_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, 
                     tmp_vec.push(format!(" {:10} \t", ""));
                 }
             }
-            tmp_vec.push(format!(" {:10} \t", print_h_m_s(total_duration, true)?));
-            if total_hr_dur > total_hr_dis {
+            tmp_vec.push(format!(" {:10} \t", print_h_m_s(row.total_duration, true)?));
+            if row.total_hr_dur > row.total_hr_dis {
                 tmp_vec.push(format!(
                     " {:7} {:2}",
-                    format!("{} bpm", (total_hr_dur / total_hr_dis) as i32),
+                    format!("{} bpm", (row.total_hr_dur / row.total_hr_dis) as i32),
                     ""
                 ));
             } else {
@@ -448,7 +440,7 @@ fn week_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, 
             };
             tmp_vec.push(format!(
                 "{:16}",
-                format!("{} / {} days", number_of_days, total_days)
+                format!("{} / {} days", row.number_of_days, total_days)
             ));
 
             Ok(tmp_vec)
@@ -489,53 +481,47 @@ fn month_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>,
 
     debug!("{}", query);
 
+    #[derive(FromSqlRow, Debug)]
+    struct MonthSummaryReport {
+        year: f64,
+        month: f64,
+        sport: String,
+        total_calories: i64,
+        total_distance: f64,
+        total_duration: f64,
+        total_hr_dur: f64,
+        total_hr_dis: f64,
+        number_of_days: i64,
+    }
+
     pool.get()?
         .query(query.as_str(), &[])?
         .iter()
         .map(|row| {
-            let year: f64 = row.try_get("year")?;
-            let month: f64 = row.try_get("month")?;
-            let sport: String = row.try_get("sport")?;
-            let total_calories: i64 = row.try_get("total_calories")?;
-            let total_distance: f64 = row.try_get("total_distance")?;
-            let total_duration: f64 = row.try_get("total_duration")?;
-            let total_hr_dur: f64 = row.try_get("total_hr_dur")?;
-            let total_hr_dis: f64 = row.try_get("total_hr_dis")?;
-            let number_of_days: i64 = row.try_get("number_of_days")?;
+            let row = MonthSummaryReport::from_row(row)?;
 
-            let total_days = days_in_month(year as i32, month as u32);
+            let total_days = days_in_month(row.year as i32, row.month as u32);
 
-            debug!(
-                "{} {} {} {} {} {} {} {} {}",
-                year,
-                month,
-                sport,
-                total_calories,
-                total_distance,
-                total_duration,
-                total_hr_dur,
-                total_hr_dis,
-                number_of_days
-            );
+            debug!("{:?}", row);
 
             let mut tmp_vec = Vec::new();
 
             tmp_vec.push(format!(
                 "{:8} {:10} {:8} \t",
-                format!("{} {}", year, MONTH_NAMES[month as usize - 1]),
-                sport,
-                format!("{:4.2} mi", (total_distance / METERS_PER_MILE)),
+                format!("{} {}", row.year, MONTH_NAMES[row.month as usize - 1]),
+                row.sport,
+                format!("{:4.2} mi", (row.total_distance / METERS_PER_MILE)),
             ));
-            tmp_vec.push(format!("{:10} \t", format!("{} cal", total_calories)));
+            tmp_vec.push(format!("{:10} \t", format!("{} cal", row.total_calories)));
 
-            match sport.as_str() {
+            match row.sport.as_str() {
                 "running" | "walking" => {
                     tmp_vec.push(format!(
                         " {:10} \t",
                         format!(
                             "{} / mi",
                             print_h_m_s(
-                                total_duration / (total_distance / METERS_PER_MILE),
+                                row.total_duration / (row.total_distance / METERS_PER_MILE),
                                 false
                             )?
                         )
@@ -544,7 +530,7 @@ fn month_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>,
                         " {:10} \t",
                         format!(
                             "{} / km",
-                            print_h_m_s(total_duration / (total_distance / 1000.), false)?
+                            print_h_m_s(row.total_duration / (row.total_distance / 1000.), false)?
                         )
                     ))
                 }
@@ -553,7 +539,8 @@ fn month_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>,
                         " {:10} \t",
                         format!(
                             "{:.2} mph",
-                            (total_distance / METERS_PER_MILE) / (total_duration / 60. / 60.)
+                            (row.total_distance / METERS_PER_MILE)
+                                / (row.total_duration / 60. / 60.)
                         )
                     ));
                 }
@@ -561,12 +548,12 @@ fn month_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>,
                     tmp_vec.push(format!(" {:10} \t", ""));
                 }
             };
-            tmp_vec.push(format!(" {:10} \t", print_h_m_s(total_duration, true)?));
+            tmp_vec.push(format!(" {:10} \t", print_h_m_s(row.total_duration, true)?));
 
-            if total_hr_dur > total_hr_dis {
+            if row.total_hr_dur > row.total_hr_dis {
                 tmp_vec.push(format!(
                     " {:7} {:2}",
-                    format!("{} bpm", (total_hr_dur / total_hr_dis) as i32),
+                    format!("{} bpm", (row.total_hr_dur / row.total_hr_dis) as i32),
                     ""
                 ));
             } else {
@@ -575,7 +562,7 @@ fn month_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>,
 
             tmp_vec.push(format!(
                 "{:16}",
-                format!("{} / {} days", number_of_days, total_days)
+                format!("{} / {} days", row.number_of_days, total_days)
             ));
 
             Ok(tmp_vec)
@@ -611,38 +598,40 @@ fn sport_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>,
     );
     debug!("{}", query);
 
+    #[derive(FromSqlRow, Debug)]
+    struct SportSummaryReport {
+        sport: String,
+        total_calories: i64,
+        total_distance: f64,
+        total_duration: f64,
+        total_hr_dur: f64,
+        total_hr_dis: f64,
+    }
+
     pool.get()?
         .query(query.as_str(), &[])?
         .iter()
         .map(|row| {
-            let sport: String = row.try_get("sport")?;
-            let total_calories: i64 = row.try_get("total_calories")?;
-            let total_distance: f64 = row.try_get("total_distance")?;
-            let total_duration: f64 = row.try_get("total_duration")?;
-            let total_hr_dur: f64 = row.try_get("total_hr_dur")?;
-            let total_hr_dis: f64 = row.try_get("total_hr_dis")?;
+            let row = SportSummaryReport::from_row(row)?;
 
-            debug!(
-                "{} {} {} {} {} {}",
-                sport, total_calories, total_distance, total_duration, total_hr_dur, total_hr_dis
-            );
+            debug!("{:?}", row);
             let mut tmp_vec = Vec::new();
 
-            tmp_vec.push(format!("{:10} \t", sport));
+            tmp_vec.push(format!("{:10} \t", row.sport));
             tmp_vec.push(format!(
                 "{:10} \t",
-                format!("{:4.2} mi", total_distance / METERS_PER_MILE),
+                format!("{:4.2} mi", row.total_distance / METERS_PER_MILE),
             ));
-            tmp_vec.push(format!("{:10} \t", format!("{} cal", total_calories)));
+            tmp_vec.push(format!("{:10} \t", format!("{} cal", row.total_calories)));
 
-            match sport.as_str() {
+            match row.sport.as_str() {
                 "running" | "walking" => {
                     tmp_vec.push(format!(
                         "{:10} ",
                         format!(
                             "{} / mi",
                             print_h_m_s(
-                                total_duration / (total_distance / METERS_PER_MILE),
+                                row.total_duration / (row.total_distance / METERS_PER_MILE),
                                 false
                             )?
                         )
@@ -651,7 +640,7 @@ fn sport_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>,
                         "{:10} ",
                         format!(
                             "{} / km",
-                            print_h_m_s(total_duration / (total_distance / 1000.), false)?
+                            print_h_m_s(row.total_duration / (row.total_distance / 1000.), false)?
                         )
                     ));
                 }
@@ -660,18 +649,19 @@ fn sport_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>,
                         " {:10} \t",
                         format!(
                             "{:.2} mph",
-                            (total_distance / METERS_PER_MILE) / (total_duration / 60. / 60.)
+                            (row.total_distance / METERS_PER_MILE)
+                                / (row.total_duration / 60. / 60.)
                         )
                     ));
                 }
                 _ => (),
             };
 
-            tmp_vec.push(format!(" {:10} \t", print_h_m_s(total_duration, true)?));
-            if total_hr_dur > total_hr_dis {
+            tmp_vec.push(format!(" {:10} \t", print_h_m_s(row.total_duration, true)?));
+            if row.total_hr_dur > row.total_hr_dis {
                 tmp_vec.push(format!(
                     " {:7} {:2}",
-                    format!("{} bpm", (total_hr_dur / total_hr_dis) as i32),
+                    format!("{} bpm", (row.total_hr_dur / row.total_hr_dis) as i32),
                     ""
                 ));
             } else {
@@ -714,50 +704,45 @@ fn year_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, 
     );
     debug!("{}", query);
 
+    #[derive(FromSqlRow, Debug)]
+    struct YearSummaryReport {
+        year: f64,
+        sport: String,
+        total_calories: i64,
+        total_distance: f64,
+        total_duration: f64,
+        total_hr_dur: f64,
+        total_hr_dis: f64,
+        number_of_days: i64,
+    }
+
     pool.get()?
         .query(query.as_str(), &[])?
         .iter()
         .map(|row| {
-            let year: f64 = row.try_get("year")?;
-            let sport: String = row.try_get("sport")?;
-            let total_calories: i64 = row.try_get("total_calories")?;
-            let total_distance: f64 = row.try_get("total_distance")?;
-            let total_duration: f64 = row.try_get("total_duration")?;
-            let total_hr_dur: f64 = row.try_get("total_hr_dur")?;
-            let total_hr_dis: f64 = row.try_get("total_hr_dis")?;
-            let number_of_days: i64 = row.try_get("number_of_days")?;
+            let row = YearSummaryReport::from_row(row)?;
 
-            let total_days = days_in_year(year as i32);
+            let total_days = days_in_year(row.year as i32);
 
-            debug!(
-                "{} {} {} {} {} {} {} {}",
-                year,
-                sport,
-                total_calories,
-                total_distance,
-                total_duration,
-                total_hr_dur,
-                total_hr_dis,
-                number_of_days
-            );
+            debug!("{:?}", row);
 
             let mut tmp_vec = Vec::new();
 
-            tmp_vec.push(format!("{:5} {:10} \t", year, sport,));
+            tmp_vec.push(format!("{:5} {:10} \t", row.year, row.sport,));
             tmp_vec.push(format!(
                 "{:10} \t",
-                format!("{:4.2} mi", total_distance / METERS_PER_MILE),
+                format!("{:4.2} mi", row.total_distance / METERS_PER_MILE),
             ));
-            tmp_vec.push(format!("{:10} \t", format!("{} cal", total_calories)));
+            tmp_vec.push(format!("{:10} \t", format!("{} cal", row.total_calories)));
 
-            match sport.as_str() {
+            match row.sport.as_str() {
                 "running" | "walking" => {
                     tmp_vec.push(format!(
                         "{:10} ",
                         format!(
                             "{} / mi",
                             print_h_m_s(
-                                total_duration / (total_distance / METERS_PER_MILE),
+                                row.total_duration / (row.total_distance / METERS_PER_MILE),
                                 false
                             )?
                         )
@@ -766,7 +751,7 @@ fn year_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, 
                         "{:10} ",
                         format!(
                             "{} / km",
-                            print_h_m_s(total_duration / (total_distance / 1000.), false)?
+                            print_h_m_s(row.total_duration / (row.total_distance / 1000.), false)?
                         )
                     ));
                 }
@@ -775,18 +760,19 @@ fn year_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, 
                         " {:10} ",
                         format!(
                             "{:.2} mph",
-                            (total_distance / METERS_PER_MILE) / (total_duration / 60. / 60.)
+                            (row.total_distance / METERS_PER_MILE)
+                                / (row.total_duration / 60. / 60.)
                         )
                     ));
                 }
                 _ => (),
             };
 
-            tmp_vec.push(format!(" {:10} \t", print_h_m_s(total_duration, true)?));
-            if total_hr_dur > total_hr_dis {
+            tmp_vec.push(format!(" {:10} \t", print_h_m_s(row.total_duration, true)?));
+            if row.total_hr_dur > row.total_hr_dis {
                 tmp_vec.push(format!(
                     " {:7} {:2}",
-                    format!("{} bpm", (total_hr_dur / total_hr_dis) as i32),
+                    format!("{} bpm", (row.total_hr_dur / row.total_hr_dis) as i32),
                     ""
                 ));
             } else {
@@ -795,7 +781,7 @@ fn year_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, 
 
             tmp_vec.push(format!(
                 "{:16}",
-                format!("{} / {} days", number_of_days, total_days)
+                format!("{} / {} days", row.number_of_days, total_days)
             ));
 
             Ok(tmp_vec)

@@ -283,8 +283,9 @@ impl GarminSummaryList {
             .query(query.as_str(), &[])?
             .iter()
             .map(|row| {
-                let val = GarminSummaryDB::from_row(row)?;
-                Ok(val.into())
+                GarminSummaryDB::from_row(row)
+                    .map(Into::into)
+                    .map_err(Into::into)
             })
             .collect();
 
@@ -431,7 +432,7 @@ pub fn get_list_of_files_from_db(
 
     conn.query(query.as_str(), &[])?
         .iter()
-        .map(|row| row.try_get(0).map_err(Into::into))
+        .map(|row| row.try_get("filename").map_err(Into::into))
         .collect()
 }
 
@@ -440,8 +441,7 @@ pub fn get_maximum_begin_datetime(pool: &PgPool) -> Result<Option<DateTime<Utc>>
 
     let mut conn = pool.get()?;
 
-    conn.query(query, &[])?
-        .get(0)
+    conn.query_opt(query, &[])?
         .map(|row| row.try_get(0))
         .transpose()
         .map_err(Into::into)

@@ -5,6 +5,7 @@ use chrono::{DateTime, Utc};
 use json::{parse, JsonValue};
 use log::debug;
 use postgres_query::FromSqlRow;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::collections::HashMap;
 use std::fs::File;
 use std::hash::BuildHasher;
@@ -300,7 +301,7 @@ impl GarminCorrectionList {
         ";
         let mut conn = self.get_pool()?.get()?;
         conn.query(query, &[])?
-            .iter()
+            .par_iter()
             .map(|row| {
                 let val = FileNameUniqueKey::from_row(row)?;
                 let start_time: String = val
@@ -343,7 +344,7 @@ impl GarminCorrectionList {
                     s => Some(s.to_string()),
                 });
 
-                if conn.query(query_unique_key, &[&unique_key])?.iter().len() == 0 {
+                if conn.query(query_unique_key, &[&unique_key])?.len() == 0 {
                     conn.execute(
                         &stmt_insert,
                         &[
@@ -379,7 +380,7 @@ impl GarminCorrectionList {
             "select id, start_time, lap_number, sport, distance, duration from garmin_corrections_laps",
             &[],
         )?
-            .iter()
+            .par_iter()
             .map(|row| {
                 GarminCorrectionLap::from_row(row).map_err(Into::into)
             })

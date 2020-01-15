@@ -120,10 +120,7 @@ pub fn convert_sport_name(sport: &str) -> Option<String> {
 }
 
 pub fn convert_sport_name_to_activity_type(sport: &str) -> Option<String> {
-    sport
-        .parse()
-        .ok()
-        .map(|s: SportTypes| s.to_strava_activity())
+    sport.parse().ok().map(SportTypes::to_strava_activity)
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref)]

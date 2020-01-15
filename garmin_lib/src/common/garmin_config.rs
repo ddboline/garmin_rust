@@ -116,7 +116,7 @@ impl GarminConfig {
     }
 
     /// Pull configuration from a file if it exists, first look for a config.env file in the current directory,
-    /// then try ${HOME}/.config/garmin_rust/config.env,
+    /// then try `${HOME}/.config/garmin_rust/config.env`,
     /// if that doesn't exist fall back on the default behaviour of dotenv
     /// Panic if required variables aren't set appropriately.
     pub fn get_config(fname: Option<&str>) -> Result<Self, Error> {

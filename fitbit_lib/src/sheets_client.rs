@@ -112,11 +112,11 @@ pub fn run_sync_sheets(config: &GarminConfig, pool: &PgPool) -> Result<(), Error
     measurements
         .into_iter()
         .map(|meas| {
-            if !current_measurements.contains_key(&meas.datetime) {
+            if current_measurements.contains_key(&meas.datetime) {
+                writeln!(stdout, "exists {:?}", meas)?;
+            } else {
                 writeln!(stdout, "insert {:?}", meas)?;
                 meas.insert_into_db(pool)?;
-            } else {
-                writeln!(stdout, "exists {:?}", meas)?;
             }
             Ok(())
         })

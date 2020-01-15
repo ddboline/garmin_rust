@@ -63,7 +63,7 @@ impl GarminSync {
     }
 
     pub fn from_client(s3client: S3Client) -> Self {
-        GarminSync {
+        Self {
             s3_client: s3client,
         }
     }

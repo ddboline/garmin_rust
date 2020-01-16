@@ -24,7 +24,54 @@ type Userids = RwLock<HashSet<UserId>>;
 lazy_static! {
     static ref LAST_WEIGHT: WeightLock = AtomicCell::new(None);
     static ref USERIDS: Userids = RwLock::new(HashSet::new());
-    static ref FAILURE_COUNT: AtomicUsize = AtomicUsize::new(0);
+    static ref FAILURE_COUNT: FailureCount = FailureCount::new(5);
+}
+
+struct FailureCount {
+    max_count: usize,
+    counter: AtomicUsize,
+}
+
+impl FailureCount {
+    fn new(max_count: usize) -> Self {
+        Self {
+            max_count,
+            counter: AtomicUsize::new(0),
+        }
+    }
+
+    fn check(&self) -> Result<(), Error> {
+        if self.counter.load(Ordering::SeqCst) > self.max_count {
+            Err(format_err!(
+                "Failed after retrying {} times",
+                self.max_count
+            ))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn reset(&self) -> Result<(), Error> {
+        if self.counter.swap(0, Ordering::SeqCst) > self.max_count {
+            Err(format_err!(
+                "Failed after retrying {} times",
+                self.max_count
+            ))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn increment(&self) -> Result<(), Error> {
+        if self.counter.fetch_add(1, Ordering::SeqCst) > self.max_count {
+            Err(format_err!(
+                "Failed after retrying {} times",
+                self.max_count
+            ))
+        } else {
+            Ok(())
+        }
+    }
 }
 
 pub fn run_bot(telegram_bot_token: &str, pool: PgPool, scope: &Scope) -> Result<(), Error> {
@@ -58,15 +105,16 @@ async fn _telegram_worker(
     let api = Api::new(telegram_bot_token);
     let mut stream = api.stream();
     while let Some(update) = stream.next().await {
-        if FAILURE_COUNT.load(Ordering::SeqCst) > 5 {
-            return Err(format_err!("Failed after retrying 5 times",));
-        }
+        FAILURE_COUNT.check()?;
         // If the received update contains a new message...
         if let UpdateKind::Message(message) = update?.kind {
+            FAILURE_COUNT.check()?;
             if let MessageKind::Text { ref data, .. } = message.kind {
+                FAILURE_COUNT.check()?;
                 // Print received text message to stdout.
                 debug!("{:?}", message);
                 if USERIDS.read().contains(&message.from.id) {
+                    FAILURE_COUNT.check()?;
                     match data.to_lowercase().as_str() {
                         "check" => match LAST_WEIGHT.load() {
                             Some(meas) => {
@@ -123,9 +171,9 @@ fn process_messages(recv: &Receiver<ScaleMeasurement>, pool: &PgPool) -> Result<
         if meas.insert_into_db(pool).is_ok() {
             debug!("{:?}", meas);
             LAST_WEIGHT.store(Some(meas));
-            FAILURE_COUNT.store(0, Ordering::SeqCst);
+            FAILURE_COUNT.reset()?;
         } else {
-            FAILURE_COUNT.fetch_add(1, Ordering::SeqCst);
+            FAILURE_COUNT.increment()?;
         }
     }
     Ok(())
@@ -133,18 +181,16 @@ fn process_messages(recv: &Receiver<ScaleMeasurement>, pool: &PgPool) -> Result<
 
 fn fill_telegram_user_ids(pool: &PgPool) -> Result<(), Error> {
     loop {
-        if FAILURE_COUNT.load(Ordering::SeqCst) > 5 {
-            return Err(format_err!("Failed after retrying 5 times",));
-        }
+        FAILURE_COUNT.check()?;
         if let Ok(telegram_userids) = list_of_telegram_user_ids(&pool) {
             let mut telegram_userid_set = USERIDS.write();
             telegram_userid_set.clear();
             for userid in telegram_userids {
                 telegram_userid_set.insert(UserId::new(userid));
             }
-            FAILURE_COUNT.store(0, Ordering::SeqCst);
+            FAILURE_COUNT.reset()?;
         } else {
-            FAILURE_COUNT.fetch_add(1, Ordering::SeqCst);
+            FAILURE_COUNT.increment()?;
         }
         sleep(Duration::from_secs(60));
     }

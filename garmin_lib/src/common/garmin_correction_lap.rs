@@ -344,19 +344,7 @@ impl GarminCorrectionList {
                     s => Some(s.to_string()),
                 });
 
-                if conn.query(query_unique_key, &[&unique_key])?.len() == 0 {
-                    conn.execute(
-                        &stmt_insert,
-                        &[
-                            &corr.start_time,
-                            &corr.lap_number,
-                            &corr.distance,
-                            &corr.duration,
-                            &unique_key,
-                            &sport,
-                        ],
-                    )?;
-                } else {
+                if conn.query(query_unique_key, &[&unique_key])?.is_empty() {
                     conn.execute(
                         &stmt_update,
                         &[
@@ -367,9 +355,22 @@ impl GarminCorrectionList {
                             &unique_key,
                             &sport,
                         ],
-                    )?;
-                };
-                Ok(())
+                    )
+                } else {
+                    conn.execute(
+                        &stmt_insert,
+                        &[
+                            &corr.start_time,
+                            &corr.lap_number,
+                            &corr.distance,
+                            &corr.duration,
+                            &unique_key,
+                            &sport,
+                        ],
+                    )
+                }
+                .map_err(Into::into)
+                .map(|_| ())
             })
             .collect()
     }

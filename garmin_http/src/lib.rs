@@ -1,3 +1,11 @@
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_possible_wrap)]
+
 pub mod errors;
 pub mod garmin_requests;
 pub mod garmin_rust_app;
@@ -9,12 +17,4 @@ use lazy_static::lazy_static;
 
 lazy_static! {
     static ref CONFIG: GarminConfig = GarminConfig::get_config(None).unwrap();
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
 }

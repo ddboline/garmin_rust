@@ -77,13 +77,13 @@ pub fn days_in_year(year: i32) -> i64 {
 }
 
 pub fn days_in_month(year: i32, month: u32) -> i64 {
-    let mut y1_ = year;
-    let mut m1_ = month + 1;
-    if m1_ == 13 {
-        y1_ += 1;
-        m1_ = 1;
+    let mut y1 = year;
+    let mut m1 = month + 1;
+    if m1 == 13 {
+        y1 += 1;
+        m1 = 1;
     }
-    (Utc.ymd(y1_, m1_, 1) - Utc.ymd(year, month, 1)).num_days()
+    (Utc.ymd(y1, m1, 1) - Utc.ymd(year, month, 1)).num_days()
 }
 
 pub fn expected_calories(weight: f64, pace_min_per_mile: f64, distance: f64) -> f64 {

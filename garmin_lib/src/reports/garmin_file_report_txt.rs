@@ -25,27 +25,25 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<String>, Error> {
     };
 
     let mut tmp_str = Vec::new();
-    match sport_type {
-        SportTypes::Running => {
-            tmp_str.push(format!(
-                "total {:.2} mi {} calories {} time {} min/mi {} min/km",
-                gfile.total_distance / METERS_PER_MILE,
-                gfile.total_calories,
-                print_h_m_s(gfile.total_duration, true)?,
-                print_h_m_s(min_mile * 60.0, false)?,
-                print_h_m_s(min_mile * 60.0 / METERS_PER_MILE * 1000., false)?
-            ));
-        }
-        _ => {
-            tmp_str.push(format!(
-                "total {:.2} mi {} calories {} time {} mph",
-                gfile.total_distance / METERS_PER_MILE,
-                gfile.total_calories,
-                print_h_m_s(gfile.total_duration, true)?,
-                format!("{:.2}", mi_per_hr),
-            ));
-        }
-    };
+    if sport_type == SportTypes::Running {
+        tmp_str.push(format!(
+            "total {:.2} mi {} calories {} time {} min/mi {} min/km",
+            gfile.total_distance / METERS_PER_MILE,
+            gfile.total_calories,
+            print_h_m_s(gfile.total_duration, true)?,
+            print_h_m_s(min_mile * 60.0, false)?,
+            print_h_m_s(min_mile * 60.0 / METERS_PER_MILE * 1000., false)?
+        ));
+    } else {
+        tmp_str.push(format!(
+            "total {:.2} mi {} calories {} time {} mph",
+            gfile.total_distance / METERS_PER_MILE,
+            gfile.total_calories,
+            print_h_m_s(gfile.total_duration, true)?,
+            format!("{:.2}", mi_per_hr),
+        ));
+    }
+
     if gfile.total_hr_dur > gfile.total_hr_dis {
         tmp_str.push(format!(
             "{:.2} bpm",

@@ -115,18 +115,14 @@ async fn _telegram_worker(
                 debug!("{:?}", message);
                 if USERIDS.read().contains(&message.from.id) {
                     FAILURE_COUNT.check()?;
-                    match data.to_lowercase().as_str() {
-                        "check" => match LAST_WEIGHT.load() {
-                            Some(meas) => {
-                                api.spawn(
-                                    message.text_reply(format!("latest measurement {}", meas)),
-                                );
-                            }
-                            None => {
-                                api.spawn(message.text_reply("No measurements".to_string()));
-                            }
-                        },
-                        _ => match ScaleMeasurement::from_telegram_text(data) {
+                    if data.to_lowercase().as_str() == "check" {
+                        if let Some(meas) = LAST_WEIGHT.load() {
+                            api.spawn(message.text_reply(format!("latest measurement {}", meas)));
+                        } else {
+                            api.spawn(message.text_reply("No measurements".to_string()));
+                        }
+                    } else {
+                        match ScaleMeasurement::from_telegram_text(data) {
                             Ok(meas) => match send.try_send(meas) {
                                 Ok(_) => api
                                     .spawn(message.text_reply(format!("sent to the db {}", meas))),
@@ -135,7 +131,7 @@ async fn _telegram_worker(
                                 }
                             },
                             Err(e) => api.spawn(message.text_reply(format!("Parse error {}", e))),
-                        },
+                        }
                     }
                 } else {
                     // Answer message with "Hi".

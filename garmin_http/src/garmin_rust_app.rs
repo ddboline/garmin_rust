@@ -37,9 +37,6 @@ pub struct AppState {
 ///    `/garmin` is the main route, providing the same functionality as the CLI interface, while adding the ability of upload to strava.
 ///    `/garmin/list_gps_tracks`, `/garmin/get_hr_data` and `/garmin/get_hr_pace` return structured json intended for separate analysis
 pub async fn start_app() {
-    let config = &CONFIG;
-    let pool = PgPool::new(&config.pgurl);
-
     async fn _update_db(pool: PgPool) {
         let mut i = interval(time::Duration::from_secs(60));
         loop {
@@ -48,6 +45,9 @@ pub async fn start_app() {
             block(move || fill_from_db(&p)).await.unwrap_or(());
         }
     }
+
+    let config = &CONFIG;
+    let pool = PgPool::new(&config.pgurl);
 
     actix_rt::spawn(_update_db(pool.clone()));
 

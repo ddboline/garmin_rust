@@ -362,16 +362,15 @@ impl StravaClient {
             .to_string_lossy()
             .to_string();
 
-        let filename = match ext.as_str() {
-            "gz" => filepath.canonicalize()?.to_string_lossy().to_string(),
-            _ => {
-                let tfile = Builder::new().suffix(&format!("{}.gz", ext)).tempfile()?;
-                let infname = filepath.canonicalize()?.to_string_lossy().to_string();
-                let outfname = tfile.path().to_string_lossy().to_string();
-                gzip_file(&infname, &outfname)?;
-                _tempfile = Some(tfile);
-                outfname
-            }
+        let filename = if ext.as_str() == "gz" {
+            filepath.canonicalize()?.to_string_lossy().to_string()
+        } else {
+            let tfile = Builder::new().suffix(&format!("{}.gz", ext)).tempfile()?;
+            let infname = filepath.canonicalize()?.to_string_lossy().to_string();
+            let outfname = tfile.path().to_string_lossy().to_string();
+            gzip_file(&infname, &outfname)?;
+            _tempfile = Some(tfile);
+            outfname
         };
 
         match self._upload_strava_activity(py, &filename, title, description, is_private, sport) {

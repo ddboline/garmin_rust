@@ -392,17 +392,17 @@ pub async fn garmin_get_hr_data(
             let file_name = &file_list[0];
             let avro_file = format!("{}/{}.avro", &config.cache_dir, file_name);
             let a = avro_file.clone();
-            match block(move || GarminFile::read_avro(&a)).await {
-                Ok(g) => g,
-                Err(_) => {
-                    let gps_file = format!("{}/{}", &config.gps_dir, file_name);
-                    let corr_map = block(move || state.db.handle(GarminCorrRequest {}))
-                        .await?
-                        .corr_map;
-                    let gfile =
-                        block(move || GarminParse::new().with_file(&gps_file, &corr_map)).await?;
-                    block(move || gfile.dump_avro(&avro_file).map(|_| gfile)).await?
-                }
+
+            if let Ok(g) = block(move || GarminFile::read_avro(&a)).await {
+                g
+            } else {
+                let gps_file = format!("{}/{}", &config.gps_dir, file_name);
+                let corr_map = block(move || state.db.handle(GarminCorrRequest {}))
+                    .await?
+                    .corr_map;
+                let gfile =
+                    block(move || GarminParse::new().with_file(&gps_file, &corr_map)).await?;
+                block(move || gfile.dump_avro(&avro_file).map(|_| gfile)).await?
             }
             .points
             .iter()
@@ -449,17 +449,17 @@ pub async fn garmin_get_hr_pace(
             let config = &CONFIG;
             let file_name = &file_list[0];
             let avro_file = format!("{}/{}.avro", &config.cache_dir, file_name);
-            let gfile = match block(move || GarminFile::read_avro(&avro_file)).await {
-                Ok(g) => g,
-                Err(_) => {
-                    let gps_file = format!("{}/{}", &config.gps_dir, file_name);
 
-                    let corr_map = block(move || state.db.handle(GarminCorrRequest {}))
-                        .await?
-                        .corr_map;
+            let gfile = if let Ok(g) = block(move || GarminFile::read_avro(&avro_file)).await {
+                g
+            } else {
+                let gps_file = format!("{}/{}", &config.gps_dir, file_name);
 
-                    block(move || GarminParse::new().with_file(&gps_file, &corr_map)).await?
-                }
+                let corr_map = block(move || state.db.handle(GarminCorrRequest {}))
+                    .await?
+                    .corr_map;
+
+                block(move || GarminParse::new().with_file(&gps_file, &corr_map)).await?
             };
 
             let splits = get_splits(&gfile, 400., "mi", true)?;

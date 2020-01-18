@@ -51,6 +51,19 @@ pub fn create_report_query(
 }
 
 fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, Error> {
+    #[derive(FromSqlRow, Debug)]
+    struct FileSummaryReport {
+        datetime: DateTime<Utc>,
+        week: f64,
+        isodow: f64,
+        sport: String,
+        total_calories: i64,
+        total_distance: f64,
+        total_duration: f64,
+        total_hr_dur: f64,
+        total_hr_dis: f64,
+    }
+
     let query = format!(
         "
         WITH a AS (
@@ -82,19 +95,6 @@ fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, 
     );
 
     debug!("{}", query);
-
-    #[derive(FromSqlRow, Debug)]
-    struct FileSummaryReport {
-        datetime: DateTime<Utc>,
-        week: f64,
-        isodow: f64,
-        sport: String,
-        total_calories: i64,
-        total_distance: f64,
-        total_duration: f64,
-        total_hr_dur: f64,
-        total_hr_dis: f64,
-    }
 
     pool.get()?
         .query(query.as_str(), &[])?
@@ -187,6 +187,19 @@ fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, 
 }
 
 fn day_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, Error> {
+    #[derive(FromSqlRow, Debug)]
+    struct DaySummaryReport {
+        date: String,
+        week: f64,
+        isodow: f64,
+        sport: String,
+        total_calories: i64,
+        total_distance: f64,
+        total_duration: f64,
+        total_hr_dur: f64,
+        total_hr_dis: f64,
+    }
+
     let query = format!(
         "
         WITH a AS (
@@ -218,19 +231,6 @@ fn day_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, E
     );
 
     debug!("{}", query);
-
-    #[derive(FromSqlRow, Debug)]
-    struct DaySummaryReport {
-        date: String,
-        week: f64,
-        isodow: f64,
-        sport: String,
-        total_calories: i64,
-        total_distance: f64,
-        total_duration: f64,
-        total_hr_dur: f64,
-        total_hr_dis: f64,
-    }
 
     pool.get()?
         .query(query.as_str(), &[])?
@@ -322,6 +322,19 @@ fn day_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, E
 }
 
 fn week_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, Error> {
+    #[derive(FromSqlRow, Debug)]
+    struct WeekSummaryReport {
+        year: f64,
+        week: f64,
+        sport: String,
+        total_calories: i64,
+        total_distance: f64,
+        total_duration: f64,
+        total_hr_dur: f64,
+        total_hr_dis: f64,
+        number_of_days: i64,
+    }
+
     let query = format!(
         "
         WITH a AS (
@@ -353,19 +366,6 @@ fn week_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, 
     );
 
     debug!("{}", query);
-
-    #[derive(FromSqlRow, Debug)]
-    struct WeekSummaryReport {
-        year: f64,
-        week: f64,
-        sport: String,
-        total_calories: i64,
-        total_distance: f64,
-        total_duration: f64,
-        total_hr_dur: f64,
-        total_hr_dis: f64,
-        number_of_days: i64,
-    }
 
     pool.get()?
         .query(query.as_str(), &[])?
@@ -449,6 +449,19 @@ fn week_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, 
 }
 
 fn month_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, Error> {
+    #[derive(FromSqlRow, Debug)]
+    struct MonthSummaryReport {
+        year: f64,
+        month: f64,
+        sport: String,
+        total_calories: i64,
+        total_distance: f64,
+        total_duration: f64,
+        total_hr_dur: f64,
+        total_hr_dis: f64,
+        number_of_days: i64,
+    }
+
     let query = format!(
         "
         WITH a AS (
@@ -480,19 +493,6 @@ fn month_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>,
     );
 
     debug!("{}", query);
-
-    #[derive(FromSqlRow, Debug)]
-    struct MonthSummaryReport {
-        year: f64,
-        month: f64,
-        sport: String,
-        total_calories: i64,
-        total_distance: f64,
-        total_duration: f64,
-        total_hr_dur: f64,
-        total_hr_dis: f64,
-        number_of_days: i64,
-    }
 
     pool.get()?
         .query(query.as_str(), &[])?
@@ -571,6 +571,16 @@ fn month_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>,
 }
 
 fn sport_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, Error> {
+    #[derive(FromSqlRow, Debug)]
+    struct SportSummaryReport {
+        sport: String,
+        total_calories: i64,
+        total_distance: f64,
+        total_duration: f64,
+        total_hr_dur: f64,
+        total_hr_dis: f64,
+    }
+
     let query = format!(
         "
         WITH a AS (
@@ -597,16 +607,6 @@ fn sport_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>,
         constr
     );
     debug!("{}", query);
-
-    #[derive(FromSqlRow, Debug)]
-    struct SportSummaryReport {
-        sport: String,
-        total_calories: i64,
-        total_distance: f64,
-        total_duration: f64,
-        total_hr_dur: f64,
-        total_hr_dis: f64,
-    }
 
     pool.get()?
         .query(query.as_str(), &[])?
@@ -674,6 +674,18 @@ fn sport_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>,
 }
 
 fn year_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, Error> {
+    #[derive(FromSqlRow, Debug)]
+    struct YearSummaryReport {
+        year: f64,
+        sport: String,
+        total_calories: i64,
+        total_distance: f64,
+        total_duration: f64,
+        total_hr_dur: f64,
+        total_hr_dis: f64,
+        number_of_days: i64,
+    }
+
     let query = format!(
         "
         WITH a AS (
@@ -703,18 +715,6 @@ fn year_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, 
         constr
     );
     debug!("{}", query);
-
-    #[derive(FromSqlRow, Debug)]
-    struct YearSummaryReport {
-        year: f64,
-        sport: String,
-        total_calories: i64,
-        total_distance: f64,
-        total_duration: f64,
-        total_hr_dur: f64,
-        total_hr_dis: f64,
-        number_of_days: i64,
-    }
 
     pool.get()?
         .query(query.as_str(), &[])?

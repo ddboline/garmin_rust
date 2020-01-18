@@ -341,12 +341,13 @@ impl GarminCli {
                 "latest" => constraints.push(
                     "begin_datetime=(select max(begin_datetime) from garmin_summary)".to_string(),
                 ),
-                pat => match sport_type_map.get(pat) {
-                    Some(&x) => options.do_sport = Some(x),
-                    None => {
+                pat => {
+                    if let Some(x) = sport_type_map.get(pat) {
+                        options.do_sport = Some(*x)
+                    } else {
                         constraints.extend_from_slice(&Self::match_patterns(config, pat));
                     }
-                },
+                }
             };
         }
 
@@ -376,21 +377,20 @@ impl GarminCli {
                     .ok_or_else(|| format_err!("This shouldn't be happening..."))?;
                 debug!("{}", &file_name);
                 let avro_file = format!("{}/{}.avro", &self.get_config().cache_dir, file_name);
-                let gfile = match garmin_file::GarminFile::read_avro(&avro_file) {
-                    Ok(g) => {
-                        debug!("Cached avro file read: {}", &avro_file);
-                        g
-                    }
-                    Err(_) => {
-                        let gps_file = format!("{}/{}", &self.get_config().gps_dir, file_name);
 
-                        let corr_list = self.get_corr().read_corrections_from_db()?;
-                        let corr_map = corr_list.get_corr_list_map();
+                let gfile = if let Ok(g) = garmin_file::GarminFile::read_avro(&avro_file) {
+                    debug!("Cached avro file read: {}", &avro_file);
+                    g
+                } else {
+                    let gps_file = format!("{}/{}", &self.get_config().gps_dir, file_name);
 
-                        debug!("Reading gps_file: {}", &gps_file);
-                        GarminParse::new().with_file(&gps_file, &corr_map)?
-                    }
+                    let corr_list = self.get_corr().read_corrections_from_db()?;
+                    let corr_map = corr_list.get_corr_list_map();
+
+                    debug!("Reading gps_file: {}", &gps_file);
+                    GarminParse::new().with_file(&gps_file, &corr_map)?
                 };
+
                 debug!("gfile {} {}", gfile.laps.len(), gfile.points.len());
                 writeln!(stdout, "{}", generate_txt_report(&gfile)?.join("\n"))?;
             }
@@ -420,21 +420,20 @@ impl GarminCli {
                     .ok_or_else(|| format_err!("This shouldn't be happening..."))?;
                 debug!("{}", &file_name);
                 let avro_file = format!("{}/{}.avro", self.get_config().cache_dir, file_name);
-                let gfile = match garmin_file::GarminFile::read_avro(&avro_file) {
-                    Ok(g) => {
-                        debug!("Cached avro file read: {}", &avro_file);
-                        g
-                    }
-                    Err(_) => {
-                        let gps_file = format!("{}/{}", &self.get_config().gps_dir, file_name);
 
-                        let corr_list = self.get_corr().read_corrections_from_db()?;
-                        let corr_map = corr_list.get_corr_list_map();
+                let gfile = if let Ok(g) = garmin_file::GarminFile::read_avro(&avro_file) {
+                    debug!("Cached avro file read: {}", &avro_file);
+                    g
+                } else {
+                    let gps_file = format!("{}/{}", &self.get_config().gps_dir, file_name);
 
-                        debug!("Reading gps_file: {}", &gps_file);
-                        GarminParse::new().with_file(&gps_file, &corr_map)?
-                    }
+                    let corr_list = self.get_corr().read_corrections_from_db()?;
+                    let corr_map = corr_list.get_corr_list_map();
+
+                    debug!("Reading gps_file: {}", &gps_file);
+                    GarminParse::new().with_file(&gps_file, &corr_map)?
                 };
+
                 debug!("gfile {} {}", gfile.laps.len(), gfile.points.len());
 
                 file_report_html(self.get_config(), &gfile, &req.history, Some(&pg_conn))

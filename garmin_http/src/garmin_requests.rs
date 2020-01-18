@@ -21,7 +21,6 @@ use garmin_lib::common::strava_sync::{
 };
 
 use crate::errors::ServiceError as Error;
-use crate::logged_user::LoggedUser;
 use crate::CONFIG;
 
 pub trait HandleRequest<T> {
@@ -79,17 +78,6 @@ impl HandleRequest<GarminListRequest> for PgPool {
     type Result = Result<Vec<String>, Error>;
     fn handle(&self, msg: GarminListRequest) -> Self::Result {
         msg.get_list_of_files_from_db(self)
-    }
-}
-
-pub struct AuthorizedUserRequest {
-    pub user: LoggedUser,
-}
-
-impl HandleRequest<AuthorizedUserRequest> for PgPool {
-    type Result = Result<bool, Error>;
-    fn handle(&self, msg: AuthorizedUserRequest) -> Self::Result {
-        msg.user.is_authorized(self).map_err(Into::into)
     }
 }
 

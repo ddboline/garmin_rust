@@ -1,6 +1,6 @@
 [package]
 name = "garmin_http"
-version = "0.6.12"
+version = "0.6.13"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -26,4 +26,4 @@ tempdir = "0.3"
 anyhow = "1.0"
 thiserror = "1.0"
 actix-threadpool = "0.3"
-rust_auth_server = { git = "https://github.com/ddboline/rust-auth-server.git", tag="0.4.3" }
+rust_auth_server = { git = "https://github.com/ddboline/rust-auth-server.git", tag="0.4.4" }

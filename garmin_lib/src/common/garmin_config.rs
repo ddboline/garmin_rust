@@ -40,9 +40,29 @@ pub struct GarminConfigInner {
 #[derive(Default, Debug, Clone)]
 pub struct GarminConfig(Arc<GarminConfigInner>);
 
+macro_rules! set_config_parse {
+    ($s:ident, $id:ident) => {
+        if let Some($id) = var(&stringify!($id).to_uppercase())
+            .ok()
+            .and_then(|x| x.parse().ok())
+        {
+            $s.$id = $id;
+        }
+    };
+}
+
+macro_rules! set_config_parse_default {
+    ($s:ident, $id:ident, $d:expr) => {
+        $s.$id = var(&stringify!($id).to_uppercase())
+            .ok()
+            .and_then(|x| x.parse().ok())
+            .unwrap_or_else(|| $d);
+    };
+}
+
 macro_rules! set_config_from_env {
-    ($s:ident, $id:ident, $name:literal) => {
-        if let Ok($id) = var($name) {
+    ($s:ident, $id:ident) => {
+        if let Ok($id) = var(&stringify!($id).to_uppercase()) {
             $s.$id = $id.to_string()
         }
     };
@@ -51,12 +71,15 @@ macro_rules! set_config_from_env {
 impl GarminConfigInner {
     /// Some variables have natural default values, which we set in the new() method.
     pub fn new() -> Self {
-        let home_dir = var("HOME").unwrap_or_else(|_| "/tmp".to_string());
+        let home_dir = dirs::home_dir().unwrap_or_else(|| Path::new("/tmp").to_path_buf());
+        let cache_dir = home_dir.join(".garmin_cache").join("run");
 
-        let default_gps_dir = format!("{}/.garmin_cache/run/gps_tracks", home_dir);
-        let default_cache_dir = format!("{}/.garmin_cache/run/cache", home_dir);
-        let default_summary_cache = format!("{}/.garmin_cache/run/summary_cache", home_dir);
-        let default_fitbit_dir = format!("{}/.garmin_cache/run/fitbit_cache", home_dir);
+        let default_gps_dir = cache_dir.join("gps_tracks").to_string_lossy().into();
+        let default_cache_dir = cache_dir.join("cache").to_string_lossy().into();
+        let default_summary_cache = cache_dir.join("summary_cache").to_string_lossy().into();
+        let default_fitbit_dir = cache_dir.join("fitbit_cache").to_string_lossy().into();
+        let fitbit_tokenfile = home_dir.join(".fitbit_tokens").to_string_lossy().into();
+        let strava_tokenfile = home_dir.join(".stravacli").to_string_lossy().into();
 
         Self {
             gps_dir: default_gps_dir,
@@ -66,46 +89,39 @@ impl GarminConfigInner {
             n_db_workers: 2,
             secret_key: "0123".repeat(8),
             domain: "localhost".to_string(),
-            fitbit_tokenfile: format!("{}/.fitbit_tokens", home_dir),
-            strava_tokenfile: format!("{}/.stravacli", home_dir),
+            fitbit_tokenfile: fitbit_tokenfile,
+            strava_tokenfile: strava_tokenfile,
             fitbit_cachedir: default_fitbit_dir,
-            home_dir,
+            home_dir: home_dir.to_string_lossy().into(),
             ..Self::default()
         }
     }
 
     /// Each variable maps to an environment variable, if the variable exists, use it.
     pub fn from_env(mut self) -> Self {
-        set_config_from_env!(self, home_dir, "HOME");
-        set_config_from_env!(self, pgurl, "PGURL");
-        set_config_from_env!(self, maps_api_key, "MAPS_API_KEY");
-        set_config_from_env!(self, gps_bucket, "GPS_BUCKET");
-        set_config_from_env!(self, cache_bucket, "CACHE_BUCKET");
-        set_config_from_env!(self, gps_dir, "GPS_DIR");
-        set_config_from_env!(self, cache_dir, "CACHE_DIR");
-        if let Ok(port) = var("PORT") {
-            self.port = port.parse().unwrap_or(8000)
-        }
-        set_config_from_env!(self, summary_cache, "SUMMARY_CACHE");
-        set_config_from_env!(self, summary_bucket, "SUMMARY_BUCKET");
-        if let Ok(n_db_workers_str) = var("N_DB_WORKERS") {
-            if let Ok(n_db_workers) = n_db_workers_str.parse() {
-                self.n_db_workers = n_db_workers
-            }
-        }
-        set_config_from_env!(self, secret_key, "SECRET_KEY");
-        set_config_from_env!(self, domain, "DOMAIN");
-        set_config_from_env!(self, google_secret_file, "GOOGLE_SECRET_FILE");
-        set_config_from_env!(self, google_token_path, "GOOGLE_TOKEN_PATH");
-        set_config_from_env!(self, telegram_bot_token, "TELEGRAM_BOT_TOKEN");
-        set_config_from_env!(self, fitbit_clientid, "FITBIT_CLIENTID");
-        set_config_from_env!(self, fitbit_clientsecret, "FITBIT_CLIENTSECRET");
-        set_config_from_env!(self, fitbit_tokenfile, "FITBIT_TOKENFILE");
-        set_config_from_env!(self, fitbit_cachedir, "FITBIT_CACHEDIR");
-        set_config_from_env!(self, fitbit_bucket, "FITBIT_BUCKET");
-        set_config_from_env!(self, strava_tokenfile, "STRAVA_TOKENFILE");
-        set_config_from_env!(self, garmin_connect_email, "GARMIN_CONNECT_EMAIL");
-        set_config_from_env!(self, garmin_connect_password, "GARMIN_CONNECT_PASSWORD");
+        set_config_from_env!(self, pgurl);
+        set_config_from_env!(self, maps_api_key);
+        set_config_from_env!(self, gps_bucket);
+        set_config_from_env!(self, cache_bucket);
+        set_config_from_env!(self, gps_dir);
+        set_config_from_env!(self, cache_dir);
+        set_config_parse_default!(self, port, 8000);
+        set_config_from_env!(self, summary_cache);
+        set_config_from_env!(self, summary_bucket);
+        set_config_parse!(self, n_db_workers);
+        set_config_from_env!(self, secret_key);
+        set_config_from_env!(self, domain);
+        set_config_from_env!(self, google_secret_file);
+        set_config_from_env!(self, google_token_path);
+        set_config_from_env!(self, telegram_bot_token);
+        set_config_from_env!(self, fitbit_clientid);
+        set_config_from_env!(self, fitbit_clientsecret);
+        set_config_from_env!(self, fitbit_tokenfile);
+        set_config_from_env!(self, fitbit_cachedir);
+        set_config_from_env!(self, fitbit_bucket);
+        set_config_from_env!(self, strava_tokenfile);
+        set_config_from_env!(self, garmin_connect_email);
+        set_config_from_env!(self, garmin_connect_password);
         self
     }
 }
@@ -115,24 +131,24 @@ impl GarminConfig {
         Self(Arc::new(GarminConfigInner::new()))
     }
 
-    /// Pull configuration from a file if it exists, first look for a config.env file in the current directory,
+    /// Pull configuration from a file if it exists,
+    /// first look for a config.env file in the current directory,
     /// then try `${HOME}/.config/garmin_rust/config.env`,
     /// if that doesn't exist fall back on the default behaviour of dotenv
     /// Panic if required variables aren't set appropriately.
     pub fn get_config(fname: Option<&str>) -> Result<Self, Error> {
-        let home_dir = var("HOME").map_err(|_| format_err!("No HOME directory..."))?;
+        let config_dir = dirs::config_dir().ok_or_else(|| format_err!("No CONFIG directory"))?;
+        let default_fname = config_dir.join("garmin_rust").join("config.env");
 
-        let default_fname = format!("{}/.config/garmin_rust/config.env", home_dir);
-
-        let env_file = match fname {
-            Some(fname) if Path::new(fname).exists() => fname.to_string(),
-            _ => default_fname,
+        let env_file = match fname.map(|x| Path::new(x)) {
+            Some(fname) if fname.exists() => fname,
+            _ => &default_fname,
         };
 
         dotenv::dotenv().ok();
 
-        if Path::new(&env_file).exists() {
-            dotenv::from_path(&env_file).ok();
+        if env_file.exists() {
+            dotenv::from_path(env_file).ok();
         } else if Path::new("config.env").exists() {
             dotenv::from_filename("config.env").ok();
         }

@@ -1,5 +1,6 @@
 use anyhow::Error;
 pub use rust_auth_server::logged_user::{LoggedUser, AUTHORIZED_USERS};
+use std::env::var;
 
 use garmin_lib::common::pgpool::PgPool;
 
@@ -15,6 +16,13 @@ pub fn fill_from_db(pool: &PgPool) -> Result<(), Error> {
         })
         .collect();
     let users = results?;
+
+    if let Ok("true") = var("TESTENV").as_ref().map(|x| x.as_str()) {
+        let user = LoggedUser {
+            email: "user@test".to_string(),
+        };
+        AUTHORIZED_USERS.merge_users(&[user])?;
+    }
 
     AUTHORIZED_USERS.merge_users(&users)
 }

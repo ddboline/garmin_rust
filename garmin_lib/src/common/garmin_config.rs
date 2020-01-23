@@ -89,8 +89,8 @@ impl GarminConfigInner {
             n_db_workers: 2,
             secret_key: "0123".repeat(8),
             domain: "localhost".to_string(),
-            fitbit_tokenfile: fitbit_tokenfile,
-            strava_tokenfile: strava_tokenfile,
+            fitbit_tokenfile,
+            strava_tokenfile,
             fitbit_cachedir: default_fitbit_dir,
             home_dir: home_dir.to_string_lossy().into(),
             ..Self::default()

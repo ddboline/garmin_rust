@@ -93,9 +93,24 @@ pub fn run_bot(telegram_bot_token: &str, pool: PgPool, scope: &Scope) -> Result<
 
 fn telegram_worker(telegram_bot_token: &str, send: Sender<ScaleMeasurement>) -> Result<(), Error> {
     let mut rt = Runtime::new()?;
-
-    rt.block_on(_telegram_worker(telegram_bot_token, send))?;
+    rt.block_on(telegram_loop(telegram_bot_token, send))?;
     Ok(())
+}
+
+async fn telegram_loop(telegram_bot_token: &str, send: Sender<ScaleMeasurement>) -> Result<(), Error> {
+    loop {
+        FAILURE_COUNT.check()?;
+
+        match tokio::time::timeout(
+            tokio::time::Duration::from_secs(3600),
+            _telegram_worker(telegram_bot_token, send.clone()),
+        )
+        .await
+        {
+            Err(_) | Ok(Ok(_)) => FAILURE_COUNT.reset()?,
+            Ok(Err(_)) => FAILURE_COUNT.increment()?,
+        }
+    }
 }
 
 async fn _telegram_worker(

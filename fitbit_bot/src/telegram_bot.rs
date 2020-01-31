@@ -97,7 +97,10 @@ fn telegram_worker(telegram_bot_token: &str, send: Sender<ScaleMeasurement>) -> 
     Ok(())
 }
 
-async fn telegram_loop(telegram_bot_token: &str, send: Sender<ScaleMeasurement>) -> Result<(), Error> {
+async fn telegram_loop(
+    telegram_bot_token: &str,
+    send: Sender<ScaleMeasurement>,
+) -> Result<(), Error> {
     loop {
         FAILURE_COUNT.check()?;
 

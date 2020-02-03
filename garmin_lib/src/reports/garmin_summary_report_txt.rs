@@ -20,15 +20,18 @@ pub fn create_report_query(
         None => "".to_string(),
     };
 
-    let constr = match constraints.len() {
-        0 => match sport_constr.len() {
-            0 => "".to_string(),
-            _ => format!("WHERE {}", sport_constr),
-        },
-        _ => match sport_constr.len() {
-            0 => format!("WHERE {}", constraints.join(" OR ")),
-            _ => format!("WHERE ({}) AND {}", constraints.join(" OR "), sport_constr),
-        },
+    let constr = if constraints.is_empty() {
+        if sport_constr.is_empty() {
+            "".to_string()
+        } else {
+            format!("WHERE {}", sport_constr)
+        }
+    } else {
+        if sport_constr.is_empty() {
+            format!("WHERE {}", constraints.join(" OR "))
+        } else {
+            format!("WHERE ({}) AND {}", constraints.join(" OR "), sport_constr)
+        }
     };
 
     debug!("{}", constr);

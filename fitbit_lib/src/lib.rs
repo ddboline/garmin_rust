@@ -7,6 +7,7 @@
 #![allow(clippy::cast_possible_wrap)]
 #![allow(clippy::similar_names)]
 #![allow(clippy::shadow_unrelated)]
+#![allow(clippy::missing_errors_doc)]
 
 pub mod fitbit_client;
 pub mod fitbit_heartrate;

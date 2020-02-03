@@ -26,12 +26,10 @@ pub fn create_report_query(
         } else {
             format!("WHERE {}", sport_constr)
         }
+    } else if sport_constr.is_empty() {
+        format!("WHERE {}", constraints.join(" OR "))
     } else {
-        if sport_constr.is_empty() {
-            format!("WHERE {}", constraints.join(" OR "))
-        } else {
-            format!("WHERE ({}) AND {}", constraints.join(" OR "), sport_constr)
-        }
+        format!("WHERE ({}) AND {}", constraints.join(" OR "), sport_constr)
     };
 
     debug!("{}", constr);

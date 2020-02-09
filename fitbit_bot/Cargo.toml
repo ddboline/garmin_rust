@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 fitbit_lib = {path="../fitbit_lib"}
 garmin_lib = {path="../garmin_lib"}
-telegram-bot = {git = "https://github.com/ddboline/telegram-bot.git", branch="master"}
+telegram-bot = {git = "https://github.com/telegram-rs/telegram-bot.git", branch="master"}
 futures = "0.3"
 tokio = {version="0.2", features=["full"]}
 crossbeam-channel = "0.4"

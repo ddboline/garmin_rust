@@ -7,12 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-google-sheets4 = "1.0"
-hyper = "0.10"
-hyper-native-tls = "0.3.0"
-yup-oauth2 = "1.0"
-serde = "1.0"
-serde_derive = "1.0"
+serde = {version="1.0", features=["derive"]}
 serde_json = "1.0"
 garmin_lib = {path = "../garmin_lib"}
 chrono = "0.4"

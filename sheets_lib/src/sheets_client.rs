@@ -1,8 +1,12 @@
 use anyhow::{format_err, Error};
+use chrono::offset::TimeZone;
+use chrono::{DateTime, Utc};
+use google_sheets4::RowData;
 use google_sheets4::{Sheet, Sheets};
 use hyper::net::HttpsConnector;
 use hyper::Client;
 use hyper_native_tls::NativeTlsClient;
+use log::debug;
 use std::collections::HashMap;
 use std::fs::{create_dir_all, File};
 use std::io::{stdout, BufWriter, Write};
@@ -13,10 +17,9 @@ use yup_oauth2::{
     FlowType,
 };
 
+use fitbit_lib::scale_measurement::ScaleMeasurement;
 use garmin_lib::common::garmin_config::GarminConfig;
 use garmin_lib::common::pgpool::PgPool;
-
-use crate::scale_measurement::ScaleMeasurement;
 
 type GAuthenticator = Authenticator<DefaultAuthenticatorDelegate, DiskTokenStorage, Client>;
 type GSheets = Sheets<Client, GAuthenticator>;
@@ -99,7 +102,7 @@ pub fn run_sync_sheets(config: &GarminConfig, pool: &PgPool) -> Result<(), Error
         .ok_or_else(|| format_err!("No row_data"))?;
     let measurements: Vec<ScaleMeasurement> = row_data[1..]
         .iter()
-        .filter_map(|row| ScaleMeasurement::from_row_data(row).ok())
+        .filter_map(|row| measurement_from_row_data(row).ok())
         .collect();
     let mut stdout = BufWriter::new(stdout());
     writeln!(
@@ -121,6 +124,45 @@ pub fn run_sync_sheets(config: &GarminConfig, pool: &PgPool) -> Result<(), Error
             Ok(())
         })
         .collect()
+}
+
+fn measurement_from_row_data(row_data: &RowData) -> Result<ScaleMeasurement, Error> {
+    let values = row_data
+        .values
+        .as_ref()
+        .ok_or_else(|| format_err!("No values"))?;
+    let values: Vec<_> = values
+        .iter()
+        .filter_map(|x| x.formatted_value.as_ref().map(String::as_str))
+        .collect();
+    if values.len() > 5 {
+        let datetime = Utc
+            .datetime_from_str(&values[0], "%_m/%e/%Y %k:%M:%S")
+            .or_else(|_| DateTime::parse_from_rfc3339(&values[0]).map(|d| d.with_timezone(&Utc)))
+            .or_else(|_| {
+                DateTime::parse_from_rfc3339(&values[0].replace(" ", "T"))
+                    .map(|d| d.with_timezone(&Utc))
+            })
+            .or_else(|e| {
+                debug!("{} {}", values[0], e);
+                Err(e)
+            })?;
+        let mass: f64 = values[1].parse()?;
+        let fat_pct: f64 = values[2].parse()?;
+        let water_pct: f64 = values[3].parse()?;
+        let muscle_pct: f64 = values[4].parse()?;
+        let bone_pct: f64 = values[5].parse()?;
+        Ok(ScaleMeasurement {
+            datetime,
+            mass,
+            fat_pct,
+            water_pct,
+            muscle_pct,
+            bone_pct,
+        })
+    } else {
+        Err(format_err!("Too few entries"))
+    }
 }
 
 #[cfg(test)]

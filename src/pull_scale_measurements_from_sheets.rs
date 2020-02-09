@@ -1,6 +1,6 @@
-use fitbit_lib::sheets_client::run_sync_sheets;
 use garmin_lib::common::garmin_config::GarminConfig;
 use garmin_lib::common::pgpool::PgPool;
+use sheets_lib::sheets_client::run_sync_sheets;
 
 fn main() {
     env_logger::init();

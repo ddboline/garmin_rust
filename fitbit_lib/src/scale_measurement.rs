@@ -1,7 +1,5 @@
 use anyhow::{format_err, Error};
-use chrono::offset::TimeZone;
 use chrono::{DateTime, Local, NaiveDate, Utc};
-use google_sheets4::RowData;
 use log::debug;
 use postgres_query::{FromSqlRow, Parameter};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
@@ -40,47 +38,6 @@ impl fmt::Display for ScaleMeasurement {
 }
 
 impl ScaleMeasurement {
-    pub fn from_row_data(row_data: &RowData) -> Result<Self, Error> {
-        let values = row_data
-            .values
-            .as_ref()
-            .ok_or_else(|| format_err!("No values"))?;
-        let values: Vec<_> = values
-            .iter()
-            .filter_map(|x| x.formatted_value.as_ref().map(String::as_str))
-            .collect();
-        if values.len() > 5 {
-            let datetime = Utc
-                .datetime_from_str(&values[0], "%_m/%e/%Y %k:%M:%S")
-                .or_else(|_| {
-                    DateTime::parse_from_rfc3339(&values[0]).map(|d| d.with_timezone(&Utc))
-                })
-                .or_else(|_| {
-                    DateTime::parse_from_rfc3339(&values[0].replace(" ", "T"))
-                        .map(|d| d.with_timezone(&Utc))
-                })
-                .or_else(|e| {
-                    debug!("{} {}", values[0], e);
-                    Err(e)
-                })?;
-            let mass: f64 = values[1].parse()?;
-            let fat_pct: f64 = values[2].parse()?;
-            let water_pct: f64 = values[3].parse()?;
-            let muscle_pct: f64 = values[4].parse()?;
-            let bone_pct: f64 = values[5].parse()?;
-            Ok(Self {
-                datetime,
-                mass,
-                fat_pct,
-                water_pct,
-                muscle_pct,
-                bone_pct,
-            })
-        } else {
-            Err(format_err!("Too few entries"))
-        }
-    }
-
     pub fn from_telegram_text(msg: &str) -> Result<Self, Error> {
         let datetime = Utc::now();
         let items: Result<Vec<f64>, Error> = if msg.contains(',') {

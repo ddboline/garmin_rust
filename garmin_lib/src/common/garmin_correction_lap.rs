@@ -100,19 +100,8 @@ impl GarminCorrectionList {
         self
     }
 
-    pub fn from_pool(pool: &PgPool) -> Self {
-        Self {
-            pool: pool.clone(),
-            ..Self::default()
-        }
-    }
-
     pub fn get_corr_list(&self) -> Vec<GarminCorrectionLap> {
         self.corr_map.values().cloned().collect()
-    }
-
-    pub fn from_vec(corr_list: Vec<GarminCorrectionLap>) -> Self {
-        Self::default().with_vec(corr_list)
     }
 
     pub fn get_corr_list_map(&self) -> &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap> {
@@ -125,7 +114,7 @@ impl GarminCorrectionList {
         &mut self.corr_map
     }
 
-    pub fn corr_list_from_buffer(buffer: &[u8]) -> Result<Self, Error> {
+    pub fn corr_list_from_buffer(pool: &PgPool, buffer: &[u8]) -> Result<Self, Error> {
         let jsval = parse(&str::from_utf8(&buffer)?)?;
 
         let corr_list = match &jsval {
@@ -179,21 +168,21 @@ impl GarminCorrectionList {
             _ => Vec::new(),
         };
 
-        Ok(Self::from_vec(corr_list))
+        Ok(Self::new(pool).with_vec(corr_list))
     }
 
-    pub fn corr_list_from_json(json_filename: &str) -> Result<Self, Error> {
+    pub fn corr_list_from_json(pool: &PgPool, json_filename: &str) -> Result<Self, Error> {
         let mut file = File::open(json_filename)?;
 
         let mut buffer = Vec::new();
 
         match file.read_to_end(&mut buffer)? {
             0 => Err(format_err!("Zero bytes read from {}", json_filename)),
-            _ => Self::corr_list_from_buffer(&buffer),
+            _ => Self::corr_list_from_buffer(pool, &buffer),
         }
     }
 
-    pub fn add_mislabeled_times_to_corr_list(&mut self) -> Self {
+    pub fn add_mislabeled_times_to_corr_list(mut self) -> Self {
         let corr_list_map = self.get_corr_list_map_mut();
 
         let mislabeled_times = vec![
@@ -272,8 +261,9 @@ impl GarminCorrectionList {
                 }
             }
         }
+        let corr_list = corr_list_map.values().cloned().collect();
 
-        Self::from_vec(corr_list_map.values().cloned().collect())
+        self.with_vec(corr_list)
     }
 
     pub async fn get_filename_start_map(&self) -> Result<HashMap<String, (String, i32)>, Error> {
@@ -380,7 +370,7 @@ impl GarminCorrectionList {
             .collect();
         let corr_list = corr_list?;
 
-        Ok(Self::from_vec(corr_list))
+        Ok(Self::new(&self.pool).with_vec(corr_list))
     }
 }
 

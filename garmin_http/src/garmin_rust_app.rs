@@ -46,7 +46,7 @@ pub async fn start_app() {
     }
 
     let config = &CONFIG;
-    let pool = PgPool::new();
+    let pool = PgPool::new(&config.pgurl);
 
     actix_rt::spawn(_update_db(pool.clone()));
 

@@ -306,6 +306,7 @@ impl FitbitBodyWeightFat {
 
 #[cfg(test)]
 mod tests {
+    use anyhow::Error;
     use chrono::NaiveDate;
     use std::collections::HashSet;
     use std::io::{stdout, Write};
@@ -318,42 +319,44 @@ mod tests {
 
     #[test]
     #[ignore]
-    fn test_process_fitbit_json_file() {
-        let config = GarminConfig::get_config(None).unwrap();
+    fn test_process_fitbit_json_file() -> Result<(), Error> {
+        let config = GarminConfig::get_config(None)?;
         let path = Path::new("tests/data/test_heartrate_data.json");
-        let result = process_fitbit_json_file(&path).unwrap();
-        writeln!(stdout(), "{}", result.len()).unwrap();
+        let result = process_fitbit_json_file(&path)?;
+        writeln!(stdout(), "{}", result.len())?;
 
         let dates: HashSet<_> = result
             .iter()
             .map(|entry| entry.datetime.date().naive_local())
             .collect();
-        writeln!(stdout(), "{:?}", dates).unwrap();
+        writeln!(stdout(), "{:?}", dates)?;
         let dates = vec![NaiveDate::from_ymd(2019, 11, 1)];
         assert_eq!(result.len(), 3);
         assert_eq!(dates.len(), 1);
 
         let mut current_datetimes = HashSet::new();
         for date in dates {
-            for entry in FitbitHeartRate::read_avro_by_date(&config, date).unwrap() {
+            for entry in FitbitHeartRate::read_avro_by_date(&config, date)? {
                 current_datetimes.insert(entry.datetime);
             }
         }
-        writeln!(stdout(), "{}", current_datetimes.len()).unwrap();
+        writeln!(stdout(), "{}", current_datetimes.len())?;
         assert_eq!(current_datetimes.len(), 1361);
+        Ok(())
     }
 
-    #[test]
+    #[tokio::test]
     #[ignore]
-    fn test_get_heartrate_plot() {
-        let config = GarminConfig::get_config(None).unwrap();
+    async fn test_get_heartrate_plot() -> Result<(), Error> {
+        let config = GarminConfig::get_config(None)?;
         let pool = PgPool::new(&config.pgurl);
         let start_date = NaiveDate::from_ymd(2019, 8, 1);
         let end_date = NaiveDate::from_ymd(2019, 8, 2);
         let results =
-            FitbitHeartRate::get_heartrate_plot(&config, &pool, start_date, end_date).unwrap();
-        writeln!(stdout(), "{}", results).unwrap();
+            FitbitHeartRate::get_heartrate_plot(&config, &pool, start_date, end_date).await?;
+        writeln!(stdout(), "{}", results)?;
         assert!(results.len() > 0);
+        Ok(())
     }
 
     // #[test]

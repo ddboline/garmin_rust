@@ -1,14 +1,19 @@
+use anyhow::Error;
 use approx::assert_abs_diff_eq;
+
 use garmin_lib::common::garmin_correction_lap::GarminCorrectionList;
+use garmin_lib::common::pgpool::PgPool;
 use garmin_lib::parsers::garmin_parse::GarminParseTrait;
 use garmin_lib::parsers::garmin_parse_txt;
 use garmin_lib::utils::iso_8601_datetime::convert_datetime_to_str;
 use garmin_lib::utils::sport_types::SportTypes;
 
 #[test]
-fn test_garmin_parse_txt() {
+fn test_garmin_parse_txt() -> Result<(), Error> {
+    let pool = PgPool::default();
+
     let corr_list =
-        GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json").unwrap();
+        GarminCorrectionList::corr_list_from_json(&pool, "tests/data/garmin_corrections.json")?;
     let corr_map = corr_list.get_corr_list_map();
     let gfile = garmin_parse_txt::GarminParseTxt::new()
         .with_file("tests/data/test.txt", &corr_map)
@@ -29,12 +34,16 @@ fn test_garmin_parse_txt() {
     assert_abs_diff_eq!(gfile.total_duration, 6600.0);
     assert_abs_diff_eq!(gfile.total_hr_dur, 1881000.0);
     assert_abs_diff_eq!(gfile.total_hr_dis, 6600.0);
+    Ok(())
 }
 
 #[test]
-fn test_garmin_parse_txt_default_time() {
+fn test_garmin_parse_txt_default_time() -> Result<(), Error> {
+    let pool = PgPool::default();
+
     let corr_list =
-        GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json").unwrap();
+        GarminCorrectionList::corr_list_from_json(&pool, "tests/data/garmin_corrections.json")
+            .unwrap();
     let corr_map = corr_list.get_corr_list_map();
     let gfile = garmin_parse_txt::GarminParseTxt::new()
         .with_file("tests/data/test2.txt", &corr_map)
@@ -43,4 +52,5 @@ fn test_garmin_parse_txt_default_time() {
         convert_datetime_to_str(gfile.begin_datetime),
         "2013-01-17T12:00:00Z"
     );
+    Ok(())
 }

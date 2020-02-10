@@ -8,6 +8,6 @@ use garmin_lib::common::pgpool::PgPool;
 async fn main() -> Result<(), Error> {
     env_logger::init();
     let config = GarminConfig::get_config(None)?;
-    let pool = PgPool::new();
+    let pool = PgPool::new(&config.pgurl);
     run_bot(&config.telegram_bot_token, pool).await
 }

@@ -1,25 +1,35 @@
+use anyhow::Error;
 use approx::assert_abs_diff_eq;
+
 use garmin_lib::common::garmin_correction_lap::GarminCorrectionList;
+use garmin_lib::common::pgpool::PgPool;
 use garmin_lib::parsers::garmin_parse::{GarminParse, GarminParseTrait};
 use garmin_lib::utils::iso_8601_datetime::convert_datetime_to_str;
 use garmin_lib::utils::sport_types::SportTypes;
 
 #[test]
-fn test_invalid_ext() {
+fn test_invalid_ext() -> Result<(), Error> {
+    let pool = PgPool::default();
+
     let corr_list =
-        GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json").unwrap();
+        GarminCorrectionList::corr_list_from_json(&pool, "tests/data/garmin_corrections.json")
+            .unwrap();
     let corr_map = corr_list.get_corr_list_map();
     let err = GarminParse::new()
         .with_file("invalid.invalid", &corr_map)
         .unwrap_err();
-    assert_eq!(format!("{}", err), "Invalid extension".to_string())
+    assert_eq!(format!("{}", err), "Invalid extension".to_string());
+    Ok(())
 }
 
 #[test]
 #[ignore]
-fn test_garmin_parse_parse_gmn() {
+fn test_garmin_parse_parse_gmn() -> Result<(), Error> {
+    let pool = PgPool::default();
+
     let corr_list =
-        GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json").unwrap();
+        GarminCorrectionList::corr_list_from_json(&pool, "tests/data/garmin_corrections.json")
+            .unwrap();
     let corr_map = corr_list.get_corr_list_map();
     let gfile = GarminParse::new()
         .with_file("tests/data/test.gmn", &corr_map)
@@ -38,13 +48,17 @@ fn test_garmin_parse_parse_gmn() {
     assert_abs_diff_eq!(gfile.total_duration, 280.38);
     assert_abs_diff_eq!(gfile.total_hr_dur, 0.0);
     assert_abs_diff_eq!(gfile.total_hr_dis, 280.38);
+    Ok(())
 }
 
 #[test]
 #[ignore]
-fn test_garmin_parse_parse_tcx() {
+fn test_garmin_parse_parse_tcx() -> Result<(), Error> {
+    let pool = PgPool::default();
+
     let corr_list =
-        GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json").unwrap();
+        GarminCorrectionList::corr_list_from_json(&pool, "tests/data/garmin_corrections.json")
+            .unwrap();
     let corr_map = corr_list.get_corr_list_map();
     let gfile = GarminParse::new()
         .with_file("tests/data/test.tcx", &corr_map)
@@ -63,13 +77,17 @@ fn test_garmin_parse_parse_tcx() {
     assert_abs_diff_eq!(gfile.total_duration, 1037.53);
     assert_abs_diff_eq!(gfile.total_hr_dur, 0.0);
     assert_abs_diff_eq!(gfile.total_hr_dis, 1037.53);
+    Ok(())
 }
 
 #[test]
 #[ignore]
-fn test_garmin_parse_fit() {
+fn test_garmin_parse_fit() -> Result<(), Error> {
+    let pool = PgPool::default();
+
     let corr_list =
-        GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json").unwrap();
+        GarminCorrectionList::corr_list_from_json(&pool, "tests/data/garmin_corrections.json")
+            .unwrap();
     let corr_map = corr_list.get_corr_list_map();
     let gfile = GarminParse::new()
         .with_file("tests/data/test.fit", &corr_map)
@@ -88,4 +106,5 @@ fn test_garmin_parse_fit() {
     assert_abs_diff_eq!(gfile.total_duration, 1451.55);
     assert_abs_diff_eq!(gfile.total_hr_dur, 220635.6);
     assert_abs_diff_eq!(gfile.total_hr_dis, 1451.55);
+    Ok(())
 }

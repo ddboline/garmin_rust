@@ -6,7 +6,7 @@ use sheets_lib::sheets_client::run_sync_sheets;
 async fn main() {
     env_logger::init();
     let config = GarminConfig::get_config(None).expect("Failed to read config");
-    let pool = PgPool::new();
+    let pool = PgPool::new(&config.pgurl);
     run_sync_sheets(&config, &pool)
         .await
         .expect("Failed to run sheets sync");

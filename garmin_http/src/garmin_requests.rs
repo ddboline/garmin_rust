@@ -37,7 +37,7 @@ pub struct GarminCorrRequest {}
 impl HandleRequest<GarminCorrRequest> for PgPool {
     type Result = Result<GarminCorrectionList, Error>;
     async fn handle(&self, _: GarminCorrRequest) -> Self::Result {
-        GarminCorrectionList::from_pool(&self)
+        GarminCorrectionList::new(&self)
             .read_corrections_from_db()
             .await
             .map_err(Into::into)

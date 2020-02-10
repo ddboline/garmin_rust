@@ -116,7 +116,7 @@ impl FitbitHeartRate {
         }
     }
 
-    pub fn get_heartrate_plot(
+    pub async fn get_heartrate_plot(
         config: &GarminConfig,
         pool: &PgPool,
         start_date: NaiveDate,
@@ -124,32 +124,27 @@ impl FitbitHeartRate {
     ) -> Result<String, Error> {
         let nminutes = 5;
         let ndays = (end_date - start_date).num_days();
-        let heartrate_values: Result<Vec<_>, Error> = (0..=ndays)
-            .into_par_iter()
-            .map(|i| {
-                let mut heartrate_values = Vec::new();
-                let date = start_date + Duration::days(i);
-                let input_filename = format!("{}/{}.avro", config.fitbit_cachedir, date);
-                let values: Vec<_> = Self::read_avro(&input_filename)
-                    .unwrap_or_else(|_| Vec::new())
+        let mut heartrate_values = Vec::new();
+        for i in 0..=ndays {
+            let date = start_date + Duration::days(i);
+            let input_filename = format!("{}/{}.avro", config.fitbit_cachedir, date);
+            let values: Vec<_> = Self::read_avro(&input_filename)
+                .unwrap_or_else(|_| Vec::new())
+                .into_iter()
+                .map(|h| (h.datetime, h.value))
+                .collect();
+            heartrate_values.extend_from_slice(&values);
+            let constraint = format!("date(begin_datetime at time zone 'utc') = '{}'", date);
+            for filename in get_list_of_files_from_db(&[constraint], pool).await? {
+                let avro_file = format!("{}/{}.avro", &config.cache_dir, filename);
+                let points: Vec<_> = GarminFile::read_avro(&avro_file)?
+                    .points
                     .into_iter()
-                    .map(|h| (h.datetime, h.value))
+                    .filter_map(|p| p.heart_rate.map(|h| (p.time, h as i32)))
                     .collect();
-                heartrate_values.extend_from_slice(&values);
-                let constraint = format!("date(begin_datetime at time zone 'utc') = '{}'", date);
-                for filename in get_list_of_files_from_db(&[constraint], pool)? {
-                    let avro_file = format!("{}/{}.avro", &config.cache_dir, filename);
-                    let points: Vec<_> = GarminFile::read_avro(&avro_file)?
-                        .points
-                        .into_iter()
-                        .filter_map(|p| p.heart_rate.map(|h| (p.time, h as i32)))
-                        .collect();
-                    heartrate_values.extend_from_slice(&points);
-                }
-                Ok(heartrate_values)
-            })
-            .collect();
-        let heartrate_values: Vec<_> = heartrate_values?.into_iter().flatten().collect();
+                heartrate_values.extend_from_slice(&points);
+            }
+        }
         let mut final_values = Vec::new();
         for (_, group) in &heartrate_values
             .into_iter()

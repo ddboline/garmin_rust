@@ -10,7 +10,7 @@ use crate::utils::garmin_util::{
 };
 use crate::utils::iso_8601_datetime::convert_datetime_to_str;
 
-pub fn create_report_query(
+pub async fn create_report_query(
     pool: &PgPool,
     options: &GarminReportOptions,
     constraints: &[String],
@@ -36,14 +36,14 @@ pub fn create_report_query(
 
     let result_vec = if let Some(agg) = &options.agg {
         match agg {
-            GarminReportAgg::Year => year_summary_report(&pool, &constr)?,
-            GarminReportAgg::Month => month_summary_report(&pool, &constr)?,
-            GarminReportAgg::Week => week_summary_report(&pool, &constr)?,
-            GarminReportAgg::Day => day_summary_report(&pool, &constr)?,
-            GarminReportAgg::File => file_summary_report(&pool, &constr)?,
+            GarminReportAgg::Year => year_summary_report(&pool, &constr).await?,
+            GarminReportAgg::Month => month_summary_report(&pool, &constr).await?,
+            GarminReportAgg::Week => week_summary_report(&pool, &constr).await?,
+            GarminReportAgg::Day => day_summary_report(&pool, &constr).await?,
+            GarminReportAgg::File => file_summary_report(&pool, &constr).await?,
         }
     } else if options.do_sport.is_none() {
-        sport_summary_report(&pool, &constr)?
+        sport_summary_report(&pool, &constr).await?
     } else {
         Vec::new()
     };
@@ -51,7 +51,7 @@ pub fn create_report_query(
     Ok(result_vec)
 }
 
-fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, Error> {
+async fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, Error> {
     #[derive(FromSqlRow, Debug)]
     struct FileSummaryReport {
         datetime: DateTime<Utc>,
@@ -97,8 +97,10 @@ fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, 
 
     debug!("{}", query);
 
-    pool.get()?
-        .query(query.as_str(), &[])?
+    pool.get()
+        .await?
+        .query(query.as_str(), &[])
+        .await?
         .iter()
         .map(|row| {
             let row = FileSummaryReport::from_row(row)?;
@@ -187,7 +189,7 @@ fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, 
         .collect()
 }
 
-fn day_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, Error> {
+async fn day_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, Error> {
     #[derive(FromSqlRow, Debug)]
     struct DaySummaryReport {
         date: String,
@@ -233,8 +235,10 @@ fn day_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, E
 
     debug!("{}", query);
 
-    pool.get()?
-        .query(query.as_str(), &[])?
+    pool.get()
+        .await?
+        .query(query.as_str(), &[])
+        .await?
         .iter()
         .map(|row| {
             let row = DaySummaryReport::from_row(row)?;
@@ -322,7 +326,7 @@ fn day_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, E
         .collect()
 }
 
-fn week_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, Error> {
+async fn week_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, Error> {
     #[derive(FromSqlRow, Debug)]
     struct WeekSummaryReport {
         year: f64,
@@ -368,8 +372,10 @@ fn week_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, 
 
     debug!("{}", query);
 
-    pool.get()?
-        .query(query.as_str(), &[])?
+    pool.get()
+        .await?
+        .query(query.as_str(), &[])
+        .await?
         .iter()
         .map(|row| {
             let row = WeekSummaryReport::from_row(row)?;
@@ -449,7 +455,7 @@ fn week_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, 
         .collect()
 }
 
-fn month_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, Error> {
+async fn month_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, Error> {
     #[derive(FromSqlRow, Debug)]
     struct MonthSummaryReport {
         year: f64,
@@ -495,8 +501,10 @@ fn month_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>,
 
     debug!("{}", query);
 
-    pool.get()?
-        .query(query.as_str(), &[])?
+    pool.get()
+        .await?
+        .query(query.as_str(), &[])
+        .await?
         .iter()
         .map(|row| {
             let row = MonthSummaryReport::from_row(row)?;
@@ -571,7 +579,7 @@ fn month_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>,
         .collect()
 }
 
-fn sport_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, Error> {
+async fn sport_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, Error> {
     #[derive(FromSqlRow, Debug)]
     struct SportSummaryReport {
         sport: String,
@@ -609,8 +617,10 @@ fn sport_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>,
     );
     debug!("{}", query);
 
-    pool.get()?
-        .query(query.as_str(), &[])?
+    pool.get()
+        .await?
+        .query(query.as_str(), &[])
+        .await?
         .iter()
         .map(|row| {
             let row = SportSummaryReport::from_row(row)?;
@@ -674,7 +684,7 @@ fn sport_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>,
         .collect()
 }
 
-fn year_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, Error> {
+async fn year_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, Error> {
     #[derive(FromSqlRow, Debug)]
     struct YearSummaryReport {
         year: f64,
@@ -717,8 +727,10 @@ fn year_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<Vec<String>>, 
     );
     debug!("{}", query);
 
-    pool.get()?
-        .query(query.as_str(), &[])?
+    pool.get()
+        .await?
+        .query(query.as_str(), &[])
+        .await?
         .iter()
         .map(|row| {
             let row = YearSummaryReport::from_row(row)?;

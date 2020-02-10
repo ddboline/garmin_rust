@@ -70,7 +70,7 @@ impl ScaleMeasurement {
         })
     }
 
-    pub fn insert_into_db(&self, pool: &PgPool) -> Result<(), Error> {
+    pub async fn insert_into_db(&self, pool: &PgPool) -> Result<(), Error> {
         let query = postgres_query::query!("
             INSERT INTO scale_measurements (datetime, mass, fat_pct, water_pct, muscle_pct, bone_pct)
             VALUES ($datetime,$mass,$fat,$water,$muscle,$bone)",
@@ -82,14 +82,15 @@ impl ScaleMeasurement {
             bone = self.bone_pct,
         );
 
-        let mut conn = pool.get()?;
+        let conn = pool.get().await?;
 
         conn.execute(query.sql(), query.parameters())
+            .await
             .map(|_| ())
             .map_err(Into::into)
     }
 
-    pub fn read_from_db(
+    pub async fn read_from_db(
         pool: &PgPool,
         start_date: Option<NaiveDate>,
         end_date: Option<NaiveDate>,
@@ -120,8 +121,9 @@ impl ScaleMeasurement {
         let query_bindings: Vec<_> = bindings.iter().map(|(k, v)| (*k, v as Parameter)).collect();
         debug!("query:\n{}", query);
         let query = postgres_query::query_dyn!(&query, ..query_bindings)?;
-        let mut conn = pool.get()?;
-        conn.query(query.sql(), query.parameters())?
+        let conn = pool.get().await?;
+        conn.query(query.sql(), query.parameters())
+            .await?
             .par_iter()
             .map(|r| Self::from_row(r).map_err(Into::into))
             .collect()

@@ -86,8 +86,9 @@ impl SheetsClient {
     }
 }
 
-pub fn run_sync_sheets(config: &GarminConfig, pool: &PgPool) -> Result<(), Error> {
-    let current_measurements: HashMap<_, _> = ScaleMeasurement::read_from_db(pool, None, None)?
+pub async fn run_sync_sheets(config: &GarminConfig, pool: &PgPool) -> Result<(), Error> {
+    let current_measurements: HashMap<_, _> = ScaleMeasurement::read_from_db(pool, None, None)
+        .await?
         .into_iter()
         .map(|meas| (meas.datetime, meas))
         .collect();
@@ -112,18 +113,15 @@ pub fn run_sync_sheets(config: &GarminConfig, pool: &PgPool) -> Result<(), Error
         row_data.len(),
         measurements.len()
     )?;
-    measurements
-        .into_iter()
-        .map(|meas| {
-            if current_measurements.contains_key(&meas.datetime) {
-                writeln!(stdout, "exists {:?}", meas)?;
-            } else {
-                writeln!(stdout, "insert {:?}", meas)?;
-                meas.insert_into_db(pool)?;
-            }
-            Ok(())
-        })
-        .collect()
+    for meas in measurements {
+        if current_measurements.contains_key(&meas.datetime) {
+            writeln!(stdout, "exists {:?}", meas)?;
+        } else {
+            writeln!(stdout, "insert {:?}", meas)?;
+            meas.insert_into_db(pool).await?;
+        }
+    }
+    Ok(())
 }
 
 fn measurement_from_row_data(row_data: &RowData) -> Result<ScaleMeasurement, Error> {

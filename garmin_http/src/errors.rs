@@ -4,6 +4,7 @@ use actix_web::{error::ResponseError, HttpResponse};
 use anyhow::Error as AnyhowError;
 use std::fmt::Debug;
 use thiserror::Error;
+use tokio::task::JoinError;
 
 #[derive(Error, Debug)]
 pub enum ServiceError {
@@ -19,6 +20,8 @@ pub enum ServiceError {
     IoError(#[from] std::io::Error),
     #[error("blocking error {0}")]
     BlockingError(String),
+    #[error("tokio join error {0}")]
+    JoinError(#[from] JoinError),
 }
 
 // impl ResponseError trait allows to convert our errors into http responses with appropriate data

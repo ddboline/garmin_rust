@@ -1,11 +1,11 @@
 use anyhow::{format_err, Error};
 use bytes::BytesMut;
 use lazy_static::lazy_static;
-use postgres::types::{FromSql, IsNull, ToSql, Type};
 use serde::{self, Deserialize, Deserializer, Serializer};
 use std::collections::HashMap;
 use std::fmt;
 use std::str::FromStr;
+use tokio_postgres::types::{FromSql, IsNull, ToSql, Type};
 
 lazy_static! {
     static ref SPORT_TYPE_MAP: HashMap<String, SportTypes> = get_sport_type_map();

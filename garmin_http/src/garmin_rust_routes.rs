@@ -2,7 +2,7 @@
 
 use actix_multipart::{Field, Multipart};
 use actix_web::http::StatusCode;
-use actix_web::web::{block, Data, Json, Query};
+use actix_web::web::{Data, Json, Query};
 use actix_web::HttpResponse;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
@@ -11,6 +11,7 @@ use std::io::Write;
 use std::string::ToString;
 use tempdir::TempDir;
 use tokio::stream::StreamExt;
+use tokio::task::spawn_blocking;
 
 use garmin_lib::common::garmin_cli::{GarminCli, GarminRequest};
 use garmin_lib::common::garmin_file::GarminFile;
@@ -26,12 +27,12 @@ use super::garmin_rust_app::AppState;
 use crate::garmin_requests::{
     FitbitAuthRequest, FitbitBodyWeightFatRequest, FitbitBodyWeightFatUpdateRequest,
     FitbitCallbackRequest, FitbitHeartrateApiRequest, FitbitHeartrateCacheRequest,
-    FitbitHeartrateDbRequest, FitbitHeartratePlotRequest, FitbitSyncRequest, FitbitTcxSyncRequest,
-    GarminConnectSyncRequest, GarminCorrRequest, GarminHtmlRequest, GarminListRequest,
-    GarminSyncRequest, GarminUploadRequest, HandleRequest, ScaleMeasurementPlotRequest,
-    ScaleMeasurementRequest, ScaleMeasurementUpdateRequest, StravaActiviesDBUpdateRequest,
-    StravaActivitiesDBRequest, StravaActivitiesRequest, StravaAuthRequest, StravaCallbackRequest,
-    StravaSyncRequest, StravaUpdateRequest, StravaUploadRequest,
+    FitbitHeartratePlotRequest, FitbitSyncRequest, FitbitTcxSyncRequest, GarminConnectSyncRequest,
+    GarminCorrRequest, GarminHtmlRequest, GarminListRequest, GarminSyncRequest,
+    GarminUploadRequest, HandleRequest, ScaleMeasurementPlotRequest, ScaleMeasurementRequest,
+    ScaleMeasurementUpdateRequest, StravaActiviesDBUpdateRequest, StravaActivitiesDBRequest,
+    StravaActivitiesRequest, StravaAuthRequest, StravaCallbackRequest, StravaSyncRequest,
+    StravaUpdateRequest, StravaUploadRequest,
 };
 use crate::CONFIG;
 
@@ -79,17 +80,17 @@ pub async fn garmin(
     }
     state.history.write().push(grec.0.filter.clone());
 
-    let body = block(move || state.db.handle(grec)).await?;
+    let body = state.db.handle(grec).await?;
 
     form_http_response(body)
 }
 
 async fn save_file(file_path: String, mut field: Field) -> Result<(), Error> {
-    let mut file = block(|| File::create(file_path)).await?;
+    let mut file = spawn_blocking(|| File::create(file_path)).await??;
 
     while let Some(chunk) = field.next().await {
         let data = chunk?;
-        file = block(move || file.write_all(&data).map(|_| file)).await?;
+        file = spawn_blocking(move || file.write_all(&data).map(|_| file)).await??;
     }
     Ok(())
 }
@@ -113,7 +114,10 @@ pub async fn garmin_upload(
         save_file(fname.clone(), field).await?;
     }
 
-    let flist = block(move || state.db.handle(GarminUploadRequest { filename: fname })).await?;
+    let flist = state
+        .db
+        .handle(GarminUploadRequest { filename: fname })
+        .await?;
     to_json(&flist)
 }
 
@@ -121,12 +125,12 @@ pub async fn garmin_connect_sync(
     _: LoggedUser,
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
-    let flist = block(move || state.db.handle(GarminConnectSyncRequest {})).await?;
+    let flist = state.db.handle(GarminConnectSyncRequest {}).await?;
     to_json(&flist)
 }
 
 pub async fn garmin_sync(_: LoggedUser, state: Data<AppState>) -> Result<HttpResponse, Error> {
-    let body = block(move || state.db.handle(GarminSyncRequest {})).await?;
+    let body = state.db.handle(GarminSyncRequest {}).await?;
     let body = format!(
         r#"<textarea cols=100 rows=40>{}</textarea>"#,
         body.join("\n")
@@ -135,7 +139,7 @@ pub async fn garmin_sync(_: LoggedUser, state: Data<AppState>) -> Result<HttpRes
 }
 
 pub async fn strava_sync(_: LoggedUser, state: Data<AppState>) -> Result<HttpResponse, Error> {
-    let body = block(move || state.db.handle(StravaSyncRequest {})).await?;
+    let body = state.db.handle(StravaSyncRequest {}).await?;
     let body = format!(
         r#"<textarea cols=100 rows=40>{}</textarea>"#,
         body.join("\n")
@@ -149,7 +153,7 @@ pub async fn strava_auth(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
-    let body = block(move || state.db.handle(query)).await?;
+    let body = state.db.handle(query).await?;
     form_http_response(body)
 }
 
@@ -159,7 +163,7 @@ pub async fn strava_callback(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
-    let body = block(move || state.db.handle(query)).await?;
+    let body = state.db.handle(query).await?;
     form_http_response(body)
 }
 
@@ -169,7 +173,7 @@ pub async fn strava_activities(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
-    let alist = block(move || state.db.handle(query)).await?;
+    let alist = state.db.handle(query).await?;
     to_json(&alist)
 }
 
@@ -178,7 +182,7 @@ pub async fn strava_activities_db(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let query = StravaActivitiesDBRequest(query.into_inner());
-    let alist = block(move || state.db.handle(query)).await?;
+    let alist = state.db.handle(query).await?;
     to_json(&alist)
 }
 
@@ -188,7 +192,7 @@ pub async fn strava_activities_db_update(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let req = payload.into_inner();
-    let body = block(move || state.db.handle(req)).await?;
+    let body = state.db.handle(req).await?;
     form_http_response(body.join("\n"))
 }
 
@@ -198,7 +202,7 @@ pub async fn strava_upload(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let payload = payload.into_inner();
-    let body = block(move || state.db.handle(payload)).await?;
+    let body = state.db.handle(payload).await?;
     form_http_response(body)
 }
 
@@ -208,13 +212,13 @@ pub async fn strava_update(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let payload = payload.into_inner();
-    let body = block(move || state.db.handle(payload)).await?;
+    let body = state.db.handle(payload).await?;
     form_http_response(body)
 }
 
 pub async fn fitbit_auth(_: LoggedUser, state: Data<AppState>) -> Result<HttpResponse, Error> {
     let req = FitbitAuthRequest {};
-    let body = block(move || state.db.handle(req)).await?;
+    let body = state.db.handle(req).await?;
     form_http_response(body)
 }
 
@@ -224,7 +228,7 @@ pub async fn fitbit_heartrate_api(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
-    let hlist = block(move || state.db.handle(query)).await?;
+    let hlist = state.db.handle(query).await?;
     to_json(&hlist)
 }
 
@@ -233,7 +237,7 @@ pub async fn fitbit_heartrate_cache(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
-    let hlist = block(move || state.db.handle(query)).await?;
+    let hlist = state.db.handle(query).await?;
     to_json(&hlist)
 }
 
@@ -242,7 +246,7 @@ pub async fn fitbit_bodyweight(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let req = FitbitBodyWeightFatRequest {};
-    let hlist = block(move || state.db.handle(req)).await?;
+    let hlist = state.db.handle(req).await?;
     to_json(&hlist)
 }
 
@@ -251,17 +255,7 @@ pub async fn fitbit_bodyweight_sync(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let req = FitbitBodyWeightFatUpdateRequest {};
-    let hlist = block(move || state.db.handle(req)).await?;
-    to_json(&hlist)
-}
-
-pub async fn fitbit_heartrate_db(
-    query: Query<FitbitHeartrateDbRequest>,
-    _: LoggedUser,
-    state: Data<AppState>,
-) -> Result<HttpResponse, Error> {
-    let query = query.into_inner();
-    let hlist = block(move || state.db.handle(query)).await?;
+    let hlist = state.db.handle(req).await?;
     to_json(&hlist)
 }
 
@@ -271,7 +265,7 @@ pub async fn fitbit_callback(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
-    let body = block(move || state.db.handle(query)).await?;
+    let body = state.db.handle(query).await?;
     form_http_response(body)
 }
 
@@ -281,7 +275,7 @@ pub async fn fitbit_sync(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
-    block(move || state.db.handle(query)).await?;
+    state.db.handle(query).await?;
     form_http_response("finished".into())
 }
 
@@ -292,7 +286,7 @@ pub async fn fitbit_plots(
 ) -> Result<HttpResponse, Error> {
     let query: ScaleMeasurementPlotRequest = query.into_inner().into();
     let s = state.clone();
-    let body = block(move || s.db.handle(query)).await?;
+    let body = s.db.handle(query).await?;
 
     let body = body.replace(
         "HISTORYBUTTONS",
@@ -307,7 +301,7 @@ pub async fn heartrate_plots(
 ) -> Result<HttpResponse, Error> {
     let query: FitbitHeartratePlotRequest = query.into_inner().into();
     let s = state.clone();
-    let body = block(move || s.db.handle(query)).await?;
+    let body = s.db.handle(query).await?;
     let body = body.replace(
         "HISTORYBUTTONS",
         &generate_history_buttons(&state.history.read()),
@@ -321,7 +315,7 @@ pub async fn fitbit_tcx_sync(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
-    let flist = block(move || state.db.handle(query)).await?;
+    let flist = state.db.handle(query).await?;
     to_json(&flist)
 }
 
@@ -330,7 +324,7 @@ pub async fn scale_measurement(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
-    let slist = block(move || state.db.handle(query)).await?;
+    let slist = state.db.handle(query).await?;
     to_json(&slist)
 }
 
@@ -340,7 +334,7 @@ pub async fn scale_measurement_update(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let measurements = data.into_inner();
-    block(move || state.db.handle(measurements)).await?;
+    state.db.handle(measurements).await?;
     form_http_response("finished".into())
 }
 
@@ -364,7 +358,7 @@ pub async fn garmin_list_gps_tracks(
 
     let greq: GarminListRequest = proc_pattern_wrapper(query, &state.history.read()).into();
 
-    let gps_list = block(move || state.db.handle(greq)).await?;
+    let gps_list = state.db.handle(greq).await?;
     let glist = GpsList { gps_list };
     to_json(&glist)
 }
@@ -384,7 +378,7 @@ pub async fn garmin_get_hr_data(
     let greq: GarminListRequest = proc_pattern_wrapper(query, &state.history.read()).into();
 
     let s = state.clone();
-    let file_list = block(move || s.db.handle(greq)).await?;
+    let file_list = s.db.handle(greq).await?;
 
     let hr_data = match file_list.len() {
         1 => {
@@ -393,16 +387,15 @@ pub async fn garmin_get_hr_data(
             let avro_file = format!("{}/{}.avro", &config.cache_dir, file_name);
             let a = avro_file.clone();
 
-            if let Ok(g) = block(move || GarminFile::read_avro(&a)).await {
+            if let Ok(g) = spawn_blocking(move || GarminFile::read_avro(&a)).await? {
                 g
             } else {
                 let gps_file = format!("{}/{}", &config.gps_dir, file_name);
-                let corr_map = block(move || state.db.handle(GarminCorrRequest {}))
-                    .await?
-                    .corr_map;
+                let corr_map = state.db.handle(GarminCorrRequest {}).await?.corr_map;
                 let gfile =
-                    block(move || GarminParse::new().with_file(&gps_file, &corr_map)).await?;
-                block(move || gfile.dump_avro(&avro_file).map(|_| gfile)).await?
+                    spawn_blocking(move || GarminParse::new().with_file(&gps_file, &corr_map))
+                        .await??;
+                spawn_blocking(move || gfile.dump_avro(&avro_file).map(|_| gfile)).await??
             }
             .points
             .iter()
@@ -442,7 +435,7 @@ pub async fn garmin_get_hr_pace(
     let greq: GarminListRequest = proc_pattern_wrapper(query, &state.history.read()).into();
 
     let s = state.clone();
-    let file_list = block(move || s.db.handle(greq)).await?;
+    let file_list = s.db.handle(greq).await?;
 
     let hrpace = match file_list.len() {
         1 => {
@@ -450,16 +443,16 @@ pub async fn garmin_get_hr_pace(
             let file_name = &file_list[0];
             let avro_file = format!("{}/{}.avro", &config.cache_dir, file_name);
 
-            let gfile = if let Ok(g) = block(move || GarminFile::read_avro(&avro_file)).await {
+            let gfile = if let Ok(g) =
+                spawn_blocking(move || GarminFile::read_avro(&avro_file)).await?
+            {
                 g
             } else {
                 let gps_file = format!("{}/{}", &config.gps_dir, file_name);
 
-                let corr_map = block(move || state.db.handle(GarminCorrRequest {}))
-                    .await?
-                    .corr_map;
+                let corr_map = state.db.handle(GarminCorrRequest {}).await?.corr_map;
 
-                block(move || GarminParse::new().with_file(&gps_file, &corr_map)).await?
+                spawn_blocking(move || GarminParse::new().with_file(&gps_file, &corr_map)).await??
             };
 
             let splits = get_splits(&gfile, 400., "mi", true)?;

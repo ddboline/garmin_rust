@@ -81,14 +81,14 @@ impl GarminCorrectionLap {
 #[derive(Debug, PartialEq, Default)]
 pub struct GarminCorrectionList {
     pub corr_map: HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
-    pub pool: Option<PgPool>,
+    pub pool: PgPool,
 }
 
 impl GarminCorrectionList {
-    pub fn new() -> Self {
+    pub fn new(pool: &PgPool) -> Self {
         Self {
             corr_map: HashMap::new(),
-            pool: None,
+            pool: pool.clone(),
         }
     }
 
@@ -100,22 +100,11 @@ impl GarminCorrectionList {
         self
     }
 
-    pub fn with_pool(mut self, pool: &PgPool) -> Self {
-        self.pool = Some(pool.clone());
-        self
-    }
-
     pub fn from_pool(pool: &PgPool) -> Self {
         Self {
-            pool: Some(pool.clone()),
+            pool: pool.clone(),
             ..Self::default()
         }
-    }
-
-    pub fn get_pool(&self) -> Result<&PgPool, Error> {
-        self.pool
-            .as_ref()
-            .ok_or_else(|| format_err!("No Database Connection"))
     }
 
     pub fn get_corr_list(&self) -> Vec<GarminCorrectionLap> {
@@ -287,7 +276,7 @@ impl GarminCorrectionList {
         Self::from_vec(corr_list_map.values().cloned().collect())
     }
 
-    pub fn get_filename_start_map(&self) -> Result<HashMap<String, (String, i32)>, Error> {
+    pub async fn get_filename_start_map(&self) -> Result<HashMap<String, (String, i32)>, Error> {
         #[derive(FromSqlRow)]
         struct FileNameUniqueKey {
             filename: String,
@@ -299,8 +288,9 @@ impl GarminCorrectionList {
             from garmin_corrections_laps a
             join garmin_summary b on a.start_time = b.begin_datetime
         ";
-        let mut conn = self.get_pool()?.get()?;
-        conn.query(query, &[])?
+        let conn = self.pool.get().await?;
+        conn.query(query, &[])
+            .await?
             .par_iter()
             .map(|row| {
                 let val = FileNameUniqueKey::from_row(row)?;
@@ -319,7 +309,7 @@ impl GarminCorrectionList {
             .collect()
     }
 
-    pub fn dump_corrections_to_db(&self) -> Result<(), Error> {
+    pub async fn dump_corrections_to_db(&self) -> Result<(), Error> {
         let query_unique_key = "SELECT unique_key FROM garmin_corrections_laps WHERE unique_key=$1";
         let query_insert = "
             INSERT INTO garmin_corrections_laps
@@ -332,55 +322,57 @@ impl GarminCorrectionList {
             SET start_time=$1, lap_number=$2, distance=$3, duration=$4, sport=$6
             WHERE unique_key=$5
         ";
-        let mut conn = self.get_pool()?.get()?;
-        let stmt_insert = conn.prepare(query_insert)?;
-        let stmt_update = conn.prepare(query_update)?;
-        self.get_corr_list()
-            .into_iter()
-            .map(|corr| {
-                let unique_key = format!("{}_{}", corr.start_time, corr.lap_number);
-                let sport: Option<String> = corr.sport.and_then(|s| match s {
-                    SportTypes::None => None,
-                    s => Some(s.to_string()),
-                });
+        let conn = self.pool.get().await?;
+        let stmt_insert = conn.prepare(query_insert).await?;
+        let stmt_update = conn.prepare(query_update).await?;
+        for corr in self.get_corr_list() {
+            let unique_key = format!("{}_{}", corr.start_time, corr.lap_number);
+            let sport: Option<String> = corr.sport.and_then(|s| match s {
+                SportTypes::None => None,
+                s => Some(s.to_string()),
+            });
 
-                if conn.query(query_unique_key, &[&unique_key])?.is_empty() {
-                    conn.execute(
-                        &stmt_update,
-                        &[
-                            &corr.start_time,
-                            &corr.lap_number,
-                            &corr.distance,
-                            &corr.duration,
-                            &unique_key,
-                            &sport,
-                        ],
-                    )
-                } else {
-                    conn.execute(
-                        &stmt_insert,
-                        &[
-                            &corr.start_time,
-                            &corr.lap_number,
-                            &corr.distance,
-                            &corr.duration,
-                            &unique_key,
-                            &sport,
-                        ],
-                    )
-                }
-                .map_err(Into::into)
-                .map(|_| ())
-            })
-            .collect()
+            if conn
+                .query(query_unique_key, &[&unique_key])
+                .await?
+                .is_empty()
+            {
+                conn.execute(
+                    &stmt_update,
+                    &[
+                        &corr.start_time,
+                        &corr.lap_number,
+                        &corr.distance,
+                        &corr.duration,
+                        &unique_key,
+                        &sport,
+                    ],
+                )
+                .await?;
+            } else {
+                conn.execute(
+                    &stmt_insert,
+                    &[
+                        &corr.start_time,
+                        &corr.lap_number,
+                        &corr.distance,
+                        &corr.duration,
+                        &unique_key,
+                        &sport,
+                    ],
+                )
+                .await?;
+            }
+        }
+        Ok(())
     }
 
-    pub fn read_corrections_from_db(&self) -> Result<Self, Error> {
-        let mut conn = self.get_pool()?.get()?;
+    pub async fn read_corrections_from_db(&self) -> Result<Self, Error> {
+        let conn = self.pool.get().await?;
         let corr_list: Result<Vec<_>, Error> = conn.query(
             "select id, start_time, lap_number, sport, distance, duration from garmin_corrections_laps",
             &[],
-        )?
+        ).await?
             .par_iter()
             .map(|row| {
                 GarminCorrectionLap::from_row(row).map_err(Into::into)

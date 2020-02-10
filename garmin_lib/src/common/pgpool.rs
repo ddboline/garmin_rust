@@ -1,20 +1,33 @@
 use anyhow::Error;
-use postgres::NoTls;
-use r2d2::{Pool, PooledConnection};
-use r2d2_postgres::PostgresConnectionManager;
+use deadpool::managed::Object;
+use deadpool_postgres::{ClientWrapper, Config, Pool};
+use std::env::var;
 use std::fmt;
+use tokio_postgres::error::Error as PgError;
+use tokio_postgres::NoTls;
 
 /// Wrapper around `r2d2::Pool`, two pools are considered equal if they have the same connection string
 /// The only way to use `PgPool` is through the get method, which returns a `PooledConnection` object
 #[derive(Clone)]
 pub struct PgPool {
     pgurl: String,
-    pool: Pool<PostgresConnectionManager<NoTls>>,
+    pool: Pool,
 }
 
 impl fmt::Debug for PgPool {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "PgPool {}", self.pgurl)
+    }
+}
+
+impl Default for PgPool {
+    fn default() -> Self {
+        let pgurl = var("PGURL").expect("PGURL NOT SET!");
+        let config = Config::from_env("PGURL").expect("Failed to create config");
+        Self {
+            pgurl: pgurl.to_string(),
+            pool: config.create_pool(NoTls).expect("Failed to create pool"),
+        }
     }
 }
 
@@ -25,18 +38,11 @@ impl PartialEq for PgPool {
 }
 
 impl PgPool {
-    pub fn new(pgurl: &str) -> Self {
-        let manager = PostgresConnectionManager::new(
-            pgurl.parse().expect("Failed to parse connection string"),
-            NoTls,
-        );
-        Self {
-            pgurl: pgurl.to_string(),
-            pool: Pool::new(manager).expect("Failed to open DB connection"),
-        }
+    pub fn new() -> Self {
+        Self::default()
     }
 
-    pub fn get(&self) -> Result<PooledConnection<PostgresConnectionManager<NoTls>>, Error> {
-        self.pool.get().map_err(Into::into)
+    pub async fn get(&self) -> Result<Object<ClientWrapper, PgError>, Error> {
+        self.pool.get().await.map_err(Into::into)
     }
 }

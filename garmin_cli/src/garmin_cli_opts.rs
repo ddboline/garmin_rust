@@ -27,7 +27,7 @@ pub enum GarminCliOpts {
 }
 
 impl GarminCliOpts {
-    pub fn process_args() -> Result<(), Error> {
+    pub async fn process_args() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
         let opts = match Self::from_args() {
             Self::Bootstrap => GarminCliOptions::Bootstrap,
@@ -38,7 +38,9 @@ impl GarminCliOpts {
                 } else {
                     GarminCli::process_pattern(&config, &patterns)
                 };
-                return GarminCli::with_config()?.run_cli(&req.options, &req.constraints);
+                return GarminCli::with_config()?
+                    .run_cli(&req.options, &req.constraints)
+                    .await;
             }
             Self::Connect => GarminCliOptions::Connect,
             Self::Sync { md5sum } => GarminCliOptions::Sync(md5sum),
@@ -75,6 +77,6 @@ impl GarminCliOpts {
             results?;
         }
 
-        cli.garmin_proc().map(|_| ())
+        cli.garmin_proc().await.map(|_| ())
     }
 }

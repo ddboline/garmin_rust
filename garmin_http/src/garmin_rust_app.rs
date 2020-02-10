@@ -1,7 +1,6 @@
 #![allow(clippy::needless_pass_by_value)]
 
 use actix_identity::{CookieIdentityPolicy, IdentityService};
-use actix_web::web::block;
 use actix_web::{web, App, HttpServer};
 use chrono::Duration;
 use parking_lot::RwLock;
@@ -42,12 +41,12 @@ pub async fn start_app() {
         loop {
             i.tick().await;
             let p = pool.clone();
-            block(move || fill_from_db(&p)).await.unwrap_or(());
+            fill_from_db(&p).await.unwrap_or(());
         }
     }
 
     let config = &CONFIG;
-    let pool = PgPool::new(&config.pgurl);
+    let pool = PgPool::new();
 
     actix_rt::spawn(_update_db(pool.clone()));
 

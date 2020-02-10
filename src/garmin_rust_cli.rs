@@ -1,9 +1,10 @@
 use garmin_cli::garmin_cli_opts::GarminCliOpts;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     env_logger::init();
 
-    match GarminCliOpts::process_args() {
+    match GarminCliOpts::process_args().await {
         Ok(_) => (),
         Err(e) => {
             if e.to_string().contains("Broken pipe") {

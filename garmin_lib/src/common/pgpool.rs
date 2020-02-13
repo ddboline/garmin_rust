@@ -1,7 +1,7 @@
 use anyhow::{format_err, Error};
 use deadpool::managed::Object;
 use deadpool_postgres::{ClientWrapper, Config, Pool};
-use std::env::{set_var};
+use std::env::set_var;
 use std::fmt;
 use tokio_postgres::error::Error as PgError;
 use tokio_postgres::{Config as PgConfig, NoTls};

@@ -3,13 +3,16 @@ use chrono::{DateTime, TimeZone, Utc};
 use log::debug;
 use log::error;
 use num_traits::pow::Pow;
-use rand::distributions::{Alphanumeric, Distribution};
+use rand::distributions::{Alphanumeric, Distribution, Uniform};
 use rand::thread_rng;
 use retry::{delay::jitter, delay::Exponential, retry};
 use std::fs::remove_file;
 use std::io::{stdout, BufRead, BufReader, Read, Write};
 use std::path::Path;
 use subprocess::{Exec, Redirection};
+use tokio::time::{delay_for, Duration};
+use std::future::Future;
+use std::pin::Pin;
 
 pub const METERS_PER_MILE: f64 = 1609.344;
 pub const MARATHON_DISTANCE_M: i32 = 42195;
@@ -144,6 +147,26 @@ where
         },
     )
     .map_err(|e| format_err!("{:?}", e))
+}
+
+pub async fn exponential_retry_async<T, U>(fut: T) -> Result<U, Error>
+where
+    T: Fn() -> Pin<Box<dyn Future<Output = Result<U, Error>>>>,
+{
+    let mut timeout: f64 = 1.0;
+    let range = Uniform::from(0..1000);
+    loop {
+        match fut().await {
+            Ok(resp) => return Ok(resp),
+            Err(err) => {
+                delay_for(Duration::from_millis((timeout * 1000.0) as u64)).await;
+                timeout *= 4.0 * f64::from(range.sample(&mut thread_rng())) / 1000.0;
+                if timeout >= 64.0 {
+                    return Err(err.into());
+                }
+            }
+        }
+    }
 }
 
 pub fn extract_zip_from_garmin_connect(filename: &str, ziptmpdir: &str) -> Result<String, Error> {

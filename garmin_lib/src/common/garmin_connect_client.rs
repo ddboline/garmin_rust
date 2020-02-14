@@ -9,8 +9,8 @@ use std::collections::HashMap;
 use std::thread::sleep;
 use std::time::Duration;
 use tokio::fs::File;
-use tokio::stream::StreamExt;
 use tokio::io::AsyncWriteExt;
+use tokio::stream::StreamExt;
 
 use super::garmin_config::GarminConfig;
 use super::reqwest_session::ReqwestSession;

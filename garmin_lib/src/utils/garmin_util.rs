@@ -10,7 +10,6 @@ use std::fs::remove_file;
 use std::future::Future;
 use std::io::{stdout, BufRead, BufReader, Read, Write};
 use std::path::Path;
-use std::pin::Pin;
 use subprocess::{Exec, Redirection};
 use tokio::time::{delay_for, Duration};
 
@@ -149,10 +148,10 @@ where
     .map_err(|e| format_err!("{:?}", e))
 }
 
-pub async fn exponential_retry<T, U, V>(f: T) -> Result<U, Error>
+pub async fn exponential_retry<T, U, F>(f: T) -> Result<U, Error>
 where
-    T: Fn() -> Pin<Box<V>>,
-    V: Future<Output = Result<U, Error>>,
+    T: Fn() -> F,
+    F: Future<Output = Result<U, Error>>,
 {
     let mut timeout: f64 = 1.0;
     let range = Uniform::from(0..1000);

@@ -80,7 +80,7 @@ impl ReqwestSession {
         exponential_retry(|| {
             let url = url.clone();
             let headers = headers.clone();
-            Box::new(async move { self.client.lock().await.get(url, headers).await }).into()
+            async move { self.client.lock().await.get(url, headers).await }
         })
         .await
     }
@@ -94,14 +94,13 @@ impl ReqwestSession {
         exponential_retry(|| {
             let url = url.clone();
             let headers = headers.clone();
-            Box::new(async move {
+            async move {
                 self.client
                     .lock()
                     .await
                     .post(url.clone(), headers.clone(), form)
                     .await
-            })
-            .into()
+            }
         })
         .await
     }

@@ -1,11 +1,11 @@
 use anyhow::Error;
-use parking_lot::Mutex;
-use reqwest::blocking::{Client, Response};
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use reqwest::redirect::Policy;
 use reqwest::Url;
+use reqwest::{Client, Response};
 use std::collections::HashMap;
 use std::sync::Arc;
+use tokio::sync::Mutex;
 
 use crate::utils::garmin_util::exponential_retry;
 
@@ -26,7 +26,7 @@ impl Default for ReqwestSession {
 }
 
 impl ReqwestSessionInner {
-    pub fn get(&mut self, url: Url, mut headers: HeaderMap) -> Result<Response, Error> {
+    pub async fn get(&mut self, url: Url, mut headers: HeaderMap) -> Result<Response, Error> {
         for (k, v) in &self.headers {
             headers.insert(k, v.into());
         }
@@ -34,10 +34,11 @@ impl ReqwestSessionInner {
             .get(url)
             .headers(headers)
             .send()
+            .await
             .map_err(Into::into)
     }
 
-    pub fn post(
+    pub async fn post(
         &mut self,
         url: Url,
         mut headers: HeaderMap,
@@ -51,6 +52,7 @@ impl ReqwestSessionInner {
             .headers(headers)
             .form(form)
             .send()
+            .await
             .map_err(Into::into)
     }
 }
@@ -74,28 +76,42 @@ impl ReqwestSession {
         }
     }
 
-    pub fn get(&self, url: &Url, headers: &HeaderMap) -> Result<Response, Error> {
-        exponential_retry(|| self.client.lock().get(url.clone(), headers.clone()))
+    pub async fn get(&self, url: &Url, headers: &HeaderMap) -> Result<Response, Error> {
+        exponential_retry(|| {
+            let url = url.clone();
+            let headers = headers.clone();
+            Box::new(async move { self.client.lock().await.get(url, headers).await }).into()
+        })
+        .await
     }
 
-    pub fn post(
+    pub async fn post(
         &self,
         url: &Url,
         headers: &HeaderMap,
         form: &HashMap<&str, &str>,
     ) -> Result<Response, Error> {
-        exponential_retry(|| self.client.lock().post(url.clone(), headers.clone(), form))
+        exponential_retry(|| {
+            let url = url.clone();
+            let headers = headers.clone();
+            Box::new(async move {
+                self.client
+                    .lock()
+                    .await
+                    .post(url.clone(), headers.clone(), form)
+                    .await
+            })
+            .into()
+        })
+        .await
     }
 
-    pub fn set_default_headers(&self, headers: HashMap<&str, &str>) -> Result<(), Error> {
-        headers
-            .into_iter()
-            .map(|(k, v)| {
-                let name: HeaderName = k.parse()?;
-                let val: HeaderValue = v.parse()?;
-                self.client.lock().headers.insert(name, val);
-                Ok(())
-            })
-            .collect()
+    pub async fn set_default_headers(&self, headers: HashMap<&str, &str>) -> Result<(), Error> {
+        for (k, v) in headers {
+            let name: HeaderName = k.parse()?;
+            let val: HeaderValue = v.parse()?;
+            self.client.lock().await.headers.insert(name, val);
+        }
+        Ok(())
     }
 }

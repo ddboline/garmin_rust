@@ -532,8 +532,8 @@ impl GarminCli {
 
     pub async fn sync_with_garmin_connect(&self) -> Result<Vec<String>, Error> {
         if let Some(max_datetime) = get_maximum_begin_datetime(&self.pool).await? {
-            let session = GarminConnectClient::get_session(self.config.clone())?;
-            let filenames = session.get_activities(max_datetime)?;
+            let session = GarminConnectClient::get_session(self.config.clone()).await?;
+            let filenames = session.get_activities(max_datetime).await?;
             self.process_filenames(&filenames)?;
             return Ok(filenames);
         }

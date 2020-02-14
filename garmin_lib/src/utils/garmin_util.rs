@@ -7,12 +7,12 @@ use rand::distributions::{Alphanumeric, Distribution, Uniform};
 use rand::thread_rng;
 use retry::{delay::jitter, delay::Exponential, retry};
 use std::fs::remove_file;
+use std::future::Future;
 use std::io::{stdout, BufRead, BufReader, Read, Write};
 use std::path::Path;
+use std::pin::Pin;
 use subprocess::{Exec, Redirection};
 use tokio::time::{delay_for, Duration};
-use std::future::Future;
-use std::pin::Pin;
 
 pub const METERS_PER_MILE: f64 = 1609.344;
 pub const MARATHON_DISTANCE_M: i32 = 42195;
@@ -130,7 +130,7 @@ pub fn get_file_list(path: &Path) -> Vec<String> {
     }
 }
 
-pub fn exponential_retry<T, U>(closure: T) -> Result<U, Error>
+pub fn exponential_retry_sync<T, U>(closure: T) -> Result<U, Error>
 where
     T: Fn() -> Result<U, Error>,
 {
@@ -149,14 +149,15 @@ where
     .map_err(|e| format_err!("{:?}", e))
 }
 
-pub async fn exponential_retry_async<T, U>(fut: T) -> Result<U, Error>
+pub async fn exponential_retry<T, U, V>(f: T) -> Result<U, Error>
 where
-    T: Fn() -> Pin<Box<dyn Future<Output = Result<U, Error>>>>,
+    T: Fn() -> Pin<Box<V>>,
+    V: Future<Output = Result<U, Error>>,
 {
     let mut timeout: f64 = 1.0;
     let range = Uniform::from(0..1000);
     loop {
-        match fut().await {
+        match f().await {
             Ok(resp) => return Ok(resp),
             Err(err) => {
                 delay_for(Duration::from_millis((timeout * 1000.0) as u64)).await;

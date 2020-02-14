@@ -29,7 +29,7 @@ deadpool-postgres = "0.5"
 dotenv = "0.15"
 lazy_static = "1.4"
 roxmltree = "0.9"
-reqwest = {version="0.10", features=["cookies", "blocking", "json"]}
+reqwest = {version="0.10", features=["cookies", "json", "rustls-tls", "stream"]}
 parking_lot = "0.10"
 maplit = "1.0"
 retry = "0.5"

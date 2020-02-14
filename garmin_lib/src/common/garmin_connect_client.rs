@@ -6,10 +6,11 @@ use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use reqwest::Url;
 use serde_json::Value;
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::{stdout, Write};
 use std::thread::sleep;
 use std::time::Duration;
+use tokio::fs::File;
+use tokio::stream::StreamExt;
+use tokio::io::AsyncWriteExt;
 
 use super::garmin_config::GarminConfig;
 use super::reqwest_session::ReqwestSession;
@@ -20,7 +21,7 @@ pub struct GarminConnectClient {
 }
 
 impl GarminConnectClient {
-    pub fn get_session(config: GarminConfig) -> Result<Self, Error> {
+    pub async fn get_session(config: GarminConfig) -> Result<Self, Error> {
         let obligatory_headers = hashmap! {
             "Referer" => "https://sync.tapiriik.com",
         };
@@ -45,12 +46,12 @@ impl GarminConnectClient {
         let session = ReqwestSession::new(false);
 
         let url = Url::parse_with_params("https://sso.garmin.com/sso/signin", params.iter())?;
-        let pre_resp = session.get(&url, &HeaderMap::new())?;
+        let pre_resp = session.get(&url, &HeaderMap::new()).await?;
         if pre_resp.status() != 200 {
             return Err(format_err!(
                 "SSO prestart error {} {}",
                 pre_resp.status(),
-                pre_resp.text()?
+                pre_resp.text().await?
             ));
         }
 
@@ -64,13 +65,17 @@ impl GarminConnectClient {
             .collect();
         let signin_headers = result?;
 
-        let sso_resp = session.post(&url, &signin_headers, &data)?;
+        let sso_resp = session.post(&url, &signin_headers, &data).await?;
         let status = sso_resp.status();
         if status != 200 {
-            return Err(format_err!("SSO error {} {}", status, sso_resp.text()?));
+            return Err(format_err!(
+                "SSO error {} {}",
+                status,
+                sso_resp.text().await?
+            ));
         }
 
-        let sso_text = sso_resp.text()?;
+        let sso_text = sso_resp.text().await?;
 
         if sso_text.contains("temporarily unavailable") {
             return Err(format_err!("SSO error {} {}", status, sso_text));
@@ -82,15 +87,17 @@ impl GarminConnectClient {
             return Err(format_err!("Reset password"));
         }
 
-        let mut gc_redeem_resp = session.get(
-            &"https://connect.garmin.com/modern".parse()?,
-            &HeaderMap::new(),
-        )?;
+        let mut gc_redeem_resp = session
+            .get(
+                &"https://connect.garmin.com/modern".parse()?,
+                &HeaderMap::new(),
+            )
+            .await?;
         if gc_redeem_resp.status() != 302 {
             return Err(format_err!(
                 "GC redeem-start error {} {}",
                 gc_redeem_resp.status(),
-                gc_redeem_resp.text()?
+                gc_redeem_resp.text().await?
             ));
         }
 
@@ -113,7 +120,7 @@ impl GarminConnectClient {
             url_prefix = url.split('/').take(3).collect::<Vec<_>>().join("/");
 
             let url: Url = url.parse()?;
-            gc_redeem_resp = session.get(&url, &HeaderMap::new())?;
+            gc_redeem_resp = session.get(&url, &HeaderMap::new()).await?;
             let status = gc_redeem_resp.status();
             if current_redirect_count >= max_redirect_count && status != 200 {
                 return Err(format_err!(
@@ -121,7 +128,7 @@ impl GarminConnectClient {
                     current_redirect_count,
                     max_redirect_count,
                     status,
-                    gc_redeem_resp.text()?
+                    gc_redeem_resp.text().await?
                 ));
             } else if status == 200 || status == 404 {
                 break;
@@ -132,12 +139,12 @@ impl GarminConnectClient {
             }
         }
 
-        session.set_default_headers(obligatory_headers)?;
+        session.set_default_headers(obligatory_headers).await?;
 
         Ok(Self { config, session })
     }
 
-    pub fn get_activities(&self, max_timestamp: DateTime<Utc>) -> Result<Vec<String>, Error> {
+    pub async fn get_activities(&self, max_timestamp: DateTime<Utc>) -> Result<Vec<String>, Error> {
         let url_prefix = "https://connect.garmin.com/modern/proxy/activitylist-service/activities/search/activities";
         let mut entries = Vec::new();
         let mut current_start = 0;
@@ -152,8 +159,12 @@ impl GarminConnectClient {
             )?;
             current_start += limit;
             debug!("Call {}", url);
-            let new_entries: Vec<HashMap<String, Value>> =
-                self.session.get(&url, &HeaderMap::new())?.json()?;
+            let new_entries: Vec<HashMap<String, Value>> = self
+                .session
+                .get(&url, &HeaderMap::new())
+                .await?
+                .json()
+                .await?;
             if new_entries.is_empty() {
                 debug!("Empty result {} returning {} results", url, entries.len());
                 return Ok(entries);
@@ -166,7 +177,7 @@ impl GarminConnectClient {
                             NaiveDateTime::parse_from_str(start_time_gmt, "%Y-%m-%d %H:%M:%S")
                                 .map(|datetime| DateTime::from_utc(datetime, Utc))?;
                         if start_time > max_timestamp {
-                            writeln!(stdout(), "{} {}", activity_id, start_time)?;
+                            debug!("{} {}", activity_id, start_time);
                             let fname =
                                 format!("{}/Downloads/{}.zip", self.config.home_dir, activity_id);
                             let url: Url = format!(
@@ -176,9 +187,14 @@ impl GarminConnectClient {
                                 activity_id
                             )
                             .parse()?;
-                            let mut f = File::create(&fname)?;
-                            let mut resp = self.session.get(&url, &HeaderMap::new())?;
-                            resp.copy_to(&mut f)?;
+                            let mut f = File::create(&fname).await?;
+                            let resp = self.session.get(&url, &HeaderMap::new()).await?;
+
+                            let mut stream = resp.bytes_stream();
+                            while let Some(item) = stream.next().await {
+                                f.write_all(&item?).await?;
+                            }
+
                             entries.push(fname);
                         } else {
                             debug!("Returning {} results", entries.len());

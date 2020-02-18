@@ -3,9 +3,9 @@
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::{web, App, HttpServer};
 use chrono::Duration;
-use parking_lot::RwLock;
 use std::sync::Arc;
 use std::time;
+use tokio::sync::RwLock;
 use tokio::time::interval;
 
 use garmin_lib::common::pgpool::PgPool;

@@ -5,6 +5,7 @@ use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::File;
+use tokio::task::spawn_blocking;
 
 use crate::utils::iso_8601_datetime::{self, sentinel_datetime};
 use crate::utils::sport_types::{self, SportTypes};
@@ -107,6 +108,11 @@ impl GarminFile {
             .append_ser(&self)
             .and_then(|_| writer.flush().map(|_| ()))
             .map_err(|e| format_err!("{}", e))
+    }
+
+    pub async fn read_avro_async(input_filename: &str) -> Result<Self, Error> {
+        let input_filename = input_filename.to_owned();
+        spawn_blocking(move || Self::read_avro(&input_filename)).await?
     }
 
     pub fn read_avro(input_filename: &str) -> Result<Self, Error> {

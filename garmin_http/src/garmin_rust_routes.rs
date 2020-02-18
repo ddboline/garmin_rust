@@ -73,12 +73,12 @@ pub async fn garmin(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
-    let grec = proc_pattern_wrapper(query, &state.history.read());
-    let history_size = state.history.read().len();
+    let grec = proc_pattern_wrapper(query, &state.history.read().await);
+    let history_size = state.history.read().await.len();
     if history_size > 5 {
-        state.history.write().remove(0);
+        state.history.write().await.remove(0);
     }
-    state.history.write().push(grec.0.filter.clone());
+    state.history.write().await.push(grec.0.filter.clone());
 
     let body = state.db.handle(grec).await?;
 
@@ -290,7 +290,7 @@ pub async fn fitbit_plots(
 
     let body = body.replace(
         "HISTORYBUTTONS",
-        &generate_history_buttons(&state.history.read()),
+        &generate_history_buttons(&state.history.read().await),
     );
     form_http_response(body)
 }
@@ -304,7 +304,7 @@ pub async fn heartrate_plots(
     let body = s.db.handle(query).await?;
     let body = body.replace(
         "HISTORYBUTTONS",
-        &generate_history_buttons(&state.history.read()),
+        &generate_history_buttons(&state.history.read().await),
     );
     form_http_response(body)
 }
@@ -356,7 +356,7 @@ pub async fn garmin_list_gps_tracks(
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
 
-    let greq: GarminListRequest = proc_pattern_wrapper(query, &state.history.read()).into();
+    let greq: GarminListRequest = proc_pattern_wrapper(query, &state.history.read().await).into();
 
     let gps_list = state.db.handle(greq).await?;
     let glist = GpsList { gps_list };
@@ -375,7 +375,7 @@ pub async fn garmin_get_hr_data(
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
 
-    let greq: GarminListRequest = proc_pattern_wrapper(query, &state.history.read()).into();
+    let greq: GarminListRequest = proc_pattern_wrapper(query, &state.history.read().await).into();
 
     let s = state.clone();
     let file_list = s.db.handle(greq).await?;
@@ -432,7 +432,7 @@ pub async fn garmin_get_hr_pace(
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
 
-    let greq: GarminListRequest = proc_pattern_wrapper(query, &state.history.read()).into();
+    let greq: GarminListRequest = proc_pattern_wrapper(query, &state.history.read().await).into();
 
     let s = state.clone();
     let file_list = s.db.handle(greq).await?;

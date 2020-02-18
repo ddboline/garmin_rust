@@ -6,7 +6,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::path::Path;
-use std::sync::Arc;
 use tokio::task::spawn_blocking;
 
 use fitbit_lib::fitbit_client::FitbitClient;

@@ -33,11 +33,15 @@ impl PgPool {
         if let tokio_postgres::config::Host::Tcp(s) = &pgconf.get_hosts()[0] {
             set_var("PG_HOST", s);
         }
-        pgconf.get_user().map(|u| set_var("PG_USER", u));
-        pgconf
-            .get_password()
-            .map(|u| set_var("PG_PASSWORD", String::from_utf8_lossy(u).to_string()));
-        pgconf.get_dbname().map(|u| set_var("PG_DBNAME", u));
+        if let Some(u) = pgconf.get_user() {
+            set_var("PG_USER", u);
+        }
+        if let Some(p) = pgconf.get_password() {
+            set_var("PG_PASSWORD", String::from_utf8_lossy(p).to_string())
+        };
+        if let Some(db) = pgconf.get_dbname() {
+            set_var("PG_DBNAME", db)
+        };
 
         let config = Config::from_env("PG").expect("Failed to create config");
         Self {
@@ -45,7 +49,7 @@ impl PgPool {
             pool: Some(
                 config
                     .create_pool(NoTls)
-                    .expect(&format!("Failed to create pool {}", pgurl)),
+                    .unwrap_or_else(|_| panic!("Failed to create pool {}", pgurl)),
             ),
         }
     }

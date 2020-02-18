@@ -3,6 +3,7 @@ use chrono::{Duration, Utc};
 use std::fs::File;
 use std::path::Path;
 use structopt::StructOpt;
+use tokio::task::spawn_blocking;
 
 use fitbit_lib::fitbit_client::FitbitClient;
 use garmin_lib::common::garmin_cli::{GarminCli, GarminCliOptions};
@@ -52,29 +53,24 @@ impl GarminCliOpts {
         };
 
         if let Some(GarminCliOptions::Connect) = cli.opts {
-            let client = FitbitClient::from_file(cli.config.clone())?;
-            let start_date = (Utc::now() - Duration::days(10)).naive_utc().date();
-            let results: Result<Vec<_>, Error> = client
-                .get_tcx_urls(start_date)?
-                .into_iter()
-                .filter_map(|(start_time, tcx_url)| {
-                    let res = || {
-                        let fname = format!(
-                            "{}/{}.tcx",
-                            cli.config.gps_dir,
-                            start_time.format("%Y-%m-%d_%H-%M-%S_1_1").to_string(),
-                        );
-                        if Path::new(&fname).exists() {
-                            Ok(None)
-                        } else {
-                            client.download_tcx(&tcx_url, &mut File::create(&fname)?)?;
-                            Ok(Some(fname))
-                        }
-                    };
-                    res().transpose()
-                })
-                .collect();
-            results?;
+            let config = cli.config.clone();
+            let res: Result<_, Error> = spawn_blocking(move || {
+                let client = FitbitClient::from_file(config.clone())?;
+                let start_date = (Utc::now() - Duration::days(10)).naive_utc().date();
+                for (start_time, tcx_url) in client.get_tcx_urls(start_date)? {
+                    let fname = format!(
+                        "{}/{}.tcx",
+                        config.gps_dir,
+                        start_time.format("%Y-%m-%d_%H-%M-%S_1_1").to_string(),
+                    );
+                    if !Path::new(&fname).exists() {
+                        client.download_tcx(&tcx_url, &mut File::create(&fname)?)?;
+                    }
+                }
+                Ok(())
+            })
+            .await?;
+            res?;
         }
 
         cli.garmin_proc().await.map(|_| ())

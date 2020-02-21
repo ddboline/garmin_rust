@@ -6,6 +6,8 @@ use std::fmt::Debug;
 use thiserror::Error;
 use tokio::task::JoinError;
 
+use crate::logged_user::TRIGGER_DB_UPDATE;
+
 #[derive(Error, Debug)]
 pub enum ServiceError {
     #[error("Internal Server Error")]
@@ -29,13 +31,16 @@ impl ResponseError for ServiceError {
     fn error_response(&self) -> HttpResponse {
         match *self {
             Self::BadRequest(ref message) => HttpResponse::BadRequest().json(message),
-            Self::Unauthorized => HttpResponse::Ok()
-                .content_type("text/html; charset=utf-8")
-                .body(
-                    include_str!("../../templates/login.html")
-                        .replace("main.css", "/auth/main.css")
-                        .replace("main.js", "/auth/main.js"),
-                ),
+            Self::Unauthorized => {
+                TRIGGER_DB_UPDATE.set();
+                HttpResponse::Ok()
+                    .content_type("text/html; charset=utf-8")
+                    .body(
+                        include_str!("../../templates/login.html")
+                            .replace("main.css", "/auth/main.css")
+                            .replace("main.js", "/auth/main.js"),
+                    )
+            }
             _ => {
                 HttpResponse::InternalServerError().json("Internal Server Error, Please try later")
             }

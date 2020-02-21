@@ -1,11 +1,10 @@
 use anyhow::Error;
 use chrono::DateTime;
+use futures::stream::{StreamExt, TryStreamExt};
 use log::debug;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use rusoto_core::Region;
-use rusoto_s3::{
-    GetObjectRequest, ListObjectsV2Request, Object as S3Object, PutObjectRequest, S3Client, S3,
-};
+use rusoto_s3::{GetObjectRequest, Object as S3Object, PutObjectRequest, S3Client};
 use s4::S4;
 use std::collections::HashMap;
 use std::fs;
@@ -69,39 +68,14 @@ impl GarminSync {
     }
 
     pub async fn get_list_of_keys(&self, bucket: &str) -> Result<Vec<KeyItem>, Error> {
-        let mut continuation_token = None;
-        let mut list_of_keys = Vec::new();
-        loop {
-            let current_list = self
-                .s3_client
-                .list_objects_v2(ListObjectsV2Request {
-                    bucket: bucket.to_string(),
-                    continuation_token: continuation_token.clone(),
-                    delimiter: None,
-                    encoding_type: None,
-                    fetch_owner: None,
-                    max_keys: None,
-                    prefix: None,
-                    request_payer: None,
-                    start_after: None,
-                })
-                .await?;
-            continuation_token = current_list.next_continuation_token.clone();
-
-            match current_list.key_count {
-                Some(0) | None => (),
-                Some(_) => {
-                    if let Some(c) = current_list.contents {
-                        let contents: Vec<_> = c.into_iter().filter_map(process_s3_item).collect();
-                        list_of_keys.extend_from_slice(&contents)
-                    };
-                }
-            };
-            match &continuation_token {
-                Some(_) => (),
-                None => break,
-            };
-        }
+        let results: Result<Vec<_>, _> = self
+            .s3_client
+            .iter_objects(bucket)
+            .into_stream()
+            .map(|res| res.map(process_s3_item))
+            .try_collect()
+            .await;
+        let list_of_keys = results?.into_iter().filter_map(|x| x).collect();
         Ok(list_of_keys)
     }
 

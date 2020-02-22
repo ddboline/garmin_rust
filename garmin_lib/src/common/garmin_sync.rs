@@ -5,7 +5,7 @@ use log::debug;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use rusoto_core::Region;
 use rusoto_s3::{GetObjectRequest, Object as S3Object, PutObjectRequest, S3Client};
-use s4::S4;
+use s3_ext::S3Ext;
 use std::collections::HashMap;
 use std::fs;
 use std::io::{stdout, Write};

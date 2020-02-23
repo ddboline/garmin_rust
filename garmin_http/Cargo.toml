@@ -26,5 +26,5 @@ tempdir = "0.3"
 anyhow = "1.0"
 thiserror = "1.0"
 actix-threadpool = "0.3"
-rust_auth_server = { git = "https://github.com/ddboline/rust-auth-server.git", branch="rusoto_0.43.0" }
+rust_auth_server = { git = "https://github.com/ddboline/rust-auth-server.git", tag="0.3.0" }
 async-trait = "0.1"

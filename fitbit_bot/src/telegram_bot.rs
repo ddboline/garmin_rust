@@ -6,12 +6,11 @@ use log::debug;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::collections::HashSet;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::thread::sleep;
-use std::time::Duration;
 use telegram_bot::types::refs::UserId;
 use telegram_bot::{Api, CanReplySendMessage, MessageKind, UpdateKind};
 use tokio::sync::RwLock;
 use tokio::task::spawn;
+use tokio::time::{delay_for, Duration};
 
 use fitbit_lib::scale_measurement::ScaleMeasurement;
 use garmin_lib::common::pgpool::PgPool;
@@ -174,16 +173,16 @@ async fn fill_telegram_user_ids(pool: PgPool) -> Result<(), Error> {
     loop {
         FAILURE_COUNT.check()?;
         if let Ok(telegram_userids) = list_of_telegram_user_ids(&pool).await {
-            let mut telegram_userid_set = USERIDS.write().await;
-            telegram_userid_set.clear();
-            for userid in telegram_userids {
-                telegram_userid_set.insert(UserId::new(userid));
-            }
+            let telegram_userid_set: HashSet<_> = telegram_userids
+                .into_iter()
+                .map(|userid| UserId::new(userid))
+                .collect();
+            *USERIDS.write().await = telegram_userid_set;
             FAILURE_COUNT.reset()?;
         } else {
             FAILURE_COUNT.increment()?;
         }
-        sleep(Duration::from_secs(60));
+        delay_for(Duration::from_secs(60)).await;
     }
 }
 

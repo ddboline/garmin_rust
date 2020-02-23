@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::path::Path;
+use std::sync::Arc;
 use tokio::task::spawn_blocking;
 
 use fitbit_lib::fitbit_client::FitbitClient;
@@ -260,19 +261,23 @@ impl HandleRequest<FitbitBodyWeightFatUpdateRequest> for PgPool {
     async fn handle(&self, _: FitbitBodyWeightFatUpdateRequest) -> Self::Result {
         let start_date: NaiveDate = (Local::now() - Duration::days(30)).naive_local().date();
         let config = CONFIG.clone();
-        let client = FitbitClient::from_file(config)?;
-        let c_ = client.clone();
-        let existing_map: Result<HashMap<NaiveDate, _>, Error> = spawn_blocking(move || {
-            Ok(c_
-                .get_fitbit_bodyweightfat()?
-                .into_iter()
-                .map(|entry| {
-                    let date = entry.datetime.with_timezone(&Local).naive_local().date();
-                    (date, entry)
-                })
-                .collect())
-        })
-        .await?;
+        let client = Arc::new(FitbitClient::from_file(config)?);
+        let existing_map: Result<HashMap<NaiveDate, _>, Error> = {
+            let client = client.clone();
+            spawn_blocking(move || {
+                let measurements: HashMap<_, _> = client
+                    .get_fitbit_bodyweightfat()?
+                    .into_iter()
+                    .map(|entry| {
+                        let date = entry.datetime.with_timezone(&Local).naive_local().date();
+                        (date, entry)
+                    })
+                    .collect();
+                Ok(measurements)
+            })
+            .await?
+        };
+
         let existing_map = existing_map?;
 
         let new_measurements: Vec<_> = ScaleMeasurement::read_from_db(self, Some(start_date), None)

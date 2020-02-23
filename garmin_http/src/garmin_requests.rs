@@ -455,7 +455,7 @@ impl HandleRequest<ScaleMeasurementUpdateRequest> for PgPool {
             .map(|d| d.datetime)
             .collect();
         let measurement_set = Arc::new(measurement_set);
-        let futures: Vec<_> = msg
+        let futures = msg
             .measurements
             .into_iter()
             .map(|meas| {
@@ -466,8 +466,7 @@ impl HandleRequest<ScaleMeasurementUpdateRequest> for PgPool {
                     }
                     Ok(())
                 }
-            })
-            .collect();
+            });
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
         results?;
         Ok(())

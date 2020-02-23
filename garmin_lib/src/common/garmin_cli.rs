@@ -1,6 +1,6 @@
 use anyhow::{format_err, Error};
 use chrono::{DateTime, Utc};
-use futures::future::join_all;
+use futures::future::try_join_all;
 use lazy_static::lazy_static;
 use log::debug;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
@@ -267,21 +267,19 @@ impl GarminCli {
             ),
         ];
 
-        let futures: Vec<_> = options
+        let futures = options
             .into_iter()
             .map(|(title, local_dir, s3_bucket, check_md5)| {
                 debug!("{}", title);
                 gsync.sync_dir(title, local_dir, s3_bucket, check_md5)
-            })
-            .collect();
-        join_all(futures)
-            .await
-            .into_iter()
-            .map(|output| {
-                let output = output?;
-                Ok(output.join("\n"))
-            })
-            .collect()
+            });
+        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+        results.map(|results| {
+            results
+                .into_iter()
+                .map(|output| output.join("\n"))
+                .collect()
+        })
     }
 
     fn match_patterns(config: &GarminConfig, pat: &str) -> Vec<String> {

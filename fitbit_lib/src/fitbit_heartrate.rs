@@ -142,26 +142,22 @@ impl FitbitHeartRate {
                 }
             })
             .collect();
-        let futures: Vec<_> = days
-            .par_iter()
-            .map(|date| async move {
-                let constraint = format!("date(begin_datetime at time zone 'utc') = '{}'", date);
-                let files: Vec<_> = get_list_of_files_from_db(&[constraint], pool)
-                    .await?
-                    .into_par_iter()
-                    .filter_map(|filename| {
-                        let avro_file =
-                            Path::new(&config.cache_dir).join(format!("{}.avro", filename));
-                        if avro_file.exists() {
-                            Some(avro_file)
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
-                Ok(files)
-            })
-            .collect();
+        let futures = days.iter().map(|date| async move {
+            let constraint = format!("date(begin_datetime at time zone 'utc') = '{}'", date);
+            let files: Vec<_> = get_list_of_files_from_db(&[constraint], pool)
+                .await?
+                .into_par_iter()
+                .filter_map(|filename| {
+                    let avro_file = Path::new(&config.cache_dir).join(format!("{}.avro", filename));
+                    if avro_file.exists() {
+                        Some(avro_file)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            Ok(files)
+        });
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
         let garmin_files: Vec<_> = results?.into_par_iter().flatten().collect();
 

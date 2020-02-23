@@ -13,7 +13,7 @@ use std::path::Path;
 use std::time::SystemTime;
 use sts_profile_auth::get_client_sts;
 
-use crate::utils::garmin_util::get_md5sum;
+use crate::utils::garmin_util::{exponential_retry, get_md5sum};
 
 pub fn get_s3_client() -> S3Client {
     get_client_sts!(S3Client, Region::UsEast1).expect("Failed to obtain client")
@@ -68,13 +68,16 @@ impl GarminSync {
     }
 
     pub async fn get_list_of_keys(&self, bucket: &str) -> Result<Vec<KeyItem>, Error> {
-        let results: Result<Vec<_>, _> = self
-            .s3_client
-            .iter_objects(bucket)
-            .into_stream()
-            .map(|res| res.map(process_s3_item))
-            .try_collect()
-            .await;
+        let results: Result<Vec<_>, _> = exponential_retry(|| async move {
+            self.s3_client
+                .iter_objects(bucket)
+                .into_stream()
+                .map(|res| res.map(process_s3_item))
+                .try_collect()
+                .await
+                .map_err(Into::into)
+        })
+        .await;
         let list_of_keys = results?.into_iter().filter_map(|x| x).collect();
         Ok(list_of_keys)
     }
@@ -244,20 +247,23 @@ impl GarminSync {
         s3_bucket: &str,
         s3_key: &str,
     ) -> Result<String, Error> {
-        let etag = self
-            .s3_client
-            .download_to_file(
-                GetObjectRequest {
-                    bucket: s3_bucket.to_string(),
-                    key: s3_key.to_string(),
-                    ..GetObjectRequest::default()
-                },
-                local_file,
-            )
-            .await?
-            .e_tag
-            .unwrap_or_else(|| "".to_string());
-        Ok(etag)
+        exponential_retry(|| async move {
+            let etag = self
+                .s3_client
+                .download_to_file(
+                    GetObjectRequest {
+                        bucket: s3_bucket.to_string(),
+                        key: s3_key.to_string(),
+                        ..GetObjectRequest::default()
+                    },
+                    local_file,
+                )
+                .await?
+                .e_tag
+                .unwrap_or_else(|| "".to_string());
+            Ok(etag)
+        })
+        .await
     }
 
     pub async fn upload_file(
@@ -277,18 +283,21 @@ impl GarminSync {
         s3_key: &str,
         acl: &Option<String>,
     ) -> Result<(), Error> {
-        self.s3_client
-            .upload_from_file(
-                &local_file,
-                PutObjectRequest {
-                    bucket: s3_bucket.to_string(),
-                    key: s3_key.to_string(),
-                    acl: acl.clone(),
-                    ..PutObjectRequest::default()
-                },
-            )
-            .await
-            .map_err(Into::into)
-            .map(|_| ())
+        exponential_retry(|| async move {
+            self.s3_client
+                .upload_from_file(
+                    &local_file,
+                    PutObjectRequest {
+                        bucket: s3_bucket.to_string(),
+                        key: s3_key.to_string(),
+                        acl: acl.clone(),
+                        ..PutObjectRequest::default()
+                    },
+                )
+                .await
+                .map_err(Into::into)
+                .map(|_| ())
+        })
+        .await
     }
 }

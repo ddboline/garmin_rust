@@ -1,6 +1,7 @@
 use anyhow::{format_err, Error};
 use chrono::offset::TimeZone;
 use chrono::{DateTime, Utc};
+use futures::future::try_join_all;
 use google_sheets4::RowData;
 use google_sheets4::{Sheet, Sheets};
 use hyper::net::HttpsConnector;
@@ -9,9 +10,10 @@ use hyper_native_tls::NativeTlsClient;
 use log::debug;
 use std::collections::HashMap;
 use std::fs::{create_dir_all, File};
-use std::io::{stdout, BufWriter, Write};
+use std::io::{stdout, Write};
 use std::path::Path;
 use std::rc::Rc;
+use std::sync::Arc;
 use yup_oauth2::{
     Authenticator, ConsoleApplicationSecret, DefaultAuthenticatorDelegate, DiskTokenStorage,
     FlowType,
@@ -92,6 +94,7 @@ pub async fn run_sync_sheets(config: &GarminConfig, pool: &PgPool) -> Result<(),
         .into_iter()
         .map(|meas| (meas.datetime, meas))
         .collect();
+    let current_measurements = Arc::new(current_measurements);
 
     let c = SheetsClient::new(config, "ddboline@gmail.com");
     let sheets = c.get_sheets("1MG8so2pFKoOIpt0Vo9pUAtoNk-Y1SnHq9DiEFi-m5Uw")?;
@@ -105,22 +108,27 @@ pub async fn run_sync_sheets(config: &GarminConfig, pool: &PgPool) -> Result<(),
         .iter()
         .filter_map(|row| measurement_from_row_data(row).ok())
         .collect();
-    let mut stdout = BufWriter::new(stdout());
     writeln!(
-        stdout,
+        stdout(),
         "{} {} {}",
         data.len(),
         row_data.len(),
         measurements.len()
     )?;
-    for meas in measurements {
-        if current_measurements.contains_key(&meas.datetime) {
-            writeln!(stdout, "exists {:?}", meas)?;
-        } else {
-            writeln!(stdout, "insert {:?}", meas)?;
-            meas.insert_into_db(pool).await?;
+    let futures = measurements.into_iter().map(|meas| {
+        let current_measurements = current_measurements.clone();
+        async move {
+            if current_measurements.contains_key(&meas.datetime) {
+                writeln!(stdout(), "exists {:?}", meas)?;
+            } else {
+                writeln!(stdout(), "insert {:?}", meas)?;
+                meas.insert_into_db(pool).await?;
+            }
+            Ok(())
         }
-    }
+    });
+    let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+    results?;
     Ok(())
 }
 

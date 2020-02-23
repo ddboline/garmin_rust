@@ -6,10 +6,10 @@ use actix_web::web::{Data, Json, Query};
 use actix_web::HttpResponse;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use std::fs::File;
-use std::io::Write;
 use std::string::ToString;
 use tempdir::TempDir;
+use tokio::fs::File;
+use tokio::io::AsyncWriteExt;
 use tokio::stream::StreamExt;
 use tokio::task::spawn_blocking;
 
@@ -86,11 +86,11 @@ pub async fn garmin(
 }
 
 async fn save_file(file_path: String, mut field: Field) -> Result<(), Error> {
-    let mut file = spawn_blocking(|| File::create(file_path)).await??;
+    let mut file = File::create(file_path).await?;
 
     while let Some(chunk) = field.next().await {
         let data = chunk?;
-        file = spawn_blocking(move || file.write_all(&data).map(|_| file)).await??;
+        file.write_all(&data).await?;
     }
     Ok(())
 }

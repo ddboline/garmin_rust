@@ -1,5 +1,6 @@
 use anyhow::Error;
 use chrono::{DateTime, Utc};
+use futures::future::try_join_all;
 use log::debug;
 use postgres_query::FromSqlRow;
 use serde::{Deserialize, Serialize};
@@ -136,23 +137,33 @@ pub async fn upsert_strava_id<S: BuildHasher>(
         UPDATE strava_id_cache SET strava_title=$2 WHERE strava_id=$1
     ";
     debug!("{}", query);
-    let mut output = Vec::new();
-    for (key, val) in update_items {
-        let conn = pool.get().await?;
-        conn.execute(query, &[&key, &val.title]).await?;
-        output.push(key.to_string());
-    }
+    let futures = update_items.into_iter().map(|(key, val)| {
+        let pool = pool.clone();
+        async move {
+            let conn = pool.get().await?;
+            conn.execute(query, &[&key, &val.title]).await?;
+            Ok(key.to_string())
+        }
+    });
+    let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+    let mut output = results?;
 
     let query = "
         INSERT INTO strava_id_cache (strava_id, begin_datetime, strava_title)
         VALUES ($1,$2,$3)
     ";
     debug!("{}", query);
-    for (key, val) in insert_items {
-        let conn = pool.get().await?;
-        conn.execute(query, &[&key, &val.begin_datetime, &val.title])
-            .await?;
-        output.push(key.to_string());
-    }
+    let futures = insert_items.into_iter().map(|(key, val)| {
+        let pool = pool.clone();
+        async move {
+            let conn = pool.get().await?;
+            conn.execute(query, &[&key, &val.begin_datetime, &val.title])
+                .await?;
+            Ok(key.to_string())
+        }
+    });
+    let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+    output.extend_from_slice(&results?);
+
     Ok(output)
 }

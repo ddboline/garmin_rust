@@ -1,11 +1,9 @@
 use anyhow::{format_err, Error};
 use chrono::{DateTime, TimeZone, Utc};
 use log::debug;
-use log::error;
 use num_traits::pow::Pow;
 use rand::distributions::{Alphanumeric, Distribution, Uniform};
 use rand::thread_rng;
-use retry::{delay::jitter, delay::Exponential, retry};
 use std::fs::remove_file;
 use std::future::Future;
 use std::io::{stdout, BufRead, BufReader, Read, Write};
@@ -127,25 +125,6 @@ pub fn get_file_list(path: &Path) -> Vec<String> {
             Vec::new()
         }
     }
-}
-
-pub fn exponential_retry_sync<T, U>(closure: T) -> Result<U, Error>
-where
-    T: Fn() -> Result<U, Error>,
-{
-    retry(
-        Exponential::from_millis(2)
-            .map(jitter)
-            .map(|x| x * 500)
-            .take(6),
-        || {
-            closure().map_err(|e| {
-                error!("Got error {:?} , retrying", e);
-                e
-            })
-        },
-    )
-    .map_err(|e| format_err!("{:?}", e))
 }
 
 pub async fn exponential_retry<T, U, F>(f: T) -> Result<U, Error>

@@ -1,7 +1,9 @@
 use chrono::{DateTime, Duration, Local, NaiveDate, NaiveDateTime, NaiveTime, Utc};
 
 use async_trait::async_trait;
+use futures::future::try_join_all;
 use log::debug;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
@@ -449,15 +451,25 @@ impl HandleRequest<ScaleMeasurementUpdateRequest> for PgPool {
     async fn handle(&self, msg: ScaleMeasurementUpdateRequest) -> Self::Result {
         let measurement_set: HashSet<_> = ScaleMeasurement::read_from_db(self, None, None)
             .await?
-            .into_iter()
+            .into_par_iter()
             .map(|d| d.datetime)
             .collect();
-
-        for meas in msg.measurements {
-            if !measurement_set.contains(&meas.datetime) {
-                meas.insert_into_db(self).await?;
-            }
-        }
+        let measurement_set = Arc::new(measurement_set);
+        let futures: Vec<_> = msg
+            .measurements
+            .into_iter()
+            .map(|meas| {
+                let measurement_set = measurement_set.clone();
+                async move {
+                    if !measurement_set.contains(&meas.datetime) {
+                        meas.insert_into_db(self).await?;
+                    }
+                    Ok(())
+                }
+            })
+            .collect();
+        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+        results?;
         Ok(())
     }
 }

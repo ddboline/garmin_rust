@@ -29,3 +29,4 @@ anyhow = "1.0"
 thiserror = "1.0"
 actix-threadpool = "0.3"
 tokio = {version="0.2", features=["full"]}
+futures = "0.3"

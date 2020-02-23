@@ -4,10 +4,12 @@ use chrono::{
     DateTime, Duration, FixedOffset, Local, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc,
 };
 use cpython::{exc, FromPyObject, PyDict, PyErr, PyResult, Python};
+use futures::future::try_join_all;
 use glob::glob;
 use itertools::Itertools;
 use log::debug;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use rayon::slice::ParallelSliceMut;
 use serde::{self, Deserialize, Deserializer, Serialize};
 use std::collections::{BTreeMap, HashSet};
 use std::fs::File;
@@ -124,41 +126,91 @@ impl FitbitHeartRate {
     ) -> Result<String, Error> {
         let nminutes = 5;
         let ndays = (end_date - start_date).num_days();
-        let mut heartrate_values = Vec::new();
-        for i in 0..=ndays {
-            let date = start_date + Duration::days(i);
-            let input_filename = format!("{}/{}.avro", config.fitbit_cachedir, date);
-            let values: Vec<_> = Self::read_avro(&input_filename)
-                .unwrap_or_else(|_| Vec::new())
-                .into_iter()
-                .map(|h| (h.datetime, h.value))
-                .collect();
-            heartrate_values.extend_from_slice(&values);
-            let constraint = format!("date(begin_datetime at time zone 'utc') = '{}'", date);
-            for filename in get_list_of_files_from_db(&[constraint], pool).await? {
-                let avro_file = format!("{}/{}.avro", &config.cache_dir, filename);
+
+        let days: Vec<_> = (0..=ndays)
+            .map(|i| start_date + Duration::days(i))
+            .collect();
+        let fitbit_files: Vec<_> = days
+            .par_iter()
+            .filter_map(|date| {
+                let input_filename =
+                    Path::new(&config.fitbit_cachedir).join(format!("{}.avro", date));
+                if input_filename.exists() {
+                    Some(input_filename)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        let futures: Vec<_> = days
+            .par_iter()
+            .map(|date| async move {
+                let constraint = format!("date(begin_datetime at time zone 'utc') = '{}'", date);
+                let files: Vec<_> = get_list_of_files_from_db(&[constraint], pool)
+                    .await?
+                    .into_par_iter()
+                    .filter_map(|filename| {
+                        let avro_file =
+                            Path::new(&config.cache_dir).join(format!("{}.avro", filename));
+                        if avro_file.exists() {
+                            Some(avro_file)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                Ok(files)
+            })
+            .collect();
+        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+        let garmin_files: Vec<_> = results?.into_par_iter().flatten().collect();
+
+        let results: Result<Vec<_>, Error> = fitbit_files
+            .into_par_iter()
+            .map(|input_path| {
+                let input_filename = input_path.to_string_lossy();
+                let values: Vec<_> = Self::read_avro(&input_filename)?
+                    .into_par_iter()
+                    .map(|h| (h.datetime, h.value))
+                    .collect();
+                Ok(values)
+            })
+            .collect();
+        let mut heartrate_values: Vec<_> = results?.into_par_iter().flatten().collect();
+
+        let results: Result<Vec<_>, Error> = garmin_files
+            .into_par_iter()
+            .map(|avro_file| {
+                let avro_file = avro_file.to_string_lossy();
                 let points: Vec<_> = GarminFile::read_avro(&avro_file)?
                     .points
-                    .into_iter()
+                    .into_par_iter()
                     .filter_map(|p| p.heart_rate.map(|h| (p.time, h as i32)))
                     .collect();
-                heartrate_values.extend_from_slice(&points);
-            }
-        }
-        let mut final_values = Vec::new();
-        for (_, group) in &heartrate_values
+                Ok(points)
+            })
+            .collect();
+        let values: Vec<_> = results?.into_par_iter().flatten().collect();
+        heartrate_values.extend_from_slice(&values);
+
+        let mut final_values: Vec<_> = heartrate_values
             .into_iter()
             .group_by(|(d, _)| d.timestamp() / (i64::from(nminutes) * 60))
-        {
-            let g: Vec<_> = group.collect();
-            let d = g.iter().map(|(d, _)| *d).min();
-            if let Some(d) = d {
-                let v = g.iter().map(|(_, v)| v).sum::<i32>() / g.len() as i32;
-                let d = d.format("%Y-%m-%dT%H:%M:%S%z").to_string();
-                final_values.push((d, v));
-            }
-        }
-        final_values.sort();
+            .into_iter()
+            .map(|(_, group)| {
+                let g: Vec<_> = group.collect();
+                let d = g.iter().map(|(d, _)| *d).min();
+                if let Some(d) = d {
+                    let v = g.iter().map(|(_, v)| v).sum::<i32>() / g.len() as i32;
+                    let d = d.format("%Y-%m-%dT%H:%M:%S%z").to_string();
+                    Some((d, v))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        final_values.par_sort();
         let js_str = serde_json::to_string(&final_values).unwrap_or_else(|_| "".to_string());
         let plots = TIMESERIESTEMPLATE
             .replace("DATA", &js_str)

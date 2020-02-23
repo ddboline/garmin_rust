@@ -455,18 +455,15 @@ impl HandleRequest<ScaleMeasurementUpdateRequest> for PgPool {
             .map(|d| d.datetime)
             .collect();
         let measurement_set = Arc::new(measurement_set);
-        let futures = msg
-            .measurements
-            .into_iter()
-            .map(|meas| {
-                let measurement_set = measurement_set.clone();
-                async move {
-                    if !measurement_set.contains(&meas.datetime) {
-                        meas.insert_into_db(self).await?;
-                    }
-                    Ok(())
+        let futures = msg.measurements.into_iter().map(|meas| {
+            let measurement_set = measurement_set.clone();
+            async move {
+                if !measurement_set.contains(&meas.datetime) {
+                    meas.insert_into_db(self).await?;
                 }
-            });
+                Ok(())
+            }
+        });
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
         results?;
         Ok(())

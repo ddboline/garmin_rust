@@ -1,6 +1,7 @@
 use anyhow::{format_err, Error};
 use avro_rs::{Codec, Schema, Writer};
 use chrono::{DateTime, Utc};
+use futures::future::try_join_all;
 use log::debug;
 use postgres_query::FromSqlRow;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
@@ -10,6 +11,7 @@ use std::fmt;
 use std::fs::File;
 use std::io::{stdout, BufWriter, Write};
 use std::path::Path;
+use std::sync::Arc;
 
 use super::garmin_correction_lap::GarminCorrectionLap;
 use super::garmin_file::GarminFile;
@@ -323,7 +325,7 @@ impl GarminSummaryList {
 
         conn.execute(create_table_query.as_str(), &[]).await?;
 
-        let insert_query = format!(
+        let insert_query = Arc::new(format!(
             "
             INSERT INTO {} (
                 filename, begin_datetime, sport, total_calories, total_distance, total_duration,
@@ -332,26 +334,33 @@ impl GarminSummaryList {
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         ",
             temp_table_name
-        );
+        ));
 
-        for gsum in &self.summary_list {
-            let conn = self.pool.get().await?;
-            conn.execute(
-                insert_query.as_str(),
-                &[
-                    &gsum.filename,
-                    &gsum.begin_datetime,
-                    &gsum.sport.to_string(),
-                    &gsum.total_calories,
-                    &gsum.total_distance,
-                    &gsum.total_duration,
-                    &gsum.total_hr_dur,
-                    &gsum.total_hr_dis,
-                    &gsum.md5sum,
-                ],
-            )
-            .await?;
-        }
+        let futures = self.summary_list.iter().map(|gsum| {
+            let pool = self.pool.clone();
+            let insert_query = insert_query.clone();
+            async move {
+                let conn = pool.get().await?;
+                conn.execute(
+                    insert_query.as_str(),
+                    &[
+                        &gsum.filename,
+                        &gsum.begin_datetime,
+                        &gsum.sport.to_string(),
+                        &gsum.total_calories,
+                        &gsum.total_distance,
+                        &gsum.total_duration,
+                        &gsum.total_hr_dur,
+                        &gsum.total_hr_dis,
+                        &gsum.md5sum,
+                    ],
+                )
+                .await?;
+                Ok(())
+            }
+        });
+        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+        results?;
 
         let insert_query = format!(
             "

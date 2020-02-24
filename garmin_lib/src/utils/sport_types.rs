@@ -1,14 +1,14 @@
 use anyhow::{format_err, Error};
 use bytes::BytesMut;
 use lazy_static::lazy_static;
-use postgres::types::{FromSql, IsNull, ToSql, Type};
 use serde::{self, Deserialize, Deserializer, Serializer};
 use std::collections::HashMap;
 use std::fmt;
 use std::str::FromStr;
+use tokio_postgres::types::{FromSql, IsNull, ToSql, Type};
 
 lazy_static! {
-    static ref SPORT_TYPE_MAP: HashMap<String, SportTypes> = get_sport_type_map();
+    static ref SPORT_TYPE_MAP: HashMap<String, SportTypes> = init_sport_typ_map();
 }
 
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
@@ -87,7 +87,7 @@ impl FromStr for SportTypes {
     }
 }
 
-pub fn get_sport_type_map() -> HashMap<String, SportTypes> {
+fn init_sport_typ_map() -> HashMap<String, SportTypes> {
     [
         ("running", SportTypes::Running),
         ("run", SportTypes::Running),
@@ -113,6 +113,10 @@ pub fn get_sport_type_map() -> HashMap<String, SportTypes> {
     .iter()
     .map(|(k, v)| ((*k).to_string(), *v))
     .collect()
+}
+
+pub fn get_sport_type_map() -> &'static HashMap<String, SportTypes> {
+    &SPORT_TYPE_MAP
 }
 
 pub fn convert_sport_name(sport: &str) -> Option<String> {

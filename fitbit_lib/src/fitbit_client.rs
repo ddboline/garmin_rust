@@ -12,7 +12,7 @@ use garmin_lib::common::garmin_config::GarminConfig;
 use crate::fitbit_heartrate::{FitbitBodyWeightFat, FitbitHeartRate};
 use crate::scale_measurement::ScaleMeasurement;
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct FitbitClient {
     pub config: GarminConfig,
     pub user_id: String,
@@ -272,12 +272,16 @@ impl FitbitClient {
             .collect()
     }
 
-    pub fn update_fitbit_bodyweightfat(&self, updates: &[ScaleMeasurement]) -> Result<(), Error> {
+    pub fn update_fitbit_bodyweightfat(
+        &self,
+        updates: Vec<ScaleMeasurement>,
+    ) -> Result<Vec<ScaleMeasurement>, Error> {
         let gil = Python::acquire_gil();
         let py = gil.python();
 
-        self._update_fitbit_bodyweightfat(py, updates)
-            .map_err(|e| format_err!("{:?}", e))
+        self._update_fitbit_bodyweightfat(py, &updates)
+            .map_err(|e| format_err!("{:?}", e))?;
+        Ok(updates)
     }
 
     pub fn _get_tcx_urls(

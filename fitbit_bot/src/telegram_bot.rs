@@ -1,19 +1,16 @@
 use anyhow::{format_err, Error};
-use crossbeam_channel::{unbounded, Receiver, Sender};
 use crossbeam_utils::atomic::AtomicCell;
-use crossbeam_utils::thread::Scope;
 use futures::StreamExt;
 use lazy_static::lazy_static;
 use log::debug;
-use parking_lot::RwLock;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::collections::HashSet;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::thread::sleep;
-use std::time::Duration;
 use telegram_bot::types::refs::UserId;
 use telegram_bot::{Api, CanReplySendMessage, MessageKind, UpdateKind};
-use tokio::runtime::Runtime;
+use tokio::sync::RwLock;
+use tokio::task::spawn;
+use tokio::time::{delay_for, Duration};
 
 use fitbit_lib::scale_measurement::ScaleMeasurement;
 use garmin_lib::common::pgpool::PgPool;
@@ -74,39 +71,21 @@ impl FailureCount {
     }
 }
 
-pub fn run_bot(telegram_bot_token: &str, pool: PgPool, scope: &Scope) -> Result<(), Error> {
-    let telegram_bot_token: String = telegram_bot_token.into();
-    let (send, recv) = unbounded();
-
+pub async fn run_bot(telegram_bot_token: &str, pool: PgPool) -> Result<(), Error> {
+    initialize_last_weight(&pool).await?;
     let pool_ = pool.clone();
-    let userid_handle = scope.spawn(move |_| fill_telegram_user_ids(&pool_));
-    let message_handle = scope.spawn(move |_| process_messages(&recv, &pool));
-    let telegram_handle = scope.spawn(move |_| telegram_worker(&telegram_bot_token, send));
-
-    if userid_handle.join().is_err() {
-        panic!("Userid thread paniced, kill everything");
-    }
-    telegram_handle.join().expect("Telegram handle paniced")?;
-    drop(message_handle);
-    Ok(())
+    let fill_user_ids = spawn(fill_telegram_user_ids(pool_));
+    telegram_loop(&telegram_bot_token, &pool).await?;
+    fill_user_ids.await?
 }
 
-fn telegram_worker(telegram_bot_token: &str, send: Sender<ScaleMeasurement>) -> Result<(), Error> {
-    let mut rt = Runtime::new()?;
-    rt.block_on(telegram_loop(telegram_bot_token, send))?;
-    Ok(())
-}
-
-async fn telegram_loop(
-    telegram_bot_token: &str,
-    send: Sender<ScaleMeasurement>,
-) -> Result<(), Error> {
+async fn telegram_loop(telegram_bot_token: &str, pool: &PgPool) -> Result<(), Error> {
     loop {
         FAILURE_COUNT.check()?;
 
         match tokio::time::timeout(
             tokio::time::Duration::from_secs(3600),
-            _telegram_worker(telegram_bot_token, send.clone()),
+            _telegram_worker(telegram_bot_token, pool),
         )
         .await
         {
@@ -116,10 +95,7 @@ async fn telegram_loop(
     }
 }
 
-async fn _telegram_worker(
-    telegram_bot_token: &str,
-    send: Sender<ScaleMeasurement>,
-) -> Result<(), Error> {
+async fn _telegram_worker(telegram_bot_token: &str, pool: &PgPool) -> Result<(), Error> {
     let api = Api::new(telegram_bot_token);
     let mut stream = api.stream();
     while let Some(update) = stream.next().await {
@@ -131,7 +107,7 @@ async fn _telegram_worker(
                 FAILURE_COUNT.check()?;
                 // Print received text message to stdout.
                 debug!("{:?}", message);
-                if USERIDS.read().contains(&message.from.id) {
+                if USERIDS.read().await.contains(&message.from.id) {
                     FAILURE_COUNT.check()?;
                     if data.to_lowercase().as_str() == "check" {
                         if let Some(meas) = LAST_WEIGHT.load() {
@@ -141,7 +117,7 @@ async fn _telegram_worker(
                         }
                     } else {
                         match ScaleMeasurement::from_telegram_text(data) {
-                            Ok(meas) => match send.try_send(meas) {
+                            Ok(meas) => match process_measurement(&meas, pool).await {
                                 Ok(_) => api
                                     .spawn(message.text_reply(format!("sent to the db {}", meas))),
                                 Err(e) => {
@@ -164,8 +140,8 @@ async fn _telegram_worker(
     Ok(())
 }
 
-fn process_messages(recv: &Receiver<ScaleMeasurement>, pool: &PgPool) -> Result<(), Error> {
-    let meas_list = ScaleMeasurement::read_from_db(&pool, None, None)?;
+async fn initialize_last_weight(pool: &PgPool) -> Result<(), Error> {
+    let meas_list = ScaleMeasurement::read_from_db(&pool, None, None).await?;
     let mut last_weight = LAST_WEIGHT.load();
     for meas in meas_list {
         let current_dt = meas.datetime;
@@ -179,45 +155,47 @@ fn process_messages(recv: &Receiver<ScaleMeasurement>, pool: &PgPool) -> Result<
     if last_weight.is_some() {
         LAST_WEIGHT.store(last_weight);
     }
+    Ok(())
+}
 
-    debug!("LAST_WEIGHT {:?}", LAST_WEIGHT.load());
-    while let Ok(meas) = recv.recv() {
-        if meas.insert_into_db(pool).is_ok() {
-            debug!("{:?}", meas);
-            LAST_WEIGHT.store(Some(meas));
-            FAILURE_COUNT.reset()?;
-        } else {
-            FAILURE_COUNT.increment()?;
-        }
+async fn process_measurement(meas: &ScaleMeasurement, pool: &PgPool) -> Result<(), Error> {
+    if meas.insert_into_db(pool).await.is_ok() {
+        debug!("{:?}", meas);
+        LAST_WEIGHT.store(Some(*meas));
+        FAILURE_COUNT.reset()?;
+    } else {
+        FAILURE_COUNT.increment()?;
     }
     Ok(())
 }
 
-fn fill_telegram_user_ids(pool: &PgPool) -> Result<(), Error> {
+async fn fill_telegram_user_ids(pool: PgPool) -> Result<(), Error> {
     loop {
         FAILURE_COUNT.check()?;
-        if let Ok(telegram_userids) = list_of_telegram_user_ids(&pool) {
-            let mut telegram_userid_set = USERIDS.write();
-            telegram_userid_set.clear();
-            for userid in telegram_userids {
-                telegram_userid_set.insert(UserId::new(userid));
-            }
+        if let Ok(telegram_userids) = list_of_telegram_user_ids(&pool).await {
+            let telegram_userid_set: HashSet<_> = telegram_userids
+                .into_iter()
+                .map(|userid| UserId::new(userid))
+                .collect();
+            *USERIDS.write().await = telegram_userid_set;
             FAILURE_COUNT.reset()?;
         } else {
             FAILURE_COUNT.increment()?;
         }
-        sleep(Duration::from_secs(60));
+        delay_for(Duration::from_secs(60)).await;
     }
 }
 
-fn list_of_telegram_user_ids(pool: &PgPool) -> Result<Vec<i64>, Error> {
+async fn list_of_telegram_user_ids(pool: &PgPool) -> Result<Vec<i64>, Error> {
     let query = "
         SELECT distinct telegram_userid
         FROM authorized_users
         WHERE telegram_userid IS NOT NULL
     ";
-    pool.get()?
-        .query(query, &[])?
+    pool.get()
+        .await?
+        .query(query, &[])
+        .await?
         .into_par_iter()
         .map(|row| {
             let telegram_userid: i64 = row.try_get("telegram_userid")?;

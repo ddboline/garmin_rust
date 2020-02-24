@@ -75,11 +75,11 @@ struct ReportObjects {
     heart_rate_speed: Vec<(f64, f64)>,
 }
 
-pub fn file_report_html(
+pub async fn file_report_html(
     config: &GarminConfig,
     gfile: &GarminFile,
     history: &[String],
-    pool: Option<&PgPool>,
+    pool: &PgPool,
 ) -> Result<String, Error> {
     let report_objs = extract_report_objects_from_file(&gfile)?;
     let plot_opts = get_plot_opts(&report_objs);
@@ -94,6 +94,7 @@ pub fn file_report_html(
         &history,
         pool,
     )
+    .await
 }
 
 fn extract_report_objects_from_file(gfile: &GarminFile) -> Result<ReportObjects, Error> {
@@ -318,19 +319,16 @@ fn get_graphs(plot_opts: &[PlotOpts]) -> Vec<String> {
         .collect()
 }
 
-fn get_html_string(
+async fn get_html_string(
     config: &GarminConfig,
     gfile: &GarminFile,
     report_objs: &ReportObjects,
     graphs: &[String],
     sport: SportTypes,
     history: &[String],
-    pool: Option<&PgPool>,
+    pool: &PgPool,
 ) -> Result<String, Error> {
-    let strava_id_title = match pool {
-        Some(p) => get_strava_id_from_begin_datetime(p, gfile.begin_datetime)?,
-        None => None,
-    };
+    let strava_id_title = get_strava_id_from_begin_datetime(pool, gfile.begin_datetime).await?;
 
     let htmlvec = if !report_objs.lat_vals.is_empty()
         & !report_objs.lon_vals.is_empty()

@@ -1,32 +1,35 @@
+use anyhow::Error;
 use approx::assert_abs_diff_eq;
 use std::io::{stdout, Write};
 
 use garmin_lib::common::garmin_correction_lap::GarminCorrectionList;
 use garmin_lib::common::garmin_file;
+use garmin_lib::common::pgpool::PgPool;
 use garmin_lib::parsers::garmin_parse::GarminParseTrait;
 use garmin_lib::parsers::garmin_parse_tcx;
 
 #[test]
 #[ignore]
-fn test_garmin_file_test_avro() {
+fn test_garmin_file_test_avro() -> Result<(), Error> {
+    let pool = PgPool::default();
+
     let corr_list =
-        GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json").unwrap();
+        GarminCorrectionList::corr_list_from_json(&pool, "tests/data/garmin_corrections.json")?;
     let corr_map = corr_list.get_corr_list_map();
-    let gfile = garmin_parse_tcx::GarminParseTcx::new(true)
-        .with_file("tests/data/test.fit", &corr_map)
-        .unwrap();
+    let gfile =
+        garmin_parse_tcx::GarminParseTcx::new(true).with_file("tests/data/test.fit", &corr_map)?;
     match gfile.dump_avro("temp.avro.gz") {
         Ok(()) => {
-            writeln!(stdout(), "Success").unwrap();
+            writeln!(stdout(), "Success")?;
         }
         Err(e) => {
-            writeln!(stdout(), "{}", e).unwrap();
+            writeln!(stdout(), "{}", e)?;
         }
     }
 
     match garmin_file::GarminFile::read_avro("temp.avro.gz") {
         Ok(g) => {
-            writeln!(stdout(), "Success").unwrap();
+            writeln!(stdout(), "Success")?;
             assert_eq!(gfile.sport, g.sport);
             assert_eq!(gfile.filename, g.filename);
             assert_eq!(gfile.sport, g.sport);
@@ -41,10 +44,11 @@ fn test_garmin_file_test_avro() {
             assert_abs_diff_eq!(gfile.total_hr_dis, g.total_hr_dis);
         }
         Err(e) => {
-            writeln!(stdout(), "{}", e).unwrap();
+            writeln!(stdout(), "{}", e)?;
             assert!(false);
         }
     }
 
-    std::fs::remove_file("temp.avro.gz").unwrap();
+    std::fs::remove_file("temp.avro.gz")?;
+    Ok(())
 }

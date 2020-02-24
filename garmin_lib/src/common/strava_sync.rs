@@ -1,8 +1,8 @@
 use anyhow::Error;
 use chrono::{DateTime, Utc};
+use futures::future::try_join_all;
 use log::debug;
 use postgres_query::FromSqlRow;
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::hash::BuildHasher;
@@ -17,14 +17,15 @@ pub struct StravaItem {
     pub title: String,
 }
 
-pub fn get_strava_id_from_begin_datetime(
+pub async fn get_strava_id_from_begin_datetime(
     pool: &PgPool,
     begin_datetime: DateTime<Utc>,
 ) -> Result<Option<(String, String)>, Error> {
     let query = "SELECT strava_id, strava_title FROM strava_id_cache WHERE begin_datetime = $1";
 
-    let mut conn = pool.get()?;
-    conn.query(query, &[&begin_datetime])?
+    let conn = pool.get().await?;
+    conn.query(query, &[&begin_datetime])
+        .await?
         .get(0)
         .map(|row| {
             let id = row.try_get("strava_id")?;
@@ -34,12 +35,15 @@ pub fn get_strava_id_from_begin_datetime(
         .transpose()
 }
 
-pub fn get_strava_id_maximum_begin_datetime(pool: &PgPool) -> Result<Option<DateTime<Utc>>, Error> {
+pub async fn get_strava_id_maximum_begin_datetime(
+    pool: &PgPool,
+) -> Result<Option<DateTime<Utc>>, Error> {
     let query = "SELECT MAX(begin_datetime) FROM strava_id_cache";
 
-    let mut conn = pool.get()?;
+    let conn = pool.get().await?;
 
-    conn.query_opt(query, &[])?
+    conn.query_opt(query, &[])
+        .await?
         .map(|row| row.try_get(0))
         .transpose()
         .map_err(Into::into)
@@ -52,10 +56,11 @@ struct StravaIdCache {
     strava_title: String,
 }
 
-pub fn get_strava_id_map(pool: &PgPool) -> Result<HashMap<String, StravaItem>, Error> {
+pub async fn get_strava_id_map(pool: &PgPool) -> Result<HashMap<String, StravaItem>, Error> {
     let query = "SELECT strava_id, begin_datetime, strava_title FROM strava_id_cache";
-    let mut conn = pool.get()?;
-    conn.query(query, &[])?
+    let conn = pool.get().await?;
+    conn.query(query, &[])
+        .await?
         .iter()
         .map(|row| {
             let c = StravaIdCache::from_row(row)?;
@@ -70,7 +75,7 @@ pub fn get_strava_id_map(pool: &PgPool) -> Result<HashMap<String, StravaItem>, E
         .collect()
 }
 
-pub fn get_strava_ids(
+pub async fn get_strava_ids(
     pool: &PgPool,
     start_date: Option<DateTime<Utc>>,
     end_date: Option<DateTime<Utc>>,
@@ -88,8 +93,9 @@ pub fn get_strava_ids(
             format!("WHERE {}", constraints.join(" OR "))
         } ,
     );
-    let mut conn = pool.get()?;
-    conn.query(query.as_str(), &[])?
+    let conn = pool.get().await?;
+    conn.query(query.as_str(), &[])
+        .await?
         .iter()
         .map(|row| {
             let c = StravaIdCache::from_row(row)?;
@@ -104,11 +110,11 @@ pub fn get_strava_ids(
         .collect()
 }
 
-pub fn upsert_strava_id<S: BuildHasher>(
+pub async fn upsert_strava_id<S: BuildHasher>(
     new_items: &HashMap<String, StravaItem, S>,
     pool: &PgPool,
 ) -> Result<Vec<String>, Error> {
-    let strava_id_map = get_strava_id_map(pool)?;
+    let strava_id_map = get_strava_id_map(pool).await?;
 
     let (update_items, insert_items): (Vec<_>, Vec<_>) = new_items
         .iter()
@@ -131,32 +137,33 @@ pub fn upsert_strava_id<S: BuildHasher>(
         UPDATE strava_id_cache SET strava_title=$2 WHERE strava_id=$1
     ";
     debug!("{}", query);
-    let items: Result<Vec<_>, Error> = update_items
-        .into_par_iter()
-        .map(|(key, val)| {
-            let mut conn = pool.get()?;
-            conn.execute(query, &[&key, &val.title])?;
+    let futures = update_items.into_iter().map(|(key, val)| {
+        let pool = pool.clone();
+        async move {
+            let conn = pool.get().await?;
+            conn.execute(query, &[&key, &val.title]).await?;
             Ok(key.to_string())
-        })
-        .collect();
-    let mut output: Vec<_> = items?;
+        }
+    });
+    let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+    let mut output = results?;
 
     let query = "
         INSERT INTO strava_id_cache (strava_id, begin_datetime, strava_title)
         VALUES ($1,$2,$3)
     ";
     debug!("{}", query);
-    let items: Result<Vec<_>, Error> = insert_items
-        .into_par_iter()
-        .map(|(key, val)| {
-            let mut conn = pool.get()?;
-            conn.execute(query, &[&key, &val.begin_datetime, &val.title])?;
+    let futures = insert_items.into_iter().map(|(key, val)| {
+        let pool = pool.clone();
+        async move {
+            let conn = pool.get().await?;
+            conn.execute(query, &[&key, &val.begin_datetime, &val.title])
+                .await?;
             Ok(key.to_string())
-        })
-        .collect();
+        }
+    });
+    let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+    output.extend_from_slice(&results?);
 
-    let items: Vec<_> = items?;
-
-    output.extend(items);
     Ok(output)
 }

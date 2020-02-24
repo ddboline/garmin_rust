@@ -1,6 +1,8 @@
+use anyhow::Error;
 use std::io::{stdout, Write};
 
 use garmin_lib::common::garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList};
+use garmin_lib::common::pgpool::PgPool;
 use garmin_lib::utils::iso_8601_datetime::convert_str_to_datetime;
 use garmin_lib::utils::sport_types::SportTypes;
 
@@ -28,9 +30,10 @@ fn test_garmin_correction_lap_new() {
 }
 
 #[test]
-fn test_corr_list_from_json() {
+fn test_corr_list_from_json() -> Result<(), Error> {
+    let pool = PgPool::default();
     let mut corr_list =
-        GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json")
+        GarminCorrectionList::corr_list_from_json(&pool, "tests/data/garmin_corrections.json")
             .unwrap()
             .get_corr_list();
 
@@ -40,10 +43,12 @@ fn test_corr_list_from_json() {
 
     let corr_val = GarminCorrectionLap::new();
     assert_eq!(corr_val.lap_number, -1);
+    Ok(())
 }
 
 #[test]
-fn test_corr_list_from_buffer() {
+fn test_corr_list_from_buffer() -> Result<(), Error> {
+    let pool = PgPool::default();
     let json_buffer = r#"
         {
             "2011-07-04T08:58:27Z": {
@@ -65,7 +70,7 @@ fn test_corr_list_from_buffer() {
     .to_string()
     .into_bytes();
 
-    let mut corr_list = GarminCorrectionList::corr_list_from_buffer(&json_buffer)
+    let mut corr_list = GarminCorrectionList::corr_list_from_buffer(&pool, &json_buffer)
         .unwrap()
         .get_corr_list();
 
@@ -121,22 +126,27 @@ fn test_corr_list_from_buffer() {
             duration: Some(4099.0)
         }
     );
+    Ok(())
 }
 
 #[test]
-fn test_corr_list_from_buffer_invalid() {
+fn test_corr_list_from_buffer_invalid() -> Result<(), Error> {
+    let pool = PgPool::default();
     let json_buffer = r#"["a", "b", "c"]"#.to_string().into_bytes();
 
-    let corr_list = GarminCorrectionList::corr_list_from_buffer(&json_buffer)
+    let corr_list = GarminCorrectionList::corr_list_from_buffer(&pool, &json_buffer)
         .unwrap()
         .get_corr_list();
 
     assert_eq!(corr_list.len(), 0);
+    Ok(())
 }
 
 #[test]
-fn test_add_mislabeled_times_to_corr_list() {
-    let mut corr_list = GarminCorrectionList::from_vec(vec![
+fn test_add_mislabeled_times_to_corr_list() -> Result<(), Error> {
+    let pool = PgPool::default();
+
+    let corr_list = GarminCorrectionList::new(&pool).with_vec(vec![
         GarminCorrectionLap::new()
             .with_start_time(convert_str_to_datetime("2010-11-20T19:55:34Z").unwrap())
             .with_distance(10.0)
@@ -181,4 +191,5 @@ fn test_add_mislabeled_times_to_corr_list() {
             duration: None
         }
     );
+    Ok(())
 }

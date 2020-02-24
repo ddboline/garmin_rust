@@ -1,6 +1,6 @@
 [package]
 name = "fitbit_bot"
-version = "0.6.17"
+version = "0.7.0"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 fitbit_lib = {path="../fitbit_lib"}
 garmin_lib = {path="../garmin_lib"}
-telegram-bot = {git = "https://github.com/telegram-rs/telegram-bot.git", branch="master"}
+telegram-bot = {git = "https://github.com/ddboline/telegram-bot.git", branch="master"}
 futures = "0.3"
 tokio = {version="0.2", features=["full"]}
 crossbeam-channel = "0.4"
@@ -19,5 +19,4 @@ parking_lot = "0.10"
 log = "0.4"
 anyhow = "1.0"
 thiserror = "1.0"
-actix-threadpool = "0.3"
 rayon = "1.3"

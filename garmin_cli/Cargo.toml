@@ -1,6 +1,6 @@
 [package]
 name = "garmin_cli"
-version = "0.6.17"
+version = "0.7.0"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -13,3 +13,4 @@ fitbit_lib = {path="../fitbit_lib"}
 chrono = "0.4"
 anyhow = "1.0"
 thiserror = "1.0"
+tokio = {version="0.2", features=["full"]}

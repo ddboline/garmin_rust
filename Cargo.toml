@@ -1,6 +1,6 @@
 [package]
 name = "garmin_rust"
-version = "0.6.17"
+version = "0.7.0"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -20,6 +20,7 @@ crossbeam-utils = "0.7"
 structopt = "0.3"
 anyhow = "1.0"
 thiserror = "1.0"
+tokio = {version="0.2", features=["full"]}
 
 [dev-dependencies]
 approx = "0.3"

@@ -1,12 +1,11 @@
 use anyhow::Error;
 use chrono::DateTime;
+use futures::stream::{StreamExt, TryStreamExt};
 use log::debug;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use rusoto_core::Region;
-use rusoto_s3::{
-    GetObjectRequest, ListObjectsV2Request, Object as S3Object, PutObjectRequest, S3Client, S3,
-};
-use s4::S4;
+use rusoto_s3::{GetObjectRequest, Object as S3Object, PutObjectRequest, S3Client};
+use s3_ext::S3Ext;
 use std::collections::HashMap;
 use std::fs;
 use std::io::{stdout, Write};
@@ -68,47 +67,24 @@ impl GarminSync {
         }
     }
 
-    pub fn get_list_of_keys(&self, bucket: &str) -> Result<Vec<KeyItem>, Error> {
-        let mut continuation_token = None;
-        let mut list_of_keys = Vec::new();
-        loop {
-            let current_list = exponential_retry(|| {
-                self.s3_client
-                    .list_objects_v2(ListObjectsV2Request {
-                        bucket: bucket.to_string(),
-                        continuation_token: continuation_token.clone(),
-                        delimiter: None,
-                        encoding_type: None,
-                        fetch_owner: None,
-                        max_keys: None,
-                        prefix: None,
-                        request_payer: None,
-                        start_after: None,
-                    })
-                    .sync()
-                    .map_err(Into::into)
-            })?;
-            continuation_token = current_list.next_continuation_token.clone();
-
-            match current_list.key_count {
-                Some(0) | None => (),
-                Some(_) => {
-                    if let Some(c) = current_list.contents {
-                        let contents: Vec<_> = c.into_iter().filter_map(process_s3_item).collect();
-                        list_of_keys.extend_from_slice(&contents)
-                    };
-                }
-            };
-            match &continuation_token {
-                Some(_) => (),
-                None => break,
-            };
-        }
+    pub async fn get_list_of_keys(&self, bucket: &str) -> Result<Vec<KeyItem>, Error> {
+        let results: Result<Vec<_>, _> = exponential_retry(|| async move {
+            self.s3_client
+                .iter_objects(bucket)
+                .into_stream()
+                .map(|res| res.map(process_s3_item))
+                .try_collect()
+                .await
+                .map_err(Into::into)
+        })
+        .await;
+        let list_of_keys = results?.into_iter().filter_map(|x| x).collect();
         Ok(list_of_keys)
     }
 
-    pub fn sync_dir(
+    pub async fn sync_dir(
         &self,
+        title: &str,
         local_dir: &str,
         s3_bucket: &str,
         check_md5sum: bool,
@@ -138,7 +114,7 @@ impl GarminSync {
             .filter_map(|(x, t, s)| x.split('/').last().map(|x| (x.to_string(), (*t, *s))))
             .collect();
 
-        let key_list = self.get_list_of_keys(s3_bucket)?;
+        let key_list = self.get_list_of_keys(s3_bucket).await?;
         let n_keys = key_list.len();
 
         let key_set: HashMap<_, _> = key_list
@@ -146,8 +122,8 @@ impl GarminSync {
             .map(|item| (item.key.to_string(), item))
             .collect();
 
-        let uploaded: Result<Vec<_>, Error> = file_list
-            .par_iter()
+        let uploaded: Vec<_> = file_list
+            .into_par_iter()
             .filter_map(|(file, tmod, size)| {
                 let file_name = match file.split('/').last() {
                     Some(x) => x.to_string(),
@@ -156,7 +132,7 @@ impl GarminSync {
                 let mut do_upload = false;
                 if key_set.contains_key(&file_name) {
                     let item = &key_set[&file_name];
-                    if *tmod != item.timestamp {
+                    if tmod != item.timestamp {
                         if check_md5sum {
                             if let Ok(md5) = get_md5sum(&file) {
                                 if item.etag != md5 {
@@ -167,7 +143,7 @@ impl GarminSync {
                                     do_upload = true;
                                 }
                             }
-                        } else if *size > item.size {
+                        } else if size > item.size {
                             debug!(
                                 "upload size {} {} {} {} {}",
                                 file_name, item.etag, size, item.timestamp, item.size
@@ -175,23 +151,29 @@ impl GarminSync {
                             do_upload = true;
                         }
                     }
-                    if *tmod != item.timestamp && check_md5sum {}
+                    if tmod != item.timestamp && check_md5sum {}
                 } else {
                     do_upload = true;
                 }
                 if do_upload {
                     debug!("upload file {}", file_name);
-                    Some(self.upload_file(&file, &s3_bucket, &file_name))
+                    Some((file, file_name))
                 } else {
                     None
                 }
             })
             .collect();
-        let uploaded = uploaded?;
-        debug!("uploaded {:?}", uploaded);
+        let uploaded_files: Vec<_> = uploaded
+            .iter()
+            .map(|(_, filename)| filename.clone())
+            .collect();
+        for (file, filename) in uploaded {
+            self.upload_file(&file, &s3_bucket, &filename).await?;
+        }
+        debug!("uploaded {:?}", uploaded_files);
 
         let downloaded: Result<Vec<_>, Error> = key_list
-            .par_iter()
+            .into_par_iter()
             .filter_map(|item| {
                 let res = || {
                     let mut do_download = false;
@@ -228,8 +210,7 @@ impl GarminSync {
                     if do_download {
                         let file_name = format!("{}/{}", local_dir, item.key);
                         debug!("download {} {}", s3_bucket, item.key);
-                        self.download_file(&file_name, &s3_bucket, &item.key)?;
-                        Ok(Some(file_name))
+                        Ok(Some((file_name, item.key)))
                     } else {
                         Ok(None)
                     }
@@ -238,76 +219,85 @@ impl GarminSync {
             })
             .collect();
         let downloaded = downloaded?;
-        debug!("downloaded {:?}", downloaded);
+        let downloaded_files: Vec<_> = downloaded
+            .iter()
+            .map(|(file_name, _)| file_name.clone())
+            .collect();
+        for (file_name, key) in downloaded {
+            self.download_file(&file_name, &s3_bucket, &key).await?;
+        }
+        debug!("downloaded {:?}", downloaded_files);
 
         let msg = format!(
-            "{} s3_bucketnkeys {} uploaded {} downloaded {}",
+            "{} {} s3_bucketnkeys {} uploaded {} downloaded {}",
+            title,
             s3_bucket,
             n_keys,
-            uploaded.len(),
-            downloaded.len()
+            uploaded_files.len(),
+            downloaded_files.len()
         );
         writeln!(stdout().lock(), "{}", msg)?;
 
         Ok(vec![msg])
     }
 
-    pub fn download_file(
+    pub async fn download_file(
         &self,
         local_file: &str,
         s3_bucket: &str,
         s3_key: &str,
     ) -> Result<String, Error> {
-        let etag = exponential_retry(|| {
-            {
-                self.s3_client
-                    .download_to_file(
-                        GetObjectRequest {
-                            bucket: s3_bucket.to_string(),
-                            key: s3_key.to_string(),
-                            ..GetObjectRequest::default()
-                        },
-                        local_file,
-                    )
-                    .map_err(Into::into)
-            }
-        })?
-        .e_tag
-        .unwrap_or_else(|| "".to_string());
-        Ok(etag)
+        exponential_retry(|| async move {
+            let etag = self
+                .s3_client
+                .download_to_file(
+                    GetObjectRequest {
+                        bucket: s3_bucket.to_string(),
+                        key: s3_key.to_string(),
+                        ..GetObjectRequest::default()
+                    },
+                    local_file,
+                )
+                .await?
+                .e_tag
+                .unwrap_or_else(|| "".to_string());
+            Ok(etag)
+        })
+        .await
     }
 
-    pub fn upload_file(
+    pub async fn upload_file(
         &self,
         local_file: &str,
         s3_bucket: &str,
         s3_key: &str,
     ) -> Result<(), Error> {
         self.upload_file_acl(local_file, s3_bucket, s3_key, &None)
+            .await
     }
 
-    pub fn upload_file_acl(
+    pub async fn upload_file_acl(
         &self,
         local_file: &str,
         s3_bucket: &str,
         s3_key: &str,
         acl: &Option<String>,
     ) -> Result<(), Error> {
-        exponential_retry(|| {
-            {
-                self.s3_client
-                    .upload_from_file(
-                        &local_file,
-                        PutObjectRequest {
-                            bucket: s3_bucket.to_string(),
-                            key: s3_key.to_string(),
-                            acl: acl.clone(),
-                            ..PutObjectRequest::default()
-                        },
-                    )
-                    .map_err(Into::into)
-            }
+        exponential_retry(|| async move {
+            self.s3_client
+                .upload_from_file(
+                    &local_file,
+                    PutObjectRequest {
+                        bucket: s3_bucket.to_string(),
+                        key: s3_key.to_string(),
+                        acl: acl.clone(),
+                        ..PutObjectRequest::default()
+                    },
+                )
+                .await
+                .map_err(Into::into)
+                .map(|_| ())
         })
-        .map(|_| ())
+        .await
     }
 }

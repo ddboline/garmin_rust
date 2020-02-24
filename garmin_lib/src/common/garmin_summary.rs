@@ -1,6 +1,7 @@
 use anyhow::{format_err, Error};
 use avro_rs::{Codec, Schema, Writer};
 use chrono::{DateTime, Utc};
+use futures::future::try_join_all;
 use log::debug;
 use postgres_query::FromSqlRow;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
@@ -10,6 +11,7 @@ use std::fmt;
 use std::fs::File;
 use std::io::{stdout, BufWriter, Write};
 use std::path::Path;
+use std::sync::Arc;
 
 use super::garmin_correction_lap::GarminCorrectionLap;
 use super::garmin_file::GarminFile;
@@ -171,44 +173,26 @@ impl fmt::Display for GarminSummary {
 #[derive(Default)]
 pub struct GarminSummaryList {
     pub summary_list: Vec<GarminSummary>,
-    pub pool: Option<PgPool>,
+    pub pool: PgPool,
 }
 
 impl GarminSummaryList {
-    pub fn new() -> Self {
+    pub fn new(pool: &PgPool) -> Self {
         Self {
             summary_list: Vec::new(),
-            pool: None,
+            pool: pool.clone(),
         }
     }
 
-    pub fn from_vec(summary_list: Vec<GarminSummary>) -> Self {
+    pub fn from_vec(pool: &PgPool, summary_list: Vec<GarminSummary>) -> Self {
         Self {
             summary_list,
-            pool: None,
+            pool: pool.clone(),
         }
-    }
-
-    pub fn with_pool(mut self, pool: &PgPool) -> Self {
-        self.pool = Some(pool.clone());
-        self
-    }
-
-    pub fn from_pool(pool: &PgPool) -> Self {
-        Self {
-            summary_list: Vec::new(),
-            pool: Some(pool.clone()),
-        }
-    }
-
-    pub fn get_pool(&self) -> Result<PgPool, Error> {
-        self.pool
-            .as_ref()
-            .ok_or_else(|| format_err!("No Database Connection"))
-            .map(Clone::clone)
     }
 
     pub fn process_all_gps_files(
+        pool: &PgPool,
         gps_dir: &str,
         cache_dir: &str,
         corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
@@ -251,10 +235,10 @@ impl GarminSummaryList {
             })
             .collect();
 
-        Ok(Self::from_vec(gsum_result_list?))
+        Ok(Self::from_vec(pool, gsum_result_list?))
     }
 
-    pub fn read_summary_from_postgres(&self, pattern: &str) -> Result<Self, Error> {
+    pub async fn read_summary_from_postgres(&self, pattern: &str) -> Result<Self, Error> {
         let where_str = if pattern.is_empty() {
             "".to_string()
         } else {
@@ -276,11 +260,11 @@ impl GarminSummaryList {
             {}",
             where_str
         );
-        let pool = self.get_pool()?;
-        let mut conn = pool.get()?;
+        let conn = self.pool.get().await?;
 
         let gsum_list: Result<Vec<_>, Error> = conn
-            .query(query.as_str(), &[])?
+            .query(query.as_str(), &[])
+            .await?
             .iter()
             .map(|row| {
                 GarminSummaryDB::from_row(row)
@@ -289,7 +273,7 @@ impl GarminSummaryList {
             })
             .collect();
 
-        Ok(Self::from_vec(gsum_list?).with_pool(&pool))
+        Ok(Self::from_vec(&self.pool, gsum_list?))
     }
 
     pub fn dump_summary_to_avro(self, output_filename: &str) -> Result<(), Error> {
@@ -312,13 +296,13 @@ impl GarminSummaryList {
             .map(|gsum| {
                 let summary_avro_fname =
                     format!("{}/{}.summary.avro", &summary_cache_dir, &gsum.filename);
-                let single_summary = Self::from_vec(vec![gsum.clone()]);
+                let single_summary = Self::from_vec(&self.pool, vec![gsum.clone()]);
                 single_summary.dump_summary_to_avro(&summary_avro_fname)
             })
             .collect()
     }
 
-    pub fn write_summary_to_postgres(&self) -> Result<(), Error> {
+    pub async fn write_summary_to_postgres(&self) -> Result<(), Error> {
         let rand_str = generate_random_string(8);
 
         let temp_table_name = format!("garmin_summary_{}", rand_str);
@@ -337,11 +321,11 @@ impl GarminSummaryList {
             );",
             temp_table_name
         );
-        let mut conn = self.get_pool()?.get()?;
+        let conn = self.pool.get().await?;
 
-        conn.execute(create_table_query.as_str(), &[])?;
+        conn.execute(create_table_query.as_str(), &[]).await?;
 
-        let insert_query = format!(
+        let insert_query = Arc::new(format!(
             "
             INSERT INTO {} (
                 filename, begin_datetime, sport, total_calories, total_distance, total_duration,
@@ -350,14 +334,14 @@ impl GarminSummaryList {
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         ",
             temp_table_name
-        );
+        ));
 
-        let results: Result<Vec<u64>, Error> = self
-            .summary_list
-            .par_iter()
-            .map(|gsum| {
-                let mut conn = self.get_pool()?.get()?;
-                Ok(conn.execute(
+        let futures = self.summary_list.iter().map(|gsum| {
+            let pool = self.pool.clone();
+            let insert_query = insert_query.clone();
+            async move {
+                let conn = pool.get().await?;
+                conn.execute(
                     insert_query.as_str(),
                     &[
                         &gsum.filename,
@@ -370,9 +354,12 @@ impl GarminSummaryList {
                         &gsum.total_hr_dis,
                         &gsum.md5sum,
                     ],
-                )?)
-            })
-            .collect();
+                )
+                .await?;
+                Ok(())
+            }
+        });
+        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
         results?;
 
         let insert_query = format!(
@@ -406,15 +393,16 @@ impl GarminSummaryList {
 
         let drop_table_query = format!("DROP TABLE {}", temp_table_name);
 
-        conn.execute(insert_query.as_str(), &[])?;
-        conn.execute(update_query.as_str(), &[])?;
+        conn.execute(insert_query.as_str(), &[]).await?;
+        conn.execute(update_query.as_str(), &[]).await?;
         conn.execute(drop_table_query.as_str(), &[])
+            .await
             .map(|_| ())
             .map_err(Into::into)
     }
 }
 
-pub fn get_list_of_files_from_db(
+pub async fn get_list_of_files_from_db(
     constraints: &[String],
     pool: &PgPool,
 ) -> Result<Vec<String>, Error> {
@@ -428,20 +416,22 @@ pub fn get_list_of_files_from_db(
 
     debug!("{}", query);
 
-    let mut conn = pool.get()?;
+    let conn = pool.get().await?;
 
-    conn.query(query.as_str(), &[])?
+    conn.query(query.as_str(), &[])
+        .await?
         .iter()
         .map(|row| row.try_get("filename").map_err(Into::into))
         .collect()
 }
 
-pub fn get_maximum_begin_datetime(pool: &PgPool) -> Result<Option<DateTime<Utc>>, Error> {
+pub async fn get_maximum_begin_datetime(pool: &PgPool) -> Result<Option<DateTime<Utc>>, Error> {
     let query = "SELECT MAX(begin_datetime) FROM garmin_summary";
 
-    let mut conn = pool.get()?;
+    let conn = pool.get().await?;
 
-    conn.query_opt(query, &[])?
+    conn.query_opt(query, &[])
+        .await?
         .map(|row| row.try_get(0))
         .transpose()
         .map_err(Into::into)

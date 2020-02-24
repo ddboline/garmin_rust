@@ -1,5 +1,8 @@
+use anyhow::Error;
 use approx::assert_abs_diff_eq;
+
 use garmin_lib::common::garmin_correction_lap::GarminCorrectionList;
+use garmin_lib::common::pgpool::PgPool;
 use garmin_lib::parsers::garmin_parse::GarminParseTrait;
 use garmin_lib::parsers::garmin_parse_gmn;
 use garmin_lib::utils::iso_8601_datetime::convert_datetime_to_str;
@@ -7,9 +10,11 @@ use garmin_lib::utils::sport_types::SportTypes;
 
 #[test]
 #[ignore]
-fn test_garmin_parse_gmn() {
+fn test_garmin_parse_gmn() -> Result<(), Error> {
+    let pool = PgPool::default();
     let corr_list =
-        GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json").unwrap();
+        GarminCorrectionList::corr_list_from_json(&pool, "tests/data/garmin_corrections.json")
+            .unwrap();
     let corr_map = corr_list.get_corr_list_map();
     let gfile = garmin_parse_gmn::GarminParseGmn::new()
         .with_file("tests/data/test.gmn", &corr_map)
@@ -28,4 +33,5 @@ fn test_garmin_parse_gmn() {
     assert_abs_diff_eq!(gfile.total_duration, 280.38);
     assert_abs_diff_eq!(gfile.total_hr_dur, 0.0);
     assert_abs_diff_eq!(gfile.total_hr_dis, 280.38);
+    Ok(())
 }

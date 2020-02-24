@@ -134,14 +134,15 @@ pub async fn upsert_strava_id<S: BuildHasher>(
         .collect();
 
     let query = "
-        UPDATE strava_id_cache SET strava_title=$2 WHERE strava_id=$1
+        UPDATE strava_id_cache SET strava_title=$title WHERE strava_id=$id
     ";
     debug!("{}", query);
     let futures = update_items.into_iter().map(|(key, val)| {
         let pool = pool.clone();
         async move {
+            let query = postgres_query::query_dyn!(query, title = val.title, id = key)?;
             let conn = pool.get().await?;
-            conn.execute(query, &[&key, &val.title]).await?;
+            conn.execute(query.sql(), query.parameters()).await?;
             Ok(key.to_string())
         }
     });
@@ -150,15 +151,20 @@ pub async fn upsert_strava_id<S: BuildHasher>(
 
     let query = "
         INSERT INTO strava_id_cache (strava_id, begin_datetime, strava_title)
-        VALUES ($1,$2,$3)
+        VALUES ($id,$datetime,$title)
     ";
     debug!("{}", query);
     let futures = insert_items.into_iter().map(|(key, val)| {
         let pool = pool.clone();
         async move {
+            let query = postgres_query::query_dyn!(
+                query,
+                id = key,
+                datetime = val.begin_datetime,
+                title = val.title
+            )?;
             let conn = pool.get().await?;
-            conn.execute(query, &[&key, &val.begin_datetime, &val.title])
-                .await?;
+            conn.execute(query.sql(), query.parameters()).await?;
             Ok(key.to_string())
         }
     });

@@ -19,7 +19,7 @@ rusoto_core = {version = "0.43.0-beta.1", default_features = false, features=["r
 rusoto_s3 = {version = "0.43.0-beta.1", default_features = false, features=["rustls"]}
 futures = "0.3"
 s3-ext = "0.1"
-sts_profile_auth = {git="https://github.com/ddboline/sts_profile_auth", branch="test_0.43.0"}
+sts_profile_auth = "0.4"
 num-traits = "0.2"
 tempdir = "0.3"
 tempfile = "3.1"

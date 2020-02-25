@@ -4,6 +4,7 @@ use std::fs::File;
 use std::path::Path;
 use structopt::StructOpt;
 use tokio::task::spawn_blocking;
+use std::io::{stdout, Write};
 
 use fitbit_lib::fitbit_client::FitbitClient;
 use garmin_lib::common::garmin_cli::{GarminCli, GarminCliOptions};
@@ -73,6 +74,9 @@ impl GarminCliOpts {
             res?;
         }
 
-        cli.garmin_proc().await.map(|_| ())
+        for line in cli.garmin_proc().await? {
+            writeln!(stdout(), "{}", line)?;
+        }
+        Ok(())
     }
 }

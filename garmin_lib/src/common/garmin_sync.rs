@@ -8,7 +8,6 @@ use rusoto_s3::{GetObjectRequest, Object as S3Object, PutObjectRequest, S3Client
 use s3_ext::S3Ext;
 use std::collections::HashMap;
 use std::fs;
-use std::io::{stdout, Write};
 use std::path::Path;
 use std::time::SystemTime;
 use sts_profile_auth::get_client_sts;
@@ -236,7 +235,6 @@ impl GarminSync {
             uploaded_files.len(),
             downloaded_files.len()
         );
-        writeln!(stdout().lock(), "{}", msg)?;
 
         Ok(vec![msg])
     }

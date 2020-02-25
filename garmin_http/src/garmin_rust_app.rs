@@ -10,7 +10,7 @@ use tokio::time::interval;
 
 use garmin_lib::common::pgpool::PgPool;
 
-use super::logged_user::{ TRIGGER_DB_UPDATE, fill_from_db};
+use super::logged_user::{fill_from_db, TRIGGER_DB_UPDATE};
 use crate::garmin_rust_routes::{
     fitbit_auth, fitbit_bodyweight, fitbit_bodyweight_sync, fitbit_callback, fitbit_heartrate_api,
     fitbit_heartrate_cache, fitbit_plots, fitbit_sync, fitbit_tcx_sync, garmin,

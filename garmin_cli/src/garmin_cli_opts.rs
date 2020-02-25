@@ -1,10 +1,10 @@
 use anyhow::Error;
 use chrono::{Duration, Utc};
 use std::fs::File;
+use std::io::{stdout, Write};
 use std::path::Path;
 use structopt::StructOpt;
 use tokio::task::spawn_blocking;
-use std::io::{stdout, Write};
 
 use fitbit_lib::fitbit_client::FitbitClient;
 use garmin_lib::common::garmin_cli::{GarminCli, GarminCliOptions};

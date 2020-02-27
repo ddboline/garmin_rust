@@ -8,10 +8,12 @@ use futures::future::try_join_all;
 use glob::glob;
 use itertools::Itertools;
 use log::debug;
-use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{
+    IntoParallelIterator, IntoParallelRefIterator, ParallelExtend, ParallelIterator,
+};
 use rayon::slice::ParallelSliceMut;
 use serde::{self, Deserialize, Deserializer, Serialize};
-use std::collections::{BTreeMap, HashSet};
+use std::collections::HashSet;
 use std::fs::File;
 use std::path::Path;
 use structopt::StructOpt;
@@ -186,8 +188,7 @@ impl FitbitHeartRate {
                 Ok(points)
             })
             .collect();
-        let values: Vec<_> = results?.into_par_iter().flatten().collect();
-        heartrate_values.extend_from_slice(&values);
+        heartrate_values.par_extend(results?.into_par_iter().flatten());
 
         let mut final_values: Vec<_> = heartrate_values
             .into_iter()
@@ -284,14 +285,13 @@ impl FitbitHeartRate {
                     None
                 }
             });
-            let merged_values: BTreeMap<_, _> = Self::read_avro_by_date(config, date)?
+            let mut merged_values: Vec<_> = Self::read_avro_by_date(config, date)?
                 .into_par_iter()
                 .chain(new_values)
-                .map(|entry| (entry.datetime.timestamp(), entry))
                 .collect();
-            let input_filename = format!("{}/{}.avro", config.fitbit_cachedir, date);
-            let merged_values: Vec<_> = merged_values.values().copied().collect();
-            Self::dump_to_avro(&merged_values, &input_filename)?;
+            merged_values.par_sort_by_key(|entry| entry.datetime.timestamp());
+            let input_filename = Path::new(&config.fitbit_cachedir).join(format!("{}.avro", date));
+            Self::dump_to_avro(&merged_values, &input_filename.to_string_lossy())?;
         }
         Ok(())
     }

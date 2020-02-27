@@ -460,7 +460,7 @@ impl HandleRequest<ScaleMeasurementUpdateRequest> for PgPool {
             async move {
                 if !measurement_set.contains(&meas.datetime) {
                     meas.insert_into_db(self).await?;
-                    debug!("measurement inserted {:?}" meas);
+                    debug!("measurement inserted {:?}", meas);
                 } else {
                     debug!("measurement exists {:?}", meas);
                 }

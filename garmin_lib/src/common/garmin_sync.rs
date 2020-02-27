@@ -69,8 +69,7 @@ impl GarminSync {
     pub async fn get_list_of_keys(&self, bucket: &str) -> Result<Vec<KeyItem>, Error> {
         let results: Result<Vec<_>, _> = exponential_retry(|| async move {
             self.s3_client
-                .iter_objects(bucket)
-                .into_stream()
+                .stream_objects(bucket)
                 .map(|res| res.map(process_s3_item))
                 .try_collect()
                 .await

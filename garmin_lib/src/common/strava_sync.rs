@@ -137,6 +137,7 @@ pub async fn upsert_strava_id<S: BuildHasher>(
         UPDATE strava_id_cache SET strava_title=$title WHERE strava_id=$id
     ";
     debug!("{}", query);
+    debug!("update_items {:?}", update_items);
     let futures = update_items.into_iter().map(|(key, val)| {
         let pool = pool.clone();
         async move {
@@ -154,6 +155,7 @@ pub async fn upsert_strava_id<S: BuildHasher>(
         VALUES ($id,$datetime,$title)
     ";
     debug!("{}", query);
+    debug!("insert_items {:?}", insert_items);
     let futures = insert_items.into_iter().map(|(key, val)| {
         let pool = pool.clone();
         async move {

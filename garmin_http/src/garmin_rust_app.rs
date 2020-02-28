@@ -1,11 +1,10 @@
 #![allow(clippy::needless_pass_by_value)]
 
 use actix_identity::{CookieIdentityPolicy, IdentityService};
+use actix_session::CookieSession;
 use actix_web::{web, App, HttpServer};
 use chrono::Duration;
-use std::sync::Arc;
 use std::time;
-use tokio::sync::RwLock;
 use tokio::time::interval;
 
 use garmin_lib::common::pgpool::PgPool;
@@ -26,7 +25,6 @@ use crate::CONFIG;
 /// `user_list` contains a shared cache of previously authorized users
 pub struct AppState {
     pub db: PgPool,
-    pub history: Arc<RwLock<Vec<String>>>,
 }
 
 /// Create the actix-web server.
@@ -52,13 +50,10 @@ pub async fn start_app() {
 
     actix_rt::spawn(_update_db(pool.clone()));
 
-    let history = Arc::new(RwLock::new(Vec::new()));
-
     HttpServer::new(move || {
         App::new()
             .data(AppState {
                 db: pool.clone(),
-                history: history.clone(),
             })
             .wrap(IdentityService::new(
                 CookieIdentityPolicy::new(config.secret_key.as_bytes())
@@ -68,6 +63,13 @@ pub async fn start_app() {
                     .max_age_time(Duration::days(1))
                     .secure(false), // this can only be true if you have https
             ))
+            .wrap(
+                CookieSession::private(config.secret_key.as_bytes())
+                    .domain(config.domain.as_str())
+                    .path("/")
+                    .name("session")
+                    .secure(false),
+            )
             .service(web::resource("/garmin").route(web::get().to(garmin)))
             .service(web::resource("/garmin/upload_file").route(web::post().to(garmin_upload)))
             .service(

@@ -9,6 +9,7 @@ actix-web = "2.0"
 actix = "0.9"
 actix-identity = "0.2"
 actix-rt = "1.0"
+actix-session = "0.3"
 garmin_lib = {path = "../garmin_lib"}
 chrono = "0.4"
 futures = "0.3"

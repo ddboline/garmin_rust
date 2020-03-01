@@ -1,17 +1,19 @@
 use anyhow::{format_err, Error};
 use chrono::{DateTime, Utc};
 use roxmltree::{Document, NodeType};
-use std::collections::HashMap;
-use std::env::var;
-use std::path::Path;
+use std::{collections::HashMap, env::var, path::Path};
 use subprocess::{Exec, Redirection};
 
 use super::garmin_parse::{GarminParseTrait, ParseOutput};
-use crate::common::garmin_correction_lap::{apply_lap_corrections, GarminCorrectionLap};
-use crate::common::garmin_file::GarminFile;
-use crate::common::garmin_lap::GarminLap;
-use crate::common::garmin_point::GarminPoint;
-use crate::utils::sport_types::SportTypes;
+use crate::{
+    common::{
+        garmin_correction_lap::{apply_lap_corrections, GarminCorrectionLap},
+        garmin_file::GarminFile,
+        garmin_lap::GarminLap,
+        garmin_point::GarminPoint,
+    },
+    utils::sport_types::SportTypes,
+};
 
 #[derive(Debug, Default)]
 pub struct GarminParseGmn {}

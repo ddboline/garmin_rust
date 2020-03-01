@@ -1,16 +1,18 @@
 use anyhow::{format_err, Error};
 use chrono::{DateTime, Utc};
-use std::collections::HashMap;
-use std::path::Path;
+use std::{collections::HashMap, path::Path};
 
-use crate::common::garmin_correction_lap::GarminCorrectionLap;
-use crate::common::garmin_file::GarminFile;
-use crate::common::garmin_lap::GarminLap;
-use crate::common::garmin_point::GarminPoint;
-use crate::parsers::garmin_parse_gmn::GarminParseGmn;
-use crate::parsers::garmin_parse_tcx::GarminParseTcx;
-use crate::parsers::garmin_parse_txt::GarminParseTxt;
-use crate::utils::sport_types::SportTypes;
+use crate::{
+    common::{
+        garmin_correction_lap::GarminCorrectionLap, garmin_file::GarminFile, garmin_lap::GarminLap,
+        garmin_point::GarminPoint,
+    },
+    parsers::{
+        garmin_parse_gmn::GarminParseGmn, garmin_parse_tcx::GarminParseTcx,
+        garmin_parse_txt::GarminParseTxt,
+    },
+    utils::sport_types::SportTypes,
+};
 
 #[derive(Default, Debug)]
 pub struct GarminParse {}

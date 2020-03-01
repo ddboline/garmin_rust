@@ -5,17 +5,22 @@ use std::collections::HashSet;
 
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
-use crate::common::garmin_config::GarminConfig;
-use crate::common::garmin_file::GarminFile;
-use crate::common::garmin_lap::GarminLap;
-use crate::common::pgpool::PgPool;
-use crate::common::strava_sync::get_strava_id_from_begin_datetime;
-use crate::reports::garmin_file_report_txt::get_splits;
-use crate::reports::garmin_templates::{GARMIN_TEMPLATE, MAP_TEMPLATE};
-use crate::utils::garmin_util::{print_h_m_s, titlecase, MARATHON_DISTANCE_MI, METERS_PER_MILE};
-use crate::utils::plot_graph::generate_d3_plot;
-use crate::utils::plot_opts::PlotOpts;
-use crate::utils::sport_types::SportTypes;
+use crate::{
+    common::{
+        garmin_config::GarminConfig, garmin_file::GarminFile, garmin_lap::GarminLap,
+        pgpool::PgPool, strava_sync::get_strava_id_from_begin_datetime,
+    },
+    reports::{
+        garmin_file_report_txt::get_splits,
+        garmin_templates::{GARMIN_TEMPLATE, MAP_TEMPLATE},
+    },
+    utils::{
+        garmin_util::{print_h_m_s, titlecase, MARATHON_DISTANCE_MI, METERS_PER_MILE},
+        plot_graph::generate_d3_plot,
+        plot_opts::PlotOpts,
+        sport_types::SportTypes,
+    },
+};
 
 pub fn generate_history_buttons(history_vec: &[String]) -> String {
     let local: Date<Local> = Local::today();

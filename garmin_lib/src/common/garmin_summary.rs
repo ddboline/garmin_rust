@@ -6,19 +6,23 @@ use log::debug;
 use postgres_query::FromSqlRow;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::fmt;
-use std::fs::File;
-use std::io::{stdout, BufWriter, Write};
-use std::path::Path;
-use std::sync::Arc;
+use std::{
+    collections::HashMap,
+    fmt,
+    fs::File,
+    io::{stdout, BufWriter, Write},
+    path::Path,
+    sync::Arc,
+};
 
-use super::garmin_correction_lap::GarminCorrectionLap;
-use super::garmin_file::GarminFile;
-use super::pgpool::PgPool;
-use crate::parsers::garmin_parse::{GarminParse, GarminParseTrait};
-use crate::utils::garmin_util::{generate_random_string, get_file_list, get_md5sum};
-use crate::utils::iso_8601_datetime::{self, convert_datetime_to_str, sentinel_datetime};
+use super::{garmin_correction_lap::GarminCorrectionLap, garmin_file::GarminFile, pgpool::PgPool};
+use crate::{
+    parsers::garmin_parse::{GarminParse, GarminParseTrait},
+    utils::{
+        garmin_util::{generate_random_string, get_file_list, get_md5sum},
+        iso_8601_datetime::{self, convert_datetime_to_str, sentinel_datetime},
+    },
+};
 
 use crate::utils::sport_types::{self, SportTypes};
 

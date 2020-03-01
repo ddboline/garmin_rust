@@ -1,14 +1,18 @@
 use anyhow::Error;
 use chrono::{Duration, Utc};
-use std::fs::File;
-use std::io::{stdout, Write};
-use std::path::Path;
+use std::{
+    fs::File,
+    io::{stdout, Write},
+    path::Path,
+};
 use structopt::StructOpt;
 use tokio::task::spawn_blocking;
 
 use fitbit_lib::fitbit_client::FitbitClient;
-use garmin_lib::common::garmin_cli::{GarminCli, GarminCliOptions};
-use garmin_lib::common::garmin_config::GarminConfig;
+use garmin_lib::common::{
+    garmin_cli::{GarminCli, GarminCliOptions},
+    garmin_config::GarminConfig,
+};
 
 #[derive(StructOpt)]
 pub enum GarminCliOpts {

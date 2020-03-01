@@ -2,9 +2,7 @@ use anyhow::{format_err, Error};
 use bytes::BytesMut;
 use lazy_static::lazy_static;
 use serde::{self, Deserialize, Deserializer, Serializer};
-use std::collections::HashMap;
-use std::fmt;
-use std::str::FromStr;
+use std::{collections::HashMap, fmt, str::FromStr};
 use tokio_postgres::types::{FromSql, IsNull, ToSql, Type};
 
 lazy_static! {

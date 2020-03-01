@@ -3,15 +3,18 @@ use avro_rs::{from_value, Codec, Reader, Schema, Writer};
 use chrono::{DateTime, Utc};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::fs::File;
+use std::{collections::HashMap, fs::File};
 use tokio::task::spawn_blocking;
 
-use crate::utils::iso_8601_datetime::{self, sentinel_datetime};
-use crate::utils::sport_types::{self, SportTypes};
+use crate::utils::{
+    iso_8601_datetime::{self, sentinel_datetime},
+    sport_types::{self, SportTypes},
+};
 
-use super::garmin_lap::{GarminLap, GARMIN_LAP_AVRO_SCHEMA};
-use super::garmin_point::{GarminPoint, GARMIN_POINT_AVRO_SCHEMA};
+use super::{
+    garmin_lap::{GarminLap, GARMIN_LAP_AVRO_SCHEMA},
+    garmin_point::{GarminPoint, GARMIN_POINT_AVRO_SCHEMA},
+};
 
 lazy_static! {
     static ref GARMIN_FILE_AVRO_SCHEMA: String = GarminFile::get_avro_schema();

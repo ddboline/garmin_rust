@@ -1,6 +1,7 @@
-use garmin_lib::common::garmin_summary;
-use garmin_lib::utils::iso_8601_datetime::convert_str_to_datetime;
-use garmin_lib::utils::sport_types::SportTypes;
+use garmin_lib::{
+    common::garmin_summary,
+    utils::{iso_8601_datetime::convert_str_to_datetime, sport_types::SportTypes},
+};
 
 #[test]
 fn test_garmin_file_test_display() {

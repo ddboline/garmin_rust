@@ -2,18 +2,15 @@ use anyhow::{format_err, Error};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use log::debug;
 use maplit::hashmap;
-use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
-use reqwest::Url;
+use reqwest::{
+    header::{HeaderMap, HeaderName, HeaderValue},
+    Url,
+};
 use serde_json::Value;
-use std::collections::HashMap;
-use std::thread::sleep;
-use std::time::Duration;
-use tokio::fs::File;
-use tokio::io::AsyncWriteExt;
-use tokio::stream::StreamExt;
+use std::{collections::HashMap, thread::sleep, time::Duration};
+use tokio::{fs::File, io::AsyncWriteExt, stream::StreamExt};
 
-use super::garmin_config::GarminConfig;
-use super::reqwest_session::ReqwestSession;
+use super::{garmin_config::GarminConfig, reqwest_session::ReqwestSession};
 
 pub struct GarminConnectClient {
     config: GarminConfig,

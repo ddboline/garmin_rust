@@ -6,11 +6,14 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use serde::{self, Deserialize, Serialize};
 use std::fmt;
 
-use garmin_lib::common::pgpool::PgPool;
-use garmin_lib::reports::garmin_templates::PLOT_TEMPLATE;
-use garmin_lib::utils::iso_8601_datetime::convert_datetime_to_str;
-use garmin_lib::utils::plot_graph::generate_d3_plot;
-use garmin_lib::utils::plot_opts::PlotOpts;
+use garmin_lib::{
+    common::pgpool::PgPool,
+    reports::garmin_templates::PLOT_TEMPLATE,
+    utils::{
+        iso_8601_datetime::convert_datetime_to_str, plot_graph::generate_d3_plot,
+        plot_opts::PlotOpts,
+    },
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Copy, FromSqlRow)]
 pub struct ScaleMeasurement {

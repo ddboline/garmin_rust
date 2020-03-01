@@ -1,10 +1,10 @@
 use anyhow::Error;
-use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
-use reqwest::redirect::Policy;
-use reqwest::Url;
-use reqwest::{Client, Response};
-use std::collections::HashMap;
-use std::sync::Arc;
+use reqwest::{
+    header::{HeaderMap, HeaderName, HeaderValue},
+    redirect::Policy,
+    Client, Response, Url,
+};
+use std::{collections::HashMap, sync::Arc};
 use tokio::sync::Mutex;
 
 use crate::utils::garmin_util::exponential_retry;

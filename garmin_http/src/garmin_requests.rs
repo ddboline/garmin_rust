@@ -5,28 +5,33 @@ use futures::future::try_join_all;
 use log::debug;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
-use std::fs::File;
-use std::path::Path;
-use std::sync::Arc;
+use std::{
+    collections::{HashMap, HashSet},
+    fs::File,
+    path::Path,
+    sync::Arc,
+};
 use tokio::task::spawn_blocking;
 
-use fitbit_lib::fitbit_client::FitbitClient;
-use fitbit_lib::fitbit_heartrate::{FitbitBodyWeightFat, FitbitHeartRate};
-use fitbit_lib::scale_measurement::ScaleMeasurement;
+use fitbit_lib::{
+    fitbit_client::FitbitClient,
+    fitbit_heartrate::{FitbitBodyWeightFat, FitbitHeartRate},
+    scale_measurement::ScaleMeasurement,
+};
 
 use strava_lib::strava_client::{StravaAuthType, StravaClient};
 
-use garmin_lib::common::garmin_cli::{GarminCli, GarminRequest};
-use garmin_lib::common::garmin_correction_lap::GarminCorrectionList;
-use garmin_lib::common::garmin_summary::get_list_of_files_from_db;
-use garmin_lib::common::pgpool::PgPool;
-use garmin_lib::common::strava_sync::{
-    get_strava_id_maximum_begin_datetime, get_strava_ids, upsert_strava_id, StravaItem,
+use garmin_lib::common::{
+    garmin_cli::{GarminCli, GarminRequest},
+    garmin_correction_lap::GarminCorrectionList,
+    garmin_summary::get_list_of_files_from_db,
+    pgpool::PgPool,
+    strava_sync::{
+        get_strava_id_maximum_begin_datetime, get_strava_ids, upsert_strava_id, StravaItem,
+    },
 };
 
-use crate::errors::ServiceError as Error;
-use crate::CONFIG;
+use crate::{errors::ServiceError as Error, CONFIG};
 
 #[async_trait]
 pub trait HandleRequest<T> {

@@ -1,10 +1,14 @@
 use anyhow::Error;
 use chrono::{Datelike, Utc};
 
-use crate::reports::garmin_file_report_html::generate_history_buttons;
-use crate::reports::garmin_report_options::{GarminReportAgg, GarminReportOptions};
-use crate::reports::garmin_templates::GARMIN_TEMPLATE;
-use crate::utils::garmin_util::MONTH_NAMES;
+use crate::{
+    reports::{
+        garmin_file_report_html::generate_history_buttons,
+        garmin_report_options::{GarminReportAgg, GarminReportOptions},
+        garmin_templates::GARMIN_TEMPLATE,
+    },
+    utils::garmin_util::MONTH_NAMES,
+};
 
 fn generate_url_string(current_line: &str, options: &GarminReportOptions) -> String {
     let now = Utc::now();

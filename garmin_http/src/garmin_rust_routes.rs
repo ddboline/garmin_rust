@@ -2,41 +2,46 @@
 
 use actix_multipart::{Field, Multipart};
 use actix_session::Session;
-use actix_web::http::StatusCode;
-use actix_web::web::{Data, Json, Query};
-use actix_web::HttpResponse;
+use actix_web::{
+    http::StatusCode,
+    web::{Data, Json, Query},
+    HttpResponse,
+};
 use anyhow::format_err;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::string::ToString;
 use tempdir::TempDir;
-use tokio::fs::File;
-use tokio::io::AsyncWriteExt;
-use tokio::stream::StreamExt;
-use tokio::task::spawn_blocking;
+use tokio::{fs::File, io::AsyncWriteExt, stream::StreamExt, task::spawn_blocking};
 
-use garmin_lib::common::garmin_cli::{GarminCli, GarminRequest};
-use garmin_lib::common::garmin_file::GarminFile;
-use garmin_lib::parsers::garmin_parse::{GarminParse, GarminParseTrait};
-use garmin_lib::reports::garmin_file_report_html::generate_history_buttons;
-use garmin_lib::reports::garmin_file_report_txt::get_splits;
-use garmin_lib::utils::iso_8601_datetime::convert_datetime_to_str;
+use garmin_lib::{
+    common::{
+        garmin_cli::{GarminCli, GarminRequest},
+        garmin_file::GarminFile,
+    },
+    parsers::garmin_parse::{GarminParse, GarminParseTrait},
+    reports::{
+        garmin_file_report_html::generate_history_buttons, garmin_file_report_txt::get_splits,
+    },
+    utils::iso_8601_datetime::convert_datetime_to_str,
+};
 
-use super::errors::ServiceError as Error;
-use super::logged_user::LoggedUser;
+use super::{errors::ServiceError as Error, logged_user::LoggedUser};
 
 use super::garmin_rust_app::AppState;
-use crate::garmin_requests::{
-    FitbitAuthRequest, FitbitBodyWeightFatRequest, FitbitBodyWeightFatUpdateRequest,
-    FitbitCallbackRequest, FitbitHeartrateApiRequest, FitbitHeartrateCacheRequest,
-    FitbitHeartratePlotRequest, FitbitSyncRequest, FitbitTcxSyncRequest, GarminConnectSyncRequest,
-    GarminCorrRequest, GarminHtmlRequest, GarminListRequest, GarminSyncRequest,
-    GarminUploadRequest, HandleRequest, ScaleMeasurementPlotRequest, ScaleMeasurementRequest,
-    ScaleMeasurementUpdateRequest, StravaActiviesDBUpdateRequest, StravaActivitiesDBRequest,
-    StravaActivitiesRequest, StravaAuthRequest, StravaCallbackRequest, StravaSyncRequest,
-    StravaUpdateRequest, StravaUploadRequest,
+use crate::{
+    garmin_requests::{
+        FitbitAuthRequest, FitbitBodyWeightFatRequest, FitbitBodyWeightFatUpdateRequest,
+        FitbitCallbackRequest, FitbitHeartrateApiRequest, FitbitHeartrateCacheRequest,
+        FitbitHeartratePlotRequest, FitbitSyncRequest, FitbitTcxSyncRequest,
+        GarminConnectSyncRequest, GarminCorrRequest, GarminHtmlRequest, GarminListRequest,
+        GarminSyncRequest, GarminUploadRequest, HandleRequest, ScaleMeasurementPlotRequest,
+        ScaleMeasurementRequest, ScaleMeasurementUpdateRequest, StravaActiviesDBUpdateRequest,
+        StravaActivitiesDBRequest, StravaActivitiesRequest, StravaAuthRequest,
+        StravaCallbackRequest, StravaSyncRequest, StravaUpdateRequest, StravaUploadRequest,
+    },
+    CONFIG,
 };
-use crate::CONFIG;
 
 #[derive(Deserialize)]
 pub struct FilterRequest {
@@ -300,10 +305,11 @@ pub async fn fitbit_plots(
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
         .unwrap_or_else(|| Vec::new());
 
-    let body = state.db.handle(query).await?.replace(
-        "HISTORYBUTTONS",
-        &generate_history_buttons(&history),
-    );
+    let body = state
+        .db
+        .handle(query)
+        .await?
+        .replace("HISTORYBUTTONS", &generate_history_buttons(&history));
     form_http_response(body)
 }
 
@@ -318,10 +324,11 @@ pub async fn heartrate_plots(
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
         .unwrap_or_else(|| Vec::new());
 
-    let body = state.db.handle(query).await?.replace(
-        "HISTORYBUTTONS",
-        &generate_history_buttons(&history),
-    );
+    let body = state
+        .db
+        .handle(query)
+        .await?
+        .replace("HISTORYBUTTONS", &generate_history_buttons(&history));
     form_http_response(body)
 }
 

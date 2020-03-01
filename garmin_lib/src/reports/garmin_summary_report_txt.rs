@@ -3,12 +3,16 @@ use chrono::{DateTime, Utc};
 use log::debug;
 use postgres_query::FromSqlRow;
 
-use crate::common::pgpool::PgPool;
-use crate::reports::garmin_report_options::{GarminReportAgg, GarminReportOptions};
-use crate::utils::garmin_util::{
-    days_in_month, days_in_year, print_h_m_s, METERS_PER_MILE, MONTH_NAMES, WEEKDAY_NAMES,
+use crate::{
+    common::pgpool::PgPool,
+    reports::garmin_report_options::{GarminReportAgg, GarminReportOptions},
+    utils::{
+        garmin_util::{
+            days_in_month, days_in_year, print_h_m_s, METERS_PER_MILE, MONTH_NAMES, WEEKDAY_NAMES,
+        },
+        iso_8601_datetime::convert_datetime_to_str,
+    },
 };
-use crate::utils::iso_8601_datetime::convert_datetime_to_str;
 
 pub async fn create_report_query(
     pool: &PgPool,

@@ -1,10 +1,10 @@
 use actix_multipart::MultipartError;
 use actix_web::{error::ResponseError, HttpResponse};
 use anyhow::Error as AnyhowError;
+use rust_auth_server::static_files::login_html;
 use std::fmt::Debug;
 use thiserror::Error;
 use tokio::task::JoinError;
-use rust_auth_server::static_files::login_html;
 
 use crate::logged_user::TRIGGER_DB_UPDATE;
 

@@ -8,22 +8,22 @@ use futures::future::try_join_all;
 use glob::glob;
 use itertools::Itertools;
 use log::debug;
-use rayon::iter::{
-    IntoParallelIterator, IntoParallelRefIterator, ParallelExtend, ParallelIterator,
+use rayon::{
+    iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelExtend, ParallelIterator},
+    slice::ParallelSliceMut,
 };
-use rayon::slice::ParallelSliceMut;
 use serde::{self, Deserialize, Deserializer, Serialize};
-use std::collections::HashSet;
-use std::fs::File;
-use std::path::Path;
+use std::{collections::HashSet, fs::File, path::Path};
 use structopt::StructOpt;
 
-use garmin_lib::common::garmin_config::GarminConfig;
-use garmin_lib::common::garmin_file::GarminFile;
-use garmin_lib::common::garmin_summary::get_list_of_files_from_db;
-use garmin_lib::common::pgpool::PgPool;
-use garmin_lib::reports::garmin_templates::{PLOT_TEMPLATE, TIMESERIESTEMPLATE};
-use garmin_lib::utils::iso_8601_datetime;
+use garmin_lib::{
+    common::{
+        garmin_config::GarminConfig, garmin_file::GarminFile,
+        garmin_summary::get_list_of_files_from_db, pgpool::PgPool,
+    },
+    reports::garmin_templates::{PLOT_TEMPLATE, TIMESERIESTEMPLATE},
+    utils::iso_8601_datetime,
+};
 
 fn exception(py: Python, msg: &str) -> PyErr {
     PyErr::new::<exc::Exception, _>(py, msg)
@@ -356,12 +356,13 @@ impl FitbitBodyWeightFat {
 mod tests {
     use anyhow::Error;
     use chrono::NaiveDate;
-    use std::collections::HashSet;
-    use std::io::{stdout, Write};
-    use std::path::Path;
+    use std::{
+        collections::HashSet,
+        io::{stdout, Write},
+        path::Path,
+    };
 
-    use garmin_lib::common::garmin_config::GarminConfig;
-    use garmin_lib::common::pgpool::PgPool;
+    use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
 
     use crate::fitbit_heartrate::{process_fitbit_json_file, FitbitHeartRate};
 

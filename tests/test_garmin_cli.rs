@@ -2,10 +2,12 @@ use anyhow::Error;
 
 use garmin_lib::common::garmin_cli::{GarminCli, GarminCliOptions};
 
-use garmin_lib::common::garmin_config::GarminConfig;
-use garmin_lib::common::garmin_correction_lap::GarminCorrectionList;
-use garmin_lib::common::pgpool::PgPool;
-use garmin_lib::parsers::garmin_parse::GarminParse;
+use garmin_lib::{
+    common::{
+        garmin_config::GarminConfig, garmin_correction_lap::GarminCorrectionList, pgpool::PgPool,
+    },
+    parsers::garmin_parse::GarminParse,
+};
 
 #[test]
 #[ignore]

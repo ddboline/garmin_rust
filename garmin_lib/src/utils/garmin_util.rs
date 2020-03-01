@@ -2,12 +2,16 @@ use anyhow::{format_err, Error};
 use chrono::{DateTime, TimeZone, Utc};
 use log::debug;
 use num_traits::pow::Pow;
-use rand::distributions::{Alphanumeric, Distribution, Uniform};
-use rand::thread_rng;
-use std::fs::remove_file;
-use std::future::Future;
-use std::io::{stdout, BufRead, BufReader, Read, Write};
-use std::path::Path;
+use rand::{
+    distributions::{Alphanumeric, Distribution, Uniform},
+    thread_rng,
+};
+use std::{
+    fs::remove_file,
+    future::Future,
+    io::{stdout, BufRead, BufReader, Read, Write},
+    path::Path,
+};
 use subprocess::{Exec, Redirection};
 use tokio::time::{delay_for, Duration};
 

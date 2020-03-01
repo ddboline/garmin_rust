@@ -5,18 +5,21 @@ use cpython::{
     Python, PythonObject, ToPyObject,
 };
 use log::debug;
-use std::collections::HashMap;
-use std::fs::File;
-use std::io::{BufRead, BufReader, Write};
-use std::path::Path;
-use std::time::{Duration, SystemTime};
+use std::{
+    collections::HashMap,
+    fs::File,
+    io::{BufRead, BufReader, Write},
+    path::Path,
+    time::{Duration, SystemTime},
+};
 use tempfile::Builder;
 
-use garmin_lib::common::garmin_config::GarminConfig;
-use garmin_lib::common::strava_sync::StravaItem;
-use garmin_lib::utils::garmin_util::gzip_file;
-use garmin_lib::utils::iso_8601_datetime::convert_str_to_datetime;
-use garmin_lib::utils::sport_types::SportTypes;
+use garmin_lib::{
+    common::{garmin_config::GarminConfig, strava_sync::StravaItem},
+    utils::{
+        garmin_util::gzip_file, iso_8601_datetime::convert_str_to_datetime, sport_types::SportTypes,
+    },
+};
 
 fn exception(py: Python, msg: &str) -> PyErr {
     PyErr::new::<exc::Exception, _>(py, msg)

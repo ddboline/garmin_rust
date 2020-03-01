@@ -5,35 +5,46 @@ use lazy_static::lazy_static;
 use log::debug;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use regex::Regex;
-use std::collections::HashMap;
-use std::collections::HashSet;
-use std::fs::{copy, rename};
-use std::io::{stdout, BufWriter, Write};
-use std::path::Path;
-use std::sync::Arc;
+use std::{
+    collections::{HashMap, HashSet},
+    fs::{copy, rename},
+    io::{stdout, BufWriter, Write},
+    path::Path,
+    sync::Arc,
+};
 use tempdir::TempDir;
 use tokio::task::spawn_blocking;
 
-use crate::common::garmin_summary::get_maximum_begin_datetime;
-use crate::parsers::garmin_parse::{GarminParse, GarminParseTrait};
-use crate::parsers::garmin_parse_gmn::GarminParseGmn;
-use crate::parsers::garmin_parse_tcx::GarminParseTcx;
-use crate::parsers::garmin_parse_txt::GarminParseTxt;
-use crate::reports::garmin_file_report_html::file_report_html;
-use crate::reports::garmin_file_report_txt::generate_txt_report;
-use crate::reports::garmin_report_options::{GarminReportAgg, GarminReportOptions};
-use crate::reports::garmin_summary_report_html::summary_report_html;
-use crate::reports::garmin_summary_report_txt::create_report_query;
-use crate::utils::garmin_util::{extract_zip_from_garmin_connect, get_file_list};
-use crate::utils::sport_types::get_sport_type_map;
+use crate::{
+    common::garmin_summary::get_maximum_begin_datetime,
+    parsers::{
+        garmin_parse::{GarminParse, GarminParseTrait},
+        garmin_parse_gmn::GarminParseGmn,
+        garmin_parse_tcx::GarminParseTcx,
+        garmin_parse_txt::GarminParseTxt,
+    },
+    reports::{
+        garmin_file_report_html::file_report_html,
+        garmin_file_report_txt::generate_txt_report,
+        garmin_report_options::{GarminReportAgg, GarminReportOptions},
+        garmin_summary_report_html::summary_report_html,
+        garmin_summary_report_txt::create_report_query,
+    },
+    utils::{
+        garmin_util::{extract_zip_from_garmin_connect, get_file_list},
+        sport_types::get_sport_type_map,
+    },
+};
 
-use super::garmin_config::GarminConfig;
-use super::garmin_connect_client::GarminConnectClient;
-use super::garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList};
-use super::garmin_file;
-use super::garmin_summary::{get_list_of_files_from_db, GarminSummary, GarminSummaryList};
-use super::garmin_sync::GarminSync;
-use super::pgpool::PgPool;
+use super::{
+    garmin_config::GarminConfig,
+    garmin_connect_client::GarminConnectClient,
+    garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList},
+    garmin_file,
+    garmin_summary::{get_list_of_files_from_db, GarminSummary, GarminSummaryList},
+    garmin_sync::GarminSync,
+    pgpool::PgPool,
+};
 
 lazy_static! {
     static ref YMD_REG: Regex =

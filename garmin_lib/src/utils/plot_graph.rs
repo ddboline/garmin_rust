@@ -1,9 +1,13 @@
 use anyhow::{format_err, Error};
-use std::collections::HashMap;
-use std::io::{stdout, Write};
+use std::{
+    collections::HashMap,
+    io::{stdout, Write},
+};
 
-use crate::reports::garmin_templates::{LINEPLOTTEMPLATE, SCATTERPLOTTEMPLATE};
-use crate::utils::plot_opts::PlotOpts;
+use crate::{
+    reports::garmin_templates::{LINEPLOTTEMPLATE, SCATTERPLOTTEMPLATE},
+    utils::plot_opts::PlotOpts,
+};
 
 pub fn generate_d3_plot(opts: &PlotOpts) -> Result<String, Error> {
     let err_str = format!("No data points {}", opts.name);

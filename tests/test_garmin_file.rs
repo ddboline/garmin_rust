@@ -2,11 +2,10 @@ use anyhow::Error;
 use approx::assert_abs_diff_eq;
 use std::io::{stdout, Write};
 
-use garmin_lib::common::garmin_correction_lap::GarminCorrectionList;
-use garmin_lib::common::garmin_file;
-use garmin_lib::common::pgpool::PgPool;
-use garmin_lib::parsers::garmin_parse::GarminParseTrait;
-use garmin_lib::parsers::garmin_parse_tcx;
+use garmin_lib::{
+    common::{garmin_correction_lap::GarminCorrectionList, garmin_file, pgpool::PgPool},
+    parsers::{garmin_parse::GarminParseTrait, garmin_parse_tcx},
+};
 
 #[test]
 #[ignore]

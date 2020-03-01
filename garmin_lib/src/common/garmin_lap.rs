@@ -5,8 +5,10 @@ use roxmltree::{Node, NodeType};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-use crate::utils::garmin_util::{convert_time_string, convert_xml_local_time_to_utc};
-use crate::utils::iso_8601_datetime::{self, convert_datetime_to_str, sentinel_datetime};
+use crate::utils::{
+    garmin_util::{convert_time_string, convert_xml_local_time_to_utc},
+    iso_8601_datetime::{self, convert_datetime_to_str, sentinel_datetime},
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GarminLap {

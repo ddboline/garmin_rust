@@ -4,11 +4,9 @@ use futures::future::try_join_all;
 use log::debug;
 use postgres_query::FromSqlRow;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::hash::BuildHasher;
+use std::{collections::HashMap, hash::BuildHasher};
 
-use crate::common::pgpool::PgPool;
-use crate::utils::iso_8601_datetime;
+use crate::{common::pgpool::PgPool, utils::iso_8601_datetime};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct StravaItem {

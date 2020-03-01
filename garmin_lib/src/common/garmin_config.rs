@@ -2,10 +2,7 @@
 #![allow(clippy::cognitive_complexity)]
 
 use anyhow::{format_err, Error};
-use std::env::var;
-use std::ops::Deref;
-use std::path::Path;
-use std::sync::Arc;
+use std::{env::var, ops::Deref, path::Path, sync::Arc};
 
 /// `GarminConfig` holds configuration information which can be set either through environment variables or the config.env file,
 /// see the dotenv crate for more information about the config file format.

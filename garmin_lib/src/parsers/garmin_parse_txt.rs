@@ -1,18 +1,26 @@
 use anyhow::{format_err, Error};
 use chrono::{DateTime, Utc};
-use std::collections::HashMap;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
-use std::path::Path;
+use std::{
+    collections::HashMap,
+    fs::File,
+    io::{BufRead, BufReader},
+    path::Path,
+};
 
 use super::garmin_parse::{GarminParseTrait, ParseOutput};
-use crate::common::garmin_correction_lap::{apply_lap_corrections, GarminCorrectionLap};
-use crate::common::garmin_file::GarminFile;
-use crate::common::garmin_lap::GarminLap;
-use crate::common::garmin_point::GarminPoint;
-use crate::utils::garmin_util::{convert_time_string, METERS_PER_MILE};
-use crate::utils::iso_8601_datetime::convert_str_to_datetime;
-use crate::utils::sport_types::{get_sport_type_map, SportTypes};
+use crate::{
+    common::{
+        garmin_correction_lap::{apply_lap_corrections, GarminCorrectionLap},
+        garmin_file::GarminFile,
+        garmin_lap::GarminLap,
+        garmin_point::GarminPoint,
+    },
+    utils::{
+        garmin_util::{convert_time_string, METERS_PER_MILE},
+        iso_8601_datetime::convert_str_to_datetime,
+        sport_types::{get_sport_type_map, SportTypes},
+    },
+};
 
 #[derive(Debug, Default)]
 pub struct GarminParseTxt {}

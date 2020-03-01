@@ -1,27 +1,25 @@
 use anyhow::{format_err, Error};
-use chrono::offset::TimeZone;
-use chrono::{DateTime, Utc};
+use chrono::{offset::TimeZone, DateTime, Utc};
 use futures::future::try_join_all;
-use google_sheets4::RowData;
-use google_sheets4::{Sheet, Sheets};
-use hyper::net::HttpsConnector;
-use hyper::Client;
+use google_sheets4::{RowData, Sheet, Sheets};
+use hyper::{net::HttpsConnector, Client};
 use hyper_native_tls::NativeTlsClient;
 use log::debug;
-use std::collections::HashMap;
-use std::fs::{create_dir_all, File};
-use std::io::{stdout, Write};
-use std::path::Path;
-use std::rc::Rc;
-use std::sync::Arc;
+use std::{
+    collections::HashMap,
+    fs::{create_dir_all, File},
+    io::{stdout, Write},
+    path::Path,
+    rc::Rc,
+    sync::Arc,
+};
 use yup_oauth2::{
     Authenticator, ConsoleApplicationSecret, DefaultAuthenticatorDelegate, DiskTokenStorage,
     FlowType,
 };
 
 use fitbit_lib::scale_measurement::ScaleMeasurement;
-use garmin_lib::common::garmin_config::GarminConfig;
-use garmin_lib::common::pgpool::PgPool;
+use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
 
 type GAuthenticator = Authenticator<DefaultAuthenticatorDelegate, DiskTokenStorage, Client>;
 type GSheets = Sheets<Client, GAuthenticator>;

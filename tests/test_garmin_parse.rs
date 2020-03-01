@@ -1,11 +1,11 @@
 use anyhow::Error;
 use approx::assert_abs_diff_eq;
 
-use garmin_lib::common::garmin_correction_lap::GarminCorrectionList;
-use garmin_lib::common::pgpool::PgPool;
-use garmin_lib::parsers::garmin_parse::{GarminParse, GarminParseTrait};
-use garmin_lib::utils::iso_8601_datetime::convert_datetime_to_str;
-use garmin_lib::utils::sport_types::SportTypes;
+use garmin_lib::{
+    common::{garmin_correction_lap::GarminCorrectionList, pgpool::PgPool},
+    parsers::garmin_parse::{GarminParse, GarminParseTrait},
+    utils::{iso_8601_datetime::convert_datetime_to_str, sport_types::SportTypes},
+};
 
 #[test]
 fn test_invalid_ext() -> Result<(), Error> {

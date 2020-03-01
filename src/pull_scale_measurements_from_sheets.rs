@@ -1,5 +1,4 @@
-use garmin_lib::common::garmin_config::GarminConfig;
-use garmin_lib::common::pgpool::PgPool;
+use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
 use sheets_lib::sheets_client::run_sync_sheets;
 
 #[tokio::main]

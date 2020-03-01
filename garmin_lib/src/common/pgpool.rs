@@ -1,10 +1,8 @@
 use anyhow::{format_err, Error};
 use deadpool::managed::Object;
 use deadpool_postgres::{ClientWrapper, Config, Pool};
-use std::env::set_var;
-use std::fmt;
-use tokio_postgres::error::Error as PgError;
-use tokio_postgres::{Config as PgConfig, NoTls};
+use std::{env::set_var, fmt};
+use tokio_postgres::{error::Error as PgError, Config as PgConfig, NoTls};
 
 /// Wrapper around `r2d2::Pool`, two pools are considered equal if they have the same connection string
 /// The only way to use `PgPool` is through the get method, which returns a `PooledConnection` object

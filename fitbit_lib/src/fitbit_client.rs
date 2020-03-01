@@ -4,13 +4,17 @@ use cpython::{
     FromPyObject, ObjectProtocol, PyDict, PyList, PyObject, PyResult, PyTuple, Python,
     PythonObject, ToPyObject,
 };
-use std::fs::File;
-use std::io::{BufRead, BufReader, Write};
+use std::{
+    fs::File,
+    io::{BufRead, BufReader, Write},
+};
 
 use garmin_lib::common::garmin_config::GarminConfig;
 
-use crate::fitbit_heartrate::{FitbitBodyWeightFat, FitbitHeartRate};
-use crate::scale_measurement::ScaleMeasurement;
+use crate::{
+    fitbit_heartrate::{FitbitBodyWeightFat, FitbitHeartRate},
+    scale_measurement::ScaleMeasurement,
+};
 
 #[derive(Default, Debug, Clone)]
 pub struct FitbitClient {
@@ -370,8 +374,10 @@ impl FitbitClient {
 #[cfg(test)]
 mod tests {
     use chrono::{Local, NaiveDate};
-    use std::io::{stdout, Write};
-    use std::path::Path;
+    use std::{
+        io::{stdout, Write},
+        path::Path,
+    };
     use tempfile::NamedTempFile;
 
     use crate::fitbit_client::FitbitClient;

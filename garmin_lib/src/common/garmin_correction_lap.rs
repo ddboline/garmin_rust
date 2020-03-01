@@ -6,16 +6,13 @@ use json::{parse, JsonValue};
 use log::debug;
 use postgres_query::FromSqlRow;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use std::collections::HashMap;
-use std::fs::File;
-use std::hash::BuildHasher;
-use std::io::Read;
-use std::str;
+use std::{collections::HashMap, fs::File, hash::BuildHasher, io::Read, str};
 
-use super::garmin_lap::GarminLap;
-use super::pgpool::PgPool;
-use crate::utils::garmin_util::METERS_PER_MILE;
-use crate::utils::iso_8601_datetime::{convert_str_to_datetime, sentinel_datetime};
+use super::{garmin_lap::GarminLap, pgpool::PgPool};
+use crate::utils::{
+    garmin_util::METERS_PER_MILE,
+    iso_8601_datetime::{convert_str_to_datetime, sentinel_datetime},
+};
 
 use crate::utils::sport_types::SportTypes;
 

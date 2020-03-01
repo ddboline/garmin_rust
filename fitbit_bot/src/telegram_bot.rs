@@ -4,13 +4,16 @@ use futures::StreamExt;
 use lazy_static::lazy_static;
 use log::debug;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use std::collections::HashSet;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use telegram_bot::types::refs::UserId;
-use telegram_bot::{Api, CanReplySendMessage, MessageKind, UpdateKind};
-use tokio::sync::RwLock;
-use tokio::task::spawn;
-use tokio::time::{delay_for, Duration};
+use std::{
+    collections::HashSet,
+    sync::atomic::{AtomicUsize, Ordering},
+};
+use telegram_bot::{types::refs::UserId, Api, CanReplySendMessage, MessageKind, UpdateKind};
+use tokio::{
+    sync::RwLock,
+    task::spawn,
+    time::{delay_for, Duration},
+};
 
 use fitbit_lib::scale_measurement::ScaleMeasurement;
 use garmin_lib::common::pgpool::PgPool;

@@ -1,10 +1,13 @@
 use anyhow::Error;
 use log::debug;
 
-use crate::common::garmin_file::GarminFile;
-use crate::common::garmin_lap::GarminLap;
-use crate::utils::garmin_util::{print_h_m_s, MARATHON_DISTANCE_MI, METERS_PER_MILE};
-use crate::utils::sport_types::SportTypes;
+use crate::{
+    common::{garmin_file::GarminFile, garmin_lap::GarminLap},
+    utils::{
+        garmin_util::{print_h_m_s, MARATHON_DISTANCE_MI, METERS_PER_MILE},
+        sport_types::SportTypes,
+    },
+};
 
 pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<String>, Error> {
     let mut return_vec = vec![format!("Start time {}", gfile.filename)];

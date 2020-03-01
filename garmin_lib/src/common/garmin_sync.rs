@@ -6,10 +6,7 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use rusoto_core::Region;
 use rusoto_s3::{GetObjectRequest, Object as S3Object, PutObjectRequest, S3Client};
 use s3_ext::S3Ext;
-use std::collections::HashMap;
-use std::fs;
-use std::path::Path;
-use std::time::SystemTime;
+use std::{collections::HashMap, fs, path::Path, time::SystemTime};
 use sts_profile_auth::get_client_sts;
 
 use crate::utils::garmin_util::{exponential_retry, get_md5sum};

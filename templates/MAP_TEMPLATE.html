@@ -64,18 +64,19 @@ shape-rendering: crispEdges;
 <body>
 
 <H3>
-    <button type="submit" id="ID" onclick="garmin_sync();">sync with S3</button>
-    <button type="submit" id="ID" onclick="garmin_connect_sync();">sync with Garmin Connect</button>
-    <button type="submit" id="ID" onclick="fitbit_tcx_sync();">sync with Fitbit TCX</button>
+    <button type="submit" onclick="garmin_sync();">sync with S3</button>
+    <button type="submit" onclick="garmin_connect_sync();">sync with Garmin Connect</button>
+    <button type="submit" onclick="fitbit_tcx_sync();">sync with Fitbit TCX</button>
+    <button type="submit" onclick="heartrateSync();">Scale sync</button>
     <br>
-    <button type="submit" id="ID" onclick="stravaAuthRead();">read auth Strava</button>
-    <button type="submit" id="ID" onclick="strava_sync();">sync with Strava</button>
+    <button type="submit" onclick="stravaAuthRead();">read auth Strava</button>
+    <button type="submit" onclick="strava_sync();">sync with Strava</button>
     <br>
-    <button type="submit" id="ID" onclick="fitbitAuth();">Fitbit Auth</button>
-    <button type="submit" id="ID" onclick="fitbitSync();">Fitbit Sync</button>
+    <button type="submit" onclick="fitbitAuth();">Fitbit Auth</button>
+    <button type="submit" onclick="fitbitSync();">Fitbit Sync</button>
     <br>
-    <button type="submit" id="ID" onclick="scale_measurement_plots();">Scale Plots</button>
-    <button type="submit" id="ID" onclick="heartrate_plot();">Hear Rate Plot</button>
+    <button type="submit" onclick="scale_measurement_plots();">Scale Plots</button>
+    <button type="submit" onclick="heartrate_plot();">Hear Rate Plot</button>
     <br>
     <button name="garminconnectoutput" id="garminconnectoutput"> &nbsp; </button>
     <button type="submit" onclick="send_command('filter=latest');"> latest </button>
@@ -95,7 +96,7 @@ HISTORYBUTTONS
 
 <br>
 
-<button type="submit" id="ID" onclick="stravaAuthWrite();">write auth Strava</button>
+<button type="submit" onclick="stravaAuthWrite();">write auth Strava</button>
 
 STRAVAUPLOADBUTTON
 
@@ -259,6 +260,17 @@ STRAVAUPLOADBUTTON
     function heartrate_plot() {
         let ostr = '/garmin/fitbit/heartrate_plots';
         location.replace(ostr)
+    }
+    function heartrateSync() {
+        let ostr = '/sync/sync_garmin';
+        let xmlhttp = new XMLHttpRequest();
+        xmlhttp.open("GET", ostr, true);
+        xmlhttp.onload = function nothing() {
+            document.getElementById("garminconnectoutput").innerHTML = "done";
+            document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
+        }
+        xmlhttp.send(null);
+        document.getElementById("garminconnectoutput").innerHTML = "syncing";
     }
 </script>
 

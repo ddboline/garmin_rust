@@ -1,7 +1,7 @@
 use anyhow::{format_err, Error};
 use deadpool::managed::Object;
 use deadpool_postgres::{ClientWrapper, Config, Pool};
-use std::{env::set_var, fmt};
+use std::fmt;
 use tokio_postgres::{error::Error as PgError, Config as PgConfig, NoTls};
 
 /// Wrapper around `r2d2::Pool`, two pools are considered equal if they have the same connection string
@@ -28,20 +28,23 @@ impl PgPool {
     pub fn new(pgurl: &str) -> Self {
         let pgconf: PgConfig = pgurl.parse().expect("Failed to parse Url");
 
+        let mut config = Config::default();
+
         if let tokio_postgres::config::Host::Tcp(s) = &pgconf.get_hosts()[0] {
-            set_var("PG_HOST", s);
+            config.host.replace(s.to_string());
         }
         if let Some(u) = pgconf.get_user() {
-            set_var("PG_USER", u);
+            config.user.replace(u.to_string());
         }
         if let Some(p) = pgconf.get_password() {
-            set_var("PG_PASSWORD", String::from_utf8_lossy(p).to_string())
-        };
+            config
+                .password
+                .replace(String::from_utf8_lossy(p).to_string());
+        }
         if let Some(db) = pgconf.get_dbname() {
-            set_var("PG_DBNAME", db)
-        };
+            config.dbname.replace(db.to_string());
+        }
 
-        let config = Config::from_env("PG").expect("Failed to create config");
         Self {
             pgurl: pgurl.to_string(),
             pool: Some(

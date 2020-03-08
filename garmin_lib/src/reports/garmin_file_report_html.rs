@@ -12,7 +12,9 @@ use crate::{
     },
     reports::{
         garmin_file_report_txt::get_splits,
-        garmin_templates::{GARMIN_TEMPLATE, MAP_TEMPLATE},
+        garmin_templates::{
+            GARMIN_TEMPLATE, GARMIN_TEMPLATE_DEMO, MAP_TEMPLATE, MAP_TEMPLATE_DEMO,
+        },
     },
     utils::{
         garmin_util::{print_h_m_s, titlecase, MARATHON_DISTANCE_MI, METERS_PER_MILE},
@@ -85,6 +87,7 @@ pub async fn file_report_html(
     gfile: &GarminFile,
     history: &[String],
     pool: &PgPool,
+    is_demo: bool,
 ) -> Result<String, Error> {
     let report_objs = extract_report_objects_from_file(&gfile)?;
     let plot_opts = get_plot_opts(&report_objs);
@@ -98,6 +101,7 @@ pub async fn file_report_html(
         gfile.sport,
         &history,
         pool,
+        is_demo,
     )
     .await
 }
@@ -324,6 +328,7 @@ fn get_graphs(plot_opts: &[PlotOpts]) -> Vec<String> {
         .collect()
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn get_html_string(
     config: &GarminConfig,
     gfile: &GarminFile,
@@ -332,6 +337,7 @@ async fn get_html_string(
     sport: SportTypes,
     history: &[String],
     pool: &PgPool,
+    is_demo: bool,
 ) -> Result<String, Error> {
     let strava_id_title = get_strava_id_from_begin_datetime(pool, gfile.begin_datetime).await?;
 
@@ -347,9 +353,17 @@ async fn get_html_string(
             history,
             graphs,
             config,
+            is_demo,
         )?
     } else {
-        get_garmin_template_vec(&config.domain, gfile, sport, &strava_id_title, history)?
+        get_garmin_template_vec(
+            &config.domain,
+            gfile,
+            sport,
+            &strava_id_title,
+            history,
+            is_demo,
+        )?
     };
 
     Ok(htmlvec.join("\n"))
@@ -361,10 +375,17 @@ fn get_garmin_template_vec(
     sport: SportTypes,
     strava_id_title: &Option<(String, String)>,
     history: &[String],
+    is_demo: bool,
 ) -> Result<Vec<String>, Error> {
     let mut htmlvec = Vec::new();
 
-    for line in GARMIN_TEMPLATE.split('\n') {
+    let template = if is_demo {
+        GARMIN_TEMPLATE_DEMO
+    } else {
+        GARMIN_TEMPLATE
+    };
+
+    for line in template.split('\n') {
         if line.contains("INSERTTEXTHERE") {
             htmlvec.push(format!("{}\n", get_file_html(&gfile)));
             htmlvec.push(format!(
@@ -412,6 +433,7 @@ fn get_garmin_template_vec(
     Ok(htmlvec)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn get_map_tempate_vec(
     report_objs: &ReportObjects,
     gfile: &GarminFile,
@@ -420,6 +442,7 @@ fn get_map_tempate_vec(
     history: &[String],
     graphs: &[String],
     config: &GarminConfig,
+    is_demo: bool,
 ) -> Result<Vec<String>, Error> {
     let minlat = report_objs
         .lat_vals
@@ -459,7 +482,13 @@ fn get_map_tempate_vec(
 
     let mut htmlvec = Vec::new();
 
-    for line in MAP_TEMPLATE.split('\n') {
+    let template = if is_demo {
+        MAP_TEMPLATE_DEMO
+    } else {
+        MAP_TEMPLATE
+    };
+
+    for line in template.split('\n') {
         if line.contains("SPORTTITLEDATE") {
             let newtitle = format!(
                 "Garmin Event {} on {}",
@@ -483,21 +512,34 @@ fn get_map_tempate_vec(
             htmlvec.push(line.replace("SPORTTITLELINK", &newtitle).to_string());
         } else if line.contains("STRAVAUPLOADBUTTON") {
             if let Some((id, _)) = strava_id_title.as_ref() {
-                htmlvec.push(line.replace("STRAVAUPLOADBUTTON", &format!(r#"
-                    <form>
-                    <input type="text" name="cmd" id="strava_upload"/>
-                    <input type="button" name="submitSTRAVA" value="Title" onclick="processStravaUpdate('{}');"/>
-                    </form>
-                "#,
-                id
-                )));
+                let button_str = format!(
+                    r#"<form>{}</form>"#,
+                    if is_demo {
+                        "".to_string()
+                    } else {
+                        format!(
+                            r#"
+                                <input type="text" name="cmd" id="strava_upload"/>
+                                <input type="button" name="submitSTRAVA" value="Title" onclick="processStravaUpdate('{}');"/>
+                            "#,
+                            id
+                        )
+                    },
+                );
+                htmlvec.push(line.replace("STRAVAUPLOADBUTTON", &button_str));
             } else {
-                htmlvec.push(line.replace("STRAVAUPLOADBUTTON", r#"
-                    <form>
-                    <input type="text" name="cmd" id="strava_upload"/>
-                    <input type="button" name="submitSTRAVA" value="Title" onclick="processStravaData();"/>
-                    </form>
-                "#));
+                let button_str = format!(
+                    r#"<form>{}</form>"#,
+                    if is_demo {
+                        ""
+                    } else {
+                        r#"
+                        <input type="text" name="cmd" id="strava_upload"/>
+                        <input type="button" name="submitSTRAVA" value="Title" onclick="processStravaData();"/>
+                    "#
+                    },
+                );
+                htmlvec.push(line.replace("STRAVAUPLOADBUTTON", &button_str));
             }
         } else if line.contains("ZOOMVALUE") {
             for (zoom, thresh) in &latlon_thresholds {

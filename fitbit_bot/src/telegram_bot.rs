@@ -178,7 +178,7 @@ async fn fill_telegram_user_ids(pool: PgPool) -> Result<(), Error> {
         if let Ok(telegram_userids) = list_of_telegram_user_ids(&pool).await {
             let telegram_userid_set: HashSet<_> = telegram_userids
                 .into_iter()
-                .map(|userid| UserId::new(userid))
+                .map(UserId::new)
                 .collect();
             *USERIDS.write().await = telegram_userid_set;
             FAILURE_COUNT.reset()?;

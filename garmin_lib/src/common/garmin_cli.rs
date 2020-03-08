@@ -435,7 +435,7 @@ impl GarminCli {
         Ok(())
     }
 
-    pub async fn run_html(&self, req: &GarminRequest) -> Result<String, Error> {
+    pub async fn run_html(&self, req: &GarminRequest, is_demo: bool) -> Result<String, Error> {
         let pg_conn = self.get_pool();
 
         let file_list = get_list_of_files_from_db(&req.constraints, &pg_conn).await?;
@@ -468,7 +468,7 @@ impl GarminCli {
 
                 debug!("gfile {} {}", gfile.laps.len(), gfile.points.len());
 
-                file_report_html(self.get_config(), &gfile, &req.history, &pg_conn).await
+                file_report_html(self.get_config(), &gfile, &req.history, &pg_conn, is_demo).await
             }
             _ => {
                 debug!("{:?}", req.options);
@@ -484,6 +484,7 @@ impl GarminCli {
                     &txt_result,
                     &req.options,
                     &req.history,
+                    is_demo,
                 )
             }
         }

@@ -9,3 +9,10 @@ pub static SCATTERPLOTTEMPLATE: &str = include_str!("../../../templates/SCATTERP
 pub static TIMESERIESTEMPLATE: &str = include_str!("../../../templates/TIMESERIESTEMPLATE.js");
 
 pub static PLOT_TEMPLATE: &str = include_str!("../../../templates/PLOT_TEMPLATE.html");
+
+pub static GARMIN_TEMPLATE_DEMO: &str =
+    include_str!("../../../templates/GARMIN_TEMPLATE_DEMO.html");
+
+pub static MAP_TEMPLATE_DEMO: &str = include_str!("../../../templates/MAP_TEMPLATE_DEMO.html");
+
+pub static PLOT_TEMPLATE_DEMO: &str = include_str!("../../../templates/PLOT_TEMPLATE_DEMO.html");

@@ -21,7 +21,7 @@ use garmin_lib::{
         garmin_config::GarminConfig, garmin_file::GarminFile,
         garmin_summary::get_list_of_files_from_db, pgpool::PgPool,
     },
-    reports::garmin_templates::{PLOT_TEMPLATE, TIMESERIESTEMPLATE},
+    reports::garmin_templates::{PLOT_TEMPLATE, PLOT_TEMPLATE_DEMO, TIMESERIESTEMPLATE},
     utils::iso_8601_datetime,
 };
 
@@ -125,6 +125,7 @@ impl FitbitHeartRate {
         pool: &PgPool,
         start_date: NaiveDate,
         end_date: NaiveDate,
+        is_demo: bool,
     ) -> Result<String, Error> {
         let nminutes = 5;
         let ndays = (end_date - start_date).num_days();
@@ -219,16 +220,33 @@ impl FitbitHeartRate {
             .map(|i| {
                 let date = Local::today().naive_local() - Duration::days(i);
                 format!(
-                    r#"
-            <button type="submit" id="ID"
-             onclick="heartrate_plot_date('{date}','{date}');"">Plot {date}</button>
-            <button type="submit" id="ID"
-             onclick="heartrate_sync('{date}');">Sync {date}</button><br>"#,
-                    date = date
+                    "{}{}<br>",
+                    format!(
+                        r#"
+                        <button type="submit" id="ID"
+                         onclick="heartrate_plot_date('{date}','{date}');"">Plot {date}</button>"#,
+                        date = date
+                    ),
+                    if is_demo {
+                        "".to_string()
+                    } else {
+                        format!(
+                            r#"
+                        <button type="submit" id="ID"
+                         onclick="heartrate_sync('{date}');">Sync {date}</button>
+                        "#,
+                            date = date
+                        )
+                    },
                 )
             })
             .collect();
-        let body = PLOT_TEMPLATE
+        let template = if is_demo {
+            PLOT_TEMPLATE_DEMO
+        } else {
+            PLOT_TEMPLATE
+        };
+        let body = template
             .replace("INSERTOTHERIMAGESHERE", &plots)
             .replace("INSERTTEXTHERE", &buttons.join("\n"));
         Ok(body)
@@ -402,7 +420,7 @@ mod tests {
         let start_date = NaiveDate::from_ymd(2019, 8, 1);
         let end_date = NaiveDate::from_ymd(2019, 8, 2);
         let results =
-            FitbitHeartRate::get_heartrate_plot(&config, &pool, start_date, end_date).await?;
+            FitbitHeartRate::get_heartrate_plot(&config, &pool, start_date, end_date, false).await?;
         writeln!(stdout(), "{}", results)?;
         assert!(results.len() > 0);
         Ok(())

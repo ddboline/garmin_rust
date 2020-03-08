@@ -8,7 +8,7 @@ use std::fmt;
 
 use garmin_lib::{
     common::pgpool::PgPool,
-    reports::garmin_templates::PLOT_TEMPLATE,
+    reports::garmin_templates::{PLOT_TEMPLATE, PLOT_TEMPLATE_DEMO},
     utils::{
         iso_8601_datetime::convert_datetime_to_str, plot_graph::generate_d3_plot,
         plot_opts::PlotOpts,
@@ -132,9 +132,17 @@ impl ScaleMeasurement {
             .collect()
     }
 
-    pub fn get_scale_measurement_plots(measurements: &[Self]) -> Result<String, Error> {
+    pub fn get_scale_measurement_plots(
+        measurements: &[Self],
+        is_demo: bool,
+    ) -> Result<String, Error> {
+        let template = if is_demo {
+            PLOT_TEMPLATE_DEMO
+        } else {
+            PLOT_TEMPLATE
+        };
         if measurements.is_empty() {
-            let body = PLOT_TEMPLATE
+            let body = template
                 .replace("INSERTOTHERIMAGESHERE", "")
                 .replace("INSERTTEXTHERE", "");
             return Ok(body);
@@ -239,7 +247,7 @@ impl ScaleMeasurement {
             entries.join("</tr><tr>")
         );
 
-        let body = PLOT_TEMPLATE
+        let body = template
             .replace("INSERTOTHERIMAGESHERE", &graphs.join("\n"))
             .replace("INSERTTEXTHERE", &entries);
         Ok(body)

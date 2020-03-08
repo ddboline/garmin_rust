@@ -48,18 +48,25 @@ pub struct FilterRequest {
     pub filter: Option<String>,
 }
 
-fn proc_pattern_wrapper(request: FilterRequest, history: &[String]) -> GarminHtmlRequest {
+fn proc_pattern_wrapper(
+    request: FilterRequest,
+    history: &[String],
+    is_demo: bool,
+) -> GarminHtmlRequest {
     let filter = request.filter.unwrap_or_else(|| "sport".to_string());
 
     let filter_vec: Vec<String> = filter.split(',').map(ToString::to_string).collect();
 
     let req = GarminCli::process_pattern(&CONFIG, &filter_vec);
 
-    GarminHtmlRequest(GarminRequest {
-        filter,
-        history: history.to_vec(),
-        ..req
-    })
+    GarminHtmlRequest {
+        request: GarminRequest {
+            filter,
+            history: history.to_vec(),
+            ..req
+        },
+        is_demo,
+    }
 }
 
 fn form_http_response(body: String) -> Result<HttpResponse, Error> {
@@ -84,12 +91,36 @@ pub async fn garmin(
     let mut history: Vec<String> = session
         .get("history")
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
-        .unwrap_or_else(|| Vec::new());
-    let grec = proc_pattern_wrapper(query, &history);
+        .unwrap_or_else(Vec::new);
+    let grec = proc_pattern_wrapper(query, &history, false);
     if history.len() > 5 {
         history.remove(0);
     }
-    history.push(grec.0.filter.clone());
+    history.push(grec.request.filter.clone());
+    session
+        .set("history", history)
+        .map_err(|e| format_err!("Failed to set history {:?}", e))?;
+
+    let body = state.db.handle(grec).await?;
+
+    form_http_response(body)
+}
+
+pub async fn garmin_demo(
+    query: Query<FilterRequest>,
+    state: Data<AppState>,
+    session: Session,
+) -> Result<HttpResponse, Error> {
+    let query = query.into_inner();
+    let mut history: Vec<String> = session
+        .get("history")
+        .map_err(|e| format_err!("Failed to set history {:?}", e))?
+        .unwrap_or_else(Vec::new);
+    let grec = proc_pattern_wrapper(query, &history, true);
+    if history.len() > 5 {
+        history.remove(0);
+    }
+    history.push(grec.request.filter.clone());
     session
         .set("history", history)
         .map_err(|e| format_err!("Failed to set history {:?}", e))?;
@@ -293,6 +324,24 @@ pub async fn fitbit_sync(
     form_http_response("finished".into())
 }
 
+async fn fitbit_plots_impl(
+    query: ScaleMeasurementPlotRequest,
+    state: Data<AppState>,
+    session: Session,
+) -> Result<HttpResponse, Error> {
+    let history: Vec<String> = session
+        .get("history")
+        .map_err(|e| format_err!("Failed to set history {:?}", e))?
+        .unwrap_or_else(Vec::new);
+
+    let body = state
+        .db
+        .handle(query)
+        .await?
+        .replace("HISTORYBUTTONS", &generate_history_buttons(&history));
+    form_http_response(body)
+}
+
 pub async fn fitbit_plots(
     query: Query<ScaleMeasurementRequest>,
     _: LoggedUser,
@@ -300,10 +349,28 @@ pub async fn fitbit_plots(
     session: Session,
 ) -> Result<HttpResponse, Error> {
     let query: ScaleMeasurementPlotRequest = query.into_inner().into();
+    fitbit_plots_impl(query, state, session).await
+}
+
+pub async fn fitbit_plots_demo(
+    query: Query<ScaleMeasurementRequest>,
+    state: Data<AppState>,
+    session: Session,
+) -> Result<HttpResponse, Error> {
+    let mut query: ScaleMeasurementPlotRequest = query.into_inner().into();
+    query.is_demo = true;
+    fitbit_plots_impl(query, state, session).await
+}
+
+async fn heartrate_plots_impl(
+    query: FitbitHeartratePlotRequest,
+    state: Data<AppState>,
+    session: Session,
+) -> Result<HttpResponse, Error> {
     let history: Vec<String> = session
         .get("history")
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
-        .unwrap_or_else(|| Vec::new());
+        .unwrap_or_else(Vec::new);
 
     let body = state
         .db
@@ -319,17 +386,17 @@ pub async fn heartrate_plots(
     session: Session,
 ) -> Result<HttpResponse, Error> {
     let query: FitbitHeartratePlotRequest = query.into_inner().into();
-    let history: Vec<String> = session
-        .get("history")
-        .map_err(|e| format_err!("Failed to set history {:?}", e))?
-        .unwrap_or_else(|| Vec::new());
+    heartrate_plots_impl(query, state, session).await
+}
 
-    let body = state
-        .db
-        .handle(query)
-        .await?
-        .replace("HISTORYBUTTONS", &generate_history_buttons(&history));
-    form_http_response(body)
+pub async fn heartrate_plots_demo(
+    query: Query<ScaleMeasurementRequest>,
+    state: Data<AppState>,
+    session: Session,
+) -> Result<HttpResponse, Error> {
+    let mut query: FitbitHeartratePlotRequest = query.into_inner().into();
+    query.is_demo = true;
+    heartrate_plots_impl(query, state, session).await
 }
 
 pub async fn fitbit_tcx_sync(
@@ -382,9 +449,9 @@ pub async fn garmin_list_gps_tracks(
     let history: Vec<String> = session
         .get("history")
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
-        .unwrap_or_else(|| Vec::new());
+        .unwrap_or_else(Vec::new);
 
-    let greq: GarminListRequest = proc_pattern_wrapper(query, &history).into();
+    let greq: GarminListRequest = proc_pattern_wrapper(query, &history, false).into();
     let gps_list = state.db.handle(greq).await?;
     let glist = GpsList { gps_list };
     to_json(&glist)
@@ -405,9 +472,9 @@ pub async fn garmin_get_hr_data(
     let history: Vec<String> = session
         .get("history")
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
-        .unwrap_or_else(|| Vec::new());
+        .unwrap_or_else(Vec::new);
 
-    let greq: GarminListRequest = proc_pattern_wrapper(query, &history).into();
+    let greq: GarminListRequest = proc_pattern_wrapper(query, &history, false).into();
 
     let s = state.clone();
     let file_list = s.db.handle(greq).await?;
@@ -467,9 +534,9 @@ pub async fn garmin_get_hr_pace(
     let history: Vec<String> = session
         .get("history")
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
-        .unwrap_or_else(|| Vec::new());
+        .unwrap_or_else(Vec::new);
 
-    let greq: GarminListRequest = proc_pattern_wrapper(query, &history).into();
+    let greq: GarminListRequest = proc_pattern_wrapper(query, &history, false).into();
 
     let s = state.clone();
     let file_list = s.db.handle(greq).await?;

@@ -1,0 +1,169 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>SPORTTITLEDATE</title>
+<meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+<meta charset="utf-8">
+<meta name="generator" content="HTML::TextToHTML v2.51"/>
+<meta http-equiv="Cache-Control" content="no-store" />
+<style>
+    html, body, #map-canvas {
+      height: 80%;
+      width: 80%;
+    }
+  body { font: 12px Arial;}
+  path {
+      stroke: steelblue;
+      stroke-width: 2;
+      fill: none;
+  }
+  .axis path,
+  .axis line {
+      fill: none;
+      stroke-width: 1;
+      shape-rendering: crispEdges;
+
+      stroke: #000;
+  }
+  .label {
+  font-weight: bold;
+  }
+
+  .tile {
+  shape-rendering: crispEdges;
+  }
+
+  </style>
+</head>
+<body>
+
+<H3>
+    <button type="submit" onclick="scale_measurement_plots();">Scale Plots</button>
+    <button type="submit" onclick="heartrate_plot();">Hear Rate Plot</button>
+    <br>
+    <button name="garminconnectoutput" id="garminconnectoutput"> &nbsp; </button>
+    <button type="submit" onclick="send_command('filter=latest');"> latest </button>
+    <button type="submit" onclick="send_command('filter=sport');"> sport </button>
+</H3>
+
+<form>
+<input type="text" name="filter" id="garmin_filter"/>
+<input type="button" name="submitGARMIN" value="Search" onclick="processFormData();"/>
+</form>
+
+HISTORYBUTTONS
+
+<script src="https://d3js.org/d3.v3.min.js"></script>
+
+<pre id="garmin_text_box">
+INSERTTEXTHERE
+</pre>
+
+<script language="JavaScript" type="text/javascript">
+    function send_command( command ) {
+        let ostr = '/garmin/demo.html?' + command;
+        location.replace(ostr);
+    }
+    function processFormData() {
+        let garmin_filter = document.getElementById( 'garmin_filter' );
+        send_command( 'filter=' + garmin_filter.value );
+    }
+    function garmin_sync() {
+        let ostr = '/garmin/garmin_sync';
+        let xmlhttp = new XMLHttpRequest();
+        xmlhttp.open("GET", ostr, true);
+        xmlhttp.onload = function nothing() {
+            document.getElementById("garminconnectoutput").innerHTML = "done";
+            document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
+        }
+        xmlhttp.send(null);
+        document.getElementById("garminconnectoutput").innerHTML = "syncing";
+    }
+    function garmin_connect_sync() {
+        let ostr = '/garmin/garmin_connect_sync';
+        let xmlhttp = new XMLHttpRequest();
+        xmlhttp.open("GET", ostr, true);
+        xmlhttp.onload = function nothing() {
+            document.getElementById("garminconnectoutput").innerHTML = "done";
+            document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
+        }
+        xmlhttp.send(null);
+        document.getElementById("garminconnectoutput").innerHTML = "syncing";
+    }
+    function fitbit_tcx_sync() {
+        let ostr = '/garmin/fitbit/fitbit_tcx_sync';
+        let xmlhttp = new XMLHttpRequest();
+        xmlhttp.open("GET", ostr, true);
+        xmlhttp.onload = function nothing() {
+            document.getElementById("garminconnectoutput").innerHTML = "done";
+            document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
+        }
+        xmlhttp.send(null);
+        document.getElementById("garminconnectoutput").innerHTML = "syncing";
+    }
+    function stravaAuth() {
+        let ostr = "/garmin/strava/auth?auth_type=read";
+        let xmlhttp = new XMLHttpRequest();
+        xmlhttp.onload = function() {
+            let win = window.open(xmlhttp.responseText, '_blank');
+            win.focus()
+        }
+        xmlhttp.open( "GET", ostr, true );
+        xmlhttp.send(null);
+    }
+    function strava_sync() {
+        let ostr = '/garmin/strava_sync';
+        let xmlhttp = new XMLHttpRequest();
+        xmlhttp.open("GET", ostr, true);
+        xmlhttp.onload = function nothing() {
+            document.getElementById("garminconnectoutput").innerHTML = "done";
+            document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
+        }
+        xmlhttp.send(null);
+        document.getElementById("garminconnectoutput").innerHTML = "syncing";
+    }
+    function fitbitAuth() {
+        let url = '/garmin/fitbit/auth';
+        let xmlhttp = new XMLHttpRequest();
+        xmlhttp.onload = function() {
+            let win = window.open(xmlhttp.responseText, '_blank');
+            win.focus()
+        }
+        xmlhttp.open("GET", url, true);
+        xmlhttp.send(null);
+    }
+    function fitbitSync() {
+        let url = '/garmin/fitbit/bodyweight_sync';
+        let xmlhttp = new XMLHttpRequest();
+        xmlhttp.open("GET", url, true);
+        xmlhttp.onload = function nothing() {
+            document.getElementById("garminconnectoutput").innerHTML = "done";
+            document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
+        }
+        xmlhttp.send(null);
+        document.getElementById("garminconnectoutput").innerHTML = "syncing";
+    }
+    function scale_measurement_plots() {
+        let ostr = '/garmin/fitbit/plots_demo';
+        location.replace(ostr)
+    }
+    function heartrate_plot() {
+        let ostr = '/garmin/fitbit/heartrate_plots_demo';
+        location.replace(ostr)
+    }
+    function heartrateSync() {
+        let ostr = '/sync/sync_garmin';
+        let xmlhttp = new XMLHttpRequest();
+        xmlhttp.open("GET", ostr, true);
+        xmlhttp.onload = function nothing() {
+            document.getElementById("garminconnectoutput").innerHTML = "done";
+            document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
+        }
+        xmlhttp.send(null);
+        document.getElementById("garminconnectoutput").innerHTML = "syncing";
+    }
+</script>
+
+</body>
+</html>

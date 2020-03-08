@@ -52,20 +52,25 @@ impl HandleRequest<GarminCorrRequest> for PgPool {
     }
 }
 
-pub struct GarminHtmlRequest(pub GarminRequest);
+pub struct GarminHtmlRequest {
+    pub request: GarminRequest,
+    pub is_demo: bool,
+}
 
 #[async_trait]
 impl HandleRequest<GarminHtmlRequest> for PgPool {
     type Result = Result<String, Error>;
     async fn handle(&self, msg: GarminHtmlRequest) -> Self::Result {
-        let body = GarminCli::from_pool(&self)?.run_html(&msg.0).await?;
+        let body = GarminCli::from_pool(&self)?
+            .run_html(&msg.request, msg.is_demo)
+            .await?;
         Ok(body)
     }
 }
 
 impl GarminHtmlRequest {
     pub async fn get_list_of_files_from_db(&self, pool: &PgPool) -> Result<Vec<String>, Error> {
-        get_list_of_files_from_db(&self.0.constraints, &pool)
+        get_list_of_files_from_db(&self.request.constraints, &pool)
             .await
             .map_err(Into::into)
     }
@@ -79,7 +84,7 @@ pub struct GarminListRequest {
 impl Into<GarminListRequest> for GarminHtmlRequest {
     fn into(self) -> GarminListRequest {
         GarminListRequest {
-            constraints: self.0.constraints,
+            constraints: self.request.constraints,
         }
     }
 }
@@ -400,12 +405,18 @@ impl HandleRequest<ScaleMeasurementRequest> for PgPool {
     }
 }
 
-pub struct ScaleMeasurementPlotRequest(ScaleMeasurementRequest);
+pub struct ScaleMeasurementPlotRequest {
+    pub request: ScaleMeasurementRequest,
+    pub is_demo: bool,
+}
 
 impl From<ScaleMeasurementRequest> for ScaleMeasurementPlotRequest {
     fn from(item: ScaleMeasurementRequest) -> Self {
         let item = item.add_default(365);
-        Self(item)
+        Self {
+            request: item,
+            is_demo: false,
+        }
     }
 }
 
@@ -414,14 +425,17 @@ impl HandleRequest<ScaleMeasurementPlotRequest> for PgPool {
     type Result = Result<String, Error>;
     async fn handle(&self, req: ScaleMeasurementPlotRequest) -> Self::Result {
         let measurements =
-            ScaleMeasurement::read_from_db(self, req.0.start_date, req.0.end_date).await?;
-        ScaleMeasurement::get_scale_measurement_plots(&measurements).map_err(Into::into)
+            ScaleMeasurement::read_from_db(self, req.request.start_date, req.request.end_date)
+                .await?;
+        ScaleMeasurement::get_scale_measurement_plots(&measurements, req.is_demo)
+            .map_err(Into::into)
     }
 }
 
 pub struct FitbitHeartratePlotRequest {
     pub start_date: NaiveDate,
     pub end_date: NaiveDate,
+    pub is_demo: bool,
 }
 
 impl From<ScaleMeasurementRequest> for FitbitHeartratePlotRequest {
@@ -430,6 +444,7 @@ impl From<ScaleMeasurementRequest> for FitbitHeartratePlotRequest {
         Self {
             start_date: item.start_date.expect("this should be impossible"),
             end_date: item.end_date.expect("this should be impossible"),
+            is_demo: false,
         }
     }
 }
@@ -439,9 +454,15 @@ impl HandleRequest<FitbitHeartratePlotRequest> for PgPool {
     type Result = Result<String, Error>;
     async fn handle(&self, req: FitbitHeartratePlotRequest) -> Self::Result {
         let config = CONFIG.clone();
-        FitbitHeartRate::get_heartrate_plot(&config, self, req.start_date, req.end_date)
-            .await
-            .map_err(Into::into)
+        FitbitHeartRate::get_heartrate_plot(
+            &config,
+            self,
+            req.start_date,
+            req.end_date,
+            req.is_demo,
+        )
+        .await
+        .map_err(Into::into)
     }
 }
 
@@ -463,11 +484,12 @@ impl HandleRequest<ScaleMeasurementUpdateRequest> for PgPool {
         let futures = msg.measurements.into_iter().map(|meas| {
             let measurement_set = measurement_set.clone();
             async move {
-                if !measurement_set.contains(&meas.datetime) {
+                if measurement_set.contains(&meas.datetime) {
+                    debug!("measurement exists {:?}", meas);
+                } else {
                     meas.insert_into_db(self).await?;
                     debug!("measurement inserted {:?}", meas);
-                } else {
-                    debug!("measurement exists {:?}", meas);
+
                 }
                 Ok(())
             }

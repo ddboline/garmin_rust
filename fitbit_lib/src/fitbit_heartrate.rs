@@ -420,7 +420,7 @@ mod tests {
         let start_date = NaiveDate::from_ymd(2019, 8, 1);
         let end_date = NaiveDate::from_ymd(2019, 8, 2);
         let results =
-            FitbitHeartRate::get_heartrate_plot(&config, &pool, start_date, end_date).await?;
+            FitbitHeartRate::get_heartrate_plot(&config, &pool, start_date, end_date, false).await?;
         writeln!(stdout(), "{}", results)?;
         assert!(results.len() > 0);
         Ok(())

@@ -405,12 +405,18 @@ impl HandleRequest<ScaleMeasurementRequest> for PgPool {
     }
 }
 
-pub struct ScaleMeasurementPlotRequest(ScaleMeasurementRequest);
+pub struct ScaleMeasurementPlotRequest {
+    pub request: ScaleMeasurementRequest,
+    pub is_demo: bool,
+}
 
 impl From<ScaleMeasurementRequest> for ScaleMeasurementPlotRequest {
     fn from(item: ScaleMeasurementRequest) -> Self {
         let item = item.add_default(365);
-        Self(item)
+        Self {
+            request: item,
+            is_demo: false,
+        }
     }
 }
 
@@ -419,8 +425,10 @@ impl HandleRequest<ScaleMeasurementPlotRequest> for PgPool {
     type Result = Result<String, Error>;
     async fn handle(&self, req: ScaleMeasurementPlotRequest) -> Self::Result {
         let measurements =
-            ScaleMeasurement::read_from_db(self, req.0.start_date, req.0.end_date).await?;
-        ScaleMeasurement::get_scale_measurement_plots(&measurements).map_err(Into::into)
+            ScaleMeasurement::read_from_db(self, req.request.start_date, req.request.end_date)
+                .await?;
+        ScaleMeasurement::get_scale_measurement_plots(&measurements, req.is_demo)
+            .map_err(Into::into)
     }
 }
 

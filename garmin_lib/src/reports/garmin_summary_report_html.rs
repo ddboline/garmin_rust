@@ -5,7 +5,7 @@ use crate::{
     reports::{
         garmin_file_report_html::generate_history_buttons,
         garmin_report_options::{GarminReportAgg, GarminReportOptions},
-        garmin_templates::GARMIN_TEMPLATE,
+        garmin_templates::{GARMIN_TEMPLATE, GARMIN_TEMPLATE_DEMO},
     },
     utils::garmin_util::MONTH_NAMES,
 };
@@ -95,6 +95,7 @@ pub fn summary_report_html(
     retval: &[String],
     options: &GarminReportOptions,
     history: &[String],
+    is_demo: bool,
 ) -> Result<String, Error> {
     let htmlostr: Vec<_> = retval
         .iter()
@@ -116,7 +117,13 @@ pub fn summary_report_html(
 
     let mut htmlvec: Vec<String> = Vec::new();
 
-    for line in GARMIN_TEMPLATE.split('\n') {
+    let template = if is_demo {
+        GARMIN_TEMPLATE_DEMO
+    } else {
+        GARMIN_TEMPLATE
+    };
+
+    for line in template.split('\n') {
         if line.contains("INSERTTEXTHERE") {
             htmlvec.push(r#"<table border="0">"#.to_string());
             htmlvec.push(htmlostr.to_string());

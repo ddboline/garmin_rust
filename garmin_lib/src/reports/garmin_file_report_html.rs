@@ -510,21 +510,34 @@ fn get_map_tempate_vec(
             htmlvec.push(line.replace("SPORTTITLELINK", &newtitle).to_string());
         } else if line.contains("STRAVAUPLOADBUTTON") {
             if let Some((id, _)) = strava_id_title.as_ref() {
-                htmlvec.push(line.replace("STRAVAUPLOADBUTTON", &format!(r#"
-                    <form>
-                    <input type="text" name="cmd" id="strava_upload"/>
-                    <input type="button" name="submitSTRAVA" value="Title" onclick="processStravaUpdate('{}');"/>
-                    </form>
-                "#,
-                id
-                )));
+                let button_str = format!(
+                    r#"<form>{}</form>"#,
+                    if is_demo {
+                        "".to_string()
+                    } else {
+                        format!(
+                            r#"
+                                <input type="text" name="cmd" id="strava_upload"/>
+                                <input type="button" name="submitSTRAVA" value="Title" onclick="processStravaUpdate('{}');"/>
+                            "#,
+                            id
+                        )
+                    },
+                );
+                htmlvec.push(line.replace("STRAVAUPLOADBUTTON", &button_str));
             } else {
-                htmlvec.push(line.replace("STRAVAUPLOADBUTTON", r#"
-                    <form>
-                    <input type="text" name="cmd" id="strava_upload"/>
-                    <input type="button" name="submitSTRAVA" value="Title" onclick="processStravaData();"/>
-                    </form>
-                "#));
+                let button_str = format!(
+                    r#"<form>{}</form>"#,
+                    if is_demo {
+                        ""
+                    } else {
+                        r#"
+                        <input type="text" name="cmd" id="strava_upload"/>
+                        <input type="button" name="submitSTRAVA" value="Title" onclick="processStravaData();"/>
+                    "#
+                    },
+                );
+                htmlvec.push(line.replace("STRAVAUPLOADBUTTON", &button_str));
             }
         } else if line.contains("ZOOMVALUE") {
             for (zoom, thresh) in &latlon_thresholds {

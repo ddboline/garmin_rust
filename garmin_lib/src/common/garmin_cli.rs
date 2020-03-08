@@ -484,6 +484,7 @@ impl GarminCli {
                     &txt_result,
                     &req.options,
                     &req.history,
+                    is_demo,
                 )
             }
         }

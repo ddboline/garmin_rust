@@ -13,12 +13,12 @@ use super::logged_user::{fill_from_db, TRIGGER_DB_UPDATE};
 use crate::{
     garmin_rust_routes::{
         fitbit_auth, fitbit_bodyweight, fitbit_bodyweight_sync, fitbit_callback,
-        fitbit_heartrate_api, fitbit_heartrate_cache, fitbit_plots, fitbit_sync, fitbit_tcx_sync,
-        garmin, garmin_connect_sync, garmin_demo, garmin_get_hr_data, garmin_get_hr_pace,
-        garmin_list_gps_tracks, garmin_sync, garmin_upload, heartrate_plots, scale_measurement,
-        scale_measurement_update, strava_activities, strava_activities_db,
-        strava_activities_db_update, strava_auth, strava_callback, strava_sync, strava_update,
-        strava_upload,
+        fitbit_heartrate_api, fitbit_heartrate_cache, fitbit_plots, fitbit_plots_demo, fitbit_sync,
+        fitbit_tcx_sync, garmin, garmin_connect_sync, garmin_demo, garmin_get_hr_data,
+        garmin_get_hr_pace, garmin_list_gps_tracks, garmin_sync, garmin_upload, heartrate_plots,
+        heartrate_plots_demo, scale_measurement, scale_measurement_update, strava_activities,
+        strava_activities_db, strava_activities_db_update, strava_auth, strava_callback,
+        strava_sync, strava_update, strava_upload,
     },
     CONFIG,
 };
@@ -106,8 +106,15 @@ pub async fn start_app() {
             )
             .service(web::resource("/garmin/fitbit/plots").route(web::get().to(fitbit_plots)))
             .service(
+                web::resource("/garmin/fitbit/plots_demo").route(web::get().to(fitbit_plots_demo)),
+            )
+            .service(
                 web::resource("/garmin/fitbit/heartrate_plots")
                     .route(web::get().to(heartrate_plots)),
+            )
+            .service(
+                web::resource("/garmin/fitbit/heartrate_plots_demo")
+                    .route(web::get().to(heartrate_plots_demo)),
             )
             .service(
                 web::resource("/garmin/fitbit/fitbit_tcx_sync")

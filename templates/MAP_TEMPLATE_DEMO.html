@@ -70,10 +70,6 @@ shape-rendering: crispEdges;
     <button name="garminconnectoutput" id="garminconnectoutput"> &nbsp; </button>
     <button type="submit" onclick="send_command('filter=latest');"> latest </button>
     <button type="submit" onclick="send_command('filter=sport');"> sport </button>
-    <form action="/garmin/upload_file" method="post" enctype="multipart/form-data">
-        <input type="file" name="filename">
-        <input type="submit">
-    </form>
 </H3>
 
 <form>
@@ -84,8 +80,6 @@ shape-rendering: crispEdges;
 HISTORYBUTTONS
 
 <br>
-
-<button type="submit" onclick="stravaAuthWrite();">write auth Strava</button>
 
 STRAVAUPLOADBUTTON
 
@@ -107,7 +101,7 @@ STRAVAUPLOADBUTTON
 
 <script language="JavaScript" type="text/javascript">
     function send_command( command ) {
-        let ostr = '/garmin?' + command;
+        let ostr = '/garmin/demo.html?' + command;
         location.replace(ostr);
     }
     function stravaAuthWrite() {
@@ -243,11 +237,11 @@ STRAVAUPLOADBUTTON
         document.getElementById("garminconnectoutput").innerHTML = "syncing";
     }
     function scale_measurement_plots() {
-        let ostr = '/garmin/fitbit/plots';
+        let ostr = '/garmin/fitbit/plots_demo';
         location.replace(ostr)
     }
     function heartrate_plot() {
-        let ostr = '/garmin/fitbit/heartrate_plots';
+        let ostr = '/garmin/fitbit/heartrate_plots_demo';
         location.replace(ostr)
     }
     function heartrateSync() {

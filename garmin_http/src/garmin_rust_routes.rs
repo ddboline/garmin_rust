@@ -324,6 +324,24 @@ pub async fn fitbit_sync(
     form_http_response("finished".into())
 }
 
+async fn fitbit_plots_impl(
+    query: ScaleMeasurementPlotRequest,
+    state: Data<AppState>,
+    session: Session,
+) -> Result<HttpResponse, Error> {
+    let history: Vec<String> = session
+        .get("history")
+        .map_err(|e| format_err!("Failed to set history {:?}", e))?
+        .unwrap_or_else(|| Vec::new());
+
+    let body = state
+        .db
+        .handle(query)
+        .await?
+        .replace("HISTORYBUTTONS", &generate_history_buttons(&history));
+    form_http_response(body)
+}
+
 pub async fn fitbit_plots(
     query: Query<ScaleMeasurementRequest>,
     _: LoggedUser,
@@ -331,6 +349,24 @@ pub async fn fitbit_plots(
     session: Session,
 ) -> Result<HttpResponse, Error> {
     let query: ScaleMeasurementPlotRequest = query.into_inner().into();
+    fitbit_plots_impl(query, state, session).await
+}
+
+pub async fn fitbit_plots_demo(
+    query: Query<ScaleMeasurementRequest>,
+    state: Data<AppState>,
+    session: Session,
+) -> Result<HttpResponse, Error> {
+    let mut query: ScaleMeasurementPlotRequest = query.into_inner().into();
+    query.is_demo = true;
+    fitbit_plots_impl(query, state, session).await
+}
+
+async fn heartrate_plots_impl(
+    query: FitbitHeartratePlotRequest,
+    state: Data<AppState>,
+    session: Session,
+) -> Result<HttpResponse, Error> {
     let history: Vec<String> = session
         .get("history")
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
@@ -350,17 +386,17 @@ pub async fn heartrate_plots(
     session: Session,
 ) -> Result<HttpResponse, Error> {
     let query: FitbitHeartratePlotRequest = query.into_inner().into();
-    let history: Vec<String> = session
-        .get("history")
-        .map_err(|e| format_err!("Failed to set history {:?}", e))?
-        .unwrap_or_else(|| Vec::new());
+    heartrate_plots_impl(query, state, session).await
+}
 
-    let body = state
-        .db
-        .handle(query)
-        .await?
-        .replace("HISTORYBUTTONS", &generate_history_buttons(&history));
-    form_http_response(body)
+pub async fn heartrate_plots_demo(
+    query: Query<ScaleMeasurementRequest>,
+    state: Data<AppState>,
+    session: Session,
+) -> Result<HttpResponse, Error> {
+    let mut query: FitbitHeartratePlotRequest = query.into_inner().into();
+    query.is_demo = true;
+    heartrate_plots_impl(query, state, session).await
 }
 
 pub async fn fitbit_tcx_sync(

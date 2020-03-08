@@ -91,7 +91,7 @@ pub async fn garmin(
     let mut history: Vec<String> = session
         .get("history")
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
-        .unwrap_or_else(|| Vec::new());
+        .unwrap_or_else(Vec::new);
     let grec = proc_pattern_wrapper(query, &history, false);
     if history.len() > 5 {
         history.remove(0);
@@ -115,7 +115,7 @@ pub async fn garmin_demo(
     let mut history: Vec<String> = session
         .get("history")
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
-        .unwrap_or_else(|| Vec::new());
+        .unwrap_or_else(Vec::new);
     let grec = proc_pattern_wrapper(query, &history, true);
     if history.len() > 5 {
         history.remove(0);
@@ -332,7 +332,7 @@ async fn fitbit_plots_impl(
     let history: Vec<String> = session
         .get("history")
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
-        .unwrap_or_else(|| Vec::new());
+        .unwrap_or_else(Vec::new);
 
     let body = state
         .db
@@ -370,7 +370,7 @@ async fn heartrate_plots_impl(
     let history: Vec<String> = session
         .get("history")
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
-        .unwrap_or_else(|| Vec::new());
+        .unwrap_or_else(Vec::new);
 
     let body = state
         .db
@@ -449,7 +449,7 @@ pub async fn garmin_list_gps_tracks(
     let history: Vec<String> = session
         .get("history")
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
-        .unwrap_or_else(|| Vec::new());
+        .unwrap_or_else(Vec::new);
 
     let greq: GarminListRequest = proc_pattern_wrapper(query, &history, false).into();
     let gps_list = state.db.handle(greq).await?;
@@ -472,7 +472,7 @@ pub async fn garmin_get_hr_data(
     let history: Vec<String> = session
         .get("history")
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
-        .unwrap_or_else(|| Vec::new());
+        .unwrap_or_else(Vec::new);
 
     let greq: GarminListRequest = proc_pattern_wrapper(query, &history, false).into();
 
@@ -534,7 +534,7 @@ pub async fn garmin_get_hr_pace(
     let history: Vec<String> = session
         .get("history")
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
-        .unwrap_or_else(|| Vec::new());
+        .unwrap_or_else(Vec::new);
 
     let greq: GarminListRequest = proc_pattern_wrapper(query, &history, false).into();
 

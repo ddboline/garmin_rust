@@ -484,11 +484,12 @@ impl HandleRequest<ScaleMeasurementUpdateRequest> for PgPool {
         let futures = msg.measurements.into_iter().map(|meas| {
             let measurement_set = measurement_set.clone();
             async move {
-                if !measurement_set.contains(&meas.datetime) {
+                if measurement_set.contains(&meas.datetime) {
+                    debug!("measurement exists {:?}", meas);
+                } else {
                     meas.insert_into_db(self).await?;
                     debug!("measurement inserted {:?}", meas);
-                } else {
-                    debug!("measurement exists {:?}", meas);
+
                 }
                 Ok(())
             }

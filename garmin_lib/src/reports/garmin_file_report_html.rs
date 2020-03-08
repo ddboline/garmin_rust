@@ -328,6 +328,7 @@ fn get_graphs(plot_opts: &[PlotOpts]) -> Vec<String> {
         .collect()
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn get_html_string(
     config: &GarminConfig,
     gfile: &GarminFile,
@@ -432,6 +433,7 @@ fn get_garmin_template_vec(
     Ok(htmlvec)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn get_map_tempate_vec(
     report_objs: &ReportObjects,
     gfile: &GarminFile,

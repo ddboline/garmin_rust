@@ -12,7 +12,9 @@ use crate::{
     },
     reports::{
         garmin_file_report_txt::get_splits,
-        garmin_templates::{GARMIN_TEMPLATE, MAP_TEMPLATE},
+        garmin_templates::{
+            GARMIN_TEMPLATE, GARMIN_TEMPLATE_DEMO, MAP_TEMPLATE, MAP_TEMPLATE_DEMO,
+        },
     },
     utils::{
         garmin_util::{print_h_m_s, titlecase, MARATHON_DISTANCE_MI, METERS_PER_MILE},
@@ -85,6 +87,7 @@ pub async fn file_report_html(
     gfile: &GarminFile,
     history: &[String],
     pool: &PgPool,
+    is_demo: bool,
 ) -> Result<String, Error> {
     let report_objs = extract_report_objects_from_file(&gfile)?;
     let plot_opts = get_plot_opts(&report_objs);
@@ -98,6 +101,7 @@ pub async fn file_report_html(
         gfile.sport,
         &history,
         pool,
+        is_demo,
     )
     .await
 }
@@ -332,6 +336,7 @@ async fn get_html_string(
     sport: SportTypes,
     history: &[String],
     pool: &PgPool,
+    is_demo: bool,
 ) -> Result<String, Error> {
     let strava_id_title = get_strava_id_from_begin_datetime(pool, gfile.begin_datetime).await?;
 
@@ -347,9 +352,17 @@ async fn get_html_string(
             history,
             graphs,
             config,
+            is_demo,
         )?
     } else {
-        get_garmin_template_vec(&config.domain, gfile, sport, &strava_id_title, history)?
+        get_garmin_template_vec(
+            &config.domain,
+            gfile,
+            sport,
+            &strava_id_title,
+            history,
+            is_demo,
+        )?
     };
 
     Ok(htmlvec.join("\n"))
@@ -361,10 +374,17 @@ fn get_garmin_template_vec(
     sport: SportTypes,
     strava_id_title: &Option<(String, String)>,
     history: &[String],
+    is_demo: bool,
 ) -> Result<Vec<String>, Error> {
     let mut htmlvec = Vec::new();
 
-    for line in GARMIN_TEMPLATE.split('\n') {
+    let template = if is_demo {
+        GARMIN_TEMPLATE_DEMO
+    } else {
+        GARMIN_TEMPLATE
+    };
+
+    for line in template.split('\n') {
         if line.contains("INSERTTEXTHERE") {
             htmlvec.push(format!("{}\n", get_file_html(&gfile)));
             htmlvec.push(format!(
@@ -420,6 +440,7 @@ fn get_map_tempate_vec(
     history: &[String],
     graphs: &[String],
     config: &GarminConfig,
+    is_demo: bool,
 ) -> Result<Vec<String>, Error> {
     let minlat = report_objs
         .lat_vals
@@ -459,7 +480,13 @@ fn get_map_tempate_vec(
 
     let mut htmlvec = Vec::new();
 
-    for line in MAP_TEMPLATE.split('\n') {
+    let template = if is_demo {
+        MAP_TEMPLATE_DEMO
+    } else {
+        MAP_TEMPLATE
+    };
+
+    for line in template.split('\n') {
         if line.contains("SPORTTITLEDATE") {
             let newtitle = format!(
                 "Garmin Event {} on {}",

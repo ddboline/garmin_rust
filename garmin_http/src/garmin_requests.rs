@@ -52,20 +52,25 @@ impl HandleRequest<GarminCorrRequest> for PgPool {
     }
 }
 
-pub struct GarminHtmlRequest(pub GarminRequest);
+pub struct GarminHtmlRequest {
+    pub request: GarminRequest,
+    pub is_demo: bool,
+}
 
 #[async_trait]
 impl HandleRequest<GarminHtmlRequest> for PgPool {
     type Result = Result<String, Error>;
     async fn handle(&self, msg: GarminHtmlRequest) -> Self::Result {
-        let body = GarminCli::from_pool(&self)?.run_html(&msg.0).await?;
+        let body = GarminCli::from_pool(&self)?
+            .run_html(&msg.request, msg.is_demo)
+            .await?;
         Ok(body)
     }
 }
 
 impl GarminHtmlRequest {
     pub async fn get_list_of_files_from_db(&self, pool: &PgPool) -> Result<Vec<String>, Error> {
-        get_list_of_files_from_db(&self.0.constraints, &pool)
+        get_list_of_files_from_db(&self.request.constraints, &pool)
             .await
             .map_err(Into::into)
     }
@@ -79,7 +84,7 @@ pub struct GarminListRequest {
 impl Into<GarminListRequest> for GarminHtmlRequest {
     fn into(self) -> GarminListRequest {
         GarminListRequest {
-            constraints: self.0.constraints,
+            constraints: self.request.constraints,
         }
     }
 }
@@ -422,6 +427,7 @@ impl HandleRequest<ScaleMeasurementPlotRequest> for PgPool {
 pub struct FitbitHeartratePlotRequest {
     pub start_date: NaiveDate,
     pub end_date: NaiveDate,
+    pub is_demo: bool,
 }
 
 impl From<ScaleMeasurementRequest> for FitbitHeartratePlotRequest {
@@ -430,6 +436,7 @@ impl From<ScaleMeasurementRequest> for FitbitHeartratePlotRequest {
         Self {
             start_date: item.start_date.expect("this should be impossible"),
             end_date: item.end_date.expect("this should be impossible"),
+            is_demo: false,
         }
     }
 }
@@ -439,9 +446,15 @@ impl HandleRequest<FitbitHeartratePlotRequest> for PgPool {
     type Result = Result<String, Error>;
     async fn handle(&self, req: FitbitHeartratePlotRequest) -> Self::Result {
         let config = CONFIG.clone();
-        FitbitHeartRate::get_heartrate_plot(&config, self, req.start_date, req.end_date)
-            .await
-            .map_err(Into::into)
+        FitbitHeartRate::get_heartrate_plot(
+            &config,
+            self,
+            req.start_date,
+            req.end_date,
+            req.is_demo,
+        )
+        .await
+        .map_err(Into::into)
     }
 }
 

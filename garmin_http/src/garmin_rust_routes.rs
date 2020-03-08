@@ -48,18 +48,25 @@ pub struct FilterRequest {
     pub filter: Option<String>,
 }
 
-fn proc_pattern_wrapper(request: FilterRequest, history: &[String]) -> GarminHtmlRequest {
+fn proc_pattern_wrapper(
+    request: FilterRequest,
+    history: &[String],
+    is_demo: bool,
+) -> GarminHtmlRequest {
     let filter = request.filter.unwrap_or_else(|| "sport".to_string());
 
     let filter_vec: Vec<String> = filter.split(',').map(ToString::to_string).collect();
 
     let req = GarminCli::process_pattern(&CONFIG, &filter_vec);
 
-    GarminHtmlRequest(GarminRequest {
-        filter,
-        history: history.to_vec(),
-        ..req
-    })
+    GarminHtmlRequest {
+        request: GarminRequest {
+            filter,
+            history: history.to_vec(),
+            ..req
+        },
+        is_demo,
+    }
 }
 
 fn form_http_response(body: String) -> Result<HttpResponse, Error> {
@@ -85,11 +92,35 @@ pub async fn garmin(
         .get("history")
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
         .unwrap_or_else(|| Vec::new());
-    let grec = proc_pattern_wrapper(query, &history);
+    let grec = proc_pattern_wrapper(query, &history, false);
     if history.len() > 5 {
         history.remove(0);
     }
-    history.push(grec.0.filter.clone());
+    history.push(grec.request.filter.clone());
+    session
+        .set("history", history)
+        .map_err(|e| format_err!("Failed to set history {:?}", e))?;
+
+    let body = state.db.handle(grec).await?;
+
+    form_http_response(body)
+}
+
+pub async fn garmin_demo(
+    query: Query<FilterRequest>,
+    state: Data<AppState>,
+    session: Session,
+) -> Result<HttpResponse, Error> {
+    let query = query.into_inner();
+    let mut history: Vec<String> = session
+        .get("history")
+        .map_err(|e| format_err!("Failed to set history {:?}", e))?
+        .unwrap_or_else(|| Vec::new());
+    let grec = proc_pattern_wrapper(query, &history, true);
+    if history.len() > 5 {
+        history.remove(0);
+    }
+    history.push(grec.request.filter.clone());
     session
         .set("history", history)
         .map_err(|e| format_err!("Failed to set history {:?}", e))?;
@@ -384,7 +415,7 @@ pub async fn garmin_list_gps_tracks(
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
         .unwrap_or_else(|| Vec::new());
 
-    let greq: GarminListRequest = proc_pattern_wrapper(query, &history).into();
+    let greq: GarminListRequest = proc_pattern_wrapper(query, &history, false).into();
     let gps_list = state.db.handle(greq).await?;
     let glist = GpsList { gps_list };
     to_json(&glist)
@@ -407,7 +438,7 @@ pub async fn garmin_get_hr_data(
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
         .unwrap_or_else(|| Vec::new());
 
-    let greq: GarminListRequest = proc_pattern_wrapper(query, &history).into();
+    let greq: GarminListRequest = proc_pattern_wrapper(query, &history, false).into();
 
     let s = state.clone();
     let file_list = s.db.handle(greq).await?;
@@ -469,7 +500,7 @@ pub async fn garmin_get_hr_pace(
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
         .unwrap_or_else(|| Vec::new());
 
-    let greq: GarminListRequest = proc_pattern_wrapper(query, &history).into();
+    let greq: GarminListRequest = proc_pattern_wrapper(query, &history, false).into();
 
     let s = state.clone();
     let file_list = s.db.handle(greq).await?;

@@ -1,6 +1,6 @@
 [package]
 name = "garmin_lib"
-version = "0.7.9"
+version = "0.7.10"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -15,8 +15,8 @@ json = "0.12"
 tokio-postgres = {version = "0.5", features = ["with-chrono-0_4"]}
 postgres-types = "0.1"
 log = "0.4"
-rusoto_core = {version = "0.43.0-beta.1", default_features = false, features=["rustls"]}
-rusoto_s3 = {version = "0.43.0-beta.1", default_features = false, features=["rustls"]}
+rusoto_core = {version = "0.43", default_features = false, features=["rustls"]}
+rusoto_s3 = {version = "0.43", default_features = false, features=["rustls"]}
 futures = "0.3"
 s3-ext = "0.1"
 sts_profile_auth = "0.5"
@@ -28,7 +28,7 @@ deadpool = "0.5"
 deadpool-postgres = "0.5"
 dotenv = "0.15"
 lazy_static = "1.4"
-roxmltree = "0.9"
+roxmltree = "0.10"
 reqwest = {version="0.10", features=["cookies", "json", "rustls-tls", "stream"]}
 parking_lot = "0.10"
 maplit = "1.0"

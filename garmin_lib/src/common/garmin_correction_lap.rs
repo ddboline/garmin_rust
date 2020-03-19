@@ -284,7 +284,7 @@ impl GarminCorrectionList {
                 let start_time: String = val
                     .unique_key
                     .split('_')
-                    .nth(0)
+                    .next()
                     .map_or_else(|| "".to_string(), ToString::to_string);
                 let lap_number: i32 = val
                     .unique_key

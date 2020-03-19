@@ -137,7 +137,7 @@ fn measurement_from_row_data(row_data: &RowData) -> Result<ScaleMeasurement, Err
         .ok_or_else(|| format_err!("No values"))?;
     let values: Vec<_> = values
         .iter()
-        .filter_map(|x| x.formatted_value.as_ref().map(String::as_str))
+        .filter_map(|x| x.formatted_value.as_deref())
         .collect();
     if values.len() > 5 {
         let datetime = Utc

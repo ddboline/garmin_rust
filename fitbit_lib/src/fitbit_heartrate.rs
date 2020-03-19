@@ -280,7 +280,7 @@ impl FitbitHeartRate {
 
         Reader::new(input_file)
             .map_err(|e| format_err!("{}", e))?
-            .nth(0)
+            .next()
             .map(|record| {
                 let record = record.map_err(|e| format_err!("{}", e))?;
                 from_value::<Vec<Self>>(&record).map_err(|e| format_err!("{}", e))

@@ -29,7 +29,7 @@ fn generate_url_string(current_line: &str, options: &GarminReportOptions) -> Str
                 let current_year = current_line
                     .trim()
                     .split_whitespace()
-                    .nth(0)
+                    .next()
                     .unwrap_or(&year);
                 cmd_options.push(current_year.to_string());
             }
@@ -38,7 +38,7 @@ fn generate_url_string(current_line: &str, options: &GarminReportOptions) -> Str
                 let current_year = current_line
                     .trim()
                     .split_whitespace()
-                    .nth(0)
+                    .next()
                     .unwrap_or(&year);
                 let current_month = current_line
                     .trim()
@@ -68,12 +68,12 @@ fn generate_url_string(current_line: &str, options: &GarminReportOptions) -> Str
                 let current_day = current_line
                     .trim()
                     .split_whitespace()
-                    .nth(0)
+                    .next()
                     .unwrap_or(&today);
                 cmd_options.push(current_day.to_string());
             }
             GarminReportAgg::File => {
-                let current_file = current_line.trim().split_whitespace().nth(0).unwrap_or("");
+                let current_file = current_line.trim().split_whitespace().next().unwrap_or("");
                 cmd_options.push(current_file.to_string());
             }
         }
@@ -82,7 +82,7 @@ fn generate_url_string(current_line: &str, options: &GarminReportOptions) -> Str
         let current_sport = current_line
             .trim()
             .split_whitespace()
-            .nth(0)
+            .next()
             .unwrap_or("running");
         cmd_options.push(current_sport.to_string());
     }

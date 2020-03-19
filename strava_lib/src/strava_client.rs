@@ -386,7 +386,7 @@ impl StravaClient {
                         .nth(1)
                         .unwrap_or("")
                         .split_whitespace()
-                        .nth(0)
+                        .next()
                         .map(ToString::to_string)
                         .ok_or_else(|| format_err!("No id"))
                 } else {

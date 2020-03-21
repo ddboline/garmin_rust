@@ -75,11 +75,11 @@ fn form_http_response(body: String) -> Result<HttpResponse, Error> {
         .body(body))
 }
 
-fn to_json<T>(js: &T) -> Result<HttpResponse, Error>
+fn to_json<T>(js: T) -> Result<HttpResponse, Error>
 where
     T: Serialize,
 {
-    Ok(HttpResponse::Ok().json2(js))
+    Ok(HttpResponse::Ok().json(js))
 }
 
 pub async fn garmin(
@@ -163,7 +163,7 @@ pub async fn garmin_upload(
         .db
         .handle(GarminUploadRequest { filename: fname })
         .await?;
-    to_json(&flist)
+    to_json(flist)
 }
 
 pub async fn garmin_connect_sync(
@@ -171,7 +171,7 @@ pub async fn garmin_connect_sync(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let flist = state.db.handle(GarminConnectSyncRequest {}).await?;
-    to_json(&flist)
+    to_json(flist)
 }
 
 pub async fn garmin_sync(_: LoggedUser, state: Data<AppState>) -> Result<HttpResponse, Error> {
@@ -219,7 +219,7 @@ pub async fn strava_activities(
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
     let alist = state.db.handle(query).await?;
-    to_json(&alist)
+    to_json(alist)
 }
 
 pub async fn strava_activities_db(
@@ -228,7 +228,7 @@ pub async fn strava_activities_db(
 ) -> Result<HttpResponse, Error> {
     let query = StravaActivitiesDBRequest(query.into_inner());
     let alist = state.db.handle(query).await?;
-    to_json(&alist)
+    to_json(alist)
 }
 
 pub async fn strava_activities_db_update(
@@ -274,7 +274,7 @@ pub async fn fitbit_heartrate_api(
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
     let hlist = state.db.handle(query).await?;
-    to_json(&hlist)
+    to_json(hlist)
 }
 
 pub async fn fitbit_heartrate_cache(
@@ -283,7 +283,7 @@ pub async fn fitbit_heartrate_cache(
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
     let hlist = state.db.handle(query).await?;
-    to_json(&hlist)
+    to_json(hlist)
 }
 
 pub async fn fitbit_bodyweight(
@@ -292,7 +292,7 @@ pub async fn fitbit_bodyweight(
 ) -> Result<HttpResponse, Error> {
     let req = FitbitBodyWeightFatRequest {};
     let hlist = state.db.handle(req).await?;
-    to_json(&hlist)
+    to_json(hlist)
 }
 
 pub async fn fitbit_bodyweight_sync(
@@ -301,7 +301,7 @@ pub async fn fitbit_bodyweight_sync(
 ) -> Result<HttpResponse, Error> {
     let req = FitbitBodyWeightFatUpdateRequest {};
     let hlist = state.db.handle(req).await?;
-    to_json(&hlist)
+    to_json(hlist)
 }
 
 pub async fn fitbit_callback(
@@ -406,7 +406,7 @@ pub async fn fitbit_tcx_sync(
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
     let flist = state.db.handle(query).await?;
-    to_json(&flist)
+    to_json(flist)
 }
 
 pub async fn scale_measurement(
@@ -415,7 +415,7 @@ pub async fn scale_measurement(
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
     let slist = state.db.handle(query).await?;
-    to_json(&slist)
+    to_json(slist)
 }
 
 pub async fn scale_measurement_update(
@@ -454,7 +454,7 @@ pub async fn garmin_list_gps_tracks(
     let greq: GarminListRequest = proc_pattern_wrapper(query, &history, false).into();
     let gps_list = state.db.handle(greq).await?;
     let glist = GpsList { gps_list };
-    to_json(&glist)
+    to_json(glist)
 }
 
 #[derive(Serialize)]
@@ -510,7 +510,7 @@ pub async fn garmin_get_hr_data(
         _ => Vec::new(),
     };
     let hdata = HrData { hr_data };
-    to_json(&hdata)
+    to_json(hdata)
 }
 
 #[derive(Serialize)]
@@ -581,5 +581,9 @@ pub async fn garmin_get_hr_pace(
             hr_pace: Vec::new(),
         },
     };
-    to_json(&hrpace)
+    to_json(hrpace)
+}
+
+pub async fn user(user: LoggedUser) -> Result<HttpResponse, Error> {
+    to_json(user)
 }

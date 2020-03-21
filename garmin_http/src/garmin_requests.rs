@@ -489,7 +489,6 @@ impl HandleRequest<ScaleMeasurementUpdateRequest> for PgPool {
                 } else {
                     meas.insert_into_db(self).await?;
                     debug!("measurement inserted {:?}", meas);
-
                 }
                 Ok(())
             }

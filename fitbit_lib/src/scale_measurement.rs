@@ -29,7 +29,8 @@ impl fmt::Display for ScaleMeasurement {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "ScaleMeasurement(\ndatetime: {}\nmass: {} lbs\nfat: {}%\nwater: {}%\nmuscle: {}%\nbone: {}%\n)",
+            "ScaleMeasurement(\ndatetime: {}\nmass: {} lbs\nfat: {}%\nwater: {}%\nmuscle: \
+             {}%\nbone: {}%\n)",
             convert_datetime_to_str(self.datetime),
             self.mass,
             self.fat_pct,
@@ -74,8 +75,10 @@ impl ScaleMeasurement {
     }
 
     pub async fn insert_into_db(&self, pool: &PgPool) -> Result<(), Error> {
-        let query = postgres_query::query!("
-            INSERT INTO scale_measurements (datetime, mass, fat_pct, water_pct, muscle_pct, bone_pct)
+        let query = postgres_query::query!(
+            "
+            INSERT INTO scale_measurements (datetime, mass, fat_pct, water_pct, muscle_pct, \
+             bone_pct)
             VALUES ($datetime,$mass,$fat,$water,$muscle,$bone)",
             datetime = self.datetime,
             mass = self.mass,

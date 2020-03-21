@@ -86,10 +86,13 @@ pub async fn get_strava_ids(
         constraints.push(format!("begin_datetime <= '{}'", end_date.to_rfc3339()));
     }
     let query = format!(
-        "SELECT strava_id, begin_datetime, strava_title FROM strava_id_cache {} ORDER BY begin_datetime",
-        if constraints.is_empty() {"".to_string()} else {
+        "SELECT strava_id, begin_datetime, strava_title FROM strava_id_cache {} ORDER BY \
+         begin_datetime",
+        if constraints.is_empty() {
+            "".to_string()
+        } else {
             format!("WHERE {}", constraints.join(" OR "))
-        } ,
+        },
     );
     let conn = pool.get().await?;
     conn.query(query.as_str(), &[])

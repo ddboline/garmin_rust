@@ -4,8 +4,9 @@
 use anyhow::{format_err, Error};
 use std::{env::var, ops::Deref, path::Path, sync::Arc};
 
-/// `GarminConfig` holds configuration information which can be set either through environment variables or the config.env file,
-/// see the dotenv crate for more information about the config file format.
+/// `GarminConfig` holds configuration information which can be set either
+/// through environment variables or the config.env file, see the dotenv crate
+/// for more information about the config file format.
 #[derive(Default, Debug)]
 pub struct GarminConfigInner {
     pub home_dir: String,
@@ -66,7 +67,8 @@ macro_rules! set_config_from_env {
 }
 
 impl GarminConfigInner {
-    /// Some variables have natural default values, which we set in the new() method.
+    /// Some variables have natural default values, which we set in the new()
+    /// method.
     pub fn new() -> Self {
         let home_dir = dirs::home_dir().unwrap_or_else(|| Path::new("/tmp").to_path_buf());
         let cache_dir = home_dir.join(".garmin_cache").join("run");
@@ -94,7 +96,8 @@ impl GarminConfigInner {
         }
     }
 
-    /// Each variable maps to an environment variable, if the variable exists, use it.
+    /// Each variable maps to an environment variable, if the variable exists,
+    /// use it.
     pub fn from_env(mut self) -> Self {
         set_config_from_env!(self, pgurl);
         set_config_from_env!(self, maps_api_key);

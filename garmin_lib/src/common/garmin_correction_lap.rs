@@ -356,14 +356,15 @@ impl GarminCorrectionList {
 
     pub async fn read_corrections_from_db(&self) -> Result<Self, Error> {
         let conn = self.pool.get().await?;
-        let corr_list: Result<Vec<_>, Error> = conn.query(
-            "select id, start_time, lap_number, sport, distance, duration from garmin_corrections_laps",
-            &[],
-        ).await?
+        let corr_list: Result<Vec<_>, Error> = conn
+            .query(
+                "select id, start_time, lap_number, sport, distance, duration from \
+                 garmin_corrections_laps",
+                &[],
+            )
+            .await?
             .par_iter()
-            .map(|row| {
-                GarminCorrectionLap::from_row(row).map_err(Into::into)
-            })
+            .map(|row| GarminCorrectionLap::from_row(row).map_err(Into::into))
             .collect();
         let corr_list = corr_list?;
 

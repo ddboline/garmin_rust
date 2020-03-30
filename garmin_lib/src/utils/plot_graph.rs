@@ -1,7 +1,6 @@
 use anyhow::{format_err, Error};
 use std::{
     collections::HashMap,
-    io::{stdout, Write},
 };
 
 use crate::{
@@ -68,8 +67,7 @@ pub fn generate_d3_plot(opts: &PlotOpts) -> Result<String, Error> {
             let yindex = ((y - ymin) / ystep) as u64;
             match bins.get_mut(&(xindex, yindex)) {
                 Some(x) => *x += 1,
-                None => writeln!(
-                    stdout().lock(),
+                None => debug!(
                     "missing {} {} {} {} {} {} {} {}",
                     xindex,
                     yindex,
@@ -79,7 +77,7 @@ pub fn generate_d3_plot(opts: &PlotOpts) -> Result<String, Error> {
                     ymin,
                     xmax,
                     ymax
-                )?,
+                ),
             }
         }
 

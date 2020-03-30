@@ -64,12 +64,13 @@ pub fn generate_d3_plot(opts: &PlotOpts) -> Result<String, Error> {
         for (x, y) in data.iter() {
             let xindex = ((x - xmin) / xstep) as u64;
             let yindex = ((y - ymin) / ystep) as u64;
-            match bins.get_mut(&(xindex, yindex)) {
-                Some(x) => *x += 1,
-                None => debug!(
+            if let Some(x) = bins.get_mut(&(xindex, yindex)) {
+                *x += 1;
+            } else {
+                debug!(
                     "missing {} {} {} {} {} {} {} {}",
                     xindex, yindex, x, y, xmin, ymin, xmax, ymax
-                ),
+                );
             }
         }
 

@@ -1,7 +1,6 @@
 use anyhow::{format_err, Error};
-use std::{
-    collections::HashMap,
-};
+use log::debug;
+use std::collections::HashMap;
 
 use crate::{
     reports::garmin_templates::{LINEPLOTTEMPLATE, SCATTERPLOTTEMPLATE},
@@ -69,14 +68,7 @@ pub fn generate_d3_plot(opts: &PlotOpts) -> Result<String, Error> {
                 Some(x) => *x += 1,
                 None => debug!(
                     "missing {} {} {} {} {} {} {} {}",
-                    xindex,
-                    yindex,
-                    x,
-                    y,
-                    xmin,
-                    ymin,
-                    xmax,
-                    ymax
+                    xindex, yindex, x, y, xmin, ymin, xmax, ymax
                 ),
             }
         }

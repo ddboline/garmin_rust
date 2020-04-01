@@ -37,6 +37,10 @@ impl StdoutChannel {
         self.receiver.lock().await.recv().await
     }
 
+    pub async fn close(&self) {
+        self.receiver.lock().await.close()
+    }
+
     async fn stdout_task(&self) -> Result<(), Error> {
         while let Some(line) = self.recv().await {
             stdout().write_all(line.as_bytes()).await?;

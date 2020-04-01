@@ -40,9 +40,12 @@ impl GarminCliOpts {
                 } else {
                     GarminCli::process_pattern(&config, &patterns)
                 };
-                return GarminCli::with_config()?
-                    .run_cli(&req.options, &req.constraints)
-                    .await;
+                let cli = GarminCli::with_config()?;
+                let stdout = cli.stdout.clone();
+                let stdout_task = stdout.spawn_stdout_task();
+                cli.run_cli(&req.options, &req.constraints).await?;
+                cli.stdout.close().await;
+                return stdout_task.await?;
             }
             Self::Connect => GarminCliOptions::Connect,
             Self::Sync { md5sum } => GarminCliOptions::Sync(md5sum),
@@ -54,7 +57,7 @@ impl GarminCliOpts {
         };
 
         let stdout = cli.stdout.clone();
-        stdout.spawn_stdout_task();
+        let stdout_task = stdout.spawn_stdout_task();
 
         if let Some(GarminCliOptions::Connect) = cli.opts {
             let config = cli.config.clone();
@@ -78,6 +81,7 @@ impl GarminCliOpts {
         }
 
         cli.garmin_proc().await?;
-        Ok(())
-    }
+        cli.stdout.close().await;
+        return stdout_task.await?;
+}
 }

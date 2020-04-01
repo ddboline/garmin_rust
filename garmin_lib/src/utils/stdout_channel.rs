@@ -49,7 +49,8 @@ impl StdoutChannel {
         Ok(())
     }
 
-    pub fn spawn_stdout_task(self) -> JoinHandle<Result<(), Error>> {
-        spawn(async move { self.stdout_task().await })
+    pub fn spawn_stdout_task(&self) -> JoinHandle<Result<(), Error>> {
+        let stdout = self.clone();
+        spawn(async move { stdout.stdout_task().await })
     }
 }

@@ -8,7 +8,6 @@ use regex::Regex;
 use std::{
     collections::{HashMap, HashSet},
     fs::{copy, rename},
-    io::{stdout, BufWriter, Write},
     path::Path,
     sync::Arc,
 };
@@ -33,6 +32,7 @@ use crate::{
     utils::{
         garmin_util::{extract_zip_from_garmin_connect, get_file_list},
         sport_types::get_sport_type_map,
+        stdout_channel::StdoutChannel,
     },
 };
 
@@ -70,6 +70,7 @@ pub struct GarminCli {
     pub pool: PgPool,
     pub corr: GarminCorrectionList,
     pub parser: GarminParse,
+    pub stdout: StdoutChannel,
 }
 
 impl GarminCli {
@@ -132,23 +133,24 @@ impl GarminCli {
         &self.parser
     }
 
-    pub async fn garmin_proc(self) -> Result<Vec<String>, Error> {
-        let cli = Arc::new(self);
-        if let Some(GarminCliOptions::Connect) = cli.get_opts() {
-            cli.sync_with_garmin_connect().await?;
+    pub async fn garmin_proc(&self) -> Result<(), Error> {
+        if let Some(GarminCliOptions::Connect) = self.get_opts() {
+            self.sync_with_garmin_connect().await?;
         }
 
-        if let Some(GarminCliOptions::ImportFileNames(filenames)) = cli.get_opts() {
+        if let Some(GarminCliOptions::ImportFileNames(filenames)) = self.get_opts() {
             let filenames = filenames.clone();
-            let cli = Arc::clone(&cli);
-            cli.process_filenames(&filenames).await?;
+
+            self.process_filenames(&filenames).await?;
         }
 
-        match cli.get_opts() {
-            Some(GarminCliOptions::Bootstrap) => cli.run_bootstrap().await,
-            Some(GarminCliOptions::Sync(check_md5)) => cli.sync_everything(*check_md5).await,
-            _ => cli.proc_everything().await,
-        }
+        let results = match self.get_opts() {
+            Some(GarminCliOptions::Bootstrap) => self.run_bootstrap().await,
+            Some(GarminCliOptions::Sync(check_md5)) => self.sync_everything(*check_md5).await,
+            _ => self.proc_everything().await,
+        }?;
+        self.stdout.send(results.join("\n"))?;
+        Ok(())
     }
 
     pub async fn proc_everything(&self) -> Result<Vec<String>, Error> {
@@ -182,7 +184,7 @@ impl GarminCli {
                 let proc_list: Result<Vec<_>, Error> = flist
                     .par_iter()
                     .map(|f| {
-                        writeln!(stdout().lock(), "Process {}", &f)?;
+                        self.stdout.send(format!("Process {}", &f))?;
                         Ok(GarminSummary::process_single_gps_file(
                             &f,
                             &self.get_config().cache_dir,
@@ -395,8 +397,6 @@ impl GarminCli {
 
         let file_list = get_list_of_files_from_db(constraints, &pg_conn).await?;
 
-        let mut stdout = BufWriter::new(stdout());
-
         match file_list.len() {
             0 => (),
             1 => {
@@ -422,7 +422,7 @@ impl GarminCli {
                     };
 
                 debug!("gfile {} {}", gfile.laps.len(), gfile.points.len());
-                writeln!(stdout, "{}", generate_txt_report(&gfile)?.join("\n"))?;
+                self.stdout.send(generate_txt_report(&gfile)?.join("\n"))?;
             }
             _ => {
                 debug!("{:?}", options);
@@ -432,7 +432,7 @@ impl GarminCli {
                     .map(|x| x.join(" "))
                     .collect();
 
-                writeln!(stdout, "{}", txt_result.join("\n"))?;
+                self.stdout.send(txt_result.join("\n"))?;
             }
         };
         Ok(())
@@ -514,7 +514,7 @@ impl GarminCli {
 
     pub async fn process_filenames(&self, filenames: &[String]) -> Result<(), Error> {
         let config = self.get_config().clone();
-
+        let stdout = self.stdout.clone();
         let filenames = filenames.to_vec();
         spawn_blocking(move || {
             let tempdir = TempDir::new("garmin_zip")?;
@@ -548,7 +548,7 @@ impl GarminCli {
                         gfile.get_standardized_name(suffix)?
                     );
 
-                    writeln!(stdout().lock(), "{} {}", filename, outfile)?;
+                    stdout.send(format!("{} {}", filename, outfile))?;
 
                     if Path::new(&outfile).exists() {
                         return Ok(());

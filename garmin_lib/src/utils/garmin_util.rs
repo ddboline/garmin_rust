@@ -1,6 +1,6 @@
 use anyhow::{format_err, Error};
 use chrono::{DateTime, TimeZone, Utc};
-use log::debug;
+use log::{debug, error};
 use num_traits::pow::Pow;
 use rand::{
     distributions::{Alphanumeric, Distribution, Uniform},
@@ -9,7 +9,7 @@ use rand::{
 use std::{
     fs::remove_file,
     future::Future,
-    io::{stdout, BufRead, BufReader, Read, Write},
+    io::{BufRead, BufReader, Read},
     path::Path,
 };
 use subprocess::{Exec, Redirection};
@@ -165,7 +165,7 @@ pub fn extract_zip_from_garmin_connect(filename: &str, ziptmpdir: &str) -> Resul
         if let Some(mut f) = process.stdout.as_ref() {
             let mut buf = String::new();
             f.read_to_string(&mut buf)?;
-            writeln!(stdout().lock(), "{}", buf)?;
+            error!("{}", buf);
         }
         return Err(format_err!("Failed with exit status {:?}", exit_status));
     }
@@ -182,7 +182,7 @@ pub fn gzip_file(input_filename: &str, output_filename: &str) -> Result<(), Erro
         if let Some(mut f) = process.stdout.as_ref() {
             let mut buf = String::new();
             f.read_to_string(&mut buf)?;
-            writeln!(stdout().lock(), "{}", buf)?;
+            error!("{}", buf);
         }
         return Err(format_err!("Failed with exit status {:?}", exit_status));
     }

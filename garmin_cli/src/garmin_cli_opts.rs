@@ -1,10 +1,6 @@
 use anyhow::Error;
 use chrono::{Duration, Utc};
-use std::{
-    fs::File,
-    io::{stdout, Write},
-    path::Path,
-};
+use std::{fs::File, path::Path};
 use structopt::StructOpt;
 use tokio::task::spawn_blocking;
 
@@ -57,6 +53,9 @@ impl GarminCliOpts {
             ..GarminCli::with_config()?
         };
 
+        let stdout = cli.stdout.clone();
+        stdout.spawn_stdout_task();
+
         if let Some(GarminCliOptions::Connect) = cli.opts {
             let config = cli.config.clone();
             let res: Result<_, Error> = spawn_blocking(move || {
@@ -78,9 +77,7 @@ impl GarminCliOpts {
             res?;
         }
 
-        for line in cli.garmin_proc().await? {
-            writeln!(stdout(), "{}", line)?;
-        }
+        cli.garmin_proc().await?;
         Ok(())
     }
 }

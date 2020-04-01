@@ -6,14 +6,7 @@ use log::debug;
 use postgres_query::FromSqlRow;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::HashMap,
-    fmt,
-    fs::File,
-    io::{stdout, BufWriter, Write},
-    path::Path,
-    sync::Arc,
-};
+use std::{collections::HashMap, fmt, fs::File, path::Path, sync::Arc};
 
 use super::{garmin_correction_lap::GarminCorrectionLap, garmin_file::GarminFile, pgpool::PgPool};
 use crate::{
@@ -117,12 +110,11 @@ impl GarminSummary {
                 .last()
                 .ok_or_else(|| format_err!("Failed to split filename {}", filename))?
         );
-        let mut stdout = BufWriter::new(stdout());
 
-        writeln!(stdout, "Get md5sum {} ", filename)?;
+        debug!("Get md5sum {} ", filename);
         let md5sum = get_md5sum(&filename)?;
 
-        writeln!(stdout, "{} Found md5sum {} ", filename, md5sum)?;
+        debug!("{} Found md5sum {} ", filename, md5sum);
         let gfile = GarminParse::new().with_file(&filename, &corr_map)?;
 
         match gfile.laps.get(0) {
@@ -133,7 +125,7 @@ impl GarminSummary {
             None => return Err(format_err!("{} has no laps?", gfile.filename)),
         };
         gfile.dump_avro(&cache_file)?;
-        writeln!(stdout, "{} Found md5sum {} success", filename, md5sum)?;
+        debug!("{} Found md5sum {} success", filename, md5sum);
         Ok(Self::new(&gfile, &md5sum))
     }
 }
@@ -206,7 +198,7 @@ impl GarminSummaryList {
         let gsum_result_list: Result<Vec<_>, Error> = get_file_list(&path)
             .into_par_iter()
             .map(|input_file| {
-                writeln!(stdout().lock(), "Process {}", &input_file)?;
+                debug!("Process {}", &input_file);
                 let cache_file = format!(
                     "{}/{}.avro",
                     cache_dir,

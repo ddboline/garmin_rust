@@ -374,11 +374,8 @@ impl FitbitBodyWeightFat {
 mod tests {
     use anyhow::Error;
     use chrono::NaiveDate;
-    use std::{
-        collections::HashSet,
-        io::{stdout, Write},
-        path::Path,
-    };
+    use log::debug;
+    use std::{collections::HashSet, path::Path};
 
     use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
 
@@ -390,13 +387,13 @@ mod tests {
         let config = GarminConfig::get_config(None)?;
         let path = Path::new("tests/data/test_heartrate_data.json");
         let result = process_fitbit_json_file(&path)?;
-        writeln!(stdout(), "{}", result.len())?;
+        debug!("{}", result.len());
 
         let dates: HashSet<_> = result
             .iter()
             .map(|entry| entry.datetime.date().naive_local())
             .collect();
-        writeln!(stdout(), "{:?}", dates)?;
+        debug!("{:?}", dates);
         let dates = vec![NaiveDate::from_ymd(2019, 11, 1)];
         assert_eq!(result.len(), 3);
         assert_eq!(dates.len(), 1);
@@ -407,7 +404,7 @@ mod tests {
                 current_datetimes.insert(entry.datetime);
             }
         }
-        writeln!(stdout(), "{}", current_datetimes.len())?;
+        debug!("{}", current_datetimes.len());
         assert_eq!(current_datetimes.len(), 1361);
         Ok(())
     }
@@ -422,7 +419,7 @@ mod tests {
         let results =
             FitbitHeartRate::get_heartrate_plot(&config, &pool, start_date, end_date, false)
                 .await?;
-        writeln!(stdout(), "{}", results)?;
+        debug!("{}", results);
         assert!(results.len() > 0);
         Ok(())
     }

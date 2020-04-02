@@ -43,7 +43,7 @@ impl GarminCliOpts {
                 let cli = GarminCli::with_config()?;
                 let stdout_task = cli.stdout.spawn_stdout_task();
                 cli.run_cli(&req.options, &req.constraints).await?;
-                cli.stdout.close().await;
+                cli.stdout.close().await?;
                 return stdout_task.await?;
             }
             Self::Connect => GarminCliOptions::Connect,
@@ -79,7 +79,7 @@ impl GarminCliOpts {
         }
 
         cli.garmin_proc().await?;
-        cli.stdout.close().await;
+        cli.stdout.close().await?;
         stdout_task.await?
     }
 }

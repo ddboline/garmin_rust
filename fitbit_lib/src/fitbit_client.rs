@@ -45,18 +45,21 @@ impl FitbitClient {
             ..Self::default()
         };
         let f = File::open(&client.config.fitbit_tokenfile)?;
-        let b = BufReader::new(f);
-        for l in b.lines() {
-            let line = l?;
-            let items: Vec<_> = line.split('=').collect();
-            if items.len() >= 2 {
-                let key = items[0];
-                let val = items[1];
-                match key {
-                    "user_id" => client.user_id = val.trim().into(),
-                    "access_token" => client.access_token = val.trim().into(),
-                    "refresh_token" => client.refresh_token = val.trim().into(),
-                    _ => {}
+        let mut b = BufReader::new(f);
+        let mut line = String::new();
+        loop {
+            if b.read_line(&mut line)? == 0 {
+                break;
+            }
+            let mut items = line.split('=');
+            if let Some(key) = items.next() {
+                if let Some(val) = items.next() {
+                    match key {
+                        "user_id" => client.user_id = val.trim().into(),
+                        "access_token" => client.access_token = val.trim().into(),
+                        "refresh_token" => client.refresh_token = val.trim().into(),
+                        _ => {}
+                    }
                 }
             }
         }
@@ -304,7 +307,6 @@ impl FitbitClient {
         let result = PyDict::extract(py, &result)?;
         let activities = result.get_item(py, "activities").unwrap();
         let activities = PyList::extract(py, &activities)?;
-
         activities
             .iter(py)
             .filter_map(|item| {
@@ -373,7 +375,7 @@ impl FitbitClient {
 
 #[cfg(test)]
 mod tests {
-    use chrono::{Local, NaiveDate};
+    use chrono::{Duration, Local, Utc};
     use log::debug;
     use std::path::Path;
     use tempfile::NamedTempFile;
@@ -396,7 +398,7 @@ mod tests {
     fn test_get_tcx_urls() {
         let config = GarminConfig::get_config(None).unwrap();
         let client = FitbitClient::from_file(config.clone()).unwrap();
-        let start_date = NaiveDate::from_ymd(2019, 12, 1);
+        let start_date = (Utc::now() - Duration::days(10)).naive_utc().date();
         let results = client.get_tcx_urls(start_date).unwrap();
         debug!("{:?}", results);
         for (start_time, tcx_url) in results {

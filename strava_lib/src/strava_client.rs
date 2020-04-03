@@ -80,21 +80,26 @@ impl StravaClient {
             ..Self::default()
         };
         let f = File::open(&client.config.strava_tokenfile)?;
-        let b = BufReader::new(f);
-        for l in b.lines() {
-            let line = l?;
-            let items: Vec<_> = line.split('=').collect();
-            if items.len() >= 2 {
-                let key = items[0];
-                let val = items[1];
-                match key.trim() {
-                    "client_id" => client.client_id = val.trim().to_string(),
-                    "client_secret" => client.client_secret = val.trim().to_string(),
-                    "read_access_token" => client.read_access_token = Some(val.trim().to_string()),
-                    "write_access_token" => {
-                        client.write_access_token = Some(val.trim().to_string())
+        let mut b = BufReader::new(f);
+        let mut line = String::new();
+        loop {
+            if b.read_line(&mut line)? == 0 {
+                break;
+            }
+            let mut items = line.split('=');
+            if let Some(key) = items.next() {
+                if let Some(val) = items.next() {
+                    match key.trim() {
+                        "client_id" => client.client_id = val.trim().to_string(),
+                        "client_secret" => client.client_secret = val.trim().to_string(),
+                        "read_access_token" => {
+                            client.read_access_token = Some(val.trim().to_string())
+                        }
+                        "write_access_token" => {
+                            client.write_access_token = Some(val.trim().to_string())
+                        }
+                        _ => {}
                     }
-                    _ => {}
                 }
             }
         }

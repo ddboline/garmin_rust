@@ -74,18 +74,8 @@ impl GarminParseTrait for GarminParseTxt {
     }
 
     fn parse_file(&self, filename: &str) -> Result<ParseOutput, Error> {
-        let file = File::open(filename)?;
-        let reader = BufReader::new(file);
-
-        let lap_list: Vec<_> = reader
-            .lines()
-            .filter_map(|line| match line {
-                Ok(l) => match Self::parse_line(&l) {
-                    Ok(pl) => Some(pl),
-                    Err(_) => None,
-                },
-                Err(_) => None,
-            })
+        let lap_list: Vec<_> = Self::get_lap_list(filename)?
+            .into_iter()
             .enumerate()
             .map(|(i, lap)| {
                 let mut new_lap = lap;
@@ -189,6 +179,22 @@ impl GarminParseTrait for GarminParseTxt {
 }
 
 impl GarminParseTxt {
+    fn get_lap_list(filename: &str) -> Result<Vec<GarminLap>, Error> {
+        let file = File::open(filename)?;
+        let mut reader = BufReader::new(file);
+        let mut line = String::new();
+        let mut lap_list = Vec::new();
+        loop {
+            if reader.read_line(&mut line)? == 0 {
+                break;
+            }
+            if let Ok(pl) = Self::parse_line(&line) {
+                lap_list.push(pl);
+            }
+        }
+        Ok(lap_list)
+    }
+
     fn parse_line(line: &str) -> Result<GarminLap, Error> {
         let sport_type_map = get_sport_type_map();
 

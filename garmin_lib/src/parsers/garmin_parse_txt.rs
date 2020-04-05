@@ -185,6 +185,7 @@ impl GarminParseTxt {
         let mut line = String::new();
         let mut lap_list = Vec::new();
         loop {
+            line.clear();
             if reader.read_line(&mut line)? == 0 {
                 break;
             }

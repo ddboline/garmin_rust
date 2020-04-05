@@ -40,7 +40,7 @@ pub struct AppState {
 /// list_gps_tracks`, `/garmin/get_hr_data` and `/garmin/get_hr_pace` return
 /// structured json intended for separate analysis
 pub async fn start_app() {
-    async fn _update_db(pool: PgPool) {
+    async fn update_db(pool: PgPool) {
         let mut i = interval(time::Duration::from_secs(60));
         loop {
             i.tick().await;
@@ -54,7 +54,7 @@ pub async fn start_app() {
     let config = &CONFIG;
     let pool = PgPool::new(&config.pgurl);
 
-    actix_rt::spawn(_update_db(pool.clone()));
+    actix_rt::spawn(update_db(pool.clone()));
 
     HttpServer::new(move || {
         App::new()

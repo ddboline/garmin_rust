@@ -48,6 +48,7 @@ impl FitbitClient {
         let mut b = BufReader::new(f);
         let mut line = String::new();
         loop {
+            line.clear();
             if b.read_line(&mut line)? == 0 {
                 break;
             }

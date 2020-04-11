@@ -6,7 +6,7 @@ use garmin_lib::{
 #[test]
 fn test_garmin_file_test_display() {
     let garmin_summary = garmin_summary::GarminSummary {
-        filename: "test_file".to_string(),
+        filename: "test_file".into(),
         begin_datetime: convert_str_to_datetime("2011-05-07T15:43:07-04:00").unwrap(),
         sport: SportTypes::Running,
         total_calories: 15,
@@ -14,7 +14,7 @@ fn test_garmin_file_test_display() {
         total_duration: 16.0,
         total_hr_dur: 1234.0,
         total_hr_dis: 23456.0,
-        md5sum: "asjgpqowiqwe".to_string(),
+        md5sum: "asjgpqowiqwe".into(),
     };
     assert_eq!(
         format!("{}", garmin_summary),

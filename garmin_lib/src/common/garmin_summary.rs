@@ -14,10 +14,11 @@ use crate::{
     utils::{
         garmin_util::{generate_random_string, get_file_list, get_md5sum},
         iso_8601_datetime::{self, convert_datetime_to_str, sentinel_datetime},
+        stack_string::StackString,
     },
 };
 
-use crate::utils::sport_types::{self, SportTypes};
+use crate::utils::sport_types::SportTypes;
 
 pub const GARMIN_SUMMARY_AVRO_SCHEMA: &str = r#"
     {
@@ -40,22 +41,21 @@ pub const GARMIN_SUMMARY_AVRO_SCHEMA: &str = r#"
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GarminSummary {
-    pub filename: String,
+    pub filename: StackString,
     #[serde(with = "iso_8601_datetime")]
     pub begin_datetime: DateTime<Utc>,
-    #[serde(with = "sport_types")]
     pub sport: SportTypes,
     pub total_calories: i32,
     pub total_distance: f64,
     pub total_duration: f64,
     pub total_hr_dur: f64,
     pub total_hr_dis: f64,
-    pub md5sum: String,
+    pub md5sum: StackString,
 }
 
 #[derive(FromSqlRow)]
 pub struct GarminSummaryDB {
-    pub filename: String,
+    pub filename: StackString,
     pub begin_datetime: DateTime<Utc>,
     pub sport: SportTypes,
     pub total_calories: Option<i32>,
@@ -63,7 +63,7 @@ pub struct GarminSummaryDB {
     pub total_duration: Option<f64>,
     pub total_hr_dur: Option<f64>,
     pub total_hr_dis: Option<f64>,
-    pub md5sum: Option<String>,
+    pub md5sum: Option<StackString>,
 }
 
 impl From<GarminSummaryDB> for GarminSummary {
@@ -77,7 +77,7 @@ impl From<GarminSummaryDB> for GarminSummary {
             total_duration: item.total_duration.unwrap_or(0.0),
             total_hr_dur: item.total_hr_dur.unwrap_or(0.0),
             total_hr_dis: item.total_hr_dis.unwrap_or(0.0),
-            md5sum: item.md5sum.unwrap_or_else(|| "".to_string()),
+            md5sum: item.md5sum.unwrap_or_else(|| "".into()),
         }
     }
 }
@@ -85,7 +85,7 @@ impl From<GarminSummaryDB> for GarminSummary {
 impl GarminSummary {
     pub fn new(gfile: &GarminFile, md5sum: &str) -> Self {
         Self {
-            filename: gfile.filename.to_string(),
+            filename: gfile.filename.clone().into(),
             begin_datetime: gfile.begin_datetime,
             sport: gfile.sport,
             total_calories: gfile.total_calories,
@@ -93,7 +93,7 @@ impl GarminSummary {
             total_duration: gfile.total_duration,
             total_hr_dur: gfile.total_hr_dur,
             total_hr_dis: gfile.total_hr_dis,
-            md5sum: md5sum.to_string(),
+            md5sum: md5sum.into(),
         }
     }
 
@@ -399,13 +399,13 @@ impl GarminSummaryList {
 }
 
 pub async fn get_list_of_files_from_db(
-    constraints: &[String],
+    constraints: &str,
     pool: &PgPool,
 ) -> Result<Vec<String>, Error> {
     let constr = if constraints.is_empty() {
         "".to_string()
     } else {
-        format!("WHERE {}", constraints.join(" OR "))
+        format!("WHERE {}", constraints)
     };
 
     let query = format!("SELECT filename FROM garmin_summary {}", constr);

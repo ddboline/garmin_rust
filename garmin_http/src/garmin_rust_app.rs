@@ -52,7 +52,7 @@ pub async fn start_app() {
     TRIGGER_DB_UPDATE.set();
 
     let config = &CONFIG;
-    let pool = PgPool::new(&config.pgurl);
+    let pool = PgPool::new(config.pgurl.as_str());
 
     actix_rt::spawn(update_db(pool.clone()));
 

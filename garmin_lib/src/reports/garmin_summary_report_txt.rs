@@ -14,10 +14,10 @@ use crate::{
     },
 };
 
-pub async fn create_report_query(
+pub async fn create_report_query<T: AsRef<str>>(
     pool: &PgPool,
     options: &GarminReportOptions,
-    constraints: &[String],
+    constraints: &[T],
 ) -> Result<Vec<Vec<String>>, Error> {
     let sport_constr = match options.do_sport {
         Some(x) => format!("sport = '{}'", x.to_string()),
@@ -31,8 +31,10 @@ pub async fn create_report_query(
             format!("WHERE {}", sport_constr)
         }
     } else if sport_constr.is_empty() {
+        let constraints: Vec<_> = constraints.iter().map(AsRef::as_ref).collect();
         format!("WHERE {}", constraints.join(" OR "))
     } else {
+        let constraints: Vec<_> = constraints.iter().map(AsRef::as_ref).collect();
         format!("WHERE ({}) AND {}", constraints.join(" OR "), sport_constr)
     };
 

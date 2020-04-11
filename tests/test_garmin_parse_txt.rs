@@ -17,9 +17,9 @@ fn test_garmin_parse_txt() -> Result<(), Error> {
     let gfile = garmin_parse_txt::GarminParseTxt::new()
         .with_file("tests/data/test.txt", &corr_map)
         .unwrap();
-    assert_eq!(gfile.filename, "test.txt");
+    assert_eq!(gfile.filename.as_str(), "test.txt");
     assert_eq!(gfile.sport, SportTypes::Elliptical);
-    assert_eq!(gfile.filetype, "txt");
+    assert_eq!(gfile.filetype.as_str(), "txt");
     assert_eq!(
         convert_datetime_to_str(gfile.begin_datetime),
         "2013-01-16T13:30:00Z"

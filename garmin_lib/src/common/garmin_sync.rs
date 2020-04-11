@@ -9,7 +9,10 @@ use s3_ext::S3Ext;
 use std::{collections::HashMap, fs, path::Path, time::SystemTime};
 use sts_profile_auth::get_client_sts;
 
-use crate::utils::garmin_util::{exponential_retry, get_md5sum};
+use crate::utils::{
+    garmin_util::{exponential_retry, get_md5sum},
+    stack_string::StackString,
+};
 
 pub fn get_s3_client() -> S3Client {
     get_client_sts!(S3Client, Region::UsEast1).expect("Failed to obtain client")
@@ -21,8 +24,8 @@ pub struct GarminSync {
 
 #[derive(Debug, Clone)]
 pub struct KeyItem {
-    pub key: String,
-    pub etag: String,
+    pub key: StackString,
+    pub etag: StackString,
     pub timestamp: i64,
     pub size: u64,
 }
@@ -40,8 +43,8 @@ fn process_s3_item(mut item: S3Object) -> Option<KeyItem> {
                 DateTime::parse_from_rfc3339(last_mod)
                     .ok()
                     .map(|lm| KeyItem {
-                        key,
-                        etag: etag.trim_matches('"').to_string(),
+                        key: key.into(),
+                        etag: etag.trim_matches('"').into(),
                         timestamp: lm.timestamp(),
                         size: item.size.unwrap_or(0) as u64,
                     })
@@ -130,7 +133,7 @@ impl GarminSync {
                     if tmod != item.timestamp {
                         if check_md5sum {
                             if let Ok(md5) = get_md5sum(&file) {
-                                if item.etag != md5 {
+                                if item.etag.as_str() != md5 {
                                     debug!(
                                         "upload md5 {} {} {} {} {}",
                                         file_name, item.etag, md5, item.timestamp, tmod
@@ -173,13 +176,13 @@ impl GarminSync {
                 let res = || {
                     let mut do_download = false;
 
-                    if file_set.contains_key(&item.key) {
-                        let (tmod_, size_) = file_set[&item.key];
+                    if file_set.contains_key(item.key.as_str()) {
+                        let (tmod_, size_) = file_set[item.key.as_str()];
                         if item.timestamp > tmod_ {
                             if check_md5sum {
                                 let file_name = format!("{}/{}", local_dir, item.key);
                                 let md5_ = get_md5sum(&file_name)?;
-                                if md5_ != item.etag {
+                                if md5_ != item.etag.as_str() {
                                     debug!(
                                         "download md5 {} {} {} {} {} ",
                                         item.key, md5_, item.etag, item.timestamp, tmod_
@@ -219,7 +222,8 @@ impl GarminSync {
             .map(|(file_name, _)| file_name.clone())
             .collect();
         for (file_name, key) in downloaded {
-            self.download_file(&file_name, &s3_bucket, &key).await?;
+            self.download_file(&file_name, &s3_bucket, key.as_str())
+                .await?;
         }
         debug!("downloaded {:?}", downloaded_files);
 

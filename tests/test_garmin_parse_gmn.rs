@@ -18,9 +18,9 @@ fn test_garmin_parse_gmn() -> Result<(), Error> {
     let gfile = garmin_parse_gmn::GarminParseGmn::new()
         .with_file("tests/data/test.gmn", &corr_map)
         .unwrap();
-    assert_eq!(gfile.filename, "test.gmn");
+    assert_eq!(gfile.filename.as_str(), "test.gmn");
     assert_eq!(gfile.sport, SportTypes::Running);
-    assert_eq!(gfile.filetype, "gmn");
+    assert_eq!(gfile.filetype.as_str(), "gmn");
     assert_eq!(
         convert_datetime_to_str(gfile.begin_datetime),
         "2011-05-07T19:43:08Z"

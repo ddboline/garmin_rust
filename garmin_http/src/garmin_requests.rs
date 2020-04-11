@@ -21,14 +21,17 @@ use fitbit_lib::{
 
 use strava_lib::strava_client::{StravaAuthType, StravaClient};
 
-use garmin_lib::common::{
-    garmin_cli::{GarminCli, GarminRequest},
-    garmin_correction_lap::GarminCorrectionList,
-    garmin_summary::get_list_of_files_from_db,
-    pgpool::PgPool,
-    strava_sync::{
-        get_strava_id_maximum_begin_datetime, get_strava_ids, upsert_strava_id, StravaItem,
+use garmin_lib::{
+    common::{
+        garmin_cli::{GarminCli, GarminRequest},
+        garmin_correction_lap::GarminCorrectionList,
+        garmin_summary::get_list_of_files_from_db,
+        pgpool::PgPool,
+        strava_sync::{
+            get_strava_id_maximum_begin_datetime, get_strava_ids, upsert_strava_id, StravaItem,
+        },
     },
+    utils::stack_string::StackString,
 };
 
 use crate::{errors::ServiceError as Error, CONFIG};
@@ -70,7 +73,7 @@ impl HandleRequest<GarminHtmlRequest> for PgPool {
 
 impl GarminHtmlRequest {
     pub async fn get_list_of_files_from_db(&self, pool: &PgPool) -> Result<Vec<String>, Error> {
-        get_list_of_files_from_db(&self.request.constraints, &pool)
+        get_list_of_files_from_db(&self.request.constraints.join(" OR "), &pool)
             .await
             .map_err(Into::into)
     }
@@ -78,7 +81,7 @@ impl GarminHtmlRequest {
 
 #[derive(Default)]
 pub struct GarminListRequest {
-    pub constraints: Vec<String>,
+    pub constraints: Vec<StackString>,
 }
 
 impl Into<GarminListRequest> for GarminHtmlRequest {
@@ -91,7 +94,7 @@ impl Into<GarminListRequest> for GarminHtmlRequest {
 
 impl GarminListRequest {
     pub async fn get_list_of_files_from_db(&self, pool: &PgPool) -> Result<Vec<String>, Error> {
-        get_list_of_files_from_db(&self.constraints, &pool)
+        get_list_of_files_from_db(&self.constraints.join(" OR "), &pool)
             .await
             .map_err(Into::into)
     }
@@ -107,12 +110,12 @@ impl HandleRequest<GarminListRequest> for PgPool {
 
 #[derive(Serialize, Deserialize)]
 pub struct GarminUploadRequest {
-    pub filename: String,
+    pub filename: StackString,
 }
 
 #[async_trait]
 impl HandleRequest<GarminUploadRequest> for PgPool {
-    type Result = Result<Vec<String>, Error>;
+    type Result = Result<Vec<StackString>, Error>;
     async fn handle(&self, req: GarminUploadRequest) -> Self::Result {
         let gcli = GarminCli::from_pool(&self)?;
         let filenames = vec![req.filename];
@@ -195,7 +198,7 @@ impl HandleRequest<FitbitAuthRequest> for PgPool {
 
 #[derive(Deserialize)]
 pub struct FitbitCallbackRequest {
-    code: String,
+    code: StackString,
 }
 
 #[async_trait]
@@ -205,7 +208,7 @@ impl HandleRequest<FitbitCallbackRequest> for PgPool {
         let config = CONFIG.clone();
         spawn_blocking(move || {
             let mut client = FitbitClient::from_file(config)?;
-            let url = client.get_fitbit_access_token(&msg.code)?;
+            let url = client.get_fitbit_access_token(msg.code.as_str())?;
             client.to_file()?;
             Ok(url)
         })
@@ -501,7 +504,7 @@ impl HandleRequest<ScaleMeasurementUpdateRequest> for PgPool {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StravaAuthRequest {
-    pub auth_type: Option<String>,
+    pub auth_type: Option<StackString>,
 }
 
 #[async_trait]
@@ -524,8 +527,8 @@ impl HandleRequest<StravaAuthRequest> for PgPool {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StravaCallbackRequest {
-    pub code: String,
-    pub state: String,
+    pub code: StackString,
+    pub state: StackString,
 }
 
 #[async_trait]
@@ -535,7 +538,7 @@ impl HandleRequest<StravaCallbackRequest> for PgPool {
         let config = CONFIG.clone();
         spawn_blocking(move || {
             let mut client = StravaClient::from_file(config, None)?;
-            client.process_callback(&msg.code, &msg.state)?;
+            client.process_callback(msg.code.as_str(), msg.state.as_str())?;
             client.to_file()?;
             let body = r#"
             <title>Strava auth code received!</title>
@@ -555,7 +558,7 @@ pub struct StravaActivitiesRequest {
 
 #[async_trait]
 impl HandleRequest<StravaActivitiesRequest> for PgPool {
-    type Result = Result<HashMap<String, StravaItem>, Error>;
+    type Result = Result<HashMap<StackString, StravaItem>, Error>;
     async fn handle(&self, msg: StravaActivitiesRequest) -> Self::Result {
         let config = CONFIG.clone();
         spawn_blocking(move || {
@@ -578,7 +581,7 @@ pub struct StravaActivitiesDBRequest(pub StravaActivitiesRequest);
 
 #[async_trait]
 impl HandleRequest<StravaActivitiesDBRequest> for PgPool {
-    type Result = Result<HashMap<String, StravaItem>, Error>;
+    type Result = Result<HashMap<StackString, StravaItem>, Error>;
     async fn handle(&self, msg: StravaActivitiesDBRequest) -> Self::Result {
         let start_date = msg
             .0
@@ -595,7 +598,7 @@ impl HandleRequest<StravaActivitiesDBRequest> for PgPool {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StravaActiviesDBUpdateRequest {
-    pub updates: HashMap<String, StravaItem>,
+    pub updates: HashMap<StackString, StravaItem>,
 }
 
 #[async_trait]
@@ -610,10 +613,10 @@ impl HandleRequest<StravaActiviesDBUpdateRequest> for PgPool {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StravaUploadRequest {
-    pub filename: String,
-    pub title: String,
-    pub activity_type: String,
-    pub description: Option<String>,
+    pub filename: StackString,
+    pub title: StackString,
+    pub activity_type: StackString,
+    pub description: Option<StackString>,
     pub is_private: Option<bool>,
 }
 
@@ -621,10 +624,10 @@ pub struct StravaUploadRequest {
 impl HandleRequest<StravaUploadRequest> for PgPool {
     type Result = Result<String, Error>;
     async fn handle(&self, msg: StravaUploadRequest) -> Self::Result {
-        if !Path::new(&msg.filename).exists() {
+        if !Path::new(msg.filename.as_str()).exists() {
             return Ok(format!("File {} does not exist", msg.filename));
         }
-        let sport = msg.activity_type.parse()?;
+        let sport = msg.activity_type.as_str().parse()?;
 
         let config = CONFIG.clone();
 
@@ -632,9 +635,9 @@ impl HandleRequest<StravaUploadRequest> for PgPool {
             let client = StravaClient::from_file(config, Some(StravaAuthType::Write))?;
             client
                 .upload_strava_activity(
-                    &Path::new(&msg.filename),
-                    &msg.title,
-                    msg.description.as_ref().map_or("", String::as_str),
+                    &Path::new(msg.filename.as_str()),
+                    msg.title.as_str(),
+                    msg.description.as_ref().map_or("", StackString::as_str),
                     msg.is_private.unwrap_or(false),
                     sport,
                 )
@@ -647,10 +650,10 @@ impl HandleRequest<StravaUploadRequest> for PgPool {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StravaUpdateRequest {
-    pub activity_id: String,
-    pub title: String,
-    pub activity_type: String,
-    pub description: Option<String>,
+    pub activity_id: StackString,
+    pub title: StackString,
+    pub activity_type: StackString,
+    pub description: Option<StackString>,
     pub is_private: Option<bool>,
 }
 
@@ -658,7 +661,7 @@ pub struct StravaUpdateRequest {
 impl HandleRequest<StravaUpdateRequest> for PgPool {
     type Result = Result<String, Error>;
     async fn handle(&self, msg: StravaUpdateRequest) -> Self::Result {
-        let sport = msg.activity_type.parse()?;
+        let sport = msg.activity_type.as_str().parse()?;
 
         let config = CONFIG.clone();
 
@@ -666,9 +669,9 @@ impl HandleRequest<StravaUpdateRequest> for PgPool {
             let client = StravaClient::from_file(config, Some(StravaAuthType::Write))?;
             client
                 .update_strava_activity(
-                    &msg.activity_id,
-                    &msg.title,
-                    msg.description.as_deref(),
+                    msg.activity_id.as_str(),
+                    msg.title.as_str(),
+                    msg.description.as_ref().map(|d| d.as_str()),
                     msg.is_private,
                     sport,
                 )

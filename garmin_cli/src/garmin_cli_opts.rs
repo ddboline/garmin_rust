@@ -5,9 +5,12 @@ use structopt::StructOpt;
 use tokio::task::spawn_blocking;
 
 use fitbit_lib::fitbit_client::FitbitClient;
-use garmin_lib::common::{
-    garmin_cli::{GarminCli, GarminCliOptions},
-    garmin_config::GarminConfig,
+use garmin_lib::{
+    common::{
+        garmin_cli::{GarminCli, GarminCliOptions},
+        garmin_config::GarminConfig,
+    },
+    utils::stack_string::StackString,
 };
 
 #[derive(StructOpt)]
@@ -15,11 +18,11 @@ pub enum GarminCliOpts {
     Bootstrap,
     Proc {
         #[structopt(short, long)]
-        filename: Vec<String>,
+        filename: Vec<StackString>,
     },
     Report {
         #[structopt(short, long)]
-        patterns: Vec<String>,
+        patterns: Vec<StackString>,
     },
     Connect,
     Sync {

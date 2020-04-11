@@ -40,14 +40,14 @@ impl SheetsClient {
         config: &GarminConfig,
         session_name: &str,
     ) -> Result<GAuthenticator, Error> {
-        let secret_file = File::open(&config.google_secret_file)?;
+        let secret_file = File::open(config.google_secret_file.as_str())?;
         let secret: ConsoleApplicationSecret = serde_json::from_reader(secret_file)?;
         let secret = secret
             .installed
             .ok_or_else(|| format_err!("ConsoleApplicationSecret.installed is None"))?;
         let token_file = format!("{}/{}.json", config.google_token_path, session_name);
 
-        let parent = Path::new(&config.google_token_path);
+        let parent = Path::new(config.google_token_path.as_str());
 
         if !parent.exists() {
             create_dir_all(parent)?;

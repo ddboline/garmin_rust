@@ -1,36 +1,38 @@
 use serde::Serialize;
 
+use crate::utils::stack_string::StackString;
+
 #[derive(Serialize, Default)]
 pub struct PlotOpts<'a> {
-    pub name: String,
-    pub title: String,
+    pub name: StackString,
+    pub title: StackString,
     pub data: Option<&'a [(f64, f64)]>,
     pub do_scatter: bool,
-    pub marker: Option<String>,
-    pub xlabel: String,
-    pub ylabel: String,
+    pub marker: Option<StackString>,
+    pub xlabel: StackString,
+    pub ylabel: StackString,
 }
 
 impl<'a> PlotOpts<'a> {
     pub fn new() -> PlotOpts<'a> {
         PlotOpts {
-            name: "".to_string(),
-            title: "".to_string(),
+            name: "".into(),
+            title: "".into(),
             data: None,
             do_scatter: false,
             marker: None,
-            xlabel: "".to_string(),
-            ylabel: "".to_string(),
+            xlabel: "".into(),
+            ylabel: "".into(),
         }
     }
 
     pub fn with_name(mut self, name: &str) -> PlotOpts<'a> {
-        self.name = name.to_string();
+        self.name = name.into();
         self
     }
 
     pub fn with_title(mut self, title: &str) -> PlotOpts<'a> {
-        self.title = title.to_string();
+        self.title = title.into();
         self
     }
 
@@ -45,13 +47,13 @@ impl<'a> PlotOpts<'a> {
     }
 
     pub fn with_marker(mut self, marker: &str) -> PlotOpts<'a> {
-        self.marker = Some(marker.to_string());
+        self.marker = Some(marker.into());
         self
     }
 
     pub fn with_labels(mut self, xlabel: &str, ylabel: &str) -> PlotOpts<'a> {
-        self.xlabel = xlabel.to_string();
-        self.ylabel = ylabel.to_string();
+        self.xlabel = xlabel.into();
+        self.ylabel = ylabel.into();
         self
     }
 }

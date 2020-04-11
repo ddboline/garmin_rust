@@ -37,7 +37,8 @@ impl GarminParseTrait for GarminParseTcx {
             .unwrap_or_else(|| panic!("filename {} has no path", filename))
             .to_os_string()
             .into_string()
-            .unwrap_or_else(|_| filename.to_string());
+            .unwrap_or_else(|_| filename.to_string())
+            .into();
         let tcx_output = self.parse_file(filename)?;
         let (lap_list, sport) =
             apply_lap_corrections(&tcx_output.lap_list, tcx_output.sport, corr_map);

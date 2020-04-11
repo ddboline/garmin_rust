@@ -22,7 +22,7 @@ use garmin_lib::{
         garmin_summary::get_list_of_files_from_db, pgpool::PgPool,
     },
     reports::garmin_templates::{PLOT_TEMPLATE, PLOT_TEMPLATE_DEMO, TIMESERIESTEMPLATE},
-    utils::iso_8601_datetime,
+    utils::{iso_8601_datetime, stack_string::StackString},
 };
 
 fn exception(py: Python, msg: &str) -> PyErr {
@@ -137,7 +137,7 @@ impl FitbitHeartRate {
             .par_iter()
             .filter_map(|date| {
                 let input_filename =
-                    Path::new(&config.fitbit_cachedir).join(format!("{}.avro", date));
+                    Path::new(config.fitbit_cachedir.as_str()).join(format!("{}.avro", date));
                 if input_filename.exists() {
                     Some(input_filename)
                 } else {
@@ -147,11 +147,12 @@ impl FitbitHeartRate {
             .collect();
         let futures = days.iter().map(|date| async move {
             let constraint = format!("date(begin_datetime at time zone 'utc') = '{}'", date);
-            let files: Vec<_> = get_list_of_files_from_db(&[constraint], pool)
+            let files: Vec<_> = get_list_of_files_from_db(&constraint, pool)
                 .await?
                 .into_par_iter()
                 .filter_map(|filename| {
-                    let avro_file = Path::new(&config.cache_dir).join(format!("{}.avro", filename));
+                    let avro_file =
+                        Path::new(config.cache_dir.as_str()).join(format!("{}.avro", filename));
                     if avro_file.exists() {
                         Some(avro_file)
                     } else {
@@ -167,7 +168,7 @@ impl FitbitHeartRate {
         let results: Result<Vec<_>, Error> = fitbit_files
             .into_par_iter()
             .map(|input_path| {
-                let input_filename = input_path.to_string_lossy();
+                let input_filename = input_path.to_string_lossy().to_string();
                 let values: Vec<_> = Self::read_avro(&input_filename)?
                     .into_par_iter()
                     .map(|h| (h.datetime, h.value))
@@ -180,7 +181,8 @@ impl FitbitHeartRate {
         let results: Result<Vec<_>, Error> = garmin_files
             .into_par_iter()
             .map(|avro_file| {
-                let avro_file = avro_file.to_string_lossy();
+                let avro_file = avro_file.to_string_lossy().to_string();
+                println!("avro_file {}", avro_file);
                 let points: Vec<_> = GarminFile::read_avro(&avro_file)?
                     .points
                     .into_par_iter()
@@ -308,7 +310,8 @@ impl FitbitHeartRate {
                 .chain(new_values)
                 .collect();
             merged_values.par_sort_by_key(|entry| entry.datetime.timestamp());
-            let input_filename = Path::new(&config.fitbit_cachedir).join(format!("{}.avro", date));
+            let input_filename =
+                Path::new(config.fitbit_cachedir.as_str()).join(format!("{}.avro", date));
             Self::dump_to_avro(&merged_values, &input_filename.to_string_lossy())?;
         }
         Ok(())
@@ -328,7 +331,7 @@ pub fn process_fitbit_json_file(fname: &Path) -> Result<Vec<FitbitHeartRate>, Er
 #[derive(StructOpt, Debug, Clone)]
 pub struct JsonImportOpts {
     #[structopt(short = "d", long = "directory")]
-    pub directory: String,
+    pub directory: StackString,
 }
 
 pub fn import_fitbit_json_files(directory: &str) -> Result<(), Error> {
@@ -413,7 +416,7 @@ mod tests {
     #[ignore]
     async fn test_get_heartrate_plot() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
-        let pool = PgPool::new(&config.pgurl);
+        let pool = PgPool::new(config.pgurl.as_str());
         let start_date = NaiveDate::from_ymd(2019, 8, 1);
         let end_date = NaiveDate::from_ymd(2019, 8, 2);
         let results =

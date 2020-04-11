@@ -8,7 +8,7 @@ use tokio::task::spawn_blocking;
 
 use crate::utils::{
     iso_8601_datetime::{self, sentinel_datetime},
-    sport_types::{self, SportTypes},
+    sport_types::SportTypes,
 };
 
 use super::{
@@ -26,7 +26,6 @@ pub struct GarminFile {
     pub filetype: String,
     #[serde(with = "iso_8601_datetime")]
     pub begin_datetime: DateTime<Utc>,
-    #[serde(with = "sport_types")]
     pub sport: SportTypes,
     pub total_calories: i32,
     pub total_distance: f64,

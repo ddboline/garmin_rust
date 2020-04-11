@@ -90,17 +90,21 @@ fn generate_url_string(current_line: &str, options: &GarminReportOptions) -> Str
     cmd_options.join(",")
 }
 
-pub fn summary_report_html(
+pub fn summary_report_html<T, U>(
     domain: &str,
-    retval: &[String],
+    retval: &[T],
     options: &GarminReportOptions,
-    history: &[String],
+    history: &[U],
     is_demo: bool,
-) -> Result<String, Error> {
+) -> Result<String, Error>
+where
+    T: AsRef<str>,
+    U: AsRef<str>,
+{
     let htmlostr: Vec<_> = retval
         .iter()
         .map(|ent| {
-            let cmd = generate_url_string(&ent, &options);
+            let cmd = generate_url_string(ent.as_ref(), &options);
             format!(
                 "<tr><td>{}{}{}{}{}{}</td></tr>",
                 r#"<button type="submit" onclick="send_command('filter="#,
@@ -108,7 +112,7 @@ pub fn summary_report_html(
                 r#"');">"#,
                 cmd,
                 "</button></td><td>",
-                ent.trim()
+                ent.as_ref().trim()
             )
         })
         .collect();

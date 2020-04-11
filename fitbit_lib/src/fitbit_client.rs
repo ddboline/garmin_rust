@@ -9,7 +9,7 @@ use std::{
     io::{BufRead, BufReader, Write},
 };
 
-use garmin_lib::common::garmin_config::GarminConfig;
+use garmin_lib::{common::garmin_config::GarminConfig, utils::stack_string::StackString};
 
 use crate::{
     fitbit_heartrate::{FitbitBodyWeightFat, FitbitHeartRate},
@@ -19,9 +19,9 @@ use crate::{
 #[derive(Default, Debug, Clone)]
 pub struct FitbitClient {
     pub config: GarminConfig,
-    pub user_id: String,
-    pub access_token: String,
-    pub refresh_token: String,
+    pub user_id: StackString,
+    pub access_token: StackString,
+    pub refresh_token: StackString,
 }
 
 macro_rules! set_attr_from_dict {
@@ -29,7 +29,7 @@ macro_rules! set_attr_from_dict {
         $token
             .get_item($py, stringify!($item))
             .as_ref()
-            .map(|v| String::extract($py, v).map(|x| $s.$item = x))
+            .map(|v| String::extract($py, v).map(|x| $s.$item = x.into()))
             .transpose()
     };
 }
@@ -44,7 +44,7 @@ impl FitbitClient {
             config,
             ..Self::default()
         };
-        let f = File::open(&client.config.fitbit_tokenfile)?;
+        let f = File::open(client.config.fitbit_tokenfile.as_str())?;
         let mut b = BufReader::new(f);
         let mut line = String::new();
         loop {
@@ -68,7 +68,7 @@ impl FitbitClient {
     }
 
     pub fn to_file(&self) -> Result<(), Error> {
-        let mut f = File::create(&self.config.fitbit_tokenfile)?;
+        let mut f = File::create(self.config.fitbit_tokenfile.as_str())?;
         writeln!(f, "user_id={}", self.user_id)?;
         writeln!(f, "access_token={}", self.access_token)?;
         writeln!(f, "refresh_token={}", self.refresh_token)?;
@@ -83,8 +83,8 @@ impl FitbitClient {
             args.set_item(py, "redirect_uri", redirect_uri)?;
             args.set_item(py, "timeout", 10)?;
         } else {
-            args.set_item(py, "access_token", &self.access_token)?;
-            args.set_item(py, "refresh_token", &self.refresh_token)?;
+            args.set_item(py, "access_token", self.access_token.as_str())?;
+            args.set_item(py, "refresh_token", self.refresh_token.as_str())?;
         }
         fitbit.call(
             py,
@@ -92,9 +92,14 @@ impl FitbitClient {
             PyTuple::new(
                 py,
                 &[
-                    self.config.fitbit_clientid.to_py_object(py).into_object(),
+                    self.config
+                        .fitbit_clientid
+                        .as_str()
+                        .to_py_object(py)
+                        .into_object(),
                     self.config
                         .fitbit_clientsecret
+                        .as_str()
                         .to_py_object(py)
                         .into_object(),
                 ],

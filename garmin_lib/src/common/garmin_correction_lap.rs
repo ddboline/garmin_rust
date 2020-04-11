@@ -14,7 +14,7 @@ use crate::utils::{
     iso_8601_datetime::{convert_str_to_datetime, sentinel_datetime},
 };
 
-use crate::utils::sport_types::SportTypes;
+use crate::utils::{sport_types::SportTypes, stack_string::StackString};
 
 #[derive(Debug, Clone, Copy, PartialEq, FromSqlRow)]
 pub struct GarminCorrectionLap {
@@ -263,11 +263,13 @@ impl GarminCorrectionList {
         self.with_vec(corr_list)
     }
 
-    pub async fn get_filename_start_map(&self) -> Result<HashMap<String, (String, i32)>, Error> {
+    pub async fn get_filename_start_map(
+        &self,
+    ) -> Result<HashMap<StackString, (StackString, i32)>, Error> {
         #[derive(FromSqlRow)]
         struct FileNameUniqueKey {
-            filename: String,
-            unique_key: String,
+            filename: StackString,
+            unique_key: StackString,
         }
 
         let query = "
@@ -281,13 +283,16 @@ impl GarminCorrectionList {
             .par_iter()
             .map(|row| {
                 let val = FileNameUniqueKey::from_row(row)?;
-                let start_time: String = val
+                let start_time: StackString = val
                     .unique_key
+                    .as_str()
                     .split('_')
                     .next()
-                    .map_or_else(|| "".to_string(), ToString::to_string);
+                    .map_or_else(|| "".to_string(), ToString::to_string)
+                    .into();
                 let lap_number: i32 = val
                     .unique_key
+                    .as_str()
                     .split('_')
                     .last()
                     .map_or(0, |x| x.parse().unwrap_or(0));

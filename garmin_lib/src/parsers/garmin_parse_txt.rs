@@ -42,7 +42,8 @@ impl GarminParseTrait for GarminParseTxt {
             .unwrap_or_else(|| panic!("filename {} has no path", filename))
             .to_os_string()
             .into_string()
-            .unwrap_or_else(|_| filename.to_string());
+            .unwrap_or_else(|_| filename.to_string())
+            .into();
         let txt_output = self.parse_file(filename)?;
         let sport: SportTypes = txt_output
             .lap_list
@@ -50,7 +51,7 @@ impl GarminParseTrait for GarminParseTxt {
             .ok_or_else(|| format_err!("No laps"))?
             .lap_type
             .as_ref()
-            .and_then(|s| s.parse().ok())
+            .and_then(|s| s.as_str().parse().ok())
             .unwrap_or(SportTypes::None);
         let (lap_list, sport) = apply_lap_corrections(&txt_output.lap_list, sport, corr_map);
         let first_lap = lap_list.get(0).ok_or_else(|| format_err!("No laps"))?;
@@ -242,7 +243,7 @@ impl GarminParseTxt {
 
         let lap_type = match entry_dict.get("type") {
             Some(val) => match sport_type_map.get(val) {
-                Some(_) => Some(val.to_string()),
+                Some(_) => Some(val.into()),
                 None => None,
             },
             None => None,

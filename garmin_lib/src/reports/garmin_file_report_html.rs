@@ -24,7 +24,7 @@ use crate::{
     },
 };
 
-pub fn generate_history_buttons(history_vec: &[String]) -> String {
+pub fn generate_history_buttons<T: AsRef<str>>(history_vec: &[T]) -> String {
     let local: Date<Local> = Local::today();
     let year = local.year();
     let month = local.month();
@@ -38,26 +38,23 @@ pub fn generate_history_buttons(history_vec: &[String]) -> String {
         prev_year, prev_month, year, month
     );
     let mut used_buttons: HashSet<String> = HashSet::new();
+    let mut history_buttons = vec![default_string.clone()];
+    used_buttons.insert(default_string);
 
-    let history_buttons: Vec<_> = vec![default_string]
-        .iter()
-        .chain(history_vec.iter())
-        .filter_map(|most_recent| {
-            if used_buttons.contains(most_recent) {
-                None
-            } else {
-                used_buttons.insert(most_recent.clone());
-                Some(format!(
-                    "{}{}{}{}{}",
-                    r#"<button type="submit" onclick="send_command('filter="#,
-                    most_recent,
-                    r#"');"> "#,
-                    most_recent,
-                    " </button>"
-                ))
-            }
-        })
-        .collect();
+    for most_recent in history_vec.iter() {
+        let most_recent: &str = most_recent.as_ref();
+        if !used_buttons.contains(most_recent) {
+            used_buttons.insert(most_recent.to_string());
+            history_buttons.push(format!(
+                "{}{}{}{}{}",
+                r#"<button type="submit" onclick="send_command('filter="#,
+                most_recent,
+                r#"');"> "#,
+                most_recent,
+                " </button>"
+            ));
+        }
+    }
 
     history_buttons.join("\n")
 }
@@ -82,10 +79,10 @@ struct ReportObjects {
     heart_rate_speed: Vec<(f64, f64)>,
 }
 
-pub async fn file_report_html(
+pub async fn file_report_html<T: AsRef<str>>(
     config: &GarminConfig,
     gfile: &GarminFile,
-    history: &[String],
+    history: &[T],
     pool: &PgPool,
     is_demo: bool,
 ) -> Result<String, Error> {
@@ -329,16 +326,20 @@ fn get_graphs(plot_opts: &[PlotOpts]) -> Vec<String> {
 }
 
 #[allow(clippy::too_many_arguments)]
-async fn get_html_string(
+async fn get_html_string<T, U>(
     config: &GarminConfig,
     gfile: &GarminFile,
     report_objs: &ReportObjects,
-    graphs: &[String],
+    graphs: &[T],
     sport: SportTypes,
-    history: &[String],
+    history: &[U],
     pool: &PgPool,
     is_demo: bool,
-) -> Result<String, Error> {
+) -> Result<String, Error>
+where
+    T: AsRef<str>,
+    U: AsRef<str>,
+{
     let strava_id_title = get_strava_id_from_begin_datetime(pool, gfile.begin_datetime).await?;
 
     let htmlvec = if !report_objs.lat_vals.is_empty()
@@ -357,7 +358,7 @@ async fn get_html_string(
         )?
     } else {
         get_garmin_template_vec(
-            &config.domain,
+            config.domain.as_str(),
             gfile,
             sport,
             &strava_id_title,
@@ -369,12 +370,12 @@ async fn get_html_string(
     Ok(htmlvec.join("\n"))
 }
 
-fn get_garmin_template_vec(
+fn get_garmin_template_vec<T: AsRef<str>>(
     domain: &str,
     gfile: &GarminFile,
     sport: SportTypes,
     strava_id_title: &Option<(String, String)>,
-    history: &[String],
+    history: &[T],
     is_demo: bool,
 ) -> Result<Vec<String>, Error> {
     let mut htmlvec = Vec::new();
@@ -434,16 +435,20 @@ fn get_garmin_template_vec(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn get_map_tempate_vec(
+fn get_map_tempate_vec<T, U>(
     report_objs: &ReportObjects,
     gfile: &GarminFile,
     sport: SportTypes,
     strava_id_title: &Option<(String, String)>,
-    history: &[String],
-    graphs: &[String],
+    history: &[T],
+    graphs: &[U],
     config: &GarminConfig,
     is_demo: bool,
-) -> Result<Vec<String>, Error> {
+) -> Result<Vec<String>, Error>
+where
+    T: AsRef<str>,
+    U: AsRef<str>,
+{
     let minlat = report_objs
         .lat_vals
         .iter()
@@ -581,9 +586,12 @@ fn get_map_tempate_vec(
                     .to_string(),
             );
         } else if line.contains("INSERTOTHERIMAGESHERE") {
-            htmlvec.extend_from_slice(graphs)
+            htmlvec.extend(graphs.iter().map(|s| s.as_ref().to_string()));
         } else if line.contains("MAPSAPIKEY") {
-            htmlvec.push(line.replace("MAPSAPIKEY", &config.maps_api_key).to_string());
+            htmlvec.push(
+                line.replace("MAPSAPIKEY", config.maps_api_key.as_str())
+                    .to_string(),
+            );
         } else if line.contains("HISTORYBUTTONS") {
             let history_button = generate_history_buttons(history);
             htmlvec.push(line.replace("HISTORYBUTTONS", &history_button).to_string());
@@ -595,7 +603,7 @@ fn get_map_tempate_vec(
                     .replace("ACTIVITYTYPE", &activity_type),
             );
         } else if line.contains("DOMAIN") {
-            htmlvec.push(line.replace("DOMAIN", &config.domain));
+            htmlvec.push(line.replace("DOMAIN", config.domain.as_str()));
         } else {
             htmlvec.push(line.to_string());
         };

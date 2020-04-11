@@ -17,7 +17,8 @@ use tempfile::Builder;
 use garmin_lib::{
     common::{garmin_config::GarminConfig, strava_sync::StravaItem},
     utils::{
-        garmin_util::gzip_file, iso_8601_datetime::convert_str_to_datetime, sport_types::SportTypes,
+        garmin_util::gzip_file, iso_8601_datetime::convert_str_to_datetime,
+        sport_types::SportTypes, stack_string::StackString,
     },
 };
 
@@ -37,7 +38,7 @@ impl<'a> FromPyObject<'a> for LocalStravaItem {
         let item = StravaItem {
             begin_datetime: convert_str_to_datetime(&start_date.replace("+00:00", "Z"))
                 .map_err(|e| exception(py, &e.to_string()))?,
-            title,
+            title: title.into(),
         };
         Ok(Self(item))
     }
@@ -59,10 +60,10 @@ impl Default for StravaAuthType {
 pub struct StravaClient {
     pub config: GarminConfig,
     pub auth_type: Option<StravaAuthType>,
-    pub client_id: String,
-    pub client_secret: String,
-    pub read_access_token: Option<String>,
-    pub write_access_token: Option<String>,
+    pub client_id: StackString,
+    pub client_secret: StackString,
+    pub read_access_token: Option<StackString>,
+    pub write_access_token: Option<StackString>,
 }
 
 impl StravaClient {
@@ -79,7 +80,7 @@ impl StravaClient {
             auth_type,
             ..Self::default()
         };
-        let f = File::open(&client.config.strava_tokenfile)?;
+        let f = File::open(client.config.strava_tokenfile.as_str())?;
         let mut b = BufReader::new(f);
         let mut line = String::new();
         loop {
@@ -91,14 +92,10 @@ impl StravaClient {
             if let Some(key) = items.next() {
                 if let Some(val) = items.next() {
                     match key.trim() {
-                        "client_id" => client.client_id = val.trim().to_string(),
-                        "client_secret" => client.client_secret = val.trim().to_string(),
-                        "read_access_token" => {
-                            client.read_access_token = Some(val.trim().to_string())
-                        }
-                        "write_access_token" => {
-                            client.write_access_token = Some(val.trim().to_string())
-                        }
+                        "client_id" => client.client_id = val.trim().into(),
+                        "client_secret" => client.client_secret = val.trim().into(),
+                        "read_access_token" => client.read_access_token = Some(val.trim().into()),
+                        "write_access_token" => client.write_access_token = Some(val.trim().into()),
                         _ => {}
                     }
                 }
@@ -108,7 +105,7 @@ impl StravaClient {
     }
 
     pub fn to_file(&self) -> Result<(), Error> {
-        let mut f = File::create(&self.config.strava_tokenfile)?;
+        let mut f = File::create(self.config.strava_tokenfile.as_str())?;
         writeln!(f, "[API]")?;
         writeln!(f, "client_id = {}", self.client_id)?;
         writeln!(f, "client_secret = {}", self.client_secret)?;
@@ -131,7 +128,7 @@ impl StravaClient {
             py,
             "Client",
             match access_token {
-                Some(ac) => PyTuple::new(py, &[ac.to_py_object(py).into_object()]),
+                Some(ac) => PyTuple::new(py, &[ac.as_str().to_py_object(py).into_object()]),
                 None => PyTuple::empty(py),
             },
             None,
@@ -145,7 +142,7 @@ impl StravaClient {
         };
         let client = self.get_strava_client(py)?;
         let args = PyDict::new(py);
-        args.set_item(py, "client_id", &self.client_id)?;
+        args.set_item(py, "client_id", self.client_id.as_str())?;
         args.set_item(
             py,
             "redirect_uri",
@@ -183,8 +180,8 @@ impl StravaClient {
     fn _exchange_code_for_token(&self, py: Python, code: &str) -> PyResult<Option<String>> {
         let client = self.get_strava_client(py)?;
         let args = PyDict::new(py);
-        args.set_item(py, "client_id", &self.client_id)?;
-        args.set_item(py, "client_secret", &self.client_secret)?;
+        args.set_item(py, "client_id", self.client_id.as_str())?;
+        args.set_item(py, "client_secret", self.client_secret.as_str())?;
         args.set_item(py, "code", code)?;
         let result = client.call_method(
             py,
@@ -207,7 +204,8 @@ impl StravaClient {
         let code = self
             ._exchange_code_for_token(py, code)
             .map_err(|e| format_err!("{:?}", e))
-            .and_then(|o| o.ok_or_else(|| format_err!("No code received")))?;
+            .and_then(|o| o.ok_or_else(|| format_err!("No code received")))?
+            .into();
         self.auth_type = match state {
             "YWN0aXZpdHk6cmVhZF9hbGw=" => {
                 self.read_access_token = Some(code);
@@ -227,7 +225,7 @@ impl StravaClient {
         py: Python,
         start_date: Option<DateTime<Utc>>,
         end_date: Option<DateTime<Utc>>,
-    ) -> PyResult<HashMap<String, StravaItem>> {
+    ) -> PyResult<HashMap<StackString, StravaItem>> {
         let client = self.get_strava_client(py)?;
         let args = PyDict::new(py);
         if let Some(start_date) = start_date {
@@ -253,7 +251,7 @@ impl StravaClient {
         for activity in activities {
             let activity = activity?;
             let id = activity.getattr(py, "id")?;
-            let id = i64::extract(py, &id)?.to_string();
+            let id = i64::extract(py, &id)?.to_string().into();
             let item = LocalStravaItem::extract(py, &activity)?;
             results.insert(id, item.0);
         }
@@ -264,7 +262,7 @@ impl StravaClient {
         &self,
         start_date: Option<DateTime<Utc>>,
         end_date: Option<DateTime<Utc>>,
-    ) -> Result<HashMap<String, StravaItem>, Error> {
+    ) -> Result<HashMap<StackString, StravaItem>, Error> {
         let gil = Python::acquire_gil();
         let py = gil.python();
 

@@ -32,6 +32,7 @@ use crate::{
     utils::{
         garmin_util::{extract_zip_from_garmin_connect, get_file_list},
         sport_types::get_sport_type_map,
+        stack_string::StackString,
         stdout_channel::StdoutChannel,
     },
 };
@@ -58,8 +59,8 @@ pub enum GarminCliOptions {
     Sync(bool),
     All,
     Bootstrap,
-    FileNames(Vec<String>),
-    ImportFileNames(Vec<String>),
+    FileNames(Vec<StackString>),
+    ImportFileNames(Vec<StackString>),
     Connect,
 }
 
@@ -90,7 +91,7 @@ impl GarminCli {
 
     pub fn with_config() -> Result<Self, Error> {
         let config = GarminConfig::get_config(None)?;
-        let pool = PgPool::new(&config.pgurl);
+        let pool = PgPool::new(config.pgurl.as_str());
         let corr = GarminCorrectionList::new(&pool);
         let obj = Self {
             config,
@@ -149,7 +150,7 @@ impl GarminCli {
             Some(GarminCliOptions::Sync(check_md5)) => self.sync_everything(*check_md5).await,
             _ => self.proc_everything().await,
         }?;
-        self.stdout.send(results.join("\n"))?;
+        self.stdout.send(results.join("\n").into())?;
         Ok(())
     }
 
@@ -164,7 +165,7 @@ impl GarminCli {
         } else {
             let gsum_list_ = Arc::clone(&gsum_list);
             let summary_cache = self.get_config().summary_cache.clone();
-            spawn_blocking(move || gsum_list_.write_summary_to_avro_files(&summary_cache))
+            spawn_blocking(move || gsum_list_.write_summary_to_avro_files(summary_cache.as_str()))
                 .await??;
             gsum_list
                 .write_summary_to_postgres()
@@ -184,10 +185,10 @@ impl GarminCli {
                 let proc_list: Result<Vec<_>, Error> = flist
                     .par_iter()
                     .map(|f| {
-                        self.stdout.send(format!("Process {}", &f))?;
+                        self.stdout.send(format!("Process {}", &f).into())?;
                         Ok(GarminSummary::process_single_gps_file(
-                            &f,
-                            &self.get_config().cache_dir,
+                            f.as_str(),
+                            self.get_config().cache_dir.as_str(),
                             &corr_map,
                         )?)
                     })
@@ -196,12 +197,12 @@ impl GarminCli {
             }
             Some(GarminCliOptions::All) => GarminSummaryList::process_all_gps_files(
                 &pg_conn,
-                &self.get_config().gps_dir,
-                &self.get_config().cache_dir,
+                self.get_config().gps_dir.as_str(),
+                self.get_config().cache_dir.as_str(),
                 &corr_map,
             )?,
             _ => {
-                let path = Path::new(&self.get_config().cache_dir);
+                let path = Path::new(self.get_config().cache_dir.as_str());
                 let cacheset: HashSet<String> = get_file_list(&path)
                     .into_par_iter()
                     .filter_map(|f| {
@@ -213,12 +214,12 @@ impl GarminCli {
                     })
                     .collect();
 
-                let dbset: HashSet<String> = get_list_of_files_from_db(&[], &pg_conn)
+                let dbset: HashSet<String> = get_list_of_files_from_db("", &pg_conn)
                     .await?
                     .into_iter()
                     .collect();
 
-                let path = Path::new(&self.get_config().gps_dir);
+                let path = Path::new(self.get_config().gps_dir.as_str());
                 let proc_list: Result<Vec<_>, Error> = get_file_list(&path)
                     .into_par_iter()
                     .filter_map(|f| f.split('/').last().map(ToString::to_string))
@@ -235,7 +236,7 @@ impl GarminCli {
                     .map(|f| {
                         GarminSummary::process_single_gps_file(
                             &f,
-                            &self.get_config().cache_dir,
+                            self.get_config().cache_dir.as_str(),
                             &corr_map,
                         )
                     })
@@ -284,7 +285,7 @@ impl GarminCli {
             .into_iter()
             .map(|(title, local_dir, s3_bucket, check_md5)| {
                 debug!("{}", title);
-                gsync.sync_dir(title, local_dir, s3_bucket, check_md5)
+                gsync.sync_dir(title, local_dir.as_str(), s3_bucket.as_str(), check_md5)
             });
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
         results.map(|results| {
@@ -295,31 +296,37 @@ impl GarminCli {
         })
     }
 
-    fn match_patterns(config: &GarminConfig, pat: &str) -> Vec<String> {
-        let mut constraints = Vec::new();
+    fn match_patterns(config: &GarminConfig, pat: &str) -> Vec<StackString> {
+        let mut constraints: Vec<StackString> = Vec::new();
         if pat.contains('w') {
             let vals: Vec<_> = pat.split('w').collect();
             if vals.len() >= 2 {
                 if let Ok(year) = vals[0].parse::<i32>() {
                     if let Ok(week) = vals[1].parse::<i32>() {
-                        constraints.push(format!(
-                            "(EXTRACT(isoyear from begin_datetime at time zone 'localtime') = {} \
-                             AND
+                        constraints.push(
+                            format!(
+                                "(EXTRACT(isoyear from begin_datetime at time zone 'localtime') = \
+                                 {} AND
                             EXTRACT(week from begin_datetime at time zone 'localtime') = {})",
-                            year, week
-                        ));
+                                year, week
+                            )
+                            .into(),
+                        );
                     }
                 }
             }
         } else {
             let gps_file = format!("{}/{}", &config.gps_dir, pat);
             if Path::new(&gps_file).exists() {
-                constraints.push(format!("filename = '{}'", pat));
+                constraints.push(format!("filename = '{}'", pat).into());
             } else if DateTime::parse_from_rfc3339(&pat.replace("Z", "+00:00")).is_ok() {
-                constraints.push(format!(
-                    "replace({}, '%', 'T') = '{}'",
-                    "to_char(begin_datetime at time zone 'utc', 'YYYY-MM-DD%HH24:MI:SSZ')", pat
-                ));
+                constraints.push(
+                    format!(
+                        "replace({}, '%', 'T') = '{}'",
+                        "to_char(begin_datetime at time zone 'utc', 'YYYY-MM-DD%HH24:MI:SSZ')", pat
+                    )
+                    .into(),
+                );
             } else {
                 let mut datelike_str = Vec::new();
                 if YMD_REG.is_match(pat) {
@@ -342,35 +349,38 @@ impl GarminCli {
                     }
                 }
                 for dstr in datelike_str {
-                    constraints.push(format!(
-                        "replace({}, '%', 'T') like '{}%'",
-                        "to_char(begin_datetime at time zone 'localtime', 'YYYY-MM-DD%HH24:MI:SS')",
-                        dstr
-                    ));
+                    constraints.push(
+                        format!(
+                            "replace({}, '%', 'T') like '{}%'",
+                            "to_char(begin_datetime at time zone 'localtime', \
+                             'YYYY-MM-DD%HH24:MI:SS')",
+                            dstr
+                        )
+                        .into(),
+                    );
                 }
             }
         }
         constraints
     }
 
-    pub fn process_pattern(config: &GarminConfig, patterns: &[String]) -> GarminRequest {
+    pub fn process_pattern<T: AsRef<str>>(config: &GarminConfig, patterns: &[T]) -> GarminRequest {
         let mut options = GarminReportOptions::new();
 
         let sport_type_map = get_sport_type_map();
 
-        let mut constraints: Vec<String> = Vec::new();
+        let mut constraints: Vec<StackString> = Vec::new();
 
         for pattern in patterns {
-            match pattern.as_str() {
+            match pattern.as_ref() {
                 "year" => options.agg = Some(GarminReportAgg::Year),
                 "month" => options.agg = Some(GarminReportAgg::Month),
                 "week" => options.agg = Some(GarminReportAgg::Week),
                 "day" => options.agg = Some(GarminReportAgg::Day),
                 "file" => options.agg = Some(GarminReportAgg::File),
                 "sport" => options.do_sport = None,
-                "latest" => constraints.push(
-                    "begin_datetime=(select max(begin_datetime) from garmin_summary)".to_string(),
-                ),
+                "latest" => constraints
+                    .push("begin_datetime=(select max(begin_datetime) from garmin_summary)".into()),
                 pat => {
                     if let Some(x) = sport_type_map.get(pat) {
                         options.do_sport = Some(*x)
@@ -388,14 +398,15 @@ impl GarminCli {
         }
     }
 
-    pub async fn run_cli(
+    pub async fn run_cli<T: AsRef<str>>(
         &self,
         options: &GarminReportOptions,
-        constraints: &[String],
+        constraints: &[T],
     ) -> Result<(), Error> {
         let pg_conn = self.get_pool();
+        let constraints: Vec<_> = constraints.iter().map(|s| s.as_ref()).collect();
 
-        let file_list = get_list_of_files_from_db(constraints, &pg_conn).await?;
+        let file_list = get_list_of_files_from_db(&constraints.join(" OR "), &pg_conn).await?;
 
         match file_list.len() {
             0 => (),
@@ -422,7 +433,8 @@ impl GarminCli {
                     };
 
                 debug!("gfile {} {}", gfile.laps.len(), gfile.points.len());
-                self.stdout.send(generate_txt_report(&gfile)?.join("\n"))?;
+                self.stdout
+                    .send(generate_txt_report(&gfile)?.join("\n").into())?;
             }
             _ => {
                 debug!("{:?}", options);
@@ -432,7 +444,7 @@ impl GarminCli {
                     .map(|x| x.join(" "))
                     .collect();
 
-                self.stdout.send(txt_result.join("\n"))?;
+                self.stdout.send(txt_result.join("\n").into())?;
             }
         };
         Ok(())
@@ -441,7 +453,7 @@ impl GarminCli {
     pub async fn run_html(&self, req: &GarminRequest, is_demo: bool) -> Result<String, Error> {
         let pg_conn = self.get_pool();
 
-        let file_list = get_list_of_files_from_db(&req.constraints, &pg_conn).await?;
+        let file_list = get_list_of_files_from_db(&req.constraints.join(" OR "), &pg_conn).await?;
 
         match file_list.len() {
             0 => Ok("".to_string()),
@@ -483,7 +495,7 @@ impl GarminCli {
                         .collect();
 
                 summary_report_html(
-                    &self.get_config().domain,
+                    self.get_config().domain.as_str(),
                     &txt_result,
                     &req.options,
                     &req.history,
@@ -512,10 +524,10 @@ impl GarminCli {
         Err(format_err!("Bad filename {}", filename))
     }
 
-    pub async fn process_filenames(&self, filenames: &[String]) -> Result<(), Error> {
+    pub async fn process_filenames<T: AsRef<str>>(&self, filenames: &[T]) -> Result<(), Error> {
         let config = self.get_config().clone();
         let stdout = self.stdout.clone();
-        let filenames = filenames.to_vec();
+        let filenames: Vec<_> = filenames.iter().map(|s| s.as_ref().to_string()).collect();
         spawn_blocking(move || {
             let tempdir = TempDir::new("garmin_zip")?;
             let ziptmpdir = tempdir.path().to_string_lossy().to_string();
@@ -525,7 +537,7 @@ impl GarminCli {
                 .map(|filename| match filename.to_lowercase().split('.').last() {
                     Some("zip") => extract_zip_from_garmin_connect(filename, &ziptmpdir),
                     Some("fit") | Some("tcx") | Some("txt") => Ok(filename.to_string()),
-                    _ => Self::transform_file_name(&filename),
+                    _ => Self::transform_file_name(filename.as_ref()),
                 })
                 .collect();
 
@@ -548,7 +560,7 @@ impl GarminCli {
                         gfile.get_standardized_name(suffix)?
                     );
 
-                    stdout.send(format!("{} {}", filename, outfile))?;
+                    stdout.send(format!("{} {}", filename, outfile).into())?;
 
                     if Path::new(&outfile).exists() {
                         return Ok(());
@@ -576,8 +588,8 @@ impl GarminCli {
 
 #[derive(Debug, Default)]
 pub struct GarminRequest {
-    pub filter: String,
-    pub history: Vec<String>,
+    pub filter: StackString,
+    pub history: Vec<StackString>,
     pub options: GarminReportOptions,
-    pub constraints: Vec<String>,
+    pub constraints: Vec<StackString>,
 }

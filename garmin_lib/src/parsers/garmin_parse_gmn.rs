@@ -36,7 +36,8 @@ impl GarminParseTrait for GarminParseGmn {
             .unwrap_or_else(|| panic!("filename {} has no path", filename))
             .to_os_string()
             .into_string()
-            .unwrap_or_else(|_| filename.to_string());
+            .unwrap_or_else(|_| filename.to_string())
+            .into();
         let (lap_list, sport) =
             apply_lap_corrections(&gmn_output.lap_list, gmn_output.sport, corr_map);
         let first_lap = lap_list.get(0).ok_or_else(|| format_err!("No laps"))?;

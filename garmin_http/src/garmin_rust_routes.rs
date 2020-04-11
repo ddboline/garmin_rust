@@ -23,7 +23,7 @@ use garmin_lib::{
     reports::{
         garmin_file_report_html::generate_history_buttons, garmin_file_report_txt::get_splits,
     },
-    utils::iso_8601_datetime::convert_datetime_to_str,
+    utils::{iso_8601_datetime::convert_datetime_to_str, stack_string::StackString},
 };
 
 use super::{errors::ServiceError as Error, logged_user::LoggedUser};
@@ -45,24 +45,28 @@ use crate::{
 
 #[derive(Deserialize)]
 pub struct FilterRequest {
-    pub filter: Option<String>,
+    pub filter: Option<StackString>,
 }
 
-fn proc_pattern_wrapper(
+fn proc_pattern_wrapper<T: AsRef<str>>(
     request: FilterRequest,
-    history: &[String],
+    history: &[T],
     is_demo: bool,
 ) -> GarminHtmlRequest {
-    let filter = request.filter.unwrap_or_else(|| "sport".to_string());
+    let filter = request
+        .filter
+        .as_ref()
+        .map_or_else(|| "sport", StackString::as_str);
 
     let filter_vec: Vec<String> = filter.split(',').map(ToString::to_string).collect();
 
     let req = GarminCli::process_pattern(&CONFIG, &filter_vec);
+    let history: Vec<_> = history.iter().map(|s| s.as_ref().into()).collect();
 
     GarminHtmlRequest {
         request: GarminRequest {
-            filter,
-            history: history.to_vec(),
+            filter: filter.into(),
+            history,
             ..req
         },
         is_demo,
@@ -96,7 +100,7 @@ pub async fn garmin(
     if history.len() > 5 {
         history.remove(0);
     }
-    history.push(grec.request.filter.clone());
+    history.push(grec.request.filter.as_str().to_string());
     session
         .set("history", history)
         .map_err(|e| format_err!("Failed to set history {:?}", e))?;
@@ -120,7 +124,7 @@ pub async fn garmin_demo(
     if history.len() > 5 {
         history.remove(0);
     }
-    history.push(grec.request.filter.clone());
+    history.push(grec.request.filter.as_ref().to_string());
     session
         .set("history", history)
         .map_err(|e| format_err!("Failed to set history {:?}", e))?;
@@ -161,7 +165,9 @@ pub async fn garmin_upload(
 
     let flist = state
         .db
-        .handle(GarminUploadRequest { filename: fname })
+        .handle(GarminUploadRequest {
+            filename: fname.into(),
+        })
         .await?;
     to_json(flist)
 }
@@ -430,12 +436,12 @@ pub async fn scale_measurement_update(
 
 #[derive(Serialize)]
 pub struct GpsList {
-    pub gps_list: Vec<String>,
+    pub gps_list: Vec<StackString>,
 }
 
 #[derive(Serialize)]
 pub struct TimeValue {
-    pub time: String,
+    pub time: StackString,
     pub value: f64,
 }
 
@@ -452,7 +458,13 @@ pub async fn garmin_list_gps_tracks(
         .unwrap_or_else(Vec::new);
 
     let greq: GarminListRequest = proc_pattern_wrapper(query, &history, false).into();
-    let gps_list = state.db.handle(greq).await?;
+    let gps_list: Vec<_> = state
+        .db
+        .handle(greq)
+        .await?
+        .into_iter()
+        .map(Into::into)
+        .collect();
     let glist = GpsList { gps_list };
     to_json(glist)
 }
@@ -500,7 +512,7 @@ pub async fn garmin_get_hr_data(
             .iter()
             .filter_map(|point| match point.heart_rate {
                 Some(heart_rate) => Some(TimeValue {
-                    time: convert_datetime_to_str(point.time),
+                    time: convert_datetime_to_str(point.time).into(),
                     value: heart_rate,
                 }),
                 None => None,

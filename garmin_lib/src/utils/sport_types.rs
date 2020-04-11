@@ -1,15 +1,16 @@
 use anyhow::{format_err, Error};
 use bytes::BytesMut;
 use lazy_static::lazy_static;
-use serde::{self, Deserialize, Deserializer, Serializer};
-use std::{collections::HashMap, fmt, str::FromStr};
+use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, convert::TryFrom, fmt, str::FromStr};
 use tokio_postgres::types::{FromSql, IsNull, ToSql, Type};
 
 lazy_static! {
     static ref SPORT_TYPE_MAP: HashMap<String, SportTypes> = init_sport_typ_map();
 }
 
-#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(into = "String", try_from = "String")]
 pub enum SportTypes {
     Running,
     Biking,
@@ -53,6 +54,12 @@ impl fmt::Display for SportTypes {
     }
 }
 
+impl From<SportTypes> for String {
+    fn from(item: SportTypes) -> String {
+        item.to_string()
+    }
+}
+
 impl SportTypes {
     pub fn to_strava_activity(self) -> String {
         match self {
@@ -82,6 +89,20 @@ impl FromStr for SportTypes {
             Some(sport) => Ok(*sport),
             None => Err(format_err!("Invalid Sport Type {}", s)),
         }
+    }
+}
+
+impl TryFrom<&str> for SportTypes {
+    type Error = Error;
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        Self::from_str(s)
+    }
+}
+
+impl TryFrom<String> for SportTypes {
+    type Error = Error;
+    fn try_from(s: String) -> Result<Self, Self::Error> {
+        Self::from_str(&s)
     }
 }
 
@@ -123,22 +144,6 @@ pub fn convert_sport_name(sport: &str) -> Option<String> {
 
 pub fn convert_sport_name_to_activity_type(sport: &str) -> Option<String> {
     sport.parse().ok().map(SportTypes::to_strava_activity)
-}
-
-#[allow(clippy::trivially_copy_pass_by_ref)]
-pub fn serialize<S>(sport: &SportTypes, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    serializer.serialize_str(&sport.to_string())
-}
-
-pub fn deserialize<'de, D>(deserializer: D) -> Result<SportTypes, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let s = String::deserialize(deserializer)?;
-    s.parse().map_err(serde::de::Error::custom)
 }
 
 impl<'a> FromSql<'a> for SportTypes {

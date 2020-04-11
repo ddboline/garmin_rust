@@ -78,24 +78,25 @@ impl GarminLap {
                     "calories" => {
                         new_lap.lap_calories = d.text().and_then(|x| x.parse().ok()).unwrap_or(0)
                     }
-                    "intensity" => new_lap.lap_intensity = d.text().map(ToString::to_string),
+                    "intensity" => new_lap.lap_intensity = d.text().map(Into::into),
                     _ => (),
                 }
             }
         }
         for entry in entries.attributes() {
             match entry.name() {
-                "type" => new_lap.lap_type = Some(entry.value().to_string()),
+                "type" => new_lap.lap_type = Some(entry.value().into()),
                 "index" => new_lap.lap_index = entry.value().parse().unwrap_or(-1),
                 "start" => {
                     new_lap.lap_start = convert_xml_local_time_to_utc(entry.value())?;
-                    new_lap.lap_start_string = Some(convert_datetime_to_str(new_lap.lap_start));
+                    new_lap.lap_start_string =
+                        Some(convert_datetime_to_str(new_lap.lap_start).into());
                 }
                 "duration" => {
                     new_lap.lap_duration = convert_time_string(entry.value()).unwrap_or(0.0)
                 }
                 "distance" => new_lap.lap_distance = entry.value().parse().unwrap_or(0.0),
-                "trigger" => new_lap.lap_trigger = Some(entry.value().to_string()),
+                "trigger" => new_lap.lap_trigger = Some(entry.value().into()),
                 "avg_hr" => new_lap.lap_max_hr = entry.value().parse().ok(),
                 _ => (),
             }
@@ -115,11 +116,11 @@ impl GarminLap {
                         new_lap.lap_distance = d.text().and_then(|x| x.parse().ok()).unwrap_or(0.0)
                     }
                     "MaximumSpeed" => new_lap.lap_max_speed = d.text().and_then(|x| x.parse().ok()),
-                    "TriggerMethod" => new_lap.lap_trigger = d.text().map(ToString::to_string),
+                    "TriggerMethod" => new_lap.lap_trigger = d.text().map(Into::into),
                     "Calories" => {
                         new_lap.lap_calories = d.text().and_then(|x| x.parse().ok()).unwrap_or(0)
                     }
-                    "Intensity" => new_lap.lap_intensity = d.text().map(ToString::to_string),
+                    "Intensity" => new_lap.lap_intensity = d.text().map(Into::into),
                     "AverageHeartRateBpm" => {
                         for entry in d.descendants() {
                             if entry.node_type() == NodeType::Element
@@ -145,7 +146,7 @@ impl GarminLap {
         for entry in entries.attributes() {
             if entry.name() == "StartTime" {
                 new_lap.lap_start = convert_xml_local_time_to_utc(entry.value())?;
-                new_lap.lap_start_string = Some(convert_datetime_to_str(new_lap.lap_start));
+                new_lap.lap_start_string = Some(convert_datetime_to_str(new_lap.lap_start).into());
             }
         }
         Ok(new_lap)

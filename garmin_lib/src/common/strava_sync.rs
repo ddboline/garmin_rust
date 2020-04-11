@@ -6,13 +6,16 @@ use postgres_query::FromSqlRow;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, hash::BuildHasher};
 
-use crate::{common::pgpool::PgPool, utils::iso_8601_datetime};
+use crate::{
+    common::pgpool::PgPool,
+    utils::{iso_8601_datetime, stack_string::StackString},
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct StravaItem {
     #[serde(with = "iso_8601_datetime")]
     pub begin_datetime: DateTime<Utc>,
-    pub title: String,
+    pub title: StackString,
 }
 
 pub async fn get_strava_id_from_begin_datetime(
@@ -49,12 +52,12 @@ pub async fn get_strava_id_maximum_begin_datetime(
 
 #[derive(FromSqlRow)]
 struct StravaIdCache {
-    strava_id: String,
+    strava_id: StackString,
     begin_datetime: DateTime<Utc>,
-    strava_title: String,
+    strava_title: StackString,
 }
 
-pub async fn get_strava_id_map(pool: &PgPool) -> Result<HashMap<String, StravaItem>, Error> {
+pub async fn get_strava_id_map(pool: &PgPool) -> Result<HashMap<StackString, StravaItem>, Error> {
     let query = "SELECT strava_id, begin_datetime, strava_title FROM strava_id_cache";
     let conn = pool.get().await?;
     conn.query(query, &[])
@@ -77,7 +80,7 @@ pub async fn get_strava_ids(
     pool: &PgPool,
     start_date: Option<DateTime<Utc>>,
     end_date: Option<DateTime<Utc>>,
-) -> Result<HashMap<String, StravaItem>, Error> {
+) -> Result<HashMap<StackString, StravaItem>, Error> {
     let mut constraints = Vec::new();
     if let Some(start_date) = start_date {
         constraints.push(format!("begin_datetime >= '{}'", start_date.to_rfc3339()));
@@ -112,7 +115,7 @@ pub async fn get_strava_ids(
 }
 
 pub async fn upsert_strava_id<S: BuildHasher>(
-    new_items: &HashMap<String, StravaItem, S>,
+    new_items: &HashMap<StackString, StravaItem, S>,
     pool: &PgPool,
 ) -> Result<Vec<String>, Error> {
     let strava_id_map = get_strava_id_map(pool).await?;

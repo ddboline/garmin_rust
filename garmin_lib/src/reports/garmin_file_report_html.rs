@@ -25,6 +25,17 @@ use crate::{
 };
 
 pub fn generate_history_buttons<T: AsRef<str>>(history_vec: &[T]) -> String {
+    fn history_button_string(most_recent: &str) -> String {
+        format!(
+            "{}{}{}{}{}",
+            r#"<button type="submit" onclick="send_command('filter="#,
+            most_recent,
+            r#"');"> "#,
+            most_recent,
+            " </button>"
+        )
+    }
+
     let local: Date<Local> = Local::today();
     let year = local.year();
     let month = local.month();
@@ -38,21 +49,14 @@ pub fn generate_history_buttons<T: AsRef<str>>(history_vec: &[T]) -> String {
         prev_year, prev_month, year, month
     );
     let mut used_buttons: HashSet<String> = HashSet::new();
-    let mut history_buttons = vec![default_string.clone()];
+    let mut history_buttons = vec![history_button_string(default_string.as_str())];
     used_buttons.insert(default_string);
 
     for most_recent in history_vec.iter() {
         let most_recent: &str = most_recent.as_ref();
         if !used_buttons.contains(most_recent) {
             used_buttons.insert(most_recent.to_string());
-            history_buttons.push(format!(
-                "{}{}{}{}{}",
-                r#"<button type="submit" onclick="send_command('filter="#,
-                most_recent,
-                r#"');"> "#,
-                most_recent,
-                " </button>"
-            ));
+            history_buttons.push(history_button_string(most_recent));
         }
     }
 

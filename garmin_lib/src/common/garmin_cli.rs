@@ -404,7 +404,7 @@ impl GarminCli {
         constraints: &[T],
     ) -> Result<(), Error> {
         let pg_conn = self.get_pool();
-        let constraints: Vec<_> = constraints.iter().map(|s| s.as_ref()).collect();
+        let constraints: Vec<_> = constraints.iter().map(AsRef::as_ref).collect();
 
         let file_list = get_list_of_files_from_db(&constraints.join(" OR "), &pg_conn).await?;
 

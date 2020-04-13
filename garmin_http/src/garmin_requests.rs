@@ -671,7 +671,7 @@ impl HandleRequest<StravaUpdateRequest> for PgPool {
                 .update_strava_activity(
                     msg.activity_id.as_str(),
                     msg.title.as_str(),
-                    msg.description.as_ref().map(|d| d.as_str()),
+                    msg.description.as_ref().map(StackString::as_str),
                     msg.is_private,
                     sport,
                 )

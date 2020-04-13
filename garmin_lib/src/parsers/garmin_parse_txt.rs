@@ -42,8 +42,7 @@ impl GarminParseTrait for GarminParseTxt {
             .unwrap_or_else(|| panic!("filename {} has no path", filename))
             .to_os_string()
             .into_string()
-            .unwrap_or_else(|_| filename.to_string())
-            .into();
+            .unwrap_or_else(|_| filename.to_string());
         let txt_output = self.parse_file(filename)?;
         let sport: SportTypes = txt_output
             .lap_list

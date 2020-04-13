@@ -90,7 +90,7 @@ impl GarminLap {
                 "start" => {
                     new_lap.lap_start = convert_xml_local_time_to_utc(entry.value())?;
                     new_lap.lap_start_string =
-                        Some(convert_datetime_to_str(new_lap.lap_start).into());
+                        Some(convert_datetime_to_str(new_lap.lap_start));
                 }
                 "duration" => {
                     new_lap.lap_duration = convert_time_string(entry.value()).unwrap_or(0.0)
@@ -146,7 +146,7 @@ impl GarminLap {
         for entry in entries.attributes() {
             if entry.name() == "StartTime" {
                 new_lap.lap_start = convert_xml_local_time_to_utc(entry.value())?;
-                new_lap.lap_start_string = Some(convert_datetime_to_str(new_lap.lap_start).into());
+                new_lap.lap_start_string = Some(convert_datetime_to_str(new_lap.lap_start));
             }
         }
         Ok(new_lap)

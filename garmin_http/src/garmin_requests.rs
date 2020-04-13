@@ -198,7 +198,7 @@ impl HandleRequest<FitbitAuthRequest> for PgPool {
 
 #[derive(Deserialize)]
 pub struct FitbitCallbackRequest {
-    code: StackString,
+    code: String,
 }
 
 #[async_trait]
@@ -504,7 +504,7 @@ impl HandleRequest<ScaleMeasurementUpdateRequest> for PgPool {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StravaAuthRequest {
-    pub auth_type: Option<StackString>,
+    pub auth_type: Option<String>,
 }
 
 #[async_trait]
@@ -527,8 +527,8 @@ impl HandleRequest<StravaAuthRequest> for PgPool {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StravaCallbackRequest {
-    pub code: StackString,
-    pub state: StackString,
+    pub code: String,
+    pub state: String,
 }
 
 #[async_trait]
@@ -613,10 +613,10 @@ impl HandleRequest<StravaActiviesDBUpdateRequest> for PgPool {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StravaUploadRequest {
-    pub filename: StackString,
-    pub title: StackString,
-    pub activity_type: StackString,
-    pub description: Option<StackString>,
+    pub filename: String,
+    pub title: String,
+    pub activity_type: String,
+    pub description: Option<String>,
     pub is_private: Option<bool>,
 }
 
@@ -637,7 +637,7 @@ impl HandleRequest<StravaUploadRequest> for PgPool {
                 .upload_strava_activity(
                     &Path::new(msg.filename.as_str()),
                     msg.title.as_str(),
-                    msg.description.as_ref().map_or("", StackString::as_str),
+                    msg.description.as_ref().map_or("", String::as_str),
                     msg.is_private.unwrap_or(false),
                     sport,
                 )
@@ -650,10 +650,10 @@ impl HandleRequest<StravaUploadRequest> for PgPool {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StravaUpdateRequest {
-    pub activity_id: StackString,
-    pub title: StackString,
-    pub activity_type: StackString,
-    pub description: Option<StackString>,
+    pub activity_id: String,
+    pub title: String,
+    pub activity_type: String,
+    pub description: Option<String>,
     pub is_private: Option<bool>,
 }
 
@@ -671,7 +671,7 @@ impl HandleRequest<StravaUpdateRequest> for PgPool {
                 .update_strava_activity(
                     msg.activity_id.as_str(),
                     msg.title.as_str(),
-                    msg.description.as_ref().map(StackString::as_str),
+                    msg.description.as_ref().map(String::as_str),
                     msg.is_private,
                     sport,
                 )

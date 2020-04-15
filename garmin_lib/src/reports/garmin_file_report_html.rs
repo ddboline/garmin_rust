@@ -224,12 +224,10 @@ fn get_plot_opts<'a>(report_objs: &'a ReportObjects) -> Vec<PlotOpts<'a>> {
         plot_opts.push(
             PlotOpts::new()
                 .with_name("heart_rate")
-                .with_title(
-                    &format!(
-                        "Heart Rate {:2.2} avg {:2.2} max",
-                        report_objs.avg_hr, report_objs.max_hr
-                    ),
-                )
+                .with_title(&format!(
+                    "Heart Rate {:2.2} avg {:2.2} max",
+                    report_objs.avg_hr, report_objs.max_hr
+                ))
                 .with_data(&report_objs.hr_values)
                 .with_labels("mi", "bpm"),
         );
@@ -283,13 +281,10 @@ fn get_plot_opts<'a>(report_objs: &'a ReportObjects) -> Vec<PlotOpts<'a>> {
         plot_opts.push(
             PlotOpts::new()
                 .with_name("avg_speed_minpermi")
-                .with_title(
-                    &format!(
-                        "Avg Speed {}:{:02} min/mi",
-                        avg_speed_value_min, avg_speed_value_sec
-                    )
-                    ,
-                )
+                .with_title(&format!(
+                    "Avg Speed {}:{:02} min/mi",
+                    avg_speed_value_min, avg_speed_value_sec
+                ))
                 .with_data(&report_objs.heart_rate_speed)
                 .with_scatter()
                 .with_labels("mi", "min/mi"),
@@ -591,10 +586,7 @@ where
         } else if line.contains("INSERTOTHERIMAGESHERE") {
             htmlvec.extend(graphs.iter().map(|s| s.as_ref().to_string()));
         } else if line.contains("MAPSAPIKEY") {
-            htmlvec.push(
-                line.replace("MAPSAPIKEY", &config.maps_api_key)
-                    .to_string(),
-            );
+            htmlvec.push(line.replace("MAPSAPIKEY", &config.maps_api_key).to_string());
         } else if line.contains("HISTORYBUTTONS") {
             let history_button = generate_history_buttons(history);
             htmlvec.push(line.replace("HISTORYBUTTONS", &history_button).to_string());

@@ -92,19 +92,16 @@ impl GarminSync {
         let file_list: Result<Vec<_>, Error> = path
             .read_dir()?
             .filter_map(|dir_line| {
-                dir_line
-                    .ok()
-                    .map(|entry| entry.path())
-                    .map(|f| {
-                        let metadata = fs::metadata(&f)?;
-                        let modified = metadata
-                            .modified()?
-                            .duration_since(SystemTime::UNIX_EPOCH)?
-                            .as_secs() as i64;
-                        let size = metadata.len();
-                        let f: StackString = f.to_string_lossy().as_ref().into();
-                        Ok((f, modified, size))
-                    })
+                dir_line.ok().map(|entry| entry.path()).map(|f| {
+                    let metadata = fs::metadata(&f)?;
+                    let modified = metadata
+                        .modified()?
+                        .duration_since(SystemTime::UNIX_EPOCH)?
+                        .as_secs() as i64;
+                    let size = metadata.len();
+                    let f: StackString = f.to_string_lossy().as_ref().into();
+                    Ok((f, modified, size))
+                })
             })
             .collect();
         let file_list = file_list?;
@@ -223,8 +220,7 @@ impl GarminSync {
             .map(|(file_name, _)| file_name.clone())
             .collect();
         for (file_name, key) in downloaded {
-            self.download_file(&file_name, &s3_bucket, &key)
-                .await?;
+            self.download_file(&file_name, &s3_bucket, &key).await?;
         }
         debug!("downloaded {:?}", downloaded_files);
 

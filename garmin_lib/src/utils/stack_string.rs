@@ -2,13 +2,15 @@ use anyhow::Error;
 use bytes::BytesMut;
 use derive_more::{Display, From, Into};
 use inlinable_string::InlinableString;
-use serde::{Deserialize, Serialize};
-use std::{borrow::Borrow, str::FromStr, string::{FromUtf16Error, FromUtf8Error}};
-use tokio_postgres::types::{FromSql, IsNull, ToSql, Type};
-use std::ops::{Deref, DerefMut};
 pub use inlinable_string::StringExt;
-use std::borrow::Cow;
-
+use serde::{Deserialize, Serialize};
+use std::{
+    borrow::{Borrow, Cow},
+    ops::{Deref, DerefMut},
+    str::FromStr,
+    string::{FromUtf16Error, FromUtf8Error},
+};
+use tokio_postgres::types::{FromSql, IsNull, ToSql, Type};
 
 #[derive(
     Serialize,

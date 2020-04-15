@@ -1,7 +1,6 @@
 use std::env::var;
 
-use garmin_lib::common::garmin_config;
-use garmin_lib::utils::stack_string::StackString;
+use garmin_lib::{common::garmin_config, utils::stack_string::StackString};
 
 #[test]
 fn test_garmin_config_new() {

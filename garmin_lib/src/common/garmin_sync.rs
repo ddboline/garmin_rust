@@ -134,7 +134,7 @@ impl GarminSync {
                     if tmod != item.timestamp {
                         if check_md5sum {
                             if let Ok(md5) = get_md5sum(&file) {
-                                if &item.etag != &md5 {
+                                if item.etag != md5 {
                                     debug!(
                                         "upload md5 {} {} {} {} {}",
                                         file_name, item.etag, md5, item.timestamp, tmod

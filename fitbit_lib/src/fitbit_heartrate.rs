@@ -416,7 +416,7 @@ mod tests {
     #[ignore]
     async fn test_get_heartrate_plot() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
-        let pool = PgPool::new(config.pgurl.as_str());
+        let pool = PgPool::new(&config.pgurl);
         let start_date = NaiveDate::from_ymd(2019, 8, 1);
         let end_date = NaiveDate::from_ymd(2019, 8, 2);
         let results =

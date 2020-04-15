@@ -49,7 +49,7 @@ pub fn generate_history_buttons<T: AsRef<str>>(history_vec: &[T]) -> String {
         prev_year, prev_month, year, month
     );
     let mut used_buttons: HashSet<String> = HashSet::new();
-    let mut history_buttons = vec![history_button_string(default_string.as_str())];
+    let mut history_buttons = vec![history_button_string(&default_string)];
     used_buttons.insert(default_string);
 
     for most_recent in history_vec.iter() {
@@ -225,11 +225,10 @@ fn get_plot_opts<'a>(report_objs: &'a ReportObjects) -> Vec<PlotOpts<'a>> {
             PlotOpts::new()
                 .with_name("heart_rate")
                 .with_title(
-                    format!(
+                    &format!(
                         "Heart Rate {:2.2} avg {:2.2} max",
                         report_objs.avg_hr, report_objs.max_hr
-                    )
-                    .as_str(),
+                    ),
                 )
                 .with_data(&report_objs.hr_values)
                 .with_labels("mi", "bpm"),
@@ -285,11 +284,11 @@ fn get_plot_opts<'a>(report_objs: &'a ReportObjects) -> Vec<PlotOpts<'a>> {
             PlotOpts::new()
                 .with_name("avg_speed_minpermi")
                 .with_title(
-                    format!(
+                    &format!(
                         "Avg Speed {}:{:02} min/mi",
                         avg_speed_value_min, avg_speed_value_sec
                     )
-                    .as_str(),
+                    ,
                 )
                 .with_data(&report_objs.heart_rate_speed)
                 .with_scatter()
@@ -306,7 +305,7 @@ fn get_plot_opts<'a>(report_objs: &'a ReportObjects) -> Vec<PlotOpts<'a>> {
         plot_opts.push(
             PlotOpts::new()
                 .with_name("avg_speed_mph")
-                .with_title(format!("Avg Speed {:.2} mph", avg_mph_speed_value).as_str())
+                .with_title(&format!("Avg Speed {:.2} mph", avg_mph_speed_value))
                 .with_data(&report_objs.avg_mph_speed_values)
                 .with_scatter()
                 .with_labels("mi", "min/mi"),
@@ -362,7 +361,7 @@ where
         )?
     } else {
         get_garmin_template_vec(
-            config.domain.as_str(),
+            &config.domain,
             gfile,
             sport,
             &strava_id_title,
@@ -593,7 +592,7 @@ where
             htmlvec.extend(graphs.iter().map(|s| s.as_ref().to_string()));
         } else if line.contains("MAPSAPIKEY") {
             htmlvec.push(
-                line.replace("MAPSAPIKEY", config.maps_api_key.as_str())
+                line.replace("MAPSAPIKEY", &config.maps_api_key)
                     .to_string(),
             );
         } else if line.contains("HISTORYBUTTONS") {
@@ -607,7 +606,7 @@ where
                     .replace("ACTIVITYTYPE", &activity_type),
             );
         } else if line.contains("DOMAIN") {
-            htmlvec.push(line.replace("DOMAIN", config.domain.as_str()));
+            htmlvec.push(line.replace("DOMAIN", &config.domain));
         } else {
             htmlvec.push(line.to_string());
         };

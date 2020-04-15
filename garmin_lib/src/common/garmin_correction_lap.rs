@@ -285,14 +285,12 @@ impl GarminCorrectionList {
                 let val = FileNameUniqueKey::from_row(row)?;
                 let start_time: StackString = val
                     .unique_key
-                    .as_str()
                     .split('_')
                     .next()
                     .map_or_else(|| "".to_string(), ToString::to_string)
                     .into();
                 let lap_number: i32 = val
                     .unique_key
-                    .as_str()
                     .split('_')
                     .last()
                     .map_or(0, |x| x.parse().unwrap_or(0));

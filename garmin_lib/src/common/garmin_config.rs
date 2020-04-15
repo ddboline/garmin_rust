@@ -177,13 +177,13 @@ impl GarminConfig {
 
         let conf = GarminConfigInner::new().from_env();
 
-        if conf.pgurl.as_str() == "" {
+        if &conf.pgurl == "" {
             Err(format_err!("No PGURL specified"))
-        } else if conf.gps_bucket.as_str() == "" {
+        } else if &conf.gps_bucket == "" {
             Err(format_err!("No GPS_BUCKET specified"))
-        } else if conf.cache_bucket.as_str() == "" {
+        } else if &conf.cache_bucket == "" {
             Err(format_err!("No CACHE_BUCKET specified"))
-        } else if conf.summary_bucket.as_str() == "" {
+        } else if &conf.summary_bucket == "" {
             Err(format_err!("No SUMMARY_BUCKET specified"))
         } else {
             Ok(Self(Arc::new(conf)))

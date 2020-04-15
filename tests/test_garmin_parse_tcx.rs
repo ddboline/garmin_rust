@@ -19,9 +19,9 @@ fn test_garmin_parse_tcx() -> Result<(), Error> {
     let gfile = garmin_parse_tcx::GarminParseTcx::new(false)
         .with_file("tests/data/test.tcx", &corr_map)
         .unwrap();
-    assert_eq!(gfile.filename.as_str(), "test.tcx");
+    assert_eq!(gfile.filename, "test.tcx");
     assert_eq!(gfile.sport, SportTypes::Biking);
-    assert_eq!(gfile.filetype.as_str(), "tcx");
+    assert_eq!(gfile.filetype, "tcx");
     assert_eq!(
         convert_datetime_to_str(gfile.begin_datetime),
         "2012-11-05T11:52:21Z"
@@ -49,9 +49,9 @@ fn test_garmin_parse_fit() -> Result<(), Error> {
     let gfile = garmin_parse_tcx::GarminParseTcx::new(true)
         .with_file("tests/data/test.fit", &corr_map)
         .unwrap();
-    assert_eq!(gfile.filename.as_str(), "test.fit");
+    assert_eq!(gfile.filename, "test.fit");
     assert_eq!(gfile.sport, SportTypes::Running);
-    assert_eq!(gfile.filetype.as_str(), "tcx");
+    assert_eq!(gfile.filetype, "tcx");
     assert_eq!(
         convert_datetime_to_str(gfile.begin_datetime),
         "2014-01-12T16:00:05Z"

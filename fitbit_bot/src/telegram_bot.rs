@@ -112,7 +112,7 @@ async fn _telegram_worker(telegram_bot_token: &str, pool: &PgPool) -> Result<(),
                 debug!("{:?}", message);
                 if USERIDS.read().await.contains(&message.from.id) {
                     FAILURE_COUNT.check()?;
-                    if data.to_lowercase().as_str() == "check" {
+                    if &data.to_lowercase() == "check" {
                         if let Some(meas) = LAST_WEIGHT.load() {
                             api.spawn(message.text_reply(format!("latest measurement {}", meas)));
                         } else {

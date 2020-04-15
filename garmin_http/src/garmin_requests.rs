@@ -208,7 +208,7 @@ impl HandleRequest<FitbitCallbackRequest> for PgPool {
         let config = CONFIG.clone();
         spawn_blocking(move || {
             let mut client = FitbitClient::from_file(config)?;
-            let url = client.get_fitbit_access_token(msg.code.as_str())?;
+            let url = client.get_fitbit_access_token(&msg.code)?;
             client.to_file()?;
             Ok(url)
         })
@@ -538,7 +538,7 @@ impl HandleRequest<StravaCallbackRequest> for PgPool {
         let config = CONFIG.clone();
         spawn_blocking(move || {
             let mut client = StravaClient::from_file(config, None)?;
-            client.process_callback(msg.code.as_str(), msg.state.as_str())?;
+            client.process_callback(&msg.code, &msg.state)?;
             client.to_file()?;
             let body = r#"
             <title>Strava auth code received!</title>
@@ -627,7 +627,7 @@ impl HandleRequest<StravaUploadRequest> for PgPool {
         if !Path::new(msg.filename.as_str()).exists() {
             return Ok(format!("File {} does not exist", msg.filename));
         }
-        let sport = msg.activity_type.as_str().parse()?;
+        let sport = msg.activity_type.parse()?;
 
         let config = CONFIG.clone();
 
@@ -636,7 +636,7 @@ impl HandleRequest<StravaUploadRequest> for PgPool {
             client
                 .upload_strava_activity(
                     &Path::new(msg.filename.as_str()),
-                    msg.title.as_str(),
+                    &msg.title,
                     msg.description.as_ref().map_or("", String::as_str),
                     msg.is_private.unwrap_or(false),
                     sport,
@@ -661,7 +661,7 @@ pub struct StravaUpdateRequest {
 impl HandleRequest<StravaUpdateRequest> for PgPool {
     type Result = Result<String, Error>;
     async fn handle(&self, msg: StravaUpdateRequest) -> Self::Result {
-        let sport = msg.activity_type.as_str().parse()?;
+        let sport = msg.activity_type.parse()?;
 
         let config = CONFIG.clone();
 
@@ -669,8 +669,8 @@ impl HandleRequest<StravaUpdateRequest> for PgPool {
             let client = StravaClient::from_file(config, Some(StravaAuthType::Write))?;
             client
                 .update_strava_activity(
-                    msg.activity_id.as_str(),
-                    msg.title.as_str(),
+                    &msg.activity_id,
+                    &msg.title,
                     msg.description.as_ref().map(String::as_str),
                     msg.is_private,
                     sport,

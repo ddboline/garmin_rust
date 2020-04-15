@@ -16,7 +16,7 @@ use garmin_lib::{
 fn test_garmin_file_test_filenames() -> Result<(), Error> {
     let test_config = "tests/data/test.env";
     let config = GarminConfig::get_config(Some(test_config))?;
-    let pool = PgPool::new(config.pgurl.as_str());
+    let pool = PgPool::new(&config.pgurl);
     let corr = GarminCorrectionList::new(&pool);
 
     let gcli = GarminCli {

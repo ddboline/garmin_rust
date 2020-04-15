@@ -369,7 +369,7 @@ impl StravaClient {
             .to_string_lossy()
             .to_string();
 
-        let filename = if ext.as_str() == "gz" {
+        let filename = if &ext == "gz" {
             filepath.canonicalize()?.to_string_lossy().to_string()
         } else {
             let tfile = Builder::new().suffix(&format!("{}.gz", ext)).tempfile()?;

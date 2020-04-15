@@ -83,7 +83,7 @@ pub fn generate_d3_plot(opts: &PlotOpts) -> Result<String, Error> {
             .split('\n')
             .map(|line| {
                 if line.contains("EXAMPLETITLE") {
-                    line.replace("EXAMPLETITLE", opts.title.as_str())
+                    line.replace("EXAMPLETITLE", &opts.title)
                 } else if line.contains("XSTEP") {
                     line.replace("XSTEP", &xstep.to_string())
                 } else if line.contains("YSTEP") {
@@ -94,9 +94,9 @@ pub fn generate_d3_plot(opts: &PlotOpts) -> Result<String, Error> {
                         &serde_json::to_string(&data).unwrap_or_else(|_| "".to_string()),
                     )
                 } else if line.contains("XLABEL") {
-                    line.replace("XLABEL", opts.xlabel.as_str())
+                    line.replace("XLABEL", &opts.xlabel)
                 } else if line.contains("YLABEL") {
-                    line.replace("YLABEL", opts.ylabel.as_str())
+                    line.replace("YLABEL", &opts.ylabel)
                 } else {
                     line.to_string()
                 }
@@ -109,11 +109,11 @@ pub fn generate_d3_plot(opts: &PlotOpts) -> Result<String, Error> {
             .split('\n')
             .map(|line| {
                 if line.contains("EXAMPLETITLE") {
-                    line.replace("EXAMPLETITLE", opts.title.as_str())
+                    line.replace("EXAMPLETITLE", &opts.title)
                 } else if line.contains("XAXIS") {
-                    line.replace("XAXIS", opts.xlabel.as_str())
+                    line.replace("XAXIS", &opts.xlabel)
                 } else if line.contains("YAXIS") {
-                    line.replace("YAXIS", opts.ylabel.as_str())
+                    line.replace("YAXIS", &opts.ylabel)
                 } else if line.contains("DATA") {
                     line.replace(
                         "DATA",

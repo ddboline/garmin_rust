@@ -91,7 +91,7 @@ impl GarminCli {
 
     pub fn with_config() -> Result<Self, Error> {
         let config = GarminConfig::get_config(None)?;
-        let pool = PgPool::new(config.pgurl.as_str());
+        let pool = PgPool::new(&config.pgurl);
         let corr = GarminCorrectionList::new(&pool);
         let obj = Self {
             config,
@@ -165,7 +165,7 @@ impl GarminCli {
         } else {
             let gsum_list_ = Arc::clone(&gsum_list);
             let summary_cache = self.get_config().summary_cache.clone();
-            spawn_blocking(move || gsum_list_.write_summary_to_avro_files(summary_cache.as_str()))
+            spawn_blocking(move || gsum_list_.write_summary_to_avro_files(&summary_cache))
                 .await??;
             gsum_list
                 .write_summary_to_postgres()
@@ -187,8 +187,8 @@ impl GarminCli {
                     .map(|f| {
                         self.stdout.send(format!("Process {}", &f).into())?;
                         Ok(GarminSummary::process_single_gps_file(
-                            f.as_str(),
-                            self.get_config().cache_dir.as_str(),
+                            &f,
+                            &self.get_config().cache_dir,
                             &corr_map,
                         )?)
                     })
@@ -197,8 +197,8 @@ impl GarminCli {
             }
             Some(GarminCliOptions::All) => GarminSummaryList::process_all_gps_files(
                 &pg_conn,
-                self.get_config().gps_dir.as_str(),
-                self.get_config().cache_dir.as_str(),
+                &self.get_config().gps_dir,
+                &self.get_config().cache_dir,
                 &corr_map,
             )?,
             _ => {
@@ -236,7 +236,7 @@ impl GarminCli {
                     .map(|f| {
                         GarminSummary::process_single_gps_file(
                             &f,
-                            self.get_config().cache_dir.as_str(),
+                            &self.get_config().cache_dir,
                             &corr_map,
                         )
                     })
@@ -285,7 +285,7 @@ impl GarminCli {
             .into_iter()
             .map(|(title, local_dir, s3_bucket, check_md5)| {
                 debug!("{}", title);
-                gsync.sync_dir(title, local_dir.as_str(), s3_bucket.as_str(), check_md5)
+                gsync.sync_dir(title, &local_dir, &s3_bucket, check_md5)
             });
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
         results.map(|results| {
@@ -495,7 +495,7 @@ impl GarminCli {
                         .collect();
 
                 summary_report_html(
-                    self.get_config().domain.as_str(),
+                    &self.get_config().domain,
                     &txt_result,
                     &req.options,
                     &req.history,

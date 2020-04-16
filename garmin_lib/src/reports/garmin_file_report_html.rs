@@ -410,7 +410,7 @@ fn get_garmin_template_vec<T: AsRef<str>>(
             );
             let newtitle = match strava_id_title.as_ref() {
                 Some((id, title)) => format!(
-                    r#"<a href="https://www.strava.com/activities/{}">{} {}</a>"#,
+                    r#"<a href="https://www.strava.com/activities/{}" target="_blank">{} {}</a>"#,
                     id, title, gfile.begin_datetime
                 ),
                 None => newtitle,
@@ -507,7 +507,7 @@ where
             );
             let newtitle = match strava_id_title.as_ref() {
                 Some((id, title)) => format!(
-                    r#"<a href="https://www.strava.com/activities/{}">{} {}</a>"#,
+                    r#"<a href="https://www.strava.com/activities/{}" target="_blank">{} {}</a>"#,
                     id, title, gfile.begin_datetime
                 ),
                 None => newtitle,

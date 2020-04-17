@@ -182,7 +182,6 @@ impl FitbitHeartRate {
             .into_par_iter()
             .map(|avro_file| {
                 let avro_file = avro_file.to_string_lossy().to_string();
-                println!("avro_file {}", avro_file);
                 let points: Vec<_> = GarminFile::read_avro(&avro_file)?
                     .points
                     .into_par_iter()

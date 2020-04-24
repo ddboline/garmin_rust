@@ -31,14 +31,15 @@ use super::{errors::ServiceError as Error, logged_user::LoggedUser};
 use super::garmin_rust_app::AppState;
 use crate::{
     garmin_requests::{
-        FitbitAuthRequest, FitbitBodyWeightFatRequest, FitbitBodyWeightFatUpdateRequest,
-        FitbitCallbackRequest, FitbitHeartrateApiRequest, FitbitHeartrateCacheRequest,
-        FitbitHeartratePlotRequest, FitbitSyncRequest, FitbitTcxSyncRequest,
-        GarminConnectSyncRequest, GarminCorrRequest, GarminHtmlRequest, GarminListRequest,
-        GarminSyncRequest, GarminUploadRequest, HandleRequest, ScaleMeasurementPlotRequest,
-        ScaleMeasurementRequest, ScaleMeasurementUpdateRequest, StravaActiviesDBUpdateRequest,
-        StravaActivitiesDBRequest, StravaActivitiesRequest, StravaAuthRequest,
-        StravaCallbackRequest, StravaSyncRequest, StravaUpdateRequest, StravaUploadRequest,
+        AddGarminCorrectionRequest, FitbitAuthRequest, FitbitBodyWeightFatRequest,
+        FitbitBodyWeightFatUpdateRequest, FitbitCallbackRequest, FitbitHeartrateApiRequest,
+        FitbitHeartrateCacheRequest, FitbitHeartratePlotRequest, FitbitSyncRequest,
+        FitbitTcxSyncRequest, GarminConnectSyncRequest, GarminCorrRequest, GarminHtmlRequest,
+        GarminListRequest, GarminSyncRequest, GarminUploadRequest, HandleRequest,
+        ScaleMeasurementPlotRequest, ScaleMeasurementRequest, ScaleMeasurementUpdateRequest,
+        StravaActiviesDBUpdateRequest, StravaActivitiesDBRequest, StravaActivitiesRequest,
+        StravaAuthRequest, StravaCallbackRequest, StravaSyncRequest, StravaUpdateRequest,
+        StravaUploadRequest,
     },
     CONFIG,
 };
@@ -598,4 +599,14 @@ pub async fn garmin_get_hr_pace(
 
 pub async fn user(user: LoggedUser) -> Result<HttpResponse, Error> {
     to_json(user)
+}
+
+pub async fn add_garmin_correction(
+    payload: Json<AddGarminCorrectionRequest>,
+    _: LoggedUser,
+    state: Data<AppState>,
+) -> Result<HttpResponse, Error> {
+    let payload = payload.into_inner();
+    state.db.handle(payload).await?;
+    form_http_response("finised".to_string())
 }

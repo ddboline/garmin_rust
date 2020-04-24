@@ -12,13 +12,13 @@ use garmin_lib::common::pgpool::PgPool;
 use super::logged_user::{fill_from_db, TRIGGER_DB_UPDATE};
 use crate::{
     garmin_rust_routes::{
-        fitbit_auth, fitbit_bodyweight, fitbit_bodyweight_sync, fitbit_callback,
-        fitbit_heartrate_api, fitbit_heartrate_cache, fitbit_plots, fitbit_plots_demo, fitbit_sync,
-        fitbit_tcx_sync, garmin, garmin_connect_sync, garmin_demo, garmin_get_hr_data,
-        garmin_get_hr_pace, garmin_list_gps_tracks, garmin_sync, garmin_upload, heartrate_plots,
-        heartrate_plots_demo, scale_measurement, scale_measurement_update, strava_activities,
-        strava_activities_db, strava_activities_db_update, strava_auth, strava_callback,
-        strava_sync, strava_update, strava_upload, user,
+        add_garmin_correction, fitbit_auth, fitbit_bodyweight, fitbit_bodyweight_sync,
+        fitbit_callback, fitbit_heartrate_api, fitbit_heartrate_cache, fitbit_plots,
+        fitbit_plots_demo, fitbit_sync, fitbit_tcx_sync, garmin, garmin_connect_sync, garmin_demo,
+        garmin_get_hr_data, garmin_get_hr_pace, garmin_list_gps_tracks, garmin_sync, garmin_upload,
+        heartrate_plots, heartrate_plots_demo, scale_measurement, scale_measurement_update,
+        strava_activities, strava_activities_db, strava_activities_db_update, strava_auth,
+        strava_callback, strava_sync, strava_update, strava_upload, user,
     },
     CONFIG,
 };
@@ -77,6 +77,10 @@ pub async fn start_app() {
             .service(web::resource("/garmin").route(web::get().to(garmin)))
             .service(web::resource("/garmin/demo.html").route(web::get().to(garmin_demo)))
             .service(web::resource("/garmin/upload_file").route(web::post().to(garmin_upload)))
+            .service(
+                web::resource("/garmin/add_garmin_correction")
+                    .route(web::post().to(add_garmin_correction)),
+            )
             .service(
                 web::resource("/garmin/list_gps_tracks")
                     .route(web::get().to(garmin_list_gps_tracks)),

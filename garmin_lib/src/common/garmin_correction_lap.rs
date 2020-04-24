@@ -263,40 +263,24 @@ impl GarminCorrectionList {
         self.with_vec(corr_list)
     }
 
-    pub async fn get_filename_start_map(
+    pub async fn get_filename_from_datetime(
         &self,
-    ) -> Result<HashMap<StackString, (StackString, i32)>, Error> {
-        #[derive(FromSqlRow)]
-        struct FileNameUniqueKey {
-            filename: StackString,
-            unique_key: StackString,
-        }
-
-        let query = "
-            select filename, unique_key
-            from garmin_corrections_laps a
-            join garmin_summary b on a.start_time = b.begin_datetime
-        ";
+        begin_datetime: DateTime<Utc>,
+    ) -> Result<Option<StackString>, Error> {
+        let query = r#"
+            SELECT filename
+            FROM garmin_summary
+            WHERE begin_datetime = $1
+        "#;
         let conn = self.pool.get().await?;
-        conn.query(query, &[])
+        conn.query(query, &[&begin_datetime])
             .await?
-            .par_iter()
+            .pop()
             .map(|row| {
-                let val = FileNameUniqueKey::from_row(row)?;
-                let start_time: StackString = val
-                    .unique_key
-                    .split('_')
-                    .next()
-                    .map_or_else(|| "".to_string(), ToString::to_string)
-                    .into();
-                let lap_number: i32 = val
-                    .unique_key
-                    .split('_')
-                    .last()
-                    .map_or(0, |x| x.parse().unwrap_or(0));
-                Ok((val.filename, (start_time, lap_number)))
+                let filename: StackString = row.try_get("filename")?;
+                Ok(filename)
             })
-            .collect()
+            .transpose()
     }
 
     pub async fn dump_corrections_to_db(&self) -> Result<(), Error> {
@@ -361,8 +345,10 @@ impl GarminCorrectionList {
         let conn = self.pool.get().await?;
         let corr_list: Result<Vec<_>, Error> = conn
             .query(
-                "select id, start_time, lap_number, sport, distance, duration from \
-                 garmin_corrections_laps",
+                r#"
+                    SELECT id, start_time, lap_number, sport, distance, duration
+                    FROM garmin_corrections_laps
+                "#,
                 &[],
             )
             .await?

@@ -20,7 +20,7 @@ use crate::{
         garmin_util::{print_h_m_s, titlecase, MARATHON_DISTANCE_MI, METERS_PER_MILE},
         plot_graph::generate_d3_plot,
         plot_opts::PlotOpts,
-        sport_types::SportTypes,
+        sport_types::{get_sport_type_map, SportTypes},
     },
 };
 
@@ -606,6 +606,30 @@ where
     Ok(htmlvec)
 }
 
+fn get_sport_selector(current_sport: SportTypes) -> String {
+    let current_sport = current_sport.to_string();
+    let mut sport_types: Vec<_> = get_sport_type_map()
+        .keys()
+        .filter_map(|s| {
+            if s != &current_sport {
+                Some(s.clone())
+            } else {
+                None
+            }
+        })
+        .collect();
+    sport_types.sort();
+    sport_types.insert(0, current_sport);
+    let sport_types: Vec<_> = sport_types
+        .into_iter()
+        .map(|s| format!(r#"<option value="{sport}">{sport}</option>"#, sport = s))
+        .collect();
+    format!(
+        r#"<select id="sport_select">{}</select>"#,
+        sport_types.join("\n")
+    )
+}
+
 fn get_file_html(gfile: &GarminFile) -> String {
     let mut retval = Vec::new();
 
@@ -614,12 +638,14 @@ fn get_file_html(gfile: &GarminFile) -> String {
     retval.push(r#"<table border="1" class="dataframe">"#.to_string());
     retval.push(
         r#"<thead><tr style="text-align: center;"><th>Start Time</th>
-                   <th>Sport</th></tr></thead>"#
+                   <th>Sport</th><th></th></tr></thead>"#
             .to_string(),
     );
     retval.push(format!(
-        "<tbody><tr style={0}text-align: center;{0}><td>{1}</td><td>{2}</td></tr></tbody>",
-        '"', gfile.begin_datetime, sport
+        "<tbody><tr style={0}text-align: center;{0}><td>{1}</td><td>{2}</td><td></td></tr></tbody>",
+        '"',
+        gfile.begin_datetime,
+        get_sport_selector(gfile.sport)
     ));
     retval.push(r#"</table><br>"#.to_string());
 

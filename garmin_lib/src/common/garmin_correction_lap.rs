@@ -326,6 +326,7 @@ impl GarminCorrectionList {
                 )
                 .await?;
             } else {
+                debug!("run {} {}", corr.start_time, corr.lap_number);
                 conn.execute(
                     &stmt_insert,
                     &[

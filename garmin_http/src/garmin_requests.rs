@@ -708,7 +708,7 @@ impl HandleRequest<AddGarminCorrectionRequest> for PgPool {
         let unique_key = (msg.start_time, msg.lap_number);
 
         let mut new_corr = if let Some(corr) = corr_list.get_corr_list_map().get(&unique_key) {
-            corr.clone()
+            *corr
         } else {
             GarminCorrectionLap::new()
                 .with_start_time(msg.start_time)

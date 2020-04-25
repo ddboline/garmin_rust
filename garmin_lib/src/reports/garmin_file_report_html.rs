@@ -611,10 +611,9 @@ fn get_sport_selector(current_sport: SportTypes) -> String {
     let mut sport_types: Vec<_> = get_sport_type_map()
         .keys()
         .filter_map(|s| {
-            if s != &current_sport {
-                Some(s.clone())
-            } else {
+            if s == &current_sport {
                 None
+            } else {Some(s.clone())
             }
         })
         .collect();

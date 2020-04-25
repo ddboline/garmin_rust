@@ -315,7 +315,7 @@ impl GarminCorrectionList {
                 .is_empty()
             {
                 conn.execute(
-                    &stmt_update,
+                    &stmt_insert,
                     &[
                         &corr.start_time,
                         &corr.lap_number,
@@ -326,9 +326,8 @@ impl GarminCorrectionList {
                 )
                 .await?;
             } else {
-                debug!("run {} {}", corr.start_time, corr.lap_number);
                 conn.execute(
-                    &stmt_insert,
+                    &stmt_update,
                     &[
                         &corr.start_time,
                         &corr.lap_number,

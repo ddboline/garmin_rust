@@ -249,6 +249,24 @@ HISTORYBUTTONS
         xmlhttp.send(null);
         document.getElementById("garminconnectoutput").innerHTML = "syncing";
     }
+    function addGarminCorrectionSport(begin_datetime) {
+        let sport = document.getElementById( 'sport_select' );
+        let ostr = '/garmin/add_garmin_correction';
+        let data = JSON.stringify(
+            {
+                "start_time": begin_datetime,
+                "lap_number": 0,
+                "sport": sport.value
+            }
+        );
+        let xmlhttp = new XMLHttpRequest();
+        xmlhttp.onload = function() {
+            document.getElementById("garminconnectoutput").innerHTML = "done";
+        }
+        xmlhttp.open( "POST", ostr , true );
+        xmlhttp.setRequestHeader("Content-Type", "application/json");
+        xmlhttp.send(data);
+    }
 </script>
 
 </body>

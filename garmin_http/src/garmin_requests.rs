@@ -1,6 +1,6 @@
-use chrono::{DateTime, Duration, Local, NaiveDate, NaiveDateTime, NaiveTime, Utc};
-
+use anyhow::format_err;
 use async_trait::async_trait;
+use chrono::{DateTime, Duration, Local, NaiveDate, NaiveDateTime, NaiveTime, Utc};
 use futures::future::try_join_all;
 use log::debug;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
@@ -11,6 +11,7 @@ use std::{
     path::Path,
     sync::Arc,
 };
+use tokio::fs::remove_file;
 use tokio::task::spawn_blocking;
 
 use fitbit_lib::{
@@ -24,13 +25,14 @@ use strava_lib::strava_client::{StravaAuthType, StravaClient};
 use garmin_lib::{
     common::{
         garmin_cli::{GarminCli, GarminRequest},
-        garmin_correction_lap::GarminCorrectionList,
+        garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList},
         garmin_summary::get_list_of_files_from_db,
         pgpool::PgPool,
         strava_sync::{
             get_strava_id_maximum_begin_datetime, get_strava_ids, upsert_strava_id, StravaItem,
         },
     },
+    utils::sport_types::SportTypes,
     utils::stack_string::StackString,
 };
 
@@ -678,5 +680,66 @@ impl HandleRequest<StravaUpdateRequest> for PgPool {
                 .map_err(Into::into)
         })
         .await?
+    }
+}
+#[derive(Serialize, Deserialize)]
+pub struct AddGarminCorrectionRequest {
+    pub start_time: DateTime<Utc>,
+    pub lap_number: i32,
+    pub distance: Option<f64>,
+    pub duration: Option<f64>,
+    pub sport: Option<SportTypes>,
+}
+
+#[async_trait]
+impl HandleRequest<AddGarminCorrectionRequest> for PgPool {
+    type Result = Result<String, Error>;
+    async fn handle(&self, msg: AddGarminCorrectionRequest) -> Self::Result {
+        let mut corr_list = self.handle(GarminCorrRequest {}).await?;
+        let filename = corr_list
+            .get_filename_from_datetime(msg.start_time)
+            .await?
+            .ok_or_else(|| {
+                format_err!(
+                    "start_time {} doesn't match any existing file",
+                    msg.start_time
+                )
+            })?;
+        let unique_key = (msg.start_time, msg.lap_number);
+
+        let mut new_corr = if let Some(corr) = corr_list.get_corr_list_map().get(&unique_key) {
+            *corr
+        } else {
+            GarminCorrectionLap::new()
+                .with_start_time(msg.start_time)
+                .with_lap_number(msg.lap_number)
+        };
+
+        if msg.distance.is_some() {
+            new_corr.distance = msg.distance;
+        }
+        if msg.duration.is_some() {
+            new_corr.duration = msg.duration;
+        }
+        if msg.sport.is_some() {
+            new_corr.sport = msg.sport;
+        }
+
+        corr_list
+            .get_corr_list_map_mut()
+            .insert(unique_key, new_corr);
+
+        corr_list.dump_corrections_to_db().await?;
+
+        let cache_path = Path::new(CONFIG.cache_dir.as_str()).join(&format!("{}.avro", filename));
+        let summary_path =
+            Path::new(CONFIG.summary_cache.as_str()).join(&format!("{}.summary.avro", filename));
+        remove_file(cache_path).await?;
+        remove_file(summary_path).await?;
+
+        let gcli = GarminCli::from_pool(&self)?;
+        gcli.proc_everything().await?;
+
+        Ok("".to_string())
     }
 }

@@ -263,83 +263,57 @@ impl GarminCorrectionList {
         self.with_vec(corr_list)
     }
 
-    pub async fn get_filename_start_map(
+    pub async fn get_filename_from_datetime(
         &self,
-    ) -> Result<HashMap<StackString, (StackString, i32)>, Error> {
-        #[derive(FromSqlRow)]
-        struct FileNameUniqueKey {
-            filename: StackString,
-            unique_key: StackString,
-        }
-
-        let query = "
-            select filename, unique_key
-            from garmin_corrections_laps a
-            join garmin_summary b on a.start_time = b.begin_datetime
-        ";
+        begin_datetime: DateTime<Utc>,
+    ) -> Result<Option<StackString>, Error> {
+        let query = r#"
+            SELECT filename
+            FROM garmin_summary
+            WHERE begin_datetime = $1
+        "#;
         let conn = self.pool.get().await?;
-        conn.query(query, &[])
+        conn.query(query, &[&begin_datetime])
             .await?
-            .par_iter()
+            .pop()
             .map(|row| {
-                let val = FileNameUniqueKey::from_row(row)?;
-                let start_time: StackString = val
-                    .unique_key
-                    .split('_')
-                    .next()
-                    .map_or_else(|| "".to_string(), ToString::to_string)
-                    .into();
-                let lap_number: i32 = val
-                    .unique_key
-                    .split('_')
-                    .last()
-                    .map_or(0, |x| x.parse().unwrap_or(0));
-                Ok((val.filename, (start_time, lap_number)))
+                let filename: StackString = row.try_get("filename")?;
+                Ok(filename)
             })
-            .collect()
+            .transpose()
     }
 
     pub async fn dump_corrections_to_db(&self) -> Result<(), Error> {
-        let query_unique_key = "SELECT unique_key FROM garmin_corrections_laps WHERE unique_key=$1";
+        let query_unique_key = "
+            SELECT start_time, lap_number
+            FROM garmin_corrections_laps
+            WHERE start_time=$1 AND lap_number=$2
+        ";
         let query_insert = "
             INSERT INTO garmin_corrections_laps
-            (start_time, lap_number, distance, duration, unique_key, sport)
+            (start_time, lap_number, distance, duration, sport)
             VALUES
-            ($1, $2, $3, $4, $5, $6)
+            ($1, $2, $3, $4, $5)
         ";
         let query_update = "
             UPDATE garmin_corrections_laps
-            SET start_time=$1, lap_number=$2, distance=$3, duration=$4, sport=$6
-            WHERE unique_key=$5
+            SET distance=$3,duration=$4,sport=$5
+            WHERE start_time=$1 AND lap_number=$2
         ";
         let conn = self.pool.get().await?;
         let stmt_insert = conn.prepare(query_insert).await?;
         let stmt_update = conn.prepare(query_update).await?;
         for corr in self.get_corr_list() {
-            let unique_key = format!("{}_{}", corr.start_time, corr.lap_number);
             let sport: Option<String> = corr.sport.and_then(|s| match s {
                 SportTypes::None => None,
                 s => Some(s.to_string()),
             });
 
             if conn
-                .query(query_unique_key, &[&unique_key])
+                .query(query_unique_key, &[&corr.start_time, &corr.lap_number])
                 .await?
                 .is_empty()
             {
-                conn.execute(
-                    &stmt_update,
-                    &[
-                        &corr.start_time,
-                        &corr.lap_number,
-                        &corr.distance,
-                        &corr.duration,
-                        &unique_key,
-                        &sport,
-                    ],
-                )
-                .await?;
-            } else {
                 conn.execute(
                     &stmt_insert,
                     &[
@@ -347,7 +321,18 @@ impl GarminCorrectionList {
                         &corr.lap_number,
                         &corr.distance,
                         &corr.duration,
-                        &unique_key,
+                        &sport,
+                    ],
+                )
+                .await?;
+            } else {
+                conn.execute(
+                    &stmt_update,
+                    &[
+                        &corr.start_time,
+                        &corr.lap_number,
+                        &corr.distance,
+                        &corr.duration,
                         &sport,
                     ],
                 )
@@ -361,8 +346,10 @@ impl GarminCorrectionList {
         let conn = self.pool.get().await?;
         let corr_list: Result<Vec<_>, Error> = conn
             .query(
-                "select id, start_time, lap_number, sport, distance, duration from \
-                 garmin_corrections_laps",
+                r#"
+                    SELECT id, start_time, lap_number, sport, distance, duration
+                    FROM garmin_corrections_laps
+                "#,
                 &[],
             )
             .await?

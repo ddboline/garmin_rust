@@ -632,7 +632,7 @@ fn get_sport_selector(current_sport: SportTypes) -> String {
 
 fn get_correction_button(begin_datetime: DateTime<Utc>) -> String {
     format!(
-        r#"<button type="submit" value="Apply" onclick="addGarminCorrectionSport('{}')"/>"#,
+        r#"<button type="submit" onclick="addGarminCorrectionSport('{}')">Apply</button>"#,
         begin_datetime
     )
 }

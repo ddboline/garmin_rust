@@ -613,7 +613,8 @@ fn get_sport_selector(current_sport: SportTypes) -> String {
         .filter_map(|s| {
             if s == &current_sport {
                 None
-            } else {Some(s.clone())
+            } else {
+                Some(s.clone())
             }
         })
         .collect();

@@ -57,7 +57,7 @@ fn proc_pattern_wrapper<T: AsRef<str>>(
     let filter = request
         .filter
         .as_ref()
-        .map_or_else(|| "sport", StackString::as_str);
+        .map_or_else(|| "sport", String::as_str);
 
     let filter_vec: Vec<String> = filter.split(',').map(ToString::to_string).collect();
 

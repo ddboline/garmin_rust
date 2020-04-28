@@ -46,7 +46,7 @@ use crate::{
 
 #[derive(Deserialize)]
 pub struct FilterRequest {
-    pub filter: Option<StackString>,
+    pub filter: Option<String>,
 }
 
 fn proc_pattern_wrapper<T: AsRef<str>>(

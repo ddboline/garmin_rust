@@ -410,7 +410,6 @@ mod tests {
                 .await?;
             println!("{}", result);
         }
-        assert!(false);
         Ok(())
     }
 }

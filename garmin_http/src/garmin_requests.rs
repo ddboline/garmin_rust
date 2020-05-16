@@ -342,6 +342,8 @@ impl HandleRequest<FitbitTcxSyncRequest> for PgPool {
         let start_date = msg
             .start_date
             .unwrap_or_else(|| (Utc::now() - Duration::days(10)).naive_utc().date());
+
+        #[allow(clippy::filter_map)]
         let futures = client
             .get_tcx_urls(start_date)
             .await?

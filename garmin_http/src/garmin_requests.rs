@@ -18,7 +18,7 @@ use fitbit_lib::{
     scale_measurement::ScaleMeasurement,
 };
 
-use strava_lib::strava_client::{StravaAuthType, StravaClient};
+use strava_lib::strava_client::StravaClient;
 
 use garmin_lib::{
     common::{
@@ -154,11 +154,8 @@ impl HandleRequest<StravaSyncRequest> for PgPool {
             }
             None => None,
         };
-        let activities = spawn_blocking(move || {
-            let client = StravaClient::from_file(config, Some(StravaAuthType::Read))?;
-            client.get_strava_activites(max_datetime, None)
-        })
-        .await??;
+        let client = StravaClient::from_file(config).await?;
+        let activities = client.get_strava_activites(max_datetime, None).await?;
 
         upsert_strava_id(&activities, &self)
             .await
@@ -186,14 +183,23 @@ impl HandleRequest<FitbitAuthRequest> for PgPool {
     type Result = Result<String, Error>;
     async fn handle(&self, _: FitbitAuthRequest) -> Self::Result {
         let config = CONFIG.clone();
+        let client = FitbitClient::from_file(config).await?;
+        let url = client.get_fitbit_auth_url().await?;
+        Ok(url.as_str().into())
+    }
+}
+
+pub struct FitbitRefreshRequest {}
+
+#[async_trait]
+impl HandleRequest<FitbitRefreshRequest> for PgPool {
+    type Result = Result<String, Error>;
+    async fn handle(&self, _: FitbitRefreshRequest) -> Self::Result {
+        let config = CONFIG.clone();
         let mut client = FitbitClient::from_file(config).await?;
-        if let Ok(url) = client.refresh_fitbit_access_token().await {
-            client.to_file().await?;
-            Ok(url.as_str().into())
-        } else {
-            let url = client.get_fitbit_auth_url().await?;
-            Ok(url.as_str().into())
-        }
+        let body = client.refresh_fitbit_access_token().await?;
+        client.to_file().await?;
+        Ok(body.into())
     }
 }
 
@@ -493,26 +499,37 @@ impl HandleRequest<ScaleMeasurementUpdateRequest> for PgPool {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct StravaAuthRequest {
-    pub auth_type: Option<String>,
-}
+pub struct StravaAuthRequest {}
 
 #[async_trait]
 impl HandleRequest<StravaAuthRequest> for PgPool {
     type Result = Result<String, Error>;
-    async fn handle(&self, msg: StravaAuthRequest) -> Self::Result {
+    async fn handle(&self, _: StravaAuthRequest) -> Self::Result {
         let config = CONFIG.clone();
-        let auth_type = msg.auth_type.and_then(|a| match a.as_str() {
-            "read" => Some(StravaAuthType::Read),
-            "write" => Some(StravaAuthType::Write),
-            _ => None,
-        });
-        spawn_blocking(move || {
-            let client = StravaClient::from_file(config, auth_type)?;
-            client.get_authorization_url().map_err(Into::into)
-        })
-        .await?
+        let client = StravaClient::from_file(config).await?;
+        client
+            .get_authorization_url_api()
+            .await
+            .map_err(Into::into)
+            .map(|u| u.as_str().into())
+    }
+}
+
+pub struct StravaRefreshRequest {}
+
+#[async_trait]
+impl HandleRequest<StravaRefreshRequest> for PgPool {
+    type Result = Result<String, Error>;
+    async fn handle(&self, _: StravaRefreshRequest) -> Self::Result {
+        let config = CONFIG.clone();
+        let mut client = StravaClient::from_file(config).await?;
+        client.refresh_access_token().await?;
+        client.to_file().await?;
+        let body = r#"
+            <title>Strava auth code received!</title>
+            This window can be closed.
+            <script language="JavaScript" type="text/javascript">window.close()</script>"#;
+        Ok(body.into())
     }
 }
 
@@ -527,17 +544,14 @@ impl HandleRequest<StravaCallbackRequest> for PgPool {
     type Result = Result<String, Error>;
     async fn handle(&self, msg: StravaCallbackRequest) -> Self::Result {
         let config = CONFIG.clone();
-        spawn_blocking(move || {
-            let mut client = StravaClient::from_file(config, None)?;
-            client.process_callback(&msg.code, &msg.state)?;
-            client.to_file()?;
-            let body = r#"
+        let mut client = StravaClient::from_file(config).await?;
+        client.process_callback(&msg.code, &msg.state).await?;
+        client.to_file().await?;
+        let body = r#"
             <title>Strava auth code received!</title>
             This window can be closed.
             <script language="JavaScript" type="text/javascript">window.close()</script>"#;
-            Ok(body.into())
-        })
-        .await?
+        Ok(body.into())
     }
 }
 
@@ -552,19 +566,17 @@ impl HandleRequest<StravaActivitiesRequest> for PgPool {
     type Result = Result<HashMap<StackString, StravaItem>, Error>;
     async fn handle(&self, msg: StravaActivitiesRequest) -> Self::Result {
         let config = CONFIG.clone();
-        spawn_blocking(move || {
-            let client = StravaClient::from_file(config, Some(StravaAuthType::Read))?;
-            let start_date = msg.start_date.map(|s| {
-                DateTime::from_utc(NaiveDateTime::new(s, NaiveTime::from_hms(0, 0, 0)), Utc)
-            });
-            let end_date = msg.end_date.map(|s| {
-                DateTime::from_utc(NaiveDateTime::new(s, NaiveTime::from_hms(23, 59, 59)), Utc)
-            });
-            client
-                .get_strava_activites(start_date, end_date)
-                .map_err(Into::into)
-        })
-        .await?
+        let client = StravaClient::from_file(config).await?;
+        let start_date = msg
+            .start_date
+            .map(|s| DateTime::from_utc(NaiveDateTime::new(s, NaiveTime::from_hms(0, 0, 0)), Utc));
+        let end_date = msg.end_date.map(|s| {
+            DateTime::from_utc(NaiveDateTime::new(s, NaiveTime::from_hms(23, 59, 59)), Utc)
+        });
+        client
+            .get_strava_activites(start_date, end_date)
+            .await
+            .map_err(Into::into)
     }
 }
 
@@ -618,24 +630,17 @@ impl HandleRequest<StravaUploadRequest> for PgPool {
         if !Path::new(msg.filename.as_str()).exists() {
             return Ok(format!("File {} does not exist", msg.filename));
         }
-        let sport = msg.activity_type.parse()?;
-
         let config = CONFIG.clone();
-
-        spawn_blocking(move || {
-            let client = StravaClient::from_file(config, Some(StravaAuthType::Write))?;
-            client
-                .upload_strava_activity(
-                    &Path::new(msg.filename.as_str()),
-                    &msg.title,
-                    msg.description.as_ref().map_or("", String::as_str),
-                    msg.is_private.unwrap_or(false),
-                    sport,
-                )
-                .map(|id| format!("http://strava.com/activities/{}", id))
-                .map_err(Into::into)
-        })
-        .await?
+        let client = StravaClient::from_file(config).await?;
+        client
+            .upload_strava_activity(
+                &Path::new(msg.filename.as_str()),
+                &msg.title,
+                msg.description.as_ref().map_or("", String::as_str),
+            )
+            .await
+            .map(|id| format!("http://strava.com/activities/{}", id))
+            .map_err(Into::into)
     }
 }
 
@@ -655,20 +660,16 @@ impl HandleRequest<StravaUpdateRequest> for PgPool {
         let sport = msg.activity_type.parse()?;
 
         let config = CONFIG.clone();
-
-        spawn_blocking(move || {
-            let client = StravaClient::from_file(config, Some(StravaAuthType::Write))?;
-            client
-                .update_strava_activity(
-                    &msg.activity_id,
-                    &msg.title,
-                    msg.description.as_deref(),
-                    msg.is_private,
-                    sport,
-                )
-                .map_err(Into::into)
-        })
-        .await?
+        let client = StravaClient::from_file(config).await?;
+        client
+            .update_strava_activity(
+                &msg.activity_id,
+                &msg.title,
+                msg.description.as_deref(),
+                sport,
+            )
+            .await
+            .map_err(Into::into)
     }
 }
 #[derive(Serialize, Deserialize)]

@@ -126,7 +126,6 @@ impl FitbitClient {
             "nutrition",
             "heartrate",
             "location",
-            "nutrition",
             "profile",
             "settings",
             "sleep",
@@ -140,7 +139,7 @@ impl FitbitClient {
                 ("response_type", "code"),
                 ("client_id", self.config.fitbit_clientid.as_str()),
                 ("redirect_url", redirect_uri.as_str()),
-                ("scope", scopes.join("+").as_str()),
+                ("scope", scopes.join(" ").as_str()),
                 ("state", state.as_str()),
             ],
         )?;
@@ -485,21 +484,22 @@ mod tests {
 
     #[tokio::test]
     #[ignore]
-    async fn test_fitbit_client_from_file() {
-        let config = GarminConfig::get_config(None).unwrap();
-        let client = FitbitClient::from_file(config).await.unwrap();
-        let url = client.get_fitbit_auth_url().await.unwrap();
+    async fn test_fitbit_client_from_file() -> Result<(), Error> {
+        let config = GarminConfig::get_config(None)?;
+        let client = FitbitClient::from_file(config).await?;
+        let url = client.get_fitbit_auth_url().await?;
         println!("{:?} {}", client, url);
         assert!(url.as_str().len() > 0);
+        Ok(())
     }
 
     #[tokio::test]
     #[ignore]
-    async fn test_get_tcx_urls() {
-        let config = GarminConfig::get_config(None).unwrap();
-        let client = FitbitClient::from_file(config.clone()).await.unwrap();
+    async fn test_get_tcx_urls() -> Result<(), Error> {
+        let config = GarminConfig::get_config(None)?;
+        let client = FitbitClient::from_file(config.clone()).await?;
         let start_date = (Utc::now() - Duration::days(10)).naive_utc().date();
-        let results = client.get_tcx_urls(start_date).await.unwrap();
+        let results = client.get_tcx_urls(start_date).await?;
         debug!("{:?}", results);
         for (start_time, tcx_url) in results {
             let fname = format!(
@@ -518,16 +518,17 @@ mod tests {
 
             {
                 use std::io::Write;
-                let mut f = NamedTempFile::new().unwrap();
-                let data = client.download_tcx(&tcx_url).await.unwrap();
-                f.write_all(&data).unwrap();
+                let mut f = NamedTempFile::new()?;
+                let data = client.download_tcx(&tcx_url).await?;
+                f.write_all(&data)?;
 
-                let metadata = f.as_file().metadata().unwrap();
+                let metadata = f.as_file().metadata()?;
                 debug!("{} {:?} {}", start_time, metadata, metadata.len());
                 assert!(metadata.len() > 0);
             }
             break;
         }
+        Ok(())
     }
 
     #[tokio::test]

@@ -33,13 +33,13 @@ use crate::{
     garmin_requests::{
         AddGarminCorrectionRequest, FitbitAuthRequest, FitbitBodyWeightFatRequest,
         FitbitBodyWeightFatUpdateRequest, FitbitCallbackRequest, FitbitHeartrateApiRequest,
-        FitbitHeartrateCacheRequest, FitbitHeartratePlotRequest, FitbitSyncRequest,
-        FitbitTcxSyncRequest, GarminConnectSyncRequest, GarminCorrRequest, GarminHtmlRequest,
-        GarminListRequest, GarminSyncRequest, GarminUploadRequest, HandleRequest,
-        ScaleMeasurementPlotRequest, ScaleMeasurementRequest, ScaleMeasurementUpdateRequest,
-        StravaActiviesDBUpdateRequest, StravaActivitiesDBRequest, StravaActivitiesRequest,
-        StravaAuthRequest, StravaCallbackRequest, StravaSyncRequest, StravaUpdateRequest,
-        StravaUploadRequest,
+        FitbitHeartrateCacheRequest, FitbitHeartratePlotRequest, FitbitRefreshRequest,
+        FitbitSyncRequest, FitbitTcxSyncRequest, GarminConnectSyncRequest, GarminCorrRequest,
+        GarminHtmlRequest, GarminListRequest, GarminSyncRequest, GarminUploadRequest,
+        HandleRequest, ScaleMeasurementPlotRequest, ScaleMeasurementRequest,
+        ScaleMeasurementUpdateRequest, StravaActiviesDBUpdateRequest, StravaActivitiesDBRequest,
+        StravaActivitiesRequest, StravaAuthRequest, StravaCallbackRequest, StravaRefreshRequest,
+        StravaSyncRequest, StravaUpdateRequest, StravaUploadRequest,
     },
     CONFIG,
 };
@@ -199,13 +199,13 @@ pub async fn strava_sync(_: LoggedUser, state: Data<AppState>) -> Result<HttpRes
     form_http_response(body)
 }
 
-pub async fn strava_auth(
-    query: Query<StravaAuthRequest>,
-    _: LoggedUser,
-    state: Data<AppState>,
-) -> Result<HttpResponse, Error> {
-    let query = query.into_inner();
-    let body = state.db.handle(query).await?;
+pub async fn strava_auth(_: LoggedUser, state: Data<AppState>) -> Result<HttpResponse, Error> {
+    let body = state.db.handle(StravaAuthRequest {}).await?;
+    form_http_response(body)
+}
+
+pub async fn strava_refresh(_: LoggedUser, state: Data<AppState>) -> Result<HttpResponse, Error> {
+    let body = state.db.handle(StravaRefreshRequest {}).await?;
     form_http_response(body)
 }
 
@@ -270,6 +270,12 @@ pub async fn strava_update(
 
 pub async fn fitbit_auth(_: LoggedUser, state: Data<AppState>) -> Result<HttpResponse, Error> {
     let req = FitbitAuthRequest {};
+    let body = state.db.handle(req).await?;
+    form_http_response(body)
+}
+
+pub async fn fitbit_refresh(_: LoggedUser, state: Data<AppState>) -> Result<HttpResponse, Error> {
+    let req = FitbitRefreshRequest {};
     let body = state.db.handle(req).await?;
     form_http_response(body)
 }

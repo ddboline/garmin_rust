@@ -8,6 +8,7 @@
 #![allow(clippy::similar_names)]
 #![allow(clippy::shadow_unrelated)]
 #![allow(clippy::missing_errors_doc)]
+#![allow(clippy::used_underscore_binding)]
 
 pub mod errors;
 pub mod garmin_requests;

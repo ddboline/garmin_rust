@@ -1,12 +1,17 @@
 use anyhow::{format_err, Error};
-use chrono::{DateTime, FixedOffset, NaiveDate, Utc};
-use cpython::{
-    FromPyObject, ObjectProtocol, PyDict, PyList, PyObject, PyResult, PyTuple, Python,
-    PythonObject, ToPyObject,
-};
-use std::{
+use base64::{encode, encode_config, URL_SAFE_NO_PAD};
+use chrono::{DateTime, FixedOffset, NaiveDate, NaiveTime, Utc};
+use futures::future::try_join_all;
+use lazy_static::lazy_static;
+use maplit::hashmap;
+use rand::{thread_rng, Rng};
+use reqwest::{header::HeaderMap, Client, Url};
+use serde::{Deserialize, Serialize};
+use tokio::{
     fs::File,
-    io::{BufRead, BufReader, Write},
+    io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
+    sync::Mutex,
+    task::spawn_blocking,
 };
 
 use garmin_lib::{common::garmin_config::GarminConfig, utils::stack_string::StackString};
@@ -16,22 +21,26 @@ use crate::{
     scale_measurement::ScaleMeasurement,
 };
 
+lazy_static! {
+    static ref CSRF_TOKEN: Mutex<Option<StackString>> = Mutex::new(None);
+}
+
 #[derive(Default, Debug, Clone)]
 pub struct FitbitClient {
     pub config: GarminConfig,
     pub user_id: StackString,
     pub access_token: StackString,
     pub refresh_token: StackString,
+    pub client: Client,
 }
 
-macro_rules! set_attr_from_dict {
-    ($token:ident, $py:ident, $s:ident, $item:ident) => {
-        $token
-            .get_item($py, stringify!($item))
-            .as_ref()
-            .map(|v| String::extract($py, v).map(|x| $s.$item = x.into()))
-            .transpose()
-    };
+#[derive(Serialize, Deserialize, Debug)]
+struct AccessTokenResponse {
+    access_token: StackString,
+    token_type: StackString,
+    expires_in: u64,
+    refresh_token: StackString,
+    user_id: StackString,
 }
 
 impl FitbitClient {
@@ -39,17 +48,17 @@ impl FitbitClient {
         Self::default()
     }
 
-    pub fn from_file(config: GarminConfig) -> Result<Self, Error> {
+    pub async fn from_file(config: GarminConfig) -> Result<Self, Error> {
         let mut client = Self {
             config,
             ..Self::default()
         };
-        let f = File::open(client.config.fitbit_tokenfile.as_str())?;
+        let f = File::open(client.config.fitbit_tokenfile.as_str()).await?;
         let mut b = BufReader::new(f);
         let mut line = String::new();
         loop {
             line.clear();
-            if b.read_line(&mut line)? == 0 {
+            if b.read_line(&mut line).await? == 0 {
                 break;
             }
             let mut items = line.split('=');
@@ -67,93 +76,125 @@ impl FitbitClient {
         Ok(client)
     }
 
-    pub fn to_file(&self) -> Result<(), Error> {
-        let mut f = File::create(self.config.fitbit_tokenfile.as_str())?;
-        writeln!(f, "user_id={}", self.user_id)?;
-        writeln!(f, "access_token={}", self.access_token)?;
-        writeln!(f, "refresh_token={}", self.refresh_token)?;
+    pub async fn to_file(&self) -> Result<(), Error> {
+        let mut f = tokio::fs::File::create(self.config.fitbit_tokenfile.as_str()).await?;
+        f.write_all(format!("user_id={}\n", self.user_id).as_bytes())
+            .await?;
+        f.write_all(format!("access_token={}\n", self.access_token).as_bytes())
+            .await?;
+        f.write_all(format!("refresh_token={}\n", self.refresh_token).as_bytes())
+            .await?;
         Ok(())
     }
 
-    fn get_fitbit_client(&self, py: Python, do_auth: bool) -> PyResult<PyObject> {
-        let redirect_uri = format!("https://{}/garmin/fitbit/callback", self.config.domain);
-        let fitbit = py.import("fitbit.api")?;
-        let args = PyDict::new(py);
-        if do_auth {
-            args.set_item(py, "redirect_uri", redirect_uri)?;
-            args.set_item(py, "timeout", 10)?;
-        } else {
-            args.set_item(py, "access_token", self.access_token.as_str())?;
-            args.set_item(py, "refresh_token", self.refresh_token.as_str())?;
+    async fn get_client_offset(&self) -> Result<FixedOffset, Error> {
+        #[derive(Deserialize)]
+        struct UserObj {
+            #[serde(alias = "offsetFromUTCMillis")]
+            offset: i32,
         }
-        fitbit.call(
-            py,
-            "Fitbit",
-            PyTuple::new(
-                py,
-                &[
-                    self.config
-                        .fitbit_clientid
-                        .as_str()
-                        .to_py_object(py)
-                        .into_object(),
-                    self.config
-                        .fitbit_clientsecret
-                        .as_str()
-                        .to_py_object(py)
-                        .into_object(),
-                ],
-            ),
-            Some(&args),
-        )
-    }
+        #[derive(Deserialize)]
+        struct UserResp {
+            user: UserObj,
+        }
 
-    fn get_client_offset(py: Python, client: &PyObject) -> PyResult<FixedOffset> {
-        let result = client
-            .call_method(py, "user_profile_get", PyTuple::empty(py), None)?
-            .get_item(py, "user")?;
-        let result = PyDict::extract(py, &result)?;
-        let offset = match result.get_item(py, "offsetFromUTCMillis") {
-            Some(r) => i64::extract(py, &r)?,
-            None => 0,
-        };
-        let offset = (offset / 1000) as i32;
+        let headers = self.get_auth_headers()?;
+        let url = "https://api.fitbit.com/1/user/-/profile.json";
+        let resp: UserResp = self
+            .client
+            .get(url)
+            .headers(headers)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+        let offset = (resp.user.offset / 1000) as i32;
         let offset = FixedOffset::east(offset);
         Ok(offset)
     }
 
-    fn _get_fitbit_auth_url(&self, py: Python) -> PyResult<String> {
-        let client = self.get_fitbit_client(py, true)?;
-        let client = client.getattr(py, "client")?;
-        let result = client.call_method(py, "authorize_token_url", PyTuple::empty(py), None)?;
-        let result = PyTuple::extract(py, &result)?;
-        let url = result.get_item(py, 0);
-        String::extract(py, &url)
+    fn get_random_string() -> String {
+        let random_bytes: Vec<u8> = (0..16).map(|_| thread_rng().gen::<u8>()).collect();
+        encode_config(&random_bytes, URL_SAFE_NO_PAD)
     }
 
-    pub fn get_fitbit_auth_url(&self) -> Result<String, Error> {
-        let gil = Python::acquire_gil();
-        let py = gil.python();
-
-        self._get_fitbit_auth_url(py)
-            .map_err(|e| format_err!("{:?}", e))
-    }
-
-    fn _get_fitbit_access_token(&mut self, py: Python, code: &str) -> PyResult<String> {
-        let client = self.get_fitbit_client(py, true)?;
-        let client = client.getattr(py, "client")?;
-        client.call_method(
-            py,
-            "fetch_access_token",
-            PyTuple::new(py, &[code.to_py_object(py).into_object()]),
-            None,
+    pub async fn get_fitbit_auth_url(&self) -> Result<Url, Error> {
+        let redirect_uri = format!("https://{}/garmin/fitbit/callback", self.config.domain);
+        let scopes = &[
+            "activity",
+            "nutrition",
+            "heartrate",
+            "location",
+            "profile",
+            "settings",
+            "sleep",
+            "social",
+            "weight",
+        ];
+        let state = Self::get_random_string();
+        let url = Url::parse_with_params(
+            "https://www.fitbit.com/oauth2/authorize",
+            &[
+                ("response_type", "code"),
+                ("client_id", self.config.fitbit_clientid.as_str()),
+                ("redirect_url", redirect_uri.as_str()),
+                ("scope", scopes.join(" ").as_str()),
+                ("state", state.as_str()),
+            ],
         )?;
-        let session = client.getattr(py, "session")?;
-        let token = session.getattr(py, "token")?;
-        let token = PyDict::extract(py, &token)?;
-        set_attr_from_dict!(token, py, self, user_id)?;
-        set_attr_from_dict!(token, py, self, access_token)?;
-        set_attr_from_dict!(token, py, self, refresh_token)?;
+        CSRF_TOKEN.lock().await.replace(state.into());
+        Ok(url)
+    }
+
+    fn get_basic_headers(&self) -> Result<HeaderMap, Error> {
+        let mut headers = HeaderMap::new();
+        headers.insert("Content-type", "application/x-www-form-urlencoded".parse()?);
+        headers.insert(
+            "Authorization",
+            format!(
+                "Basic {}",
+                encode(format!(
+                    "{}:{}",
+                    self.config.fitbit_clientid, self.config.fitbit_clientsecret
+                ))
+            )
+            .parse()?,
+        );
+        headers.insert("trakt-api-version", "2".parse()?);
+        Ok(headers)
+    }
+
+    fn get_auth_headers(&self) -> Result<HeaderMap, Error> {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            "Authorization",
+            format!("Bearer {}", self.access_token,).parse()?,
+        );
+        headers.insert("Accept-Language", "en_US".parse()?);
+        Ok(headers)
+    }
+
+    pub async fn refresh_fitbit_access_token(&mut self) -> Result<StackString, Error> {
+        let headers = self.get_basic_headers()?;
+        let data = hashmap! {
+            "grant_type" => "refresh_token",
+            "refresh_token" => self.refresh_token.as_str(),
+        };
+        let url = "https://api.fitbit.com/oauth2/token";
+        let auth_resp: AccessTokenResponse = self
+            .client
+            .post(url)
+            .headers(headers)
+            .form(&data)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+        self.user_id = auth_resp.user_id;
+        self.access_token = auth_resp.access_token;
+        self.refresh_token = auth_resp.refresh_token;
         let success = r#"
             <h1>You are now authorized to access the Fitbit API!</h1>
             <br/><h3>You can close this window</h3>
@@ -163,180 +204,252 @@ impl FitbitClient {
         Ok(success)
     }
 
-    pub fn get_fitbit_access_token(&mut self, code: &str) -> Result<String, Error> {
-        let gil = Python::acquire_gil();
-        let py = gil.python();
-
-        self._get_fitbit_access_token(py, code)
-            .map_err(|e| format_err!("{:?}", e))
+    pub async fn get_fitbit_access_token(
+        &mut self,
+        code: &str,
+        state: &str,
+    ) -> Result<String, Error> {
+        let current_state = CSRF_TOKEN.lock().await.take();
+        if let Some(current_state) = current_state {
+            if state != current_state.as_str() {
+                return Err(format_err!("Incorrect state"));
+            }
+            let headers = self.get_basic_headers()?;
+            let redirect_uri = format!("https://{}/garmin/fitbit/callback", self.config.domain);
+            let data = hashmap! {
+                "code" => code,
+                "grant_type" => "authorization_code",
+                "client_id" => self.config.fitbit_clientid.as_str(),
+                "redirect_uri" => redirect_uri.as_str(),
+                "state" => state,
+            };
+            let url = "https://api.fitbit.com/oauth2/token";
+            let auth_resp: AccessTokenResponse = self
+                .client
+                .post(url)
+                .headers(headers)
+                .form(&data)
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+                .await?;
+            self.user_id = auth_resp.user_id;
+            self.access_token = auth_resp.access_token;
+            self.refresh_token = auth_resp.refresh_token;
+            let success = r#"
+                <h1>You are now authorized to access the Fitbit API!</h1>
+                <br/><h3>You can close this window</h3>
+                <script language="JavaScript" type="text/javascript">window.close()</script>
+                "#
+            .into();
+            Ok(success)
+        } else {
+            Err(format_err!("No state"))
+        }
     }
 
-    fn _get_fitbit_intraday_time_series_heartrate(
-        &self,
-        py: Python,
-        date: NaiveDate,
-    ) -> PyResult<Vec<FitbitHeartRate>> {
-        let client = self.get_fitbit_client(py, false)?;
-        let offset = Self::get_client_offset(py, &client)?;
-        let args = PyDict::new(py);
-        let date = date.to_string();
-        args.set_item(py, "base_date", &date)?;
-        let result = client.call_method(
-            py,
-            "intraday_time_series",
-            ("activities/heart",),
-            Some(&args),
-        )?;
-        let activities_heart_intraday = result.get_item(
-            py,
-            "activities-heart-intraday".to_py_object(py).into_object(),
-        )?;
-        let dataset = activities_heart_intraday.get_item(py, "dataset")?;
-        let dataset = PyList::extract(py, &dataset)?;
-
-        dataset
-            .iter(py)
-            .map(|item| {
-                let dict = PyDict::extract(py, &item)?;
-                FitbitHeartRate::from_pydict(py, &dict, &date, offset)
-            })
-            .collect()
-    }
-
-    pub fn get_fitbit_intraday_time_series_heartrate(
+    pub async fn get_fitbit_intraday_time_series_heartrate(
         &self,
         date: NaiveDate,
     ) -> Result<Vec<FitbitHeartRate>, Error> {
-        let gil = Python::acquire_gil();
-        let py = gil.python();
+        #[derive(Deserialize)]
+        struct HeartRateResp {
+            #[serde(alias = "activities-heart-intraday")]
+            intraday: HrDs,
+        }
+        #[derive(Deserialize)]
+        struct HrDs {
+            dataset: Vec<HrDataSet>,
+        }
+        #[derive(Deserialize)]
+        struct HrDataSet {
+            time: StackString,
+            value: i32,
+        }
 
-        self._get_fitbit_intraday_time_series_heartrate(py, date)
-            .map_err(|e| format_err!("{:?}", e))
+        let headers = self.get_auth_headers()?;
+        let url = format!(
+            "https://api.fitbit.com/1/user/-/activities/heart/date/{}/1d/1min.json",
+            date
+        );
+        let dataset: HeartRateResp = self
+            .client
+            .get(url.as_str())
+            .headers(headers)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+        let offset = self.get_client_offset().await?;
+        let hr_values: Vec<_> = dataset
+            .intraday
+            .dataset
+            .into_iter()
+            .map(|entry| {
+                let datetime = format!("{}T{}{}", date, entry.time, offset);
+                let datetime = DateTime::parse_from_rfc3339(&datetime)
+                    .unwrap()
+                    .with_timezone(&Utc);
+                let value = entry.value;
+                FitbitHeartRate { datetime, value }
+            })
+            .collect();
+        Ok(hr_values)
     }
 
-    pub fn import_fitbit_heartrate(
+    pub async fn import_fitbit_heartrate(
         &self,
         date: NaiveDate,
         config: &GarminConfig,
     ) -> Result<(), Error> {
-        let heartrates = self.get_fitbit_intraday_time_series_heartrate(date)?;
-        FitbitHeartRate::merge_slice_to_avro(config, &heartrates)
+        let heartrates = self.get_fitbit_intraday_time_series_heartrate(date).await?;
+        let config = config.clone();
+        spawn_blocking(move || FitbitHeartRate::merge_slice_to_avro(&config, &heartrates)).await?
     }
 
-    fn _get_fitbit_bodyweightfat(&self, py: Python) -> PyResult<Vec<FitbitBodyWeightFat>> {
-        let client = self.get_fitbit_client(py, false)?;
-        let offset = Self::get_client_offset(py, &client)?;
-        let args = PyDict::new(py);
-        args.set_item(py, "period", "30d")?;
-        let result = client.call_method(py, "get_bodyweight", PyTuple::empty(py), Some(&args))?;
-        let dataset = result.get_item(py, "weight".to_py_object(py).into_object())?;
-        let dataset = PyList::extract(py, &dataset)?;
-
-        dataset
-            .iter(py)
-            .map(|item| {
-                let dict = PyDict::extract(py, &item)?;
-                FitbitBodyWeightFat::from_pydict(py, &dict, offset)
+    pub async fn get_fitbit_bodyweightfat(&self) -> Result<Vec<FitbitBodyWeightFat>, Error> {
+        #[derive(Deserialize)]
+        struct BodyWeight {
+            weight: Vec<WeightEntry>,
+        }
+        #[derive(Deserialize)]
+        struct WeightEntry {
+            date: NaiveDate,
+            fat: f64,
+            time: NaiveTime,
+            weight: f64,
+        }
+        let headers = self.get_auth_headers()?;
+        let date = Utc::now().naive_local().date();
+        let url = format!(
+            "https://api.fitbit.com/1/user/-/body/log/weight/date/{}/30d.json",
+            date
+        );
+        let body_weight: BodyWeight = self
+            .client
+            .get(url.as_str())
+            .headers(headers.clone())
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+        let offset = self.get_client_offset().await?;
+        let result: Vec<_> = body_weight
+            .weight
+            .into_iter()
+            .map(|bw| {
+                let datetime = format!("{}T{}{}", bw.date, bw.time, offset);
+                let datetime = DateTime::parse_from_rfc3339(&datetime)
+                    .unwrap()
+                    .with_timezone(&Utc);
+                let weight = bw.weight;
+                let fat = bw.fat;
+                FitbitBodyWeightFat {
+                    datetime,
+                    weight,
+                    fat,
+                }
             })
-            .collect()
+            .collect();
+        Ok(result)
     }
 
-    pub fn get_fitbit_bodyweightfat(&self) -> Result<Vec<FitbitBodyWeightFat>, Error> {
-        let gil = Python::acquire_gil();
-        let py = gil.python();
-
-        self._get_fitbit_bodyweightfat(py)
-            .map_err(|e| format_err!("{:?}", e))
-    }
-
-    fn _update_fitbit_bodyweightfat(
+    pub async fn update_fitbit_bodyweightfat(
         &self,
-        py: Python,
-        updates: &[ScaleMeasurement],
-    ) -> PyResult<()> {
-        let client = self.get_fitbit_client(py, false)?;
-        let offset = Self::get_client_offset(py, &client)?;
-        updates
-            .iter()
-            .map(|update| {
+        updates: Vec<ScaleMeasurement>,
+    ) -> Result<Vec<ScaleMeasurement>, Error> {
+        let headers = self.get_auth_headers()?;
+        let offset = self.get_client_offset().await?;
+        let futures = updates.iter().map(|update| {
+            let headers = headers.clone();
+            async move {
                 let datetime = update.datetime.with_timezone(&offset);
                 let date = datetime.date().naive_local();
                 let time = datetime.naive_local().format("%H:%M:%S").to_string();
                 let url = "https://api.fitbit.com/1/user/-/body/log/weight.json";
-                let data = PyDict::new(py);
-                data.set_item(py, "date", &date.to_string())?;
-                data.set_item(py, "time", &time)?;
-                data.set_item(py, "weight", &update.mass.to_string())?;
-                let args = PyDict::new(py);
-                args.set_item(py, "data", data)?;
-                args.set_item(py, "method", "POST")?;
-                client.call_method(py, "make_request", (url,), Some(&args))?;
+                let data = hashmap! {
+                    "weight" => update.mass.to_string(),
+                    "date" => date.to_string(),
+                    "time" => time.to_string(),
+                };
+                self.client
+                    .post(url)
+                    .json(&data)
+                    .headers(headers.clone())
+                    .send()
+                    .await?
+                    .error_for_status()?;
+
                 let url = "https://api.fitbit.com/1/user/-/body/log/fat.json";
-                let data = PyDict::new(py);
-                data.set_item(py, "date", &date.to_string())?;
-                data.set_item(py, "time", &time)?;
-                data.set_item(py, "fat", &update.fat_pct.to_string())?;
-                let args = PyDict::new(py);
-                args.set_item(py, "data", data)?;
-                args.set_item(py, "method", "POST")?;
-                client.call_method(py, "make_request", (url,), Some(&args))?;
+                let data = hashmap! {
+                    "fat" => update.fat_pct.to_string(),
+                    "date" => date.to_string(),
+                    "time" => time.to_string(),
+                };
+                self.client
+                    .post(url)
+                    .json(&data)
+                    .headers(headers)
+                    .send()
+                    .await?
+                    .error_for_status()?;
                 Ok(())
-            })
-            .collect()
-    }
-
-    pub fn update_fitbit_bodyweightfat(
-        &self,
-        updates: Vec<ScaleMeasurement>,
-    ) -> Result<Vec<ScaleMeasurement>, Error> {
-        let gil = Python::acquire_gil();
-        let py = gil.python();
-
-        self._update_fitbit_bodyweightfat(py, &updates)
-            .map_err(|e| format_err!("{:?}", e))?;
+            }
+        });
+        let result: Result<Vec<_>, Error> = try_join_all(futures).await;
+        result?;
         Ok(updates)
     }
 
-    pub fn _get_tcx_urls(
+    pub async fn get_tcx_urls(
         &self,
-        py: Python,
         start_date: NaiveDate,
-    ) -> PyResult<Vec<(DateTime<Utc>, String)>> {
-        let client = self.get_fitbit_client(py, false)?;
+    ) -> Result<Vec<(DateTime<Utc>, String)>, Error> {
+        #[derive(Deserialize)]
+        struct AcivityListResp {
+            activities: Vec<ActivityEntry>,
+        }
+        #[derive(Deserialize)]
+        struct ActivityEntry {
+            #[serde(alias = "logType")]
+            log_type: String,
+            #[serde(alias = "startTime")]
+            start_time: String,
+            #[serde(alias = "tcxLink")]
+            tcx_link: Option<String>,
+        }
+
+        let headers = self.get_auth_headers()?;
         let url = format!(
             "https://api.fitbit.com/1/user/-/activities/list.json?afterDate={}&offset=0&limit=20&sort=asc",
             start_date,
         );
-        let args = PyDict::new(py);
-        args.set_item(py, "method", "GET")?;
-        let result = client.call_method(py, "make_request", (&url,), Some(&args))?;
-        let result = PyDict::extract(py, &result)?;
-        let activities = result.get_item(py, "activities").unwrap();
-        let activities = PyList::extract(py, &activities)?;
+        let activities: AcivityListResp = self
+            .client
+            .get(url.as_str())
+            .headers(headers)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
         activities
-            .iter(py)
-            .filter_map(|item| {
+            .activities
+            .into_iter()
+            .filter_map(|entry| {
                 let res = || {
-                    let dict = PyDict::extract(py, &item)?;
-                    let log_type = match dict.get_item(py, "logType").as_ref() {
-                        Some(l) => String::extract(py, l)?,
-                        None => return Ok(None),
-                    };
-                    if log_type != "tracker" {
+                    if entry.log_type != "tracker" {
                         return Ok(None);
                     }
-                    let start_time = match dict.get_item(py, "startTime").as_ref() {
-                        Some(t) => {
-                            let start_time = String::extract(py, t)?;
-                            DateTime::parse_from_rfc3339(&start_time)
-                                .unwrap()
-                                .with_timezone(&Utc)
-                        }
-                        None => return Ok(None),
-                    };
-                    match dict.get_item(py, "tcxLink").as_ref() {
-                        Some(l) => Ok(Some((start_time, String::extract(py, l)?))),
-                        None => Ok(None),
+                    let start_time =
+                        DateTime::parse_from_rfc3339(&entry.start_time)?.with_timezone(&Utc);
+                    if let Some(link) = entry.tcx_link {
+                        Ok(Some((start_time, link)))
+                    } else {
+                        Ok(None)
                     }
                 };
                 res().transpose()
@@ -344,43 +457,23 @@ impl FitbitClient {
             .collect()
     }
 
-    pub fn get_tcx_urls(
-        &self,
-        start_date: NaiveDate,
-    ) -> Result<Vec<(DateTime<Utc>, String)>, Error> {
-        let gil = Python::acquire_gil();
-        let py = gil.python();
-        self._get_tcx_urls(py, start_date)
-            .map_err(|e| format_err!("{:?}", e))
-    }
-
-    pub fn _download_tcx(&self, py: Python, tcx_url: &str) -> PyResult<Vec<u8>> {
-        let client = self.get_fitbit_client(py, false)?;
-        let system = String::extract(py, &client.getattr(py, "system")?)?;
-        let client = client.getattr(py, "client")?;
-        let headers = PyDict::new(py);
-        headers.set_item(py, "Accept-Language", &system)?;
-        let args = PyDict::new(py);
-        args.set_item(py, "headers", &headers)?;
-        args.set_item(py, "method", "GET")?;
-        let resp = client.call_method(py, "make_request", (tcx_url,), Some(&args))?;
-        resp.call_method(py, "raise_for_status", PyTuple::new(py, &[]), None)?;
-        let data = resp.getattr(py, "content")?;
-        <Vec<u8>>::extract(py, &data)
-    }
-
-    pub fn download_tcx<T: Write>(&self, tcx_url: &str, outfile: &mut T) -> Result<(), Error> {
-        let gil = Python::acquire_gil();
-        let py = gil.python();
-        let data = self
-            ._download_tcx(py, tcx_url)
-            .map_err(|e| format_err!("{:?}", e))?;
-        outfile.write_all(&data).map_err(Into::into)
+    pub async fn download_tcx(&self, tcx_url: &str) -> Result<bytes::Bytes, Error> {
+        let headers = self.get_auth_headers()?;
+        self.client
+            .get(tcx_url)
+            .headers(headers)
+            .send()
+            .await?
+            .error_for_status()?
+            .bytes()
+            .await
+            .map_err(Into::into)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use anyhow::Error;
     use chrono::{Duration, Local, Utc};
     use log::debug;
     use std::path::Path;
@@ -389,23 +482,24 @@ mod tests {
     use crate::fitbit_client::FitbitClient;
     use garmin_lib::common::garmin_config::GarminConfig;
 
-    #[test]
+    #[tokio::test]
     #[ignore]
-    fn test_fitbit_client_from_file() {
-        let config = GarminConfig::get_config(None).unwrap();
-        let client = FitbitClient::from_file(config).unwrap();
-        let url = client.get_fitbit_auth_url().unwrap();
-        debug!("{:?} {}", client, url);
-        assert!(url.len() > 0);
+    async fn test_fitbit_client_from_file() -> Result<(), Error> {
+        let config = GarminConfig::get_config(None)?;
+        let client = FitbitClient::from_file(config).await?;
+        let url = client.get_fitbit_auth_url().await?;
+        println!("{:?} {}", client, url);
+        assert!(url.as_str().len() > 0);
+        Ok(())
     }
 
-    #[test]
+    #[tokio::test]
     #[ignore]
-    fn test_get_tcx_urls() {
-        let config = GarminConfig::get_config(None).unwrap();
-        let client = FitbitClient::from_file(config.clone()).unwrap();
+    async fn test_get_tcx_urls() -> Result<(), Error> {
+        let config = GarminConfig::get_config(None)?;
+        let client = FitbitClient::from_file(config.clone()).await?;
         let start_date = (Utc::now() - Duration::days(10)).naive_utc().date();
-        let results = client.get_tcx_urls(start_date).unwrap();
+        let results = client.get_tcx_urls(start_date).await?;
         debug!("{:?}", results);
         for (start_time, tcx_url) in results {
             let fname = format!(
@@ -422,12 +516,53 @@ mod tests {
                 debug!("{} does not exist", fname);
             }
 
-            let mut f = NamedTempFile::new().unwrap();
-            client.download_tcx(&tcx_url, &mut f).unwrap();
-            let metadata = f.as_file().metadata().unwrap();
-            debug!("{} {:?} {}", start_time, metadata, metadata.len());
-            assert!(metadata.len() > 0);
+            {
+                use std::io::Write;
+                let mut f = NamedTempFile::new()?;
+                let data = client.download_tcx(&tcx_url).await?;
+                f.write_all(&data)?;
+
+                let metadata = f.as_file().metadata()?;
+                debug!("{} {:?} {}", start_time, metadata, metadata.len());
+                assert!(metadata.len() > 0);
+            }
             break;
         }
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_get_client_offset() -> Result<(), Error> {
+        let config = GarminConfig::get_config(None)?;
+        let client = FitbitClient::from_file(config.clone()).await?;
+        let offset = client.get_client_offset().await?;
+        assert_eq!(offset.local_minus_utc(), -4 * 3600);
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_get_fitbit_intraday_time_series_heartrate() -> Result<(), Error> {
+        let config = GarminConfig::get_config(None)?;
+        let client = FitbitClient::from_file(config.clone()).await?;
+        let date = (Utc::now() - Duration::days(1)).naive_local().date();
+        let heartrates = client
+            .get_fitbit_intraday_time_series_heartrate(date)
+            .await?;
+        println!("{:#?}", heartrates);
+        assert!(heartrates.len() > 10);
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_get_fitbit_bodyweightfat() -> Result<(), Error> {
+        let config = GarminConfig::get_config(None)?;
+        let client = FitbitClient::from_file(config.clone()).await?;
+        let bodyweight = client.get_fitbit_bodyweightfat().await?;
+        println!("{:#?}", bodyweight);
+        assert!(bodyweight.len() > 10);
+        Ok(())
     }
 }

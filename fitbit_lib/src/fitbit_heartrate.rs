@@ -1,9 +1,6 @@
 use anyhow::{format_err, Error};
 use avro_rs::{from_value, Codec, Reader, Schema, Writer};
-use chrono::{
-    DateTime, Duration, FixedOffset, Local, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc,
-};
-use cpython::{exc, FromPyObject, PyDict, PyErr, PyResult, Python};
+use chrono::{DateTime, Duration, FixedOffset, Local, NaiveDate, NaiveDateTime, TimeZone, Utc};
 use futures::future::try_join_all;
 use glob::glob;
 use itertools::Itertools;
@@ -25,28 +22,7 @@ use garmin_lib::{
     utils::{iso_8601_datetime, stack_string::StackString},
 };
 
-fn exception(py: Python, msg: &str) -> PyErr {
-    PyErr::new::<exc::Exception, _>(py, msg)
-}
-
-macro_rules! get_pydict_item_option {
-    ($py:ident, $dict:ident, $id:ident, $T:ty) => {
-        $dict
-            .get_item($py, &stringify!($id))
-            .as_ref()
-            .map(|v| <$T>::extract($py, v))
-            .transpose()
-    };
-}
-
-macro_rules! get_pydict_item {
-    ($py:ident, $dict:ident, $id:ident, $T:ty) => {
-        get_pydict_item_option!($py, $dict, $id, $T)
-            .and_then(|x| x.ok_or_else(|| exception($py, &format!("No {}", stringify!($id)))))
-    };
-}
-
-#[derive(Serialize, Deserialize, Copy, Clone)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug)]
 pub struct FitbitHeartRate {
     #[serde(with = "iso_8601_datetime")]
     pub datetime: DateTime<Utc>,
@@ -97,22 +73,6 @@ where
 }
 
 impl FitbitHeartRate {
-    pub fn from_pydict(
-        py: Python,
-        dict: &PyDict,
-        date: &str,
-        offset: FixedOffset,
-    ) -> PyResult<Self> {
-        let time = get_pydict_item!(py, dict, time, String)?;
-        let datetime = format!("{}T{}{}", date, time, offset);
-        let datetime = DateTime::parse_from_rfc3339(&datetime)
-            .unwrap()
-            .with_timezone(&Utc);
-        let value = get_pydict_item!(py, dict, value, i32)?;
-        let hre = Self { datetime, value };
-        Ok(hre)
-    }
-
     pub fn from_json_heartrate_entry(entry: JsonHeartRateEntry) -> Self {
         Self {
             datetime: entry.datetime,
@@ -347,29 +307,11 @@ pub fn import_fitbit_json_files(directory: &str) -> Result<(), Error> {
         .collect()
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct FitbitBodyWeightFat {
     pub datetime: DateTime<Utc>,
     pub weight: f64,
     pub fat: f64,
-}
-
-impl FitbitBodyWeightFat {
-    pub fn from_pydict(py: Python, dict: &PyDict, offset: FixedOffset) -> PyResult<Self> {
-        let date: NaiveDate = get_pydict_item!(py, dict, date, String)?.parse().unwrap();
-        let time: NaiveTime = get_pydict_item!(py, dict, time, String)?.parse().unwrap();
-        let datetime = format!("{}T{}{}", date, time, offset);
-        let datetime = DateTime::parse_from_rfc3339(&datetime)
-            .unwrap()
-            .with_timezone(&Utc);
-        let weight = get_pydict_item!(py, dict, weight, f64)?;
-        let fat = get_pydict_item!(py, dict, fat, f64)?;
-        Ok(Self {
-            datetime,
-            weight,
-            fat,
-        })
-    }
 }
 
 #[cfg(test)]

@@ -1,8 +1,7 @@
 use anyhow::Error;
 use chrono::{Duration, Utc};
-use std::{fs::File, path::Path};
+use std::path::Path;
 use structopt::StructOpt;
-use tokio::task::spawn_blocking;
 
 use fitbit_lib::fitbit_client::FitbitClient;
 use garmin_lib::{
@@ -62,23 +61,19 @@ impl GarminCliOpts {
 
         if let Some(GarminCliOptions::Connect) = cli.opts {
             let config = cli.config.clone();
-            let res: Result<_, Error> = spawn_blocking(move || {
-                let client = FitbitClient::from_file(config.clone())?;
-                let start_date = (Utc::now() - Duration::days(10)).naive_utc().date();
-                for (start_time, tcx_url) in client.get_tcx_urls(start_date)? {
-                    let fname = format!(
-                        "{}/{}.tcx",
-                        config.gps_dir,
-                        start_time.format("%Y-%m-%d_%H-%M-%S_1_1").to_string(),
-                    );
-                    if !Path::new(&fname).exists() {
-                        client.download_tcx(&tcx_url, &mut File::create(&fname)?)?;
-                    }
+            let client = FitbitClient::from_file(config.clone()).await?;
+            let start_date = (Utc::now() - Duration::days(10)).naive_utc().date();
+            for (start_time, tcx_url) in client.get_tcx_urls(start_date).await? {
+                let fname = format!(
+                    "{}/{}.tcx",
+                    config.gps_dir,
+                    start_time.format("%Y-%m-%d_%H-%M-%S_1_1").to_string(),
+                );
+                if !Path::new(&fname).exists() {
+                    let data = client.download_tcx(&tcx_url).await?;
+                    tokio::fs::write(&fname, &data).await?;
                 }
-                Ok(())
-            })
-            .await?;
-            res?;
+            }
         }
 
         cli.garmin_proc().await?;

@@ -1,10 +1,16 @@
 use anyhow::{format_err, Error};
+use base64::{encode, encode_config, URL_SAFE_NO_PAD};
 use chrono::{DateTime, SecondsFormat, Utc};
 use cpython::{
     exc, FromPyObject, ObjectProtocol, PyDict, PyErr, PyIterator, PyObject, PyResult, PyTuple,
     Python, PythonObject, ToPyObject,
 };
+use lazy_static::lazy_static;
 use log::debug;
+use maplit::hashmap;
+use rand::{thread_rng, Rng};
+use reqwest::{header::HeaderMap, Client, Url};
+use serde::Deserialize;
 use std::{
     collections::HashMap,
     fs::File,
@@ -13,14 +19,19 @@ use std::{
     time::{Duration, SystemTime},
 };
 use tempfile::Builder;
+use tokio::sync::Mutex;
 
 use garmin_lib::{
     common::{garmin_config::GarminConfig, strava_sync::StravaItem},
     utils::{
-        garmin_util::gzip_file, iso_8601_datetime::convert_str_to_datetime,
+        garmin_util::gzip_file, iso_8601_datetime::{self, convert_str_to_datetime},
         sport_types::SportTypes, stack_string::StackString,
     },
 };
+
+lazy_static! {
+    static ref CSRF_TOKEN: Mutex<Option<StackString>> = Mutex::new(None);
+}
 
 fn exception(py: Python, msg: &str) -> PyErr {
     PyErr::new::<exc::Exception, _>(py, msg)
@@ -64,6 +75,8 @@ pub struct StravaClient {
     pub client_secret: StackString,
     pub read_access_token: Option<StackString>,
     pub write_access_token: Option<StackString>,
+    pub read_refresh_token: Option<StackString>,
+    pub client: Client,
 }
 
 impl StravaClient {
@@ -111,6 +124,9 @@ impl StravaClient {
         writeln!(f, "client_secret = {}", self.client_secret)?;
         if let Some(token) = self.read_access_token.as_ref() {
             writeln!(f, "read_access_token = {}", token)?;
+        }
+        if let Some(token) = self.read_refresh_token.as_ref() {
+            writeln!(f, "read_refresh_token = {}", token)?;
         }
         if let Some(token) = self.write_access_token.as_ref() {
             writeln!(f, "write_access_token = {}", token)?;
@@ -177,6 +193,29 @@ impl StravaClient {
             .map_err(|e| format_err!("{:?}", e))
     }
 
+    fn get_random_string() -> String {
+        let random_bytes: Vec<u8> = (0..16).map(|_| thread_rng().gen::<u8>()).collect();
+        encode_config(&random_bytes, URL_SAFE_NO_PAD)
+    }
+
+    pub async fn get_authorization_url_api(&self) -> Result<Url, Error> {
+        let redirect_uri = format!("https://{}/garmin/strava/callback", &self.config.domain);
+        let state = Self::get_random_string();
+        let url = Url::parse_with_params(
+            "https://www.strava.com/oauth/authorize",
+            &[
+                ("client_id", self.client_id.as_str()),
+                ("redirect_uri", redirect_uri.as_str()),
+                ("response_type", "code"),
+                ("approval_prompt", "auto"),
+                ("scope", "activity:read_all,activity:write"),
+                ("state", state.as_str()),
+            ],
+        )?;
+        CSRF_TOKEN.lock().await.replace(state.into());
+        Ok(url)
+    }
+
     fn _exchange_code_for_token(&self, py: Python, code: &str) -> PyResult<Option<String>> {
         let client = self.get_strava_client(py)?;
         let args = PyDict::new(py);
@@ -218,6 +257,85 @@ impl StravaClient {
             _ => None,
         };
         Ok(())
+    }
+
+    pub async fn process_callback_api(&mut self, code: &str, state: &str) -> Result<(), Error> {
+        #[derive(Deserialize)]
+        struct TokenResponse {
+            access_token: StackString,
+            refresh_token: StackString,
+        }
+
+        let current_state = CSRF_TOKEN.lock().await.take();
+        if let Some(current_state) = current_state {
+            if state != current_state.as_str() {
+                return Err(format_err!("Incorrect state"));
+            }
+            let url = "https://www.strava.com/oauth/token";
+            let data = hashmap! {
+                "client_id" => self.client_id.as_str(),
+                "client_secret" => self.client_secret.as_str(),
+                "code" => code,
+                "grant_type" => "authorization_code",
+            };
+            let resp: TokenResponse = self
+                .client
+                .post(url)
+                .form(&data)
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+                .await?;
+            self.read_access_token.replace(resp.access_token);
+            self.read_refresh_token.replace(resp.refresh_token);
+            Ok(())
+        } else {
+            Err(format_err!("No state"))
+        }
+    }
+
+    pub async fn refresh_access_token(&mut self) -> Result<(), Error> {
+        #[derive(Deserialize)]
+        struct TokenResponse {
+            access_token: StackString,
+            refresh_token: StackString,
+        }
+
+        if let Some(refresh_token) = self.read_refresh_token.as_ref() {
+            let url = "https://www.strava.com/oauth/token";
+            let data = hashmap! {
+                "client_id" => self.client_id.as_str(),
+                "client_secret" => self.client_secret.as_str(),
+                "refresh_token" => refresh_token.as_str(),
+                "grant_type" => "refresh_token",
+            };
+            let resp: TokenResponse = self
+                .client
+                .post(url)
+                .form(&data)
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+                .await?;
+            self.read_access_token.replace(resp.access_token);
+            self.read_refresh_token.replace(resp.refresh_token);
+            Ok(())
+        } else {
+            Err(format_err!("No refresh token"))
+        }
+    }
+
+    fn get_auth_headers(&self) -> Result<HeaderMap, Error> {
+        let mut headers = HeaderMap::new();
+        let access_token = self
+            .read_access_token
+            .as_ref()
+            .or_else(|| self.write_access_token.as_ref())
+            .ok_or_else(|| format_err!("no access token"))?;
+        headers.insert("Authorization", format!("Bearer {}", access_token).parse()?);
+        Ok(headers)
     }
 
     fn _get_strava_activites(
@@ -268,6 +386,42 @@ impl StravaClient {
 
         self._get_strava_activites(py, start_date, end_date)
             .map_err(|e| format_err!("{:?}", e))
+    }
+
+    pub async fn get_strava_activites_api(
+        &self,
+        start_date: Option<DateTime<Utc>>,
+        end_date: Option<DateTime<Utc>>,
+    ) -> Result<HashMap<StackString, StravaItem>, Error> {
+        #[derive(Deserialize)]
+        struct StravaActivity {
+            name: String,
+            #[serde(with = "iso_8601_datetime")]
+            start_date: DateTime<Utc>,
+            id: i64,
+        }
+
+        let mut params = Vec::new();
+        if let Some(start_date) = start_date {
+            params.push(("after", start_date.to_rfc3339_opts(SecondsFormat::Secs, true)));
+        }
+        if let Some(end_date) = end_date {
+            params.push(("before", end_date.to_rfc3339_opts(SecondsFormat::Secs, true)));
+        }
+
+        let headers = self.get_auth_headers()?;
+        let url = Url::parse_with_params(
+            "https://www.strava.com/api/v3/athlete/activities",
+            &params,
+        )?;
+        let activities: Vec<StravaActivity> = self.client.get(url).headers(headers).send().await?.error_for_status()?.json().await?;
+        let activity_map: HashMap<_, _> = activities.into_iter().map(|act| {
+            (act.id.to_string().into(), StravaItem {
+                begin_datetime: act.start_date,
+                title: act.name.into(),
+            })
+        }).collect();
+        Ok(activity_map)
     }
 
     fn _upload_strava_activity(
@@ -400,6 +554,15 @@ impl StravaClient {
         }
     }
 
+    pub async fn upload_strava_activity_api(&self,
+        filepath: &Path,
+        title: &str,
+        description: &str,
+        is_private: bool,
+        sport: SportTypes) -> Result<String, Error> {
+            Ok("".to_string())
+        }
+
     fn _update_strava_activity(
         &self,
         py: Python,
@@ -444,5 +607,25 @@ impl StravaClient {
 
         self._update_strava_activity(py, activity_id, title, description, is_private, sport)
             .map_err(|e| format_err!("{:?}", e))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Error;
+
+    use garmin_lib::common::garmin_config::GarminConfig;
+
+    use crate::strava_client::{StravaAuthType, StravaClient};
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_get_strava_activites_api() -> Result<(), Error> {
+        let config = GarminConfig::get_config(None)?;
+        let client = StravaClient::from_file(config, Some(StravaAuthType::Read))?;
+        let activities = client.get_strava_activites_api(None, None).await?;
+        println!("{:#?}", activities);
+        assert!(false);
+        Ok(())
     }
 }

@@ -649,7 +649,8 @@ fn get_file_html(gfile: &GarminFile) -> String {
             .to_string(),
     );
     retval.push(format!(
-        "<tbody><tr style={0}text-align: center;{0}><td>{1}</td><td>{2}</td><td>{3}</td></tr></tbody>",
+        "<tbody><tr style={0}text-align: \
+         center;{0}><td>{1}</td><td>{2}</td><td>{3}</td></tr></tbody>",
         '"',
         gfile.begin_datetime,
         get_sport_selector(gfile.sport),

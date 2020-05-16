@@ -7,12 +7,10 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
-    fs::File,
     path::Path,
     sync::Arc,
 };
-use tokio::fs::remove_file;
-use tokio::task::spawn_blocking;
+use tokio::{fs::remove_file, task::spawn_blocking};
 
 use fitbit_lib::{
     fitbit_client::FitbitClient,
@@ -32,8 +30,7 @@ use garmin_lib::{
             get_strava_id_maximum_begin_datetime, get_strava_ids, upsert_strava_id, StravaItem,
         },
     },
-    utils::sport_types::SportTypes,
-    utils::stack_string::StackString,
+    utils::{sport_types::SportTypes, stack_string::StackString},
 };
 
 use crate::{errors::ServiceError as Error, CONFIG};
@@ -189,18 +186,21 @@ impl HandleRequest<FitbitAuthRequest> for PgPool {
     type Result = Result<String, Error>;
     async fn handle(&self, _: FitbitAuthRequest) -> Self::Result {
         let config = CONFIG.clone();
-        spawn_blocking(move || {
-            let client = FitbitClient::from_file(config)?;
-            let url = client.get_fitbit_auth_url()?;
-            Ok(url)
-        })
-        .await?
+        let mut client = FitbitClient::from_file(config).await?;
+        if let Ok(url) = client.refresh_fitbit_access_token().await {
+            client.to_file().await?;
+            Ok(url.as_str().into())
+        } else {
+            let url = client.get_fitbit_auth_url().await?;
+            Ok(url.as_str().into())
+        }
     }
 }
 
 #[derive(Deserialize)]
 pub struct FitbitCallbackRequest {
     code: String,
+    state: String,
 }
 
 #[async_trait]
@@ -208,13 +208,12 @@ impl HandleRequest<FitbitCallbackRequest> for PgPool {
     type Result = Result<String, Error>;
     async fn handle(&self, msg: FitbitCallbackRequest) -> Self::Result {
         let config = CONFIG.clone();
-        spawn_blocking(move || {
-            let mut client = FitbitClient::from_file(config)?;
-            let url = client.get_fitbit_access_token(&msg.code)?;
-            client.to_file()?;
-            Ok(url)
-        })
-        .await?
+        let mut client = FitbitClient::from_file(config).await?;
+        let body = client
+            .get_fitbit_access_token(&msg.code, &msg.state)
+            .await?;
+        client.to_file().await?;
+        Ok(body)
     }
 }
 
@@ -228,13 +227,11 @@ impl HandleRequest<FitbitHeartrateApiRequest> for PgPool {
     type Result = Result<Vec<FitbitHeartRate>, Error>;
     async fn handle(&self, msg: FitbitHeartrateApiRequest) -> Self::Result {
         let config = CONFIG.clone();
-        spawn_blocking(move || {
-            let client = FitbitClient::from_file(config)?;
-            client
-                .get_fitbit_intraday_time_series_heartrate(msg.date)
-                .map_err(Into::into)
-        })
-        .await?
+        let client = FitbitClient::from_file(config).await?;
+        client
+            .get_fitbit_intraday_time_series_heartrate(msg.date)
+            .await
+            .map_err(Into::into)
     }
 }
 
@@ -262,11 +259,8 @@ impl HandleRequest<FitbitBodyWeightFatRequest> for PgPool {
     type Result = Result<Vec<FitbitBodyWeightFat>, Error>;
     async fn handle(&self, _: FitbitBodyWeightFatRequest) -> Self::Result {
         let config = CONFIG.clone();
-        spawn_blocking(move || {
-            let client = FitbitClient::from_file(config)?;
-            client.get_fitbit_bodyweightfat().map_err(Into::into)
-        })
-        .await?
+        let client = FitbitClient::from_file(config).await?;
+        client.get_fitbit_bodyweightfat().await.map_err(Into::into)
     }
 }
 
@@ -278,21 +272,21 @@ impl HandleRequest<FitbitBodyWeightFatUpdateRequest> for PgPool {
     async fn handle(&self, _: FitbitBodyWeightFatUpdateRequest) -> Self::Result {
         let start_date: NaiveDate = (Local::now() - Duration::days(30)).naive_local().date();
         let config = CONFIG.clone();
-        let client = Arc::new(FitbitClient::from_file(config)?);
+        let client = FitbitClient::from_file(config).await?;
+        let client = Arc::new(client);
+
         let existing_map: Result<HashMap<NaiveDate, _>, Error> = {
             let client = client.clone();
-            spawn_blocking(move || {
-                let measurements: HashMap<_, _> = client
-                    .get_fitbit_bodyweightfat()?
-                    .into_iter()
-                    .map(|entry| {
-                        let date = entry.datetime.with_timezone(&Local).naive_local().date();
-                        (date, entry)
-                    })
-                    .collect();
-                Ok(measurements)
-            })
-            .await?
+            let measurements: HashMap<_, _> = client
+                .get_fitbit_bodyweightfat()
+                .await?
+                .into_iter()
+                .map(|entry| {
+                    let date = entry.datetime.with_timezone(&Local).naive_local().date();
+                    (date, entry)
+                })
+                .collect();
+            Ok(measurements)
         };
 
         let existing_map = existing_map?;
@@ -305,11 +299,8 @@ impl HandleRequest<FitbitBodyWeightFatUpdateRequest> for PgPool {
                 !existing_map.contains_key(&date)
             })
             .collect();
-        spawn_blocking(move || {
-            let new_measurements = client.update_fitbit_bodyweightfat(new_measurements)?;
-            Ok(new_measurements)
-        })
-        .await?
+        let new_measurements = client.update_fitbit_bodyweightfat(new_measurements).await?;
+        Ok(new_measurements)
     }
 }
 
@@ -323,13 +314,11 @@ impl HandleRequest<FitbitSyncRequest> for PgPool {
     type Result = Result<(), Error>;
     async fn handle(&self, msg: FitbitSyncRequest) -> Self::Result {
         let config = CONFIG.clone();
-        spawn_blocking(move || {
-            let client = FitbitClient::from_file(config)?;
-            client
-                .import_fitbit_heartrate(msg.date, &client.config)
-                .map_err(Into::into)
-        })
-        .await?
+        let client = FitbitClient::from_file(config).await?;
+        client
+            .import_fitbit_heartrate(msg.date, &client.config)
+            .await
+            .map_err(Into::into)
     }
 }
 
@@ -343,35 +332,35 @@ impl HandleRequest<FitbitTcxSyncRequest> for PgPool {
     type Result = Result<Vec<String>, Error>;
     async fn handle(&self, msg: FitbitTcxSyncRequest) -> Self::Result {
         let config = CONFIG.clone();
-
-        let results = spawn_blocking(move || {
-            let client = FitbitClient::from_file(config.clone())?;
-            let start_date = msg
-                .start_date
-                .unwrap_or_else(|| (Utc::now() - Duration::days(10)).naive_utc().date());
-            let results: Result<Vec<_>, Error> = client
-                .get_tcx_urls(start_date)?
-                .into_iter()
-                .filter_map(|(start_time, tcx_url)| {
-                    let res = || {
-                        let fname = format!(
-                            "{}/{}.tcx",
-                            config.gps_dir,
-                            start_time.format("%Y-%m-%d_%H-%M-%S_1_1").to_string(),
-                        );
-                        if Path::new(&fname).exists() {
-                            Ok(None)
-                        } else {
-                            client.download_tcx(&tcx_url, &mut File::create(&fname)?)?;
-                            Ok(Some(fname))
-                        }
-                    };
-                    res().transpose()
-                })
-                .collect();
-            results
-        })
-        .await?;
+        let client = Arc::new(FitbitClient::from_file(config).await?);
+        let start_date = msg
+            .start_date
+            .unwrap_or_else(|| (Utc::now() - Duration::days(10)).naive_utc().date());
+        let futures = client
+            .get_tcx_urls(start_date)
+            .await?
+            .into_iter()
+            .filter_map(|(start_time, tcx_url)| {
+                let fname = format!(
+                    "{}/{}.tcx",
+                    client.config.gps_dir,
+                    start_time.format("%Y-%m-%d_%H-%M-%S_1_1").to_string(),
+                );
+                if Path::new(&fname).exists() {
+                    None
+                } else {
+                    Some((fname, tcx_url))
+                }
+            })
+            .map(|(fname, tcx_url)| {
+                let client = client.clone();
+                async move {
+                    let data = client.download_tcx(&tcx_url).await?;
+                    tokio::fs::write(&fname, &data).await?;
+                    Ok(fname)
+                }
+            });
+        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
 
         let gcli = GarminCli::from_pool(&self)?;
         gcli.proc_everything().await?;

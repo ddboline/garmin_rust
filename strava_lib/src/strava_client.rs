@@ -1,6 +1,6 @@
 use anyhow::{format_err, Error};
 use base64::{encode_config, URL_SAFE_NO_PAD};
-use chrono::{DateTime, SecondsFormat, Utc};
+use chrono::{DateTime, Utc};
 use lazy_static::lazy_static;
 use maplit::hashmap;
 use rand::{thread_rng, Rng};
@@ -220,16 +220,10 @@ impl StravaClient {
 
         let mut params = Vec::new();
         if let Some(start_date) = start_date {
-            params.push((
-                "after",
-                start_date.to_rfc3339_opts(SecondsFormat::Secs, true),
-            ));
+            params.push(("after", start_date.timestamp().to_string()));
         }
         if let Some(end_date) = end_date {
-            params.push((
-                "before",
-                end_date.to_rfc3339_opts(SecondsFormat::Secs, true),
-            ));
+            params.push(("before", end_date.timestamp().to_string()));
         }
 
         let headers = self.get_auth_headers()?;

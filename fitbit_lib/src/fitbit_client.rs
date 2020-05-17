@@ -377,7 +377,7 @@ impl FitbitClient {
                 };
                 self.client
                     .post(url)
-                    .json(&data)
+                    .form(&data)
                     .headers(headers.clone())
                     .send()
                     .await?
@@ -391,7 +391,7 @@ impl FitbitClient {
                 };
                 self.client
                     .post(url)
-                    .json(&data)
+                    .form(&data)
                     .headers(headers)
                     .send()
                     .await?

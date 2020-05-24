@@ -1,5 +1,5 @@
 use anyhow::{format_err, Error};
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::{DateTime, NaiveDateTime, Utc, NaiveDate};
 use log::debug;
 use maplit::hashmap;
 use reqwest::{
@@ -128,6 +128,7 @@ impl GarminConnectClient {
                     gc_redeem_resp.text().await?
                 ));
             } else if status == 200 || status == 404 {
+                println!("{:?}", gc_redeem_resp.text().await?);
                 break;
             }
             current_redirect_count += 1;
@@ -139,6 +140,11 @@ impl GarminConnectClient {
         session.set_default_headers(obligatory_headers).await?;
 
         Ok(Self { config, session })
+    }
+
+    pub async fn get_heartrate(&self, date: NaiveDate) -> Result<(), Error> {
+        let url_prefix = "https://connect.garmin.com/modern/proxy/wellness-service/wellness/dailyHeartRate/";
+        Ok(())
     }
 
     pub async fn get_activities(&self, max_timestamp: DateTime<Utc>) -> Result<Vec<String>, Error> {

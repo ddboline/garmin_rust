@@ -8,8 +8,6 @@ DB=garmin_summary
 sudo apt-get install -y postgresql \
     garmin-forerunner-tools \
     fit2tcx \
-    python3-fitbit \
-    python3-stravalib \
     libtinyxml2.6.2v5
 
 sudo -u postgres createuser -E -e $USER

@@ -1,11 +1,12 @@
 use anyhow::{format_err, Error};
-use chrono::{DateTime, NaiveDateTime, Utc, NaiveDate};
+use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
 use log::debug;
 use maplit::hashmap;
 use reqwest::{
     header::{HeaderMap, HeaderName, HeaderValue},
     Url,
 };
+use serde::Deserialize;
 use serde_json::Value;
 use std::{collections::HashMap, thread::sleep, time::Duration};
 use tokio::{fs::File, io::AsyncWriteExt, stream::StreamExt};
@@ -66,8 +67,9 @@ impl GarminConnectClient {
         let status = sso_resp.status();
         if status != 200 {
             return Err(format_err!(
-                "SSO error {} {}",
+                "SSO error {} {:?} {}",
                 status,
+                sso_resp.headers().clone(),
                 sso_resp.text().await?
             ));
         }
@@ -102,6 +104,9 @@ impl GarminConnectClient {
 
         let max_redirect_count = 7;
         let mut current_redirect_count = 1;
+        let mut unit_system = None;
+        let mut display_name = None;
+        let mut full_name = None;
         loop {
             sleep(Duration::from_secs(2));
             let url = gc_redeem_resp
@@ -128,7 +133,32 @@ impl GarminConnectClient {
                     gc_redeem_resp.text().await?
                 ));
             } else if status == 200 || status == 404 {
-                println!("{:?}", gc_redeem_resp.text().await?);
+                let resp = gc_redeem_resp.text().await?;
+                for entry in resp.split("\n").filter(|x| x.contains("JSON.parse")) {
+                    let entry = entry.replace(r#"\\""#, r#"""#).replace(");", "");
+                    let entries: Vec<_> = entry.split(" = JSON.parse(").take(2).collect();
+                    if entries[0].contains("VIEWER_USERPREFERENCES") {
+                        #[derive(Deserialize)]
+                        struct UserPrefs {
+                            #[serde(alias = "measurementSystem")]
+                            measurement_system: String,
+                        }
+                        let val: UserPrefs = serde_json::from_str(entries[1])?;
+                        unit_system.replace(val.measurement_system);
+                    } else if entries[0].contains("VIEWER_SOCIAL_PROFILE") {
+                        #[derive(Deserialize)]
+                        struct SocialProfile {
+                            #[serde(alias = "displayName")]
+                            display_name: String,
+                            #[serde(alias = "fullName")]
+                            full_name: String,
+                        }
+                        let val: SocialProfile = serde_json::from_str(entries[1])?;
+                        display_name.replace(val.display_name);
+                        full_name.replace(val.full_name);
+                        println!("{}", entries[1]);
+                    }
+                }
                 break;
             }
             current_redirect_count += 1;
@@ -143,7 +173,8 @@ impl GarminConnectClient {
     }
 
     pub async fn get_heartrate(&self, date: NaiveDate) -> Result<(), Error> {
-        let url_prefix = "https://connect.garmin.com/modern/proxy/wellness-service/wellness/dailyHeartRate/";
+        let url_prefix =
+            "https://connect.garmin.com/modern/proxy/wellness-service/wellness/dailyHeartRate/";
         Ok(())
     }
 

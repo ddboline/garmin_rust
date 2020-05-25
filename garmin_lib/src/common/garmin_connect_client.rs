@@ -17,9 +17,7 @@ use super::{garmin_config::GarminConfig, reqwest_session::ReqwestSession};
 pub struct GarminConnectClient {
     pub config: GarminConfig,
     session: ReqwestSession,
-    unit_system: Option<String>,
     display_name: Option<String>,
-    full_name: Option<String>,
 }
 
 impl GarminConnectClient {
@@ -108,9 +106,7 @@ impl GarminConnectClient {
 
         let max_redirect_count = 7;
         let mut current_redirect_count = 1;
-        let mut unit_system = None;
         let mut display_name = None;
-        let mut full_name = None;
         loop {
             sleep(Duration::from_secs(2));
             let url = gc_redeem_resp
@@ -141,25 +137,14 @@ impl GarminConnectClient {
                 for entry in resp.split('\n').filter(|x| x.contains("JSON.parse")) {
                     let entry = entry.replace(r#"\""#, r#"""#).replace(r#"");"#, "");
                     let entries: Vec<_> = entry.split(r#" = JSON.parse(""#).take(2).collect();
-                    if entries[0].contains("VIEWER_USERPREFERENCES") {
-                        #[derive(Deserialize)]
-                        struct UserPrefs {
-                            #[serde(alias = "measurementSystem")]
-                            measurement_system: String,
-                        }
-                        let val: UserPrefs = serde_json::from_str(entries[1])?;
-                        unit_system.replace(val.measurement_system);
-                    } else if entries[0].contains("VIEWER_SOCIAL_PROFILE") {
+                    if entries[0].contains("VIEWER_SOCIAL_PROFILE") {
                         #[derive(Deserialize)]
                         struct SocialProfile {
                             #[serde(alias = "displayName")]
                             display_name: String,
-                            #[serde(alias = "fullName")]
-                            full_name: String,
                         }
                         let val: SocialProfile = serde_json::from_str(entries[1])?;
                         display_name.replace(val.display_name);
-                        full_name.replace(val.full_name);
                     }
                 }
                 break;
@@ -175,9 +160,7 @@ impl GarminConnectClient {
         Ok(Self {
             config,
             session,
-            unit_system,
             display_name,
-            full_name,
         })
     }
 

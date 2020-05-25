@@ -138,7 +138,7 @@ impl GarminConnectClient {
                 ));
             } else if status == 200 || status == 404 {
                 let resp = gc_redeem_resp.text().await?;
-                for entry in resp.split("\n").filter(|x| x.contains("JSON.parse")) {
+                for entry in resp.split('\n').filter(|x| x.contains("JSON.parse")) {
                     let entry = entry.replace(r#"\""#, r#"""#).replace(r#"");"#, "");
                     let entries: Vec<_> = entry.split(r#" = JSON.parse(""#).take(2).collect();
                     if entries[0].contains("VIEWER_USERPREFERENCES") {

@@ -12,9 +12,11 @@ use reqwest::{
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, path::Path};
 use tempfile::Builder;
-use tokio::fs::File;
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::sync::Mutex;
+use tokio::{
+    fs::File,
+    io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
+    sync::Mutex,
+};
 
 use garmin_lib::{
     common::{garmin_config::GarminConfig, strava_sync::StravaItem},
@@ -369,8 +371,7 @@ impl StravaClient {
 mod tests {
     use anyhow::Error;
 
-    use garmin_lib::common::garmin_config::GarminConfig;
-    use garmin_lib::utils::sport_types::SportTypes;
+    use garmin_lib::{common::garmin_config::GarminConfig, utils::sport_types::SportTypes};
 
     use crate::strava_client::StravaClient;
 

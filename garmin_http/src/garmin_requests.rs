@@ -2,6 +2,7 @@ use anyhow::format_err;
 use async_trait::async_trait;
 use chrono::{DateTime, Duration, Local, NaiveDate, NaiveDateTime, NaiveTime, Utc};
 use futures::future::try_join_all;
+use lazy_static::lazy_static;
 use log::debug;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
@@ -10,7 +11,7 @@ use std::{
     path::Path,
     sync::Arc,
 };
-use tokio::{fs::remove_file, task::spawn_blocking};
+use tokio::{fs::remove_file, sync::RwLock, task::spawn_blocking};
 
 use fitbit_lib::{
     fitbit_client::FitbitClient,
@@ -23,8 +24,9 @@ use strava_lib::strava_client::StravaClient;
 use garmin_lib::{
     common::{
         garmin_cli::{GarminCli, GarminRequest},
+        garmin_connect_client::GarminConnectClient,
         garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList},
-        garmin_summary::get_list_of_files_from_db,
+        garmin_summary::{get_list_of_files_from_db, get_maximum_begin_datetime},
         pgpool::PgPool,
         strava_sync::{
             get_strava_id_maximum_begin_datetime, get_strava_ids, upsert_strava_id, StravaItem,
@@ -34,6 +36,11 @@ use garmin_lib::{
 };
 
 use crate::{errors::ServiceError as Error, CONFIG};
+
+lazy_static! {
+    static ref CONNECT_SESSION: RwLock<Option<(GarminConnectClient, DateTime<Utc>)>> =
+        RwLock::new(None);
+}
 
 #[async_trait]
 pub trait HandleRequest<T> {
@@ -124,6 +131,22 @@ impl HandleRequest<GarminUploadRequest> for PgPool {
     }
 }
 
+async fn get_garmin_connect_session() -> Result<GarminConnectClient, Error> {
+    if let Some((session, timestamp)) = CONNECT_SESSION.read().await.as_ref() {
+        if *timestamp > (Utc::now() - Duration::hours(6)) {
+            return Ok(session.clone());
+        }
+    }
+
+    let session = GarminConnectClient::get_session(CONFIG.clone()).await?;
+    CONNECT_SESSION
+        .write()
+        .await
+        .replace((session.clone(), Utc::now()));
+
+    Ok(session)
+}
+
 pub struct GarminConnectSyncRequest {}
 
 #[async_trait]
@@ -131,9 +154,32 @@ impl HandleRequest<GarminConnectSyncRequest> for PgPool {
     type Result = Result<Vec<String>, Error>;
     async fn handle(&self, _: GarminConnectSyncRequest) -> Self::Result {
         let gcli = GarminCli::from_pool(&self)?;
-        let filenames = gcli.sync_with_garmin_connect().await?;
-        gcli.proc_everything().await?;
+
+        let filenames = if let Some(max_datetime) = get_maximum_begin_datetime(self).await? {
+            let session = get_garmin_connect_session().await?;
+            let filenames = session.get_activities(max_datetime).await?;
+            gcli.process_filenames(&filenames).await?;
+            gcli.proc_everything().await?;
+            filenames
+        } else {
+            Vec::new()
+        };
         Ok(filenames)
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct GarminConnectHrSyncRequest {
+    pub date: NaiveDate,
+}
+
+#[async_trait]
+impl HandleRequest<GarminConnectHrSyncRequest> for PgPool {
+    type Result = Result<(), Error>;
+    async fn handle(&self, req: GarminConnectHrSyncRequest) -> Self::Result {
+        let session = get_garmin_connect_session().await?;
+        FitbitClient::import_garmin_connect_heartrate(req.date, &session).await?;
+        Ok(())
     }
 }
 

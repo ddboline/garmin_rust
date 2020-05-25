@@ -238,6 +238,17 @@ HISTORYBUTTONS
         xmlhttp.send(null);
         document.getElementById("garminconnectoutput").innerHTML = "syncing";
     }
+    function connect_hr_sync(date) {
+        let url = '/garmin/garmin_connect_hr_sync?date=' + date;
+        let xmlhttp = new XMLHttpRequest();
+        xmlhttp.open("GET", url, true);
+        xmlhttp.onload = function nothing() {
+            document.getElementById("garminconnectoutput").innerHTML = "done";
+            heartrate_plot_date(date, date);
+        }
+        xmlhttp.send(null);
+        document.getElementById("garminconnectoutput").innerHTML = "syncing";
+    }
     function heartrateSync() {
         let ostr = '/sync/sync_garmin';
         let xmlhttp = new XMLHttpRequest();

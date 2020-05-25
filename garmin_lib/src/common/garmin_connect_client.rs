@@ -13,9 +13,13 @@ use tokio::{fs::File, io::AsyncWriteExt, stream::StreamExt};
 
 use super::{garmin_config::GarminConfig, reqwest_session::ReqwestSession};
 
+#[derive(Clone)]
 pub struct GarminConnectClient {
-    config: GarminConfig,
+    pub config: GarminConfig,
     session: ReqwestSession,
+    unit_system: Option<String>,
+    display_name: Option<String>,
+    full_name: Option<String>,
 }
 
 impl GarminConnectClient {
@@ -135,8 +139,8 @@ impl GarminConnectClient {
             } else if status == 200 || status == 404 {
                 let resp = gc_redeem_resp.text().await?;
                 for entry in resp.split("\n").filter(|x| x.contains("JSON.parse")) {
-                    let entry = entry.replace(r#"\\""#, r#"""#).replace(");", "");
-                    let entries: Vec<_> = entry.split(" = JSON.parse(").take(2).collect();
+                    let entry = entry.replace(r#"\""#, r#"""#).replace(r#"");"#, "");
+                    let entries: Vec<_> = entry.split(r#" = JSON.parse(""#).take(2).collect();
                     if entries[0].contains("VIEWER_USERPREFERENCES") {
                         #[derive(Deserialize)]
                         struct UserPrefs {
@@ -156,7 +160,6 @@ impl GarminConnectClient {
                         let val: SocialProfile = serde_json::from_str(entries[1])?;
                         display_name.replace(val.display_name);
                         full_name.replace(val.full_name);
-                        println!("{}", entries[1]);
                     }
                 }
                 break;
@@ -169,13 +172,31 @@ impl GarminConnectClient {
 
         session.set_default_headers(obligatory_headers).await?;
 
-        Ok(Self { config, session })
+        Ok(Self {
+            config,
+            session,
+            unit_system,
+            display_name,
+            full_name,
+        })
     }
 
-    pub async fn get_heartrate(&self, date: NaiveDate) -> Result<(), Error> {
-        let url_prefix =
-            "https://connect.garmin.com/modern/proxy/wellness-service/wellness/dailyHeartRate/";
-        Ok(())
+    pub async fn get_heartrate(&self, date: NaiveDate) -> Result<GarminConnectHrData, Error> {
+        let display_name = self
+            .display_name
+            .as_ref()
+            .ok_or_else(|| format_err!("No display name"))?;
+        let url_prefix = format!(
+            "https://connect.garmin.com/modern/proxy/wellness-service/wellness/dailyHeartRate/{}",
+            display_name
+        );
+        let url = Url::parse_with_params(&url_prefix, &[("date", &date.to_string())])?;
+        self.session
+            .get(&url, &HeaderMap::new())
+            .await?
+            .json()
+            .await
+            .map_err(Into::into)
     }
 
     pub async fn get_activities(&self, max_timestamp: DateTime<Utc>) -> Result<Vec<String>, Error> {
@@ -239,4 +260,10 @@ impl GarminConnectClient {
             }
         }
     }
+}
+
+#[derive(Deserialize)]
+pub struct GarminConnectHrData {
+    #[serde(alias = "heartRateValues")]
+    pub heartrate_values: Option<Vec<(i64, Option<i32>)>>,
 }

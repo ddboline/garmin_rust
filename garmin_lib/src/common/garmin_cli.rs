@@ -579,6 +579,9 @@ impl GarminCli {
         if let Some(max_datetime) = get_maximum_begin_datetime(&self.pool).await? {
             let session = GarminConnectClient::get_session(self.config.clone()).await?;
             let filenames = session.get_activities(max_datetime).await?;
+            session
+                .get_heartrate((Utc::now()).naive_local().date())
+                .await?;
             self.process_filenames(&filenames).await?;
             return Ok(filenames);
         }

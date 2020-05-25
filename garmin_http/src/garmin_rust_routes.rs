@@ -34,12 +34,13 @@ use crate::{
         AddGarminCorrectionRequest, FitbitAuthRequest, FitbitBodyWeightFatRequest,
         FitbitBodyWeightFatUpdateRequest, FitbitCallbackRequest, FitbitHeartrateApiRequest,
         FitbitHeartrateCacheRequest, FitbitHeartratePlotRequest, FitbitRefreshRequest,
-        FitbitSyncRequest, FitbitTcxSyncRequest, GarminConnectSyncRequest, GarminCorrRequest,
-        GarminHtmlRequest, GarminListRequest, GarminSyncRequest, GarminUploadRequest,
-        HandleRequest, ScaleMeasurementPlotRequest, ScaleMeasurementRequest,
-        ScaleMeasurementUpdateRequest, StravaActiviesDBUpdateRequest, StravaActivitiesDBRequest,
-        StravaActivitiesRequest, StravaAuthRequest, StravaCallbackRequest, StravaRefreshRequest,
-        StravaSyncRequest, StravaUpdateRequest, StravaUploadRequest,
+        FitbitSyncRequest, FitbitTcxSyncRequest, GarminConnectHrSyncRequest,
+        GarminConnectSyncRequest, GarminCorrRequest, GarminHtmlRequest, GarminListRequest,
+        GarminSyncRequest, GarminUploadRequest, HandleRequest, ScaleMeasurementPlotRequest,
+        ScaleMeasurementRequest, ScaleMeasurementUpdateRequest, StravaActiviesDBUpdateRequest,
+        StravaActivitiesDBRequest, StravaActivitiesRequest, StravaAuthRequest,
+        StravaCallbackRequest, StravaRefreshRequest, StravaSyncRequest, StravaUpdateRequest,
+        StravaUploadRequest,
     },
     CONFIG,
 };
@@ -179,6 +180,16 @@ pub async fn garmin_connect_sync(
 ) -> Result<HttpResponse, Error> {
     let flist = state.db.handle(GarminConnectSyncRequest {}).await?;
     to_json(flist)
+}
+
+pub async fn garmin_connect_hr_sync(
+    query: Query<GarminConnectHrSyncRequest>,
+    _: LoggedUser,
+    state: Data<AppState>,
+) -> Result<HttpResponse, Error> {
+    let query = query.into_inner();
+    state.db.handle(query).await?;
+    form_http_response("".to_string())
 }
 
 pub async fn garmin_sync(_: LoggedUser, state: Data<AppState>) -> Result<HttpResponse, Error> {

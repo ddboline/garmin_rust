@@ -14,7 +14,10 @@ use tokio::{
     task::spawn_blocking,
 };
 
-use garmin_lib::{common::garmin_config::GarminConfig, utils::stack_string::StackString};
+use garmin_lib::{
+    common::{garmin_config::GarminConfig, garmin_connect_client::GarminConnectClient},
+    utils::stack_string::StackString,
+};
 
 use crate::{
     fitbit_heartrate::{FitbitBodyWeightFat, FitbitHeartRate},
@@ -306,6 +309,16 @@ impl FitbitClient {
     ) -> Result<(), Error> {
         let heartrates = self.get_fitbit_intraday_time_series_heartrate(date).await?;
         let config = config.clone();
+        spawn_blocking(move || FitbitHeartRate::merge_slice_to_avro(&config, &heartrates)).await?
+    }
+
+    pub async fn import_garmin_connect_heartrate(
+        date: NaiveDate,
+        session: &GarminConnectClient,
+    ) -> Result<(), Error> {
+        let heartrates =
+            FitbitHeartRate::from_garmin_connect_hr(&session.get_heartrate(date).await?);
+        let config = session.config.clone();
         spawn_blocking(move || FitbitHeartRate::merge_slice_to_avro(&config, &heartrates)).await?
     }
 

@@ -15,6 +15,7 @@ struct ReqwestSessionInner {
     headers: HeaderMap,
 }
 
+#[derive(Clone)]
 pub struct ReqwestSession {
     client: Arc<Mutex<ReqwestSessionInner>>,
 }

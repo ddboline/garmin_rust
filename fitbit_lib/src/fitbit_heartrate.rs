@@ -15,8 +15,8 @@ use structopt::StructOpt;
 
 use garmin_lib::{
     common::{
-        garmin_config::GarminConfig, garmin_file::GarminFile,
-        garmin_summary::get_list_of_files_from_db, pgpool::PgPool,
+        garmin_config::GarminConfig, garmin_connect_client::GarminConnectHrData,
+        garmin_file::GarminFile, garmin_summary::get_list_of_files_from_db, pgpool::PgPool,
     },
     reports::garmin_templates::{PLOT_TEMPLATE, PLOT_TEMPLATE_DEMO, TIMESERIESTEMPLATE},
     utils::{iso_8601_datetime, stack_string::StackString},
@@ -181,7 +181,7 @@ impl FitbitHeartRate {
             .map(|i| {
                 let date = Local::today().naive_local() - Duration::days(i);
                 format!(
-                    "{}{}<br>",
+                    "{}{}{}<br>",
                     format!(
                         r#"
                         <button type="submit" id="ID"
@@ -195,6 +195,17 @@ impl FitbitHeartRate {
                             r#"
                         <button type="submit" id="ID"
                          onclick="heartrate_sync('{date}');">Sync {date}</button>
+                        "#,
+                            date = date
+                        )
+                    },
+                    if is_demo {
+                        "".to_string()
+                    } else {
+                        format!(
+                            r#"
+                        <button type="submit" id="ID"
+                         onclick="connect_hr_sync('{date}');">Sync Garmin {date}</button>
                         "#,
                             date = date
                         )
@@ -274,6 +285,29 @@ impl FitbitHeartRate {
             Self::dump_to_avro(&merged_values, &input_filename.to_string_lossy())?;
         }
         Ok(())
+    }
+
+    pub fn from_garmin_connect_hr(hr_data: &GarminConnectHrData) -> Vec<Self> {
+        if let Some(hr_vals) = hr_data.heartrate_values.as_ref() {
+            hr_vals
+                .iter()
+                .filter_map(|(timestamp_ms, hr_val_opt)| {
+                    hr_val_opt.map(|value| {
+                        let timestamp: i64 = timestamp_ms / 1000;
+                        let datetime = DateTime::<Utc>::from_utc(
+                            NaiveDateTime::from_timestamp(
+                                timestamp,
+                                ((timestamp_ms - timestamp * 1000) * 1_000_000) as u32,
+                            ),
+                            Utc,
+                        );
+                        Self { datetime, value }
+                    })
+                })
+                .collect()
+        } else {
+            Vec::new()
+        }
     }
 }
 

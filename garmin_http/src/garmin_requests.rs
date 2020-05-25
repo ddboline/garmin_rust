@@ -183,6 +183,22 @@ impl HandleRequest<GarminConnectHrSyncRequest> for PgPool {
     }
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct GarminConnectHrApiRequest {
+    pub date: NaiveDate,
+}
+
+#[async_trait]
+impl HandleRequest<GarminConnectHrApiRequest> for PgPool {
+    type Result = Result<Vec<FitbitHeartRate>, Error>;
+    async fn handle(&self, req: GarminConnectHrApiRequest) -> Self::Result {
+        let session = get_garmin_connect_session().await?;
+        let hr_vals =
+            FitbitHeartRate::from_garmin_connect_hr(&session.get_heartrate(req.date).await?);
+        Ok(hr_vals)
+    }
+}
+
 pub struct StravaSyncRequest {}
 
 #[async_trait]

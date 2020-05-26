@@ -13,6 +13,8 @@ use tokio::{fs::File, io::AsyncWriteExt, stream::StreamExt};
 
 use super::{garmin_config::GarminConfig, reqwest_session::ReqwestSession};
 
+const GARMIN_PREFIX: &str = "https://connect.garmin.com/modern";
+
 #[derive(Clone)]
 pub struct GarminConnectClient {
     pub config: GarminConfig,
@@ -37,7 +39,7 @@ impl GarminConnectClient {
         };
 
         let params = hashmap! {
-            "service"=> "https://connect.garmin.com/modern",
+            "service"=> GARMIN_PREFIX,
             "clientId"=> "GarminConnect",
             "gauthHost"=>"https://sso.garmin.com/sso",
             "consumeServiceTicket"=>"false",
@@ -89,10 +91,7 @@ impl GarminConnectClient {
         }
 
         let mut gc_redeem_resp = session
-            .get(
-                &"https://connect.garmin.com/modern".parse()?,
-                &HeaderMap::new(),
-            )
+            .get(&GARMIN_PREFIX.parse()?, &HeaderMap::new())
             .await?;
         if gc_redeem_resp.status() != 302 {
             return Err(format_err!(
@@ -164,32 +163,54 @@ impl GarminConnectClient {
         })
     }
 
+    pub async fn get_user_summary(&self, date: NaiveDate) -> Result<(), Error> {
+        let display_name = self
+            .display_name
+            .as_ref()
+            .ok_or_else(|| format_err!("No display name"))?;
+        let url_prefix = format!(
+            "{}/proxy/usersummary-service/usersummary/daily/{}",
+            GARMIN_PREFIX, display_name,
+        );
+        let url = Url::parse_with_params(&url_prefix, &[("calendarDate", &date.to_string())])?;
+        self.session
+            .get(&url, &HeaderMap::new())
+            .await?
+            .error_for_status()
+            .map(|_| ())
+            .map_err(Into::into)
+    }
+
     pub async fn get_heartrate(&self, date: NaiveDate) -> Result<GarminConnectHrData, Error> {
         let display_name = self
             .display_name
             .as_ref()
             .ok_or_else(|| format_err!("No display name"))?;
         let url_prefix = format!(
-            "https://connect.garmin.com/modern/proxy/wellness-service/wellness/dailyHeartRate/{}",
-            display_name
+            "{}/proxy/wellness-service/wellness/dailyHeartRate/{}",
+            GARMIN_PREFIX, display_name
         );
         let url = Url::parse_with_params(&url_prefix, &[("date", &date.to_string())])?;
         self.session
             .get(&url, &HeaderMap::new())
             .await?
+            .error_for_status()?
             .json()
             .await
             .map_err(Into::into)
     }
 
     pub async fn get_activities(&self, max_timestamp: DateTime<Utc>) -> Result<Vec<String>, Error> {
-        let url_prefix = "https://connect.garmin.com/modern/proxy/activitylist-service/activities/search/activities";
+        let url_prefix = format!(
+            "{}/proxy/activitylist-service/activities/search/activities",
+            GARMIN_PREFIX
+        );
         let mut entries = Vec::new();
         let mut current_start = 0;
         let limit = 10;
         loop {
             let url = Url::parse_with_params(
-                url_prefix,
+                &url_prefix,
                 &[
                     ("start", current_start.to_string()),
                     ("limit", limit.to_string()),
@@ -201,6 +222,7 @@ impl GarminConnectClient {
                 .session
                 .get(&url, &HeaderMap::new())
                 .await?
+                .error_for_status()?
                 .json()
                 .await?;
             if new_entries.is_empty() {
@@ -226,7 +248,11 @@ impl GarminConnectClient {
                             )
                             .parse()?;
                             let mut f = File::create(&fname).await?;
-                            let resp = self.session.get(&url, &HeaderMap::new()).await?;
+                            let resp = self
+                                .session
+                                .get(&url, &HeaderMap::new())
+                                .await?
+                                .error_for_status()?;
 
                             let mut stream = resp.bytes_stream();
                             while let Some(item) = stream.next().await {

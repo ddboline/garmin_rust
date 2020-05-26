@@ -131,10 +131,24 @@ impl HandleRequest<GarminUploadRequest> for PgPool {
     }
 }
 
+async fn try_get_user_summary(session: GarminConnectClient) -> Result<GarminConnectClient, Error> {
+    if session
+        .get_user_summary(Utc::now().naive_local().date())
+        .await
+        .is_ok()
+    {
+        Ok(session)
+    } else {
+        GarminConnectClient::get_session(CONFIG.clone())
+            .await
+            .map_err(Into::into)
+    }
+}
+
 async fn get_garmin_connect_session() -> Result<GarminConnectClient, Error> {
     if let Some((session, timestamp)) = CONNECT_SESSION.read().await.as_ref() {
         if *timestamp > (Utc::now() - Duration::hours(6)) {
-            return Ok(session.clone());
+            return try_get_user_summary(session.clone()).await;
         }
     }
 

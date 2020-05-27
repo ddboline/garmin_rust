@@ -233,7 +233,7 @@ impl HandleRequest<StravaSyncRequest> for PgPool {
         let client = StravaClient::from_file(config).await?;
         let activities = client.get_strava_activites(max_datetime, None).await?;
 
-        println!("activities {:#?}", activities);
+        debug!("activities {:#?}", activities);
 
         upsert_strava_id(&activities, &self)
             .await

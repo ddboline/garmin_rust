@@ -370,6 +370,7 @@ impl StravaClient {
 #[cfg(test)]
 mod tests {
     use anyhow::Error;
+    use log::debug;
 
     use garmin_lib::{common::garmin_config::GarminConfig, utils::sport_types::SportTypes};
 
@@ -394,7 +395,7 @@ mod tests {
         client.refresh_access_token().await?;
         let activities = client.get_strava_activites(None, None).await?;
         if let Some((activity_id, item)) = activities.into_iter().nth(0) {
-            println!("{} {:#?}", activity_id, item);
+            debug!("{} {:#?}", activity_id, item);
             let result = client
                 .update_strava_activity(
                     activity_id.as_str(),
@@ -403,7 +404,7 @@ mod tests {
                     SportTypes::Running,
                 )
                 .await?;
-            println!("{}", result);
+            debug!("{}", result);
         }
         Ok(())
     }

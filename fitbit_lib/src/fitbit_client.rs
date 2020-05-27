@@ -501,7 +501,7 @@ mod tests {
         let config = GarminConfig::get_config(None)?;
         let client = FitbitClient::from_file(config).await?;
         let url = client.get_fitbit_auth_url().await?;
-        println!("{:?} {}", client, url);
+        debug!("{:?} {}", client, url);
         assert!(url.as_str().len() > 0);
         Ok(())
     }
@@ -563,7 +563,7 @@ mod tests {
         let heartrates = client
             .get_fitbit_intraday_time_series_heartrate(date)
             .await?;
-        println!("{:#?}", heartrates);
+        debug!("{:#?}", heartrates);
         assert!(heartrates.len() > 10);
         Ok(())
     }
@@ -574,7 +574,7 @@ mod tests {
         let config = GarminConfig::get_config(None)?;
         let client = FitbitClient::from_file(config.clone()).await?;
         let bodyweight = client.get_fitbit_bodyweightfat().await?;
-        println!("{:#?}", bodyweight);
+        debug!("{:#?}", bodyweight);
         assert!(bodyweight.len() > 10);
         Ok(())
     }

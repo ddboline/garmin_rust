@@ -135,14 +135,13 @@ async fn try_get_user_summary(session: GarminConnectClient) -> Result<GarminConn
     if session
         .get_user_summary(Utc::now().naive_local().date())
         .await
-        .is_ok()
+        .is_err()
     {
-        Ok(session)
-    } else {
-        GarminConnectClient::get_session(CONFIG.clone())
-            .await
-            .map_err(Into::into)
+        let session = GarminConnectClient::get_session(CONFIG.clone())
+            .await?;
+        CONNECT_SESSION.write().await.replace((session.clone(), Utc::now()));
     }
+    Ok(session)
 }
 
 async fn get_garmin_connect_session() -> Result<GarminConnectClient, Error> {

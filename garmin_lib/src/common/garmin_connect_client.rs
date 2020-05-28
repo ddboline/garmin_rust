@@ -176,9 +176,8 @@ impl GarminConnectClient {
         self.session
             .get(&url, &HeaderMap::new())
             .await?
-            .error_for_status()
-            .map(|_| ())
-            .map_err(Into::into)
+            .error_for_status()?;
+        Ok(())
     }
 
     pub async fn get_heartrate(&self, date: NaiveDate) -> Result<GarminConnectHrData, Error> {

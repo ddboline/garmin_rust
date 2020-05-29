@@ -15,17 +15,6 @@ all:
 	cd ../ && \
 	rm -rf build/
 
-xenial:
-	mkdir -p build/ && \
-	cp Dockerfile.build.ubuntu16.04 build/Dockerfile && \
-	cp -a Cargo.toml src scripts Makefile templates garmin_cli \
-		garmin_lib garmin_http fitbit_lib fitbit_bot strava_lib \
-		sheets_lib build/ && \
-	cd build/ && \
-	docker build -t garmin_rust/build_rust:ubuntu16.04 . && \
-	cd ../ && \
-	rm -rf build/
-
 cleanup:
 	docker rmi `docker images | python -c "import sys; print('\n'.join(l.split()[2] for l in sys.stdin if '<none>' in l))"`
 	rm -rf /tmp/.tmp.docker.garmin_rust
@@ -33,13 +22,6 @@ cleanup:
 
 package:
 	docker run --cidfile $(cidfile) -v `pwd`/target:/garmin_rust/target garmin_rust/build_rust:ubuntu18.04 \
-        /garmin_rust/scripts/build_deb_docker.sh $(version) $(release)
-	docker cp `cat $(cidfile)`:/garmin_rust/garmin-rust_$(version)-$(release)_amd64.deb .
-	docker rm `cat $(cidfile)`
-	rm $(cidfile)
-
-package_xenial:
-	docker run --cidfile $(cidfile) -v `pwd`/target:/garmin_rust/target garmin_rust/build_rust:ubuntu16.04 \
         /garmin_rust/scripts/build_deb_docker.sh $(version) $(release)
 	docker cp `cat $(cidfile)`:/garmin_rust/garmin-rust_$(version)-$(release)_amd64.deb .
 	docker rm `cat $(cidfile)`

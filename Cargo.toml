@@ -13,7 +13,7 @@ strava_lib = { path = "strava_lib" }
 fitbit_bot = {path="fitbit_bot"}
 sheets_lib = {path="sheets_lib"}
 actix = "0.9"
-actix-rt = "1.0"
+actix-rt = "1.1"
 log = "0.4"
 env_logger = "0.7"
 crossbeam-utils = "0.7"

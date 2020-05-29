@@ -146,7 +146,7 @@ async fn try_get_user_summary(session: GarminConnectClient) -> Result<GarminConn
 
 async fn get_garmin_connect_session() -> Result<GarminConnectClient, Error> {
     if let Some((session, timestamp)) = CONNECT_SESSION.read().await.as_ref() {
-        if *timestamp > (Utc::now() - Duration::hours(6)) {
+        if *timestamp > (Utc::now() - Duration::hours(1)) {
             return try_get_user_summary(session.clone()).await;
         }
     }

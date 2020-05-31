@@ -536,19 +536,17 @@ impl FitbitClient {
     pub async fn log_fitbit_activity(&self, entry: &ActivityLoggingEntry) -> Result<(), Error> {
         let url = "https://api.fitbit.com/1/user/-/activities.json";
         let headers = self.get_auth_headers()?;
-        let resp = self
+        let text = self
             .client
             .post(url)
             .headers(headers)
             .form(entry)
             .send()
+            .await?
+            .error_for_status()?
+            .text()
             .await?;
-        if resp.status() == 200 {
-            resp.error_for_status()?;
-        } else {
-            let text = resp.text().await?;
-            println!("{}", text);
-        }
+        println!("{}", text);
         Ok(())
     }
 

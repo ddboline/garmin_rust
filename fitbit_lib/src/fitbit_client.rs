@@ -529,6 +529,7 @@ impl FitbitClient {
         for (_, f) in old_activities {
             if let Some(activity) = summary.read_summary_from_postgres(&f).await?.summary_list.pop() {
                 let activity: ActivityLoggingEntry = activity.into();
+                self.log_fitbit_activity(&activity).await?;
                 println!("{:#?}", activity);
             }
         }

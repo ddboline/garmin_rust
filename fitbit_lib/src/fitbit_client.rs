@@ -751,10 +751,10 @@ mod tests {
         let config = GarminConfig::get_config(None)?;
         let client = FitbitClient::from_file(config.clone()).await?;
 
-        client.get_fitbit_activity_types().await?;
+        // // client.get_fitbit_activity_types().await?;
 
-        // let pool = PgPool::new(&config.pgurl);
-        // client.sync_fitbit_activities(&pool).await?;
+        let pool = PgPool::new(&config.pgurl);
+        client.sync_fitbit_activities(&pool).await?;
         assert!(false);
         Ok(())
     }

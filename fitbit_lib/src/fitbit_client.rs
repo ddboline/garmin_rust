@@ -551,6 +551,8 @@ mod tests {
 
     use crate::fitbit_client::FitbitClient;
     use garmin_lib::common::garmin_config::GarminConfig;
+    use garmin_lib::common::garmin_summary::get_list_of_activities_from_db;
+    use garmin_lib::common::pg_pool::PgPool;
 
     #[tokio::test]
     #[ignore]
@@ -641,9 +643,13 @@ mod tests {
     async fn test_get_all_activities() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
         let client = FitbitClient::from_file(config.clone()).await?;
-        let date = (Utc::now() - Duration::days(7)).naive_local().date();
-        let activities = client.get_all_activities(date).await?;
-        println!("{:#?}", activities);
+        let begin_datetime = Utc::now() - Duration::days(7);
+        let date = begin_datetime.naive_local().date();
+        let new_activities = client.get_all_activities(date).await?;
+        println!("{:#?}", new_activities);
+        let pool = PgPool::new(config.pgurl);
+        let old_activities = get_list_of_activities_from_db(&format!("begin_datetime >= '{}'", begin_datetime), &pool).await?;
+        println!("{:#?}", old_activities);
         assert!(false);
         Ok(())
     }

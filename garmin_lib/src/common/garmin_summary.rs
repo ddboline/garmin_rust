@@ -421,6 +421,33 @@ pub async fn get_list_of_files_from_db(
         .collect()
 }
 
+pub async fn get_list_of_activities_from_db(
+    constraints: &str,
+    pool: &PgPool,
+) -> Result<Vec<(DateTime<Utc>, String)>, Error> {
+    let constr = if constraints.is_empty() {
+        "".to_string()
+    } else {
+        format!("WHERE {}", constraints)
+    };
+
+    let query = format!("SELECT begin_datetime, filename FROM garmin_summary {}", constr);
+
+    debug!("{}", query);
+
+    let conn = pool.get().await?;
+
+    conn.query(query.as_str(), &[])
+        .await?
+        .iter()
+        .map(|row| {
+            let begin_datetime = row.try_get("begin_datetime")?;
+            let filename = row.try_get("filename")?;
+            Ok((begin_datetime, filename))
+        })
+        .collect()
+}
+
 pub async fn get_maximum_begin_datetime(pool: &PgPool) -> Result<Option<DateTime<Utc>>, Error> {
     let query = "SELECT MAX(begin_datetime) FROM garmin_summary";
 

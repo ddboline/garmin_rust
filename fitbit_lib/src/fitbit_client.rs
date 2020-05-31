@@ -99,7 +99,7 @@ impl FitbitClient {
     async fn get_client_offset(&self) -> Result<FixedOffset, Error> {
         #[derive(Deserialize)]
         struct UserObj {
-            #[serde(alias = "offsetFromUTCMillis")]
+            #[serde(rename = "offsetFromUTCMillis")]
             offset: i32,
         }
         #[derive(Deserialize)]
@@ -265,7 +265,7 @@ impl FitbitClient {
     ) -> Result<Vec<FitbitHeartRate>, Error> {
         #[derive(Deserialize)]
         struct HeartRateResp {
-            #[serde(alias = "activities-heart-intraday")]
+            #[serde(rename = "activities-heart-intraday")]
             intraday: HrDs,
         }
         #[derive(Deserialize)]
@@ -563,35 +563,35 @@ impl FitbitClient {
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct ActivityEntry {
-    #[serde(alias = "logType")]
+    #[serde(rename = "logType")]
     log_type: String,
-    #[serde(alias = "startTime")]
+    #[serde(rename = "startTime")]
     start_time: DateTime<Utc>,
-    #[serde(alias = "tcxLink")]
+    #[serde(rename = "tcxLink")]
     tcx_link: Option<String>,
-    #[serde(alias = "activityId")]
+    #[serde(rename = "activityId")]
     activity_id: Option<u64>,
-    #[serde(alias = "activityName")]
+    #[serde(rename = "activityName")]
     activity_name: Option<String>,
     duration: u64,
     distance: Option<f64>,
-    #[serde(alias = "distanceUnit")]
+    #[serde(rename = "distanceUnit")]
     distance_unit: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ActivityLoggingEntry {
-    #[serde(alias = "activityName")]
+    #[serde(rename = "activityName")]
     activity_name: Option<String>,
-    #[serde(alias = "manualCalories")]
+    #[serde(rename = "manualCalories")]
     manual_calories: Option<f64>,
-    #[serde(alias = "startTime")]
+    #[serde(rename = "startTime")]
     start_time: String,
-    #[serde(alias = "durationMillis")]
+    #[serde(rename = "durationMillis")]
     duration_millis: f64,
     date: NaiveDate,
     distance: Option<f64>,
-    #[serde(alias = "distanceUnit")]
+    #[serde(rename = "distanceUnit")]
     distance_unit: Option<String>,
 }
 

@@ -79,6 +79,15 @@ impl SportTypes {
         }
         .to_string()
     }
+
+    pub fn to_fitbit_activity_id(self) -> Option<u64> {
+        match self {
+            Self::Running => Some(90009),
+            Self::Walking => Some(90013),
+            Self::Biking => Some(90001),
+            _ => None,
+        }
+    }
 }
 
 impl FromStr for SportTypes {

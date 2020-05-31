@@ -7,6 +7,7 @@ use maplit::hashmap;
 use rand::{thread_rng, Rng};
 use reqwest::{header::HeaderMap, Client, Url};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use tokio::{
     fs::File,
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
@@ -15,7 +16,12 @@ use tokio::{
 };
 
 use garmin_lib::{
-    common::{garmin_config::GarminConfig, garmin_connect_client::GarminConnectClient},
+    common::{
+        garmin_config::GarminConfig,
+        garmin_connect_client::GarminConnectClient,
+        garmin_summary::{get_list_of_activities_from_db, GarminSummary, GarminSummaryList},
+        pgpool::PgPool,
+    },
     utils::stack_string::StackString,
 };
 
@@ -35,6 +41,7 @@ pub struct FitbitClient {
     pub access_token: StackString,
     pub refresh_token: StackString,
     pub client: Client,
+    pub offset: Option<FixedOffset>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -76,6 +83,8 @@ impl FitbitClient {
                 }
             }
         }
+        let offset = client.get_client_offset().await?;
+        client.offset = Some(offset);
         Ok(client)
     }
 
@@ -90,10 +99,14 @@ impl FitbitClient {
         Ok(())
     }
 
+    pub fn get_offset(&self) -> FixedOffset {
+        self.offset.unwrap_or_else(|| FixedOffset::east(0))
+    }
+
     async fn get_client_offset(&self) -> Result<FixedOffset, Error> {
         #[derive(Deserialize)]
         struct UserObj {
-            #[serde(alias = "offsetFromUTCMillis")]
+            #[serde(rename = "offsetFromUTCMillis")]
             offset: i32,
         }
         #[derive(Deserialize)]
@@ -175,6 +188,7 @@ impl FitbitClient {
             format!("Bearer {}", self.access_token,).parse()?,
         );
         headers.insert("Accept-Language", "en_US".parse()?);
+        headers.insert("Accept-Locale", "en_US".parse()?);
         Ok(headers)
     }
 
@@ -258,7 +272,7 @@ impl FitbitClient {
     ) -> Result<Vec<FitbitHeartRate>, Error> {
         #[derive(Deserialize)]
         struct HeartRateResp {
-            #[serde(alias = "activities-heart-intraday")]
+            #[serde(rename = "activities-heart-intraday")]
             intraday: HrDs,
         }
         #[derive(Deserialize)]
@@ -285,7 +299,7 @@ impl FitbitClient {
             .error_for_status()?
             .json()
             .await?;
-        let offset = self.get_client_offset().await?;
+        let offset = self.get_offset();
         let hr_values: Vec<_> = dataset
             .intraday
             .dataset
@@ -335,7 +349,8 @@ impl FitbitClient {
             weight: f64,
         }
         let headers = self.get_auth_headers()?;
-        let date = Utc::now().naive_local().date();
+        let offset = self.get_offset();
+        let date = Utc::now().with_timezone(&offset).date().naive_local();
         let url = format!(
             "https://api.fitbit.com/1/user/-/body/log/weight/date/{}/30d.json",
             date
@@ -349,7 +364,6 @@ impl FitbitClient {
             .error_for_status()?
             .json()
             .await?;
-        let offset = self.get_client_offset().await?;
         let result: Vec<_> = body_weight
             .weight
             .into_iter()
@@ -375,7 +389,7 @@ impl FitbitClient {
         updates: Vec<ScaleMeasurement>,
     ) -> Result<Vec<ScaleMeasurement>, Error> {
         let headers = self.get_auth_headers()?;
-        let offset = self.get_client_offset().await?;
+        let offset = self.get_offset();
         let futures = updates.iter().map(|update| {
             let headers = headers.clone();
             async move {
@@ -417,28 +431,23 @@ impl FitbitClient {
         Ok(updates)
     }
 
-    pub async fn get_tcx_urls(
+    pub async fn get_activities(
         &self,
         start_date: NaiveDate,
-    ) -> Result<Vec<(DateTime<Utc>, String)>, Error> {
+        offset: Option<usize>,
+    ) -> Result<Vec<ActivityEntry>, Error> {
         #[derive(Deserialize)]
         struct AcivityListResp {
             activities: Vec<ActivityEntry>,
         }
-        #[derive(Deserialize)]
-        struct ActivityEntry {
-            #[serde(alias = "logType")]
-            log_type: String,
-            #[serde(alias = "startTime")]
-            start_time: String,
-            #[serde(alias = "tcxLink")]
-            tcx_link: Option<String>,
-        }
+
+        let offset = offset.unwrap_or(0);
 
         let headers = self.get_auth_headers()?;
         let url = format!(
-            "https://api.fitbit.com/1/user/-/activities/list.json?afterDate={}&offset=0&limit=20&sort=asc",
+            "https://api.fitbit.com/1/user/-/activities/list.json?afterDate={}&offset={}&limit=20&sort=asc",
             start_date,
+            offset,
         );
         let activities: AcivityListResp = self
             .client
@@ -449,16 +458,40 @@ impl FitbitClient {
             .error_for_status()?
             .json()
             .await?;
+        Ok(activities.activities)
+    }
+
+    pub async fn get_all_activities(
+        &self,
+        start_date: NaiveDate,
+    ) -> Result<Vec<ActivityEntry>, Error> {
+        let mut activities = Vec::new();
+        loop {
+            let new_activities: Vec<_> = self
+                .get_activities(start_date, Some(activities.len()))
+                .await?;
+            if new_activities.is_empty() {
+                break;
+            }
+            activities.extend_from_slice(&new_activities);
+        }
+        Ok(activities)
+    }
+
+    pub async fn get_tcx_urls(
+        &self,
+        start_date: NaiveDate,
+    ) -> Result<Vec<(DateTime<Utc>, String)>, Error> {
+        let activities = self.get_activities(start_date, None).await?;
+
         activities
-            .activities
             .into_iter()
             .filter_map(|entry| {
                 let res = || {
                     if entry.log_type != "tracker" {
                         return Ok(None);
                     }
-                    let start_time =
-                        DateTime::parse_from_rfc3339(&entry.start_time)?.with_timezone(&Utc);
+                    let start_time = entry.start_time;
                     if let Some(link) = entry.tcx_link {
                         Ok(Some((start_time, link)))
                     } else {
@@ -482,6 +515,161 @@ impl FitbitClient {
             .await
             .map_err(Into::into)
     }
+
+    pub async fn get_fitbit_activity_types(&self) -> Result<String, Error> {
+        let url = "https://api.fitbit.com/1/activities.json";
+        let headers = self.get_auth_headers()?;
+        self.client
+            .get(url)
+            .headers(headers)
+            .send()
+            .await?
+            .error_for_status()?
+            .text()
+            .await
+            .map_err(Into::into)
+    }
+
+    pub async fn log_fitbit_activity(
+        &self,
+        entry: &ActivityLoggingEntry,
+    ) -> Result<(u64, u64), Error> {
+        #[derive(Deserialize)]
+        struct ActivityLogEntry {
+            #[serde(rename = "activityId")]
+            activity_id: u64,
+            steps: u64,
+        }
+
+        #[derive(Deserialize)]
+        struct ActivityLogResp {
+            #[serde(rename = "activityLog")]
+            activity_log: ActivityLogEntry,
+        }
+
+        let url = "https://api.fitbit.com/1/user/-/activities.json";
+        let headers = self.get_auth_headers()?;
+        let resp: ActivityLogResp = self
+            .client
+            .post(url)
+            .headers(headers)
+            .form(entry)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+        Ok((resp.activity_log.activity_id, resp.activity_log.steps))
+    }
+
+    pub async fn sync_fitbit_activities(
+        &self,
+        begin_datetime: DateTime<Utc>,
+        pool: &PgPool,
+    ) -> Result<Vec<DateTime<Utc>>, Error> {
+        let offset = self.get_offset();
+        let date = begin_datetime.with_timezone(&offset).naive_local().date();
+        let new_activities: HashMap<_, _> = self
+            .get_all_activities(date)
+            .await?
+            .into_iter()
+            .map(|activity| {
+                (
+                    activity.start_time.format("%Y-%m-%dT%H:%M").to_string(),
+                    activity,
+                )
+            })
+            .collect();
+
+        let old_activities: Vec<_> = get_list_of_activities_from_db(
+            &format!("begin_datetime >= '{}'", begin_datetime),
+            &pool,
+        )
+        .await?
+        .into_iter()
+        .filter(|(d, _)| {
+            let key = d.format("%Y-%m-%dT%H:%M").to_string();
+            !new_activities.contains_key(&key)
+        })
+        .collect();
+
+        let summary = GarminSummaryList::new(pool);
+
+        let mut updated = Vec::new();
+
+        for (d, f) in old_activities {
+            if let Some(activity) = summary
+                .read_summary_from_postgres(&f)
+                .await?
+                .summary_list
+                .pop()
+            {
+                let activity = ActivityLoggingEntry::from_summary(&activity, offset);
+                self.log_fitbit_activity(&activity).await?;
+                updated.push(d);
+            }
+        }
+        Ok(updated)
+    }
+}
+
+#[derive(Deserialize, Clone, Debug)]
+pub struct ActivityEntry {
+    #[serde(rename = "logType")]
+    log_type: String,
+    #[serde(rename = "startTime")]
+    start_time: DateTime<Utc>,
+    #[serde(rename = "tcxLink")]
+    tcx_link: Option<String>,
+    #[serde(rename = "activityId")]
+    activity_id: Option<u64>,
+    #[serde(rename = "activityName")]
+    activity_name: Option<String>,
+    duration: u64,
+    distance: Option<f64>,
+    #[serde(rename = "distanceUnit")]
+    distance_unit: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ActivityLoggingEntry {
+    #[serde(rename = "activityId")]
+    activity_id: Option<u64>,
+    #[serde(rename = "activityName")]
+    activity_name: Option<String>,
+    #[serde(rename = "manualCalories")]
+    manual_calories: Option<u64>,
+    #[serde(rename = "startTime")]
+    start_time: String,
+    #[serde(rename = "durationMillis")]
+    duration_millis: u64,
+    date: NaiveDate,
+    distance: Option<f64>,
+    #[serde(rename = "distanceUnit")]
+    distance_unit: Option<String>,
+}
+
+impl ActivityLoggingEntry {
+    pub fn from_summary(item: &GarminSummary, offset: FixedOffset) -> Self {
+        Self {
+            activity_id: item.sport.to_fitbit_activity_id(),
+            activity_name: None,   // item.sport.to_fitbit_activity(),
+            manual_calories: None, // Some(item.total_calories as u64),
+            start_time: item
+                .begin_datetime
+                .with_timezone(&offset)
+                .format("%H:%M")
+                .to_string(),
+            duration_millis: (item.total_duration * 1000.0) as u64,
+            date: item
+                .begin_datetime
+                .with_timezone(&offset)
+                .date()
+                .naive_local(),
+            distance: Some(item.total_distance / 1000.0),
+            distance_unit: Some("Kilometer".to_string()),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -493,7 +681,7 @@ mod tests {
     use tempfile::NamedTempFile;
 
     use crate::fitbit_client::FitbitClient;
-    use garmin_lib::common::garmin_config::GarminConfig;
+    use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
 
     #[tokio::test]
     #[ignore]
@@ -549,7 +737,7 @@ mod tests {
     async fn test_get_client_offset() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
         let client = FitbitClient::from_file(config.clone()).await?;
-        let offset = client.get_client_offset().await?;
+        let offset = client.offset.unwrap();
         assert_eq!(offset.local_minus_utc(), -4 * 3600);
         Ok(())
     }
@@ -576,6 +764,37 @@ mod tests {
         let bodyweight = client.get_fitbit_bodyweightfat().await?;
         debug!("{:#?}", bodyweight);
         assert!(bodyweight.len() > 10);
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_get_all_activities() -> Result<(), Error> {
+        let config = GarminConfig::get_config(None)?;
+        let client = FitbitClient::from_file(config.clone()).await?;
+
+        let offset = client.get_offset();
+        let begin_datetime = (Utc::now() - Duration::days(7)).with_timezone(&offset);
+
+        let date = begin_datetime.naive_local().date();
+        let new_activities = client.get_all_activities(date).await?;
+        println!("{:#?}", new_activities);
+        assert!(new_activities.len() > 0);
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_sync_fitbit_activities() -> Result<(), Error> {
+        let config = GarminConfig::get_config(None)?;
+        let client = FitbitClient::from_file(config.clone()).await?;
+
+        let begin_datetime = Utc::now() - Duration::days(30);
+
+        let pool = PgPool::new(&config.pgurl);
+        let dates = client.sync_fitbit_activities(begin_datetime, &pool).await?;
+        println!("{:?}", dates);
+        assert_eq!(dates.len(), 0);
         Ok(())
     }
 }

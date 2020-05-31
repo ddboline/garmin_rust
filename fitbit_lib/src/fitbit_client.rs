@@ -1,6 +1,6 @@
 use anyhow::{format_err, Error};
 use base64::{encode, encode_config, URL_SAFE_NO_PAD};
-use chrono::{DateTime, Duration, FixedOffset, NaiveDate, NaiveTime, Utc};
+use chrono::{DateTime, Duration, FixedOffset, Local, NaiveDate, NaiveTime, Utc};
 use futures::future::try_join_all;
 use lazy_static::lazy_static;
 use maplit::hashmap;
@@ -41,6 +41,7 @@ pub struct FitbitClient {
     pub access_token: StackString,
     pub refresh_token: StackString,
     pub client: Client,
+    pub offset: Option<FixedOffset>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -82,6 +83,8 @@ impl FitbitClient {
                 }
             }
         }
+        let offset = client.get_client_offset().await?;
+        client.offset = Some(offset);
         Ok(client)
     }
 
@@ -94,6 +97,10 @@ impl FitbitClient {
         f.write_all(format!("refresh_token={}\n", self.refresh_token).as_bytes())
             .await?;
         Ok(())
+    }
+
+    pub fn get_offset(&self) -> FixedOffset {
+        self.offset.unwrap_or(FixedOffset::east(0))
     }
 
     async fn get_client_offset(&self) -> Result<FixedOffset, Error> {
@@ -292,7 +299,7 @@ impl FitbitClient {
             .error_for_status()?
             .json()
             .await?;
-        let offset = self.get_client_offset().await?;
+        let offset = self.get_offset();
         let hr_values: Vec<_> = dataset
             .intraday
             .dataset
@@ -342,7 +349,8 @@ impl FitbitClient {
             weight: f64,
         }
         let headers = self.get_auth_headers()?;
-        let date = Utc::now().naive_local().date();
+        let offset = self.get_offset();
+        let date = Utc::now().with_timezone(&offset).date().naive_local();
         let url = format!(
             "https://api.fitbit.com/1/user/-/body/log/weight/date/{}/30d.json",
             date
@@ -356,7 +364,6 @@ impl FitbitClient {
             .error_for_status()?
             .json()
             .await?;
-        let offset = self.get_client_offset().await?;
         let result: Vec<_> = body_weight
             .weight
             .into_iter()
@@ -382,7 +389,7 @@ impl FitbitClient {
         updates: Vec<ScaleMeasurement>,
     ) -> Result<Vec<ScaleMeasurement>, Error> {
         let headers = self.get_auth_headers()?;
-        let offset = self.get_client_offset().await?;
+        let offset = self.get_offset();
         let futures = updates.iter().map(|update| {
             let headers = headers.clone();
             async move {
@@ -509,10 +516,26 @@ impl FitbitClient {
             .map_err(Into::into)
     }
 
+    pub async fn get_fitbit_activity_types(&self) -> Result<(), Error> {
+        let url = "https://api.fitbit.com/1/activities.json";
+        let headers = self.get_auth_headers()?;
+        let text = self
+            .client
+            .get(url)
+            .headers(headers)
+            .send()
+            .await?
+            .text()
+            .await?;
+        println!("{}", text);
+        Ok(())
+    }
+
     pub async fn log_fitbit_activity(&self, entry: &ActivityLoggingEntry) -> Result<(), Error> {
         let url = "https://api.fitbit.com/1/user/-/activities.json";
         let headers = self.get_auth_headers()?;
-        let resp = self.client
+        let resp = self
+            .client
             .post(url)
             .headers(headers)
             .form(entry)
@@ -528,7 +551,8 @@ impl FitbitClient {
     }
 
     pub async fn sync_fitbit_activities(&self, pool: &PgPool) -> Result<(), Error> {
-        let begin_datetime = Utc::now() - Duration::days(7);
+        let offset = self.get_offset();
+        let begin_datetime = (Utc::now() - Duration::days(7)).with_timezone(&offset);
 
         let date = begin_datetime.naive_local().date();
         let new_activities: HashMap<_, _> = self
@@ -556,7 +580,7 @@ impl FitbitClient {
                 .summary_list
                 .pop()
             {
-                let activity: ActivityLoggingEntry = activity.into();
+                let activity = ActivityLoggingEntry::from_summary(activity, offset);
                 self.log_fitbit_activity(&activity).await?;
                 println!("{:#?}", activity);
             }
@@ -599,18 +623,22 @@ pub struct ActivityLoggingEntry {
     distance_unit: Option<String>,
 }
 
-impl From<GarminSummary> for ActivityLoggingEntry {
-    fn from(item: GarminSummary) -> Self {
+impl ActivityLoggingEntry {
+    pub fn from_summary(item: GarminSummary, offset: FixedOffset) -> Self {
         Self {
             activity_name: item.sport.to_fitbit_activity(),
             manual_calories: Some(item.total_calories as u64),
             start_time: item
                 .begin_datetime
-                .naive_local()
+                .with_timezone(&offset)
                 .format("%H:%M")
                 .to_string(),
             duration_millis: (item.total_duration * 1000.0) as u64,
-            date: item.begin_datetime.naive_local().date(),
+            date: item
+                .begin_datetime
+                .with_timezone(&offset)
+                .date()
+                .naive_local(),
             distance: Some(item.total_distance / 1000.0),
             distance_unit: Some("Kilometer".to_string()),
         }
@@ -685,7 +713,7 @@ mod tests {
     async fn test_get_client_offset() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
         let client = FitbitClient::from_file(config.clone()).await?;
-        let offset = client.get_client_offset().await?;
+        let offset = client.offset.unwrap();
         assert_eq!(offset.local_minus_utc(), -4 * 3600);
         Ok(())
     }
@@ -721,8 +749,10 @@ mod tests {
         let config = GarminConfig::get_config(None)?;
         let client = FitbitClient::from_file(config.clone()).await?;
 
-        let pool = PgPool::new(&config.pgurl);
-        client.sync_fitbit_activities(&pool).await?;
+        client.get_fitbit_activity_types().await?;
+
+        // let pool = PgPool::new(&config.pgurl);
+        // client.sync_fitbit_activities(&pool).await?;
         assert!(false);
         Ok(())
     }

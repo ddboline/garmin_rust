@@ -100,7 +100,7 @@ impl FitbitClient {
     }
 
     pub fn get_offset(&self) -> FixedOffset {
-        self.offset.unwrap_or(FixedOffset::east(0))
+        self.offset.unwrap_or_else(|| FixedOffset::east(0))
     }
 
     async fn get_client_offset(&self) -> Result<FixedOffset, Error> {
@@ -604,7 +604,7 @@ impl FitbitClient {
                 .summary_list
                 .pop()
             {
-                let activity = ActivityLoggingEntry::from_summary(activity, offset);
+                let activity = ActivityLoggingEntry::from_summary(&activity, offset);
                 self.log_fitbit_activity(&activity).await?;
                 updated.push(d);
             }
@@ -650,7 +650,7 @@ pub struct ActivityLoggingEntry {
 }
 
 impl ActivityLoggingEntry {
-    pub fn from_summary(item: GarminSummary, offset: FixedOffset) -> Self {
+    pub fn from_summary(item: &GarminSummary, offset: FixedOffset) -> Self {
         Self {
             activity_id: item.sport.to_fitbit_activity_id(),
             activity_name: None,   // item.sport.to_fitbit_activity(),

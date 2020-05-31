@@ -647,7 +647,7 @@ mod tests {
         let date = begin_datetime.naive_local().date();
         let new_activities = client.get_all_activities(date).await?;
         println!("{:#?}", new_activities);
-        let pool = PgPool::new(config.pgurl);
+        let pool = PgPool::new(&config.pgurl);
         let old_activities = get_list_of_activities_from_db(&format!("begin_datetime >= '{}'", begin_datetime), &pool).await?;
         println!("{:#?}", old_activities);
         assert!(false);

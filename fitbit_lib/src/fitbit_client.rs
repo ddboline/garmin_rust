@@ -552,7 +552,7 @@ mod tests {
     use crate::fitbit_client::FitbitClient;
     use garmin_lib::common::garmin_config::GarminConfig;
     use garmin_lib::common::garmin_summary::get_list_of_activities_from_db;
-    use garmin_lib::common::pg_pool::PgPool;
+    use garmin_lib::common::pgpool::PgPool;
 
     #[tokio::test]
     #[ignore]

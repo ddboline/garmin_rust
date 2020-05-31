@@ -23,7 +23,7 @@ use garmin_lib::{
     common::{
         garmin_config::GarminConfig, garmin_connect_client::GarminConnectClient, pgpool::PgPool,
     },
-    utils::stack_string::StackString,
+    utils::{stack_string::StackString, sport_types::SportTypes},
 };
 
 use crate::{
@@ -611,6 +611,8 @@ pub struct ActivityEntry {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ActivityLoggingEntry {
+    #[serde(rename = "activitId")]
+    activity_id: Option<u64>,
     #[serde(rename = "activityName")]
     activity_name: Option<String>,
     #[serde(rename = "manualCalories")]
@@ -627,9 +629,16 @@ pub struct ActivityLoggingEntry {
 
 impl ActivityLoggingEntry {
     pub fn from_summary(item: GarminSummary, offset: FixedOffset) -> Self {
+        let activity_id = match item.sport {
+            SportTypes::Running => Some(90009),
+            SportTypes::Walking => Some(90013),
+            SportTypes::Biking => Some(90001),
+            _ => None,
+        };
         Self {
-            activity_name: item.sport.to_fitbit_activity(),
-            manual_calories: Some(item.total_calories as u64),
+            activity_id,
+            activity_name: None, // item.sport.to_fitbit_activity(),
+            manual_calories: None, //Some(item.total_calories as u64),
             start_time: item
                 .begin_datetime
                 .with_timezone(&offset)

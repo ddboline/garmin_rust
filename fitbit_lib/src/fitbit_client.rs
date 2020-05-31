@@ -1,6 +1,6 @@
 use anyhow::{format_err, Error};
 use base64::{encode, encode_config, URL_SAFE_NO_PAD};
-use chrono::{DateTime, Duration, FixedOffset, Local, NaiveDate, NaiveTime, Utc};
+use chrono::{DateTime, Duration, FixedOffset, NaiveDate, NaiveTime, Utc};
 use futures::future::try_join_all;
 use lazy_static::lazy_static;
 use maplit::hashmap;
@@ -552,7 +552,7 @@ impl FitbitClient {
         Ok(())
     }
 
-    pub async fn sync_fitbit_activities(&self, pool: &PgPool) -> Result<(), Error> {
+    pub async fn sync_fitbit_activities(&self, pool: &PgPool) -> Result<Vec<DateTime<Utc>>, Error> {
         let offset = self.get_offset();
         let begin_datetime = (Utc::now() - Duration::days(7)).with_timezone(&offset);
 
@@ -575,7 +575,9 @@ impl FitbitClient {
 
         let summary = GarminSummaryList::new(pool);
 
-        for (_, f) in old_activities {
+        let mut updated = Vec::new();
+
+        for (d, f) in old_activities {
             if let Some(activity) = summary
                 .read_summary_from_postgres(&f)
                 .await?
@@ -584,10 +586,10 @@ impl FitbitClient {
             {
                 let activity = ActivityLoggingEntry::from_summary(activity, offset);
                 self.log_fitbit_activity(&activity).await?;
-                println!("{:#?}", activity);
+                updated.push(d);
             }
         }
-        Ok(())
+        Ok(updated)
     }
 }
 
@@ -652,13 +654,11 @@ mod tests {
     use anyhow::Error;
     use chrono::{Duration, Local, Utc};
     use log::debug;
-    use std::collections::HashMap;
     use std::path::Path;
     use tempfile::NamedTempFile;
 
-    use crate::fitbit_client::{ActivityEntry, FitbitClient};
+    use crate::fitbit_client::FitbitClient;
     use garmin_lib::common::garmin_config::GarminConfig;
-    use garmin_lib::common::garmin_summary::get_list_of_activities_from_db;
     use garmin_lib::common::pgpool::PgPool;
 
     #[tokio::test]
@@ -751,10 +751,9 @@ mod tests {
         let config = GarminConfig::get_config(None)?;
         let client = FitbitClient::from_file(config.clone()).await?;
 
-        // // client.get_fitbit_activity_types().await?;
-
         let pool = PgPool::new(&config.pgurl);
-        client.sync_fitbit_activities(&pool).await?;
+        let dates = client.sync_fitbit_activities(&pool).await?;
+        println!("{:?}", dates);
         assert!(false);
         Ok(())
     }

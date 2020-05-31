@@ -512,14 +512,18 @@ impl FitbitClient {
     pub async fn log_fitbit_activity(&self, entry: &ActivityLoggingEntry) -> Result<(), Error> {
         let url = "https://api.fitbit.com/1/user/-/activities.json";
         let headers = self.get_auth_headers()?;
-        let text = self.client
+        let resp = self.client
             .post(url)
             .headers(headers)
             .form(entry)
             .send()
-            .await?
-            .text().await?;
-        println!("{}", text);
+            .await?;
+        if resp.status() == 200 {
+            resp.error_for_status()?;
+        } else {
+            let text = resp.text().await?;
+            println!("{}", text);
+        }
         Ok(())
     }
 
@@ -584,11 +588,11 @@ pub struct ActivityLoggingEntry {
     #[serde(rename = "activityName")]
     activity_name: Option<String>,
     #[serde(rename = "manualCalories")]
-    manual_calories: Option<f64>,
+    manual_calories: Option<u64>,
     #[serde(rename = "startTime")]
     start_time: String,
     #[serde(rename = "durationMillis")]
-    duration_millis: f64,
+    duration_millis: u64,
     date: NaiveDate,
     distance: Option<f64>,
     #[serde(rename = "distanceUnit")]
@@ -599,13 +603,13 @@ impl From<GarminSummary> for ActivityLoggingEntry {
     fn from(item: GarminSummary) -> Self {
         Self {
             activity_name: item.sport.to_fitbit_activity(),
-            manual_calories: Some(item.total_calories as f64),
+            manual_calories: Some(item.total_calories as u64),
             start_time: item
                 .begin_datetime
                 .naive_local()
                 .format("%H:%M")
                 .to_string(),
-            duration_millis: item.total_duration * 1000.0,
+            duration_millis: (item.total_duration * 1000.0) as u64,
             date: item.begin_datetime.naive_local().date(),
             distance: Some(item.total_distance / 1000.0),
             distance_unit: Some("Kilometer".to_string()),

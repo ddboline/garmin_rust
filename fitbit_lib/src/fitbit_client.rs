@@ -8,8 +8,9 @@ use rand::{thread_rng, Rng};
 use reqwest::{header::HeaderMap, Client, Url};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::path::Path;
 use tokio::{
-    fs::{File, write},
+    fs::{write, File},
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     sync::Mutex,
     task::spawn_blocking,
@@ -527,7 +528,8 @@ impl FitbitClient {
             .await?
             .text()
             .await?;
-        write("tests/data/activities.json", text).await?;
+        let path = Path::new(self.config.home_dir.as_str()).join("activities.json");
+        write(path, text).await?;
         Ok(())
     }
 

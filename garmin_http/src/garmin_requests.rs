@@ -353,12 +353,15 @@ pub struct FitbitBodyWeightFatUpdateRequest {}
 
 #[async_trait]
 impl HandleRequest<FitbitBodyWeightFatUpdateRequest> for PgPool {
-    type Result = Result<Vec<ScaleMeasurement>, Error>;
+    type Result = Result<(Vec<ScaleMeasurement>, Vec<DateTime<Utc>>), Error>;
     async fn handle(&self, _: FitbitBodyWeightFatUpdateRequest) -> Self::Result {
-        let start_date: NaiveDate = (Local::now() - Duration::days(30)).naive_local().date();
         let config = CONFIG.clone();
         let client = FitbitClient::from_file(config).await?;
         let client = Arc::new(client);
+
+        let offset = client.get_offset();
+        let start_datetime = Utc::now() - Duration::days(30);
+        let start_date: NaiveDate = start_datetime.with_timezone(&offset).naive_local().date();
 
         let existing_map: Result<HashMap<NaiveDate, _>, Error> = {
             let client = client.clone();
@@ -385,7 +388,10 @@ impl HandleRequest<FitbitBodyWeightFatUpdateRequest> for PgPool {
             })
             .collect();
         let new_measurements = client.update_fitbit_bodyweightfat(new_measurements).await?;
-        Ok(new_measurements)
+
+        let new_activities = client.sync_fitbit_activities(start_datetime, self).await?;
+
+        Ok((new_measurements, new_activities))
     }
 }
 

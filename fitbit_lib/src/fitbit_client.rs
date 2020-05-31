@@ -7,8 +7,7 @@ use maplit::hashmap;
 use rand::{thread_rng, Rng};
 use reqwest::{header::HeaderMap, Client, Url};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::path::Path;
+use std::{collections::HashMap, path::Path};
 use tokio::{
     fs::{write, File},
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
@@ -16,14 +15,14 @@ use tokio::{
     task::spawn_blocking,
 };
 
-use garmin_lib::common::garmin_summary::{
-    get_list_of_activities_from_db, GarminSummary, GarminSummaryList,
-};
 use garmin_lib::{
     common::{
-        garmin_config::GarminConfig, garmin_connect_client::GarminConnectClient, pgpool::PgPool,
+        garmin_config::GarminConfig,
+        garmin_connect_client::GarminConnectClient,
+        garmin_summary::{get_list_of_activities_from_db, GarminSummary, GarminSummaryList},
+        pgpool::PgPool,
     },
-    utils::{stack_string::StackString, sport_types::SportTypes},
+    utils::stack_string::StackString,
 };
 
 use crate::{
@@ -526,6 +525,7 @@ impl FitbitClient {
             .headers(headers)
             .send()
             .await?
+            .error_for_status()?
             .text()
             .await?;
         let path = Path::new(self.config.home_dir.as_str()).join("activities.json");
@@ -533,10 +533,26 @@ impl FitbitClient {
         Ok(())
     }
 
-    pub async fn log_fitbit_activity(&self, entry: &ActivityLoggingEntry) -> Result<(), Error> {
+    pub async fn log_fitbit_activity(
+        &self,
+        entry: &ActivityLoggingEntry,
+    ) -> Result<(u64, u64), Error> {
+        #[derive(Deserialize)]
+        struct ActivityLogEntry {
+            #[serde(rename = "activityId")]
+            activity_id: u64,
+            steps: u64,
+        }
+
+        #[derive(Deserialize)]
+        struct ActivityLogResp {
+            #[serde(rename = "activityLog")]
+            activity_log: ActivityLogEntry,
+        }
+
         let url = "https://api.fitbit.com/1/user/-/activities.json";
         let headers = self.get_auth_headers()?;
-        let text = self
+        let resp: ActivityLogResp = self
             .client
             .post(url)
             .headers(headers)
@@ -544,22 +560,28 @@ impl FitbitClient {
             .send()
             .await?
             .error_for_status()?
-            .text()
+            .json()
             .await?;
-        println!("{}", text);
-        Ok(())
+        Ok((resp.activity_log.activity_id, resp.activity_log.steps))
     }
 
-    pub async fn sync_fitbit_activities(&self, pool: &PgPool) -> Result<Vec<DateTime<Utc>>, Error> {
+    pub async fn sync_fitbit_activities(
+        &self,
+        begin_datetime: DateTime<Utc>,
+        pool: &PgPool,
+    ) -> Result<Vec<DateTime<Utc>>, Error> {
         let offset = self.get_offset();
-        let begin_datetime = (Utc::now() - Duration::days(7)).with_timezone(&offset);
-
-        let date = begin_datetime.naive_local().date();
+        let date = begin_datetime.with_timezone(&offset).naive_local().date();
         let new_activities: HashMap<_, _> = self
             .get_all_activities(date)
             .await?
             .into_iter()
-            .map(|activity| (activity.start_time, activity))
+            .map(|activity| {
+                (
+                    activity.start_time.format("%Y-%m-%dT%H:%M").to_string(),
+                    activity,
+                )
+            })
             .collect();
 
         let old_activities: Vec<_> = get_list_of_activities_from_db(
@@ -568,7 +590,10 @@ impl FitbitClient {
         )
         .await?
         .into_iter()
-        .filter(|(d, _)| !new_activities.contains_key(&d))
+        .filter(|(d, _)| {
+            let key = d.format("%Y-%m-%dT%H:%M").to_string();
+            !new_activities.contains_key(&key)
+        })
         .collect();
 
         let summary = GarminSummaryList::new(pool);
@@ -611,7 +636,7 @@ pub struct ActivityEntry {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ActivityLoggingEntry {
-    #[serde(rename = "activitId")]
+    #[serde(rename = "activityId")]
     activity_id: Option<u64>,
     #[serde(rename = "activityName")]
     activity_name: Option<String>,
@@ -629,16 +654,10 @@ pub struct ActivityLoggingEntry {
 
 impl ActivityLoggingEntry {
     pub fn from_summary(item: GarminSummary, offset: FixedOffset) -> Self {
-        let activity_id = match item.sport {
-            SportTypes::Running => Some(90009),
-            SportTypes::Walking => Some(90013),
-            SportTypes::Biking => Some(90001),
-            _ => None,
-        };
         Self {
-            activity_id,
-            activity_name: None, // item.sport.to_fitbit_activity(),
-            manual_calories: None, //Some(item.total_calories as u64),
+            activity_id: item.sport.to_fitbit_activity_id(),
+            activity_name: None,   // item.sport.to_fitbit_activity(),
+            manual_calories: None, // Some(item.total_calories as u64),
             start_time: item
                 .begin_datetime
                 .with_timezone(&offset)
@@ -665,8 +684,7 @@ mod tests {
     use tempfile::NamedTempFile;
 
     use crate::fitbit_client::FitbitClient;
-    use garmin_lib::common::garmin_config::GarminConfig;
-    use garmin_lib::common::pgpool::PgPool;
+    use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
 
     #[tokio::test]
     #[ignore]
@@ -754,14 +772,34 @@ mod tests {
 
     #[tokio::test]
     #[ignore]
+    async fn test_get_all_activities() -> Result<(), Error> {
+        let config = GarminConfig::get_config(None)?;
+        let client = FitbitClient::from_file(config.clone()).await?;
+
+        let offset = client.get_offset();
+        let begin_datetime = (Utc::now() - Duration::days(7)).with_timezone(&offset);
+
+        let date = begin_datetime.naive_local().date();
+        let new_activities = client.get_all_activities(date).await?;
+        println!("{:#?}", new_activities);
+        assert!(new_activities.len() > 0);
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[ignore]
     async fn test_sync_fitbit_activities() -> Result<(), Error> {
+        let offset = self.get_offset();
+        let begin_datetime = (Utc::now() - Duration::days(7));
+
+        let date = begin_datetime.with_timezone(&offset).naive_local().date();
+
         let config = GarminConfig::get_config(None)?;
         let client = FitbitClient::from_file(config.clone()).await?;
 
         let pool = PgPool::new(&config.pgurl);
-        let dates = client.sync_fitbit_activities(&pool).await?;
-        println!("{:?}", dates);
-        assert!(false);
+        let dates = client.sync_fitbit_activities(date, &pool).await?;
+        assert_eq!(dates.len(), 0);
         Ok(())
     }
 }

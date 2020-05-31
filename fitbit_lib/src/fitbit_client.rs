@@ -1,25 +1,29 @@
 use anyhow::{format_err, Error};
 use base64::{encode, encode_config, URL_SAFE_NO_PAD};
-use chrono::{DateTime, FixedOffset, NaiveDate, NaiveTime, Utc, Duration};
+use chrono::{DateTime, Duration, FixedOffset, NaiveDate, NaiveTime, Utc};
 use futures::future::try_join_all;
 use lazy_static::lazy_static;
 use maplit::hashmap;
 use rand::{thread_rng, Rng};
 use reqwest::{header::HeaderMap, Client, Url};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use tokio::{
     fs::File,
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     sync::Mutex,
     task::spawn_blocking,
 };
-use std::collections::HashMap;
 
+use garmin_lib::common::garmin_summary::{
+    get_list_of_activities_from_db, GarminSummary, GarminSummaryList,
+};
 use garmin_lib::{
-    common::{garmin_config::GarminConfig, garmin_connect_client::GarminConnectClient, pgpool::PgPool},
+    common::{
+        garmin_config::GarminConfig, garmin_connect_client::GarminConnectClient, pgpool::PgPool,
+    },
     utils::stack_string::StackString,
 };
-use garmin_lib::common::garmin_summary::{GarminSummary, GarminSummaryList, get_list_of_activities_from_db};
 
 use crate::{
     fitbit_heartrate::{FitbitBodyWeightFat, FitbitHeartRate},
@@ -508,7 +512,14 @@ impl FitbitClient {
     pub async fn log_fitbit_activity(&self, entry: &ActivityLoggingEntry) -> Result<(), Error> {
         let url = "https://api.fitbit.com/1/user/-/activities.json";
         let headers = self.get_auth_headers()?;
-        self.client.post(url).headers(headers).form(entry).send().await?.error_for_status()?;
+        let text = self.client
+            .post(url)
+            .headers(headers)
+            .form(entry)
+            .send()
+            .await?
+            .text().await?;
+        println!("{}", text);
         Ok(())
     }
 
@@ -516,18 +527,31 @@ impl FitbitClient {
         let begin_datetime = Utc::now() - Duration::days(7);
 
         let date = begin_datetime.naive_local().date();
-        let new_activities: HashMap<_, _> = self.get_all_activities(date).await?.into_iter().map(|activity| {
-            (activity.start_time, activity)
-        }).collect();
+        let new_activities: HashMap<_, _> = self
+            .get_all_activities(date)
+            .await?
+            .into_iter()
+            .map(|activity| (activity.start_time, activity))
+            .collect();
 
-        let old_activities: Vec<_> = get_list_of_activities_from_db(&format!("begin_datetime >= '{}'", begin_datetime), &pool).await?.into_iter()
+        let old_activities: Vec<_> = get_list_of_activities_from_db(
+            &format!("begin_datetime >= '{}'", begin_datetime),
+            &pool,
+        )
+        .await?
+        .into_iter()
         .filter(|(d, _)| !new_activities.contains_key(&d))
         .collect();
 
         let summary = GarminSummaryList::new(pool);
 
         for (_, f) in old_activities {
-            if let Some(activity) = summary.read_summary_from_postgres(&f).await?.summary_list.pop() {
+            if let Some(activity) = summary
+                .read_summary_from_postgres(&f)
+                .await?
+                .summary_list
+                .pop()
+            {
                 let activity: ActivityLoggingEntry = activity.into();
                 self.log_fitbit_activity(&activity).await?;
                 println!("{:#?}", activity);
@@ -576,7 +600,11 @@ impl From<GarminSummary> for ActivityLoggingEntry {
         Self {
             activity_name: item.sport.to_fitbit_activity(),
             manual_calories: Some(item.total_calories as f64),
-            start_time: item.begin_datetime.naive_local().format("%H:%M").to_string(),
+            start_time: item
+                .begin_datetime
+                .naive_local()
+                .format("%H:%M")
+                .to_string(),
             duration_millis: item.total_duration * 1000.0,
             date: item.begin_datetime.naive_local().date(),
             distance: Some(item.total_distance / 1000.0),
@@ -590,11 +618,11 @@ mod tests {
     use anyhow::Error;
     use chrono::{Duration, Local, Utc};
     use log::debug;
+    use std::collections::HashMap;
     use std::path::Path;
     use tempfile::NamedTempFile;
-    use std::collections::HashMap;
 
-    use crate::fitbit_client::{FitbitClient, ActivityEntry};
+    use crate::fitbit_client::{ActivityEntry, FitbitClient};
     use garmin_lib::common::garmin_config::GarminConfig;
     use garmin_lib::common::garmin_summary::get_list_of_activities_from_db;
     use garmin_lib::common::pgpool::PgPool;

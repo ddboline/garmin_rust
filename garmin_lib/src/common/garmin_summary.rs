@@ -431,7 +431,10 @@ pub async fn get_list_of_activities_from_db(
         format!("WHERE {}", constraints)
     };
 
-    let query = format!("SELECT begin_datetime, filename FROM garmin_summary {}", constr);
+    let query = format!(
+        "SELECT begin_datetime, filename FROM garmin_summary {}",
+        constr
+    );
 
     debug!("{}", query);
 

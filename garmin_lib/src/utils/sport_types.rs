@@ -85,7 +85,7 @@ impl SportTypes {
             Self::Running => Some("Run".into()),
             Self::Biking => Some("Bike".into()),
             Self::Walking => Some("Walk".into()),
-            _ => None
+            _ => None,
         }
     }
 }

@@ -53,7 +53,7 @@ pub struct JsonHeartRateValue {
 
 #[derive(Deserialize, Copy, Clone)]
 pub struct JsonHeartRateEntry {
-    #[serde(alias = "dateTime", deserialize_with = "deserialize_json_mdyhms")]
+    #[serde(rename = "dateTime", deserialize_with = "deserialize_json_mdyhms")]
     pub datetime: DateTime<Utc>,
     pub value: JsonHeartRateValue,
 }

@@ -139,7 +139,7 @@ impl GarminConnectClient {
                     if entries[0].contains("VIEWER_SOCIAL_PROFILE") {
                         #[derive(Deserialize)]
                         struct SocialProfile {
-                            #[serde(alias = "displayName")]
+                            #[serde(rename = "displayName")]
                             display_name: String,
                         }
                         let val: SocialProfile = serde_json::from_str(entries[1])?;
@@ -272,6 +272,6 @@ impl GarminConnectClient {
 
 #[derive(Deserialize)]
 pub struct GarminConnectHrData {
-    #[serde(alias = "heartRateValues")]
+    #[serde(rename = "heartRateValues")]
     pub heartrate_values: Option<Vec<(i64, Option<i32>)>>,
 }

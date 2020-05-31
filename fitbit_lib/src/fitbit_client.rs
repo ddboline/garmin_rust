@@ -7,9 +7,9 @@ use maplit::hashmap;
 use rand::{thread_rng, Rng};
 use reqwest::{header::HeaderMap, Client, Url};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, path::Path};
+use std::collections::HashMap;
 use tokio::{
-    fs::{write, File},
+    fs::File,
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     sync::Mutex,
     task::spawn_blocking,
@@ -516,21 +516,18 @@ impl FitbitClient {
             .map_err(Into::into)
     }
 
-    pub async fn get_fitbit_activity_types(&self) -> Result<(), Error> {
+    pub async fn get_fitbit_activity_types(&self) -> Result<String, Error> {
         let url = "https://api.fitbit.com/1/activities.json";
         let headers = self.get_auth_headers()?;
-        let text = self
-            .client
+        self.client
             .get(url)
             .headers(headers)
             .send()
             .await?
             .error_for_status()?
             .text()
-            .await?;
-        let path = Path::new(self.config.home_dir.as_str()).join("activities.json");
-        write(path, text).await?;
-        Ok(())
+            .await
+            .map_err(Into::into)
     }
 
     pub async fn log_fitbit_activity(

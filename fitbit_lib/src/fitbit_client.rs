@@ -175,6 +175,7 @@ impl FitbitClient {
             format!("Bearer {}", self.access_token,).parse()?,
         );
         headers.insert("Accept-Language", "en_US".parse()?);
+        headers.insert("Accept-Locale", "en_US".parse()?);
         Ok(headers)
     }
 
@@ -417,28 +418,23 @@ impl FitbitClient {
         Ok(updates)
     }
 
-    pub async fn get_tcx_urls(
+    pub async fn get_activities(
         &self,
         start_date: NaiveDate,
-    ) -> Result<Vec<(DateTime<Utc>, String)>, Error> {
+        offset: Option<usize>,
+    ) -> Result<Vec<ActivityEntry>, Error> {
         #[derive(Deserialize)]
         struct AcivityListResp {
             activities: Vec<ActivityEntry>,
         }
-        #[derive(Deserialize)]
-        struct ActivityEntry {
-            #[serde(alias = "logType")]
-            log_type: String,
-            #[serde(alias = "startTime")]
-            start_time: String,
-            #[serde(alias = "tcxLink")]
-            tcx_link: Option<String>,
-        }
+
+        let offset = offset.unwrap_or(0);
 
         let headers = self.get_auth_headers()?;
         let url = format!(
-            "https://api.fitbit.com/1/user/-/activities/list.json?afterDate={}&offset=0&limit=20&sort=asc",
+            "https://api.fitbit.com/1/user/-/activities/list.json?afterDate={}&offset={}&limit=20&sort=asc",
             start_date,
+            offset,
         );
         let activities: AcivityListResp = self
             .client
@@ -449,8 +445,33 @@ impl FitbitClient {
             .error_for_status()?
             .json()
             .await?;
+        Ok(activities.activities)
+    }
+
+    pub async fn get_all_activities(
+        &self,
+        start_date: NaiveDate,
+    ) -> Result<Vec<ActivityEntry>, Error> {
+        let mut activities = Vec::new();
+        loop {
+            let new_activities: Vec<_> = self
+                .get_activities(start_date, Some(activities.len()))
+                .await?;
+            if new_activities.is_empty() {
+                break;
+            }
+            activities.extend_from_slice(&new_activities);
+        }
+        Ok(activities)
+    }
+
+    pub async fn get_tcx_urls(
+        &self,
+        start_date: NaiveDate,
+    ) -> Result<Vec<(DateTime<Utc>, String)>, Error> {
+        let activities = self.get_activities(start_date, None).await?;
+
         activities
-            .activities
             .into_iter()
             .filter_map(|entry| {
                 let res = || {
@@ -482,6 +503,42 @@ impl FitbitClient {
             .await
             .map_err(Into::into)
     }
+}
+
+#[derive(Deserialize, Clone, Debug)]
+pub struct ActivityEntry {
+    #[serde(alias = "logType")]
+    log_type: String,
+    #[serde(alias = "startTime")]
+    start_time: String,
+    #[serde(alias = "tcxLink")]
+    tcx_link: Option<String>,
+    #[serde(alias = "activityId")]
+    activity_id: Option<u64>,
+    #[serde(alias = "activityName")]
+    activity_name: Option<String>,
+    duration: u64,
+    distance: Option<f64>,
+    #[serde(alias = "distanceUnit")]
+    distance_unit: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ActivityLoggingEntry {
+    #[serde(alias = "activityId")]
+    activity_id: Option<u64>,
+    #[serde(alias = "activityName")]
+    activity_name: Option<String>,
+    #[serde(alias = "manualCalories")]
+    manual_calories: Option<f64>,
+    #[serde(alias = "startTime")]
+    start_time: String,
+    #[serde(alias = "durationMillis")]
+    duration_millis: f64,
+    date: NaiveDate,
+    distance: Option<f64>,
+    #[serde(alias = "distanceUnit")]
+    distance_unit: String,
 }
 
 #[cfg(test)]
@@ -576,6 +633,18 @@ mod tests {
         let bodyweight = client.get_fitbit_bodyweightfat().await?;
         debug!("{:#?}", bodyweight);
         assert!(bodyweight.len() > 10);
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_get_all_activities() -> Result<(), Error> {
+        let config = GarminConfig::get_config(None)?;
+        let client = FitbitClient::from_file(config.clone()).await?;
+        let date = (Utc::now() - Duration::days(7)).naive_local().date();
+        let activities = client.get_all_activities(date).await?;
+        println!("{:#?}", activities);
+        assert!(false);
         Ok(())
     }
 }

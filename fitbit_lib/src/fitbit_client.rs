@@ -645,15 +645,18 @@ mod tests {
         let client = FitbitClient::from_file(config.clone()).await?;
         let begin_datetime = Utc::now() - Duration::days(7);
 
+        let date = begin_datetime.naive_local().date();
+        let new_activities: HashMap<_, _> = client.get_all_activities(date).await?.into_iter().map(|activity| {
+            (activity.start_time, activity)
+        }).collect();
+
         let pool = PgPool::new(&config.pgurl);
-        let old_activities: HashMap<_, _> = get_list_of_activities_from_db(&format!("begin_datetime >= '{}'", begin_datetime), &pool).await?.into_iter().collect();
+        let old_activities: Vec<_> = get_list_of_activities_from_db(&format!("begin_datetime >= '{}'", begin_datetime), &pool).await?.into_iter()
+        .filter(|(d, f)| !new_activities.contains_key(&d))
+        .collect();
+
         println!("{:#?}", old_activities);
 
-        let date = begin_datetime.naive_local().date();
-        let new_activities: Vec<_> = client.get_all_activities(date).await?.into_iter().filter(|activity| {
-            old_activities.contains_key(&activity.start_time)
-        }).collect();
-        println!("{:#?}", new_activities);
         assert!(false);
         Ok(())
     }

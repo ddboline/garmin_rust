@@ -9,7 +9,7 @@ use reqwest::{header::HeaderMap, Client, Url};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tokio::{
-    fs::File,
+    fs::{File, write},
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     sync::Mutex,
     task::spawn_blocking,
@@ -527,7 +527,7 @@ impl FitbitClient {
             .await?
             .text()
             .await?;
-        println!("{}", text);
+        write("tests/data/activities.json", text).await?;
         Ok(())
     }
 

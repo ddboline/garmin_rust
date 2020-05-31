@@ -1,6 +1,6 @@
 use anyhow::{format_err, Error};
 use base64::{encode, encode_config, URL_SAFE_NO_PAD};
-use chrono::{DateTime, Duration, FixedOffset, NaiveDate, NaiveTime, Utc};
+use chrono::{DateTime, FixedOffset, NaiveDate, NaiveTime, Utc};
 use futures::future::try_join_all;
 use lazy_static::lazy_static;
 use maplit::hashmap;
@@ -789,16 +789,14 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_sync_fitbit_activities() -> Result<(), Error> {
-        let offset = self.get_offset();
-        let begin_datetime = (Utc::now() - Duration::days(7));
-
-        let date = begin_datetime.with_timezone(&offset).naive_local().date();
-
         let config = GarminConfig::get_config(None)?;
         let client = FitbitClient::from_file(config.clone()).await?;
 
+        let begin_datetime = Utc::now() - Duration::days(30);
+
         let pool = PgPool::new(&config.pgurl);
-        let dates = client.sync_fitbit_activities(date, &pool).await?;
+        let dates = client.sync_fitbit_activities(begin_datetime, &pool).await?;
+        println!("{:?}", dates);
         assert_eq!(dates.len(), 0);
         Ok(())
     }

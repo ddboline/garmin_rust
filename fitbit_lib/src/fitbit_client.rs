@@ -478,8 +478,7 @@ impl FitbitClient {
                     if entry.log_type != "tracker" {
                         return Ok(None);
                     }
-                    let start_time =
-                        DateTime::parse_from_rfc3339(&entry.start_time)?.with_timezone(&Utc);
+                    let start_time = entry.start_time;
                     if let Some(link) = entry.tcx_link {
                         Ok(Some((start_time, link)))
                     } else {
@@ -510,7 +509,7 @@ pub struct ActivityEntry {
     #[serde(alias = "logType")]
     log_type: String,
     #[serde(alias = "startTime")]
-    start_time: String,
+    start_time: DateTime<Utc>,
     #[serde(alias = "tcxLink")]
     tcx_link: Option<String>,
     #[serde(alias = "activityId")]
@@ -548,8 +547,9 @@ mod tests {
     use log::debug;
     use std::path::Path;
     use tempfile::NamedTempFile;
+    use std::collections::HashMap;
 
-    use crate::fitbit_client::FitbitClient;
+    use crate::fitbit_client::{FitbitClient, ActivityEntry};
     use garmin_lib::common::garmin_config::GarminConfig;
     use garmin_lib::common::garmin_summary::get_list_of_activities_from_db;
     use garmin_lib::common::pgpool::PgPool;
@@ -644,12 +644,16 @@ mod tests {
         let config = GarminConfig::get_config(None)?;
         let client = FitbitClient::from_file(config.clone()).await?;
         let begin_datetime = Utc::now() - Duration::days(7);
-        let date = begin_datetime.naive_local().date();
-        let new_activities = client.get_all_activities(date).await?;
-        println!("{:#?}", new_activities);
+
         let pool = PgPool::new(&config.pgurl);
-        let old_activities = get_list_of_activities_from_db(&format!("begin_datetime >= '{}'", begin_datetime), &pool).await?;
+        let old_activities: HashMap<_, _> = get_list_of_activities_from_db(&format!("begin_datetime >= '{}'", begin_datetime), &pool).await?.into_iter().collect();
         println!("{:#?}", old_activities);
+
+        let date = begin_datetime.naive_local().date();
+        let new_activities: Vec<_> = client.get_all_activities(date).await?.into_iter().filter(|activity| {
+            old_activities.contains_key(&activity.start_time)
+        }).collect();
+        println!("{:#?}", new_activities);
         assert!(false);
         Ok(())
     }

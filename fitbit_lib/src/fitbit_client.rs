@@ -83,8 +83,7 @@ impl FitbitClient {
                 }
             }
         }
-        let offset = client.get_client_offset().await?;
-        client.offset = Some(offset);
+        client.offset = client.get_client_offset().await.ok();
         Ok(client)
     }
 

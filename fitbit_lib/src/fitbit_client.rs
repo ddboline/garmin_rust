@@ -552,9 +552,9 @@ impl FitbitClient {
             .json()
             .await?;
         let mut id_map: HashMap<u64, String> = HashMap::new();
-        for category in categories.categories.iter() {
+        for category in &categories.categories {
             id_map.insert(category.id, category.name.to_string());
-            for activity in category.activities.iter() {
+            for activity in &category.activities {
                 let name = format!("{}/{}", category.name, activity.name);
                 id_map.insert(activity.id, name);
             }
@@ -562,7 +562,7 @@ impl FitbitClient {
                 for sub_category in sub_categories.iter() {
                     let name = format!("{}/{}", category.name, sub_category.name);
                     id_map.insert(sub_category.id, name);
-                    for sub_activity in sub_category.activities.iter() {
+                    for sub_activity in &sub_category.activities {
                         let name = format!(
                             "{}/{}/{}",
                             category.name, sub_category.name, sub_activity.name

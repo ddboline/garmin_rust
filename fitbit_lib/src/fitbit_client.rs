@@ -515,18 +515,64 @@ impl FitbitClient {
             .map_err(Into::into)
     }
 
-    pub async fn get_fitbit_activity_types(&self) -> Result<String, Error> {
+    pub async fn get_fitbit_activity_types(&self) -> Result<HashMap<u64, String>, Error> {
+        #[derive(Deserialize)]
+        struct FitbitActivity {
+            name: String,
+            id: u64,
+        }
+        #[derive(Deserialize)]
+        struct FitbitSubCategory {
+            activities: Vec<FitbitActivity>,
+            id: u64,
+            name: String,
+        }
+        #[derive(Deserialize)]
+        struct FitbitCategory {
+            activities: Vec<FitbitActivity>,
+            #[serde(rename = "subCategories")]
+            sub_categories: Option<Vec<FitbitSubCategory>>,
+            id: u64,
+            name: String,
+        }
+        #[derive(Deserialize)]
+        struct FitbitActivityCategories {
+            categories: Vec<FitbitCategory>,
+        }
+
         let url = "https://api.fitbit.com/1/activities.json";
         let headers = self.get_auth_headers()?;
-        self.client
+        let categories: FitbitActivityCategories = self
+            .client
             .get(url)
             .headers(headers)
             .send()
             .await?
             .error_for_status()?
-            .text()
-            .await
-            .map_err(Into::into)
+            .json()
+            .await?;
+        let mut id_map: HashMap<u64, String> = HashMap::new();
+        for category in categories.categories.iter() {
+            id_map.insert(category.id, category.name.to_string());
+            for activity in category.activities.iter() {
+                let name = format!("{}/{}", category.name, activity.name);
+                id_map.insert(activity.id, name);
+            }
+            if let Some(sub_categories) = category.sub_categories.as_ref() {
+                for sub_category in sub_categories.iter() {
+                    let name = format!("{}/{}", category.name, sub_category.name);
+                    id_map.insert(sub_category.id, name);
+                    for sub_activity in sub_category.activities.iter() {
+                        let name = format!(
+                            "{}/{}/{}",
+                            category.name, sub_category.name, sub_activity.name
+                        );
+                        id_map.insert(sub_activity.id, name);
+                    }
+                }
+            }
+        }
+        Ok(id_map)
     }
 
     pub async fn log_fitbit_activity(

@@ -12,9 +12,9 @@ use garmin_lib::common::pgpool::PgPool;
 use super::logged_user::{fill_from_db, TRIGGER_DB_UPDATE};
 use crate::{
     garmin_rust_routes::{
-        add_garmin_correction, fitbit_auth, fitbit_bodyweight, fitbit_bodyweight_sync,
-        fitbit_callback, fitbit_heartrate_api, fitbit_heartrate_cache, fitbit_plots,
-        fitbit_plots_demo, fitbit_refresh, fitbit_sync, fitbit_tcx_sync, garmin,
+        add_garmin_correction, fitbit_activity_types, fitbit_auth, fitbit_bodyweight,
+        fitbit_bodyweight_sync, fitbit_callback, fitbit_heartrate_api, fitbit_heartrate_cache,
+        fitbit_plots, fitbit_plots_demo, fitbit_refresh, fitbit_sync, fitbit_tcx_sync, garmin,
         garmin_connect_hr_api, garmin_connect_hr_sync, garmin_connect_sync, garmin_demo,
         garmin_get_hr_data, garmin_get_hr_pace, garmin_list_gps_tracks, garmin_sync, garmin_upload,
         heartrate_plots, heartrate_plots_demo, scale_measurement, scale_measurement_update,
@@ -138,6 +138,10 @@ pub async fn start_app() {
             .service(
                 web::resource("/garmin/fitbit/fitbit_tcx_sync")
                     .route(web::get().to(fitbit_tcx_sync)),
+            )
+            .service(
+                web::resource("/garmin/fitbit/fitbit_activity_types")
+                    .route(web::get().to(fitbit_activity_types)),
             )
             .service(
                 web::resource("/garmin/scale_measurements")

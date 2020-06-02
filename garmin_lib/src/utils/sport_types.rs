@@ -85,6 +85,14 @@ impl SportTypes {
             Self::Running => Some(90009),
             Self::Walking => Some(90013),
             Self::Biking => Some(90001),
+            Self::Hiking => Some(90012),
+            Self::Ultimate => Some(15250),
+            Self::Elliptical => Some(90017),
+            Self::Stairs => Some(12170),
+            Self::Lifting => Some(2050),
+            Self::Swimming => Some(18300),
+            Self::Snowshoeing => Some(19190),
+            Self::Skiing => Some(90015),
             _ => None,
         }
     }

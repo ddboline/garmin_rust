@@ -31,10 +31,10 @@ use super::{errors::ServiceError as Error, logged_user::LoggedUser};
 use super::garmin_rust_app::AppState;
 use crate::{
     garmin_requests::{
-        AddGarminCorrectionRequest, FitbitAuthRequest, FitbitBodyWeightFatRequest,
-        FitbitBodyWeightFatUpdateRequest, FitbitCallbackRequest, FitbitHeartrateApiRequest,
-        FitbitHeartrateCacheRequest, FitbitHeartratePlotRequest, FitbitRefreshRequest,
-        FitbitSyncRequest, FitbitTcxSyncRequest, GarminConnectHrApiRequest,
+        AddGarminCorrectionRequest, FitbitActivityTypesRequest, FitbitAuthRequest,
+        FitbitBodyWeightFatRequest, FitbitBodyWeightFatUpdateRequest, FitbitCallbackRequest,
+        FitbitHeartrateApiRequest, FitbitHeartrateCacheRequest, FitbitHeartratePlotRequest,
+        FitbitRefreshRequest, FitbitSyncRequest, FitbitTcxSyncRequest, GarminConnectHrApiRequest,
         GarminConnectHrSyncRequest, GarminConnectSyncRequest, GarminCorrRequest, GarminHtmlRequest,
         GarminListRequest, GarminSyncRequest, GarminUploadRequest, HandleRequest,
         ScaleMeasurementPlotRequest, ScaleMeasurementRequest, ScaleMeasurementUpdateRequest,
@@ -636,4 +636,12 @@ pub async fn add_garmin_correction(
     let payload = payload.into_inner();
     state.db.handle(payload).await?;
     form_http_response("finised".to_string())
+}
+
+pub async fn fitbit_activity_types(
+    _: LoggedUser,
+    state: Data<AppState>,
+) -> Result<HttpResponse, Error> {
+    let result = state.db.handle(FitbitActivityTypesRequest {}).await?;
+    to_json(result)
 }

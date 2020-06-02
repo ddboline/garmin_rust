@@ -820,3 +820,15 @@ impl HandleRequest<AddGarminCorrectionRequest> for PgPool {
         Ok("".to_string())
     }
 }
+
+pub struct FitbitActivityTypesRequest {}
+
+#[async_trait]
+impl HandleRequest<FitbitActivityTypesRequest> for PgPool {
+    type Result = Result<HashMap<u64, String>, Error>;
+    async fn handle(&self, _: FitbitActivityTypesRequest) -> Self::Result {
+        let config = CONFIG.clone();
+        let client = FitbitClient::from_file(config).await?;
+        client.get_fitbit_activity_types().await.map_err(Into::into)
+    }
+}

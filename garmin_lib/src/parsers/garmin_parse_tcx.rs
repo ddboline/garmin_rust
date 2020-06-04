@@ -32,18 +32,18 @@ impl GarminParseTrait for GarminParseTcx {
         filename: &str,
         corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
     ) -> Result<GarminFile, Error> {
-        let file_name = Path::new(&filename)
+        let tcx_output = self.parse_file(filename)?;
+        let (lap_list, sport) =
+            apply_lap_corrections(&tcx_output.lap_list, tcx_output.sport, corr_map);
+        let first_lap = lap_list.get(0).ok_or_else(|| format_err!("No laps"))?;
+        let filename = Path::new(&filename)
             .file_name()
             .unwrap_or_else(|| panic!("filename {} has no path", filename))
             .to_os_string()
             .into_string()
             .unwrap_or_else(|_| filename.to_string());
-        let tcx_output = self.parse_file(filename)?;
-        let (lap_list, sport) =
-            apply_lap_corrections(&tcx_output.lap_list, tcx_output.sport, corr_map);
-        let first_lap = lap_list.get(0).ok_or_else(|| format_err!("No laps"))?;
         let gfile = GarminFile {
-            filename: file_name,
+            filename,
             filetype: "tcx".into(),
             begin_datetime: first_lap.lap_start,
             sport,

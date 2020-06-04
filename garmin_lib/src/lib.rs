@@ -8,7 +8,6 @@
 #![allow(clippy::similar_names)]
 #![allow(clippy::shadow_unrelated)]
 #![allow(clippy::missing_errors_doc)]
-#![allow(clippy::similar_names)]
 #![allow(clippy::used_underscore_binding)]
 
 pub mod common;

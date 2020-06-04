@@ -48,27 +48,27 @@ impl GarminReportQuery {
     pub fn get_text_entries(&self) -> Result<Vec<Vec<String>>, Error> {
         match self {
             Self::Year(x) => x
-                .into_iter()
+                .iter()
                 .map(GarminReportTrait::get_text_entry)
                 .collect(),
             Self::Month(x) => x
-                .into_iter()
+                .iter()
                 .map(GarminReportTrait::get_text_entry)
                 .collect(),
             Self::Week(x) => x
-                .into_iter()
+                .iter()
                 .map(GarminReportTrait::get_text_entry)
                 .collect(),
             Self::Day(x) => x
-                .into_iter()
+                .iter()
                 .map(GarminReportTrait::get_text_entry)
                 .collect(),
             Self::File(x) => x
-                .into_iter()
+                .iter()
                 .map(GarminReportTrait::get_text_entry)
                 .collect(),
             Self::Sport(x) => x
-                .into_iter()
+                .iter()
                 .map(GarminReportTrait::get_text_entry)
                 .collect(),
             Self::Empty => Ok(Vec::new()),
@@ -77,27 +77,27 @@ impl GarminReportQuery {
     pub fn get_html_entries(&self) -> Result<Vec<String>, Error> {
         match self {
             Self::Year(x) => x
-                .into_iter()
+                .iter()
                 .map(GarminReportTrait::get_html_entry)
                 .collect(),
             Self::Month(x) => x
-                .into_iter()
+                .iter()
                 .map(GarminReportTrait::get_html_entry)
                 .collect(),
             Self::Week(x) => x
-                .into_iter()
+                .iter()
                 .map(GarminReportTrait::get_html_entry)
                 .collect(),
             Self::Day(x) => x
-                .into_iter()
+                .iter()
                 .map(GarminReportTrait::get_html_entry)
                 .collect(),
             Self::File(x) => x
-                .into_iter()
+                .iter()
                 .map(GarminReportTrait::get_html_entry)
                 .collect(),
             Self::Sport(x) => x
-                .into_iter()
+                .iter()
                 .map(GarminReportTrait::get_html_entry)
                 .collect(),
             Self::Empty => Ok(Vec::new()),

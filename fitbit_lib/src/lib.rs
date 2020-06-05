@@ -5,9 +5,10 @@
 #![allow(clippy::cast_sign_loss)]
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::cast_possible_wrap)]
-#![allow(clippy::similar_names)]
 #![allow(clippy::shadow_unrelated)]
 #![allow(clippy::missing_errors_doc)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::used_underscore_binding)]
 
 pub mod fitbit_client;
 pub mod fitbit_heartrate;

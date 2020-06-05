@@ -8,5 +8,6 @@
 #![allow(clippy::similar_names)]
 #![allow(clippy::shadow_unrelated)]
 #![allow(clippy::missing_errors_doc)]
+#![allow(clippy::used_underscore_binding)]
 
 pub mod strava_client;

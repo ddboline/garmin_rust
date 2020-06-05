@@ -440,7 +440,8 @@ impl GarminCli {
                 debug!("{:?}", options);
                 let txt_result: Vec<_> = create_report_query(&pg_conn, &options, &constraints)
                     .await?
-                    .iter()
+                    .get_text_entries()?
+                    .into_iter()
                     .map(|x| x.join(" "))
                     .collect();
 
@@ -487,17 +488,12 @@ impl GarminCli {
             }
             _ => {
                 debug!("{:?}", req.options);
-                let txt_result: Vec<_> =
-                    create_report_query(&pg_conn, &req.options, &req.constraints)
-                        .await?
-                        .iter()
-                        .map(|x| x.join("</td><td>"))
-                        .collect();
+                let txt_result =
+                    create_report_query(&pg_conn, &req.options, &req.constraints).await?;
 
                 summary_report_html(
                     &self.get_config().domain,
                     &txt_result,
-                    &req.options,
                     &req.history,
                     is_demo,
                 )

@@ -31,16 +31,16 @@ use super::{errors::ServiceError as Error, logged_user::LoggedUser};
 use super::garmin_rust_app::AppState;
 use crate::{
     garmin_requests::{
-        AddGarminCorrectionRequest, FitbitActivityTypesRequest, FitbitAuthRequest,
-        FitbitBodyWeightFatRequest, FitbitBodyWeightFatUpdateRequest, FitbitCallbackRequest,
-        FitbitHeartrateApiRequest, FitbitHeartrateCacheRequest, FitbitHeartratePlotRequest,
-        FitbitRefreshRequest, FitbitSyncRequest, FitbitTcxSyncRequest, GarminConnectHrApiRequest,
-        GarminConnectHrSyncRequest, GarminConnectSyncRequest, GarminCorrRequest, GarminHtmlRequest,
-        GarminListRequest, GarminSyncRequest, GarminUploadRequest, HandleRequest,
-        ScaleMeasurementPlotRequest, ScaleMeasurementRequest, ScaleMeasurementUpdateRequest,
-        StravaActiviesDBUpdateRequest, StravaActivitiesDBRequest, StravaActivitiesRequest,
-        StravaAuthRequest, StravaCallbackRequest, StravaRefreshRequest, StravaSyncRequest,
-        StravaUpdateRequest, StravaUploadRequest,
+        AddGarminCorrectionRequest, FitbitActivitiesRequest, FitbitActivityTypesRequest,
+        FitbitAuthRequest, FitbitBodyWeightFatRequest, FitbitBodyWeightFatUpdateRequest,
+        FitbitCallbackRequest, FitbitHeartrateApiRequest, FitbitHeartrateCacheRequest,
+        FitbitHeartratePlotRequest, FitbitRefreshRequest, FitbitSyncRequest, FitbitTcxSyncRequest,
+        GarminConnectHrApiRequest, GarminConnectHrSyncRequest, GarminConnectSyncRequest,
+        GarminCorrRequest, GarminHtmlRequest, GarminListRequest, GarminSyncRequest,
+        GarminUploadRequest, HandleRequest, ScaleMeasurementPlotRequest, ScaleMeasurementRequest,
+        ScaleMeasurementUpdateRequest, StravaActiviesDBUpdateRequest, StravaActivitiesDBRequest,
+        StravaActivitiesRequest, StravaAuthRequest, StravaCallbackRequest, StravaRefreshRequest,
+        StravaSyncRequest, StravaUpdateRequest, StravaUploadRequest,
     },
     CONFIG,
 };
@@ -335,6 +335,16 @@ pub async fn fitbit_bodyweight_sync(
 ) -> Result<HttpResponse, Error> {
     let req = FitbitBodyWeightFatUpdateRequest {};
     let hlist = state.db.handle(req).await?;
+    to_json(hlist)
+}
+
+pub async fn fitbit_activities(
+    query: Query<FitbitActivitiesRequest>,
+    _: LoggedUser,
+    state: Data<AppState>,
+) -> Result<HttpResponse, Error> {
+    let query = query.into_inner();
+    let hlist = state.db.handle(query).await?;
     to_json(hlist)
 }
 

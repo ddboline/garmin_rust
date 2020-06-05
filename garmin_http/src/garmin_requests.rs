@@ -14,7 +14,7 @@ use std::{
 use tokio::{fs::remove_file, sync::RwLock, task::spawn_blocking};
 
 use fitbit_lib::{
-    fitbit_client::FitbitClient,
+    fitbit_client::{ActivityEntry, FitbitClient},
     fitbit_heartrate::{FitbitBodyWeightFat, FitbitHeartRate},
     scale_measurement::ScaleMeasurement,
 };
@@ -830,5 +830,26 @@ impl HandleRequest<FitbitActivityTypesRequest> for PgPool {
         let config = CONFIG.clone();
         let client = FitbitClient::from_file(config).await?;
         client.get_fitbit_activity_types().await.map_err(Into::into)
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct FitbitActivitiesRequest {
+    pub start_date: Option<NaiveDate>,
+}
+
+#[async_trait]
+impl HandleRequest<FitbitActivitiesRequest> for PgPool {
+    type Result = Result<Vec<ActivityEntry>, Error>;
+    async fn handle(&self, req: FitbitActivitiesRequest) -> Self::Result {
+        let config = CONFIG.clone();
+        let client = FitbitClient::from_file(config).await?;
+        let start_date = req
+            .start_date
+            .unwrap_or_else(|| (Utc::now() - Duration::days(14)).naive_local().date());
+        client
+            .get_all_activities(start_date)
+            .await
+            .map_err(Into::into)
     }
 }

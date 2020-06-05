@@ -658,7 +658,7 @@ impl FitbitClient {
     }
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ActivityEntry {
     #[serde(rename = "logType")]
     log_type: String,
@@ -666,8 +666,8 @@ pub struct ActivityEntry {
     start_time: DateTime<Utc>,
     #[serde(rename = "tcxLink")]
     tcx_link: Option<String>,
-    #[serde(rename = "activityId")]
-    activity_id: Option<u64>,
+    #[serde(rename = "activityTypeId")]
+    activity_type_id: Option<u64>,
     #[serde(rename = "activityName")]
     activity_name: Option<String>,
     duration: u64,

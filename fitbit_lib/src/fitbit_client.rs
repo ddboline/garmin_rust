@@ -8,6 +8,7 @@ use rand::{thread_rng, Rng};
 use reqwest::{header::HeaderMap, Client, Url};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Arc;
 use tokio::{
     fs::File,
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
@@ -638,22 +639,27 @@ impl FitbitClient {
         })
         .collect();
 
-        let summary = GarminSummaryList::new(pool);
+        let summary = Arc::new(GarminSummaryList::new(pool));
 
-        let mut updated = Vec::new();
-
-        for (d, f) in old_activities {
-            if let Some(activity) = summary
-                .read_summary_from_postgres(&f)
-                .await?
-                .summary_list
-                .pop()
-            {
-                let activity = ActivityLoggingEntry::from_summary(&activity, offset);
-                self.log_fitbit_activity(&activity).await?;
-                updated.push(d);
+        let futures = old_activities.into_iter().map(|(d, f)| {
+            let summary = summary.clone();
+            async move {
+                if let Some(activity) = summary
+                    .read_summary_from_postgres(&f)
+                    .await?
+                    .summary_list
+                    .pop()
+                {
+                    if let Some(activity) = ActivityLoggingEntry::from_summary(&activity, offset) {
+                        self.log_fitbit_activity(&activity).await?;
+                        return Ok(Some(d));
+                    }
+                }
+                Ok(None)
             }
-        }
+        });
+        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+        let updated: Vec<_> = results?.into_iter().filter_map(|x| x).collect();
         Ok(updated)
     }
 }
@@ -680,10 +686,6 @@ pub struct ActivityEntry {
 pub struct ActivityLoggingEntry {
     #[serde(rename = "activityId")]
     activity_id: Option<u64>,
-    #[serde(rename = "activityName")]
-    activity_name: Option<String>,
-    #[serde(rename = "manualCalories")]
-    manual_calories: Option<u64>,
     #[serde(rename = "startTime")]
     start_time: String,
     #[serde(rename = "durationMillis")]
@@ -695,11 +697,9 @@ pub struct ActivityLoggingEntry {
 }
 
 impl ActivityLoggingEntry {
-    pub fn from_summary(item: &GarminSummary, offset: FixedOffset) -> Self {
-        Self {
-            activity_id: item.sport.to_fitbit_activity_id(),
-            activity_name: None,   // item.sport.to_fitbit_activity(),
-            manual_calories: None, // Some(item.total_calories as u64),
+    pub fn from_summary(item: &GarminSummary, offset: FixedOffset) -> Option<Self> {
+        item.sport.to_fitbit_activity_id().map(|activity_id| Self {
+            activity_id: Some(activity_id),
             start_time: item
                 .begin_datetime
                 .with_timezone(&offset)
@@ -713,7 +713,7 @@ impl ActivityLoggingEntry {
                 .naive_local(),
             distance: Some(item.total_distance / 1000.0),
             distance_unit: Some("Kilometer".to_string()),
-        }
+        })
     }
 }
 

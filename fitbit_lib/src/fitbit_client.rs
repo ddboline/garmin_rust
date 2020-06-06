@@ -384,6 +384,7 @@ impl FitbitClient {
         Ok(result)
     }
 
+    #[allow(clippy::similar_names)]
     pub async fn update_fitbit_bodyweightfat(
         &self,
         updates: Vec<ScaleMeasurement>,

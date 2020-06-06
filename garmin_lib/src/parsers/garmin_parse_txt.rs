@@ -31,6 +31,7 @@ impl GarminParseTxt {
     }
 }
 
+#[allow(clippy::similar_names)]
 impl GarminParseTrait for GarminParseTxt {
     fn with_file(
         self,

@@ -80,6 +80,7 @@ impl FitbitHeartRate {
         }
     }
 
+    #[allow(clippy::similar_names)]
     pub async fn get_heartrate_plot(
         config: &GarminConfig,
         pool: &PgPool,

@@ -255,6 +255,7 @@ impl StravaClient {
         Ok(activity_map)
     }
 
+    #[allow(clippy::similar_names)]
     pub async fn upload_strava_activity(
         &self,
         filepath: &Path,

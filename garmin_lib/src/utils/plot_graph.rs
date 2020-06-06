@@ -7,6 +7,7 @@ use crate::{
     utils::plot_opts::PlotOpts,
 };
 
+#[allow(clippy::similar_names)]
 pub fn generate_d3_plot(opts: &PlotOpts) -> Result<String, Error> {
     let err_str = format!("No data points {}", opts.name);
 

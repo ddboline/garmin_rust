@@ -13,6 +13,7 @@ pub struct PlotOpts<'a> {
     pub ylabel: StackString,
 }
 
+#[allow(clippy::similar_names)]
 impl<'a> PlotOpts<'a> {
     pub fn new() -> PlotOpts<'a> {
         PlotOpts {

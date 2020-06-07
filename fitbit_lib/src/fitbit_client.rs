@@ -7,7 +7,7 @@ use maplit::hashmap;
 use rand::{thread_rng, Rng};
 use reqwest::{header::HeaderMap, Client, Url};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tokio::{
     fs::File,
@@ -616,15 +616,39 @@ impl FitbitClient {
     ) -> Result<Vec<DateTime<Utc>>, Error> {
         let offset = self.get_offset();
         let date = begin_datetime.with_timezone(&offset).naive_local().date();
-        let new_activities: HashMap<_, _> = self
-            .get_all_activities(date)
-            .await?
+
+        let new_activities: Vec<_> = self.get_all_activities(date).await?;
+        let activities_to_delete: HashSet<_> = new_activities
+            .iter()
+            .filter_map(|activity| {
+                if activity.steps.is_none()
+                    && (activity.activity_type_id == Some(90009)
+                        || activity.activity_type_id == Some(90013))
+                {
+                    Some(activity.log_id)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        let futures = activities_to_delete
+            .iter()
+            .map(|log_id| async move { self.delete_fitbit_activity(*log_id).await });
+        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+        results?;
+
+        let new_activities: HashMap<_, _> = new_activities
             .into_iter()
-            .map(|activity| {
-                (
-                    activity.start_time.format("%Y-%m-%dT%H:%M").to_string(),
-                    activity,
-                )
+            .filter_map(|activity| {
+                if activities_to_delete.contains(&activity.log_id) {
+                    None
+                } else {
+                    Some((
+                        activity.start_time.format("%Y-%m-%dT%H:%M").to_string(),
+                        activity,
+                    ))
+                }
             })
             .collect();
 
@@ -663,6 +687,18 @@ impl FitbitClient {
         let updated: Vec<_> = results?.into_iter().filter_map(|x| x).collect();
         Ok(updated)
     }
+
+    pub async fn delete_fitbit_activity(&self, log_id: u64) -> Result<(), Error> {
+        let url = format!("https://api.fitbit.com/1/user/-/{}.json", log_id);
+        let headers = self.get_auth_headers()?;
+        self.client
+            .delete(&url)
+            .headers(headers)
+            .send()
+            .await?
+            .error_for_status()?;
+        Ok(())
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -681,6 +717,9 @@ pub struct ActivityEntry {
     distance: Option<f64>,
     #[serde(rename = "distanceUnit")]
     distance_unit: Option<String>,
+    steps: Option<u64>,
+    #[serde(rename = "logId")]
+    log_id: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

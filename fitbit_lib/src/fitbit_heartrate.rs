@@ -22,7 +22,7 @@ use garmin_lib::{
     utils::{iso_8601_datetime, stack_string::StackString},
 };
 
-#[derive(Serialize, Deserialize, Copy, Clone, Debug)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq)]
 pub struct FitbitHeartRate {
     #[serde(with = "iso_8601_datetime")]
     pub datetime: DateTime<Utc>,
@@ -281,6 +281,7 @@ impl FitbitHeartRate {
                 .chain(new_values)
                 .collect();
             merged_values.par_sort_by_key(|entry| entry.datetime.timestamp());
+            merged_values.dedup();
             let input_filename =
                 Path::new(config.fitbit_cachedir.as_str()).join(format!("{}.avro", date));
             Self::dump_to_avro(&merged_values, &input_filename.to_string_lossy())?;

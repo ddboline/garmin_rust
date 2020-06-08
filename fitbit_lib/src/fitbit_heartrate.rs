@@ -174,6 +174,32 @@ impl FitbitHeartRate {
         }
     }
 
+    pub async fn get_all_summary_statistics(
+        config: &GarminConfig,
+        pool: &PgPool,
+    ) -> Result<(), Error> {
+        let dates: Result<Vec<_>, Error> = glob(&format!("{}/*.avro", config.fitbit_cachedir))?
+            .into_iter()
+            .map(|x| x.map_err(Into::into).and_then(|f| {
+                let date: NaiveDate = f.file_name().ok_or_else(|| format_err!("No name"))?.to_string_lossy().replace(".avro", "").parse()?;
+                Ok(date)
+            }))
+            .collect();
+        let dates = dates?;
+        let futures = dates.into_iter().map(|date| {
+            let config = config.clone();
+            let pool = pool.clone();
+            async move {
+                Self::calculate_summary_statistics(&config, &pool, date).await?;
+                println!("{}", date);
+                Ok(())
+            }
+        });
+        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+        results?;
+        Ok(())
+    }
+
     #[allow(clippy::similar_names)]
     pub async fn get_heartrate_plot(
         config: &GarminConfig,
@@ -459,7 +485,8 @@ mod tests {
         let config = GarminConfig::get_config(None)?;
         let pool = PgPool::new(&config.pgurl);
         let start_date = NaiveDate::from_ymd(2019, 8, 1);
-        let result = FitbitHeartRate::calculate_summary_statistics(&config, &pool, start_date).await?;
+        let result =
+            FitbitHeartRate::calculate_summary_statistics(&config, &pool, start_date).await?;
         assert!(result.is_some());
         let result = result.unwrap();
         assert_eq!(result.min_heartrate as i32, 39);

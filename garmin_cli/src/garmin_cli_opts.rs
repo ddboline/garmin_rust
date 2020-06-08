@@ -3,11 +3,12 @@ use chrono::{Duration, Utc};
 use std::path::Path;
 use structopt::StructOpt;
 
-use fitbit_lib::fitbit_client::FitbitClient;
+use fitbit_lib::{fitbit_client::FitbitClient, fitbit_heartrate::FitbitHeartRate};
 use garmin_lib::{
     common::{
         garmin_cli::{GarminCli, GarminCliOptions},
         garmin_config::GarminConfig,
+        pgpool::PgPool,
     },
     utils::stack_string::StackString,
 };
@@ -28,6 +29,7 @@ pub enum GarminCliOpts {
         #[structopt(short, long)]
         md5sum: bool,
     },
+    Fitbit,
 }
 
 impl GarminCliOpts {
@@ -50,6 +52,12 @@ impl GarminCliOpts {
             }
             Self::Connect => GarminCliOptions::Connect,
             Self::Sync { md5sum } => GarminCliOptions::Sync(md5sum),
+            Self::Fitbit => {
+                let config = GarminConfig::get_config(None)?;
+                let pool = PgPool::new(&config.pgurl);
+                FitbitHeartRate::get_all_summary_statistics(&config, &pool).await?;
+                return Ok(());
+            }
         };
 
         let cli = GarminCli {

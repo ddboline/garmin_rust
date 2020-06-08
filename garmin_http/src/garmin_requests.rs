@@ -197,7 +197,7 @@ impl HandleRequest<GarminConnectHrSyncRequest> for PgPool {
         let config = CONFIG.clone();
         FitbitHeartRate::calculate_summary_statistics(&config, &self, req.date)
             .await
-            .map_err(Into::into)
+            .map_err(Into::into).map(|_| ())
     }
 }
 
@@ -414,7 +414,7 @@ impl HandleRequest<FitbitSyncRequest> for PgPool {
             .await?;
         FitbitHeartRate::calculate_summary_statistics(&client.config, &self, msg.date)
             .await
-            .map_err(Into::into)
+            .map_err(Into::into).map(|_| ())
     }
 }
 

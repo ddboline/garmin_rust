@@ -8,13 +8,13 @@ use garmin_lib::common::pgpool::PgPool;
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, FromSqlRow)]
 pub struct FitbitStatisticsSummary {
-    date: NaiveDate,
-    min_heartrate: f64,
-    max_heartrate: f64,
-    mean_heartrate: f64,
-    median_heartrate: f64,
-    stdev_heartrate: f64,
-    number_of_entries: i32,
+    pub date: NaiveDate,
+    pub min_heartrate: f64,
+    pub max_heartrate: f64,
+    pub mean_heartrate: f64,
+    pub median_heartrate: f64,
+    pub stdev_heartrate: f64,
+    pub number_of_entries: i32,
 }
 
 impl FitbitStatisticsSummary {

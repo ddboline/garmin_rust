@@ -162,14 +162,16 @@ impl FitbitHeartRate {
         config: &GarminConfig,
         pool: &PgPool,
         start_date: NaiveDate,
-    ) -> Result<(), Error> {
+    ) -> Result<Option<FitbitStatisticsSummary>, Error> {
         let heartrate_values =
             Self::get_heartrate_values(config, pool, start_date, start_date).await?;
 
         if let Some(hr_val) = FitbitStatisticsSummary::from_heartrate_values(&heartrate_values) {
             hr_val.upsert_entry(pool).await?;
+            Ok(Some(hr_val))
+        } else {
+            Ok(None)
         }
-        Ok(())
     }
 
     #[allow(clippy::similar_names)]
@@ -457,8 +459,13 @@ mod tests {
         let config = GarminConfig::get_config(None)?;
         let pool = PgPool::new(&config.pgurl);
         let start_date = NaiveDate::from_ymd(2019, 8, 1);
-        FitbitHeartRate::calculate_summary_statistics(&config, &pool, start_date).await?;
-        assert!(false);
+        let result = FitbitHeartRate::calculate_summary_statistics(&config, &pool, start_date).await?;
+        assert!(result.is_some());
+        let result = result.unwrap();
+        assert_eq!(result.min_heartrate as i32, 39);
+        assert_eq!(result.max_heartrate as i32, 181);
+        assert_eq!(result.median_heartrate as i32, 62);
+        assert_eq!(result.number_of_entries as i32, 12464);
         Ok(())
     }
 }

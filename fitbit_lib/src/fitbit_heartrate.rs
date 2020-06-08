@@ -22,6 +22,8 @@ use garmin_lib::{
     utils::{iso_8601_datetime, stack_string::StackString},
 };
 
+use crate::fitbit_statistics_summary::FitbitStatisticsSummary;
+
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq)]
 pub struct FitbitHeartRate {
     #[serde(with = "iso_8601_datetime")]
@@ -82,14 +84,12 @@ impl FitbitHeartRate {
         }
     }
 
-    #[allow(clippy::similar_names)]
-    pub async fn get_heartrate_plot(
+    pub async fn get_heartrate_values(
         config: &GarminConfig,
         pool: &PgPool,
         start_date: NaiveDate,
         end_date: NaiveDate,
-        is_demo: bool,
-    ) -> Result<String, Error> {
+    ) -> Result<Vec<(DateTime<Utc>, i32)>, Error> {
         let ndays = (end_date - start_date).num_days();
 
         let days: Vec<_> = (0..=ndays)
@@ -153,33 +153,62 @@ impl FitbitHeartRate {
             })
             .collect();
         heartrate_values.par_extend(results?.into_par_iter().flatten());
+        heartrate_values.par_sort();
+        heartrate_values.dedup();
+        Ok(heartrate_values)
+    }
 
-        let mut final_values: Vec<_> = heartrate_values
-            .into_iter()
-            .group_by(|(d, _)| d.timestamp() / (NMINUTES * 60))
-            .into_iter()
-            .map(|(_, group)| {
-                let (begin_datetime, entries, heartrate_sum) = group.fold(
-                    (None, 0, 0),
-                    |(begin_datetime, entries, heartrate_sum), (datetime, heartrate)| {
-                        (
-                            if begin_datetime.is_none() || begin_datetime < Some(datetime) {
-                                Some(datetime)
-                            } else {
-                                begin_datetime
-                            },
-                            entries + 1,
-                            heartrate_sum + heartrate,
-                        )
-                    },
-                );
-                begin_datetime.map(|begin_datetime| {
-                    let average_heartrate = heartrate_sum / entries;
-                    let begin_datetime = begin_datetime.format("%Y-%m-%dT%H:%M:%S%z").to_string();
-                    (begin_datetime, average_heartrate)
+    pub async fn calculate_summary_statistics(
+        config: &GarminConfig,
+        pool: &PgPool,
+        start_date: NaiveDate,
+    ) -> Result<(), Error> {
+        let heartrate_values =
+            Self::get_heartrate_values(config, pool, start_date, start_date).await?;
+
+        if let Some(hr_val) = FitbitStatisticsSummary::from_heartrate_values(&heartrate_values) {
+            hr_val.upsert_entry(pool).await?;
+        }
+        Ok(())
+    }
+
+    #[allow(clippy::similar_names)]
+    pub async fn get_heartrate_plot(
+        config: &GarminConfig,
+        pool: &PgPool,
+        start_date: NaiveDate,
+        end_date: NaiveDate,
+        is_demo: bool,
+    ) -> Result<String, Error> {
+        let mut final_values: Vec<_> =
+            Self::get_heartrate_values(config, pool, start_date, end_date)
+                .await?
+                .into_iter()
+                .group_by(|(d, _)| d.timestamp() / (NMINUTES * 60))
+                .into_iter()
+                .map(|(_, group)| {
+                    let (begin_datetime, entries, heartrate_sum) = group.fold(
+                        (None, 0, 0),
+                        |(begin_datetime, entries, heartrate_sum), (datetime, heartrate)| {
+                            (
+                                if begin_datetime.is_none() || begin_datetime < Some(datetime) {
+                                    Some(datetime)
+                                } else {
+                                    begin_datetime
+                                },
+                                entries + 1,
+                                heartrate_sum + heartrate,
+                            )
+                        },
+                    );
+                    begin_datetime.map(|begin_datetime| {
+                        let average_heartrate = heartrate_sum / entries;
+                        let begin_datetime =
+                            begin_datetime.format("%Y-%m-%dT%H:%M:%S%z").to_string();
+                        (begin_datetime, average_heartrate)
+                    })
                 })
-            })
-            .collect();
+                .collect();
 
         final_values.par_sort();
         let js_str = serde_json::to_string(&final_values).unwrap_or_else(|_| "".to_string());
@@ -421,4 +450,15 @@ mod tests {
     //         .unwrap();
     //     assert!(false);
     // }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_calculate_summary_statistics() -> Result<(), Error> {
+        let config = GarminConfig::get_config(None)?;
+        let pool = PgPool::new(&config.pgurl);
+        let start_date = NaiveDate::from_ymd(2019, 8, 1);
+        FitbitHeartRate::calculate_summary_statistics(&config, &pool, start_date).await?;
+        assert!(false);
+        Ok(())
+    }
 }

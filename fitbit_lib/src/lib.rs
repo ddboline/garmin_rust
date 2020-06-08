@@ -12,4 +12,5 @@
 
 pub mod fitbit_client;
 pub mod fitbit_heartrate;
+pub mod fitbit_statistics_summary;
 pub mod scale_measurement;

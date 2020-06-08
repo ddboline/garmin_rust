@@ -194,7 +194,10 @@ impl HandleRequest<GarminConnectHrSyncRequest> for PgPool {
     async fn handle(&self, req: GarminConnectHrSyncRequest) -> Self::Result {
         let session = get_garmin_connect_session().await?;
         FitbitClient::import_garmin_connect_heartrate(req.date, &session).await?;
-        Ok(())
+        let config = CONFIG.clone();
+        FitbitHeartRate::calculate_summary_statistics(&config, &self, req.date)
+            .await
+            .map_err(Into::into)
     }
 }
 
@@ -408,6 +411,8 @@ impl HandleRequest<FitbitSyncRequest> for PgPool {
         let client = FitbitClient::from_file(config).await?;
         client
             .import_fitbit_heartrate(msg.date, &client.config)
+            .await?;
+        FitbitHeartRate::calculate_summary_statistics(&client.config, &self, msg.date)
             .await
             .map_err(Into::into)
     }

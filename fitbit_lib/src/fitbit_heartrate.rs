@@ -84,6 +84,7 @@ impl FitbitHeartRate {
         }
     }
 
+    #[allow(clippy::similar_names)]
     pub async fn get_heartrate_values(
         config: &GarminConfig,
         pool: &PgPool,
@@ -179,11 +180,17 @@ impl FitbitHeartRate {
         pool: &PgPool,
     ) -> Result<(), Error> {
         let dates: Result<Vec<_>, Error> = glob(&format!("{}/*.avro", config.fitbit_cachedir))?
-            .into_iter()
-            .map(|x| x.map_err(Into::into).and_then(|f| {
-                let date: NaiveDate = f.file_name().ok_or_else(|| format_err!("No name"))?.to_string_lossy().replace(".avro", "").parse()?;
-                Ok(date)
-            }))
+            .map(|x| {
+                x.map_err(Into::into).and_then(|f| {
+                    let date: NaiveDate = f
+                        .file_name()
+                        .ok_or_else(|| format_err!("No name"))?
+                        .to_string_lossy()
+                        .replace(".avro", "")
+                        .parse()?;
+                    Ok(date)
+                })
+            })
             .collect();
         let dates = dates?;
         let futures = dates.into_iter().map(|date| {

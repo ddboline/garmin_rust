@@ -45,6 +45,8 @@ pub const FITBITHEARTRATE_SCHEMA: &str = r#"
     }
 "#;
 
+const NMINUTES: i64 = 5;
+
 #[derive(Deserialize, Copy, Clone)]
 pub struct JsonHeartRateValue {
     pub bpm: i32,
@@ -88,7 +90,6 @@ impl FitbitHeartRate {
         end_date: NaiveDate,
         is_demo: bool,
     ) -> Result<String, Error> {
-        let nminutes = 5;
         let ndays = (end_date - start_date).num_days();
 
         let days: Vec<_> = (0..=ndays)
@@ -155,18 +156,28 @@ impl FitbitHeartRate {
 
         let mut final_values: Vec<_> = heartrate_values
             .into_iter()
-            .group_by(|(d, _)| d.timestamp() / (i64::from(nminutes) * 60))
+            .group_by(|(d, _)| d.timestamp() / (NMINUTES * 60))
             .into_iter()
             .map(|(_, group)| {
-                let g: Vec<_> = group.collect();
-                let d = g.iter().map(|(d, _)| *d).min();
-                if let Some(d) = d {
-                    let v = g.iter().map(|(_, v)| v).sum::<i32>() / g.len() as i32;
-                    let d = d.format("%Y-%m-%dT%H:%M:%S%z").to_string();
-                    Some((d, v))
-                } else {
-                    None
-                }
+                let (begin_datetime, entries, heartrate_sum) = group.fold(
+                    (None, 0, 0),
+                    |(begin_datetime, entries, heartrate_sum), (datetime, heartrate)| {
+                        (
+                            if begin_datetime.is_none() || begin_datetime < Some(datetime) {
+                                Some(datetime)
+                            } else {
+                                begin_datetime
+                            },
+                            entries + 1,
+                            heartrate_sum + heartrate,
+                        )
+                    },
+                );
+                begin_datetime.map(|begin_datetime| {
+                    let average_heartrate = heartrate_sum / entries;
+                    let begin_datetime = begin_datetime.format("%Y-%m-%dT%H:%M:%S%z").to_string();
+                    (begin_datetime, average_heartrate)
+                })
             })
             .collect();
 

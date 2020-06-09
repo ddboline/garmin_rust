@@ -59,6 +59,15 @@ impl StravaClient {
         Self::default()
     }
 
+    pub async fn with_auth(config: GarminConfig) -> Result<Self, Error> {
+        let mut client = Self::from_file(config).await?;
+        if client.get_strava_athlete().await.is_err() {
+            client.refresh_access_token().await?;
+            client.to_file().await?;
+        }
+        Ok(client)
+    }
+
     pub async fn from_file(config: GarminConfig) -> Result<Self, Error> {
         let mut client = Self {
             config,
@@ -205,6 +214,20 @@ impl StravaClient {
             .ok_or_else(|| format_err!("no access token"))?;
         headers.insert("Authorization", format!("Bearer {}", access_token).parse()?);
         Ok(headers)
+    }
+
+    pub async fn get_strava_athlete(&self) -> Result<StravaAthlete, Error> {
+        let url = Url::parse("https://www.strava.com/api/v3/athlete")?;
+        let headers = self.get_auth_headers()?;
+        self.client
+            .get(url)
+            .headers(headers)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await
+            .map_err(Into::into)
     }
 
     pub async fn get_strava_activites(
@@ -368,6 +391,17 @@ impl StravaClient {
     }
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct StravaAthlete {
+    pub id: u64,
+    pub username: String,
+    pub firstname: String,
+    pub lastname: String,
+    pub city: String,
+    pub state: String,
+    pub sex: String,
+}
+
 #[cfg(test)]
 mod tests {
     use anyhow::Error;
@@ -392,8 +426,7 @@ mod tests {
     #[ignore]
     async fn test_update_strava_activity() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
-        let mut client = StravaClient::from_file(config).await?;
-        client.refresh_access_token().await?;
+        let client = StravaClient::with_auth(config).await?;
         let activities = client.get_strava_activites(None, None).await?;
         if let Some((activity_id, item)) = activities.into_iter().nth(0) {
             debug!("{} {:#?}", activity_id, item);
@@ -407,6 +440,19 @@ mod tests {
                 .await?;
             debug!("{}", result);
         }
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_get_strava_athlete() -> Result<(), Error> {
+        let config = GarminConfig::get_config(None)?;
+        let client = StravaClient::with_auth(config).await?;
+        let athlete = client.get_strava_athlete().await?;
+        assert_eq!(athlete.username.as_str(), "dboline");
+        assert_eq!(athlete.id, 3532812);
+        assert_eq!(athlete.firstname.as_str(), "Daniel");
+        assert_eq!(athlete.lastname.as_str(), "Boline");
         Ok(())
     }
 }

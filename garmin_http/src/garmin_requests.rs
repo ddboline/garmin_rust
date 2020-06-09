@@ -14,12 +14,12 @@ use std::{
 use tokio::{fs::remove_file, sync::RwLock, task::spawn_blocking};
 
 use fitbit_lib::{
-    fitbit_client::{ActivityEntry, FitbitClient},
+    fitbit_client::{ActivityEntry, FitbitClient, FitbitUserProfile},
     fitbit_heartrate::{FitbitBodyWeightFat, FitbitHeartRate},
     scale_measurement::ScaleMeasurement,
 };
 
-use strava_lib::strava_client::StravaClient;
+use strava_lib::strava_client::{StravaAthlete, StravaClient};
 
 use garmin_lib::{
     common::{
@@ -235,7 +235,7 @@ impl HandleRequest<StravaSyncRequest> for PgPool {
             }
             None => None,
         };
-        let client = StravaClient::from_file(config).await?;
+        let client = StravaClient::with_auth(config).await?;
         let activities = client.get_strava_activites(max_datetime, None).await?;
 
         debug!("activities {:#?}", activities);
@@ -316,7 +316,7 @@ impl HandleRequest<FitbitHeartrateApiRequest> for PgPool {
     type Result = Result<Vec<FitbitHeartRate>, Error>;
     async fn handle(&self, msg: FitbitHeartrateApiRequest) -> Self::Result {
         let config = CONFIG.clone();
-        let client = FitbitClient::from_file(config).await?;
+        let client = FitbitClient::with_auth(config).await?;
         client
             .get_fitbit_intraday_time_series_heartrate(msg.date)
             .await
@@ -348,7 +348,7 @@ impl HandleRequest<FitbitBodyWeightFatRequest> for PgPool {
     type Result = Result<Vec<FitbitBodyWeightFat>, Error>;
     async fn handle(&self, _: FitbitBodyWeightFatRequest) -> Self::Result {
         let config = CONFIG.clone();
-        let client = FitbitClient::from_file(config).await?;
+        let client = FitbitClient::with_auth(config).await?;
         client.get_fitbit_bodyweightfat().await.map_err(Into::into)
     }
 }
@@ -360,7 +360,7 @@ impl HandleRequest<FitbitBodyWeightFatUpdateRequest> for PgPool {
     type Result = Result<(Vec<ScaleMeasurement>, Vec<DateTime<Utc>>), Error>;
     async fn handle(&self, _: FitbitBodyWeightFatUpdateRequest) -> Self::Result {
         let config = CONFIG.clone();
-        let client = FitbitClient::from_file(config).await?;
+        let client = FitbitClient::with_auth(config).await?;
         let client = Arc::new(client);
 
         let offset = client.get_offset();
@@ -409,7 +409,7 @@ impl HandleRequest<FitbitSyncRequest> for PgPool {
     type Result = Result<(), Error>;
     async fn handle(&self, msg: FitbitSyncRequest) -> Self::Result {
         let config = CONFIG.clone();
-        let client = FitbitClient::from_file(config).await?;
+        let client = FitbitClient::with_auth(config).await?;
         client
             .import_fitbit_heartrate(msg.date, &client.config)
             .await?;
@@ -430,7 +430,7 @@ impl HandleRequest<FitbitTcxSyncRequest> for PgPool {
     type Result = Result<Vec<String>, Error>;
     async fn handle(&self, msg: FitbitTcxSyncRequest) -> Self::Result {
         let config = CONFIG.clone();
-        let client = Arc::new(FitbitClient::from_file(config).await?);
+        let client = Arc::new(FitbitClient::with_auth(config).await?);
         let start_date = msg
             .start_date
             .unwrap_or_else(|| (Utc::now() - Duration::days(10)).naive_utc().date());
@@ -660,7 +660,7 @@ impl HandleRequest<StravaActivitiesRequest> for PgPool {
     type Result = Result<HashMap<StackString, StravaItem>, Error>;
     async fn handle(&self, msg: StravaActivitiesRequest) -> Self::Result {
         let config = CONFIG.clone();
-        let client = StravaClient::from_file(config).await?;
+        let client = StravaClient::with_auth(config).await?;
         let start_date = msg
             .start_date
             .map(|s| DateTime::from_utc(NaiveDateTime::new(s, NaiveTime::from_hms(0, 0, 0)), Utc));
@@ -725,7 +725,7 @@ impl HandleRequest<StravaUploadRequest> for PgPool {
             return Ok(format!("File {} does not exist", msg.filename));
         }
         let config = CONFIG.clone();
-        let client = StravaClient::from_file(config).await?;
+        let client = StravaClient::with_auth(config).await?;
         client
             .upload_strava_activity(
                 &Path::new(msg.filename.as_str()),
@@ -754,7 +754,7 @@ impl HandleRequest<StravaUpdateRequest> for PgPool {
         let sport = msg.activity_type.parse()?;
 
         let config = CONFIG.clone();
-        let client = StravaClient::from_file(config).await?;
+        let client = StravaClient::with_auth(config).await?;
         client
             .update_strava_activity(
                 &msg.activity_id,
@@ -835,7 +835,7 @@ impl HandleRequest<FitbitActivityTypesRequest> for PgPool {
     type Result = Result<HashMap<u64, String>, Error>;
     async fn handle(&self, _: FitbitActivityTypesRequest) -> Self::Result {
         let config = CONFIG.clone();
-        let client = FitbitClient::from_file(config).await?;
+        let client = FitbitClient::with_auth(config).await?;
         client.get_fitbit_activity_types().await.map_err(Into::into)
     }
 }
@@ -850,7 +850,7 @@ impl HandleRequest<FitbitActivitiesRequest> for PgPool {
     type Result = Result<Vec<ActivityEntry>, Error>;
     async fn handle(&self, req: FitbitActivitiesRequest) -> Self::Result {
         let config = CONFIG.clone();
-        let client = FitbitClient::from_file(config).await?;
+        let client = FitbitClient::with_auth(config).await?;
         let start_date = req
             .start_date
             .unwrap_or_else(|| (Utc::now() - Duration::days(14)).naive_local().date());
@@ -858,5 +858,29 @@ impl HandleRequest<FitbitActivitiesRequest> for PgPool {
             .get_all_activities(start_date)
             .await
             .map_err(Into::into)
+    }
+}
+
+pub struct StravaAthleteRequest {}
+
+#[async_trait]
+impl HandleRequest<StravaAthleteRequest> for PgPool {
+    type Result = Result<StravaAthlete, Error>;
+    async fn handle(&self, _: StravaAthleteRequest) -> Self::Result {
+        let config = CONFIG.clone();
+        let client = StravaClient::with_auth(config).await?;
+        client.get_strava_athlete().await.map_err(Into::into)
+    }
+}
+
+pub struct FitbitProfileRequest {}
+
+#[async_trait]
+impl HandleRequest<FitbitProfileRequest> for PgPool {
+    type Result = Result<FitbitUserProfile, Error>;
+    async fn handle(&self, _: FitbitProfileRequest) -> Self::Result {
+        let config = CONFIG.clone();
+        let client = FitbitClient::with_auth(config).await?;
+        client.get_user_profile().await.map_err(Into::into)
     }
 }

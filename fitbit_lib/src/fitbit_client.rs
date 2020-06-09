@@ -3,6 +3,7 @@ use base64::{encode, encode_config, URL_SAFE_NO_PAD};
 use chrono::{DateTime, FixedOffset, NaiveDate, NaiveTime, Utc};
 use futures::future::try_join_all;
 use lazy_static::lazy_static;
+use log::debug;
 use maplit::hashmap;
 use rand::{thread_rng, Rng};
 use reqwest::{header::HeaderMap, Client, Url};
@@ -61,6 +62,19 @@ impl FitbitClient {
         Self::default()
     }
 
+    pub async fn with_auth(config: GarminConfig) -> Result<Self, Error> {
+        let mut client = Self::from_file(config).await?;
+        if let Ok(offset) = client.get_client_offset().await {
+            client.offset = Some(offset);
+        } else {
+            let body = client.refresh_fitbit_access_token().await?;
+            debug!("{}", body);
+            client.to_file().await?;
+            client.offset = Some(client.get_client_offset().await?);
+        }
+        Ok(client)
+    }
+
     pub async fn from_file(config: GarminConfig) -> Result<Self, Error> {
         let mut client = Self {
             config,
@@ -86,7 +100,6 @@ impl FitbitClient {
                 }
             }
         }
-        client.offset = client.get_client_offset().await.ok();
         Ok(client)
     }
 
@@ -105,15 +118,10 @@ impl FitbitClient {
         self.offset.unwrap_or_else(|| FixedOffset::east(0))
     }
 
-    async fn get_client_offset(&self) -> Result<FixedOffset, Error> {
-        #[derive(Deserialize)]
-        struct UserObj {
-            #[serde(rename = "offsetFromUTCMillis")]
-            offset: i32,
-        }
+    pub async fn get_user_profile(&self) -> Result<FitbitUserProfile, Error> {
         #[derive(Deserialize)]
         struct UserResp {
-            user: UserObj,
+            user: FitbitUserProfile,
         }
 
         let headers = self.get_auth_headers()?;
@@ -127,7 +135,12 @@ impl FitbitClient {
             .error_for_status()?
             .json()
             .await?;
-        let offset = (resp.user.offset / 1000) as i32;
+        Ok(resp.user)
+    }
+
+    async fn get_client_offset(&self) -> Result<FixedOffset, Error> {
+        let profile = self.get_user_profile().await?;
+        let offset = (profile.offset_from_utc_millis / 1000) as i32;
         let offset = FixedOffset::east(offset);
         Ok(offset)
     }
@@ -759,6 +772,41 @@ impl ActivityLoggingEntry {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct FitbitUserProfile {
+    #[serde(rename = "averageDailySteps")]
+    pub average_daily_steps: u64,
+    pub country: String,
+    #[serde(rename = "dateOfBirth")]
+    pub date_of_birth: String,
+    #[serde(rename = "displayName")]
+    pub display_name: String,
+    #[serde(rename = "distanceUnit")]
+    pub distance_unit: String,
+    #[serde(rename = "encodedId")]
+    pub encoded_id: String,
+    #[serde(rename = "firstName")]
+    pub first_name: String,
+    #[serde(rename = "lastName")]
+    pub last_name: String,
+    #[serde(rename = "fullName")]
+    pub full_name: String,
+    pub gender: String,
+    pub height: f64,
+    #[serde(rename = "heightUnit")]
+    pub height_unit: String,
+    pub timezone: String,
+    #[serde(rename = "offsetFromUTCMillis")]
+    pub offset_from_utc_millis: i64,
+    #[serde(rename = "strideLengthRunning")]
+    pub stride_length_running: f64,
+    #[serde(rename = "strideLengthWalking")]
+    pub stride_length_walking: f64,
+    pub weight: f64,
+    #[serde(rename = "weightUnit")]
+    pub weight_unit: String,
+}
+
 #[cfg(test)]
 mod tests {
     use anyhow::Error;
@@ -785,7 +833,7 @@ mod tests {
     #[ignore]
     async fn test_get_tcx_urls() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
-        let client = FitbitClient::from_file(config.clone()).await?;
+        let client = FitbitClient::with_auth(config.clone()).await?;
         let start_date = (Utc::now() - Duration::days(10)).naive_utc().date();
         let results = client.get_tcx_urls(start_date).await?;
         debug!("{:?}", results);
@@ -823,7 +871,7 @@ mod tests {
     #[ignore]
     async fn test_get_client_offset() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
-        let client = FitbitClient::from_file(config.clone()).await?;
+        let client = FitbitClient::with_auth(config.clone()).await?;
         let offset = client.offset.unwrap();
         assert_eq!(offset.local_minus_utc(), -4 * 3600);
         Ok(())
@@ -833,7 +881,7 @@ mod tests {
     #[ignore]
     async fn test_get_fitbit_intraday_time_series_heartrate() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
-        let client = FitbitClient::from_file(config.clone()).await?;
+        let client = FitbitClient::with_auth(config.clone()).await?;
         let date = (Utc::now() - Duration::days(1)).naive_local().date();
         let heartrates = client
             .get_fitbit_intraday_time_series_heartrate(date)
@@ -847,7 +895,7 @@ mod tests {
     #[ignore]
     async fn test_get_fitbit_bodyweightfat() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
-        let client = FitbitClient::from_file(config.clone()).await?;
+        let client = FitbitClient::with_auth(config.clone()).await?;
         let bodyweight = client.get_fitbit_bodyweightfat().await?;
         debug!("{:#?}", bodyweight);
         assert!(bodyweight.len() > 10);
@@ -858,7 +906,7 @@ mod tests {
     #[ignore]
     async fn test_get_all_activities() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
-        let client = FitbitClient::from_file(config.clone()).await?;
+        let client = FitbitClient::with_auth(config.clone()).await?;
 
         let offset = client.get_offset();
         let begin_datetime = (Utc::now() - Duration::days(7)).with_timezone(&offset);
@@ -874,7 +922,7 @@ mod tests {
     #[ignore]
     async fn test_sync_fitbit_activities() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
-        let client = FitbitClient::from_file(config.clone()).await?;
+        let client = FitbitClient::with_auth(config.clone()).await?;
 
         let begin_datetime = Utc::now() - Duration::days(30);
 
@@ -882,6 +930,17 @@ mod tests {
         let dates = client.sync_fitbit_activities(begin_datetime, &pool).await?;
         println!("{:?}", dates);
         assert_eq!(dates.len(), 0);
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_get_user_profile() -> Result<(), Error> {
+        let config = GarminConfig::get_config(None)?;
+        let client = FitbitClient::with_auth(config.clone()).await?;
+        let resp = client.get_user_profile().await?;
+        assert_eq!(resp.country.as_str(), "US");
+        assert_eq!(resp.display_name.as_str(), "Daniel B.");
         Ok(())
     }
 }

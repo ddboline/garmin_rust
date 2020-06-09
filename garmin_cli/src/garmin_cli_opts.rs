@@ -69,7 +69,7 @@ impl GarminCliOpts {
 
         if let Some(GarminCliOptions::Connect) = cli.opts {
             let config = cli.config.clone();
-            let client = FitbitClient::from_file(config.clone()).await?;
+            let client = FitbitClient::with_auth(config.clone()).await?;
             let start_date = (Utc::now() - Duration::days(10)).naive_utc().date();
             for (start_time, tcx_url) in client.get_tcx_urls(start_date).await? {
                 let fname = format!(

@@ -14,13 +14,13 @@ use crate::{
     garmin_rust_routes::{
         add_garmin_correction, fitbit_activities, fitbit_activity_types, fitbit_auth,
         fitbit_bodyweight, fitbit_bodyweight_sync, fitbit_callback, fitbit_heartrate_api,
-        fitbit_heartrate_cache, fitbit_plots, fitbit_plots_demo, fitbit_refresh, fitbit_sync,
-        fitbit_tcx_sync, garmin, garmin_connect_hr_api, garmin_connect_hr_sync,
+        fitbit_heartrate_cache, fitbit_plots, fitbit_plots_demo, fitbit_profile, fitbit_refresh,
+        fitbit_sync, fitbit_tcx_sync, garmin, garmin_connect_hr_api, garmin_connect_hr_sync,
         garmin_connect_sync, garmin_demo, garmin_get_hr_data, garmin_get_hr_pace,
         garmin_list_gps_tracks, garmin_sync, garmin_upload, heartrate_plots, heartrate_plots_demo,
         scale_measurement, scale_measurement_update, strava_activities, strava_activities_db,
-        strava_activities_db_update, strava_auth, strava_callback, strava_refresh, strava_sync,
-        strava_update, strava_upload, user,
+        strava_activities_db_update, strava_athlete, strava_auth, strava_callback, strava_refresh,
+        strava_sync, strava_update, strava_upload, user,
     },
     CONFIG,
 };
@@ -148,6 +148,7 @@ pub async fn start_app() {
                 web::resource("/garmin/fitbit/fitbit_activities")
                     .route(web::get().to(fitbit_activities)),
             )
+            .service(web::resource("/garmin/fitbit/profile").route(web::get().to(fitbit_profile)))
             .service(
                 web::resource("/garmin/scale_measurements")
                     .route(web::get().to(scale_measurement))
@@ -161,6 +162,7 @@ pub async fn start_app() {
             .service(
                 web::resource("/garmin/strava/activities").route(web::get().to(strava_activities)),
             )
+            .service(web::resource("/garmin/strava/athlete").route(web::get().to(strava_athlete)))
             .service(
                 web::resource("/garmin/strava/activities_db")
                     .route(web::get().to(strava_activities_db))

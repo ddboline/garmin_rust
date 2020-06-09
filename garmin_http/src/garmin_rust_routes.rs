@@ -34,13 +34,14 @@ use crate::{
         AddGarminCorrectionRequest, FitbitActivitiesRequest, FitbitActivityTypesRequest,
         FitbitAuthRequest, FitbitBodyWeightFatRequest, FitbitBodyWeightFatUpdateRequest,
         FitbitCallbackRequest, FitbitHeartrateApiRequest, FitbitHeartrateCacheRequest,
-        FitbitHeartratePlotRequest, FitbitRefreshRequest, FitbitSyncRequest, FitbitTcxSyncRequest,
-        GarminConnectHrApiRequest, GarminConnectHrSyncRequest, GarminConnectSyncRequest,
-        GarminCorrRequest, GarminHtmlRequest, GarminListRequest, GarminSyncRequest,
-        GarminUploadRequest, HandleRequest, ScaleMeasurementPlotRequest, ScaleMeasurementRequest,
-        ScaleMeasurementUpdateRequest, StravaActiviesDBUpdateRequest, StravaActivitiesDBRequest,
-        StravaActivitiesRequest, StravaAuthRequest, StravaCallbackRequest, StravaRefreshRequest,
-        StravaSyncRequest, StravaUpdateRequest, StravaUploadRequest,
+        FitbitHeartratePlotRequest, FitbitProfileRequest, FitbitRefreshRequest, FitbitSyncRequest,
+        FitbitTcxSyncRequest, GarminConnectHrApiRequest, GarminConnectHrSyncRequest,
+        GarminConnectSyncRequest, GarminCorrRequest, GarminHtmlRequest, GarminListRequest,
+        GarminSyncRequest, GarminUploadRequest, HandleRequest, ScaleMeasurementPlotRequest,
+        ScaleMeasurementRequest, ScaleMeasurementUpdateRequest, StravaActiviesDBUpdateRequest,
+        StravaActivitiesDBRequest, StravaActivitiesRequest, StravaAthleteRequest,
+        StravaAuthRequest, StravaCallbackRequest, StravaRefreshRequest, StravaSyncRequest,
+        StravaUpdateRequest, StravaUploadRequest,
     },
     CONFIG,
 };
@@ -653,5 +654,15 @@ pub async fn fitbit_activity_types(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let result = state.db.handle(FitbitActivityTypesRequest {}).await?;
+    to_json(result)
+}
+
+pub async fn strava_athlete(_: LoggedUser, state: Data<AppState>) -> Result<HttpResponse, Error> {
+    let result = state.db.handle(StravaAthleteRequest {}).await?;
+    to_json(result)
+}
+
+pub async fn fitbit_profile(_: LoggedUser, state: Data<AppState>) -> Result<HttpResponse, Error> {
+    let result = state.db.handle(FitbitProfileRequest {}).await?;
     to_json(result)
 }

@@ -71,9 +71,9 @@ shape-rendering: crispEdges;
     <button type="submit" onclick="fitbitAuth();">Fitbit Auth</button>
     <button type="submit" onclick="heartrateSync();">Scale sync</button>
     <br>
-    <button type="submit" onclick="stravaRefresh();">refresh auth Strava</button>
+    <button type="submit" onclick="stravaAthlete();">Strava Athlete</button>
     <button type="submit" onclick="strava_sync();">sync with Strava</button>
-    <button type="submit" onclick="fitbitRefresh();">Fitbit Refresh</button>
+    <button type="submit" onclick="fitbitProfile();">Fitbit Profile</button>
     <button type="submit" onclick="fitbitSync();">Fitbit Sync</button>
     <br>
     <button type="submit" onclick="scale_measurement_plots();">Scale Plots</button>
@@ -209,9 +209,16 @@ STRAVAUPLOADBUTTON
         xmlhttp.open( "GET", ostr, true );
         xmlhttp.send(null);
     }
-    function stravaRefresh() {
-        let win = window.open("/garmin/strava/refresh_auth", '_blank');
-        win.focus()
+    function stravaAthlete() {
+        let ostr = "/garmin/strava/athlete";
+        let xmlhttp = new XMLHttpRequest();
+        xmlhttp.open("GET", ostr, true);
+        xmlhttp.onload = function nothing() {
+            document.getElementById("garminconnectoutput").innerHTML = "done";
+            document.getElementById("garmin_text_box").innerHTML = JSON.stringify(JSON.parse(xmlhttp.responseText),null,2);
+        }
+        xmlhttp.send(null);
+        document.getElementById("garminconnectoutput").innerHTML = "syncing";
     }
     function strava_sync() {
         let ostr = '/garmin/strava_sync';
@@ -234,9 +241,16 @@ STRAVAUPLOADBUTTON
         xmlhttp.open("GET", url, true);
         xmlhttp.send(null);
     }
-    function fitbitRefresh() {
-        let win = window.open('/garmin/fitbit/refresh_auth', '_blank');
-        win.focus()
+    function fitbitProfile() {
+        let url = "/garmin/fitbit/profile";
+        let xmlhttp = new XMLHttpRequest();
+        xmlhttp.open("GET", url, true);
+        xmlhttp.onload = function nothing() {
+            document.getElementById("garminconnectoutput").innerHTML = "done";
+            document.getElementById("garmin_text_box").innerHTML = JSON.stringify(JSON.parse(xmlhttp.responseText),null,2);
+        }
+        xmlhttp.send(null);
+        document.getElementById("garminconnectoutput").innerHTML = "syncing";
     }
     function fitbitSync() {
         let url = '/garmin/fitbit/bodyweight_sync';

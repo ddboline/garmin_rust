@@ -1,10 +1,13 @@
 use anyhow::Error;
-use chrono::{DateTime, NaiveDate, Utc};
+use chrono::{DateTime, Duration, NaiveDate, Utc};
 use postgres_query::FromSqlRow;
 use serde::{Deserialize, Serialize};
 use statistical::{mean, median, standard_deviation};
 
 use garmin_lib::common::pgpool::PgPool;
+use garmin_lib::reports::garmin_templates::{PLOT_TEMPLATE, PLOT_TEMPLATE_DEMO};
+use garmin_lib::utils::plot_graph::generate_d3_plot;
+use garmin_lib::utils::plot_opts::PlotOpts;
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, FromSqlRow)]
 pub struct FitbitStatisticsSummary {
@@ -59,6 +62,32 @@ impl FitbitStatisticsSummary {
         }
     }
 
+    pub async fn read_from_db(
+        start_date: Option<NaiveDate>,
+        end_date: Option<NaiveDate>,
+        pool: &PgPool,
+    ) -> Result<Vec<Self>, Error> {
+        let start_date =
+            start_date.unwrap_or_else(|| (Utc::now() - Duration::days(365)).naive_local().date());
+        let end_date = end_date.unwrap_or_else(|| Utc::now().naive_local().date());
+
+        let query = postgres_query::query!(
+            r#"
+            SELECT * FROM heartrate_statistics_summary
+            WHERE date >= $start_date AND date <= $end_date
+            ORDER BY date
+        "#,
+            start_date = start_date,
+            end_date = end_date
+        );
+        let conn = pool.get().await?;
+        conn.query(query.sql(), query.parameters())
+            .await?
+            .into_iter()
+            .map(|row| Self::from_row(&row).map_err(Into::into))
+            .collect()
+    }
+
     pub async fn upsert_entry(&self, pool: &PgPool) -> Result<(), Error> {
         if Self::read_entry(self.date, pool).await?.is_some() {
             self.update_entry(pool).await
@@ -95,9 +124,11 @@ impl FitbitStatisticsSummary {
         let query = postgres_query::query!(
             r#"
                 INSERT INTO heartrate_statistics_summary
-                (date, min_heartrate, max_heartrate, mean_heartrate, median_heartrate, stdev_heartrate, number_of_entries)
+                (date, min_heartrate, max_heartrate, mean_heartrate, median_heartrate,
+                 stdev_heartrate, number_of_entries)
                 VALUES
-                ($date, $min_heartrate, $max_heartrate, $mean_heartrate, $median_heartrate, $stdev_heartrate, $number_of_entries)
+                ($date, $min_heartrate, $max_heartrate, $mean_heartrate, $median_heartrate,
+                 $stdev_heartrate, $number_of_entries)
             "#,
             date = self.date,
             min_heartrate = self.min_heartrate,
@@ -112,5 +143,113 @@ impl FitbitStatisticsSummary {
             .await
             .map(|_| ())
             .map_err(Into::into)
+    }
+
+    pub fn get_fitbit_statistics_plots(stats: &[Self], is_demo: bool) -> Result<String, Error> {
+        let template = if is_demo {
+            PLOT_TEMPLATE_DEMO
+        } else {
+            PLOT_TEMPLATE
+        };
+        if stats.is_empty() {
+            let body = template
+                .replace("INSERTOTHERIMAGESHERE", "")
+                .replace("INSERTTEXTHERE", "");
+            return Ok(body);
+        }
+        let mut graphs = Vec::new();
+        let start_date = stats[0].date;
+
+        let min_heartrate: Vec<_> = stats
+            .iter()
+            .map(|stat| {
+                let days = (stat.date - start_date).num_days();
+                (days as f64, stat.min_heartrate)
+            })
+            .collect();
+        let plot_opt = PlotOpts::new()
+            .with_name("min_heartrate")
+            .with_title("Minimum Heartrate")
+            .with_data(&min_heartrate)
+            .with_labels("days", "Heartrate [bpm]");
+        graphs.push(generate_d3_plot(&plot_opt)?);
+
+        let max_heartrate: Vec<_> = stats
+            .iter()
+            .map(|stat| {
+                let days = (stat.date - start_date).num_days();
+                (days as f64, stat.max_heartrate)
+            })
+            .collect();
+        let plot_opt = PlotOpts::new()
+            .with_name("max_heartrate")
+            .with_title("Maximum Heartrate")
+            .with_data(&max_heartrate)
+            .with_labels("days", "Heartrate [bpm]");
+        graphs.push(generate_d3_plot(&plot_opt)?);
+
+        let mean_heartrate: Vec<_> = stats
+            .iter()
+            .map(|stat| {
+                let days = (stat.date - start_date).num_days();
+                (days as f64, stat.mean_heartrate)
+            })
+            .collect();
+        let plot_opt = PlotOpts::new()
+            .with_name("mean_heartrate")
+            .with_title("Mean Heartrate")
+            .with_data(&mean_heartrate)
+            .with_labels("days", "Heartrate [bpm]");
+        graphs.push(generate_d3_plot(&plot_opt)?);
+
+        let median_heartrate: Vec<_> = stats
+            .iter()
+            .map(|stat| {
+                let days = (stat.date - start_date).num_days();
+                (days as f64, stat.median_heartrate)
+            })
+            .collect();
+        let plot_opt = PlotOpts::new()
+            .with_name("median_heartrate")
+            .with_title("Median Heartrate")
+            .with_data(&median_heartrate)
+            .with_labels("days", "Heartrate [bpm]");
+        graphs.push(generate_d3_plot(&plot_opt)?);
+
+        let n = stats.len();
+        let entries: Vec<_> = stats[n - 10..n]
+            .iter()
+            .map(|stat| {
+                let date = stat.date;
+                format!(
+                    r#"
+                    <td>{}</td><td>{:3.1}</td><td>{:2.1}</td><td>{:2.1}</td>
+                    <td>{:2.1}</td>"#,
+                    date,
+                    stat.min_heartrate,
+                    stat.max_heartrate,
+                    stat.mean_heartrate,
+                    stat.median_heartrate,
+                )
+            })
+            .collect();
+        let entries = format!(
+            r#"
+            <table border=1>
+            <thead>
+            <th>Date</th><th>Min</th><th>Max</th><th>Mean</th>
+            <th>Median</th>
+            </thead>
+            <tbody>
+            <tr>{}</tr>
+            </tbody>
+            </table>"#,
+            entries.join("</tr><tr>")
+        );
+
+        let body = template
+            .replace("INSERTOTHERIMAGESHERE", &graphs.join("\n"))
+            .replace("INSERTTEXTHERE", &entries);
+        Ok(body)
     }
 }

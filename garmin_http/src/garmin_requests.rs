@@ -16,6 +16,7 @@ use tokio::{fs::remove_file, sync::RwLock, task::spawn_blocking};
 use fitbit_lib::{
     fitbit_client::{ActivityEntry, FitbitClient, FitbitUserProfile},
     fitbit_heartrate::{FitbitBodyWeightFat, FitbitHeartRate},
+    fitbit_statistics_summary::FitbitStatisticsSummary,
     scale_measurement::ScaleMeasurement,
 };
 
@@ -495,6 +496,36 @@ impl HandleRequest<ScaleMeasurementRequest> for PgPool {
     async fn handle(&self, req: ScaleMeasurementRequest) -> Self::Result {
         ScaleMeasurement::read_from_db(self, req.start_date, req.end_date)
             .await
+            .map_err(Into::into)
+    }
+}
+
+pub struct FitbitStatisticsPlotRequest {
+    pub request: ScaleMeasurementRequest,
+    pub is_demo: bool,
+}
+
+impl From<ScaleMeasurementRequest> for FitbitStatisticsPlotRequest {
+    fn from(item: ScaleMeasurementRequest) -> Self {
+        let item = item.add_default(365);
+        Self {
+            request: item,
+            is_demo: false,
+        }
+    }
+}
+
+#[async_trait]
+impl HandleRequest<FitbitStatisticsPlotRequest> for PgPool {
+    type Result = Result<String, Error>;
+    async fn handle(&self, req: FitbitStatisticsPlotRequest) -> Self::Result {
+        let stats = FitbitStatisticsSummary::read_from_db(
+            req.request.start_date,
+            req.request.end_date,
+            self,
+        )
+        .await?;
+        FitbitStatisticsSummary::get_fitbit_statistics_plots(&stats, req.is_demo)
             .map_err(Into::into)
     }
 }

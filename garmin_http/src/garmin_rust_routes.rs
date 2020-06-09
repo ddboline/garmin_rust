@@ -34,14 +34,14 @@ use crate::{
         AddGarminCorrectionRequest, FitbitActivitiesRequest, FitbitActivityTypesRequest,
         FitbitAuthRequest, FitbitBodyWeightFatRequest, FitbitBodyWeightFatUpdateRequest,
         FitbitCallbackRequest, FitbitHeartrateApiRequest, FitbitHeartrateCacheRequest,
-        FitbitHeartratePlotRequest, FitbitProfileRequest, FitbitRefreshRequest, FitbitSyncRequest,
-        FitbitTcxSyncRequest, GarminConnectHrApiRequest, GarminConnectHrSyncRequest,
-        GarminConnectSyncRequest, GarminCorrRequest, GarminHtmlRequest, GarminListRequest,
-        GarminSyncRequest, GarminUploadRequest, HandleRequest, ScaleMeasurementPlotRequest,
-        ScaleMeasurementRequest, ScaleMeasurementUpdateRequest, StravaActiviesDBUpdateRequest,
-        StravaActivitiesDBRequest, StravaActivitiesRequest, StravaAthleteRequest,
-        StravaAuthRequest, StravaCallbackRequest, StravaRefreshRequest, StravaSyncRequest,
-        StravaUpdateRequest, StravaUploadRequest,
+        FitbitHeartratePlotRequest, FitbitProfileRequest, FitbitRefreshRequest,
+        FitbitStatisticsPlotRequest, FitbitSyncRequest, FitbitTcxSyncRequest,
+        GarminConnectHrApiRequest, GarminConnectHrSyncRequest, GarminConnectSyncRequest,
+        GarminCorrRequest, GarminHtmlRequest, GarminListRequest, GarminSyncRequest,
+        GarminUploadRequest, HandleRequest, ScaleMeasurementPlotRequest, ScaleMeasurementRequest,
+        ScaleMeasurementUpdateRequest, StravaActiviesDBUpdateRequest, StravaActivitiesDBRequest,
+        StravaActivitiesRequest, StravaAthleteRequest, StravaAuthRequest, StravaCallbackRequest,
+        StravaRefreshRequest, StravaSyncRequest, StravaUpdateRequest, StravaUploadRequest,
     },
     CONFIG,
 };
@@ -367,6 +367,27 @@ pub async fn fitbit_sync(
     let query = query.into_inner();
     state.db.handle(query).await?;
     form_http_response("finished".into())
+}
+
+pub async fn heartrate_statistics_plots(
+    query: Query<ScaleMeasurementRequest>,
+    _: LoggedUser,
+    state: Data<AppState>,
+    session: Session,
+) -> Result<HttpResponse, Error> {
+    let query: FitbitStatisticsPlotRequest = query.into_inner().into();
+
+    let history: Vec<String> = session
+        .get("history")
+        .map_err(|e| format_err!("Failed to set history {:?}", e))?
+        .unwrap_or_else(Vec::new);
+
+    let body = state
+        .db
+        .handle(query)
+        .await?
+        .replace("HISTORYBUTTONS", &generate_history_buttons(&history));
+    form_http_response(body)
 }
 
 async fn fitbit_plots_impl(

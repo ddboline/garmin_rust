@@ -198,7 +198,7 @@ impl FitbitHeartRate {
             let pool = pool.clone();
             async move {
                 Self::calculate_summary_statistics(&config, &pool, date).await?;
-                println!("{}", date);
+                debug!("{}", date);
                 Ok(())
             }
         });

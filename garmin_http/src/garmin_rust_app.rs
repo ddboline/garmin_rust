@@ -18,9 +18,9 @@ use crate::{
         fitbit_sync, fitbit_tcx_sync, garmin, garmin_connect_hr_api, garmin_connect_hr_sync,
         garmin_connect_sync, garmin_demo, garmin_get_hr_data, garmin_get_hr_pace,
         garmin_list_gps_tracks, garmin_sync, garmin_upload, heartrate_plots, heartrate_plots_demo,
-        scale_measurement, scale_measurement_update, strava_activities, strava_activities_db,
-        strava_activities_db_update, strava_athlete, strava_auth, strava_callback, strava_refresh,
-        strava_sync, strava_update, strava_upload, user,
+        heartrate_statistics_plots, scale_measurement, scale_measurement_update, strava_activities,
+        strava_activities_db, strava_activities_db_update, strava_athlete, strava_auth,
+        strava_callback, strava_refresh, strava_sync, strava_update, strava_upload, user,
     },
     CONFIG,
 };
@@ -127,6 +127,10 @@ pub async fn start_app() {
             .service(web::resource("/garmin/fitbit/plots").route(web::get().to(fitbit_plots)))
             .service(
                 web::resource("/garmin/fitbit/plots_demo").route(web::get().to(fitbit_plots_demo)),
+            )
+            .service(
+                web::resource("/garmin/fitbit/heartrate_statistics_plots")
+                    .route(web::get().to(heartrate_statistics_plots)),
             )
             .service(
                 web::resource("/garmin/fitbit/heartrate_plots")

@@ -6,8 +6,10 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use rusoto_core::Region;
 use rusoto_s3::{GetObjectRequest, Object as S3Object, PutObjectRequest, S3Client};
 use s3_ext::S3Ext;
-use std::{collections::HashMap, fs, path::Path, time::SystemTime};
+use std::{collections::{HashSet, HashMap}, fs, path::Path, time::SystemTime};
 use sts_profile_auth::get_client_sts;
+use std::hash::{Hash, Hasher};
+use std::borrow::Borrow;
 
 use crate::utils::{
     garmin_util::{exponential_retry, get_md5sum},
@@ -22,12 +24,30 @@ pub struct GarminSync {
     s3_client: S3Client,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq)]
 pub struct KeyItem {
     pub key: StackString,
     pub etag: StackString,
     pub timestamp: i64,
     pub size: u64,
+}
+
+impl PartialEq for KeyItem {
+    fn eq(&self, other: &Self) -> bool {
+        self.key == other.key
+    }
+}
+
+impl Hash for KeyItem {
+    fn hash<H>(&self, state: &mut H)
+    where H: Hasher,
+    {self.key.hash(state)}
+}
+
+impl Borrow<str> for &KeyItem {
+    fn borrow(&self) -> &str {
+        self.key.as_str()
+    }
 }
 
 impl Default for GarminSync {
@@ -113,10 +133,8 @@ impl GarminSync {
         let key_list = self.get_list_of_keys(s3_bucket).await?;
         let n_keys = key_list.len();
 
-        let key_set: HashMap<_, _> = key_list
-            .iter()
-            .map(|item| (item.key.clone(), item))
-            .collect();
+        let key_set: HashSet<&KeyItem> = key_list
+            .iter().collect();
 
         let uploaded: Vec<_> = file_list
             .into_par_iter()
@@ -126,8 +144,8 @@ impl GarminSync {
                     None => return None,
                 };
                 let mut do_upload = false;
-                if key_set.contains_key(&file_name) {
-                    let item = &key_set[&file_name];
+                if key_set.contains(file_name.as_str()) {
+                    let item = key_set.get(file_name.as_str()).unwrap();
                     if tmod != item.timestamp {
                         if check_md5sum {
                             if let Ok(md5) = get_md5sum(&file) {

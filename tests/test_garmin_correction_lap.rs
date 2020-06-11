@@ -40,7 +40,7 @@ fn test_corr_list_from_json() -> Result<(), Error> {
             .unwrap()
             .get_corr_list();
 
-    corr_list.sort_by_key(|i| (i.start_time.clone(), i.lap_number));
+    corr_list.sort_by_key(|i| (i.start_time, i.lap_number));
 
     assert_eq!(corr_list.get(0).unwrap().distance, Some(3.10685596118667));
 
@@ -77,7 +77,7 @@ fn test_corr_list_from_buffer() -> Result<(), Error> {
         .unwrap()
         .get_corr_list();
 
-    corr_list.sort_by_key(|i| (i.start_time.clone(), i.lap_number));
+    corr_list.sort_by_key(|i| (i.start_time, i.lap_number));
 
     let first = corr_list.get(0).unwrap();
     let second = corr_list.get(1).unwrap();

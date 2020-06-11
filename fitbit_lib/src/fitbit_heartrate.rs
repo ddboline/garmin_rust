@@ -460,7 +460,7 @@ mod tests {
             }
         }
         debug!("{}", current_datetimes.len());
-        assert_eq!(current_datetimes.len(), 1361);
+        assert_eq!(current_datetimes.len(), 11212);
         Ok(())
     }
 
@@ -499,7 +499,7 @@ mod tests {
         assert_eq!(result.min_heartrate as i32, 39);
         assert_eq!(result.max_heartrate as i32, 181);
         assert_eq!(result.median_heartrate as i32, 62);
-        assert_eq!(result.number_of_entries as i32, 12464);
+        assert_eq!(result.number_of_entries as i32, 12597);
         Ok(())
     }
 }

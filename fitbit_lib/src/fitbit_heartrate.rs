@@ -479,13 +479,6 @@ mod tests {
         Ok(())
     }
 
-    // #[test]
-    // fn test_import_fitbit_json_files() {
-    //     import_fitbit_json_files()
-    //         .unwrap();
-    //     assert!(false);
-    // }
-
     #[tokio::test]
     #[ignore]
     async fn test_calculate_summary_statistics() -> Result<(), Error> {

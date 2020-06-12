@@ -15,7 +15,7 @@ use garmin_lib::{
     },
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize, Copy, FromSqlRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, Copy, FromSqlRow, PartialEq)]
 pub struct ScaleMeasurement {
     pub datetime: DateTime<Utc>,
     pub mass: f64,
@@ -43,34 +43,39 @@ impl fmt::Display for ScaleMeasurement {
 
 impl ScaleMeasurement {
     pub fn from_telegram_text(msg: &str) -> Result<Self, Error> {
+        fn orto<T>(item: Option<Result<T, Error>>) -> Result<T, Error> {
+            match item {
+                Some(x) => x,
+                None => Err(format_err!("Bad message")),
+            }
+        }
+
         let datetime = Utc::now();
-        let items: Result<Vec<f64>, Error> = if msg.contains(',') {
-            msg.split(',')
+        let sep = if msg.contains(',') {
+            ','
         } else if msg.contains(':') {
-            msg.split(':')
+            ':'
         } else if msg.contains('=') {
-            msg.split('=')
+            '='
         } else {
             return Err(format_err!("Bad message"));
-        }
-        .map(|x| {
+        };
+
+        let mut iter = msg.split(sep).map(|x| {
             let y: i32 = x.parse()?;
+            if y < 0 {
+                return Err(format_err!("Bad message"));
+            }
             Ok(f64::from(y) / 10.)
-        })
-        .collect();
+        });
 
-        let items = items?;
-
-        if items.len() < 5 {
-            return Err(format_err!("Bad message"));
-        }
         Ok(Self {
             datetime,
-            mass: items[0],
-            fat_pct: items[1],
-            water_pct: items[2],
-            muscle_pct: items[3],
-            bone_pct: items[4],
+            mass: orto(iter.next())?,
+            fat_pct: orto(iter.next())?,
+            water_pct: orto(iter.next())?,
+            muscle_pct: orto(iter.next())?,
+            bone_pct: orto(iter.next())?,
         })
     }
 
@@ -254,5 +259,39 @@ impl ScaleMeasurement {
             .replace("INSERTOTHERIMAGESHERE", &graphs.join("\n"))
             .replace("INSERTTEXTHERE", &entries);
         Ok(body)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Error;
+    use chrono::Utc;
+
+    use crate::scale_measurement::ScaleMeasurement;
+
+    #[test]
+    fn test_from_telegram_text() -> Result<(), Error> {
+        let mut exp = ScaleMeasurement {
+            datetime: Utc::now(),
+            mass: 188.0,
+            fat_pct: 20.6,
+            water_pct: 59.6,
+            muscle_pct: 40.4,
+            bone_pct: 4.2,
+        };
+        let msg = "1880=206=596=404=42";
+        let obs = ScaleMeasurement::from_telegram_text(msg)?;
+        exp.datetime = obs.datetime;
+        assert_eq!(obs, exp);
+        let msg = "1880,206,596,404,42";
+        let obs = ScaleMeasurement::from_telegram_text(msg)?;
+        exp.datetime = obs.datetime;
+        assert_eq!(obs, exp);
+        let msg = "1880:206:596:404:42";
+        let obs = ScaleMeasurement::from_telegram_text(msg)?;
+        exp.datetime = obs.datetime;
+        assert_eq!(obs, exp);
+
+        Ok(())
     }
 }

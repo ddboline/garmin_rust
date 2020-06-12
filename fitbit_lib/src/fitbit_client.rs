@@ -636,7 +636,7 @@ impl FitbitClient {
         let activities_to_delete: HashSet<_> = new_activities
             .iter()
             .filter_map(|activity| {
-                if activity.steps.is_none()
+                if (activity.steps.unwrap_or(0) == 0)
                     && (activity.activity_type_id == Some(90009)
                         || activity.activity_type_id == Some(90013))
                 {
@@ -704,7 +704,7 @@ impl FitbitClient {
     }
 
     pub async fn delete_fitbit_activity(&self, log_id: u64) -> Result<(), Error> {
-        let url = format!("https://api.fitbit.com/1/user/-/{}.json", log_id);
+        let url = format!("https://api.fitbit.com/1/user/-/activities/{}.json", log_id);
         let headers = self.get_auth_headers()?;
         self.client
             .delete(&url)

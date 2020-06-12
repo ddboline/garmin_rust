@@ -34,8 +34,13 @@ use crate::{
     scale_measurement::ScaleMeasurement,
 };
 
+const FITBIT_OAUTH_AUTHORIZE: &str = "https://www.fitbit.com/oauth2/authorize";
+const FITBIT_OAUTH_TOKEN: &str = "https://api.fitbit.com/oauth2/token";
+
 lazy_static! {
     static ref CSRF_TOKEN: Mutex<Option<StackString>> = Mutex::new(None);
+    static ref FITBIT_ENDPOINT: Url = Url::parse("https://api.fitbit.com/").unwrap();
+    static ref FITBIT_PREFIX: Url = Url::parse("https://api.fitbit.com/1/user/-/").unwrap();
 }
 
 #[derive(Default, Debug, Clone)]
@@ -125,7 +130,7 @@ impl FitbitClient {
         }
 
         let headers = self.get_auth_headers()?;
-        let url = "https://api.fitbit.com/1/user/-/profile.json";
+        let url = FITBIT_PREFIX.join("profile.json")?;
         let resp: UserResp = self
             .client
             .get(url)
@@ -165,7 +170,7 @@ impl FitbitClient {
         ];
         let state = Self::get_random_string();
         let url = Url::parse_with_params(
-            "https://www.fitbit.com/oauth2/authorize",
+            FITBIT_OAUTH_AUTHORIZE,
             &[
                 ("response_type", "code"),
                 ("client_id", self.config.fitbit_clientid.as_str()),
@@ -213,10 +218,9 @@ impl FitbitClient {
             "grant_type" => "refresh_token",
             "refresh_token" => self.refresh_token.as_str(),
         };
-        let url = "https://api.fitbit.com/oauth2/token";
         let auth_resp: AccessTokenResponse = self
             .client
-            .post(url)
+            .post(FITBIT_OAUTH_TOKEN)
             .headers(headers)
             .form(&data)
             .send()
@@ -255,10 +259,9 @@ impl FitbitClient {
                 "redirect_uri" => redirect_uri.as_str(),
                 "state" => state,
             };
-            let url = "https://api.fitbit.com/oauth2/token";
             let auth_resp: AccessTokenResponse = self
                 .client
-                .post(url)
+                .post(FITBIT_OAUTH_TOKEN)
                 .headers(headers)
                 .form(&data)
                 .send()
@@ -301,13 +304,10 @@ impl FitbitClient {
         }
 
         let headers = self.get_auth_headers()?;
-        let url = format!(
-            "https://api.fitbit.com/1/user/-/activities/heart/date/{}/1d/1min.json",
-            date
-        );
+        let url = FITBIT_PREFIX.join(&format!("activities/heart/date/{}/1d/1min.json", date))?;
         let dataset: HeartRateResp = self
             .client
-            .get(url.as_str())
+            .get(url)
             .headers(headers)
             .send()
             .await?
@@ -366,13 +366,10 @@ impl FitbitClient {
         let headers = self.get_auth_headers()?;
         let offset = self.get_offset();
         let date = Utc::now().with_timezone(&offset).date().naive_local();
-        let url = format!(
-            "https://api.fitbit.com/1/user/-/body/log/weight/date/{}/30d.json",
-            date
-        );
+        let url = FITBIT_PREFIX.join(&format!("body/log/weight/date/{}/30d.json", date))?;
         let body_weight: BodyWeight = self
             .client
-            .get(url.as_str())
+            .get(url)
             .headers(headers.clone())
             .send()
             .await?
@@ -412,7 +409,7 @@ impl FitbitClient {
                 let datetime = update.datetime.with_timezone(&offset);
                 let date = datetime.date().naive_local();
                 let time = datetime.naive_local().format("%H:%M:%S").to_string();
-                let url = "https://api.fitbit.com/1/user/-/body/log/weight.json";
+                let url = FITBIT_PREFIX.join("body/log/weight.json")?;
                 let data = hashmap! {
                     "weight" => update.mass.to_string(),
                     "date" => date.to_string(),
@@ -426,7 +423,7 @@ impl FitbitClient {
                     .await?
                     .error_for_status()?;
 
-                let url = "https://api.fitbit.com/1/user/-/body/log/fat.json";
+                let url = FITBIT_PREFIX.join("body/log/fat.json")?;
                 let data = hashmap! {
                     "fat" => update.fat_pct.to_string(),
                     "date" => date.to_string(),
@@ -460,11 +457,10 @@ impl FitbitClient {
         let offset = offset.unwrap_or(0);
 
         let headers = self.get_auth_headers()?;
-        let url = format!(
-            "https://api.fitbit.com/1/user/-/activities/list.json?afterDate={}&offset={}&limit=20&sort=asc",
-            start_date,
-            offset,
-        );
+        let url = FITBIT_PREFIX.join(&format!(
+            "activities/list.json?afterDate={}&offset={}&limit=20&sort=asc",
+            start_date, offset,
+        ))?;
         let activities: AcivityListResp = self
             .client
             .get(url.as_str())
@@ -557,7 +553,7 @@ impl FitbitClient {
             categories: Vec<FitbitCategory>,
         }
 
-        let url = "https://api.fitbit.com/1/activities.json";
+        let url = FITBIT_ENDPOINT.join("1/activities.json")?;
         let headers = self.get_auth_headers()?;
         let categories: FitbitActivityCategories = self
             .client
@@ -609,7 +605,7 @@ impl FitbitClient {
             activity_log: ActivityLogEntry,
         }
 
-        let url = "https://api.fitbit.com/1/user/-/activities.json";
+        let url = FITBIT_PREFIX.join("activities.json")?;
         let headers = self.get_auth_headers()?;
         let resp: ActivityLogResp = self
             .client
@@ -704,10 +700,10 @@ impl FitbitClient {
     }
 
     pub async fn delete_fitbit_activity(&self, log_id: u64) -> Result<(), Error> {
-        let url = format!("https://api.fitbit.com/1/user/-/activities/{}.json", log_id);
+        let url = FITBIT_PREFIX.join(&format!("activities/{}.json", log_id))?;
         let headers = self.get_auth_headers()?;
         self.client
-            .delete(&url)
+            .delete(url)
             .headers(headers)
             .send()
             .await?

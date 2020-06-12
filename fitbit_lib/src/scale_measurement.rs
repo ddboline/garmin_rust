@@ -43,7 +43,7 @@ impl fmt::Display for ScaleMeasurement {
 
 impl ScaleMeasurement {
     pub fn from_telegram_text(msg: &str) -> Result<Self, Error> {
-        fn orto<T>(item: Option<Result<T, Error>>) -> Result<T, Error> {
+        fn opt2res<T>(item: Option<Result<T, Error>>) -> Result<T, Error> {
             match item {
                 Some(x) => x,
                 None => Err(format_err!("Bad message")),
@@ -71,11 +71,11 @@ impl ScaleMeasurement {
 
         Ok(Self {
             datetime,
-            mass: orto(iter.next())?,
-            fat_pct: orto(iter.next())?,
-            water_pct: orto(iter.next())?,
-            muscle_pct: orto(iter.next())?,
-            bone_pct: orto(iter.next())?,
+            mass: opt2res(iter.next())?,
+            fat_pct: opt2res(iter.next())?,
+            water_pct: opt2res(iter.next())?,
+            muscle_pct: opt2res(iter.next())?,
+            bone_pct: opt2res(iter.next())?,
         })
     }
 

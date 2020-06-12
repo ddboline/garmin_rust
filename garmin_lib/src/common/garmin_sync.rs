@@ -6,10 +6,15 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use rusoto_core::Region;
 use rusoto_s3::{GetObjectRequest, Object as S3Object, PutObjectRequest, S3Client};
 use s3_ext::S3Ext;
-use std::{collections::{HashSet, HashMap}, fs, path::Path, time::SystemTime};
+use std::{
+    borrow::Borrow,
+    collections::{HashMap, HashSet},
+    fs,
+    hash::{Hash, Hasher},
+    path::Path,
+    time::SystemTime,
+};
 use sts_profile_auth::get_client_sts;
-use std::hash::{Hash, Hasher};
-use std::borrow::Borrow;
 
 use crate::utils::{
     garmin_util::{exponential_retry, get_md5sum},
@@ -40,8 +45,11 @@ impl PartialEq for KeyItem {
 
 impl Hash for KeyItem {
     fn hash<H>(&self, state: &mut H)
-    where H: Hasher,
-    {self.key.hash(state)}
+    where
+        H: Hasher,
+    {
+        self.key.hash(state)
+    }
 }
 
 impl Borrow<str> for &KeyItem {
@@ -133,8 +141,7 @@ impl GarminSync {
         let key_list = self.get_list_of_keys(s3_bucket).await?;
         let n_keys = key_list.len();
 
-        let key_set: HashSet<&KeyItem> = key_list
-            .iter().collect();
+        let key_set: HashSet<&KeyItem> = key_list.iter().collect();
 
         let uploaded: Vec<_> = file_list
             .into_par_iter()

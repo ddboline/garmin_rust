@@ -4,10 +4,11 @@ use postgres_query::FromSqlRow;
 use serde::{Deserialize, Serialize};
 use statistical::{mean, median, standard_deviation};
 
-use garmin_lib::common::pgpool::PgPool;
-use garmin_lib::reports::garmin_templates::{PLOT_TEMPLATE, PLOT_TEMPLATE_DEMO};
-use garmin_lib::utils::plot_graph::generate_d3_plot;
-use garmin_lib::utils::plot_opts::PlotOpts;
+use garmin_lib::{
+    common::pgpool::PgPool,
+    reports::garmin_templates::{PLOT_TEMPLATE, PLOT_TEMPLATE_DEMO},
+    utils::{plot_graph::generate_d3_plot, plot_opts::PlotOpts},
+};
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, FromSqlRow)]
 pub struct FitbitStatisticsSummary {

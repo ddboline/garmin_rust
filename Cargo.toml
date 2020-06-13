@@ -1,6 +1,6 @@
 [package]
 name = "garmin_rust"
-version = "0.8.21"
+version = "0.8.22"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 

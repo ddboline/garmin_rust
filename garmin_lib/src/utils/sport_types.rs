@@ -1,7 +1,7 @@
 use anyhow::{format_err, Error};
 use bytes::BytesMut;
 use lazy_static::lazy_static;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::{collections::HashMap, convert::TryFrom, fmt, str::FromStr};
 use tokio_postgres::types::{FromSql, IsNull, ToSql, Type};
 
@@ -60,24 +60,47 @@ impl From<SportTypes> for String {
     }
 }
 
+pub fn deserialize_to_sport_type<'de, D>(deserializer: D) -> Result<SportTypes, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    SportTypes::from_strava_activity(&s).map_err(serde::de::Error::custom)
+}
+
 impl SportTypes {
     pub fn to_strava_activity(self) -> String {
         match self {
-            Self::Running => "run",
-            Self::Biking => "ride",
-            Self::Walking => "walk",
-            Self::Hiking => "hike",
-            Self::Ultimate => "ultimate",
-            Self::Elliptical => "elliptical",
-            Self::Stairs => "stairs",
-            Self::Lifting => "lifting",
-            Self::Swimming => "swim",
-            Self::Other => "other",
-            Self::Snowshoeing => "snowshoe",
-            Self::Skiing => "nordicski",
-            Self::None => "none",
+            Self::Running => "Run",
+            Self::Biking => "Ride",
+            Self::Walking => "Walk",
+            Self::Hiking => "Hike",
+            Self::Elliptical => "Elliptical",
+            Self::Stairs => "StairStepper",
+            Self::Lifting => "WeightTraining",
+            Self::Swimming => "Swim",
+            Self::Snowshoeing => "Snowshoe",
+            Self::Skiing => "NordicSki",
+            Self::None => "None",
+            _ => "Other",
         }
         .to_string()
+    }
+
+    pub fn from_strava_activity(item: &str) -> Result<Self, Error> {
+        match item {
+            "Run" => Ok(Self::Running),
+            "Ride" => Ok(Self::Biking),
+            "Walk" => Ok(Self::Walking),
+            "Hike" => Ok(Self::Hiking),
+            "Elliptical" => Ok(Self::Elliptical),
+            "StairStepper" => Ok(Self::Stairs),
+            "WeightTraining" => Ok(Self::Lifting),
+            "Swim" => Ok(Self::Swimming),
+            "Snowshoe" => Ok(Self::Snowshoeing),
+            "NordicSki" => Ok(Self::Skiing),
+            _ => Err(format_err!("Invalid activity type")),
+        }
     }
 
     pub fn to_fitbit_activity_id(self) -> Option<u64> {

@@ -21,7 +21,9 @@ use tokio::{
 use garmin_lib::{
     common::{garmin_config::GarminConfig, strava_sync::StravaItem},
     utils::{
-        garmin_util::gzip_file, iso_8601_datetime, sport_types::SportTypes,
+        garmin_util::gzip_file,
+        iso_8601_datetime,
+        sport_types::{deserialize_to_sport_type, SportTypes},
         stack_string::StackString,
     },
 };
@@ -234,15 +236,7 @@ impl StravaClient {
         &self,
         start_date: Option<DateTime<Utc>>,
         end_date: Option<DateTime<Utc>>,
-    ) -> Result<HashMap<StackString, StravaItem>, Error> {
-        #[derive(Deserialize)]
-        struct StravaActivity {
-            name: String,
-            #[serde(with = "iso_8601_datetime")]
-            start_date: DateTime<Utc>,
-            id: i64,
-        }
-
+    ) -> Result<Vec<StravaActivity>, Error> {
         let mut params = Vec::new();
         if let Some(start_date) = start_date {
             params.push(("after", start_date.timestamp().to_string()));
@@ -254,16 +248,25 @@ impl StravaClient {
         let headers = self.get_auth_headers()?;
         let url =
             Url::parse_with_params("https://www.strava.com/api/v3/athlete/activities", &params)?;
-        let activities: Vec<StravaActivity> = self
-            .client
+        self.client
             .get(url)
             .headers(headers)
             .send()
             .await?
             .error_for_status()?
             .json()
-            .await?;
-        let activity_map: HashMap<_, _> = activities
+            .await
+            .map_err(Into::into)
+    }
+
+    pub async fn get_strava_activity_map(
+        &self,
+        start_date: Option<DateTime<Utc>>,
+        end_date: Option<DateTime<Utc>>,
+    ) -> Result<HashMap<StackString, StravaItem>, Error> {
+        let activity_map: HashMap<_, _> = self
+            .get_strava_activites(start_date, end_date)
+            .await?
             .into_iter()
             .map(|act| {
                 (
@@ -350,14 +353,14 @@ impl StravaClient {
 
     pub async fn update_strava_activity(
         &self,
-        activity_id: &str,
+        activity_id: u64,
         title: &str,
         description: Option<&str>,
         sport: SportTypes,
     ) -> Result<String, Error> {
         #[derive(Serialize)]
         struct UpdatableActivity {
-            id: i64,
+            id: u64,
             commute: bool,
             trainer: bool,
             description: Option<String>,
@@ -368,7 +371,7 @@ impl StravaClient {
         }
 
         let data = UpdatableActivity {
-            id: activity_id.parse()?,
+            id: activity_id,
             commute: false,
             trainer: false,
             description: description.map(ToString::to_string),
@@ -389,6 +392,23 @@ impl StravaClient {
         let url = format!("https://{}/garmin/strava_sync", self.config.domain);
         Ok(url)
     }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct StravaActivity {
+    pub name: String,
+    #[serde(with = "iso_8601_datetime")]
+    pub start_date: DateTime<Utc>,
+    pub id: u64,
+    pub distance: f64,
+    pub moving_time: u64,
+    pub elapsed_time: u64,
+    pub total_elevation_gain: f64,
+    pub elev_high: Option<f64>,
+    pub elev_low: Option<f64>,
+    #[serde(rename = "type", deserialize_with = "deserialize_to_sport_type")]
+    pub activity_type: SportTypes,
+    pub timezone: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -428,12 +448,12 @@ mod tests {
         let config = GarminConfig::get_config(None)?;
         let client = StravaClient::with_auth(config).await?;
         let activities = client.get_strava_activites(None, None).await?;
-        if let Some((activity_id, item)) = activities.into_iter().nth(0) {
-            debug!("{} {:#?}", activity_id, item);
+        if let Some(activity) = activities.into_iter().nth(0) {
+            debug!("{} {}", activity.id, activity.name);
             let result = client
                 .update_strava_activity(
-                    activity_id.as_str(),
-                    item.title.as_str(),
+                    activity.id,
+                    activity.name.as_str(),
                     Some("Test description"),
                     SportTypes::Running,
                 )

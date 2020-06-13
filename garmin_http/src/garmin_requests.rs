@@ -20,7 +20,7 @@ use fitbit_lib::{
     scale_measurement::ScaleMeasurement,
 };
 
-use strava_lib::strava_client::{StravaAthlete, StravaClient};
+use strava_lib::strava_client::{StravaActivity, StravaAthlete, StravaClient};
 
 use garmin_lib::{
     common::{
@@ -237,11 +237,11 @@ impl HandleRequest<StravaSyncRequest> for PgPool {
             None => None,
         };
         let client = StravaClient::with_auth(config).await?;
-        let activities = client.get_strava_activites(max_datetime, None).await?;
+        let activity_map = client.get_strava_activity_map(max_datetime, None).await?;
 
-        debug!("activities {:#?}", activities);
+        debug!("activities {:#?}", activity_map);
 
-        upsert_strava_id(&activities, &self)
+        upsert_strava_id(&activity_map, &self)
             .await
             .map_err(Into::into)
     }
@@ -688,7 +688,7 @@ pub struct StravaActivitiesRequest {
 
 #[async_trait]
 impl HandleRequest<StravaActivitiesRequest> for PgPool {
-    type Result = Result<HashMap<StackString, StravaItem>, Error>;
+    type Result = Result<Vec<StravaActivity>, Error>;
     async fn handle(&self, msg: StravaActivitiesRequest) -> Self::Result {
         let config = CONFIG.clone();
         let client = StravaClient::with_auth(config).await?;
@@ -771,7 +771,7 @@ impl HandleRequest<StravaUploadRequest> for PgPool {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StravaUpdateRequest {
-    pub activity_id: String,
+    pub activity_id: u64,
     pub title: String,
     pub activity_type: String,
     pub description: Option<String>,
@@ -788,7 +788,7 @@ impl HandleRequest<StravaUpdateRequest> for PgPool {
         let client = StravaClient::with_auth(config).await?;
         client
             .update_strava_activity(
-                &msg.activity_id,
+                msg.activity_id,
                 &msg.title,
                 msg.description.as_deref(),
                 sport,

@@ -372,7 +372,7 @@ fn get_garmin_template_vec<T: AsRef<str>>(
     domain: &str,
     gfile: &GarminFile,
     sport: SportTypes,
-    strava_id_title: &Option<(String, String)>,
+    strava_id_title: &Option<(u64, String)>,
     history: &[T],
     is_demo: bool,
 ) -> Result<Vec<String>, Error> {
@@ -437,7 +437,7 @@ fn get_map_tempate_vec<T, U>(
     report_objs: &ReportObjects,
     gfile: &GarminFile,
     sport: SportTypes,
-    strava_id_title: &Option<(String, String)>,
+    strava_id_title: &Option<(u64, String)>,
     history: &[T],
     graphs: &[U],
     config: &GarminConfig,
@@ -523,7 +523,7 @@ where
                         format!(
                             r#"
                                 <input type="text" name="cmd" id="strava_upload"/>
-                                <input type="button" name="submitSTRAVA" value="Title" onclick="processStravaUpdate('{}');"/>
+                                <input type="button" name="submitSTRAVA" value="Title" onclick="processStravaUpdate({});"/>
                             "#,
                             id
                         )

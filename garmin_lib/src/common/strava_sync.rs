@@ -21,7 +21,7 @@ pub struct StravaItem {
 pub async fn get_strava_id_from_begin_datetime(
     pool: &PgPool,
     begin_datetime: DateTime<Utc>,
-) -> Result<Option<(String, String)>, Error> {
+) -> Result<Option<(u64, String)>, Error> {
     let query = "SELECT strava_id, strava_title FROM strava_id_cache WHERE begin_datetime = $1";
 
     let conn = pool.get().await?;
@@ -29,7 +29,8 @@ pub async fn get_strava_id_from_begin_datetime(
         .await?
         .get(0)
         .map(|row| {
-            let id = row.try_get("strava_id")?;
+            let id: String = row.try_get("strava_id")?;
+            let id = id.parse()?;
             let title = row.try_get("strava_title")?;
             Ok((id, title))
         })

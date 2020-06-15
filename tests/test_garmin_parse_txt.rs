@@ -1,5 +1,6 @@
 use anyhow::Error;
 use approx::assert_abs_diff_eq;
+use std::path::Path;
 
 use garmin_lib::{
     common::{garmin_correction_lap::GarminCorrectionList, pgpool::PgPool},
@@ -15,7 +16,7 @@ fn test_garmin_parse_txt() -> Result<(), Error> {
         GarminCorrectionList::corr_list_from_json(&pool, "tests/data/garmin_corrections.json")?;
     let corr_map = corr_list.get_corr_list_map();
     let gfile = garmin_parse_txt::GarminParseTxt::new()
-        .with_file("tests/data/test.txt", &corr_map)
+        .with_file(&Path::new("tests/data/test.txt"), &corr_map)
         .unwrap();
     assert_eq!(gfile.filename.as_str(), "test.txt");
     assert_eq!(gfile.sport, SportTypes::Elliptical);
@@ -45,7 +46,7 @@ fn test_garmin_parse_txt_default_time() -> Result<(), Error> {
             .unwrap();
     let corr_map = corr_list.get_corr_list_map();
     let gfile = garmin_parse_txt::GarminParseTxt::new()
-        .with_file("tests/data/test2.txt", &corr_map)
+        .with_file(&Path::new("tests/data/test2.txt"), &corr_map)
         .unwrap();
     assert_eq!(
         convert_datetime_to_str(gfile.begin_datetime),

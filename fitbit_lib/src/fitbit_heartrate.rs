@@ -99,8 +99,7 @@ impl FitbitHeartRate {
         let fitbit_files: Vec<_> = days
             .par_iter()
             .filter_map(|date| {
-                let input_filename =
-                    Path::new(config.fitbit_cachedir.as_str()).join(format!("{}.avro", date));
+                let input_filename = config.fitbit_cachedir.join(format!("{}.avro", date));
                 if input_filename.exists() {
                     Some(input_filename)
                 } else {
@@ -114,8 +113,7 @@ impl FitbitHeartRate {
                 .await?
                 .into_par_iter()
                 .filter_map(|filename| {
-                    let avro_file =
-                        Path::new(config.cache_dir.as_str()).join(format!("{}.avro", filename));
+                    let avro_file = config.cache_dir.join(format!("{}.avro", filename));
                     if avro_file.exists() {
                         Some(avro_file)
                     } else {
@@ -131,8 +129,7 @@ impl FitbitHeartRate {
         let results: Result<Vec<_>, Error> = fitbit_files
             .into_par_iter()
             .map(|input_path| {
-                let input_filename = input_path.to_string_lossy().to_string();
-                let values: Vec<_> = Self::read_avro(&input_filename)?
+                let values: Vec<_> = Self::read_avro(&input_path)?
                     .into_par_iter()
                     .map(|h| (h.datetime, h.value))
                     .collect();
@@ -144,7 +141,6 @@ impl FitbitHeartRate {
         let results: Result<Vec<_>, Error> = garmin_files
             .into_par_iter()
             .map(|avro_file| {
-                let avro_file = avro_file.to_string_lossy().to_string();
                 let points: Vec<_> = GarminFile::read_avro(&avro_file)?
                     .points
                     .into_par_iter()
@@ -179,19 +175,22 @@ impl FitbitHeartRate {
         config: &GarminConfig,
         pool: &PgPool,
     ) -> Result<(), Error> {
-        let dates: Result<Vec<_>, Error> = glob(&format!("{}/*.avro", config.fitbit_cachedir))?
-            .map(|x| {
-                x.map_err(Into::into).and_then(|f| {
-                    let date: NaiveDate = f
-                        .file_name()
-                        .ok_or_else(|| format_err!("No name"))?
-                        .to_string_lossy()
-                        .replace(".avro", "")
-                        .parse()?;
-                    Ok(date)
-                })
+        let dates: Result<Vec<_>, Error> = glob(&format!(
+            "{}/*.avro",
+            config.fitbit_cachedir.to_string_lossy()
+        ))?
+        .map(|x| {
+            x.map_err(Into::into).and_then(|f| {
+                let date: NaiveDate = f
+                    .file_name()
+                    .ok_or_else(|| format_err!("No name"))?
+                    .to_string_lossy()
+                    .replace(".avro", "")
+                    .parse()?;
+                Ok(date)
             })
-            .collect();
+        })
+        .collect();
         let dates = dates?;
         let futures = dates.into_iter().map(|date| {
             let config = config.clone();
@@ -314,16 +313,16 @@ impl FitbitHeartRate {
     }
 
     pub fn read_avro_by_date(config: &GarminConfig, date: NaiveDate) -> Result<Vec<Self>, Error> {
-        let input_filename = format!("{}/{}.avro", config.fitbit_cachedir, date);
-        debug!("avro {}", input_filename);
-        if Path::new(&input_filename).exists() {
+        let input_filename = config.fitbit_cachedir.join(format!("{}.avro", date));
+        debug!("avro {:?}", input_filename);
+        if input_filename.exists() {
             Self::read_avro(&input_filename)
         } else {
             Ok(Vec::new())
         }
     }
 
-    pub fn read_avro(input_filename: &str) -> Result<Vec<Self>, Error> {
+    pub fn read_avro(input_filename: &Path) -> Result<Vec<Self>, Error> {
         let input_file = File::open(input_filename)?;
 
         Reader::new(input_file)
@@ -357,8 +356,7 @@ impl FitbitHeartRate {
                 .collect();
             merged_values.par_sort_by_key(|entry| entry.datetime.timestamp());
             merged_values.dedup();
-            let input_filename =
-                Path::new(config.fitbit_cachedir.as_str()).join(format!("{}.avro", date));
+            let input_filename = config.fitbit_cachedir.join(format!("{}.avro", date));
             Self::dump_to_avro(&merged_values, &input_filename.to_string_lossy())?;
         }
         Ok(())

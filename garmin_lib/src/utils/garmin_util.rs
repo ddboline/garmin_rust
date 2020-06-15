@@ -10,7 +10,7 @@ use std::{
     fs::remove_file,
     future::Future,
     io::{BufRead, BufReader, Read},
-    path::Path,
+    path::{Path, PathBuf},
 };
 use subprocess::{Exec, Redirection};
 use tokio::time::{delay_for, Duration};
@@ -45,8 +45,8 @@ pub fn convert_xml_local_time_to_utc(xml_local_time: &str) -> Result<DateTime<Ut
         .map_err(Into::into)
 }
 
-pub fn get_md5sum(filename: &str) -> Result<String, Error> {
-    let command = format!("md5sum {}", filename);
+pub fn get_md5sum(filename: &Path) -> Result<String, Error> {
+    let command = format!("md5sum {}", filename.to_string_lossy());
 
     let stream = Exec::shell(command).stream_stdout()?;
 
@@ -116,11 +116,11 @@ pub fn generate_random_string(nchar: usize) -> String {
     Alphanumeric.sample_iter(&mut rng).take(nchar).collect()
 }
 
-pub fn get_file_list(path: &Path) -> Vec<String> {
+pub fn get_file_list(path: &Path) -> Vec<PathBuf> {
     match path.read_dir() {
         Ok(it) => it
             .filter_map(|dir_line| match dir_line {
-                Ok(entry) => Some(entry.path().to_string_lossy().to_string()),
+                Ok(entry) => Some(entry.path()),
                 Err(_) => None,
             })
             .collect(),
@@ -152,13 +152,20 @@ where
     }
 }
 
-pub fn extract_zip_from_garmin_connect(filename: &str, ziptmpdir: &str) -> Result<String, Error> {
-    let new_filename = Path::new(filename)
+pub fn extract_zip_from_garmin_connect(
+    filename: &Path,
+    ziptmpdir: &Path,
+) -> Result<PathBuf, Error> {
+    let new_filename = filename
         .file_name()
         .ok_or_else(|| format_err!("Bad filename"))?
         .to_string_lossy();
     let new_filename = new_filename.replace(".zip", ".fit");
-    let command = format!("unzip {} -d {}", filename, ziptmpdir);
+    let command = format!(
+        "unzip {} -d {}",
+        filename.to_string_lossy(),
+        ziptmpdir.to_string_lossy()
+    );
     let mut process = Exec::shell(command).stdout(Redirection::Pipe).popen()?;
     let exit_status = process.wait()?;
     if !exit_status.success() {
@@ -169,8 +176,8 @@ pub fn extract_zip_from_garmin_connect(filename: &str, ziptmpdir: &str) -> Resul
         }
         return Err(format_err!("Failed with exit status {:?}", exit_status));
     }
-    let new_filename = format!("{}/{}", ziptmpdir, new_filename);
-    remove_file(&filename)?;
+    let new_filename = ziptmpdir.join(new_filename);
+    remove_file(filename)?;
     Ok(new_filename)
 }
 

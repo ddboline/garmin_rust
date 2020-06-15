@@ -1,6 +1,6 @@
 use anyhow::Error;
 use chrono::{Duration, Utc};
-use std::path::Path;
+use std::path::PathBuf;
 use structopt::StructOpt;
 
 use fitbit_lib::{fitbit_client::FitbitClient, fitbit_heartrate::FitbitHeartRate};
@@ -18,7 +18,7 @@ pub enum GarminCliOpts {
     Bootstrap,
     Proc {
         #[structopt(short, long)]
-        filename: Vec<StackString>,
+        filename: Vec<PathBuf>,
     },
     Report {
         #[structopt(short, long)]
@@ -72,12 +72,11 @@ impl GarminCliOpts {
             let client = FitbitClient::with_auth(config.clone()).await?;
             let start_date = (Utc::now() - Duration::days(10)).naive_utc().date();
             for (start_time, tcx_url) in client.get_tcx_urls(start_date).await? {
-                let fname = format!(
-                    "{}/{}.tcx",
-                    config.gps_dir,
-                    start_time.format("%Y-%m-%d_%H-%M-%S_1_1").to_string(),
-                );
-                if !Path::new(&fname).exists() {
+                let fname = config.gps_dir.join(format!(
+                    "{}.tcx",
+                    start_time.format("%Y-%m-%d_%H-%M-%S_1_1").to_string()
+                ));
+                if !fname.exists() {
                     let data = client.download_tcx(&tcx_url).await?;
                     tokio::fs::write(&fname, &data).await?;
                 }

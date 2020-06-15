@@ -8,7 +8,7 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
-    path::Path,
+    path::{Path, PathBuf},
     sync::Arc,
 };
 use tokio::{fs::remove_file, sync::RwLock, task::spawn_blocking};
@@ -117,12 +117,12 @@ impl HandleRequest<GarminListRequest> for PgPool {
 
 #[derive(Serialize, Deserialize)]
 pub struct GarminUploadRequest {
-    pub filename: StackString,
+    pub filename: PathBuf,
 }
 
 #[async_trait]
 impl HandleRequest<GarminUploadRequest> for PgPool {
-    type Result = Result<Vec<StackString>, Error>;
+    type Result = Result<Vec<PathBuf>, Error>;
     async fn handle(&self, req: GarminUploadRequest) -> Self::Result {
         let gcli = GarminCli::from_pool(&self)?;
         let filenames = vec![req.filename];
@@ -428,7 +428,7 @@ pub struct FitbitTcxSyncRequest {
 
 #[async_trait]
 impl HandleRequest<FitbitTcxSyncRequest> for PgPool {
-    type Result = Result<Vec<String>, Error>;
+    type Result = Result<Vec<PathBuf>, Error>;
     async fn handle(&self, msg: FitbitTcxSyncRequest) -> Self::Result {
         let config = CONFIG.clone();
         let client = Arc::new(FitbitClient::with_auth(config).await?);
@@ -442,12 +442,11 @@ impl HandleRequest<FitbitTcxSyncRequest> for PgPool {
             .await?
             .into_iter()
             .filter_map(|(start_time, tcx_url)| {
-                let fname = format!(
-                    "{}/{}.tcx",
-                    client.config.gps_dir,
-                    start_time.format("%Y-%m-%d_%H-%M-%S_1_1").to_string(),
-                );
-                if Path::new(&fname).exists() {
+                let fname = client.config.gps_dir.join(format!(
+                    "{}.tcx",
+                    start_time.format("%Y-%m-%d_%H-%M-%S_1_1").to_string()
+                ));
+                if fname.exists() {
                     None
                 } else {
                     Some((fname, tcx_url))
@@ -846,9 +845,10 @@ impl HandleRequest<AddGarminCorrectionRequest> for PgPool {
 
         corr_list.dump_corrections_to_db().await?;
 
-        let cache_path = Path::new(CONFIG.cache_dir.as_str()).join(&format!("{}.avro", filename));
-        let summary_path =
-            Path::new(CONFIG.summary_cache.as_str()).join(&format!("{}.summary.avro", filename));
+        let cache_path = CONFIG.cache_dir.join(&format!("{}.avro", filename));
+        let summary_path = CONFIG
+            .summary_cache
+            .join(&format!("{}.summary.avro", filename));
         remove_file(cache_path).await?;
         remove_file(summary_path).await?;
 

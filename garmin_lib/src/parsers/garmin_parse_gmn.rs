@@ -27,16 +27,15 @@ impl GarminParseGmn {
 impl GarminParseTrait for GarminParseGmn {
     fn with_file(
         self,
-        filename: &str,
+        filename: &Path,
         corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
     ) -> Result<GarminFile, Error> {
         let gmn_output = self.parse_file(filename)?;
-        let filename = Path::new(&filename)
+        let filename = filename
             .file_name()
-            .unwrap_or_else(|| panic!("filename {} has no path", filename))
-            .to_os_string()
-            .into_string()
-            .unwrap_or_else(|_| filename.to_string());
+            .ok_or_else(|| format_err!("filename {:?} has no path", filename))?
+            .to_string_lossy()
+            .to_string();
         let (lap_list, sport) =
             apply_lap_corrections(&gmn_output.lap_list, gmn_output.sport, corr_map);
         let first_lap = lap_list.get(0).ok_or_else(|| format_err!("No laps"))?;
@@ -59,7 +58,8 @@ impl GarminParseTrait for GarminParseGmn {
         Ok(gfile)
     }
 
-    fn parse_file(&self, filename: &str) -> Result<ParseOutput, Error> {
+    fn parse_file(&self, filename: &Path) -> Result<ParseOutput, Error> {
+        let filename = filename.to_string_lossy().to_string();
         let command = if let Ok(x) = var("LAMBDA_TASK_ROOT") {
             format!(
                 "echo \"{}\" `{}/bin/garmin_dump {}` \"{}\"",

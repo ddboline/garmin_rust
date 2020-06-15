@@ -75,7 +75,7 @@ impl StravaClient {
             config,
             ..Self::default()
         };
-        let f = File::open(client.config.strava_tokenfile.as_str()).await?;
+        let f = File::open(&client.config.strava_tokenfile).await?;
         let mut b = BufReader::new(f);
         let mut line = String::new();
         loop {
@@ -100,7 +100,7 @@ impl StravaClient {
     }
 
     pub async fn to_file(&self) -> Result<(), Error> {
-        let mut f = File::create(self.config.strava_tokenfile.as_str()).await?;
+        let mut f = File::create(&self.config.strava_tokenfile).await?;
         f.write_all(b"[API]\n").await?;
         f.write_all(format!("client_id = {}\n", self.client_id).as_bytes())
             .await?;

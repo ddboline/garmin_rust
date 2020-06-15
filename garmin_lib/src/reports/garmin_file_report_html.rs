@@ -591,10 +591,10 @@ where
             let history_button = generate_history_buttons(history);
             htmlvec.push(line.replace("HISTORYBUTTONS", &history_button).to_string());
         } else if line.contains("FILENAME") | line.contains("ACTIVITYTYPE") {
-            let filename = format!("{}/{}", &config.gps_dir, &gfile.filename);
+            let filename = config.gps_dir.join(gfile.filename.as_str());
             let activity_type = gfile.sport.to_strava_activity();
             htmlvec.push(
-                line.replace("FILENAME", &filename)
+                line.replace("FILENAME", filename.to_string_lossy().as_ref())
                     .replace("ACTIVITYTYPE", &activity_type),
             );
         } else if line.contains("DOMAIN") {

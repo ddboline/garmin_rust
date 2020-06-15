@@ -1,5 +1,6 @@
 use anyhow::Error;
 use approx::assert_abs_diff_eq;
+use std::path::Path;
 
 use garmin_lib::{
     common::{garmin_correction_lap::GarminCorrectionList, pgpool::PgPool},
@@ -16,7 +17,7 @@ fn test_invalid_ext() -> Result<(), Error> {
             .unwrap();
     let corr_map = corr_list.get_corr_list_map();
     let err = GarminParse::new()
-        .with_file("invalid.invalid", &corr_map)
+        .with_file(&Path::new("invalid.invalid"), &corr_map)
         .unwrap_err();
     assert_eq!(format!("{}", err), "Invalid extension".to_string());
     Ok(())
@@ -32,7 +33,7 @@ fn test_garmin_parse_parse_gmn() -> Result<(), Error> {
             .unwrap();
     let corr_map = corr_list.get_corr_list_map();
     let gfile = GarminParse::new()
-        .with_file("tests/data/test.gmn", &corr_map)
+        .with_file(&Path::new("tests/data/test.gmn"), &corr_map)
         .unwrap();
     assert_eq!(gfile.filename.as_str(), "test.gmn");
     assert_eq!(gfile.sport, SportTypes::Running);
@@ -61,7 +62,7 @@ fn test_garmin_parse_parse_tcx() -> Result<(), Error> {
             .unwrap();
     let corr_map = corr_list.get_corr_list_map();
     let gfile = GarminParse::new()
-        .with_file("tests/data/test.tcx", &corr_map)
+        .with_file(&Path::new("tests/data/test.tcx"), &corr_map)
         .unwrap();
     assert_eq!(gfile.filename.as_str(), "test.tcx");
     assert_eq!(gfile.sport, SportTypes::Biking);
@@ -90,7 +91,7 @@ fn test_garmin_parse_fit() -> Result<(), Error> {
             .unwrap();
     let corr_map = corr_list.get_corr_list_map();
     let gfile = GarminParse::new()
-        .with_file("tests/data/test.fit", &corr_map)
+        .with_file(&Path::new("tests/data/test.fit"), &corr_map)
         .unwrap();
     assert_eq!(gfile.filename.as_str(), "test.fit");
     assert_eq!(gfile.sport, SportTypes::Running);

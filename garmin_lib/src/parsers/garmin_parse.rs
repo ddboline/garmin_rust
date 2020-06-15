@@ -26,11 +26,10 @@ impl GarminParse {
 impl GarminParseTrait for GarminParse {
     fn with_file(
         self,
-        filename: &str,
+        filename: &Path,
         corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
     ) -> Result<GarminFile, Error> {
-        let file_path = Path::new(&filename);
-        match file_path.extension() {
+        match filename.extension() {
             Some(x) => match x.to_str() {
                 Some("txt") => GarminParseTxt::new().with_file(filename, corr_map),
                 Some("fit") => GarminParseTcx::new(true).with_file(filename, corr_map),
@@ -44,7 +43,7 @@ impl GarminParseTrait for GarminParse {
         }
     }
 
-    fn parse_file(&self, _: &str) -> Result<ParseOutput, Error> {
+    fn parse_file(&self, _: &Path) -> Result<ParseOutput, Error> {
         Ok(ParseOutput::default())
     }
 }
@@ -62,9 +61,9 @@ where
 {
     fn with_file(
         self,
-        filename: &str,
+        filename: &Path,
         corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
     ) -> Result<GarminFile, Error>;
 
-    fn parse_file(&self, filename: &str) -> Result<ParseOutput, Error>;
+    fn parse_file(&self, filename: &Path) -> Result<ParseOutput, Error>;
 }

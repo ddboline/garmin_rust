@@ -43,3 +43,4 @@ tokio = {version="0.2", features=["full"]}
 derive_more = "0.99"
 inlinable_string = "0.1"
 rustls-native-certs = {version="0.3", default_features=false}
+envy = "0.4"

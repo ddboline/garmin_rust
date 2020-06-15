@@ -35,15 +35,14 @@ impl GarminParseTxt {
 impl GarminParseTrait for GarminParseTxt {
     fn with_file(
         self,
-        filename: &str,
+        filename: &Path,
         corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
     ) -> Result<GarminFile, Error> {
-        let file_name = Path::new(&filename)
+        let file_name = filename
             .file_name()
-            .unwrap_or_else(|| panic!("filename {} has no path", filename))
-            .to_os_string()
-            .into_string()
-            .unwrap_or_else(|_| filename.to_string());
+            .ok_or_else(|| format_err!("filename {:?} has no path", filename))?
+            .to_string_lossy()
+            .to_string();
         let txt_output = self.parse_file(filename)?;
         let sport: SportTypes = txt_output
             .lap_list
@@ -74,7 +73,7 @@ impl GarminParseTrait for GarminParseTxt {
         Ok(gfile)
     }
 
-    fn parse_file(&self, filename: &str) -> Result<ParseOutput, Error> {
+    fn parse_file(&self, filename: &Path) -> Result<ParseOutput, Error> {
         let lap_list: Vec<_> = Self::get_lap_list(filename)?
             .into_iter()
             .enumerate()
@@ -180,7 +179,7 @@ impl GarminParseTrait for GarminParseTxt {
 }
 
 impl GarminParseTxt {
-    fn get_lap_list(filename: &str) -> Result<Vec<GarminLap>, Error> {
+    fn get_lap_list(filename: &Path) -> Result<Vec<GarminLap>, Error> {
         let file = File::open(filename)?;
         let mut reader = BufReader::new(file);
         let mut line = String::new();

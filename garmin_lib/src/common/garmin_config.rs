@@ -2,149 +2,116 @@
 #![allow(clippy::cognitive_complexity)]
 
 use anyhow::{format_err, Error};
-use std::{env::var, ops::Deref, path::Path, sync::Arc};
+use serde::Deserialize;
+use std::{
+    ops::Deref,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use crate::utils::stack_string::StackString;
 
 /// `GarminConfig` holds configuration information which can be set either
 /// through environment variables or the config.env file, see the dotenv crate
 /// for more information about the config file format.
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Deserialize)]
 pub struct GarminConfigInner {
-    pub home_dir: StackString,
+    #[serde(default = "default_home_dir")]
+    pub home_dir: PathBuf,
     pub pgurl: StackString,
     pub maps_api_key: StackString,
     pub gps_bucket: StackString,
     pub cache_bucket: StackString,
-    pub gps_dir: StackString,
-    pub cache_dir: StackString,
+    #[serde(default = "default_gps_dir")]
+    pub gps_dir: PathBuf,
+    #[serde(default = "default_cache_dir")]
+    pub cache_dir: PathBuf,
+    #[serde(default = "default_port")]
     pub port: u32,
-    pub summary_cache: StackString,
+    #[serde(default = "default_summary_cache")]
+    pub summary_cache: PathBuf,
     pub summary_bucket: StackString,
+    #[serde(default = "default_n_db_workers")]
     pub n_db_workers: usize,
+    #[serde(default = "default_secret_key")]
     pub secret_key: StackString,
+    #[serde(default = "default_domain")]
     pub domain: StackString,
-    pub google_secret_file: StackString,
-    pub google_token_path: StackString,
-    pub telegram_bot_token: StackString,
+    pub google_secret_file: PathBuf,
+    pub google_token_path: PathBuf,
+    pub telegram_bot_token: Option<StackString>,
     pub fitbit_clientid: StackString,
     pub fitbit_clientsecret: StackString,
-    pub fitbit_tokenfile: StackString,
-    pub fitbit_cachedir: StackString,
+    #[serde(default = "default_fitbit_tokenfile")]
+    pub fitbit_tokenfile: PathBuf,
+    #[serde(default = "default_fitbit_cachedir")]
+    pub fitbit_cachedir: PathBuf,
     pub fitbit_bucket: StackString,
-    pub strava_tokenfile: StackString,
+    #[serde(default = "default_strava_tokenfile")]
+    pub strava_tokenfile: PathBuf,
     pub garmin_connect_email: StackString,
     pub garmin_connect_password: StackString,
+}
+
+fn default_home_dir() -> PathBuf {
+    dirs::home_dir().expect("No home directory")
+}
+fn default_port() -> u32 {
+    8000
+}
+fn default_secret_key() -> StackString {
+    "0123".repeat(8).into()
+}
+fn default_domain() -> StackString {
+    "localhost".into()
+}
+fn default_n_db_workers() -> usize {
+    2
 }
 
 #[derive(Default, Debug, Clone)]
 pub struct GarminConfig(Arc<GarminConfigInner>);
 
-macro_rules! set_config_parse {
-    ($s:ident, $id:ident) => {
-        if let Some($id) = var(&stringify!($id).to_uppercase())
-            .ok()
-            .and_then(|x| x.parse().ok())
-        {
-            $s.$id = $id;
-        }
-    };
+fn cache_dir() -> PathBuf {
+    default_home_dir().join(".garmin_cache").join("run")
 }
-
-macro_rules! set_config_parse_default {
-    ($s:ident, $id:ident, $d:expr) => {
-        $s.$id = var(&stringify!($id).to_uppercase())
-            .ok()
-            .and_then(|x| x.parse().ok())
-            .unwrap_or_else(|| $d);
-    };
+fn default_gps_dir() -> PathBuf {
+    cache_dir().join("gps_tracks")
 }
-
-macro_rules! set_config_from_env {
-    ($s:ident, $id:ident) => {
-        if let Ok($id) = var(&stringify!($id).to_uppercase()) {
-            $s.$id = $id.into()
-        }
-    };
+fn default_cache_dir() -> PathBuf {
+    cache_dir().join("cache")
+}
+fn default_summary_cache() -> PathBuf {
+    cache_dir().join("summary_cache")
+}
+fn default_fitbit_cachedir() -> PathBuf {
+    cache_dir().join("fitbit_cache")
+}
+fn default_fitbit_tokenfile() -> PathBuf {
+    default_home_dir().join(".fitbit_tokens")
+}
+fn default_strava_tokenfile() -> PathBuf {
+    default_home_dir().join(".stravacli")
 }
 
 impl GarminConfigInner {
     /// Some variables have natural default values, which we set in the new()
     /// method.
     pub fn new() -> Self {
-        let home_dir = dirs::home_dir().unwrap_or_else(|| Path::new("/tmp").to_path_buf());
-        let cache_dir = home_dir.join(".garmin_cache").join("run");
-
-        let default_gps_dir = cache_dir
-            .join("gps_tracks")
-            .to_string_lossy()
-            .to_string()
-            .into();
-        let default_cache_dir = cache_dir.join("cache").to_string_lossy().to_string().into();
-        let default_summary_cache = cache_dir
-            .join("summary_cache")
-            .to_string_lossy()
-            .to_string()
-            .into();
-        let default_fitbit_dir = cache_dir
-            .join("fitbit_cache")
-            .to_string_lossy()
-            .to_string()
-            .into();
-        let fitbit_tokenfile = home_dir
-            .join(".fitbit_tokens")
-            .to_string_lossy()
-            .to_string()
-            .into();
-        let strava_tokenfile = home_dir
-            .join(".stravacli")
-            .to_string_lossy()
-            .to_string()
-            .into();
-
         Self {
-            gps_dir: default_gps_dir,
-            cache_dir: default_cache_dir,
-            summary_cache: default_summary_cache,
-            port: 8000,
-            n_db_workers: 2,
-            secret_key: "0123".repeat(8).into(),
-            domain: "localhost".into(),
-            fitbit_tokenfile,
-            strava_tokenfile,
-            fitbit_cachedir: default_fitbit_dir,
-            home_dir: home_dir.to_string_lossy().to_string().into(),
+            home_dir: default_home_dir(),
+            gps_dir: default_gps_dir(),
+            cache_dir: default_cache_dir(),
+            port: default_port(),
+            summary_cache: default_summary_cache(),
+            n_db_workers: default_n_db_workers(),
+            secret_key: default_secret_key(),
+            domain: default_domain(),
+            fitbit_tokenfile: default_fitbit_tokenfile(),
+            fitbit_cachedir: default_fitbit_cachedir(),
+            strava_tokenfile: default_strava_tokenfile(),
             ..Self::default()
         }
-    }
-
-    /// Each variable maps to an environment variable, if the variable exists,
-    /// use it.
-    pub fn from_env(mut self) -> Self {
-        set_config_from_env!(self, pgurl);
-        set_config_from_env!(self, maps_api_key);
-        set_config_from_env!(self, gps_bucket);
-        set_config_from_env!(self, cache_bucket);
-        set_config_from_env!(self, gps_dir);
-        set_config_from_env!(self, cache_dir);
-        set_config_parse_default!(self, port, 8000);
-        set_config_from_env!(self, summary_cache);
-        set_config_from_env!(self, summary_bucket);
-        set_config_parse!(self, n_db_workers);
-        set_config_from_env!(self, secret_key);
-        set_config_from_env!(self, domain);
-        set_config_from_env!(self, google_secret_file);
-        set_config_from_env!(self, google_token_path);
-        set_config_from_env!(self, telegram_bot_token);
-        set_config_from_env!(self, fitbit_clientid);
-        set_config_from_env!(self, fitbit_clientsecret);
-        set_config_from_env!(self, fitbit_tokenfile);
-        set_config_from_env!(self, fitbit_cachedir);
-        set_config_from_env!(self, fitbit_bucket);
-        set_config_from_env!(self, strava_tokenfile);
-        set_config_from_env!(self, garmin_connect_email);
-        set_config_from_env!(self, garmin_connect_password);
-        self
     }
 }
 
@@ -175,7 +142,7 @@ impl GarminConfig {
             dotenv::from_filename("config.env").ok();
         }
 
-        let conf = GarminConfigInner::new().from_env();
+        let conf: GarminConfigInner = envy::from_env()?;
 
         if &conf.pgurl == "" {
             Err(format_err!("No PGURL specified"))

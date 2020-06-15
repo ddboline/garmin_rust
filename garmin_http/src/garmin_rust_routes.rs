@@ -555,13 +555,13 @@ pub async fn garmin_get_hr_data(
         1 => {
             let config = &CONFIG;
             let file_name = &file_list[0];
-            let avro_file = format!("{}/{}.avro", &config.cache_dir, file_name);
+            let avro_file = config.cache_dir.join(format!("{}.avro", file_name));
             let a = avro_file.clone();
 
             if let Ok(g) = spawn_blocking(move || GarminFile::read_avro(&a)).await? {
                 g
             } else {
-                let gps_file = format!("{}/{}", &config.gps_dir, file_name);
+                let gps_file = config.gps_dir.join(&file_name);
                 let corr_map = state.db.handle(GarminCorrRequest {}).await?.corr_map;
                 let gfile =
                     spawn_blocking(move || GarminParse::new().with_file(&gps_file, &corr_map))
@@ -617,14 +617,14 @@ pub async fn garmin_get_hr_pace(
         1 => {
             let config = &CONFIG;
             let file_name = &file_list[0];
-            let avro_file = format!("{}/{}.avro", &config.cache_dir, file_name);
+            let avro_file = config.cache_dir.join(format!("{}.avro", file_name));
 
             let gfile = if let Ok(g) =
                 spawn_blocking(move || GarminFile::read_avro(&avro_file)).await?
             {
                 g
             } else {
-                let gps_file = format!("{}/{}", &config.gps_dir, file_name);
+                let gps_file = config.gps_dir.join(&file_name);
 
                 let corr_map = state.db.handle(GarminCorrRequest {}).await?.corr_map;
 

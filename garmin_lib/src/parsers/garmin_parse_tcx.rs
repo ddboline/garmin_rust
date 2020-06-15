@@ -29,19 +29,18 @@ impl GarminParseTcx {
 impl GarminParseTrait for GarminParseTcx {
     fn with_file(
         self,
-        filename: &str,
+        filename: &Path,
         corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
     ) -> Result<GarminFile, Error> {
         let tcx_output = self.parse_file(filename)?;
         let (lap_list, sport) =
             apply_lap_corrections(&tcx_output.lap_list, tcx_output.sport, corr_map);
         let first_lap = lap_list.get(0).ok_or_else(|| format_err!("No laps"))?;
-        let filename = Path::new(&filename)
+        let filename = filename
             .file_name()
-            .unwrap_or_else(|| panic!("filename {} has no path", filename))
-            .to_os_string()
-            .into_string()
-            .unwrap_or_else(|_| filename.to_string());
+            .ok_or_else(|| format_err!("filename {:?} has no path", filename))?
+            .to_string_lossy()
+            .to_string();
         let gfile = GarminFile {
             filename,
             filetype: "tcx".into(),
@@ -61,7 +60,8 @@ impl GarminParseTrait for GarminParseTcx {
         Ok(gfile)
     }
 
-    fn parse_file(&self, filename: &str) -> Result<ParseOutput, Error> {
+    fn parse_file(&self, filename: &Path) -> Result<ParseOutput, Error> {
+        let filename = filename.to_string_lossy().to_string();
         let command = match var("LAMBDA_TASK_ROOT") {
             Ok(x) => {
                 if self.is_fit_file {

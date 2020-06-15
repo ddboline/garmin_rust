@@ -237,8 +237,11 @@ impl GarminConnectClient {
                                 .map(|datetime| DateTime::from_utc(datetime, Utc))?;
                         if start_time > max_timestamp {
                             debug!("{} {}", activity_id, start_time);
-                            let fname =
-                                format!("{}/Downloads/{}.zip", self.config.home_dir, activity_id);
+                            let fname = self
+                                .config
+                                .home_dir
+                                .join("Downloads")
+                                .join(format!("{}.zip", activity_id));
                             let url: Url = format!(
                                 "{}/{}/{}",
                                 "https://connect.garmin.com",
@@ -258,7 +261,7 @@ impl GarminConnectClient {
                                 f.write_all(&item?).await?;
                             }
 
-                            entries.push(fname);
+                            entries.push(fname.to_string_lossy().to_string());
                         } else {
                             debug!("Returning {} results", entries.len());
                             return Ok(entries);

@@ -106,8 +106,7 @@ impl GarminSummary {
             .file_name()
             .ok_or_else(|| format_err!("Failed to split filename {:?}", filename))?
             .to_string_lossy();
-
-        let cache_file = cache_dir.join(format!("{}.avro", file_name));
+        let cache_file = cache_dir.join(file_name.as_ref()).with_extension("avro");
 
         debug!("Get md5sum {} ", file_name);
         let md5sum = get_md5sum(&filename)?;
@@ -197,13 +196,11 @@ impl GarminSummaryList {
             .into_par_iter()
             .map(|input_file| {
                 debug!("Process {:?}", &input_file);
-                let cache_file = cache_dir.join(format!(
-                    "{}.avro",
-                    input_file
-                        .file_name()
-                        .ok_or_else(|| format_err!("Failed to split input_file {:?}", input_file))?
-                        .to_string_lossy()
-                ));
+                let cache_file = cache_dir
+                    .join(input_file.file_name().ok_or_else(|| {
+                        format_err!("Failed to split input_file {:?}", input_file)
+                    })?)
+                    .with_extension("avro");
                 let md5sum = get_md5sum(&input_file)?;
                 let gfile = GarminParse::new().with_file(&input_file, &corr_map)?;
                 match gfile.laps.get(0) {
@@ -287,8 +284,9 @@ impl GarminSummaryList {
         self.summary_list
             .par_iter()
             .map(|gsum| {
-                let summary_avro_fname =
-                    summary_cache_dir.join(format!("{}.summary.avro", gsum.filename));
+                let summary_avro_fname = summary_cache_dir
+                    .join(gsum.filename.as_str())
+                    .with_extension("summary.avro");
                 let single_summary = Self::from_vec(&self.pool, vec![gsum.clone()]);
                 single_summary.dump_summary_to_avro(&summary_avro_fname)
             })

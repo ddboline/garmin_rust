@@ -156,11 +156,10 @@ pub fn extract_zip_from_garmin_connect(
     filename: &Path,
     ziptmpdir: &Path,
 ) -> Result<PathBuf, Error> {
-    let new_filename = filename
+    let new_filename = filename.with_extension("fit");
+    let new_filename = new_filename
         .file_name()
-        .ok_or_else(|| format_err!("Bad filename"))?
-        .to_string_lossy();
-    let new_filename = new_filename.replace(".zip", ".fit");
+        .ok_or_else(|| format_err!("Bad filename"))?;
     let command = format!(
         "unzip {} -d {}",
         filename.to_string_lossy(),

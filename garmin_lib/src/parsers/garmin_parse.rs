@@ -29,17 +29,12 @@ impl GarminParseTrait for GarminParse {
         filename: &Path,
         corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
     ) -> Result<GarminFile, Error> {
-        match filename.extension() {
-            Some(x) => match x.to_str() {
-                Some("txt") => GarminParseTxt::new().with_file(filename, corr_map),
-                Some("fit") => GarminParseTcx::new(true).with_file(filename, corr_map),
-                Some("tcx") | Some("TCX") => {
-                    GarminParseTcx::new(false).with_file(filename, corr_map)
-                }
-                Some("gmn") => GarminParseGmn::new().with_file(filename, corr_map),
-                _ => Err(format_err!("Invalid extension")),
-            },
-            _ => Err(format_err!("No extension?")),
+        match filename.extension().map(|x| x.to_str()).flatten() {
+            Some("txt") => GarminParseTxt::new().with_file(filename, corr_map),
+            Some("fit") => GarminParseTcx::new(true).with_file(filename, corr_map),
+            Some("tcx") | Some("TCX") => GarminParseTcx::new(false).with_file(filename, corr_map),
+            Some("gmn") => GarminParseGmn::new().with_file(filename, corr_map),
+            _ => Err(format_err!("Invalid extension")),
         }
     }
 

@@ -46,7 +46,8 @@ impl SheetsClient {
             .ok_or_else(|| format_err!("ConsoleApplicationSecret.installed is None"))?;
         let token_file = config
             .google_token_path
-            .join(format!("{}.json", session_name));
+            .join(session_name)
+            .with_extension("json");
 
         let parent = &config.google_token_path;
 

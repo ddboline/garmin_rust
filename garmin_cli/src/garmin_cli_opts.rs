@@ -72,10 +72,10 @@ impl GarminCliOpts {
             let client = FitbitClient::with_auth(config.clone()).await?;
             let start_date = (Utc::now() - Duration::days(10)).naive_utc().date();
             for (start_time, tcx_url) in client.get_tcx_urls(start_date).await? {
-                let fname = config.gps_dir.join(format!(
-                    "{}.tcx",
-                    start_time.format("%Y-%m-%d_%H-%M-%S_1_1").to_string()
-                ));
+                let fname = config
+                    .gps_dir
+                    .join(start_time.format("%Y-%m-%d_%H-%M-%S_1_1").to_string())
+                    .with_extension("tcx");
                 if !fname.exists() {
                     let data = client.download_tcx(&tcx_url).await?;
                     tokio::fs::write(&fname, &data).await?;

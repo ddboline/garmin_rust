@@ -442,10 +442,11 @@ impl HandleRequest<FitbitTcxSyncRequest> for PgPool {
             .await?
             .into_iter()
             .filter_map(|(start_time, tcx_url)| {
-                let fname = client.config.gps_dir.join(format!(
-                    "{}.tcx",
-                    start_time.format("%Y-%m-%d_%H-%M-%S_1_1").to_string()
-                ));
+                let fname = client
+                    .config
+                    .gps_dir
+                    .join(start_time.format("%Y-%m-%d_%H-%M-%S_1_1").to_string())
+                    .with_extension("tcx");
                 if fname.exists() {
                     None
                 } else {
@@ -845,10 +846,14 @@ impl HandleRequest<AddGarminCorrectionRequest> for PgPool {
 
         corr_list.dump_corrections_to_db().await?;
 
-        let cache_path = CONFIG.cache_dir.join(&format!("{}.avro", filename));
+        let cache_path = CONFIG
+            .cache_dir
+            .join(filename.as_str())
+            .with_extension("avro");
         let summary_path = CONFIG
             .summary_cache
-            .join(&format!("{}.summary.avro", filename));
+            .join(filename.as_str())
+            .with_extension("summary.avro");
         remove_file(cache_path).await?;
         remove_file(summary_path).await?;
 

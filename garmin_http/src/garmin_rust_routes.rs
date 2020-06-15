@@ -555,7 +555,7 @@ pub async fn garmin_get_hr_data(
         1 => {
             let config = &CONFIG;
             let file_name = &file_list[0];
-            let avro_file = config.cache_dir.join(format!("{}.avro", file_name));
+            let avro_file = config.cache_dir.join(file_name).with_extension("avro");
             let a = avro_file.clone();
 
             if let Ok(g) = spawn_blocking(move || GarminFile::read_avro(&a)).await? {
@@ -617,7 +617,7 @@ pub async fn garmin_get_hr_pace(
         1 => {
             let config = &CONFIG;
             let file_name = &file_list[0];
-            let avro_file = config.cache_dir.join(format!("{}.avro", file_name));
+            let avro_file = config.cache_dir.join(file_name).with_extension("avro");
 
             let gfile = if let Ok(g) =
                 spawn_blocking(move || GarminFile::read_avro(&avro_file)).await?

@@ -5,6 +5,7 @@ use lazy_static::lazy_static;
 use log::debug;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use regex::Regex;
+use std::ffi::OsStr;
 use std::{
     collections::{HashMap, HashSet},
     fs::{copy, rename},
@@ -416,7 +417,8 @@ impl GarminCli {
                 let avro_file = self
                     .get_config()
                     .cache_dir
-                    .join(format!("{}.avro", file_name));
+                    .join(file_name)
+                    .with_extension("avro");
 
                 let gfile =
                     if let Ok(g) = garmin_file::GarminFile::read_avro_async(&avro_file).await {
@@ -544,11 +546,11 @@ impl GarminCli {
                 .into_par_iter()
                 .map(|filename| {
                     assert!(filename.exists(), "No such file");
-                    let suffix = match filename.extension().map(|s| s.to_str()) {
-                        Some(Some("fit")) => "fit",
-                        Some(Some("tcx")) => "tcx",
-                        Some(Some("txt")) => "txt",
-                        Some(Some("gmn")) => "gmn",
+                    let suffix = match filename.extension().map(OsStr::to_str).flatten() {
+                        Some("fit") => "fit",
+                        Some("tcx") => "tcx",
+                        Some("txt") => "txt",
+                        Some("gmn") => "gmn",
                         _ => return Err(format_err!("Bad filename {:?}", filename)),
                     };
                     let gfile = GarminParse::new().with_file(&filename, &HashMap::new())?;

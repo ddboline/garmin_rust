@@ -241,7 +241,8 @@ impl GarminConnectClient {
                                 .config
                                 .home_dir
                                 .join("Downloads")
-                                .join(format!("{}.zip", activity_id));
+                                .join(activity_id.to_string())
+                                .with_extension("zip");
                             let url: Url = format!(
                                 "{}/{}/{}",
                                 "https://connect.garmin.com",

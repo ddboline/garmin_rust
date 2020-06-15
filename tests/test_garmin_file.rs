@@ -1,7 +1,9 @@
 use anyhow::Error;
 use approx::assert_abs_diff_eq;
-use std::io::{stdout, Write};
-use std::path::Path;
+use std::{
+    io::{stdout, Write},
+    path::Path,
+};
 
 use garmin_lib::{
     common::{garmin_correction_lap::GarminCorrectionList, garmin_file, pgpool::PgPool},

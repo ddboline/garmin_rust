@@ -3,8 +3,7 @@ use avro_rs::{from_value, Codec, Reader, Schema, Writer};
 use chrono::{DateTime, Utc};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use std::path::Path;
-use std::{collections::HashMap, fs::File};
+use std::{collections::HashMap, fs::File, path::Path};
 use tokio::task::spawn_blocking;
 
 use crate::utils::{

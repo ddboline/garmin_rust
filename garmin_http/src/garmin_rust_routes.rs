@@ -36,12 +36,13 @@ use crate::{
         FitbitCallbackRequest, FitbitHeartrateApiRequest, FitbitHeartrateCacheRequest,
         FitbitHeartratePlotRequest, FitbitProfileRequest, FitbitRefreshRequest,
         FitbitStatisticsPlotRequest, FitbitSyncRequest, FitbitTcxSyncRequest,
-        GarminConnectHrApiRequest, GarminConnectHrSyncRequest, GarminConnectSyncRequest,
-        GarminCorrRequest, GarminHtmlRequest, GarminListRequest, GarminSyncRequest,
-        GarminUploadRequest, HandleRequest, ScaleMeasurementPlotRequest, ScaleMeasurementRequest,
-        ScaleMeasurementUpdateRequest, StravaActiviesDBUpdateRequest, StravaActivitiesDBRequest,
-        StravaActivitiesRequest, StravaAthleteRequest, StravaAuthRequest, StravaCallbackRequest,
-        StravaRefreshRequest, StravaSyncRequest, StravaUpdateRequest, StravaUploadRequest,
+        GarminConnectActivitiesRequest, GarminConnectHrApiRequest, GarminConnectHrSyncRequest,
+        GarminConnectSyncRequest, GarminCorrRequest, GarminHtmlRequest, GarminListRequest,
+        GarminSyncRequest, GarminUploadRequest, HandleRequest, ScaleMeasurementPlotRequest,
+        ScaleMeasurementRequest, ScaleMeasurementUpdateRequest, StravaActiviesDBUpdateRequest,
+        StravaActivitiesDBRequest, StravaActivitiesRequest, StravaAthleteRequest,
+        StravaAuthRequest, StravaCallbackRequest, StravaRefreshRequest, StravaSyncRequest,
+        StravaUpdateRequest, StravaUploadRequest,
     },
     CONFIG,
 };
@@ -685,5 +686,15 @@ pub async fn strava_athlete(_: LoggedUser, state: Data<AppState>) -> Result<Http
 
 pub async fn fitbit_profile(_: LoggedUser, state: Data<AppState>) -> Result<HttpResponse, Error> {
     let result = state.db.handle(FitbitProfileRequest {}).await?;
+    to_json(result)
+}
+
+pub async fn garmin_connect_activities(
+    query: Query<GarminConnectActivitiesRequest>,
+    _: LoggedUser,
+    state: Data<AppState>,
+) -> Result<HttpResponse, Error> {
+    let query = query.into_inner();
+    let result = state.db.handle(query).await?;
     to_json(result)
 }

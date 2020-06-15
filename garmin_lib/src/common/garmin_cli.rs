@@ -5,9 +5,9 @@ use lazy_static::lazy_static;
 use log::debug;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use regex::Regex;
-use std::ffi::OsStr;
 use std::{
     collections::{HashMap, HashSet},
+    ffi::OsStr,
     fs::{copy, rename},
     path::{Path, PathBuf},
     sync::Arc,
@@ -572,10 +572,10 @@ impl GarminCli {
         .await?
     }
 
-    pub async fn sync_with_garmin_connect(&self) -> Result<Vec<String>, Error> {
+    pub async fn sync_with_garmin_connect(&self) -> Result<Vec<PathBuf>, Error> {
         if let Some(max_datetime) = get_maximum_begin_datetime(&self.pool).await? {
             let session = GarminConnectClient::get_session(self.config.clone()).await?;
-            let filenames = session.get_activities(max_datetime).await?;
+            let filenames = session.get_activity_files(max_datetime).await?;
             session
                 .get_heartrate((Utc::now()).naive_local().date())
                 .await?;

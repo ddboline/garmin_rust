@@ -25,7 +25,7 @@ use strava_lib::strava_client::{StravaActivity, StravaAthlete, StravaClient};
 use garmin_lib::{
     common::{
         garmin_cli::{GarminCli, GarminRequest},
-        garmin_connect_client::GarminConnectClient,
+        garmin_connect_client::{GarminConnectActivity, GarminConnectClient},
         garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList},
         garmin_summary::{get_list_of_files_from_db, get_maximum_begin_datetime},
         pgpool::PgPool,
@@ -167,13 +167,13 @@ pub struct GarminConnectSyncRequest {}
 
 #[async_trait]
 impl HandleRequest<GarminConnectSyncRequest> for PgPool {
-    type Result = Result<Vec<String>, Error>;
+    type Result = Result<Vec<PathBuf>, Error>;
     async fn handle(&self, _: GarminConnectSyncRequest) -> Self::Result {
         let gcli = GarminCli::from_pool(&self)?;
 
         let filenames = if let Some(max_datetime) = get_maximum_begin_datetime(self).await? {
             let session = get_garmin_connect_session().await?;
-            let filenames = session.get_activities(max_datetime).await?;
+            let filenames = session.get_activity_files(max_datetime).await?;
             gcli.process_filenames(&filenames).await?;
             gcli.proc_everything().await?;
             filenames
@@ -892,6 +892,30 @@ impl HandleRequest<FitbitActivitiesRequest> for PgPool {
             .unwrap_or_else(|| (Utc::now() - Duration::days(14)).naive_local().date());
         client
             .get_all_activities(start_date)
+            .await
+            .map_err(Into::into)
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct GarminConnectActivitiesRequest {
+    pub start_date: Option<NaiveDate>,
+}
+
+#[async_trait]
+impl HandleRequest<GarminConnectActivitiesRequest> for PgPool {
+    type Result = Result<Vec<GarminConnectActivity>, Error>;
+    async fn handle(&self, req: GarminConnectActivitiesRequest) -> Self::Result {
+        let start_date = req
+            .start_date
+            .unwrap_or_else(|| (Utc::now() - Duration::days(14)).naive_local().date());
+        let start_datetime = DateTime::from_utc(
+            NaiveDateTime::new(start_date, NaiveTime::from_hms(0, 0, 0)),
+            Utc,
+        );
+        let session = get_garmin_connect_session().await?;
+        session
+            .get_activities(start_datetime)
             .await
             .map_err(Into::into)
     }

@@ -833,13 +833,15 @@ mod tests {
         let results = client.get_tcx_urls(start_date).await?;
         debug!("{:?}", results);
         for (start_time, tcx_url) in results {
-            let fname = config.gps_dir.join(format!(
-                "{}.tcx",
-                start_time
-                    .with_timezone(&Local)
-                    .format("%Y-%m-%d_%H-%M-%S_1_1")
-                    .to_string()
-            ));
+            let fname = config
+                .gps_dir
+                .join(
+                    start_time
+                        .with_timezone(&Local)
+                        .format("%Y-%m-%d_%H-%M-%S_1_1")
+                        .to_string(),
+                )
+                .with_extension("tcx");
             if fname.exists() {
                 debug!("{:?} exists", fname);
             } else {

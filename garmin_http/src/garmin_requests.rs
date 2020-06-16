@@ -289,8 +289,8 @@ impl HandleRequest<FitbitRefreshRequest> for PgPool {
 
 #[derive(Deserialize)]
 pub struct FitbitCallbackRequest {
-    code: String,
-    state: String,
+    code: StackString,
+    state: StackString,
 }
 
 #[async_trait]
@@ -660,8 +660,8 @@ impl HandleRequest<StravaRefreshRequest> for PgPool {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StravaCallbackRequest {
-    pub code: String,
-    pub state: String,
+    pub code: StackString,
+    pub state: StackString,
 }
 
 #[async_trait]
@@ -741,10 +741,10 @@ impl HandleRequest<StravaActiviesDBUpdateRequest> for PgPool {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StravaUploadRequest {
-    pub filename: String,
-    pub title: String,
-    pub activity_type: String,
-    pub description: Option<String>,
+    pub filename: StackString,
+    pub title: StackString,
+    pub activity_type: StackString,
+    pub description: Option<StackString>,
     pub is_private: Option<bool>,
 }
 
@@ -761,7 +761,7 @@ impl HandleRequest<StravaUploadRequest> for PgPool {
             .upload_strava_activity(
                 &Path::new(msg.filename.as_str()),
                 &msg.title,
-                msg.description.as_ref().map_or("", String::as_str),
+                msg.description.as_ref().map_or("", StackString::as_str),
             )
             .await
             .map(|id| format!("http://strava.com/activities/{}", id))
@@ -772,9 +772,9 @@ impl HandleRequest<StravaUploadRequest> for PgPool {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StravaUpdateRequest {
     pub activity_id: u64,
-    pub title: String,
-    pub activity_type: String,
-    pub description: Option<String>,
+    pub title: StackString,
+    pub activity_type: StackString,
+    pub description: Option<StackString>,
     pub is_private: Option<bool>,
 }
 

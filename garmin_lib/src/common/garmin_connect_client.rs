@@ -8,8 +8,7 @@ use reqwest::{
     Url,
 };
 use serde::{Deserialize, Deserializer, Serialize};
-use serde_json::Value;
-use std::{collections::HashMap, path::PathBuf, thread::sleep, time::Duration};
+use std::{path::PathBuf, thread::sleep, time::Duration};
 use tokio::{fs::File, io::AsyncWriteExt, stream::StreamExt};
 
 use super::{garmin_config::GarminConfig, reqwest_session::ReqwestSession};

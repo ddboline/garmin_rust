@@ -98,21 +98,21 @@ impl GarminSummary {
     }
 
     pub fn process_single_gps_file(
-        filename: &Path,
+        filepath: &Path,
         cache_dir: &Path,
         corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
     ) -> Result<Self, Error> {
-        let file_name = filename
+        let filename = filepath
             .file_name()
-            .ok_or_else(|| format_err!("Failed to split filename {:?}", filename))?
+            .ok_or_else(|| format_err!("Failed to split filename {:?}", filepath))?
             .to_string_lossy();
-        let cache_file = cache_dir.join(file_name.as_ref()).with_extension("avro");
+        let cache_file = cache_dir.join(filename.as_ref()).with_extension("avro");
 
-        debug!("Get md5sum {} ", file_name);
-        let md5sum = get_md5sum(&filename)?;
+        debug!("Get md5sum {} ", filename);
+        let md5sum = get_md5sum(&filepath)?;
 
-        debug!("{} Found md5sum {} ", file_name, md5sum);
-        let gfile = GarminParse::new().with_file(&filename, &corr_map)?;
+        debug!("{} Found md5sum {} ", filename, md5sum);
+        let gfile = GarminParse::new().with_file(&filepath, &corr_map)?;
 
         match gfile.laps.get(0) {
             Some(l) if l.lap_start == sentinel_datetime() => {
@@ -122,7 +122,7 @@ impl GarminSummary {
             None => return Err(format_err!("{} has no laps?", gfile.filename)),
         };
         gfile.dump_avro(&cache_file)?;
-        debug!("{:?} Found md5sum {} success", filename, md5sum);
+        debug!("{:?} Found md5sum {} success", filepath, md5sum);
         Ok(Self::new(&gfile, &md5sum))
     }
 }

@@ -533,7 +533,7 @@ impl GarminCli {
 
             let filenames: Result<Vec<_>, Error> = filenames
                 .iter()
-                .map(|filename| match filename.extension().map(|s| s.to_str()) {
+                .map(|filename| match filename.extension().map(OsStr::to_str) {
                     Some(Some("zip")) => extract_zip_from_garmin_connect(filename, ziptmpdir),
                     Some(Some("fit")) | Some(Some("tcx")) | Some(Some("txt")) => {
                         Ok(filename.to_path_buf())
@@ -546,7 +546,7 @@ impl GarminCli {
                 .into_par_iter()
                 .map(|filename| {
                     assert!(filename.exists(), "No such file");
-                    let suffix = match filename.extension().map(OsStr::to_str).flatten() {
+                    let suffix = match filename.extension().and_then(OsStr::to_str) {
                         Some("fit") => "fit",
                         Some("tcx") => "tcx",
                         Some("txt") => "txt",

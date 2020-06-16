@@ -1,6 +1,6 @@
 use anyhow::{format_err, Error};
 use chrono::{DateTime, Utc};
-use std::{collections::HashMap, path::Path};
+use std::{collections::HashMap, ffi::OsStr, path::Path};
 
 use crate::{
     common::{
@@ -29,7 +29,7 @@ impl GarminParseTrait for GarminParse {
         filename: &Path,
         corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
     ) -> Result<GarminFile, Error> {
-        match filename.extension().map(|x| x.to_str()).flatten() {
+        match filename.extension().and_then(OsStr::to_str) {
             Some("txt") => GarminParseTxt::new().with_file(filename, corr_map),
             Some("fit") => GarminParseTcx::new(true).with_file(filename, corr_map),
             Some("tcx") | Some("TCX") => GarminParseTcx::new(false).with_file(filename, corr_map),

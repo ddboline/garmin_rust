@@ -3,7 +3,7 @@ use avro_rs::{from_value, Codec, Reader, Schema, Writer};
 use chrono::{DateTime, Utc};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fs::File};
+use std::{collections::HashMap, fs::File, path::Path};
 use tokio::task::spawn_blocking;
 
 use crate::utils::{
@@ -98,7 +98,7 @@ impl GarminFile {
         )
     }
 
-    pub fn dump_avro(&self, output_filename: &str) -> Result<(), Error> {
+    pub fn dump_avro(&self, output_filename: &Path) -> Result<(), Error> {
         let schema =
             Schema::parse_str(&GARMIN_FILE_AVRO_SCHEMA).map_err(|e| format_err!("{}", e))?;
 
@@ -112,12 +112,12 @@ impl GarminFile {
             .map_err(|e| format_err!("{}", e))
     }
 
-    pub async fn read_avro_async(input_filename: &str) -> Result<Self, Error> {
+    pub async fn read_avro_async(input_filename: &Path) -> Result<Self, Error> {
         let input_filename = input_filename.to_owned();
         spawn_blocking(move || Self::read_avro(&input_filename)).await?
     }
 
-    pub fn read_avro(input_filename: &str) -> Result<Self, Error> {
+    pub fn read_avro(input_filename: &Path) -> Result<Self, Error> {
         let input_file = File::open(input_filename)?;
 
         let mut reader = Reader::new(input_file).map_err(|e| format_err!("{}", e))?;
@@ -129,14 +129,14 @@ impl GarminFile {
         Err(format_err!("Failed to find file"))
     }
 
-    pub fn get_standardized_name(&self, suffix: &str) -> Result<String, Error> {
-        Ok(format!(
+    pub fn get_standardized_name(&self, suffix: &str) -> String {
+        format!(
             "{}.{}",
             self.begin_datetime
                 .format("%Y-%m-%d_%H-%M-%S_1_1")
                 .to_string(),
             suffix
-        ))
+        )
     }
 }
 

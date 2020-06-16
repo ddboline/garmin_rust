@@ -27,7 +27,7 @@ use tokio_postgres::types::{FromSql, IsNull, ToSql, Type};
     PartialOrd,
     Ord,
 )]
-#[serde(into = "String", from = "&str")]
+#[serde(into = "String", from = "String")]
 pub struct StackString(InlinableString);
 
 impl StackString {

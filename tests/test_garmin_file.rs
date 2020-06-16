@@ -1,6 +1,9 @@
 use anyhow::Error;
 use approx::assert_abs_diff_eq;
-use std::io::{stdout, Write};
+use std::{
+    io::{stdout, Write},
+    path::Path,
+};
 
 use garmin_lib::{
     common::{garmin_correction_lap::GarminCorrectionList, garmin_file, pgpool::PgPool},
@@ -15,9 +18,9 @@ fn test_garmin_file_test_avro() -> Result<(), Error> {
     let corr_list =
         GarminCorrectionList::corr_list_from_json(&pool, "tests/data/garmin_corrections.json")?;
     let corr_map = corr_list.get_corr_list_map();
-    let gfile =
-        garmin_parse_tcx::GarminParseTcx::new(true).with_file("tests/data/test.fit", &corr_map)?;
-    match gfile.dump_avro("temp.avro.gz") {
+    let gfile = garmin_parse_tcx::GarminParseTcx::new(true)
+        .with_file(Path::new("tests/data/test.fit"), &corr_map)?;
+    match gfile.dump_avro(Path::new("temp.avro.gz")) {
         Ok(()) => {
             writeln!(stdout(), "Success")?;
         }
@@ -26,7 +29,7 @@ fn test_garmin_file_test_avro() -> Result<(), Error> {
         }
     }
 
-    match garmin_file::GarminFile::read_avro("temp.avro.gz") {
+    match garmin_file::GarminFile::read_avro(Path::new("temp.avro.gz")) {
         Ok(g) => {
             writeln!(stdout(), "Success")?;
             assert_eq!(gfile.sport, g.sport);

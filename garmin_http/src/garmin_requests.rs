@@ -8,7 +8,7 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
-    path::Path,
+    path::{Path, PathBuf},
     sync::Arc,
 };
 use tokio::{fs::remove_file, sync::RwLock, task::spawn_blocking};
@@ -25,7 +25,7 @@ use strava_lib::strava_client::{StravaActivity, StravaAthlete, StravaClient};
 use garmin_lib::{
     common::{
         garmin_cli::{GarminCli, GarminRequest},
-        garmin_connect_client::GarminConnectClient,
+        garmin_connect_client::{GarminConnectActivity, GarminConnectClient},
         garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList},
         garmin_summary::{get_list_of_files_from_db, get_maximum_begin_datetime},
         pgpool::PgPool,
@@ -117,12 +117,12 @@ impl HandleRequest<GarminListRequest> for PgPool {
 
 #[derive(Serialize, Deserialize)]
 pub struct GarminUploadRequest {
-    pub filename: StackString,
+    pub filename: PathBuf,
 }
 
 #[async_trait]
 impl HandleRequest<GarminUploadRequest> for PgPool {
-    type Result = Result<Vec<StackString>, Error>;
+    type Result = Result<Vec<PathBuf>, Error>;
     async fn handle(&self, req: GarminUploadRequest) -> Self::Result {
         let gcli = GarminCli::from_pool(&self)?;
         let filenames = vec![req.filename];
@@ -167,13 +167,13 @@ pub struct GarminConnectSyncRequest {}
 
 #[async_trait]
 impl HandleRequest<GarminConnectSyncRequest> for PgPool {
-    type Result = Result<Vec<String>, Error>;
+    type Result = Result<Vec<PathBuf>, Error>;
     async fn handle(&self, _: GarminConnectSyncRequest) -> Self::Result {
         let gcli = GarminCli::from_pool(&self)?;
 
         let filenames = if let Some(max_datetime) = get_maximum_begin_datetime(self).await? {
             let session = get_garmin_connect_session().await?;
-            let filenames = session.get_activities(max_datetime).await?;
+            let filenames = session.get_activity_files(max_datetime).await?;
             gcli.process_filenames(&filenames).await?;
             gcli.proc_everything().await?;
             filenames
@@ -289,8 +289,8 @@ impl HandleRequest<FitbitRefreshRequest> for PgPool {
 
 #[derive(Deserialize)]
 pub struct FitbitCallbackRequest {
-    code: String,
-    state: String,
+    code: StackString,
+    state: StackString,
 }
 
 #[async_trait]
@@ -428,7 +428,7 @@ pub struct FitbitTcxSyncRequest {
 
 #[async_trait]
 impl HandleRequest<FitbitTcxSyncRequest> for PgPool {
-    type Result = Result<Vec<String>, Error>;
+    type Result = Result<Vec<PathBuf>, Error>;
     async fn handle(&self, msg: FitbitTcxSyncRequest) -> Self::Result {
         let config = CONFIG.clone();
         let client = Arc::new(FitbitClient::with_auth(config).await?);
@@ -442,12 +442,12 @@ impl HandleRequest<FitbitTcxSyncRequest> for PgPool {
             .await?
             .into_iter()
             .filter_map(|(start_time, tcx_url)| {
-                let fname = format!(
-                    "{}/{}.tcx",
-                    client.config.gps_dir,
-                    start_time.format("%Y-%m-%d_%H-%M-%S_1_1").to_string(),
-                );
-                if Path::new(&fname).exists() {
+                let fname = client
+                    .config
+                    .gps_dir
+                    .join(start_time.format("%Y-%m-%d_%H-%M-%S_1_1").to_string())
+                    .with_extension("tcx");
+                if fname.exists() {
                     None
                 } else {
                     Some((fname, tcx_url))
@@ -660,8 +660,8 @@ impl HandleRequest<StravaRefreshRequest> for PgPool {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StravaCallbackRequest {
-    pub code: String,
-    pub state: String,
+    pub code: StackString,
+    pub state: StackString,
 }
 
 #[async_trait]
@@ -741,10 +741,10 @@ impl HandleRequest<StravaActiviesDBUpdateRequest> for PgPool {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StravaUploadRequest {
-    pub filename: String,
-    pub title: String,
-    pub activity_type: String,
-    pub description: Option<String>,
+    pub filename: StackString,
+    pub title: StackString,
+    pub activity_type: StackString,
+    pub description: Option<StackString>,
     pub is_private: Option<bool>,
 }
 
@@ -761,7 +761,7 @@ impl HandleRequest<StravaUploadRequest> for PgPool {
             .upload_strava_activity(
                 &Path::new(msg.filename.as_str()),
                 &msg.title,
-                msg.description.as_ref().map_or("", String::as_str),
+                msg.description.as_ref().map_or("", StackString::as_str),
             )
             .await
             .map(|id| format!("http://strava.com/activities/{}", id))
@@ -772,9 +772,9 @@ impl HandleRequest<StravaUploadRequest> for PgPool {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StravaUpdateRequest {
     pub activity_id: u64,
-    pub title: String,
-    pub activity_type: String,
-    pub description: Option<String>,
+    pub title: StackString,
+    pub activity_type: StackString,
+    pub description: Option<StackString>,
     pub is_private: Option<bool>,
 }
 
@@ -846,9 +846,14 @@ impl HandleRequest<AddGarminCorrectionRequest> for PgPool {
 
         corr_list.dump_corrections_to_db().await?;
 
-        let cache_path = Path::new(CONFIG.cache_dir.as_str()).join(&format!("{}.avro", filename));
-        let summary_path =
-            Path::new(CONFIG.summary_cache.as_str()).join(&format!("{}.summary.avro", filename));
+        let cache_path = CONFIG
+            .cache_dir
+            .join(filename.as_str())
+            .with_extension("avro");
+        let summary_path = CONFIG
+            .summary_cache
+            .join(filename.as_str())
+            .with_extension("summary.avro");
         remove_file(cache_path).await?;
         remove_file(summary_path).await?;
 
@@ -887,6 +892,30 @@ impl HandleRequest<FitbitActivitiesRequest> for PgPool {
             .unwrap_or_else(|| (Utc::now() - Duration::days(14)).naive_local().date());
         client
             .get_all_activities(start_date)
+            .await
+            .map_err(Into::into)
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct GarminConnectActivitiesRequest {
+    pub start_date: Option<NaiveDate>,
+}
+
+#[async_trait]
+impl HandleRequest<GarminConnectActivitiesRequest> for PgPool {
+    type Result = Result<Vec<GarminConnectActivity>, Error>;
+    async fn handle(&self, req: GarminConnectActivitiesRequest) -> Self::Result {
+        let start_date = req
+            .start_date
+            .unwrap_or_else(|| (Utc::now() - Duration::days(14)).naive_local().date());
+        let start_datetime = DateTime::from_utc(
+            NaiveDateTime::new(start_date, NaiveTime::from_hms(0, 0, 0)),
+            Utc,
+        );
+        let session = get_garmin_connect_session().await?;
+        session
+            .get_activities(start_datetime)
             .await
             .map_err(Into::into)
     }

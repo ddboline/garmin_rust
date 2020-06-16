@@ -1,6 +1,6 @@
 use anyhow::{format_err, Error};
 use chrono::{DateTime, Utc};
-use std::{collections::HashMap, path::Path};
+use std::{collections::HashMap, ffi::OsStr, path::Path};
 
 use crate::{
     common::{
@@ -26,25 +26,19 @@ impl GarminParse {
 impl GarminParseTrait for GarminParse {
     fn with_file(
         self,
-        filename: &str,
+        filename: &Path,
         corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
     ) -> Result<GarminFile, Error> {
-        let file_path = Path::new(&filename);
-        match file_path.extension() {
-            Some(x) => match x.to_str() {
-                Some("txt") => GarminParseTxt::new().with_file(filename, corr_map),
-                Some("fit") => GarminParseTcx::new(true).with_file(filename, corr_map),
-                Some("tcx") | Some("TCX") => {
-                    GarminParseTcx::new(false).with_file(filename, corr_map)
-                }
-                Some("gmn") => GarminParseGmn::new().with_file(filename, corr_map),
-                _ => Err(format_err!("Invalid extension")),
-            },
-            _ => Err(format_err!("No extension?")),
+        match filename.extension().and_then(OsStr::to_str) {
+            Some("txt") => GarminParseTxt::new().with_file(filename, corr_map),
+            Some("fit") => GarminParseTcx::new(true).with_file(filename, corr_map),
+            Some("tcx") | Some("TCX") => GarminParseTcx::new(false).with_file(filename, corr_map),
+            Some("gmn") => GarminParseGmn::new().with_file(filename, corr_map),
+            _ => Err(format_err!("Invalid extension")),
         }
     }
 
-    fn parse_file(&self, _: &str) -> Result<ParseOutput, Error> {
+    fn parse_file(&self, _: &Path) -> Result<ParseOutput, Error> {
         Ok(ParseOutput::default())
     }
 }
@@ -62,9 +56,9 @@ where
 {
     fn with_file(
         self,
-        filename: &str,
+        filename: &Path,
         corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
     ) -> Result<GarminFile, Error>;
 
-    fn parse_file(&self, filename: &str) -> Result<ParseOutput, Error>;
+    fn parse_file(&self, filename: &Path) -> Result<ParseOutput, Error>;
 }

@@ -111,13 +111,11 @@ impl GarminSync {
     pub async fn sync_dir(
         &self,
         title: &str,
-        local_dir: &str,
+        local_dir: &Path,
         s3_bucket: &str,
         check_md5sum: bool,
     ) -> Result<Vec<String>, Error> {
-        let path = Path::new(local_dir);
-
-        let file_list: Result<Vec<_>, Error> = path
+        let file_list: Result<Vec<_>, Error> = local_dir
             .read_dir()?
             .filter_map(|dir_line| {
                 dir_line.ok().map(|entry| entry.path()).map(|f| {
@@ -127,7 +125,6 @@ impl GarminSync {
                         .duration_since(SystemTime::UNIX_EPOCH)?
                         .as_secs() as i64;
                     let size = metadata.len();
-                    let f: StackString = f.to_string_lossy().as_ref().into();
                     Ok((f, modified, size))
                 })
             })
@@ -135,7 +132,10 @@ impl GarminSync {
         let file_list = file_list?;
         let file_set: HashMap<StackString, _> = file_list
             .iter()
-            .filter_map(|(x, t, s)| x.split('/').last().map(|x| (x.into(), (*t, *s))))
+            .filter_map(|(f, t, s)| {
+                f.file_name()
+                    .map(|x| (x.to_string_lossy().as_ref().into(), (*t, *s)))
+            })
             .collect();
 
         let key_list = self.get_list_of_keys(s3_bucket).await?;
@@ -146,8 +146,8 @@ impl GarminSync {
         let uploaded: Vec<_> = file_list
             .into_par_iter()
             .filter_map(|(file, tmod, size)| {
-                let file_name: StackString = match file.split('/').last() {
-                    Some(x) => x.to_string().into(),
+                let file_name: StackString = match file.file_name() {
+                    Some(x) => x.to_string_lossy().as_ref().into(),
                     None => return None,
                 };
                 let mut do_upload = false;
@@ -203,19 +203,19 @@ impl GarminSync {
                         let (tmod_, size_) = file_set[&item.key];
                         if item.timestamp > tmod_ {
                             if check_md5sum {
-                                let file_name = format!("{}/{}", local_dir, item.key);
+                                let file_name = local_dir.join(item.key.as_str());
                                 let md5_ = get_md5sum(&file_name)?;
                                 if md5_.as_str() != item.etag.as_str() {
                                     debug!(
                                         "download md5 {} {} {} {} {} ",
                                         item.key, md5_, item.etag, item.timestamp, tmod_
                                     );
-                                    let file_name = format!("{}/{}", local_dir, item.key);
+                                    let file_name = local_dir.join(item.key.as_str());
                                     fs::remove_file(&file_name)?;
                                     do_download = true;
                                 }
                             } else if item.size > size_ {
-                                let file_name = format!("{}/{}", local_dir, item.key);
+                                let file_name = local_dir.join(item.key.as_str());
                                 debug!(
                                     "download size {} {} {} {} {}",
                                     item.key, size_, item.size, item.timestamp, tmod_
@@ -229,7 +229,7 @@ impl GarminSync {
                     };
 
                     if do_download {
-                        let file_name = format!("{}/{}", local_dir, item.key);
+                        let file_name = local_dir.join(item.key.as_str());
                         debug!("download {} {}", s3_bucket, item.key);
                         Ok(Some((file_name, item.key)))
                     } else {
@@ -263,7 +263,7 @@ impl GarminSync {
 
     pub async fn download_file(
         &self,
-        local_file: &str,
+        local_file: &Path,
         s3_bucket: &str,
         s3_key: &str,
     ) -> Result<String, Error> {
@@ -288,7 +288,7 @@ impl GarminSync {
 
     pub async fn upload_file(
         &self,
-        local_file: &str,
+        local_file: &Path,
         s3_bucket: &str,
         s3_key: &str,
     ) -> Result<(), Error> {
@@ -298,7 +298,7 @@ impl GarminSync {
 
     pub async fn upload_file_acl(
         &self,
-        local_file: &str,
+        local_file: &Path,
         s3_bucket: &str,
         s3_key: &str,
         acl: &Option<String>,

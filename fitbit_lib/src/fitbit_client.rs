@@ -85,7 +85,7 @@ impl FitbitClient {
             config,
             ..Self::default()
         };
-        let f = File::open(client.config.fitbit_tokenfile.as_str()).await?;
+        let f = File::open(&client.config.fitbit_tokenfile).await?;
         let mut b = BufReader::new(f);
         let mut line = String::new();
         loop {
@@ -109,7 +109,7 @@ impl FitbitClient {
     }
 
     pub async fn to_file(&self) -> Result<(), Error> {
-        let mut f = tokio::fs::File::create(self.config.fitbit_tokenfile.as_str()).await?;
+        let mut f = tokio::fs::File::create(&self.config.fitbit_tokenfile).await?;
         f.write_all(format!("user_id={}\n", self.user_id).as_bytes())
             .await?;
         f.write_all(format!("access_token={}\n", self.access_token).as_bytes())
@@ -808,7 +808,6 @@ mod tests {
     use anyhow::Error;
     use chrono::{Duration, Local, Utc};
     use log::debug;
-    use std::path::Path;
     use tempfile::NamedTempFile;
 
     use crate::fitbit_client::FitbitClient;
@@ -834,18 +833,19 @@ mod tests {
         let results = client.get_tcx_urls(start_date).await?;
         debug!("{:?}", results);
         for (start_time, tcx_url) in results {
-            let fname = format!(
-                "{}/{}.tcx",
-                config.gps_dir,
-                start_time
-                    .with_timezone(&Local)
-                    .format("%Y-%m-%d_%H-%M-%S_1_1")
-                    .to_string(),
-            );
-            if Path::new(&fname).exists() {
-                debug!("{} exists", fname);
+            let fname = config
+                .gps_dir
+                .join(
+                    start_time
+                        .with_timezone(&Local)
+                        .format("%Y-%m-%d_%H-%M-%S_1_1")
+                        .to_string(),
+                )
+                .with_extension("tcx");
+            if fname.exists() {
+                debug!("{:?} exists", fname);
             } else {
-                debug!("{} does not exist", fname);
+                debug!("{:?} does not exist", fname);
             }
 
             {

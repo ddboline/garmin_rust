@@ -9,7 +9,6 @@ use std::{
     collections::HashMap,
     fs::{create_dir_all, File},
     io::{stdout, Write},
-    path::Path,
     rc::Rc,
     sync::Arc,
 };
@@ -40,14 +39,17 @@ impl SheetsClient {
         config: &GarminConfig,
         session_name: &str,
     ) -> Result<GAuthenticator, Error> {
-        let secret_file = File::open(config.google_secret_file.as_str())?;
+        let secret_file = File::open(&config.google_secret_file)?;
         let secret: ConsoleApplicationSecret = serde_json::from_reader(secret_file)?;
         let secret = secret
             .installed
             .ok_or_else(|| format_err!("ConsoleApplicationSecret.installed is None"))?;
-        let token_file = format!("{}/{}.json", config.google_token_path, session_name);
+        let token_file = config
+            .google_token_path
+            .join(session_name)
+            .with_extension("json");
 
-        let parent = Path::new(config.google_token_path.as_str());
+        let parent = &config.google_token_path;
 
         if !parent.exists() {
             create_dir_all(parent)?;
@@ -57,7 +59,7 @@ impl SheetsClient {
             &secret,
             DefaultAuthenticatorDelegate,
             Client::with_connector(HttpsConnector::new(NativeTlsClient::new()?)),
-            DiskTokenStorage::new(&token_file)?,
+            DiskTokenStorage::new(&token_file.to_string_lossy().to_string())?,
             // Some(FlowType::InstalledInteractive),
             Some(FlowType::InstalledRedirect(8081)),
         );

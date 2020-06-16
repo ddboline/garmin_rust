@@ -1,14 +1,14 @@
 use anyhow::{format_err, Error};
 use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
+use futures::future::try_join_all;
 use log::debug;
 use maplit::hashmap;
 use reqwest::{
     header::{HeaderMap, HeaderName, HeaderValue},
     Url,
 };
-use serde::Deserialize;
-use serde_json::Value;
-use std::{collections::HashMap, thread::sleep, time::Duration};
+use serde::{Deserialize, Deserializer, Serialize};
+use std::{path::PathBuf, thread::sleep, time::Duration};
 use tokio::{fs::File, io::AsyncWriteExt, stream::StreamExt};
 
 use super::{garmin_config::GarminConfig, reqwest_session::ReqwestSession};
@@ -199,7 +199,10 @@ impl GarminConnectClient {
             .map_err(Into::into)
     }
 
-    pub async fn get_activities(&self, max_timestamp: DateTime<Utc>) -> Result<Vec<String>, Error> {
+    pub async fn get_activities(
+        &self,
+        max_timestamp: DateTime<Utc>,
+    ) -> Result<Vec<GarminConnectActivity>, Error> {
         let url_prefix = format!(
             "{}/proxy/activitylist-service/activities/search/activities",
             GARMIN_PREFIX
@@ -217,7 +220,7 @@ impl GarminConnectClient {
             )?;
             current_start += limit;
             debug!("Call {}", url);
-            let new_entries: Vec<HashMap<String, Value>> = self
+            let new_entries: Vec<GarminConnectActivity> = self
                 .session
                 .get(&url, &HeaderMap::new())
                 .await?
@@ -228,45 +231,54 @@ impl GarminConnectClient {
                 debug!("Empty result {} returning {} results", url, entries.len());
                 return Ok(entries);
             }
-            for entry in &new_entries {
-                if let Some(activity_id) = entry.get("activityId") {
-                    if let Some(start_time_gmt) = entry.get("startTimeGMT").and_then(Value::as_str)
-                    {
-                        let start_time: DateTime<Utc> =
-                            NaiveDateTime::parse_from_str(start_time_gmt, "%Y-%m-%d %H:%M:%S")
-                                .map(|datetime| DateTime::from_utc(datetime, Utc))?;
-                        if start_time > max_timestamp {
-                            debug!("{} {}", activity_id, start_time);
-                            let fname =
-                                format!("{}/Downloads/{}.zip", self.config.home_dir, activity_id);
-                            let url: Url = format!(
-                                "{}/{}/{}",
-                                "https://connect.garmin.com",
-                                "modern/proxy/download-service/files/activity",
-                                activity_id
-                            )
-                            .parse()?;
-                            let mut f = File::create(&fname).await?;
-                            let resp = self
-                                .session
-                                .get(&url, &HeaderMap::new())
-                                .await?
-                                .error_for_status()?;
-
-                            let mut stream = resp.bytes_stream();
-                            while let Some(item) = stream.next().await {
-                                f.write_all(&item?).await?;
-                            }
-
-                            entries.push(fname);
-                        } else {
-                            debug!("Returning {} results", entries.len());
-                            return Ok(entries);
-                        }
-                    }
+            for entry in new_entries {
+                if entry.start_time_gmt > max_timestamp {
+                    debug!("{} {}", entry.activity_id, entry.start_time_gmt);
+                    entries.push(entry);
+                } else {
+                    debug!("Returning {} results", entries.len());
+                    return Ok(entries);
                 }
             }
         }
+    }
+
+    pub async fn get_activity_files(
+        &self,
+        max_timestamp: DateTime<Utc>,
+    ) -> Result<Vec<PathBuf>, Error> {
+        let futures =
+            self.get_activities(max_timestamp)
+                .await?
+                .into_iter()
+                .map(|activity| async move {
+                    let fname = self
+                        .config
+                        .home_dir
+                        .join("Downloads")
+                        .join(activity.activity_id.to_string())
+                        .with_extension("zip");
+                    let url: Url = format!(
+                        "{}/{}/{}",
+                        "https://connect.garmin.com",
+                        "modern/proxy/download-service/files/activity",
+                        activity.activity_id
+                    )
+                    .parse()?;
+                    let mut f = File::create(&fname).await?;
+                    let resp = self
+                        .session
+                        .get(&url, &HeaderMap::new())
+                        .await?
+                        .error_for_status()?;
+
+                    let mut stream = resp.bytes_stream();
+                    while let Some(item) = stream.next().await {
+                        f.write_all(&item?).await?;
+                    }
+                    Ok(fname)
+                });
+        try_join_all(futures).await
     }
 }
 
@@ -274,4 +286,56 @@ impl GarminConnectClient {
 pub struct GarminConnectHrData {
     #[serde(rename = "heartRateValues")]
     pub heartrate_values: Option<Vec<(i64, Option<i32>)>>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GarminConnectActivity {
+    #[serde(rename = "activityId")]
+    activity_id: usize,
+    #[serde(rename = "activityName")]
+    activity_name: String,
+    description: Option<String>,
+    #[serde(rename = "startTimeGMT", deserialize_with = "deserialize_start_time")]
+    start_time_gmt: DateTime<Utc>,
+    distance: f64,
+    duration: f64,
+    #[serde(rename = "elapsedDuration")]
+    elapsed_duration: Option<f64>,
+    #[serde(rename = "movingDuration")]
+    moving_duration: Option<f64>,
+    steps: Option<usize>,
+    calories: Option<f64>,
+    #[serde(rename = "averageHR")]
+    average_hr: Option<f64>,
+    #[serde(rename = "maxHR")]
+    max_hr: Option<f64>,
+}
+
+pub fn deserialize_start_time<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    NaiveDateTime::parse_from_str(&s, "%Y-%m-%d %H:%M:%S")
+        .map(|datetime| DateTime::from_utc(datetime, Utc))
+        .map_err(serde::de::Error::custom)
+}
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Error;
+    use chrono::{Duration, Utc};
+
+    use crate::common::{garmin_config::GarminConfig, garmin_connect_client::GarminConnectClient};
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_get_activities() -> Result<(), Error> {
+        let config = GarminConfig::get_config(None)?;
+        let session = GarminConnectClient::get_session(config).await?;
+        let max_timestamp = Utc::now() - Duration::days(14);
+        let result = session.get_activities(max_timestamp).await?;
+        assert!(result.len() > 0);
+        Ok(())
+    }
 }

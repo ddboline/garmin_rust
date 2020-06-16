@@ -1,11 +1,14 @@
-use std::env::var;
+use std::path::Path;
 
-use garmin_lib::{common::garmin_config, utils::stack_string::StackString};
+use garmin_lib::common::garmin_config;
 
 #[test]
 fn test_garmin_config_new() {
-    let home_dir = var("HOME").unwrap_or_else(|_| "/tmp".to_string());
-    let default_gps_dir: StackString = format!("{}/.garmin_cache/run/gps_tracks", home_dir).into();
+    let home_dir = dirs::home_dir().unwrap();
+    let default_gps_dir = home_dir
+        .join(".garmin_cache")
+        .join("run")
+        .join("gps_tracks");
 
     let gc = garmin_config::GarminConfig::new();
 
@@ -25,5 +28,5 @@ fn test_garmin_config_get_config() {
         &gc.pgurl,
         "postgresql://test:test@localhost:5432/garmin_summary_test"
     );
-    assert_eq!(&gc.gps_dir, "/tmp/gps_dir");
+    assert_eq!(&gc.gps_dir, &Path::new("/tmp/gps_dir"));
 }

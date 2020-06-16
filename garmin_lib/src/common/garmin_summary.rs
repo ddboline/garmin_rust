@@ -98,24 +98,21 @@ impl GarminSummary {
     }
 
     pub fn process_single_gps_file(
-        filename: &str,
-        cache_dir: &str,
+        filepath: &Path,
+        cache_dir: &Path,
         corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
     ) -> Result<Self, Error> {
-        let cache_file = format!(
-            "{}/{}.avro",
-            cache_dir,
-            filename
-                .split('/')
-                .last()
-                .ok_or_else(|| format_err!("Failed to split filename {}", filename))?
-        );
+        let filename = filepath
+            .file_name()
+            .ok_or_else(|| format_err!("Failed to split filename {:?}", filepath))?
+            .to_string_lossy();
+        let cache_file = cache_dir.join(filename.as_ref()).with_extension("avro");
 
         debug!("Get md5sum {} ", filename);
-        let md5sum = get_md5sum(&filename)?;
+        let md5sum = get_md5sum(&filepath)?;
 
         debug!("{} Found md5sum {} ", filename, md5sum);
-        let gfile = GarminParse::new().with_file(&filename, &corr_map)?;
+        let gfile = GarminParse::new().with_file(&filepath, &corr_map)?;
 
         match gfile.laps.get(0) {
             Some(l) if l.lap_start == sentinel_datetime() => {
@@ -125,7 +122,7 @@ impl GarminSummary {
             None => return Err(format_err!("{} has no laps?", gfile.filename)),
         };
         gfile.dump_avro(&cache_file)?;
-        debug!("{} Found md5sum {} success", filename, md5sum);
+        debug!("{:?} Found md5sum {} success", filepath, md5sum);
         Ok(Self::new(&gfile, &md5sum))
     }
 }
@@ -189,8 +186,8 @@ impl GarminSummaryList {
 
     pub fn process_all_gps_files(
         pool: &PgPool,
-        gps_dir: &str,
-        cache_dir: &str,
+        gps_dir: &Path,
+        cache_dir: &Path,
         corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
     ) -> Result<Self, Error> {
         let path = Path::new(gps_dir);
@@ -198,21 +195,18 @@ impl GarminSummaryList {
         let gsum_result_list: Result<Vec<_>, Error> = get_file_list(&path)
             .into_par_iter()
             .map(|input_file| {
-                debug!("Process {}", &input_file);
-                let cache_file = format!(
-                    "{}/{}.avro",
-                    cache_dir,
-                    input_file
-                        .split('/')
-                        .last()
-                        .ok_or_else(|| format_err!("Failed to split input_file {}", input_file))?
-                );
+                debug!("Process {:?}", &input_file);
+                let cache_file = cache_dir
+                    .join(input_file.file_name().ok_or_else(|| {
+                        format_err!("Failed to split input_file {:?}", input_file)
+                    })?)
+                    .with_extension("avro");
                 let md5sum = get_md5sum(&input_file)?;
                 let gfile = GarminParse::new().with_file(&input_file, &corr_map)?;
                 match gfile.laps.get(0) {
                     Some(l) if l.lap_start == sentinel_datetime() => {
                         return Err(format_err!(
-                            "{} {} has empty lap start?",
+                            "{:?} {:?} has empty lap start?",
                             &input_file,
                             &gfile.filename
                         ));
@@ -220,7 +214,7 @@ impl GarminSummaryList {
                     Some(_) => (),
                     None => {
                         return Err(format_err!(
-                            "{} {} has no laps?",
+                            "{:?} {:?} has no laps?",
                             &input_file,
                             &gfile.filename
                         ));
@@ -272,7 +266,7 @@ impl GarminSummaryList {
         Ok(Self::from_vec(&self.pool, gsum_list?))
     }
 
-    pub fn dump_summary_to_avro(self, output_filename: &str) -> Result<(), Error> {
+    pub fn dump_summary_to_avro(self, output_filename: &Path) -> Result<(), Error> {
         let schema =
             Schema::parse_str(GARMIN_SUMMARY_AVRO_SCHEMA).map_err(|e| format_err!("{}", e))?;
 
@@ -286,12 +280,13 @@ impl GarminSummaryList {
             .map_err(|e| format_err!("{}", e))
     }
 
-    pub fn write_summary_to_avro_files(&self, summary_cache_dir: &str) -> Result<(), Error> {
+    pub fn write_summary_to_avro_files(&self, summary_cache_dir: &Path) -> Result<(), Error> {
         self.summary_list
             .par_iter()
             .map(|gsum| {
-                let summary_avro_fname =
-                    format!("{}/{}.summary.avro", &summary_cache_dir, &gsum.filename);
+                let summary_avro_fname = summary_cache_dir
+                    .join(gsum.filename.as_str())
+                    .with_extension("summary.avro");
                 let single_summary = Self::from_vec(&self.pool, vec![gsum.clone()]);
                 single_summary.dump_summary_to_avro(&summary_avro_fname)
             })

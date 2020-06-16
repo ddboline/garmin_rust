@@ -8,5 +8,8 @@ async fn main() -> Result<(), Error> {
     env_logger::init();
     let config = GarminConfig::get_config(None)?;
     let pool = PgPool::new(config.pgurl.as_str());
-    run_bot(config.telegram_bot_token.as_str(), pool).await
+    if let Some(telegram_bot_token) = config.telegram_bot_token.as_ref() {
+        run_bot(telegram_bot_token, pool).await?;
+    }
+    Ok(())
 }

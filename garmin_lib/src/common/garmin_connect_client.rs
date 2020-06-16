@@ -335,8 +335,7 @@ mod tests {
         let session = GarminConnectClient::get_session(config).await?;
         let max_timestamp = Utc::now() - Duration::days(14);
         let result = session.get_activities(max_timestamp).await?;
-        println!("{:#?}", result);
-        assert!(false);
+        assert!(result.len() > 0);
         Ok(())
     }
 }

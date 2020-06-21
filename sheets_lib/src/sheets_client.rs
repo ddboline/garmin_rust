@@ -171,23 +171,23 @@ fn measurement_from_row_data(row_data: &RowData) -> Result<ScaleMeasurement, Err
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::sheets_client::SheetsClient;
-    use garmin_lib::common::garmin_config::GarminConfig;
+// #[cfg(test)]
+// mod tests {
+//     use crate::sheets_client::SheetsClient;
+//     use garmin_lib::common::garmin_config::GarminConfig;
 
-    #[test]
-    #[ignore]
-    fn test_sheets_client() {
-        let config = GarminConfig::get_config(None).unwrap();
-        let c = SheetsClient::new(&config, "ddboline@gmail.com");
-        let (_, sheets) = c
-            .gsheets
-            .spreadsheets()
-            .get("1MG8so2pFKoOIpt0Vo9pUAtoNk-Y1SnHq9DiEFi-m5Uw")
-            .include_grid_data(true)
-            .doit()
-            .unwrap();
-        assert!(sheets.sheets.is_some());
-    }
-}
+//     #[test]
+//     #[ignore]
+//     fn test_sheets_client() {
+//         let config = GarminConfig::get_config(None).unwrap();
+//         let c = SheetsClient::new(&config, "ddboline@gmail.com");
+//         let (_, sheets) = c
+//             .gsheets
+//             .spreadsheets()
+//             .get("1MG8so2pFKoOIpt0Vo9pUAtoNk-Y1SnHq9DiEFi-m5Uw")
+//             .include_grid_data(true)
+//             .doit()
+//             .unwrap();
+//         assert!(sheets.sheets.is_some());
+//     }
+// }

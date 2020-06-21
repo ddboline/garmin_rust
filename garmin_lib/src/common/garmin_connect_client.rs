@@ -10,6 +10,7 @@ use reqwest::{
 use serde::{Deserialize, Deserializer, Serialize};
 use std::{path::PathBuf, thread::sleep, time::Duration};
 use tokio::{fs::File, io::AsyncWriteExt, stream::StreamExt};
+use postgres_query::FromSqlRow;
 
 use super::{garmin_config::GarminConfig, reqwest_session::ReqwestSession};
 
@@ -288,22 +289,22 @@ pub struct GarminConnectHrData {
     pub heartrate_values: Option<Vec<(i64, Option<i32>)>>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, FromSqlRow)]
 pub struct GarminConnectActivity {
     #[serde(rename = "activityId")]
-    activity_id: usize,
+    activity_id: i64,
     #[serde(rename = "activityName")]
     activity_name: String,
     description: Option<String>,
     #[serde(rename = "startTimeGMT", deserialize_with = "deserialize_start_time")]
     start_time_gmt: DateTime<Utc>,
-    distance: f64,
+    distance: Option<f64>,
     duration: f64,
     #[serde(rename = "elapsedDuration")]
     elapsed_duration: Option<f64>,
     #[serde(rename = "movingDuration")]
     moving_duration: Option<f64>,
-    steps: Option<usize>,
+    steps: Option<i64>,
     calories: Option<f64>,
     #[serde(rename = "averageHR")]
     average_hr: Option<f64>,

@@ -14,7 +14,7 @@ use std::{
 use tokio::{fs::remove_file, sync::RwLock, task::spawn_blocking};
 
 use fitbit_lib::{
-    fitbit_client::{ActivityEntry, FitbitClient, FitbitUserProfile},
+    fitbit_client::{FitbitActivityEntry, FitbitClient, FitbitUserProfile},
     fitbit_heartrate::{FitbitBodyWeightFat, FitbitHeartRate},
     fitbit_statistics_summary::FitbitStatisticsSummary,
     scale_measurement::ScaleMeasurement,
@@ -883,7 +883,7 @@ pub struct FitbitActivitiesRequest {
 
 #[async_trait]
 impl HandleRequest<FitbitActivitiesRequest> for PgPool {
-    type Result = Result<Vec<ActivityEntry>, Error>;
+    type Result = Result<Vec<FitbitActivityEntry>, Error>;
     async fn handle(&self, req: FitbitActivitiesRequest) -> Self::Result {
         let config = CONFIG.clone();
         let client = FitbitClient::with_auth(config).await?;

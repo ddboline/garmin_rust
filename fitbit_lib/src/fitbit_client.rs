@@ -18,6 +18,7 @@ use tokio::{
     sync::Mutex,
     task::spawn_blocking,
 };
+use postgres_query::FromSqlRow;
 
 use garmin_lib::{
     common::{
@@ -448,10 +449,10 @@ impl FitbitClient {
         &self,
         start_date: NaiveDate,
         offset: Option<usize>,
-    ) -> Result<Vec<ActivityEntry>, Error> {
+    ) -> Result<Vec<FitbitActivityEntry>, Error> {
         #[derive(Deserialize)]
         struct AcivityListResp {
-            activities: Vec<ActivityEntry>,
+            activities: Vec<FitbitActivityEntry>,
         }
 
         let offset = offset.unwrap_or(0);
@@ -476,7 +477,7 @@ impl FitbitClient {
     pub async fn get_all_activities(
         &self,
         start_date: NaiveDate,
-    ) -> Result<Vec<ActivityEntry>, Error> {
+    ) -> Result<Vec<FitbitActivityEntry>, Error> {
         let mut activities = Vec::new();
         loop {
             let new_activities: Vec<_> = self
@@ -588,7 +589,7 @@ impl FitbitClient {
         Ok(id_map)
     }
 
-    pub async fn log_fitbit_activity(
+    async fn log_fitbit_activity(
         &self,
         entry: &ActivityLoggingEntry,
     ) -> Result<(u64, u64), Error> {
@@ -645,7 +646,7 @@ impl FitbitClient {
 
         let futures = activities_to_delete
             .iter()
-            .map(|log_id| async move { self.delete_fitbit_activity(*log_id).await });
+            .map(|log_id| async move { self.delete_fitbit_activity(*log_id as u64).await });
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
         results?;
 
@@ -712,8 +713,8 @@ impl FitbitClient {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ActivityEntry {
+#[derive(Serialize, Deserialize, Clone, Debug, FromSqlRow)]
+pub struct FitbitActivityEntry {
     #[serde(rename = "logType")]
     log_type: String,
     #[serde(rename = "startTime")]
@@ -721,20 +722,20 @@ pub struct ActivityEntry {
     #[serde(rename = "tcxLink")]
     tcx_link: Option<String>,
     #[serde(rename = "activityTypeId")]
-    activity_type_id: Option<u64>,
+    activity_type_id: Option<i64>,
     #[serde(rename = "activityName")]
     activity_name: Option<String>,
-    duration: u64,
+    duration: i64,
     distance: Option<f64>,
     #[serde(rename = "distanceUnit")]
     distance_unit: Option<String>,
-    steps: Option<u64>,
+    steps: Option<i64>,
     #[serde(rename = "logId")]
-    log_id: u64,
+    log_id: i64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ActivityLoggingEntry {
+struct ActivityLoggingEntry {
     #[serde(rename = "activityId")]
     activity_id: Option<u64>,
     #[serde(rename = "startTime")]
@@ -748,7 +749,7 @@ pub struct ActivityLoggingEntry {
 }
 
 impl ActivityLoggingEntry {
-    pub fn from_summary(item: &GarminSummary, offset: FixedOffset) -> Option<Self> {
+    fn from_summary(item: &GarminSummary, offset: FixedOffset) -> Option<Self> {
         item.sport.to_fitbit_activity_id().map(|activity_id| Self {
             activity_id: Some(activity_id),
             start_time: item

@@ -17,6 +17,7 @@ use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     sync::Mutex,
 };
+use postgres_query::FromSqlRow;
 
 use garmin_lib::{
     common::{garmin_config::GarminConfig, strava_sync::StravaItem},
@@ -394,16 +395,16 @@ impl StravaClient {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, FromSqlRow)]
 pub struct StravaActivity {
     pub name: String,
     #[serde(with = "iso_8601_datetime")]
     pub start_date: DateTime<Utc>,
-    pub id: u64,
-    pub distance: f64,
-    pub moving_time: u64,
-    pub elapsed_time: u64,
-    pub total_elevation_gain: f64,
+    pub id: i64,
+    pub distance: Option<f64>,
+    pub moving_time: Option<i64>,
+    pub elapsed_time: i64,
+    pub total_elevation_gain: Option<f64>,
     pub elev_high: Option<f64>,
     pub elev_low: Option<f64>,
     #[serde(rename = "type", deserialize_with = "deserialize_to_sport_type")]
@@ -452,7 +453,7 @@ mod tests {
             debug!("{} {}", activity.id, activity.name);
             let result = client
                 .update_strava_activity(
-                    activity.id,
+                    activity.id as u64,
                     activity.name.as_str(),
                     Some("Test description"),
                     SportTypes::Running,

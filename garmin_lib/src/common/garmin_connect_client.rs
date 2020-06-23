@@ -3,6 +3,8 @@ use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
 use futures::future::try_join_all;
 use log::debug;
 use maplit::hashmap;
+use postgres_query::{FromSqlRow, Parameter};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use reqwest::{
     header::{HeaderMap, HeaderName, HeaderValue},
     Url,
@@ -10,9 +12,8 @@ use reqwest::{
 use serde::{Deserialize, Deserializer, Serialize};
 use std::{path::PathBuf, thread::sleep, time::Duration};
 use tokio::{fs::File, io::AsyncWriteExt, stream::StreamExt};
-use postgres_query::FromSqlRow;
 
-use super::{garmin_config::GarminConfig, reqwest_session::ReqwestSession};
+use super::{garmin_config::GarminConfig, pgpool::PgPool, reqwest_session::ReqwestSession};
 
 const GARMIN_PREFIX: &str = "https://connect.garmin.com/modern";
 
@@ -246,39 +247,35 @@ impl GarminConnectClient {
 
     pub async fn get_activity_files(
         &self,
-        max_timestamp: DateTime<Utc>,
+        activities: &[GarminConnectActivity],
     ) -> Result<Vec<PathBuf>, Error> {
-        let futures =
-            self.get_activities(max_timestamp)
+        let futures = activities.iter().map(|activity| async move {
+            let fname = self
+                .config
+                .home_dir
+                .join("Downloads")
+                .join(activity.activity_id.to_string())
+                .with_extension("zip");
+            let url: Url = format!(
+                "{}/{}/{}",
+                "https://connect.garmin.com",
+                "modern/proxy/download-service/files/activity",
+                activity.activity_id
+            )
+            .parse()?;
+            let mut f = File::create(&fname).await?;
+            let resp = self
+                .session
+                .get(&url, &HeaderMap::new())
                 .await?
-                .into_iter()
-                .map(|activity| async move {
-                    let fname = self
-                        .config
-                        .home_dir
-                        .join("Downloads")
-                        .join(activity.activity_id.to_string())
-                        .with_extension("zip");
-                    let url: Url = format!(
-                        "{}/{}/{}",
-                        "https://connect.garmin.com",
-                        "modern/proxy/download-service/files/activity",
-                        activity.activity_id
-                    )
-                    .parse()?;
-                    let mut f = File::create(&fname).await?;
-                    let resp = self
-                        .session
-                        .get(&url, &HeaderMap::new())
-                        .await?
-                        .error_for_status()?;
+                .error_for_status()?;
 
-                    let mut stream = resp.bytes_stream();
-                    while let Some(item) = stream.next().await {
-                        f.write_all(&item?).await?;
-                    }
-                    Ok(fname)
-                });
+            let mut stream = resp.bytes_stream();
+            while let Some(item) = stream.next().await {
+                f.write_all(&item?).await?;
+            }
+            Ok(fname)
+        });
         try_join_all(futures).await
     }
 }
@@ -292,24 +289,95 @@ pub struct GarminConnectHrData {
 #[derive(Serialize, Deserialize, Debug, FromSqlRow)]
 pub struct GarminConnectActivity {
     #[serde(rename = "activityId")]
-    activity_id: i64,
+    pub activity_id: i64,
     #[serde(rename = "activityName")]
-    activity_name: String,
-    description: Option<String>,
+    pub activity_name: Option<String>,
+    pub description: Option<String>,
     #[serde(rename = "startTimeGMT", deserialize_with = "deserialize_start_time")]
-    start_time_gmt: DateTime<Utc>,
-    distance: Option<f64>,
-    duration: f64,
+    pub start_time_gmt: DateTime<Utc>,
+    pub distance: Option<f64>,
+    pub duration: f64,
     #[serde(rename = "elapsedDuration")]
-    elapsed_duration: Option<f64>,
+    pub elapsed_duration: Option<f64>,
     #[serde(rename = "movingDuration")]
-    moving_duration: Option<f64>,
-    steps: Option<i64>,
-    calories: Option<f64>,
+    pub moving_duration: Option<f64>,
+    pub steps: Option<i64>,
+    pub calories: Option<f64>,
     #[serde(rename = "averageHR")]
-    average_hr: Option<f64>,
+    pub average_hr: Option<f64>,
     #[serde(rename = "maxHR")]
-    max_hr: Option<f64>,
+    pub max_hr: Option<f64>,
+}
+
+impl GarminConnectActivity {
+    pub async fn read_from_db(
+        pool: &PgPool,
+        start_date: Option<NaiveDate>,
+        end_date: Option<NaiveDate>,
+    ) -> Result<Vec<Self>, Error> {
+        let query = "SELECT * FROM garmin_connect_activities";
+        let mut conditions = Vec::new();
+        let mut bindings = Vec::new();
+        if let Some(d) = start_date {
+            conditions.push("date(start_time_gmt) >= $start_date".to_string());
+            bindings.push(("start_date", d));
+        }
+        if let Some(d) = end_date {
+            conditions.push("date(start_time_gmt) <= $end_date".to_string());
+            bindings.push(("end_date", d));
+        }
+        let query = format!(
+            "{} {} ORDER BY start_time_gmt",
+            query,
+            if conditions.is_empty() {
+                "".to_string()
+            } else {
+                format!("WHERE {}", conditions.join(" AND "))
+            }
+        );
+        let query_bindings: Vec<_> = bindings.iter().map(|(k, v)| (*k, v as Parameter)).collect();
+        debug!("query:\n{}", query);
+        let query = postgres_query::query_dyn!(&query, ..query_bindings)?;
+        let conn = pool.get().await?;
+        conn.query(query.sql(), query.parameters())
+            .await?
+            .par_iter()
+            .map(|r| Self::from_row(r).map_err(Into::into))
+            .collect()
+    }
+
+    pub async fn insert_into_db(&self, pool: &PgPool) -> Result<(), Error> {
+        let query = postgres_query::query!(
+            "
+                INSERT INTO garmin_connect_activities (
+                    activity_id,activity_name,description,start_time_gmt,distance,duration,
+                    elapsed_duration,moving_duration,steps,calories,average_hr,max_hr
+                )
+                VALUES (
+                    $activity_id,$activity_name,$description,$start_time_gmt,$distance,$duration,
+                    $elapsed_duration,$moving_duration,$steps,$calories,$average_hr,$max_hr
+                )",
+            activity_id = self.activity_id,
+            activity_name = self.activity_name,
+            description = self.description,
+            start_time_gmt = self.start_time_gmt,
+            distance = self.distance,
+            duration = self.duration,
+            elapsed_duration = self.elapsed_duration,
+            moving_duration = self.moving_duration,
+            steps = self.steps,
+            calories = self.calories,
+            average_hr = self.average_hr,
+            max_hr = self.max_hr,
+        );
+
+        let conn = pool.get().await?;
+
+        conn.execute(query.sql(), query.parameters())
+            .await
+            .map(|_| ())
+            .map_err(Into::into)
+    }
 }
 
 pub fn deserialize_start_time<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
@@ -326,8 +394,14 @@ where
 mod tests {
     use anyhow::Error;
     use chrono::{Duration, Utc};
+    use futures::future::try_join_all;
+    use std::collections::HashMap;
 
-    use crate::common::{garmin_config::GarminConfig, garmin_connect_client::GarminConnectClient};
+    use crate::common::{
+        garmin_config::GarminConfig,
+        garmin_connect_client::{GarminConnectActivity, GarminConnectClient},
+        pgpool::PgPool,
+    };
 
     #[tokio::test]
     #[ignore]
@@ -337,6 +411,40 @@ mod tests {
         let max_timestamp = Utc::now() - Duration::days(14);
         let result = session.get_activities(max_timestamp).await?;
         assert!(result.len() > 0);
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_dump_connect_activities() -> Result<(), Error> {
+        let config = GarminConfig::get_config(None)?;
+
+        let pool = PgPool::new(&config.pgurl);
+        let activities: HashMap<_, _> = GarminConnectActivity::read_from_db(&pool, None, None)
+            .await?
+            .into_iter()
+            .map(|activity| (activity.activity_id, activity))
+            .collect();
+
+        let session = GarminConnectClient::get_session(config).await?;
+        let max_timestamp = Utc::now() - Duration::days(1000);
+        let new_activities: Vec<_> = session
+            .get_activities(max_timestamp)
+            .await?
+            .into_iter()
+            .filter(|activity| !activities.contains_key(&activity.activity_id))
+            .collect();
+        println!("{:?}", new_activities);
+        let futures = new_activities.iter().map(|activity| {
+            let pool = pool.clone();
+            async move {
+                activity.insert_into_db(&pool).await?;
+                Ok(())
+            }
+        });
+        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+        results?;
+        assert_eq!(new_activities.len(), 0);
         Ok(())
     }
 }

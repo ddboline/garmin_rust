@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS fitbit_activities (
     tcx_link TEXT,
     activity_type_id BIGINT,
     activity_name TEXT,
-    duration DOUBLE PRECISION NOT NULL,
+    duration BIGINT NOT NULL,
     distance DOUBLE PRECISION,
     distance_unit TEXT,
     steps BIGINT

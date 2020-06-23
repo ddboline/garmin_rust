@@ -7,6 +7,9 @@ garmin_corrections_laps
 garmin_summary
 strava_id_cache
 scale_measurements
+heartrate_statistics_summary
+fitbit_activities
+garmin_connect_activities
 "
 
 mkdir -p backup/

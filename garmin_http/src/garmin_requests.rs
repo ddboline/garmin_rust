@@ -27,11 +27,9 @@ use garmin_lib::{
         garmin_cli::{GarminCli, GarminRequest},
         garmin_connect_client::{GarminConnectActivity, GarminConnectClient},
         garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList},
-        garmin_summary::{get_list_of_files_from_db, get_maximum_begin_datetime},
+        garmin_summary::get_list_of_files_from_db,
         pgpool::PgPool,
-        strava_sync::{
-            get_strava_id_maximum_begin_datetime, get_strava_ids, upsert_strava_id, StravaItem,
-        },
+        strava_sync::{get_strava_ids, upsert_strava_id, StravaItem},
     },
     utils::{sport_types::SportTypes, stack_string::StackString},
 };
@@ -171,15 +169,37 @@ impl HandleRequest<GarminConnectSyncRequest> for PgPool {
     async fn handle(&self, _: GarminConnectSyncRequest) -> Self::Result {
         let gcli = GarminCli::from_pool(&self)?;
 
-        let filenames = if let Some(max_datetime) = get_maximum_begin_datetime(self).await? {
-            let session = get_garmin_connect_session().await?;
-            let filenames = session.get_activity_files(max_datetime).await?;
+        let max_timestamp = Utc::now() - Duration::days(30);
+
+        let session = get_garmin_connect_session().await?;
+        let activities: HashMap<_, _> = GarminConnectActivity::read_from_db(
+            self,
+            Some(max_timestamp.naive_local().date()),
+            None,
+        )
+        .await?
+        .into_iter()
+        .map(|activity| (activity.activity_id, activity))
+        .collect();
+        let new_activities: Vec<_> = session
+            .get_activities(max_timestamp)
+            .await?
+            .into_iter()
+            .filter(|activity| !activities.contains_key(&activity.activity_id))
+            .collect();
+        let futures = new_activities.iter().map(|activity| async move {
+            activity.insert_into_db(self).await?;
+            Ok(())
+        });
+        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+        results?;
+
+        let filenames = session.get_activity_files(&new_activities).await?;
+        if !filenames.is_empty() {
             gcli.process_filenames(&filenames).await?;
             gcli.proc_everything().await?;
-            filenames
-        } else {
-            Vec::new()
-        };
+        }
+
         Ok(filenames)
     }
 }
@@ -226,24 +246,44 @@ impl HandleRequest<StravaSyncRequest> for PgPool {
     type Result = Result<Vec<String>, Error>;
     async fn handle(&self, _: StravaSyncRequest) -> Self::Result {
         let config = CONFIG.clone();
+        let pool = PgPool::new(&config.pgurl);
 
-        let max_datetime = get_strava_id_maximum_begin_datetime(&self).await?;
-        let max_datetime = match max_datetime {
-            Some(dt) => {
-                let max_datetime = dt - Duration::days(14);
-                debug!("max_datetime {}", max_datetime);
-                Some(max_datetime)
-            }
-            None => None,
-        };
+        let max_datetime = Utc::now() - Duration::days(30);
+
+        let activities: HashMap<_, _> =
+            StravaActivity::read_from_db(&pool, Some(max_datetime.naive_local().date()), None)
+                .await?
+                .into_iter()
+                .map(|activity| (activity.id, activity))
+                .collect();
         let client = StravaClient::with_auth(config).await?;
-        let activity_map = client.get_strava_activity_map(max_datetime, None).await?;
+        let new_activities: Vec<_> = client
+            .get_all_strava_activites(Some(max_datetime), None)
+            .await?
+            .into_iter()
+            .filter(|activity| !activities.contains_key(&activity.id))
+            .collect();
 
+        let futures = new_activities.iter().map(|activity| {
+            let pool = pool.clone();
+            async move {
+                activity.insert_into_db(&pool).await?;
+                Ok(())
+            }
+        });
+        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+        results?;
+        let activity_map: HashMap<_, _> = new_activities
+            .iter()
+            .map(|activity| (activity.id, activity.start_date))
+            .collect();
+        let output: Vec<_> = new_activities
+            .into_iter()
+            .map(|activity| activity.id.to_string())
+            .collect();
         debug!("activities {:#?}", activity_map);
 
-        upsert_strava_id(&activity_map, &self)
-            .await
-            .map_err(Into::into)
+        Ok(output)
     }
 }
 
@@ -699,7 +739,7 @@ impl HandleRequest<StravaActivitiesRequest> for PgPool {
             DateTime::from_utc(NaiveDateTime::new(s, NaiveTime::from_hms(23, 59, 59)), Utc)
         });
         client
-            .get_strava_activites(start_date, end_date)
+            .get_all_strava_activites(start_date, end_date)
             .await
             .map_err(Into::into)
     }

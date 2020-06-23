@@ -643,6 +643,7 @@ impl FitbitClient {
         Ok((resp.activity_log.activity_id, resp.activity_log.steps))
     }
 
+    #[allow(clippy::filter_map)]
     pub async fn sync_fitbit_activities(
         &self,
         begin_datetime: DateTime<Utc>,

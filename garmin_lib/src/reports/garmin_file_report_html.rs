@@ -8,7 +8,7 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use crate::{
     common::{
         garmin_config::GarminConfig, garmin_file::GarminFile, garmin_lap::GarminLap,
-        pgpool::PgPool, strava_sync::get_strava_id_from_begin_datetime,
+        pgpool::PgPool, strava_activity::get_strava_id_from_begin_datetime,
     },
     reports::{
         garmin_file_report_txt::get_splits,

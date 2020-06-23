@@ -20,7 +20,7 @@ use fitbit_lib::{
     scale_measurement::ScaleMeasurement,
 };
 
-use strava_lib::strava_client::{StravaActivity, StravaAthlete, StravaClient};
+use strava_lib::strava_client::{StravaAthlete, StravaClient};
 
 use garmin_lib::{
     common::{
@@ -29,7 +29,7 @@ use garmin_lib::{
         garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList},
         garmin_summary::get_list_of_files_from_db,
         pgpool::PgPool,
-        strava_sync::{get_strava_ids, upsert_strava_id, StravaItem},
+        strava_activity::StravaActivity,
     },
     utils::{sport_types::SportTypes, stack_string::StackString},
 };
@@ -749,16 +749,9 @@ pub struct StravaActivitiesDBRequest(pub StravaActivitiesRequest);
 
 #[async_trait]
 impl HandleRequest<StravaActivitiesDBRequest> for PgPool {
-    type Result = Result<HashMap<StackString, StravaItem>, Error>;
+    type Result = Result<Vec<StravaActivity>, Error>;
     async fn handle(&self, msg: StravaActivitiesDBRequest) -> Self::Result {
-        let start_date = msg
-            .0
-            .start_date
-            .map(|s| DateTime::from_utc(NaiveDateTime::new(s, NaiveTime::from_hms(0, 0, 0)), Utc));
-        let end_date = msg.0.end_date.map(|s| {
-            DateTime::from_utc(NaiveDateTime::new(s, NaiveTime::from_hms(23, 59, 59)), Utc)
-        });
-        get_strava_ids(self, start_date, end_date)
+        StravaActivity::read_from_db(self, msg.0.start_date, msg.0.end_date)
             .await
             .map_err(Into::into)
     }
@@ -766,16 +759,14 @@ impl HandleRequest<StravaActivitiesDBRequest> for PgPool {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StravaActiviesDBUpdateRequest {
-    pub updates: HashMap<StackString, StravaItem>,
+    pub updates: Vec<StravaActivity>,
 }
 
 #[async_trait]
 impl HandleRequest<StravaActiviesDBUpdateRequest> for PgPool {
     type Result = Result<Vec<String>, Error>;
     async fn handle(&self, msg: StravaActiviesDBUpdateRequest) -> Self::Result {
-        upsert_strava_id(&msg.updates, self)
-            .await
-            .map_err(Into::into)
+        StravaActivity::upsert_activities(&msg.updates, self).await.map_err(Into::into)
     }
 }
 

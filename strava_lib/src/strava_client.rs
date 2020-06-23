@@ -1,19 +1,16 @@
 use anyhow::{format_err, Error};
 use base64::{encode_config, URL_SAFE_NO_PAD};
-use chrono::{DateTime, NaiveDate, Utc};
+use chrono::{DateTime, Utc};
 use lazy_static::lazy_static;
-use log::debug;
 use maplit::hashmap;
-use postgres_query::{FromSqlRow, Parameter};
 use rand::{thread_rng, Rng};
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use reqwest::{
     header::HeaderMap,
     multipart::{Form, Part},
     Client, Url,
 };
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, path::Path};
+use std::{path::Path};
 use tempfile::Builder;
 use tokio::{
     fs::File,
@@ -22,20 +19,15 @@ use tokio::{
 };
 
 use garmin_lib::{
-    common::{garmin_config::GarminConfig, pgpool::PgPool, strava_sync::StravaItem},
-    utils::{
-        garmin_util::gzip_file,
-        iso_8601_datetime,
-        sport_types::{deserialize_to_sport_type, SportTypes},
-        stack_string::StackString,
+    common::{
+        garmin_config::GarminConfig, strava_activity::StravaActivity,
     },
+    utils::{garmin_util::gzip_file, sport_types::SportTypes, stack_string::StackString},
 };
 
 lazy_static! {
     static ref CSRF_TOKEN: Mutex<Option<StackString>> = Mutex::new(None);
 }
-
-pub struct LocalStravaItem(pub StravaItem);
 
 #[derive(Debug, Copy, Clone)]
 pub enum StravaAuthType {
@@ -284,28 +276,6 @@ impl StravaClient {
         Ok(activities)
     }
 
-    pub async fn get_strava_activity_map(
-        &self,
-        start_date: Option<DateTime<Utc>>,
-        end_date: Option<DateTime<Utc>>,
-    ) -> Result<HashMap<StackString, StravaItem>, Error> {
-        let activity_map: HashMap<_, _> = self
-            .get_all_strava_activites(start_date, end_date)
-            .await?
-            .into_iter()
-            .map(|act| {
-                (
-                    act.id.to_string().into(),
-                    StravaItem {
-                        begin_datetime: act.start_date,
-                        title: act.name.into(),
-                    },
-                )
-            })
-            .collect();
-        Ok(activity_map)
-    }
-
     #[allow(clippy::similar_names)]
     pub async fn upload_strava_activity(
         &self,
@@ -419,93 +389,6 @@ impl StravaClient {
     }
 }
 
-#[derive(Serialize, Deserialize, FromSqlRow, Debug, Clone)]
-pub struct StravaActivity {
-    pub name: String,
-    #[serde(with = "iso_8601_datetime")]
-    pub start_date: DateTime<Utc>,
-    pub id: i64,
-    pub distance: Option<f64>,
-    pub moving_time: Option<i64>,
-    pub elapsed_time: i64,
-    pub total_elevation_gain: Option<f64>,
-    pub elev_high: Option<f64>,
-    pub elev_low: Option<f64>,
-    #[serde(rename = "type", deserialize_with = "deserialize_to_sport_type")]
-    pub activity_type: SportTypes,
-    pub timezone: String,
-}
-
-impl StravaActivity {
-    pub async fn read_from_db(
-        pool: &PgPool,
-        start_date: Option<NaiveDate>,
-        end_date: Option<NaiveDate>,
-    ) -> Result<Vec<Self>, Error> {
-        let query = "SELECT * FROM strava_activities";
-        let mut conditions = Vec::new();
-        let mut bindings = Vec::new();
-        if let Some(d) = start_date {
-            conditions.push("date(start_date) >= $start_date".to_string());
-            bindings.push(("start_date", d));
-        }
-        if let Some(d) = end_date {
-            conditions.push("date(start_date) <= $end_date".to_string());
-            bindings.push(("end_date", d));
-        }
-        let query = format!(
-            "{} {} ORDER BY start_date",
-            query,
-            if conditions.is_empty() {
-                "".to_string()
-            } else {
-                format!("WHERE {}", conditions.join(" AND "))
-            }
-        );
-        let query_bindings: Vec<_> = bindings.iter().map(|(k, v)| (*k, v as Parameter)).collect();
-        debug!("query:\n{}", query);
-        let query = postgres_query::query_dyn!(&query, ..query_bindings)?;
-        let conn = pool.get().await?;
-        conn.query(query.sql(), query.parameters())
-            .await?
-            .par_iter()
-            .map(|r| Self::from_row(r).map_err(Into::into))
-            .collect()
-    }
-
-    pub async fn insert_into_db(&self, pool: &PgPool) -> Result<(), Error> {
-        let query = postgres_query::query!(
-            "
-                INSERT INTO strava_activities (
-                    id,name,start_date,distance,moving_time,elapsed_time,
-                    total_elevation_gain,elev_high,elev_low,activity_type,timezone
-                )
-                VALUES (
-                    $id,$name,$start_date,$distance,$moving_time,$elapsed_time,
-                    $total_elevation_gain,$elev_high,$elev_low,$activity_type,$timezone
-                )",
-            id = self.id,
-            name = self.name,
-            start_date = self.start_date,
-            distance = self.distance,
-            moving_time = self.moving_time,
-            elapsed_time = self.elapsed_time,
-            total_elevation_gain = self.total_elevation_gain,
-            elev_high = self.elev_high,
-            elev_low = self.elev_low,
-            activity_type = self.activity_type,
-            timezone = self.timezone,
-        );
-
-        let conn = pool.get().await?;
-
-        conn.execute(query.sql(), query.parameters())
-            .await
-            .map(|_| ())
-            .map_err(Into::into)
-    }
-}
-
 #[derive(Serialize, Deserialize)]
 pub struct StravaAthlete {
     pub id: u64,
@@ -588,7 +471,7 @@ mod tests {
             .map(|activity| (activity.id, activity))
             .collect();
         let client = StravaClient::with_auth(config).await?;
-        let start_date: DateTime<Utc> = "2017-01-01T00:00:00Z".parse()?;
+        let start_date: DateTime<Utc> = "2020-01-01T00:00:00Z".parse()?;
         let new_activities: Vec<_> = client
             .get_all_strava_activites(Some(start_date), None)
             .await?

@@ -8,7 +8,7 @@ use maplit::hashmap;
 use postgres_query::{FromSqlRow, Parameter};
 use rand::{thread_rng, Rng};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use reqwest::{header::HeaderMap, Client, Url};
+use reqwest::{header::HeaderMap, Client, Response, Url};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
@@ -19,6 +19,7 @@ use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     sync::Mutex,
     task::spawn_blocking,
+    time::{delay_for, Duration},
 };
 
 use garmin_lib::{
@@ -125,6 +126,35 @@ impl FitbitClient {
         self.offset.unwrap_or_else(|| FixedOffset::east(0))
     }
 
+    async fn get_url(&self, url: Url, headers: HeaderMap) -> Result<Response, Error> {
+        let resp = self
+            .client
+            .get(url.clone())
+            .headers(headers.clone())
+            .send()
+            .await?;
+        if resp.status() == 429 {
+            if let Some(retry_after) = resp.headers().get("retry-after") {
+                let retry_seconds: u64 = retry_after.to_str()?.parse()?;
+                if retry_seconds < 60 {
+                    delay_for(Duration::from_secs(retry_seconds)).await;
+                    let headers = self.get_auth_headers()?;
+                    return self
+                        .client
+                        .get(url)
+                        .headers(headers)
+                        .send()
+                        .await
+                        .map_err(Into::into);
+                } else {
+                    println!("Wait at least {} seconds before retrying", retry_seconds);
+                    return Err(format_err!("{}", resp.text().await?));
+                }
+            }
+        }
+        Ok(resp)
+    }
+
     pub async fn get_user_profile(&self) -> Result<FitbitUserProfile, Error> {
         #[derive(Deserialize)]
         struct UserResp {
@@ -134,10 +164,7 @@ impl FitbitClient {
         let headers = self.get_auth_headers()?;
         let url = FITBIT_PREFIX.join("profile.json")?;
         let resp: UserResp = self
-            .client
-            .get(url)
-            .headers(headers)
-            .send()
+            .get_url(url, headers)
             .await?
             .error_for_status()?
             .json()
@@ -464,10 +491,7 @@ impl FitbitClient {
             start_date, offset,
         ))?;
         let activities: AcivityListResp = self
-            .client
-            .get(url.as_str())
-            .headers(headers)
-            .send()
+            .get_url(url, headers)
             .await?
             .error_for_status()?
             .json()
@@ -1039,7 +1063,7 @@ mod tests {
             .into_iter()
             .map(|activity| (activity.log_id, activity))
             .collect();
-        let start_date: NaiveDate = "2017-01-01".parse()?;
+        let start_date: NaiveDate = "2020-01-01".parse()?;
         let new_activities: Vec<_> = client
             .get_all_activities(start_date)
             .await?

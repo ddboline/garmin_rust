@@ -10,7 +10,7 @@ use reqwest::{
     Client, Url,
 };
 use serde::{Deserialize, Serialize};
-use std::{path::Path};
+use std::path::Path;
 use tempfile::Builder;
 use tokio::{
     fs::File,
@@ -19,9 +19,7 @@ use tokio::{
 };
 
 use garmin_lib::{
-    common::{
-        garmin_config::GarminConfig, strava_activity::StravaActivity,
-    },
+    common::{garmin_config::GarminConfig, strava_activity::StravaActivity},
     utils::{garmin_util::gzip_file, sport_types::SportTypes, stack_string::StackString},
 };
 

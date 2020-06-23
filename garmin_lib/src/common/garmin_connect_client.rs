@@ -10,7 +10,7 @@ use reqwest::{
     Url,
 };
 use serde::{Deserialize, Deserializer, Serialize};
-use std::{path::PathBuf, thread::sleep, time::Duration};
+use std::{collections::HashMap, path::PathBuf, thread::sleep, time::Duration};
 use tokio::{fs::File, io::AsyncWriteExt, stream::StreamExt};
 
 use super::{garmin_config::GarminConfig, pgpool::PgPool, reqwest_session::ReqwestSession};
@@ -377,6 +377,72 @@ impl GarminConnectActivity {
             .await
             .map(|_| ())
             .map_err(Into::into)
+    }
+
+    pub async fn update_db(&self, pool: &PgPool) -> Result<(), Error> {
+        let query = postgres_query::query!(
+            "
+                UPDATE garmin_connect_activities SET
+                    activity_name=$activity_name,description=$description,
+                    start_time_gmt=$start_time_gmt,distance=$distance,duration=$duration,
+                    elapsed_duration=$elapsed_duration,moving_duration=$moving_duration,
+                    steps=$steps,calories=$calories,average_hr=$average_hr,max_hr=$max_hr
+                WHERE activity_id=$activity_id
+            ",
+            activity_id = self.activity_id,
+            activity_name = self.activity_name,
+            description = self.description,
+            start_time_gmt = self.start_time_gmt,
+            distance = self.distance,
+            duration = self.duration,
+            elapsed_duration = self.elapsed_duration,
+            moving_duration = self.moving_duration,
+            steps = self.steps,
+            calories = self.calories,
+            average_hr = self.average_hr,
+            max_hr = self.max_hr,
+        );
+        let conn = pool.get().await?;
+        conn.execute(query.sql(), query.parameters()).await?;
+        Ok(())
+    }
+
+    pub async fn upsert_activities(
+        activities: &[Self],
+        pool: &PgPool,
+    ) -> Result<Vec<String>, Error> {
+        let mut output = Vec::new();
+        let existing_activities: HashMap<_, _> = Self::read_from_db(pool, None, None)
+            .await?
+            .into_iter()
+            .map(|activity| (activity.activity_id, activity))
+            .collect();
+
+        let (update_items, insert_items): (Vec<_>, Vec<_>) = activities
+            .iter()
+            .partition(|activity| existing_activities.contains_key(&activity.activity_id));
+
+        let futures = update_items.into_iter().map(|activity| {
+            let pool = pool.clone();
+            async move {
+                activity.update_db(&pool).await?;
+                Ok(activity.activity_id.to_string())
+            }
+        });
+        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+        output.extend_from_slice(&results?);
+
+        let futures = insert_items.into_iter().map(|activity| {
+            let pool = pool.clone();
+            async move {
+                activity.insert_into_db(&pool).await?;
+                Ok(activity.activity_id.to_string())
+            }
+        });
+        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+        output.extend_from_slice(&results?);
+
+        Ok(output)
     }
 }
 

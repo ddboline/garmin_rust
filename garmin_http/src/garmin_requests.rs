@@ -766,7 +766,9 @@ pub struct StravaActiviesDBUpdateRequest {
 impl HandleRequest<StravaActiviesDBUpdateRequest> for PgPool {
     type Result = Result<Vec<String>, Error>;
     async fn handle(&self, msg: StravaActiviesDBUpdateRequest) -> Self::Result {
-        StravaActivity::upsert_activities(&msg.updates, self).await.map_err(Into::into)
+        StravaActivity::upsert_activities(&msg.updates, self)
+            .await
+            .map_err(Into::into)
     }
 }
 
@@ -973,5 +975,59 @@ impl HandleRequest<FitbitProfileRequest> for PgPool {
         let config = CONFIG.clone();
         let client = FitbitClient::with_auth(config).await?;
         client.get_user_profile().await.map_err(Into::into)
+    }
+}
+
+pub struct GarminConnectActivitiesDBRequest(pub StravaActivitiesRequest);
+
+#[async_trait]
+impl HandleRequest<GarminConnectActivitiesDBRequest> for PgPool {
+    type Result = Result<Vec<GarminConnectActivity>, Error>;
+    async fn handle(&self, msg: GarminConnectActivitiesDBRequest) -> Self::Result {
+        GarminConnectActivity::read_from_db(self, msg.0.start_date, msg.0.end_date)
+            .await
+            .map_err(Into::into)
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GarminConnectActivitiesDBUpdateRequest {
+    pub updates: Vec<GarminConnectActivity>,
+}
+
+#[async_trait]
+impl HandleRequest<GarminConnectActivitiesDBUpdateRequest> for PgPool {
+    type Result = Result<Vec<String>, Error>;
+    async fn handle(&self, msg: GarminConnectActivitiesDBUpdateRequest) -> Self::Result {
+        GarminConnectActivity::upsert_activities(&msg.updates, self)
+            .await
+            .map_err(Into::into)
+    }
+}
+
+pub struct FitbitActivitiesDBRequest(pub StravaActivitiesRequest);
+
+#[async_trait]
+impl HandleRequest<FitbitActivitiesDBRequest> for PgPool {
+    type Result = Result<Vec<FitbitActivityEntry>, Error>;
+    async fn handle(&self, msg: FitbitActivitiesDBRequest) -> Self::Result {
+        FitbitActivityEntry::read_from_db(self, msg.0.start_date, msg.0.end_date)
+            .await
+            .map_err(Into::into)
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FitbitActivitiesDBUpdateRequest {
+    pub updates: Vec<FitbitActivityEntry>,
+}
+
+#[async_trait]
+impl HandleRequest<FitbitActivitiesDBUpdateRequest> for PgPool {
+    type Result = Result<Vec<String>, Error>;
+    async fn handle(&self, msg: FitbitActivitiesDBUpdateRequest) -> Self::Result {
+        FitbitActivityEntry::upsert_activities(&msg.updates, self)
+            .await
+            .map_err(Into::into)
     }
 }

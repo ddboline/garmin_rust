@@ -12,16 +12,17 @@ use garmin_lib::common::pgpool::PgPool;
 use super::logged_user::{fill_from_db, TRIGGER_DB_UPDATE};
 use crate::{
     garmin_rust_routes::{
-        add_garmin_correction, fitbit_activities, fitbit_activity_types, fitbit_auth,
-        fitbit_bodyweight, fitbit_bodyweight_sync, fitbit_callback, fitbit_heartrate_api,
-        fitbit_heartrate_cache, fitbit_plots, fitbit_plots_demo, fitbit_profile, fitbit_refresh,
-        fitbit_sync, fitbit_tcx_sync, garmin, garmin_connect_activities, garmin_connect_hr_api,
-        garmin_connect_hr_sync, garmin_connect_sync, garmin_demo, garmin_get_hr_data,
-        garmin_get_hr_pace, garmin_list_gps_tracks, garmin_sync, garmin_upload, heartrate_plots,
-        heartrate_plots_demo, heartrate_statistics_plots, scale_measurement,
-        scale_measurement_update, strava_activities, strava_activities_db,
-        strava_activities_db_update, strava_athlete, strava_auth, strava_callback, strava_refresh,
-        strava_sync, strava_update, strava_upload, user,
+        add_garmin_correction, fitbit_activities, fitbit_activities_db,
+        fitbit_activities_db_update, fitbit_activity_types, fitbit_auth, fitbit_bodyweight,
+        fitbit_bodyweight_sync, fitbit_callback, fitbit_heartrate_api, fitbit_heartrate_cache,
+        fitbit_plots, fitbit_plots_demo, fitbit_profile, fitbit_refresh, fitbit_sync,
+        fitbit_tcx_sync, garmin, garmin_connect_activities, garmin_connect_activities_db,
+        garmin_connect_activities_db_update, garmin_connect_hr_api, garmin_connect_hr_sync,
+        garmin_connect_sync, garmin_demo, garmin_get_hr_data, garmin_get_hr_pace,
+        garmin_list_gps_tracks, garmin_sync, garmin_upload, heartrate_plots, heartrate_plots_demo,
+        heartrate_statistics_plots, scale_measurement, scale_measurement_update, strava_activities,
+        strava_activities_db, strava_activities_db_update, strava_athlete, strava_auth,
+        strava_callback, strava_refresh, strava_sync, strava_update, strava_upload, user,
     },
     CONFIG,
 };
@@ -99,6 +100,11 @@ pub async fn start_app() {
                     .route(web::get().to(garmin_connect_activities)),
             )
             .service(
+                web::resource("/garmin/garmin_connect_activities_db")
+                    .route(web::get().to(garmin_connect_activities_db))
+                    .route(web::post().to(garmin_connect_activities_db_update)),
+            )
+            .service(
                 web::resource("/garmin/garmin_connect_hr_sync")
                     .route(web::get().to(garmin_connect_hr_sync)),
             )
@@ -156,6 +162,11 @@ pub async fn start_app() {
             .service(
                 web::resource("/garmin/fitbit/fitbit_activities")
                     .route(web::get().to(fitbit_activities)),
+            )
+            .service(
+                web::resource("/garmin/fitbit/fitbit_activities_db")
+                    .route(web::get().to(fitbit_activities_db))
+                    .route(web::get().to(fitbit_activities_db_update)),
             )
             .service(web::resource("/garmin/fitbit/profile").route(web::get().to(fitbit_profile)))
             .service(

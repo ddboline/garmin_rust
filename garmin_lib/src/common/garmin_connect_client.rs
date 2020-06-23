@@ -451,9 +451,13 @@ where
     D: Deserializer<'de>,
 {
     let s = String::deserialize(deserializer)?;
-    NaiveDateTime::parse_from_str(&s, "%Y-%m-%d %H:%M:%S")
-        .map(|datetime| DateTime::from_utc(datetime, Utc))
-        .map_err(serde::de::Error::custom)
+    if let Ok(dt) = s.parse() {
+        Ok(dt)
+    } else {
+        NaiveDateTime::parse_from_str(&s, "%Y-%m-%d %H:%M:%S")
+            .map(|datetime| DateTime::from_utc(datetime, Utc))
+            .map_err(serde::de::Error::custom)
+    }
 }
 
 #[cfg(test)]

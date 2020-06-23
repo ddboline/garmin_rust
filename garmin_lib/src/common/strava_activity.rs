@@ -38,7 +38,7 @@ impl StravaActivity {
         start_date: Option<NaiveDate>,
         end_date: Option<NaiveDate>,
     ) -> Result<Vec<Self>, Error> {
-        let query = "SELECT * FROM strava_activities ORDER BY start_date";
+        let query = "SELECT * FROM strava_activities";
         let mut conditions = Vec::new();
         let mut bindings = Vec::new();
         if let Some(d) = start_date {

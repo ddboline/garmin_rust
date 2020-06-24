@@ -10,6 +10,7 @@ scale_measurements
 heartrate_statistics_summary
 fitbit_activities
 garmin_connect_activities
+strava_activities
 "
 
 mkdir -p backup/

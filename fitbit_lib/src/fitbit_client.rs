@@ -5,9 +5,7 @@ use futures::future::try_join_all;
 use lazy_static::lazy_static;
 use log::debug;
 use maplit::hashmap;
-use postgres_query::{FromSqlRow, Parameter};
 use rand::{thread_rng, Rng};
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use reqwest::{header::HeaderMap, Client, Response, Url};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -21,9 +19,11 @@ use tokio::{
     task::spawn_blocking,
     time::{delay_for, Duration},
 };
+use itertools::Itertools;
 
 use garmin_lib::{
     common::{
+        fitbit_activity::FitbitActivity,
         garmin_config::GarminConfig,
         garmin_connect_client::GarminConnectClient,
         garmin_summary::{get_list_of_activities_from_db, GarminSummary, GarminSummaryList},
@@ -477,10 +477,10 @@ impl FitbitClient {
         &self,
         start_date: NaiveDate,
         offset: Option<usize>,
-    ) -> Result<Vec<FitbitActivityEntry>, Error> {
+    ) -> Result<Vec<FitbitActivity>, Error> {
         #[derive(Deserialize)]
         struct AcivityListResp {
-            activities: Vec<FitbitActivityEntry>,
+            activities: Vec<FitbitActivity>,
         }
 
         let offset = offset.unwrap_or(0);
@@ -502,7 +502,7 @@ impl FitbitClient {
     pub async fn get_all_activities(
         &self,
         start_date: NaiveDate,
-    ) -> Result<Vec<FitbitActivityEntry>, Error> {
+    ) -> Result<Vec<FitbitActivity>, Error> {
         let mut activities = Vec::new();
         loop {
             let new_activities: Vec<_> = self
@@ -556,19 +556,19 @@ impl FitbitClient {
 
     pub async fn get_fitbit_activity_types(&self) -> Result<HashMap<u64, String>, Error> {
         #[derive(Deserialize)]
-        struct FitbitActivity {
+        struct FitbitActivityType {
             name: String,
             id: u64,
         }
         #[derive(Deserialize)]
         struct FitbitSubCategory {
-            activities: Vec<FitbitActivity>,
+            activities: Vec<FitbitActivityType>,
             id: u64,
             name: String,
         }
         #[derive(Deserialize)]
         struct FitbitCategory {
-            activities: Vec<FitbitActivity>,
+            activities: Vec<FitbitActivityType>,
             #[serde(rename = "subCategories")]
             sub_categories: Option<Vec<FitbitSubCategory>>,
             id: u64,
@@ -643,6 +643,36 @@ impl FitbitClient {
         Ok((resp.activity_log.activity_id, resp.activity_log.steps))
     }
 
+    pub async fn remove_duplicate_entries(&self, pool: &PgPool) -> Result<Vec<String>, Error> {
+        let mut output = Vec::new();
+        let existing_activities: Vec<_> = FitbitActivity::read_from_db(&pool, None, None)
+            .await?
+            .into_iter()
+            .map(|activity| {
+                (
+                    activity.start_time.format("%Y-%m-%dT%H:%M").to_string(),
+                    activity,
+                )
+            })
+            .sorted_by(|x, y| x.0.cmp(&y.0))
+            .collect();
+
+        let mut last_entry = None;
+        for (k, v) in existing_activities {
+            if let Some(k_) = last_entry.take() {
+                if k_ == k {
+                    self.delete_fitbit_activity(v.log_id as u64).await?;
+                    if let Some(activity) = FitbitActivity::get_by_id(&pool, v.log_id).await? {
+                        activity.delete_from_db(&pool).await?;
+                        output.push(format!("fully deleted {}", v.log_id));
+                    }
+                }
+            }
+            last_entry.replace(k);
+        }
+        Ok(output)
+    }
+
     #[allow(clippy::filter_map)]
     pub async fn sync_fitbit_activities(
         &self,
@@ -652,7 +682,10 @@ impl FitbitClient {
         let offset = self.get_offset();
         let date = begin_datetime.with_timezone(&offset).naive_local().date();
 
+        // Get all activities
         let new_activities: Vec<_> = self.get_all_activities(date).await?;
+
+        // Get id's for walking and running activities with 0 steps
         let activities_to_delete: HashSet<_> = new_activities
             .iter()
             .filter_map(|activity| {
@@ -667,9 +700,17 @@ impl FitbitClient {
             })
             .collect();
 
-        let futures = activities_to_delete
-            .iter()
-            .map(|log_id| async move { self.delete_fitbit_activity(*log_id as u64).await });
+        // delete 0 step activities from fitbit and DB
+        let futures = activities_to_delete.iter().map(|log_id| {
+            let pool = pool.clone();
+            async move {
+                self.delete_fitbit_activity(*log_id as u64).await?;
+                if let Some(activity) = FitbitActivity::get_by_id(&pool, *log_id).await? {
+                    activity.delete_from_db(&pool).await?;
+                }
+                Ok(())
+            }
+        });
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
         results?;
 
@@ -686,12 +727,15 @@ impl FitbitClient {
                 }
             })
             .collect();
+
+        // Get existing activities
         let existing_activities: HashMap<_, _> =
-            FitbitActivityEntry::read_from_db(&pool, Some(date), None)
-                .await?
-                .into_iter()
-                .map(|activity| (activity.log_id, activity))
-                .collect();
+        FitbitActivity::read_from_db(&pool, Some(date), None)
+            .await?
+            .into_iter()
+            .map(|activity| (activity.log_id, activity))
+            .collect();
+
         let futures = new_activities
             .values()
             .filter(|activity| !existing_activities.contains_key(&activity.log_id))
@@ -751,161 +795,6 @@ impl FitbitClient {
             .await?
             .error_for_status()?;
         Ok(())
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, FromSqlRow)]
-pub struct FitbitActivityEntry {
-    #[serde(rename = "logType")]
-    log_type: String,
-    #[serde(rename = "startTime")]
-    start_time: DateTime<Utc>,
-    #[serde(rename = "tcxLink")]
-    tcx_link: Option<String>,
-    #[serde(rename = "activityTypeId")]
-    activity_type_id: Option<i64>,
-    #[serde(rename = "activityName")]
-    activity_name: Option<String>,
-    duration: i64,
-    distance: Option<f64>,
-    #[serde(rename = "distanceUnit")]
-    distance_unit: Option<String>,
-    steps: Option<i64>,
-    #[serde(rename = "logId")]
-    log_id: i64,
-}
-
-impl FitbitActivityEntry {
-    pub async fn read_from_db(
-        pool: &PgPool,
-        start_date: Option<NaiveDate>,
-        end_date: Option<NaiveDate>,
-    ) -> Result<Vec<Self>, Error> {
-        let query = "SELECT * FROM fitbit_activities";
-        let mut conditions = Vec::new();
-        let mut bindings = Vec::new();
-        if let Some(d) = start_date {
-            conditions.push("date(start_time) >= $start_date".to_string());
-            bindings.push(("start_date", d));
-        }
-        if let Some(d) = end_date {
-            conditions.push("date(start_time) <= $end_date".to_string());
-            bindings.push(("end_date", d));
-        }
-        let query = format!(
-            "{} {} ORDER BY start_time",
-            query,
-            if conditions.is_empty() {
-                "".to_string()
-            } else {
-                format!("WHERE {}", conditions.join(" AND "))
-            }
-        );
-        let query_bindings: Vec<_> = bindings.iter().map(|(k, v)| (*k, v as Parameter)).collect();
-        debug!("query:\n{}", query);
-        let query = postgres_query::query_dyn!(&query, ..query_bindings)?;
-        let conn = pool.get().await?;
-        conn.query(query.sql(), query.parameters())
-            .await?
-            .par_iter()
-            .map(|r| Self::from_row(r).map_err(Into::into))
-            .collect()
-    }
-
-    pub async fn insert_into_db(&self, pool: &PgPool) -> Result<(), Error> {
-        let query = postgres_query::query!(
-            "
-                INSERT INTO fitbit_activities (
-                    log_id,log_type,start_time,tcx_link,activity_type_id,activity_name,duration,
-                    distance,distance_unit,steps
-                )
-                VALUES (
-                    \
-             $log_id,$log_type,$start_time,$tcx_link,$activity_type_id,$activity_name,$duration,
-                    $distance,$distance_unit,$steps
-                )",
-            log_id = self.log_id,
-            log_type = self.log_type,
-            start_time = self.start_time,
-            tcx_link = self.tcx_link,
-            activity_type_id = self.activity_type_id,
-            activity_name = self.activity_name,
-            duration = self.duration,
-            distance = self.distance,
-            distance_unit = self.distance_unit,
-            steps = self.steps,
-        );
-
-        let conn = pool.get().await?;
-
-        conn.execute(query.sql(), query.parameters())
-            .await
-            .map(|_| ())
-            .map_err(Into::into)
-    }
-
-    pub async fn update_db(&self, pool: &PgPool) -> Result<(), Error> {
-        let query = postgres_query::query!(
-            "
-                UPDATE fitbit_activities SET
-                    log_type=$log_type,start_time=$start_time,tcx_link=$tcx_link,
-                    activity_type_id=$activity_type_id,activity_name=$activity_name,
-                    duration=$duration,distance=$distance,distance_unit=$distance_unit,
-                    steps=$steps
-                WHERE log_id=$log_id
-            ",
-            log_id = self.log_id,
-            log_type = self.log_type,
-            start_time = self.start_time,
-            tcx_link = self.tcx_link,
-            activity_type_id = self.activity_type_id,
-            activity_name = self.activity_name,
-            duration = self.duration,
-            distance = self.distance,
-            distance_unit = self.distance_unit,
-            steps = self.steps,
-        );
-        let conn = pool.get().await?;
-        conn.execute(query.sql(), query.parameters()).await?;
-        Ok(())
-    }
-
-    pub async fn upsert_activities(
-        activities: &[Self],
-        pool: &PgPool,
-    ) -> Result<Vec<String>, Error> {
-        let mut output = Vec::new();
-        let existing_activities: HashMap<_, _> = Self::read_from_db(pool, None, None)
-            .await?
-            .into_iter()
-            .map(|activity| (activity.log_id, activity))
-            .collect();
-
-        let (update_items, insert_items): (Vec<_>, Vec<_>) = activities
-            .iter()
-            .partition(|activity| existing_activities.contains_key(&activity.log_id));
-
-        let futures = update_items.into_iter().map(|activity| {
-            let pool = pool.clone();
-            async move {
-                activity.update_db(&pool).await?;
-                Ok(activity.log_id.to_string())
-            }
-        });
-        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
-        output.extend_from_slice(&results?);
-
-        let futures = insert_items.into_iter().map(|activity| {
-            let pool = pool.clone();
-            async move {
-                activity.insert_into_db(&pool).await?;
-                Ok(activity.log_id.to_string())
-            }
-        });
-        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
-        output.extend_from_slice(&results?);
-
-        Ok(output)
     }
 }
 
@@ -981,7 +870,7 @@ pub struct FitbitUserProfile {
 
 #[cfg(test)]
 mod tests {
-    use crate::fitbit_client::{FitbitActivityEntry, FitbitClient};
+    use crate::fitbit_client::{FitbitActivity, FitbitClient};
     use anyhow::Error;
     use chrono::{Duration, Local, NaiveDate, Utc};
     use futures::future::try_join_all;
@@ -989,6 +878,7 @@ mod tests {
     use log::debug;
     use std::collections::HashMap;
     use tempfile::NamedTempFile;
+    use itertools::Itertools;
 
     #[tokio::test]
     #[ignore]
@@ -1123,7 +1013,7 @@ mod tests {
         let config = GarminConfig::get_config(None)?;
         let client = FitbitClient::with_auth(config.clone()).await?;
         let pool = PgPool::new(&config.pgurl);
-        let activities: HashMap<_, _> = FitbitActivityEntry::read_from_db(&pool, None, None)
+        let activities: HashMap<_, _> = FitbitActivity::read_from_db(&pool, None, None)
             .await?
             .into_iter()
             .map(|activity| (activity.log_id, activity))
@@ -1146,6 +1036,19 @@ mod tests {
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
         results?;
         assert_eq!(new_activities.len(), 0);
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_delete_duplicate_activities() -> Result<(), Error> {
+        let config = GarminConfig::get_config(None)?;
+        let pool = PgPool::new(&config.pgurl);
+        let client = FitbitClient::with_auth(config.clone()).await?;
+
+        let output = client.remove_duplicate_entries(&pool).await?;
+        println!("{:?}", output);
+        assert_eq!(output.len(), 0);
         Ok(())
     }
 }

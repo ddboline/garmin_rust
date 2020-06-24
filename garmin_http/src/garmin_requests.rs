@@ -14,7 +14,7 @@ use std::{
 use tokio::{fs::remove_file, sync::RwLock, task::spawn_blocking};
 
 use fitbit_lib::{
-    fitbit_client::{FitbitActivityEntry, FitbitClient, FitbitUserProfile},
+    fitbit_client::{FitbitClient, FitbitUserProfile},
     fitbit_heartrate::{FitbitBodyWeightFat, FitbitHeartRate},
     fitbit_statistics_summary::FitbitStatisticsSummary,
     scale_measurement::ScaleMeasurement,
@@ -24,6 +24,7 @@ use strava_lib::strava_client::{StravaAthlete, StravaClient};
 
 use garmin_lib::{
     common::{
+        fitbit_activity::FitbitActivity,
         garmin_cli::{GarminCli, GarminRequest},
         garmin_connect_client::{GarminConnectActivity, GarminConnectClient},
         garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList},
@@ -398,7 +399,7 @@ pub struct FitbitBodyWeightFatUpdateRequest {}
 
 #[async_trait]
 impl HandleRequest<FitbitBodyWeightFatUpdateRequest> for PgPool {
-    type Result = Result<(Vec<ScaleMeasurement>, Vec<DateTime<Utc>>), Error>;
+    type Result = Result<(Vec<ScaleMeasurement>, Vec<DateTime<Utc>>, Vec<String>), Error>;
     async fn handle(&self, _: FitbitBodyWeightFatUpdateRequest) -> Self::Result {
         let config = CONFIG.clone();
         let client = FitbitClient::with_auth(config).await?;
@@ -435,8 +436,9 @@ impl HandleRequest<FitbitBodyWeightFatUpdateRequest> for PgPool {
         let new_measurements = client.update_fitbit_bodyweightfat(new_measurements).await?;
 
         let new_activities = client.sync_fitbit_activities(start_datetime, self).await?;
+        let duplicates = client.remove_duplicate_entries(self).await?;
 
-        Ok((new_measurements, new_activities))
+        Ok((new_measurements, new_activities, duplicates))
     }
 }
 
@@ -916,7 +918,7 @@ pub struct FitbitActivitiesRequest {
 
 #[async_trait]
 impl HandleRequest<FitbitActivitiesRequest> for PgPool {
-    type Result = Result<Vec<FitbitActivityEntry>, Error>;
+    type Result = Result<Vec<FitbitActivity>, Error>;
     async fn handle(&self, req: FitbitActivitiesRequest) -> Self::Result {
         let config = CONFIG.clone();
         let client = FitbitClient::with_auth(config).await?;
@@ -1009,9 +1011,9 @@ pub struct FitbitActivitiesDBRequest(pub StravaActivitiesRequest);
 
 #[async_trait]
 impl HandleRequest<FitbitActivitiesDBRequest> for PgPool {
-    type Result = Result<Vec<FitbitActivityEntry>, Error>;
+    type Result = Result<Vec<FitbitActivity>, Error>;
     async fn handle(&self, msg: FitbitActivitiesDBRequest) -> Self::Result {
-        FitbitActivityEntry::read_from_db(self, msg.0.start_date, msg.0.end_date)
+        FitbitActivity::read_from_db(self, msg.0.start_date, msg.0.end_date)
             .await
             .map_err(Into::into)
     }
@@ -1019,14 +1021,14 @@ impl HandleRequest<FitbitActivitiesDBRequest> for PgPool {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FitbitActivitiesDBUpdateRequest {
-    pub updates: Vec<FitbitActivityEntry>,
+    pub updates: Vec<FitbitActivity>,
 }
 
 #[async_trait]
 impl HandleRequest<FitbitActivitiesDBUpdateRequest> for PgPool {
     type Result = Result<Vec<String>, Error>;
     async fn handle(&self, msg: FitbitActivitiesDBUpdateRequest) -> Self::Result {
-        FitbitActivityEntry::upsert_activities(&msg.updates, self)
+        FitbitActivity::upsert_activities(&msg.updates, self)
             .await
             .map_err(Into::into)
     }

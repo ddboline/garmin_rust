@@ -875,7 +875,6 @@ mod tests {
     use chrono::{Duration, Local, NaiveDate, Utc};
     use futures::future::try_join_all;
     use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
-    use itertools::Itertools;
     use log::debug;
     use std::collections::HashMap;
     use tempfile::NamedTempFile;

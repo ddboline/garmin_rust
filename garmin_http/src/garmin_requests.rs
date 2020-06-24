@@ -397,9 +397,11 @@ impl HandleRequest<FitbitBodyWeightFatRequest> for PgPool {
 
 pub struct FitbitBodyWeightFatUpdateRequest {}
 
+pub type FitbitBodyWeightFatUpdateOutput = (Vec<ScaleMeasurement>, Vec<DateTime<Utc>>, Vec<String>);
+
 #[async_trait]
 impl HandleRequest<FitbitBodyWeightFatUpdateRequest> for PgPool {
-    type Result = Result<(Vec<ScaleMeasurement>, Vec<DateTime<Utc>>, Vec<String>), Error>;
+    type Result = Result<FitbitBodyWeightFatUpdateOutput, Error>;
     async fn handle(&self, _: FitbitBodyWeightFatUpdateRequest) -> Self::Result {
         let config = CONFIG.clone();
         let client = FitbitClient::with_auth(config).await?;

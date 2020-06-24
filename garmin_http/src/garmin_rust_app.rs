@@ -166,7 +166,7 @@ pub async fn start_app() {
             .service(
                 web::resource("/garmin/fitbit/fitbit_activities_db")
                     .route(web::get().to(fitbit_activities_db))
-                    .route(web::get().to(fitbit_activities_db_update)),
+                    .route(web::post().to(fitbit_activities_db_update)),
             )
             .service(web::resource("/garmin/fitbit/profile").route(web::get().to(fitbit_profile)))
             .service(

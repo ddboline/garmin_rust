@@ -2,6 +2,7 @@ use anyhow::{format_err, Error};
 use base64::{encode, encode_config, URL_SAFE_NO_PAD};
 use chrono::{DateTime, FixedOffset, NaiveDate, NaiveTime, Utc};
 use futures::future::try_join_all;
+use itertools::Itertools;
 use lazy_static::lazy_static;
 use log::debug;
 use maplit::hashmap;
@@ -19,7 +20,6 @@ use tokio::{
     task::spawn_blocking,
     time::{delay_for, Duration},
 };
-use itertools::Itertools;
 
 use garmin_lib::{
     common::{
@@ -730,11 +730,11 @@ impl FitbitClient {
 
         // Get existing activities
         let existing_activities: HashMap<_, _> =
-        FitbitActivity::read_from_db(&pool, Some(date), None)
-            .await?
-            .into_iter()
-            .map(|activity| (activity.log_id, activity))
-            .collect();
+            FitbitActivity::read_from_db(&pool, Some(date), None)
+                .await?
+                .into_iter()
+                .map(|activity| (activity.log_id, activity))
+                .collect();
 
         let futures = new_activities
             .values()
@@ -875,10 +875,10 @@ mod tests {
     use chrono::{Duration, Local, NaiveDate, Utc};
     use futures::future::try_join_all;
     use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
+    use itertools::Itertools;
     use log::debug;
     use std::collections::HashMap;
     use tempfile::NamedTempFile;
-    use itertools::Itertools;
 
     #[tokio::test]
     #[ignore]

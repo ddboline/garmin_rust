@@ -10,7 +10,7 @@ use reqwest::{
     Client, Url,
 };
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, path::Path};
+use std::path::Path;
 use tempfile::Builder;
 use tokio::{
     fs::File,
@@ -19,20 +19,13 @@ use tokio::{
 };
 
 use garmin_lib::{
-    common::{garmin_config::GarminConfig, strava_sync::StravaItem},
-    utils::{
-        garmin_util::gzip_file,
-        iso_8601_datetime,
-        sport_types::{deserialize_to_sport_type, SportTypes},
-        stack_string::StackString,
-    },
+    common::{garmin_config::GarminConfig, strava_activity::StravaActivity},
+    utils::{garmin_util::gzip_file, sport_types::SportTypes, stack_string::StackString},
 };
 
 lazy_static! {
     static ref CSRF_TOKEN: Mutex<Option<StackString>> = Mutex::new(None);
 }
-
-pub struct LocalStravaItem(pub StravaItem);
 
 #[derive(Debug, Copy, Clone)]
 pub enum StravaAuthType {
@@ -232,12 +225,14 @@ impl StravaClient {
             .map_err(Into::into)
     }
 
-    pub async fn get_strava_activites(
+    pub async fn get_strava_activities(
         &self,
         start_date: Option<DateTime<Utc>>,
         end_date: Option<DateTime<Utc>>,
+        page: usize,
     ) -> Result<Vec<StravaActivity>, Error> {
         let mut params = Vec::new();
+        params.push(("page", page.to_string()));
         if let Some(start_date) = start_date {
             params.push(("after", start_date.timestamp().to_string()));
         }
@@ -259,26 +254,24 @@ impl StravaClient {
             .map_err(Into::into)
     }
 
-    pub async fn get_strava_activity_map(
+    pub async fn get_all_strava_activites(
         &self,
         start_date: Option<DateTime<Utc>>,
         end_date: Option<DateTime<Utc>>,
-    ) -> Result<HashMap<StackString, StravaItem>, Error> {
-        let activity_map: HashMap<_, _> = self
-            .get_strava_activites(start_date, end_date)
-            .await?
-            .into_iter()
-            .map(|act| {
-                (
-                    act.id.to_string().into(),
-                    StravaItem {
-                        begin_datetime: act.start_date,
-                        title: act.name.into(),
-                    },
-                )
-            })
-            .collect();
-        Ok(activity_map)
+    ) -> Result<Vec<StravaActivity>, Error> {
+        let mut page = 1;
+        let mut activities = Vec::new();
+        loop {
+            let new_activities = self
+                .get_strava_activities(start_date, end_date, page)
+                .await?;
+            if new_activities.is_empty() {
+                break;
+            }
+            page += 1;
+            activities.extend_from_slice(&new_activities);
+        }
+        Ok(activities)
     }
 
     #[allow(clippy::similar_names)]
@@ -395,23 +388,6 @@ impl StravaClient {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct StravaActivity {
-    pub name: String,
-    #[serde(with = "iso_8601_datetime")]
-    pub start_date: DateTime<Utc>,
-    pub id: u64,
-    pub distance: f64,
-    pub moving_time: u64,
-    pub elapsed_time: u64,
-    pub total_elevation_gain: f64,
-    pub elev_high: Option<f64>,
-    pub elev_low: Option<f64>,
-    #[serde(rename = "type", deserialize_with = "deserialize_to_sport_type")]
-    pub activity_type: SportTypes,
-    pub timezone: String,
-}
-
-#[derive(Serialize, Deserialize)]
 pub struct StravaAthlete {
     pub id: u64,
     pub username: String,
@@ -425,19 +401,25 @@ pub struct StravaAthlete {
 #[cfg(test)]
 mod tests {
     use anyhow::Error;
+    use chrono::{DateTime, Utc};
+    use futures::future::try_join_all;
     use log::debug;
+    use std::collections::HashMap;
 
-    use garmin_lib::{common::garmin_config::GarminConfig, utils::sport_types::SportTypes};
+    use garmin_lib::{
+        common::{garmin_config::GarminConfig, pgpool::PgPool},
+        utils::sport_types::SportTypes,
+    };
 
-    use crate::strava_client::StravaClient;
+    use crate::strava_client::{StravaActivity, StravaClient};
 
     #[tokio::test]
     #[ignore]
-    async fn test_get_strava_activites() -> Result<(), Error> {
+    async fn test_get_all_strava_activites() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
         let mut client = StravaClient::from_file(config).await?;
         client.refresh_access_token().await?;
-        let activities = client.get_strava_activites(None, None).await?;
+        let activities = client.get_all_strava_activites(None, None).await?;
         assert!(activities.len() > 10);
         Ok(())
     }
@@ -447,12 +429,12 @@ mod tests {
     async fn test_update_strava_activity() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
         let client = StravaClient::with_auth(config).await?;
-        let activities = client.get_strava_activites(None, None).await?;
+        let activities = client.get_all_strava_activites(None, None).await?;
         if let Some(activity) = activities.into_iter().nth(0) {
             debug!("{} {}", activity.id, activity.name);
             let result = client
                 .update_strava_activity(
-                    activity.id,
+                    activity.id as u64,
                     activity.name.as_str(),
                     Some("Test description"),
                     SportTypes::Running,
@@ -473,6 +455,38 @@ mod tests {
         assert_eq!(athlete.id, 3532812);
         assert_eq!(athlete.firstname.as_str(), "Daniel");
         assert_eq!(athlete.lastname.as_str(), "Boline");
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_dump_strava_activities() -> Result<(), Error> {
+        let config = GarminConfig::get_config(None)?;
+        let pool = PgPool::new(&config.pgurl);
+        let activities: HashMap<_, _> = StravaActivity::read_from_db(&pool, None, None)
+            .await?
+            .into_iter()
+            .map(|activity| (activity.id, activity))
+            .collect();
+        let client = StravaClient::with_auth(config).await?;
+        let start_date: DateTime<Utc> = "2020-01-01T00:00:00Z".parse()?;
+        let new_activities: Vec<_> = client
+            .get_all_strava_activites(Some(start_date), None)
+            .await?
+            .into_iter()
+            .filter(|activity| !activities.contains_key(&activity.id))
+            .collect();
+        println!("{:?}", new_activities);
+        let futures = new_activities.iter().map(|activity| {
+            let pool = pool.clone();
+            async move {
+                activity.insert_into_db(&pool).await?;
+                Ok(())
+            }
+        });
+        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+        results?;
+        assert_eq!(new_activities.len(), 0);
         Ok(())
     }
 }

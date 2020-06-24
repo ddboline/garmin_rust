@@ -9,4 +9,4 @@ pub mod garmin_summary;
 pub mod garmin_sync;
 pub mod pgpool;
 pub mod reqwest_session;
-pub mod strava_sync;
+pub mod strava_activity;

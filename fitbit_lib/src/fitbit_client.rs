@@ -5,8 +5,10 @@ use futures::future::try_join_all;
 use lazy_static::lazy_static;
 use log::debug;
 use maplit::hashmap;
+use postgres_query::{FromSqlRow, Parameter};
 use rand::{thread_rng, Rng};
-use reqwest::{header::HeaderMap, Client, Url};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use reqwest::{header::HeaderMap, Client, Response, Url};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
@@ -17,6 +19,7 @@ use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     sync::Mutex,
     task::spawn_blocking,
+    time::{delay_for, Duration},
 };
 
 use garmin_lib::{
@@ -123,6 +126,35 @@ impl FitbitClient {
         self.offset.unwrap_or_else(|| FixedOffset::east(0))
     }
 
+    async fn get_url(&self, url: Url, headers: HeaderMap) -> Result<Response, Error> {
+        let resp = self
+            .client
+            .get(url.clone())
+            .headers(headers.clone())
+            .send()
+            .await?;
+        if resp.status() == 429 {
+            if let Some(retry_after) = resp.headers().get("retry-after") {
+                let retry_seconds: u64 = retry_after.to_str()?.parse()?;
+                if retry_seconds < 60 {
+                    delay_for(Duration::from_secs(retry_seconds)).await;
+                    let headers = self.get_auth_headers()?;
+                    return self
+                        .client
+                        .get(url)
+                        .headers(headers)
+                        .send()
+                        .await
+                        .map_err(Into::into);
+                } else {
+                    println!("Wait at least {} seconds before retrying", retry_seconds);
+                    return Err(format_err!("{}", resp.text().await?));
+                }
+            }
+        }
+        Ok(resp)
+    }
+
     pub async fn get_user_profile(&self) -> Result<FitbitUserProfile, Error> {
         #[derive(Deserialize)]
         struct UserResp {
@@ -132,10 +164,7 @@ impl FitbitClient {
         let headers = self.get_auth_headers()?;
         let url = FITBIT_PREFIX.join("profile.json")?;
         let resp: UserResp = self
-            .client
-            .get(url)
-            .headers(headers)
-            .send()
+            .get_url(url, headers)
             .await?
             .error_for_status()?
             .json()
@@ -448,10 +477,10 @@ impl FitbitClient {
         &self,
         start_date: NaiveDate,
         offset: Option<usize>,
-    ) -> Result<Vec<ActivityEntry>, Error> {
+    ) -> Result<Vec<FitbitActivityEntry>, Error> {
         #[derive(Deserialize)]
         struct AcivityListResp {
-            activities: Vec<ActivityEntry>,
+            activities: Vec<FitbitActivityEntry>,
         }
 
         let offset = offset.unwrap_or(0);
@@ -462,10 +491,7 @@ impl FitbitClient {
             start_date, offset,
         ))?;
         let activities: AcivityListResp = self
-            .client
-            .get(url.as_str())
-            .headers(headers)
-            .send()
+            .get_url(url, headers)
             .await?
             .error_for_status()?
             .json()
@@ -476,7 +502,7 @@ impl FitbitClient {
     pub async fn get_all_activities(
         &self,
         start_date: NaiveDate,
-    ) -> Result<Vec<ActivityEntry>, Error> {
+    ) -> Result<Vec<FitbitActivityEntry>, Error> {
         let mut activities = Vec::new();
         loop {
             let new_activities: Vec<_> = self
@@ -588,10 +614,7 @@ impl FitbitClient {
         Ok(id_map)
     }
 
-    pub async fn log_fitbit_activity(
-        &self,
-        entry: &ActivityLoggingEntry,
-    ) -> Result<(u64, u64), Error> {
+    async fn log_fitbit_activity(&self, entry: &ActivityLoggingEntry) -> Result<(u64, u64), Error> {
         #[derive(Deserialize)]
         struct ActivityLogEntry {
             #[serde(rename = "activityId")]
@@ -620,6 +643,7 @@ impl FitbitClient {
         Ok((resp.activity_log.activity_id, resp.activity_log.steps))
     }
 
+    #[allow(clippy::filter_map)]
     pub async fn sync_fitbit_activities(
         &self,
         begin_datetime: DateTime<Utc>,
@@ -645,7 +669,7 @@ impl FitbitClient {
 
         let futures = activities_to_delete
             .iter()
-            .map(|log_id| async move { self.delete_fitbit_activity(*log_id).await });
+            .map(|log_id| async move { self.delete_fitbit_activity(*log_id as u64).await });
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
         results?;
 
@@ -662,6 +686,24 @@ impl FitbitClient {
                 }
             })
             .collect();
+        let existing_activities: HashMap<_, _> =
+            FitbitActivityEntry::read_from_db(&pool, Some(date), None)
+                .await?
+                .into_iter()
+                .map(|activity| (activity.log_id, activity))
+                .collect();
+        let futures = new_activities
+            .values()
+            .filter(|activity| !existing_activities.contains_key(&activity.log_id))
+            .map(|activity| {
+                let pool = pool.clone();
+                async move {
+                    activity.insert_into_db(&pool).await?;
+                    Ok(())
+                }
+            });
+        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+        results?;
 
         let old_activities: Vec<_> = get_list_of_activities_from_db(
             &format!("begin_datetime >= '{}'", begin_datetime),
@@ -712,8 +754,8 @@ impl FitbitClient {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ActivityEntry {
+#[derive(Serialize, Deserialize, Clone, Debug, FromSqlRow)]
+pub struct FitbitActivityEntry {
     #[serde(rename = "logType")]
     log_type: String,
     #[serde(rename = "startTime")]
@@ -721,20 +763,154 @@ pub struct ActivityEntry {
     #[serde(rename = "tcxLink")]
     tcx_link: Option<String>,
     #[serde(rename = "activityTypeId")]
-    activity_type_id: Option<u64>,
+    activity_type_id: Option<i64>,
     #[serde(rename = "activityName")]
     activity_name: Option<String>,
-    duration: u64,
+    duration: i64,
     distance: Option<f64>,
     #[serde(rename = "distanceUnit")]
     distance_unit: Option<String>,
-    steps: Option<u64>,
+    steps: Option<i64>,
     #[serde(rename = "logId")]
-    log_id: u64,
+    log_id: i64,
+}
+
+impl FitbitActivityEntry {
+    pub async fn read_from_db(
+        pool: &PgPool,
+        start_date: Option<NaiveDate>,
+        end_date: Option<NaiveDate>,
+    ) -> Result<Vec<Self>, Error> {
+        let query = "SELECT * FROM fitbit_activities";
+        let mut conditions = Vec::new();
+        let mut bindings = Vec::new();
+        if let Some(d) = start_date {
+            conditions.push("date(start_time) >= $start_date".to_string());
+            bindings.push(("start_date", d));
+        }
+        if let Some(d) = end_date {
+            conditions.push("date(start_time) <= $end_date".to_string());
+            bindings.push(("end_date", d));
+        }
+        let query = format!(
+            "{} {} ORDER BY start_time",
+            query,
+            if conditions.is_empty() {
+                "".to_string()
+            } else {
+                format!("WHERE {}", conditions.join(" AND "))
+            }
+        );
+        let query_bindings: Vec<_> = bindings.iter().map(|(k, v)| (*k, v as Parameter)).collect();
+        debug!("query:\n{}", query);
+        let query = postgres_query::query_dyn!(&query, ..query_bindings)?;
+        let conn = pool.get().await?;
+        conn.query(query.sql(), query.parameters())
+            .await?
+            .par_iter()
+            .map(|r| Self::from_row(r).map_err(Into::into))
+            .collect()
+    }
+
+    pub async fn insert_into_db(&self, pool: &PgPool) -> Result<(), Error> {
+        let query = postgres_query::query!(
+            "
+                INSERT INTO fitbit_activities (
+                    log_id,log_type,start_time,tcx_link,activity_type_id,activity_name,duration,
+                    distance,distance_unit,steps
+                )
+                VALUES (
+                    \
+             $log_id,$log_type,$start_time,$tcx_link,$activity_type_id,$activity_name,$duration,
+                    $distance,$distance_unit,$steps
+                )",
+            log_id = self.log_id,
+            log_type = self.log_type,
+            start_time = self.start_time,
+            tcx_link = self.tcx_link,
+            activity_type_id = self.activity_type_id,
+            activity_name = self.activity_name,
+            duration = self.duration,
+            distance = self.distance,
+            distance_unit = self.distance_unit,
+            steps = self.steps,
+        );
+
+        let conn = pool.get().await?;
+
+        conn.execute(query.sql(), query.parameters())
+            .await
+            .map(|_| ())
+            .map_err(Into::into)
+    }
+
+    pub async fn update_db(&self, pool: &PgPool) -> Result<(), Error> {
+        let query = postgres_query::query!(
+            "
+                UPDATE fitbit_activities SET
+                    log_type=$log_type,start_time=$start_time,tcx_link=$tcx_link,
+                    activity_type_id=$activity_type_id,activity_name=$activity_name,
+                    duration=$duration,distance=$distance,distance_unit=$distance_unit,
+                    steps=$steps
+                WHERE log_id=$log_id
+            ",
+            log_id = self.log_id,
+            log_type = self.log_type,
+            start_time = self.start_time,
+            tcx_link = self.tcx_link,
+            activity_type_id = self.activity_type_id,
+            activity_name = self.activity_name,
+            duration = self.duration,
+            distance = self.distance,
+            distance_unit = self.distance_unit,
+            steps = self.steps,
+        );
+        let conn = pool.get().await?;
+        conn.execute(query.sql(), query.parameters()).await?;
+        Ok(())
+    }
+
+    pub async fn upsert_activities(
+        activities: &[Self],
+        pool: &PgPool,
+    ) -> Result<Vec<String>, Error> {
+        let mut output = Vec::new();
+        let existing_activities: HashMap<_, _> = Self::read_from_db(pool, None, None)
+            .await?
+            .into_iter()
+            .map(|activity| (activity.log_id, activity))
+            .collect();
+
+        let (update_items, insert_items): (Vec<_>, Vec<_>) = activities
+            .iter()
+            .partition(|activity| existing_activities.contains_key(&activity.log_id));
+
+        let futures = update_items.into_iter().map(|activity| {
+            let pool = pool.clone();
+            async move {
+                activity.update_db(&pool).await?;
+                Ok(activity.log_id.to_string())
+            }
+        });
+        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+        output.extend_from_slice(&results?);
+
+        let futures = insert_items.into_iter().map(|activity| {
+            let pool = pool.clone();
+            async move {
+                activity.insert_into_db(&pool).await?;
+                Ok(activity.log_id.to_string())
+            }
+        });
+        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+        output.extend_from_slice(&results?);
+
+        Ok(output)
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ActivityLoggingEntry {
+struct ActivityLoggingEntry {
     #[serde(rename = "activityId")]
     activity_id: Option<u64>,
     #[serde(rename = "startTime")]
@@ -748,7 +924,7 @@ pub struct ActivityLoggingEntry {
 }
 
 impl ActivityLoggingEntry {
-    pub fn from_summary(item: &GarminSummary, offset: FixedOffset) -> Option<Self> {
+    fn from_summary(item: &GarminSummary, offset: FixedOffset) -> Option<Self> {
         item.sport.to_fitbit_activity_id().map(|activity_id| Self {
             activity_id: Some(activity_id),
             start_time: item
@@ -805,13 +981,14 @@ pub struct FitbitUserProfile {
 
 #[cfg(test)]
 mod tests {
+    use crate::fitbit_client::{FitbitActivityEntry, FitbitClient};
     use anyhow::Error;
-    use chrono::{Duration, Local, Utc};
-    use log::debug;
-    use tempfile::NamedTempFile;
-
-    use crate::fitbit_client::FitbitClient;
+    use chrono::{Duration, Local, NaiveDate, Utc};
+    use futures::future::try_join_all;
     use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
+    use log::debug;
+    use std::collections::HashMap;
+    use tempfile::NamedTempFile;
 
     #[tokio::test]
     #[ignore]
@@ -937,6 +1114,38 @@ mod tests {
         let resp = client.get_user_profile().await?;
         assert_eq!(resp.country.as_str(), "US");
         assert_eq!(resp.display_name.as_str(), "Daniel B.");
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_dump_fitbit_activities() -> Result<(), Error> {
+        let config = GarminConfig::get_config(None)?;
+        let client = FitbitClient::with_auth(config.clone()).await?;
+        let pool = PgPool::new(&config.pgurl);
+        let activities: HashMap<_, _> = FitbitActivityEntry::read_from_db(&pool, None, None)
+            .await?
+            .into_iter()
+            .map(|activity| (activity.log_id, activity))
+            .collect();
+        let start_date: NaiveDate = "2020-01-01".parse()?;
+        let new_activities: Vec<_> = client
+            .get_all_activities(start_date)
+            .await?
+            .into_iter()
+            .filter(|activity| !activities.contains_key(&activity.log_id))
+            .collect();
+        println!("{:?}", new_activities);
+        let futures = new_activities.iter().map(|activity| {
+            let pool = pool.clone();
+            async move {
+                activity.insert_into_db(&pool).await?;
+                Ok(())
+            }
+        });
+        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+        results?;
+        assert_eq!(new_activities.len(), 0);
         Ok(())
     }
 }

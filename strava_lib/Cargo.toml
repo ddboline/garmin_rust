@@ -1,6 +1,6 @@
 [package]
 name = "strava_lib"
-version = "0.8.23"
+version = "0.8.24"
 authors = ["Daniel Boline <dboline@mediamath.com>"]
 edition = "2018"
 
@@ -20,3 +20,6 @@ maplit = "1.0"
 serde = {version="1.0", features=["derive"]}
 serde_json = "1.0"
 uuid = "0.8"
+postgres_query = "0.3"
+rayon = "1.3"
+futures = "0.3"

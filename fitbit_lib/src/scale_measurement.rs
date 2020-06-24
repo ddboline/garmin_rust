@@ -106,10 +106,7 @@ impl ScaleMeasurement {
         start_date: Option<NaiveDate>,
         end_date: Option<NaiveDate>,
     ) -> Result<Vec<Self>, Error> {
-        let query = "
-            SELECT datetime, mass, fat_pct, water_pct, muscle_pct, bone_pct
-            FROM scale_measurements
-        ";
+        let query = "SELECT * FROM scale_measurements";
         let mut conditions = Vec::new();
         let mut bindings = Vec::new();
         if let Some(d) = start_date {
@@ -265,7 +262,9 @@ impl ScaleMeasurement {
 #[cfg(test)]
 mod tests {
     use anyhow::Error;
-    use chrono::Utc;
+    use chrono::{DateTime, Utc};
+
+    use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
 
     use crate::scale_measurement::ScaleMeasurement;
 
@@ -291,7 +290,31 @@ mod tests {
         let obs = ScaleMeasurement::from_telegram_text(msg)?;
         exp.datetime = obs.datetime;
         assert_eq!(obs, exp);
+        Ok(())
+    }
 
+    #[tokio::test]
+    #[ignore]
+    async fn test_read_scale_measurement_from_db() -> Result<(), Error> {
+        let config = GarminConfig::get_config(None)?;
+        let pool = PgPool::new(&config.pgurl);
+        let measurements = ScaleMeasurement::read_from_db(&pool, None, None).await?;
+        assert!(measurements.len() > 700);
+        let first = measurements[0];
+        println!("{:#?}", first);
+        let first_date: DateTime<Utc> = "2016-02-24T04:00:00-05:00".parse()?;
+        assert_eq!(
+            first,
+            ScaleMeasurement {
+                datetime: first_date,
+                mass: 174.8,
+                fat_pct: 18.2,
+                water_pct: 61.5,
+                muscle_pct: 41.8,
+                bone_pct: 4.6,
+            }
+        );
+        assert_eq!(first.datetime, first_date);
         Ok(())
     }
 }

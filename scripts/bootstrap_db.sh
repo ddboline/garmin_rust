@@ -52,3 +52,7 @@ psql $DB < ./scripts/garmin_corrections_laps.sql
 psql $DB < ./scripts/garmin_summary.sql
 psql $DB < ./scripts/strava_id_cache.sql
 psql $DB < ./scripts/scale_measurements.sql
+psql $DB < ./scripts/heartrate_statistics_summary.sql
+psql $DB < ./scripts/fitbit_activities.sql
+psql $DB < ./scripts/garmin_connect_activities.sql
+psql $DB < ./scripts/strava_activities.sql

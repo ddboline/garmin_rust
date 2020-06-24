@@ -31,18 +31,19 @@ use super::{errors::ServiceError as Error, logged_user::LoggedUser};
 use super::garmin_rust_app::AppState;
 use crate::{
     garmin_requests::{
-        AddGarminCorrectionRequest, FitbitActivitiesRequest, FitbitActivityTypesRequest,
-        FitbitAuthRequest, FitbitBodyWeightFatRequest, FitbitBodyWeightFatUpdateRequest,
-        FitbitCallbackRequest, FitbitHeartrateApiRequest, FitbitHeartrateCacheRequest,
-        FitbitHeartratePlotRequest, FitbitProfileRequest, FitbitRefreshRequest,
-        FitbitStatisticsPlotRequest, FitbitSyncRequest, FitbitTcxSyncRequest,
-        GarminConnectActivitiesRequest, GarminConnectHrApiRequest, GarminConnectHrSyncRequest,
-        GarminConnectSyncRequest, GarminCorrRequest, GarminHtmlRequest, GarminListRequest,
-        GarminSyncRequest, GarminUploadRequest, HandleRequest, ScaleMeasurementPlotRequest,
-        ScaleMeasurementRequest, ScaleMeasurementUpdateRequest, StravaActiviesDBUpdateRequest,
-        StravaActivitiesDBRequest, StravaActivitiesRequest, StravaAthleteRequest,
-        StravaAuthRequest, StravaCallbackRequest, StravaRefreshRequest, StravaSyncRequest,
-        StravaUpdateRequest, StravaUploadRequest,
+        AddGarminCorrectionRequest, FitbitActivitiesDBRequest, FitbitActivitiesDBUpdateRequest,
+        FitbitActivitiesRequest, FitbitActivityTypesRequest, FitbitAuthRequest,
+        FitbitBodyWeightFatRequest, FitbitBodyWeightFatUpdateRequest, FitbitCallbackRequest,
+        FitbitHeartrateApiRequest, FitbitHeartrateCacheRequest, FitbitHeartratePlotRequest,
+        FitbitProfileRequest, FitbitRefreshRequest, FitbitStatisticsPlotRequest, FitbitSyncRequest,
+        FitbitTcxSyncRequest, GarminConnectActivitiesDBRequest,
+        GarminConnectActivitiesDBUpdateRequest, GarminConnectActivitiesRequest,
+        GarminConnectHrApiRequest, GarminConnectHrSyncRequest, GarminConnectSyncRequest,
+        GarminCorrRequest, GarminHtmlRequest, GarminListRequest, GarminSyncRequest,
+        GarminUploadRequest, HandleRequest, ScaleMeasurementPlotRequest, ScaleMeasurementRequest,
+        ScaleMeasurementUpdateRequest, StravaActiviesDBUpdateRequest, StravaActivitiesDBRequest,
+        StravaActivitiesRequest, StravaAthleteRequest, StravaAuthRequest, StravaCallbackRequest,
+        StravaRefreshRequest, StravaSyncRequest, StravaUpdateRequest, StravaUploadRequest,
     },
     CONFIG,
 };
@@ -697,4 +698,47 @@ pub async fn garmin_connect_activities(
     let query = query.into_inner();
     let result = state.db.handle(query).await?;
     to_json(result)
+}
+
+pub async fn garmin_connect_activities_db(
+    query: Query<StravaActivitiesRequest>,
+    _: LoggedUser,
+    state: Data<AppState>,
+) -> Result<HttpResponse, Error> {
+    let query = query.into_inner();
+    let alist = state
+        .db
+        .handle(GarminConnectActivitiesDBRequest(query))
+        .await?;
+    to_json(alist)
+}
+
+pub async fn garmin_connect_activities_db_update(
+    payload: Json<GarminConnectActivitiesDBUpdateRequest>,
+    _: LoggedUser,
+    state: Data<AppState>,
+) -> Result<HttpResponse, Error> {
+    let req = payload.into_inner();
+    let body = state.db.handle(req).await?;
+    form_http_response(body.join("\n"))
+}
+
+pub async fn fitbit_activities_db(
+    query: Query<StravaActivitiesRequest>,
+    _: LoggedUser,
+    state: Data<AppState>,
+) -> Result<HttpResponse, Error> {
+    let query = query.into_inner();
+    let alist = state.db.handle(FitbitActivitiesDBRequest(query)).await?;
+    to_json(alist)
+}
+
+pub async fn fitbit_activities_db_update(
+    payload: Json<FitbitActivitiesDBUpdateRequest>,
+    _: LoggedUser,
+    state: Data<AppState>,
+) -> Result<HttpResponse, Error> {
+    let req = payload.into_inner();
+    let body = state.db.handle(req).await?;
+    form_http_response(body.join("\n"))
 }

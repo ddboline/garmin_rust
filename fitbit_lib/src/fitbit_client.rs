@@ -644,7 +644,6 @@ impl FitbitClient {
     }
 
     pub async fn remove_duplicate_entries(&self, pool: &PgPool) -> Result<Vec<String>, Error> {
-        let mut output = Vec::new();
         let existing_activities: Vec<_> = FitbitActivity::read_from_db(&pool, None, None)
             .await?
             .into_iter()
@@ -658,19 +657,36 @@ impl FitbitClient {
             .collect();
 
         let mut last_entry = None;
-        for (k, v) in existing_activities {
-            if let Some(k_) = last_entry.take() {
-                if k_ == k {
-                    self.delete_fitbit_activity(v.log_id as u64).await?;
-                    if let Some(activity) = FitbitActivity::get_by_id(&pool, v.log_id).await? {
-                        activity.delete_from_db(&pool).await?;
-                        output.push(format!("fully deleted {}", v.log_id));
+        let dupes: Vec<_> = existing_activities
+            .into_iter()
+            .filter_map(|(k, v)| {
+                let mut keep = false;
+                if let Some(k_) = last_entry.take() {
+                    if k_ == k {
+                        keep = true;
                     }
                 }
+                last_entry.replace(k);
+                if keep {
+                    Some(v.log_id)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        let futures = dupes.into_iter().map(|log_id| {
+            async move {
+                self.delete_fitbit_activity(log_id as u64).await?;
+                if let Some(activity) = FitbitActivity::get_by_id(&pool, log_id).await? {
+                    activity.delete_from_db(&pool).await?;
+                    Ok(format!("fully deleted {}", log_id))
+                } else {
+                    Ok(format!("not fully deleted {}", log_id))
+                }
             }
-            last_entry.replace(k);
-        }
-        Ok(output)
+        });
+        try_join_all(futures).await
     }
 
     #[allow(clippy::filter_map)]

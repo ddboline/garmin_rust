@@ -60,6 +60,7 @@ impl From<SportTypes> for String {
     }
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)]
 pub fn serialize<S>(sport: &SportTypes, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,

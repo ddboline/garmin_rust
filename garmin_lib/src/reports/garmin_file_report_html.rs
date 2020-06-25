@@ -376,6 +376,7 @@ where
     Ok(htmlvec.join("\n"))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn get_garmin_template_vec<T: AsRef<str>>(
     domain: &str,
     gfile: &GarminFile,

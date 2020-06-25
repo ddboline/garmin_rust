@@ -67,6 +67,7 @@ where
     serializer.serialize_str(&sport.to_strava_activity())
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)]
 pub fn deserialize<'de, D>(deserializer: D) -> Result<SportTypes, D::Error>
 where
     D: Deserializer<'de>,

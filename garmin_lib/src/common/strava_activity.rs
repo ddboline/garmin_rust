@@ -11,7 +11,7 @@ use crate::{
     common::pgpool::PgPool,
     utils::{
         iso_8601_datetime,
-        sport_types::{deserialize_to_sport_type, SportTypes},
+        sport_types::{self, SportTypes},
     },
 };
 
@@ -27,7 +27,7 @@ pub struct StravaActivity {
     pub total_elevation_gain: Option<f64>,
     pub elev_high: Option<f64>,
     pub elev_low: Option<f64>,
-    #[serde(rename = "type", deserialize_with = "deserialize_to_sport_type")]
+    #[serde(rename = "type", with = "sport_types")]
     pub activity_type: SportTypes,
     pub timezone: String,
 }

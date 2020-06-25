@@ -1,7 +1,7 @@
 use anyhow::{format_err, Error};
 use bytes::BytesMut;
 use lazy_static::lazy_static;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{collections::HashMap, convert::TryFrom, fmt, str::FromStr};
 use tokio_postgres::types::{FromSql, IsNull, ToSql, Type};
 
@@ -60,7 +60,14 @@ impl From<SportTypes> for String {
     }
 }
 
-pub fn deserialize_to_sport_type<'de, D>(deserializer: D) -> Result<SportTypes, D::Error>
+pub fn serialize<S>(sport: &SportTypes, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    serializer.serialize_str(&sport.to_strava_activity())
+}
+
+pub fn deserialize<'de, D>(deserializer: D) -> Result<SportTypes, D::Error>
 where
     D: Deserializer<'de>,
 {

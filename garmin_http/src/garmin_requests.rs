@@ -249,40 +249,14 @@ impl HandleRequest<StravaSyncRequest> for PgPool {
         let config = CONFIG.clone();
         let pool = PgPool::new(&config.pgurl);
 
-        let max_datetime = Utc::now() - Duration::days(30);
+        let max_datetime = Utc::now() - Duration::days(15);
 
-        let activities: HashMap<_, _> =
-            StravaActivity::read_from_db(&pool, Some(max_datetime.naive_local().date()), None)
-                .await?
-                .into_iter()
-                .map(|activity| (activity.id, activity))
-                .collect();
         let client = StravaClient::with_auth(config).await?;
         let new_activities: Vec<_> = client
             .get_all_strava_activites(Some(max_datetime), None)
-            .await?
-            .into_iter()
-            .filter(|activity| !activities.contains_key(&activity.id))
-            .collect();
+            .await?;
 
-        let futures = new_activities.iter().map(|activity| {
-            let pool = pool.clone();
-            async move {
-                activity.insert_into_db(&pool).await?;
-                Ok(())
-            }
-        });
-        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
-        results?;
-        let activity_map: HashMap<_, _> = new_activities
-            .iter()
-            .map(|activity| (activity.id, activity.start_date))
-            .collect();
-        let output: Vec<_> = new_activities
-            .into_iter()
-            .map(|activity| activity.id.to_string())
-            .collect();
-        debug!("activities {:#?}", activity_map);
+        let output = StravaActivity::upsert_activities(&new_activities, &pool).await?;
 
         Ok(output)
     }

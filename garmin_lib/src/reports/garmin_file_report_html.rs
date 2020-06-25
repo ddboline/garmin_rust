@@ -7,8 +7,9 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use crate::{
     common::{
-        garmin_config::GarminConfig, garmin_file::GarminFile, garmin_lap::GarminLap,
-        pgpool::PgPool, strava_activity::get_strava_id_from_begin_datetime,
+        fitbit_activity::FitbitActivity, garmin_config::GarminConfig,
+        garmin_connect_client::GarminConnectActivity, garmin_file::GarminFile,
+        garmin_lap::GarminLap, pgpool::PgPool, strava_activity::StravaActivity,
     },
     reports::{
         garmin_file_report_txt::get_splits,
@@ -338,7 +339,10 @@ where
     T: AsRef<str>,
     U: AsRef<str>,
 {
-    let strava_id_title = get_strava_id_from_begin_datetime(pool, gfile.begin_datetime).await?;
+    let strava_activity = StravaActivity::get_by_begin_datetime(pool, gfile.begin_datetime).await?;
+    let fitbit_activity = FitbitActivity::get_by_start_time(pool, gfile.begin_datetime).await?;
+    let connect_activity =
+        GarminConnectActivity::get_by_begin_datetime(pool, gfile.begin_datetime).await?;
 
     let htmlvec = if !report_objs.lat_vals.is_empty()
         & !report_objs.lon_vals.is_empty()
@@ -348,7 +352,9 @@ where
             report_objs,
             gfile,
             sport,
-            &strava_id_title,
+            &strava_activity,
+            &fitbit_activity,
+            &connect_activity,
             history,
             graphs,
             config,
@@ -359,7 +365,9 @@ where
             &config.domain,
             gfile,
             sport,
-            &strava_id_title,
+            &strava_activity,
+            &fitbit_activity,
+            &connect_activity,
             history,
             is_demo,
         )?
@@ -372,7 +380,9 @@ fn get_garmin_template_vec<T: AsRef<str>>(
     domain: &str,
     gfile: &GarminFile,
     sport: SportTypes,
-    strava_id_title: &Option<(u64, String)>,
+    strava_activity: &Option<StravaActivity>,
+    fitbit_activity: &Option<FitbitActivity>,
+    connect_activity: &Option<GarminConnectActivity>,
     history: &[T],
     is_demo: bool,
 ) -> Result<Vec<String>, Error> {
@@ -386,7 +396,10 @@ fn get_garmin_template_vec<T: AsRef<str>>(
 
     for line in template.split('\n') {
         if line.contains("INSERTTEXTHERE") {
-            htmlvec.push(format!("{}\n", get_file_html(&gfile)));
+            htmlvec.push(format!(
+                "{}\n",
+                get_file_html(&gfile, fitbit_activity, connect_activity)
+            ));
             htmlvec.push(format!(
                 "<br><br>{}\n",
                 get_html_splits(&gfile, METERS_PER_MILE, "mi")?
@@ -408,10 +421,10 @@ fn get_garmin_template_vec<T: AsRef<str>>(
                 titlecase(&sport.to_string()),
                 gfile.begin_datetime
             );
-            let newtitle = match strava_id_title.as_ref() {
-                Some((id, title)) => format!(
+            let newtitle = match strava_activity {
+                Some(strava_activity) => format!(
                     r#"<a href="https://www.strava.com/activities/{}" target="_blank">{} {}</a>"#,
-                    id, title, gfile.begin_datetime
+                    strava_activity.id, strava_activity.name, gfile.begin_datetime
                 ),
                 None => newtitle,
             };
@@ -437,7 +450,9 @@ fn get_map_tempate_vec<T, U>(
     report_objs: &ReportObjects,
     gfile: &GarminFile,
     sport: SportTypes,
-    strava_id_title: &Option<(u64, String)>,
+    strava_activity: &Option<StravaActivity>,
+    fitbit_activity: &Option<FitbitActivity>,
+    connect_activity: &Option<GarminConnectActivity>,
     history: &[T],
     graphs: &[U],
     config: &GarminConfig,
@@ -505,16 +520,16 @@ where
                 titlecase(&sport.to_string()),
                 gfile.begin_datetime
             );
-            let newtitle = match strava_id_title.as_ref() {
-                Some((id, title)) => format!(
+            let newtitle = match strava_activity {
+                Some(strava_activity) => format!(
                     r#"<a href="https://www.strava.com/activities/{}" target="_blank">{} {}</a>"#,
-                    id, title, gfile.begin_datetime
+                    strava_activity.id, strava_activity.name, gfile.begin_datetime
                 ),
                 None => newtitle,
             };
             htmlvec.push(line.replace("SPORTTITLELINK", &newtitle).to_string());
         } else if line.contains("STRAVAUPLOADBUTTON") {
-            if let Some((id, _)) = strava_id_title.as_ref() {
+            if let Some(strava_activity) = strava_activity {
                 let button_str = format!(
                     r#"<form>{}</form>"#,
                     if is_demo {
@@ -525,7 +540,7 @@ where
                                 <input type="text" name="cmd" id="strava_upload"/>
                                 <input type="button" name="submitSTRAVA" value="Title" onclick="processStravaUpdate({});"/>
                             "#,
-                            id
+                            strava_activity.id
                         )
                     },
                 );
@@ -552,7 +567,10 @@ where
                 }
             }
         } else if line.contains("INSERTTABLESHERE") {
-            htmlvec.push(format!("{}\n", get_file_html(&gfile)));
+            htmlvec.push(format!(
+                "{}\n",
+                get_file_html(&gfile, fitbit_activity, connect_activity)
+            ));
             htmlvec.push(format!(
                 "<br><br>{}\n",
                 get_html_splits(&gfile, METERS_PER_MILE, "mi")?
@@ -637,7 +655,11 @@ fn get_correction_button(begin_datetime: DateTime<Utc>) -> String {
     )
 }
 
-fn get_file_html(gfile: &GarminFile) -> String {
+fn get_file_html(
+    gfile: &GarminFile,
+    fitbit_activity: &Option<FitbitActivity>,
+    connect_activity: &Option<GarminConnectActivity>,
+) -> String {
     let mut retval = Vec::new();
 
     let sport = gfile.sport.to_string();
@@ -645,16 +667,32 @@ fn get_file_html(gfile: &GarminFile) -> String {
     retval.push(r#"<table border="1" class="dataframe">"#.to_string());
     retval.push(
         r#"<thead><tr style="text-align: center;"><th>Start Time</th>
-                   <th>Sport</th><th></th></tr></thead>"#
+                   <th>Sport</th><th></th><th>FitbitID</th><th>GarminConnectID</th></tr></thead>"#
             .to_string(),
     );
     retval.push(format!(
         "<tbody><tr style={0}text-align: \
-         center;{0}><td>{1}</td><td>{2}</td><td>{3}</td></tr></tbody>",
+         center;{0}><td>{1}</td><td>{2}</td><td>{3}</td><td>{4}</td><td>{5}</td></tr></tbody>",
         '"',
         gfile.begin_datetime,
         get_sport_selector(gfile.sport),
         get_correction_button(gfile.begin_datetime),
+        if let Some(fitbit_activity) = fitbit_activity {
+            format!(
+                r#"<a href="https://www.fitbit.com/activities/exercise/{0}" target="_blank">{0}</a>"#,
+                fitbit_activity.log_id,
+            )
+        } else {
+            "".to_string()
+        },
+        if let Some(connect_activity) = connect_activity {
+            format!(
+                r#"<a href="https://connect.garmin.com/modern/activity/{0}" target="_blank">{0}</a>"#,
+                connect_activity.activity_id,
+            )
+        } else {
+            "".to_string()
+        },
     ));
     retval.push(r#"</table><br>"#.to_string());
 

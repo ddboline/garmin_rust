@@ -69,6 +69,23 @@ impl StravaActivity {
             .collect()
     }
 
+    pub async fn get_by_begin_datetime(
+        pool: &PgPool,
+        begin_datetime: DateTime<Utc>,
+    ) -> Result<Option<Self>, Error> {
+        let query = postgres_query::query!(
+            "SELECT * FROM strava_activities WHERE start_date=$start_date",
+            start_date = begin_datetime,
+        );
+        let conn = pool.get().await?;
+        let activity: Option<StravaActivity> = conn
+            .query_opt(query.sql(), query.parameters())
+            .await?
+            .map(|row| StravaActivity::from_row(&row))
+            .transpose()?;
+        Ok(activity)
+    }
+
     pub async fn insert_into_db(&self, pool: &PgPool) -> Result<(), Error> {
         let query = postgres_query::query!(
             "
@@ -165,21 +182,4 @@ impl StravaActivity {
 
         Ok(output)
     }
-}
-
-pub async fn get_strava_id_from_begin_datetime(
-    pool: &PgPool,
-    begin_datetime: DateTime<Utc>,
-) -> Result<Option<(u64, String)>, Error> {
-    let query = postgres_query::query!(
-        "SELECT * FROM strava_activities WHERE start_date=$start_date",
-        start_date = begin_datetime,
-    );
-    let conn = pool.get().await?;
-    let activity: Option<StravaActivity> = conn
-        .query_opt(query.sql(), query.parameters())
-        .await?
-        .map(|row| StravaActivity::from_row(&row))
-        .transpose()?;
-    Ok(activity.map(|activity| (activity.id as u64, activity.name)))
 }

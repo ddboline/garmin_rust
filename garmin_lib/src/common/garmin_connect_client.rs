@@ -346,6 +346,23 @@ impl GarminConnectActivity {
             .collect()
     }
 
+    pub async fn get_by_begin_datetime(
+        pool: &PgPool,
+        begin_datetime: DateTime<Utc>,
+    ) -> Result<Option<Self>, Error> {
+        let query = postgres_query::query!(
+            "SELECT * FROM garmin_connect_activities WHERE start_time_gmt=$start_date",
+            start_date = begin_datetime,
+        );
+        let conn = pool.get().await?;
+        let activity: Option<GarminConnectActivity> = conn
+            .query_opt(query.sql(), query.parameters())
+            .await?
+            .map(|row| GarminConnectActivity::from_row(&row))
+            .transpose()?;
+        Ok(activity)
+    }
+
     pub async fn insert_into_db(&self, pool: &PgPool) -> Result<(), Error> {
         let query = postgres_query::query!(
             "

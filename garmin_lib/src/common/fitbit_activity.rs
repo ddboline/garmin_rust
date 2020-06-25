@@ -79,6 +79,25 @@ impl FitbitActivity {
         Ok(activity)
     }
 
+    pub async fn get_by_start_time(
+        pool: &PgPool,
+        start_time: DateTime<Utc>,
+    ) -> Result<Option<Self>, Error> {
+        let key = start_time.format("%Y-%m-%d %H:%M").to_string();
+        let query = postgres_query::query!(
+            "SELECT * FROM fitbit_activities WHERE to_char(start_time, 'YYYY-MM-DD HH24:MI') = \
+             $key",
+            key = key,
+        );
+        let conn = pool.get().await?;
+        let activity: Option<FitbitActivity> = conn
+            .query_opt(query.sql(), query.parameters())
+            .await?
+            .map(|row| FitbitActivity::from_row(&row))
+            .transpose()?;
+        Ok(activity)
+    }
+
     pub async fn delete_from_db(&self, pool: &PgPool) -> Result<(), Error> {
         let query = postgres_query::query!(
             "DELETE FROM fitbit_activities WHERE log_id=$id",

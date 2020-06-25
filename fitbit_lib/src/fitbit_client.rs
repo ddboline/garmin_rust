@@ -675,15 +675,13 @@ impl FitbitClient {
             })
             .collect();
 
-        let futures = dupes.into_iter().map(|log_id| {
-            async move {
-                self.delete_fitbit_activity(log_id as u64).await?;
-                if let Some(activity) = FitbitActivity::get_by_id(&pool, log_id).await? {
-                    activity.delete_from_db(&pool).await?;
-                    Ok(format!("fully deleted {}", log_id))
-                } else {
-                    Ok(format!("not fully deleted {}", log_id))
-                }
+        let futures = dupes.into_iter().map(|log_id| async move {
+            self.delete_fitbit_activity(log_id as u64).await?;
+            if let Some(activity) = FitbitActivity::get_by_id(&pool, log_id).await? {
+                activity.delete_from_db(&pool).await?;
+                Ok(format!("fully deleted {}", log_id))
+            } else {
+                Ok(format!("not fully deleted {}", log_id))
             }
         });
         try_join_all(futures).await

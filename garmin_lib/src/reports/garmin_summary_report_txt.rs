@@ -1,10 +1,14 @@
 use anyhow::Error;
 use chrono::{DateTime, Utc};
+use futures::future::try_join_all;
 use log::debug;
 use postgres_query::FromSqlRow;
 
 use crate::{
-    common::pgpool::PgPool,
+    common::{
+        fitbit_activity::FitbitActivity, garmin_connect_client::GarminConnectActivity,
+        pgpool::PgPool, strava_activity::StravaActivity,
+    },
     reports::garmin_report_options::{GarminReportAgg, GarminReportOptions},
     utils::{
         garmin_util::{
@@ -122,7 +126,7 @@ pub async fn create_report_query<T: AsRef<str>>(
     Ok(result_vec)
 }
 
-#[derive(FromSqlRow, Debug)]
+#[derive(Debug)]
 pub struct FileSummaryReport {
     datetime: DateTime<Utc>,
     week: f64,
@@ -133,6 +137,9 @@ pub struct FileSummaryReport {
     total_duration: f64,
     total_hr_dur: f64,
     total_hr_dis: f64,
+    total_fitbit_steps: i64,
+    total_connect_steps: i64,
+    strava_title: Option<String>,
 }
 
 impl GarminReportTrait for FileSummaryReport {
@@ -216,6 +223,15 @@ impl GarminReportTrait for FileSummaryReport {
                 format!("{} bpm", (self.total_hr_dur / self.total_hr_dis) as i32)
             ));
         }
+        if self.total_fitbit_steps > 0 || self.total_connect_steps > 0 {
+            tmp_vec.push(format!(
+                " {:>16} steps",
+                format!("{} / {}", self.total_fitbit_steps, self.total_connect_steps),
+            ));
+        }
+        if let Some(strava_title) = &self.strava_title {
+            tmp_vec.push(format!(" {}", strava_title));
+        }
         Ok(tmp_vec)
     }
     fn generate_url_string(&self) -> String {
@@ -224,6 +240,19 @@ impl GarminReportTrait for FileSummaryReport {
 }
 
 async fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<FileSummaryReport>, Error> {
+    #[derive(FromSqlRow, Debug)]
+    struct FileSummaryReportRow {
+        datetime: DateTime<Utc>,
+        week: f64,
+        isodow: f64,
+        sport: String,
+        total_calories: i64,
+        total_distance: f64,
+        total_duration: f64,
+        total_hr_dur: f64,
+        total_hr_dis: f64,
+    }
+
     let query = format!(
         "
         WITH a AS (
@@ -254,15 +283,49 @@ async fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<FileSumm
         constr
     );
 
-    debug!("{}", query);
+    let rows = pool.get().await?.query(query.as_str(), &[]).await?;
 
-    pool.get()
-        .await?
-        .query(query.as_str(), &[])
-        .await?
-        .iter()
-        .map(|row| FileSummaryReport::from_row(row).map_err(Into::into))
-        .collect()
+    let futures = rows.iter().map(|row| {
+        let pool = pool.clone();
+        async move {
+            let item = FileSummaryReportRow::from_row(row)?;
+
+            let strava_title = StravaActivity::get_by_begin_datetime(&pool, item.datetime)
+                .await?
+                .map(|s| s.name);
+            let total_fitbit_steps = if let Some(fitbit_activity) =
+                FitbitActivity::get_by_start_time(&pool, item.datetime).await?
+            {
+                fitbit_activity.steps.unwrap_or(0)
+            } else {
+                0
+            };
+            let total_connect_steps = if let Some(connect_activity) =
+                GarminConnectActivity::get_by_begin_datetime(&pool, item.datetime).await?
+            {
+                connect_activity.steps.unwrap_or(0)
+            } else {
+                0
+            };
+
+            let result = FileSummaryReport {
+                datetime: item.datetime,
+                week: item.week,
+                isodow: item.isodow,
+                sport: item.sport,
+                total_calories: item.total_calories,
+                total_distance: item.total_distance,
+                total_duration: item.total_duration,
+                total_hr_dur: item.total_hr_dur,
+                total_hr_dis: item.total_hr_dis,
+                total_fitbit_steps,
+                total_connect_steps,
+                strava_title,
+            };
+            Ok(result)
+        }
+    });
+    try_join_all(futures).await
 }
 
 #[derive(FromSqlRow, Debug)]

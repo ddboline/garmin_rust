@@ -668,17 +668,19 @@ fn get_file_html(
     retval.push(r#"<table border="1" class="dataframe">"#.to_string());
     retval.push(
         r#"<thead><tr style="text-align: center;"><th>Start Time</th>
-                   <th>Sport</th><th></th><th>FitbitID</th><th>GarminConnectID</th></tr></thead>"#
+                   <th>Sport</th><th></th><th>FitbitID</th><th>Fitbit Steps</th><th>GarminConnectID</th>
+                   <th>Garmin Steps</th></tr></thead>"#
             .to_string(),
     );
     retval.push(format!(
-        "<tbody><tr style={0}text-align: \
-         center;{0}><td>{1}</td><td>{2}</td><td>{3}</td><td>{4}</td><td>{5}</td></tr></tbody>",
-        '"',
-        gfile.begin_datetime,
-        get_sport_selector(gfile.sport),
-        get_correction_button(gfile.begin_datetime),
-        if let Some(fitbit_activity) = fitbit_activity {
+        "<tbody><tr style={qt}text-align: \
+         center;{qt}><td>{dt}</td><td>{sp}</td><td>{gc}</td><td>{fid}</td><td>{fstep}</td>
+         <td>{gid}</td><td>{gstep}</td></tr></tbody>",
+        qt = '"',
+        dt=gfile.begin_datetime,
+        sp=get_sport_selector(gfile.sport),
+        gc=get_correction_button(gfile.begin_datetime),
+        fid = if let Some(fitbit_activity) = fitbit_activity {
             format!(
                 r#"<a href="https://www.fitbit.com/activities/exercise/{0}" target="_blank">{0}</a>"#,
                 fitbit_activity.log_id,
@@ -686,7 +688,12 @@ fn get_file_html(
         } else {
             "".to_string()
         },
-        if let Some(connect_activity) = connect_activity {
+        fstep = if let Some(fitbit_activity) = fitbit_activity {
+            fitbit_activity.steps.unwrap_or(0)
+        } else {
+            0
+        },
+        gid = if let Some(connect_activity) = connect_activity {
             format!(
                 r#"<a href="https://connect.garmin.com/modern/activity/{0}" target="_blank">{0}</a>"#,
                 connect_activity.activity_id,
@@ -694,6 +701,9 @@ fn get_file_html(
         } else {
             "".to_string()
         },
+        gstep = if let Some(connect_activity) = connect_activity {
+            connect_activity.steps.unwrap_or(0)
+        } else {0},
     ));
     retval.push(r#"</table><br>"#.to_string());
 
@@ -722,6 +732,7 @@ fn get_file_html(
         }
         retval.push("</tr>".to_string());
     }
+    retval.push(r#"</table><br>"#.to_string());
 
     let min_mile = if gfile.total_distance > 0.0 {
         (gfile.total_duration / 60.) / (gfile.total_distance / METERS_PER_MILE)

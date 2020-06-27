@@ -8,7 +8,7 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use crate::{
     common::{
         fitbit_activity::FitbitActivity, garmin_config::GarminConfig,
-        garmin_connect_client::GarminConnectActivity, garmin_file::GarminFile,
+        garmin_connect_activity::GarminConnectActivity, garmin_file::GarminFile,
         garmin_lap::GarminLap, pgpool::PgPool, strava_activity::StravaActivity,
     },
     reports::{

@@ -9,10 +9,7 @@ use maplit::hashmap;
 use rand::{thread_rng, Rng};
 use reqwest::{header::HeaderMap, Client, Response, Url};
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::collections::{HashMap, HashSet};
 use tokio::{
     fs::File,
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
@@ -26,7 +23,7 @@ use garmin_lib::{
         fitbit_activity::FitbitActivity,
         garmin_config::GarminConfig,
         garmin_connect_client::GarminConnectClient,
-        garmin_summary::{get_list_of_activities_from_db, GarminSummary, GarminSummaryList},
+        garmin_summary::{get_list_of_activities_from_db, GarminSummary},
         pgpool::PgPool,
     },
     utils::stack_string::StackString,
@@ -775,15 +772,11 @@ impl FitbitClient {
         })
         .collect();
 
-        let summary = Arc::new(GarminSummaryList::new(pool));
-
         let futures = old_activities.into_iter().map(|(d, f)| {
-            let summary = summary.clone();
+            let pool = pool.clone();
             async move {
-                if let Some(activity) = summary
-                    .read_summary_from_postgres(&f)
+                if let Some(activity) = GarminSummary::read_summary_from_postgres(&pool, &f)
                     .await?
-                    .summary_list
                     .pop()
                 {
                     if let Some(activity) = ActivityLoggingEntry::from_summary(&activity, offset) {

@@ -1,6 +1,7 @@
 pub mod fitbit_activity;
 pub mod garmin_cli;
 pub mod garmin_config;
+pub mod garmin_connect_activity;
 pub mod garmin_connect_client;
 pub mod garmin_correction_lap;
 pub mod garmin_file;

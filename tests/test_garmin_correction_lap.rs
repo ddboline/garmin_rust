@@ -2,10 +2,7 @@ use anyhow::Error;
 use std::io::{stdout, Write};
 
 use garmin_lib::{
-    common::{
-        garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList},
-        pgpool::PgPool,
-    },
+    common::garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList},
     utils::{iso_8601_datetime::convert_str_to_datetime, sport_types::SportTypes},
 };
 
@@ -34,9 +31,8 @@ fn test_garmin_correction_lap_new() {
 
 #[test]
 fn test_corr_list_from_json() -> Result<(), Error> {
-    let pool = PgPool::default();
     let mut corr_list =
-        GarminCorrectionList::corr_list_from_json(&pool, "tests/data/garmin_corrections.json")
+        GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json")
             .unwrap()
             .get_corr_list();
 
@@ -51,7 +47,6 @@ fn test_corr_list_from_json() -> Result<(), Error> {
 
 #[test]
 fn test_corr_list_from_buffer() -> Result<(), Error> {
-    let pool = PgPool::default();
     let json_buffer = r#"
         {
             "2011-07-04T08:58:27Z": {
@@ -73,7 +68,7 @@ fn test_corr_list_from_buffer() -> Result<(), Error> {
     .to_string()
     .into_bytes();
 
-    let mut corr_list = GarminCorrectionList::corr_list_from_buffer(&pool, &json_buffer)
+    let mut corr_list = GarminCorrectionList::corr_list_from_buffer(&json_buffer)
         .unwrap()
         .get_corr_list();
 
@@ -134,10 +129,9 @@ fn test_corr_list_from_buffer() -> Result<(), Error> {
 
 #[test]
 fn test_corr_list_from_buffer_invalid() -> Result<(), Error> {
-    let pool = PgPool::default();
     let json_buffer = r#"["a", "b", "c"]"#.to_string().into_bytes();
 
-    let corr_list = GarminCorrectionList::corr_list_from_buffer(&pool, &json_buffer)
+    let corr_list = GarminCorrectionList::corr_list_from_buffer(&json_buffer)
         .unwrap()
         .get_corr_list();
 
@@ -147,9 +141,7 @@ fn test_corr_list_from_buffer_invalid() -> Result<(), Error> {
 
 #[test]
 fn test_add_mislabeled_times_to_corr_list() -> Result<(), Error> {
-    let pool = PgPool::default();
-
-    let corr_list = GarminCorrectionList::new(&pool).with_vec(vec![
+    let corr_list = GarminCorrectionList::new().with_vec(vec![
         GarminCorrectionLap::new()
             .with_start_time(convert_str_to_datetime("2010-11-20T19:55:34Z").unwrap())
             .with_distance(10.0)

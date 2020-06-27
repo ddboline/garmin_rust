@@ -78,14 +78,12 @@ impl GarminCorrectionLap {
 #[derive(Debug, PartialEq, Default)]
 pub struct GarminCorrectionList {
     pub corr_map: HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
-    pub pool: PgPool,
 }
 
 impl GarminCorrectionList {
-    pub fn new(pool: &PgPool) -> Self {
+    pub fn new() -> Self {
         Self {
             corr_map: HashMap::new(),
-            pool: pool.clone(),
         }
     }
 
@@ -111,7 +109,7 @@ impl GarminCorrectionList {
         &mut self.corr_map
     }
 
-    pub fn corr_list_from_buffer(pool: &PgPool, buffer: &[u8]) -> Result<Self, Error> {
+    pub fn corr_list_from_buffer(buffer: &[u8]) -> Result<Self, Error> {
         let jsval = parse(&str::from_utf8(&buffer)?)?;
 
         let corr_list = match &jsval {
@@ -165,17 +163,17 @@ impl GarminCorrectionList {
             _ => Vec::new(),
         };
 
-        Ok(Self::new(pool).with_vec(corr_list))
+        Ok(Self::new().with_vec(corr_list))
     }
 
-    pub fn corr_list_from_json(pool: &PgPool, json_filename: &str) -> Result<Self, Error> {
+    pub fn corr_list_from_json(json_filename: &str) -> Result<Self, Error> {
         let mut file = File::open(json_filename)?;
 
         let mut buffer = Vec::new();
 
         match file.read_to_end(&mut buffer)? {
             0 => Err(format_err!("Zero bytes read from {}", json_filename)),
-            _ => Self::corr_list_from_buffer(pool, &buffer),
+            _ => Self::corr_list_from_buffer(&buffer),
         }
     }
 
@@ -264,7 +262,7 @@ impl GarminCorrectionList {
     }
 
     pub async fn get_filename_from_datetime(
-        &self,
+        pool: &PgPool,
         begin_datetime: DateTime<Utc>,
     ) -> Result<Option<StackString>, Error> {
         let query = r#"
@@ -272,7 +270,7 @@ impl GarminCorrectionList {
             FROM garmin_summary
             WHERE begin_datetime = $1
         "#;
-        let conn = self.pool.get().await?;
+        let conn = pool.get().await?;
         conn.query(query, &[&begin_datetime])
             .await?
             .pop()
@@ -283,7 +281,7 @@ impl GarminCorrectionList {
             .transpose()
     }
 
-    pub async fn dump_corrections_to_db(&self) -> Result<(), Error> {
+    pub async fn dump_corrections_to_db(&self, pool: &PgPool) -> Result<(), Error> {
         let query_unique_key = "
             SELECT start_time, lap_number
             FROM garmin_corrections_laps
@@ -300,7 +298,7 @@ impl GarminCorrectionList {
             SET distance=$3,duration=$4,sport=$5
             WHERE start_time=$1 AND lap_number=$2
         ";
-        let conn = self.pool.get().await?;
+        let conn = pool.get().await?;
         let stmt_insert = conn.prepare(query_insert).await?;
         let stmt_update = conn.prepare(query_update).await?;
         for corr in self.get_corr_list() {
@@ -342,8 +340,8 @@ impl GarminCorrectionList {
         Ok(())
     }
 
-    pub async fn read_corrections_from_db(&self) -> Result<Self, Error> {
-        let conn = self.pool.get().await?;
+    pub async fn read_corrections_from_db(pool: &PgPool) -> Result<Self, Error> {
+        let conn = pool.get().await?;
         let corr_list: Result<Vec<_>, Error> = conn
             .query(
                 r#"
@@ -358,7 +356,7 @@ impl GarminCorrectionList {
             .collect();
         let corr_list = corr_list?;
 
-        Ok(Self::new(&self.pool).with_vec(corr_list))
+        Ok(Self::new().with_vec(corr_list))
     }
 }
 

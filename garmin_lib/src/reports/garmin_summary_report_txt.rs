@@ -6,7 +6,7 @@ use postgres_query::FromSqlRow;
 
 use crate::{
     common::{
-        fitbit_activity::FitbitActivity, garmin_connect_client::GarminConnectActivity,
+        fitbit_activity::FitbitActivity, garmin_connect_activity::GarminConnectActivity,
         pgpool::PgPool, strava_activity::StravaActivity,
     },
     reports::garmin_report_options::{GarminReportAgg, GarminReportOptions},

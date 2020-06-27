@@ -3,18 +3,15 @@ use approx::assert_abs_diff_eq;
 use std::path::Path;
 
 use garmin_lib::{
-    common::{garmin_correction_lap::GarminCorrectionList, pgpool::PgPool},
+    common::garmin_correction_lap::GarminCorrectionList,
     parsers::garmin_parse::{GarminParse, GarminParseTrait},
     utils::{iso_8601_datetime::convert_datetime_to_str, sport_types::SportTypes},
 };
 
 #[test]
 fn test_invalid_ext() -> Result<(), Error> {
-    let pool = PgPool::default();
-
     let corr_list =
-        GarminCorrectionList::corr_list_from_json(&pool, "tests/data/garmin_corrections.json")
-            .unwrap();
+        GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json").unwrap();
     let corr_map = corr_list.get_corr_list_map();
     let err = GarminParse::new()
         .with_file(&Path::new("invalid.invalid"), &corr_map)
@@ -26,11 +23,8 @@ fn test_invalid_ext() -> Result<(), Error> {
 #[test]
 #[ignore]
 fn test_garmin_parse_parse_gmn() -> Result<(), Error> {
-    let pool = PgPool::default();
-
     let corr_list =
-        GarminCorrectionList::corr_list_from_json(&pool, "tests/data/garmin_corrections.json")
-            .unwrap();
+        GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json").unwrap();
     let corr_map = corr_list.get_corr_list_map();
     let gfile = GarminParse::new()
         .with_file(&Path::new("tests/data/test.gmn"), &corr_map)
@@ -55,11 +49,8 @@ fn test_garmin_parse_parse_gmn() -> Result<(), Error> {
 #[test]
 #[ignore]
 fn test_garmin_parse_parse_tcx() -> Result<(), Error> {
-    let pool = PgPool::default();
-
     let corr_list =
-        GarminCorrectionList::corr_list_from_json(&pool, "tests/data/garmin_corrections.json")
-            .unwrap();
+        GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json").unwrap();
     let corr_map = corr_list.get_corr_list_map();
     let gfile = GarminParse::new()
         .with_file(&Path::new("tests/data/test.tcx"), &corr_map)
@@ -84,11 +75,8 @@ fn test_garmin_parse_parse_tcx() -> Result<(), Error> {
 #[test]
 #[ignore]
 fn test_garmin_parse_fit() -> Result<(), Error> {
-    let pool = PgPool::default();
-
     let corr_list =
-        GarminCorrectionList::corr_list_from_json(&pool, "tests/data/garmin_corrections.json")
-            .unwrap();
+        GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json").unwrap();
     let corr_map = corr_list.get_corr_list_map();
     let gfile = GarminParse::new()
         .with_file(&Path::new("tests/data/test.fit"), &corr_map)

@@ -26,7 +26,8 @@ use garmin_lib::{
     common::{
         fitbit_activity::FitbitActivity,
         garmin_cli::{GarminCli, GarminRequest},
-        garmin_connect_client::{GarminConnectActivity, GarminConnectClient},
+        garmin_connect_activity::GarminConnectActivity,
+        garmin_connect_client::GarminConnectClient,
         garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList},
         garmin_summary::get_list_of_files_from_db,
         pgpool::PgPool,
@@ -54,8 +55,7 @@ pub struct GarminCorrRequest {}
 impl HandleRequest<GarminCorrRequest> for PgPool {
     type Result = Result<GarminCorrectionList, Error>;
     async fn handle(&self, _: GarminCorrRequest) -> Self::Result {
-        GarminCorrectionList::new(&self)
-            .read_corrections_from_db()
+        GarminCorrectionList::read_corrections_from_db(self)
             .await
             .map_err(Into::into)
     }
@@ -822,8 +822,7 @@ impl HandleRequest<AddGarminCorrectionRequest> for PgPool {
     type Result = Result<String, Error>;
     async fn handle(&self, msg: AddGarminCorrectionRequest) -> Self::Result {
         let mut corr_list = self.handle(GarminCorrRequest {}).await?;
-        let filename = corr_list
-            .get_filename_from_datetime(msg.start_time)
+        let filename = GarminCorrectionList::get_filename_from_datetime(self, msg.start_time)
             .await?
             .ok_or_else(|| {
                 format_err!(
@@ -855,7 +854,7 @@ impl HandleRequest<AddGarminCorrectionRequest> for PgPool {
             .get_corr_list_map_mut()
             .insert(unique_key, new_corr);
 
-        corr_list.dump_corrections_to_db().await?;
+        corr_list.dump_corrections_to_db(self).await?;
 
         let cache_path = CONFIG
             .cache_dir

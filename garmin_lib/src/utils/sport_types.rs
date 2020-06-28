@@ -6,7 +6,7 @@ use std::{collections::HashMap, convert::TryFrom, fmt, str::FromStr};
 use tokio_postgres::types::{FromSql, IsNull, ToSql, Type};
 
 lazy_static! {
-    static ref SPORT_TYPE_MAP: HashMap<String, SportTypes> = init_sport_typ_map();
+    static ref SPORT_TYPE_MAP: HashMap<String, SportTypes> = init_sport_type_map();
 }
 
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq, Serialize, Deserialize)]
@@ -155,12 +155,15 @@ impl TryFrom<String> for SportTypes {
     }
 }
 
-fn init_sport_typ_map() -> HashMap<String, SportTypes> {
+fn init_sport_type_map() -> HashMap<String, SportTypes> {
     [
         ("running", SportTypes::Running),
         ("run", SportTypes::Running),
+        ("bicycle", SportTypes::Biking),
+        ("bicycling", SportTypes::Biking),
         ("biking", SportTypes::Biking),
         ("bike", SportTypes::Biking),
+        ("ride", SportTypes::Biking),
         ("walking", SportTypes::Walking),
         ("walk", SportTypes::Walking),
         ("hiking", SportTypes::Hiking),

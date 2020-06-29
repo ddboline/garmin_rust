@@ -131,13 +131,14 @@ impl GarminCorrectionLap {
                     _ => Vec::new(),
                 })
                 .filter_map(|x| match x {
-                    Ok(s) => Some(s),
+                    Ok(corr) => {
+                        Some(((corr.start_time, corr.lap_number), corr))
+                    },
                     Err(e) => {
                         debug!("Error {}", e);
                         None
                     }
                 })
-                .map(|corr| ((corr.start_time, corr.lap_number), corr))
                 .collect(),
             _ => HashMap::new(),
         };

@@ -28,8 +28,8 @@ use garmin_lib::{
         garmin_cli::{GarminCli, GarminRequest},
         garmin_connect_activity::GarminConnectActivity,
         garmin_connect_client::GarminConnectClient,
-        garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList},
-        garmin_summary::get_list_of_files_from_db,
+        garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionMap},
+        garmin_summary::{get_filename_from_datetime, get_list_of_files_from_db},
         pgpool::PgPool,
         strava_activity::StravaActivity,
     },
@@ -53,9 +53,9 @@ pub struct GarminCorrRequest {}
 
 #[async_trait]
 impl HandleRequest<GarminCorrRequest> for PgPool {
-    type Result = Result<GarminCorrectionList, Error>;
+    type Result = Result<GarminCorrectionMap, Error>;
     async fn handle(&self, _: GarminCorrRequest) -> Self::Result {
-        GarminCorrectionList::read_corrections_from_db(self)
+        GarminCorrectionLap::read_corrections_from_db(self)
             .await
             .map_err(Into::into)
     }
@@ -821,8 +821,8 @@ pub struct AddGarminCorrectionRequest {
 impl HandleRequest<AddGarminCorrectionRequest> for PgPool {
     type Result = Result<String, Error>;
     async fn handle(&self, msg: AddGarminCorrectionRequest) -> Self::Result {
-        let mut corr_list = self.handle(GarminCorrRequest {}).await?;
-        let filename = GarminCorrectionList::get_filename_from_datetime(self, msg.start_time)
+        let mut corr_map = self.handle(GarminCorrRequest {}).await?;
+        let filename = get_filename_from_datetime(self, msg.start_time)
             .await?
             .ok_or_else(|| {
                 format_err!(
@@ -832,7 +832,7 @@ impl HandleRequest<AddGarminCorrectionRequest> for PgPool {
             })?;
         let unique_key = (msg.start_time, msg.lap_number);
 
-        let mut new_corr = if let Some(corr) = corr_list.get_corr_list_map().get(&unique_key) {
+        let mut new_corr = if let Some(corr) = corr_map.get(&unique_key) {
             *corr
         } else {
             GarminCorrectionLap::new()
@@ -850,11 +850,9 @@ impl HandleRequest<AddGarminCorrectionRequest> for PgPool {
             new_corr.sport = msg.sport;
         }
 
-        corr_list
-            .get_corr_list_map_mut()
-            .insert(unique_key, new_corr);
+        corr_map.insert(unique_key, new_corr);
 
-        corr_list.dump_corrections_to_db(self).await?;
+        GarminCorrectionLap::dump_corrections_to_db(&corr_map, self).await?;
 
         let cache_path = CONFIG
             .cache_dir

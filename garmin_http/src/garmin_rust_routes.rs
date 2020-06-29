@@ -564,7 +564,7 @@ pub async fn garmin_get_hr_data(
                 g
             } else {
                 let gps_file = config.gps_dir.join(&file_name);
-                let corr_map = state.db.handle(GarminCorrRequest {}).await?.corr_map;
+                let corr_map = state.db.handle(GarminCorrRequest {}).await?;
                 let gfile =
                     spawn_blocking(move || GarminParse::new().with_file(&gps_file, &corr_map))
                         .await??;
@@ -628,7 +628,7 @@ pub async fn garmin_get_hr_pace(
             } else {
                 let gps_file = config.gps_dir.join(&file_name);
 
-                let corr_map = state.db.handle(GarminCorrRequest {}).await?.corr_map;
+                let corr_map = state.db.handle(GarminCorrRequest {}).await?;
 
                 spawn_blocking(move || GarminParse::new().with_file(&gps_file, &corr_map)).await??
             };

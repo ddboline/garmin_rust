@@ -366,6 +366,26 @@ pub async fn get_list_of_files_from_db(
         .collect()
 }
 
+pub async fn get_filename_from_datetime(
+    pool: &PgPool,
+    begin_datetime: DateTime<Utc>,
+) -> Result<Option<StackString>, Error> {
+    let query = r#"
+        SELECT filename
+        FROM garmin_summary
+        WHERE begin_datetime = $1
+    "#;
+    let conn = pool.get().await?;
+    conn.query(query, &[&begin_datetime])
+        .await?
+        .pop()
+        .map(|row| {
+            let filename: StackString = row.try_get("filename")?;
+            Ok(filename)
+        })
+        .transpose()
+}
+
 pub async fn get_list_of_activities_from_db(
     constraints: &str,
     pool: &PgPool,

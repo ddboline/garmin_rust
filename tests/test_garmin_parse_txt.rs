@@ -3,16 +3,14 @@ use approx::assert_abs_diff_eq;
 use std::path::Path;
 
 use garmin_lib::{
-    common::garmin_correction_lap::GarminCorrectionList,
+    common::garmin_correction_lap::GarminCorrectionLap,
     parsers::{garmin_parse::GarminParseTrait, garmin_parse_txt},
     utils::{iso_8601_datetime::convert_datetime_to_str, sport_types::SportTypes},
 };
 
 #[test]
 fn test_garmin_parse_txt() -> Result<(), Error> {
-    let corr_list =
-        GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json")?;
-    let corr_map = corr_list.get_corr_list_map();
+    let corr_map = GarminCorrectionLap::corr_list_from_json("tests/data/garmin_corrections.json")?;
     let gfile = garmin_parse_txt::GarminParseTxt::new()
         .with_file(&Path::new("tests/data/test.txt"), &corr_map)
         .unwrap();
@@ -37,9 +35,8 @@ fn test_garmin_parse_txt() -> Result<(), Error> {
 
 #[test]
 fn test_garmin_parse_txt_default_time() -> Result<(), Error> {
-    let corr_list =
-        GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json").unwrap();
-    let corr_map = corr_list.get_corr_list_map();
+    let corr_map =
+        GarminCorrectionLap::corr_list_from_json("tests/data/garmin_corrections.json").unwrap();
     let gfile = garmin_parse_txt::GarminParseTxt::new()
         .with_file(&Path::new("tests/data/test2.txt"), &corr_map)
         .unwrap();

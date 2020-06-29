@@ -4,7 +4,7 @@ use garmin_lib::{
     common::{
         garmin_cli::{GarminCli, GarminCliOptions},
         garmin_config::GarminConfig,
-        garmin_correction_lap::GarminCorrectionList,
+        garmin_correction_lap::GarminCorrectionMap,
         pgpool::PgPool,
     },
     parsers::garmin_parse::GarminParse,
@@ -17,7 +17,7 @@ fn test_garmin_file_test_filenames() -> Result<(), Error> {
     let test_config = "tests/data/test.env";
     let config = GarminConfig::get_config(Some(test_config))?;
     let pool = PgPool::new(&config.pgurl);
-    let corr = GarminCorrectionList::new();
+    let corr = GarminCorrectionMap::new();
 
     let gcli = GarminCli {
         config,

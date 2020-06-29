@@ -2,7 +2,7 @@ use anyhow::Error;
 use std::io::{stdout, Write};
 
 use garmin_lib::{
-    common::garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionList},
+    common::garmin_correction_lap::GarminCorrectionLap,
     utils::{iso_8601_datetime::convert_str_to_datetime, sport_types::SportTypes},
 };
 
@@ -31,10 +31,12 @@ fn test_garmin_correction_lap_new() {
 
 #[test]
 fn test_corr_list_from_json() -> Result<(), Error> {
-    let mut corr_list =
-        GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json")
+    let mut corr_list: Vec<_> =
+        GarminCorrectionLap::corr_list_from_json("tests/data/garmin_corrections.json")
             .unwrap()
-            .get_corr_list();
+            .into_iter()
+            .map(|(_, v)| v)
+            .collect();
 
     corr_list.sort_by_key(|i| (i.start_time, i.lap_number));
 
@@ -46,7 +48,7 @@ fn test_corr_list_from_json() -> Result<(), Error> {
 }
 
 #[test]
-fn test_corr_list_from_buffer() -> Result<(), Error> {
+fn test_corr_map_from_buffer() -> Result<(), Error> {
     let json_buffer = r#"
         {
             "2011-07-04T08:58:27Z": {
@@ -68,9 +70,11 @@ fn test_corr_list_from_buffer() -> Result<(), Error> {
     .to_string()
     .into_bytes();
 
-    let mut corr_list = GarminCorrectionList::corr_list_from_buffer(&json_buffer)
+    let mut corr_list: Vec<_> = GarminCorrectionLap::corr_map_from_buffer(&json_buffer)
         .unwrap()
-        .get_corr_list();
+        .into_iter()
+        .map(|(_, v)| v)
+        .collect();
 
     corr_list.sort_by_key(|i| (i.start_time, i.lap_number));
 
@@ -128,20 +132,18 @@ fn test_corr_list_from_buffer() -> Result<(), Error> {
 }
 
 #[test]
-fn test_corr_list_from_buffer_invalid() -> Result<(), Error> {
+fn test_corr_map_from_buffer_invalid() -> Result<(), Error> {
     let json_buffer = r#"["a", "b", "c"]"#.to_string().into_bytes();
 
-    let corr_list = GarminCorrectionList::corr_list_from_buffer(&json_buffer)
-        .unwrap()
-        .get_corr_list();
+    let corr_map = GarminCorrectionLap::corr_map_from_buffer(&json_buffer).unwrap();
 
-    assert_eq!(corr_list.len(), 0);
+    assert_eq!(corr_map.len(), 0);
     Ok(())
 }
 
 #[test]
 fn test_add_mislabeled_times_to_corr_list() -> Result<(), Error> {
-    let corr_list = GarminCorrectionList::new().with_vec(vec![
+    let mut corr_map = GarminCorrectionLap::map_from_vec(vec![
         GarminCorrectionLap::new()
             .with_start_time(convert_str_to_datetime("2010-11-20T19:55:34Z").unwrap())
             .with_distance(10.0)
@@ -152,13 +154,11 @@ fn test_add_mislabeled_times_to_corr_list() -> Result<(), Error> {
             .with_lap_number(1),
     ]);
 
-    let corr_list = corr_list.add_mislabeled_times_to_corr_list();
+    GarminCorrectionLap::add_mislabeled_times_to_corr_list(&mut corr_map);
 
-    let corr_map = corr_list.get_corr_list_map();
+    writeln!(stdout(), "{:?}", corr_map).unwrap();
 
-    writeln!(stdout(), "{:?}", corr_list).unwrap();
-
-    assert_eq!(corr_list.corr_map.len(), 26);
+    assert_eq!(corr_map.len(), 26);
 
     assert_eq!(
         corr_map

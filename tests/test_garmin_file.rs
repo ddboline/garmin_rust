@@ -6,16 +6,14 @@ use std::{
 };
 
 use garmin_lib::{
-    common::{garmin_correction_lap::GarminCorrectionList, garmin_file},
+    common::{garmin_correction_lap::GarminCorrectionLap, garmin_file},
     parsers::{garmin_parse::GarminParseTrait, garmin_parse_tcx},
 };
 
 #[test]
 #[ignore]
 fn test_garmin_file_test_avro() -> Result<(), Error> {
-    let corr_list =
-        GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json")?;
-    let corr_map = corr_list.get_corr_list_map();
+    let corr_map = GarminCorrectionLap::corr_list_from_json("tests/data/garmin_corrections.json")?;
     let gfile = garmin_parse_tcx::GarminParseTcx::new(true)
         .with_file(Path::new("tests/data/test.fit"), &corr_map)?;
     match gfile.dump_avro(Path::new("temp.avro.gz")) {

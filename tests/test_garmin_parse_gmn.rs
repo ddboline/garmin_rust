@@ -3,7 +3,7 @@ use approx::assert_abs_diff_eq;
 use std::path::Path;
 
 use garmin_lib::{
-    common::garmin_correction_lap::GarminCorrectionList,
+    common::garmin_correction_lap::GarminCorrectionLap,
     parsers::{garmin_parse::GarminParseTrait, garmin_parse_gmn},
     utils::{iso_8601_datetime::convert_datetime_to_str, sport_types::SportTypes},
 };
@@ -11,9 +11,8 @@ use garmin_lib::{
 #[test]
 #[ignore]
 fn test_garmin_parse_gmn() -> Result<(), Error> {
-    let corr_list =
-        GarminCorrectionList::corr_list_from_json("tests/data/garmin_corrections.json").unwrap();
-    let corr_map = corr_list.get_corr_list_map();
+    let corr_map =
+        GarminCorrectionLap::corr_list_from_json("tests/data/garmin_corrections.json").unwrap();
     let gfile = garmin_parse_gmn::GarminParseGmn::new()
         .with_file(&Path::new("tests/data/test.gmn"), &corr_map)
         .unwrap();

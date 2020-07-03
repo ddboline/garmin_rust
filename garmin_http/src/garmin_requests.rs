@@ -14,7 +14,7 @@ use std::{
 use tokio::{fs::remove_file, sync::RwLock, task::spawn_blocking};
 
 use fitbit_lib::{
-    fitbit_client::{FitbitClient, FitbitUserProfile},
+    fitbit_client::{FitbitBodyWeightFatUpdateOutput, FitbitClient, FitbitUserProfile},
     fitbit_heartrate::{FitbitBodyWeightFat, FitbitHeartRate},
     fitbit_statistics_summary::FitbitStatisticsSummary,
     scale_measurement::ScaleMeasurement,
@@ -371,50 +371,13 @@ impl HandleRequest<FitbitBodyWeightFatRequest> for PgPool {
 
 pub struct FitbitBodyWeightFatUpdateRequest {}
 
-pub type FitbitBodyWeightFatUpdateOutput = (Vec<ScaleMeasurement>, Vec<DateTime<Utc>>, Vec<String>);
-
 #[async_trait]
 impl HandleRequest<FitbitBodyWeightFatUpdateRequest> for PgPool {
     type Result = Result<FitbitBodyWeightFatUpdateOutput, Error>;
     async fn handle(&self, _: FitbitBodyWeightFatUpdateRequest) -> Self::Result {
         let config = CONFIG.clone();
         let client = FitbitClient::with_auth(config).await?;
-        let client = Arc::new(client);
-
-        let offset = client.get_offset();
-        let start_datetime = Utc::now() - Duration::days(30);
-        let start_date: NaiveDate = start_datetime.with_timezone(&offset).naive_local().date();
-
-        let existing_map: Result<HashMap<NaiveDate, _>, Error> = {
-            let client = client.clone();
-            let measurements: HashMap<_, _> = client
-                .get_fitbit_bodyweightfat()
-                .await?
-                .into_iter()
-                .map(|entry| {
-                    let date = entry.datetime.with_timezone(&Local).naive_local().date();
-                    (date, entry)
-                })
-                .collect();
-            Ok(measurements)
-        };
-
-        let existing_map = existing_map?;
-
-        let new_measurements: Vec<_> = ScaleMeasurement::read_from_db(self, Some(start_date), None)
-            .await?
-            .into_iter()
-            .filter(|entry| {
-                let date = entry.datetime.with_timezone(&Local).naive_local().date();
-                !existing_map.contains_key(&date)
-            })
-            .collect();
-        let new_measurements = client.update_fitbit_bodyweightfat(new_measurements).await?;
-
-        let new_activities = client.sync_fitbit_activities(start_datetime, self).await?;
-        let duplicates = client.remove_duplicate_entries(self).await?;
-
-        Ok((new_measurements, new_activities, duplicates))
+        client.sync_everything(self).await.map_err(Into::into)
     }
 }
 
@@ -429,9 +392,7 @@ impl HandleRequest<FitbitSyncRequest> for PgPool {
     async fn handle(&self, msg: FitbitSyncRequest) -> Self::Result {
         let config = CONFIG.clone();
         let client = FitbitClient::with_auth(config).await?;
-        client
-            .import_fitbit_heartrate(msg.date, &client.config)
-            .await?;
+        client.import_fitbit_heartrate(msg.date).await?;
         FitbitHeartRate::calculate_summary_statistics(&client.config, &self, msg.date)
             .await
             .map_err(Into::into)

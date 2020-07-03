@@ -2,6 +2,7 @@ use anyhow::Error;
 use chrono::{Duration, Utc};
 use std::path::PathBuf;
 use structopt::StructOpt;
+use tokio::try_join;
 
 use fitbit_lib::{fitbit_client::FitbitClient, fitbit_heartrate::FitbitHeartRate};
 use garmin_lib::{
@@ -53,10 +54,21 @@ impl GarminCliOpts {
             Self::Connect => GarminCliOptions::Connect,
             Self::Sync { md5sum } => GarminCliOptions::Sync(md5sum),
             Self::Fitbit => {
+                let today = Utc::now().naive_local().date();
+
+                let cli = GarminCli::with_config()?;
+                let stdout_task = cli.stdout.spawn_stdout_task();
                 let config = GarminConfig::get_config(None)?;
                 let pool = PgPool::new(&config.pgurl);
-                FitbitHeartRate::get_all_summary_statistics(&config, &pool).await?;
-                return Ok(());
+                let client = FitbitClient::with_auth(config.clone()).await?;
+                let (updates, _) = try_join!(
+                    client.sync_everything(&pool),
+                    client.import_fitbit_heartrate(today)
+                )?;
+                cli.stdout.send(format!("{:?}", updates).into())?;
+                cli.stdout.close().await?;
+                FitbitHeartRate::calculate_summary_statistics(&client.config, &pool, today).await?;
+                return stdout_task.await?;
             }
         };
 

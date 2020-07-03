@@ -1,6 +1,6 @@
 use anyhow::{format_err, Error};
 use base64::{encode, encode_config, URL_SAFE_NO_PAD};
-use chrono::{DateTime, FixedOffset, NaiveDate, NaiveTime, Utc};
+use chrono::{DateTime, FixedOffset, Local, NaiveDate, NaiveTime, Utc};
 use futures::future::try_join_all;
 use itertools::Itertools;
 use lazy_static::lazy_static;
@@ -9,7 +9,10 @@ use maplit::hashmap;
 use rand::{thread_rng, Rng};
 use reqwest::{header::HeaderMap, Client, Response, Url};
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 use tokio::{
     fs::File,
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
@@ -357,13 +360,9 @@ impl FitbitClient {
         Ok(hr_values)
     }
 
-    pub async fn import_fitbit_heartrate(
-        &self,
-        date: NaiveDate,
-        config: &GarminConfig,
-    ) -> Result<(), Error> {
+    pub async fn import_fitbit_heartrate(&self, date: NaiveDate) -> Result<(), Error> {
         let heartrates = self.get_fitbit_intraday_time_series_heartrate(date).await?;
-        let config = config.clone();
+        let config = self.config.clone();
         spawn_blocking(move || FitbitHeartRate::merge_slice_to_avro(&config, &heartrates)).await?
     }
 
@@ -805,7 +804,51 @@ impl FitbitClient {
             .error_for_status()?;
         Ok(())
     }
+
+    pub async fn sync_everything(
+        &self,
+        pool: &PgPool,
+    ) -> Result<FitbitBodyWeightFatUpdateOutput, Error> {
+        let client = Arc::new(self.clone());
+
+        let offset = client.get_offset();
+        let start_datetime = Utc::now() - chrono::Duration::days(30);
+        let start_date: NaiveDate = start_datetime.with_timezone(&offset).naive_local().date();
+
+        let existing_map: Result<HashMap<NaiveDate, _>, Error> = {
+            let client = client.clone();
+            let measurements: HashMap<_, _> = client
+                .get_fitbit_bodyweightfat()
+                .await?
+                .into_iter()
+                .map(|entry| {
+                    let date = entry.datetime.with_timezone(&Local).naive_local().date();
+                    (date, entry)
+                })
+                .collect();
+            Ok(measurements)
+        };
+
+        let existing_map = existing_map?;
+
+        let new_measurements: Vec<_> = ScaleMeasurement::read_from_db(pool, Some(start_date), None)
+            .await?
+            .into_iter()
+            .filter(|entry| {
+                let date = entry.datetime.with_timezone(&Local).naive_local().date();
+                !existing_map.contains_key(&date)
+            })
+            .collect();
+        let new_measurements = client.update_fitbit_bodyweightfat(new_measurements).await?;
+
+        let new_activities = client.sync_fitbit_activities(start_datetime, pool).await?;
+        let duplicates = client.remove_duplicate_entries(pool).await?;
+
+        Ok((new_measurements, new_activities, duplicates))
+    }
 }
+
+pub type FitbitBodyWeightFatUpdateOutput = (Vec<ScaleMeasurement>, Vec<DateTime<Utc>>, Vec<String>);
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct ActivityLoggingEntry {

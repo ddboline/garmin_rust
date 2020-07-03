@@ -85,8 +85,8 @@ impl FitbitActivity {
     ) -> Result<Option<Self>, Error> {
         let key = start_time.format("%Y-%m-%d %H:%M").to_string();
         let query = postgres_query::query!(
-            "SELECT * FROM fitbit_activities WHERE to_char(start_time, 'YYYY-MM-DD HH24:MI') = \
-             $key",
+            "SELECT * FROM fitbit_activities
+             WHERE to_char(start_time, 'YYYY-MM-DD HH24:MI') = $key LIMIT 1",
             key = key,
         );
         let conn = pool.get().await?;

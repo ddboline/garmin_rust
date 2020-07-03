@@ -673,7 +673,9 @@ impl FitbitClient {
             .collect();
 
         let futures = dupes.into_iter().map(|log_id| async move {
-            self.delete_fitbit_activity(log_id as u64).await?;
+            if self.delete_fitbit_activity(log_id as u64).await.is_err() {
+                debug!("Failed to delete fitbit activity");
+            }
             if let Some(activity) = FitbitActivity::get_by_id(&pool, log_id).await? {
                 activity.delete_from_db(&pool).await?;
                 Ok(format!("fully deleted {}", log_id))

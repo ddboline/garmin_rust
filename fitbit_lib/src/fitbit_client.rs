@@ -673,7 +673,7 @@ impl FitbitClient {
 
         let futures = dupes.into_iter().map(|log_id| async move {
             if self.delete_fitbit_activity(log_id as u64).await.is_err() {
-                debug!("Failed to delete fitbit activity");
+                debug!("Failed to delete fitbit activity {}", log_id);
             }
             if let Some(activity) = FitbitActivity::get_by_id(&pool, log_id).await? {
                 activity.delete_from_db(&pool).await?;
@@ -716,7 +716,9 @@ impl FitbitClient {
         let futures = activities_to_delete.iter().map(|log_id| {
             let pool = pool.clone();
             async move {
-                self.delete_fitbit_activity(*log_id as u64).await?;
+                if self.delete_fitbit_activity(*log_id as u64).await.is_err() {
+                    debug!("Failed to delete fitbit activity {}", log_id);
+                }
                 if let Some(activity) = FitbitActivity::get_by_id(&pool, *log_id).await? {
                     activity.delete_from_db(&pool).await?;
                 }

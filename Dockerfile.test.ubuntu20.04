@@ -18,4 +18,3 @@ ADD garmin_http /garmin_rust/garmin_http
 ADD fitbit_lib /garmin_rust/fitbit_lib
 ADD strava_lib /garmin_rust/strava_lib
 ADD fitbit_bot /garmin_rust/fitbit_bot
-ADD sheets_lib /garmin_rust/sheets_lib

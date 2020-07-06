@@ -9,6 +9,7 @@ use tokio::task::spawn_blocking;
 use crate::utils::{
     iso_8601_datetime::{self, sentinel_datetime},
     sport_types::SportTypes,
+    stack_string::StackString,
 };
 
 use super::{
@@ -17,13 +18,13 @@ use super::{
 };
 
 lazy_static! {
-    static ref GARMIN_FILE_AVRO_SCHEMA: String = GarminFile::get_avro_schema();
+    static ref GARMIN_FILE_AVRO_SCHEMA: StackString = GarminFile::get_avro_schema();
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GarminFile {
-    pub filename: String,
-    pub filetype: String,
+    pub filename: StackString,
+    pub filetype: StackString,
     #[serde(with = "iso_8601_datetime")]
     pub begin_datetime: DateTime<Utc>,
     pub sport: SportTypes,
@@ -73,7 +74,7 @@ impl GarminFile {
         self.points = Vec::new();
     }
 
-    fn get_avro_schema() -> String {
+    fn get_avro_schema() -> StackString {
         format!(
             "{}{}{}{}{}",
             r#"{
@@ -95,7 +96,7 @@ impl GarminFile {
             r#"}},{"name": "points", "type": {"type": "array", "items": "#,
             GARMIN_POINT_AVRO_SCHEMA,
             r#"}}]}"#,
-        )
+        ).into()
     }
 
     pub fn dump_avro(&self, output_filename: &Path) -> Result<(), Error> {
@@ -129,14 +130,14 @@ impl GarminFile {
         Err(format_err!("Failed to find file"))
     }
 
-    pub fn get_standardized_name(&self, suffix: &str) -> String {
+    pub fn get_standardized_name(&self, suffix: &str) -> StackString {
         format!(
             "{}.{}",
             self.begin_datetime
                 .format("%Y-%m-%d_%H-%M-%S_1_1")
                 .to_string(),
             suffix
-        )
+        ).into()
     }
 }
 
@@ -149,7 +150,7 @@ pub enum GarminFileTypes {
     Gmn,
 }
 
-pub fn get_file_type_map() -> HashMap<String, GarminFileTypes> {
+pub fn get_file_type_map() -> HashMap<StackString, GarminFileTypes> {
     [
         ("txt", GarminFileTypes::Txt),
         ("tcx", GarminFileTypes::Tcx),
@@ -158,11 +159,11 @@ pub fn get_file_type_map() -> HashMap<String, GarminFileTypes> {
         ("gmn", GarminFileTypes::Gmn),
     ]
     .iter()
-    .map(|(k, v)| ((*k).to_string(), *v))
+    .map(|(k, v)| ((*k).into(), *v))
     .collect()
 }
 
-pub fn get_reverse_file_type_map() -> HashMap<GarminFileTypes, String> {
+pub fn get_reverse_file_type_map() -> HashMap<GarminFileTypes, StackString> {
     get_file_type_map()
         .into_iter()
         .map(|(k, v)| (v, k))

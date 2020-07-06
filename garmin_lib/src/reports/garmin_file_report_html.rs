@@ -22,11 +22,12 @@ use crate::{
         plot_graph::generate_d3_plot,
         plot_opts::PlotOpts,
         sport_types::{get_sport_type_map, SportTypes},
+        stack_string::StackString,
     },
 };
 
-pub fn generate_history_buttons<T: AsRef<str>>(history_vec: &[T]) -> String {
-    fn history_button_string(most_recent: &str) -> String {
+pub fn generate_history_buttons<T: AsRef<str>>(history_vec: &[T]) -> StackString {
+    fn history_button_string(most_recent: &str) -> StackString {
         format!(
             "{}{}{}{}{}",
             r#"<button type="submit" onclick="send_command('filter="#,
@@ -34,7 +35,7 @@ pub fn generate_history_buttons<T: AsRef<str>>(history_vec: &[T]) -> String {
             r#"');"> "#,
             most_recent,
             " </button>"
-        )
+        ).into()
     }
 
     let local: Date<Local> = Local::today();
@@ -45,23 +46,23 @@ pub fn generate_history_buttons<T: AsRef<str>>(history_vec: &[T]) -> String {
     } else {
         (year - 1, 12)
     };
-    let default_string = format!(
+    let default_string: StackString = format!(
         "{:04}-{:02},{:04}-{:02},week",
         prev_year, prev_month, year, month
-    );
-    let mut used_buttons: HashSet<String> = HashSet::new();
+    ).into();
+    let mut used_buttons: HashSet<StackString> = HashSet::new();
     let mut history_buttons = vec![history_button_string(&default_string)];
     used_buttons.insert(default_string);
 
     for most_recent in history_vec.iter() {
         let most_recent: &str = most_recent.as_ref();
         if !used_buttons.contains(most_recent) {
-            used_buttons.insert(most_recent.to_string());
+            used_buttons.insert(most_recent.into());
             history_buttons.push(history_button_string(most_recent));
         }
     }
 
-    history_buttons.join("\n")
+    history_buttons.join("\n").into()
 }
 
 #[derive(Default)]
@@ -90,7 +91,7 @@ pub async fn file_report_html<T: AsRef<str>>(
     history: &[T],
     pool: &PgPool,
     is_demo: bool,
-) -> Result<String, Error> {
+) -> Result<StackString, Error> {
     let report_objs = extract_report_objects_from_file(&gfile)?;
     let plot_opts = get_plot_opts(&report_objs);
     let graphs = get_graphs(&plot_opts);
@@ -311,7 +312,7 @@ fn get_plot_opts<'a>(report_objs: &'a ReportObjects) -> Vec<PlotOpts<'a>> {
     plot_opts
 }
 
-fn get_graphs(plot_opts: &[PlotOpts]) -> Vec<String> {
+fn get_graphs(plot_opts: &[PlotOpts]) -> Vec<StackString> {
     plot_opts
         .par_iter()
         .filter_map(|options| match generate_d3_plot(&options) {
@@ -334,7 +335,7 @@ async fn get_html_string<T, U>(
     history: &[U],
     pool: &PgPool,
     is_demo: bool,
-) -> Result<String, Error>
+) -> Result<StackString, Error>
 where
     T: AsRef<str>,
     U: AsRef<str>,
@@ -373,7 +374,7 @@ where
         )?
     };
 
-    Ok(htmlvec.join("\n"))
+    Ok(htmlvec.join("\n").into())
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -386,7 +387,7 @@ fn get_garmin_template_vec<T: AsRef<str>>(
     connect_activity: &Option<GarminConnectActivity>,
     history: &[T],
     is_demo: bool,
-) -> Result<Vec<String>, Error> {
+) -> Result<Vec<StackString>, Error> {
     let mut htmlvec = Vec::new();
 
     let template = if is_demo {
@@ -400,22 +401,22 @@ fn get_garmin_template_vec<T: AsRef<str>>(
             htmlvec.push(format!(
                 "{}\n",
                 get_file_html(&gfile, fitbit_activity, connect_activity)
-            ));
+            ).into());
             htmlvec.push(format!(
                 "<br><br>{}\n",
                 get_html_splits(&gfile, METERS_PER_MILE, "mi")?
-            ));
+            ).into());
             htmlvec.push(format!(
                 "<br><br>{}\n",
                 get_html_splits(&gfile, 5000.0, "km")?
-            ));
+            ).into());
         } else if line.contains("SPORTTITLEDATE") {
             let newtitle = format!(
                 "Garmin Event {} on {}",
                 titlecase(&sport.to_string()),
                 gfile.begin_datetime
             );
-            htmlvec.push(line.replace("SPORTTITLEDATE", &newtitle).to_string());
+            htmlvec.push(line.replace("SPORTTITLEDATE", &newtitle).to_string().into());
         } else if line.contains("SPORTTITLELINK") {
             let newtitle = format!(
                 "Garmin Event {} on {}",
@@ -429,17 +430,16 @@ fn get_garmin_template_vec<T: AsRef<str>>(
                 ),
                 None => newtitle,
             };
-            htmlvec.push(line.replace("SPORTTITLELINK", &newtitle).to_string());
+            htmlvec.push(line.replace("SPORTTITLELINK", &newtitle).to_string().into());
         } else if line.contains("HISTORYBUTTONS") {
             let history_button = generate_history_buttons(history);
-            htmlvec.push(line.replace("HISTORYBUTTONS", &history_button).to_string());
+            htmlvec.push(line.replace("HISTORYBUTTONS", &history_button).to_string().into());
         } else if line.contains("DOMAIN") {
-            htmlvec.push(line.replace("DOMAIN", domain));
+            htmlvec.push(line.replace("DOMAIN", domain).into());
         } else {
             htmlvec.push(
                 line.replace("<pre>", "<div>")
-                    .replace("</pre>", "</div>")
-                    .to_string(),
+                    .replace("</pre>", "</div>").into(),
             );
         }
     }
@@ -458,7 +458,7 @@ fn get_map_tempate_vec<T, U>(
     graphs: &[U],
     config: &GarminConfig,
     is_demo: bool,
-) -> Result<Vec<String>, Error>
+) -> Result<Vec<StackString>, Error>
 where
     T: AsRef<str>,
     U: AsRef<str>,
@@ -514,7 +514,7 @@ where
                 titlecase(&sport.to_string()),
                 gfile.begin_datetime
             );
-            htmlvec.push(line.replace("SPORTTITLEDATE", &newtitle).to_string());
+            htmlvec.push(line.replace("SPORTTITLEDATE", &newtitle).into());
         } else if line.contains("SPORTTITLELINK") {
             let newtitle = format!(
                 "Garmin Event {} on {}",
@@ -528,7 +528,7 @@ where
                 ),
                 None => newtitle,
             };
-            htmlvec.push(line.replace("SPORTTITLELINK", &newtitle).to_string());
+            htmlvec.push(line.replace("SPORTTITLELINK", &newtitle).into());
         } else if line.contains("STRAVAUPLOADBUTTON") {
             if let Some(strava_activity) = strava_activity {
                 let button_str = format!(
@@ -545,7 +545,7 @@ where
                         )
                     },
                 );
-                htmlvec.push(line.replace("STRAVAUPLOADBUTTON", &button_str));
+                htmlvec.push(line.replace("STRAVAUPLOADBUTTON", &button_str).into());
             } else {
                 let button_str = format!(
                     r#"<form>{}</form>"#,
@@ -558,12 +558,12 @@ where
                     "#
                     },
                 );
-                htmlvec.push(line.replace("STRAVAUPLOADBUTTON", &button_str));
+                htmlvec.push(line.replace("STRAVAUPLOADBUTTON", &button_str).into());
             }
         } else if line.contains("ZOOMVALUE") {
             for (zoom, thresh) in &latlon_thresholds {
                 if (latlon_min < *thresh) | (*zoom == 10) {
-                    htmlvec.push(line.replace("ZOOMVALUE", &format!("{}", zoom)).to_string());
+                    htmlvec.push(line.replace("ZOOMVALUE", &format!("{}", zoom)).into());
                     break;
                 }
             }
@@ -571,18 +571,18 @@ where
             htmlvec.push(format!(
                 "{}\n",
                 get_file_html(&gfile, fitbit_activity, connect_activity)
-            ));
+            ).into());
             htmlvec.push(format!(
                 "<br><br>{}\n",
                 get_html_splits(&gfile, METERS_PER_MILE, "mi")?
-            ));
+            ).into());
             htmlvec.push(format!(
                 "<br><br>{}\n",
                 get_html_splits(&gfile, 5000.0, "km")?
-            ));
+            ).into());
         } else if line.contains("INSERTMAPSEGMENTSHERE") {
             for (latv, lonv) in report_objs.lat_vals.iter().zip(report_objs.lon_vals.iter()) {
-                htmlvec.push(format!("new google.maps.LatLng({},{}),", latv, lonv));
+                htmlvec.push(format!("new google.maps.LatLng({},{}),", latv, lonv).into());
             }
         } else if line.contains("MINLAT")
             | line.contains("MAXLAT")
@@ -594,39 +594,39 @@ where
                     .replace("MAXLAT", &format!("{}", maxlat))
                     .replace("MINLON", &format!("{}", minlon))
                     .replace("MAXLON", &format!("{}", maxlon))
-                    .to_string(),
+                    .into(),
             );
         } else if line.contains("CENTRALLAT") | line.contains("CENTRALLON") {
             htmlvec.push(
                 line.replace("CENTRALLAT", &central_lat.to_string())
                     .replace("CENTRALLON", &central_lon.to_string())
-                    .to_string(),
+                    .into(),
             );
         } else if line.contains("INSERTOTHERIMAGESHERE") {
-            htmlvec.extend(graphs.iter().map(|s| s.as_ref().to_string()));
+            htmlvec.extend(graphs.iter().map(|s| s.as_ref().into()));
         } else if line.contains("MAPSAPIKEY") {
-            htmlvec.push(line.replace("MAPSAPIKEY", &config.maps_api_key).to_string());
+            htmlvec.push(line.replace("MAPSAPIKEY", &config.maps_api_key).into());
         } else if line.contains("HISTORYBUTTONS") {
             let history_button = generate_history_buttons(history);
-            htmlvec.push(line.replace("HISTORYBUTTONS", &history_button).to_string());
+            htmlvec.push(line.replace("HISTORYBUTTONS", &history_button).into());
         } else if line.contains("FILENAME") | line.contains("ACTIVITYTYPE") {
             let filename = config.gps_dir.join(gfile.filename.as_str());
             let activity_type = gfile.sport.to_strava_activity();
             htmlvec.push(
                 line.replace("FILENAME", filename.to_string_lossy().as_ref())
-                    .replace("ACTIVITYTYPE", &activity_type),
+                    .replace("ACTIVITYTYPE", &activity_type).into(),
             );
         } else if line.contains("DOMAIN") {
-            htmlvec.push(line.replace("DOMAIN", &config.domain));
+            htmlvec.push(line.replace("DOMAIN", &config.domain).into());
         } else {
-            htmlvec.push(line.to_string());
+            htmlvec.push(line.into());
         };
     }
     Ok(htmlvec)
 }
 
-fn get_sport_selector(current_sport: SportTypes) -> String {
-    let current_sport = current_sport.to_string();
+fn get_sport_selector(current_sport: SportTypes) -> StackString {
+    let current_sport = current_sport.to_string().into();
     let mut sport_types: Vec<_> = get_sport_type_map()
         .keys()
         .filter_map(|s| {
@@ -646,21 +646,21 @@ fn get_sport_selector(current_sport: SportTypes) -> String {
     format!(
         r#"<select id="sport_select">{}</select>"#,
         sport_types.join("\n")
-    )
+    ).into()
 }
 
-fn get_correction_button(begin_datetime: DateTime<Utc>) -> String {
+fn get_correction_button(begin_datetime: DateTime<Utc>) -> StackString {
     format!(
         r#"<button type="submit" onclick="addGarminCorrectionSport('{}')">Apply</button>"#,
         begin_datetime
-    )
+    ).into()
 }
 
 fn get_file_html(
     gfile: &GarminFile,
     fitbit_activity: &Option<FitbitActivity>,
     connect_activity: &Option<GarminConnectActivity>,
-) -> String {
+) -> StackString {
     let mut retval = Vec::new();
 
     let sport = gfile.sport.to_string();
@@ -728,7 +728,7 @@ fn get_file_html(
     for lap in &gfile.laps {
         retval.push(r#"<tr style="text-align: center;">"#.to_string());
         for lap_html in get_lap_html(&lap, &sport) {
-            retval.push(lap_html);
+            retval.push(lap_html.into());
         }
         retval.push("</tr>".to_string());
     }
@@ -760,10 +760,10 @@ fn get_file_html(
                 "total".to_string(),
                 format!("{:.2} mi", gfile.total_distance / METERS_PER_MILE),
                 format!("{}", gfile.total_calories),
-                print_h_m_s(gfile.total_duration, true).unwrap_or_else(|_| "".to_string()),
-                print_h_m_s(min_mile * 60.0, false).unwrap_or_else(|_| "".to_string()),
+                print_h_m_s(gfile.total_duration, true).unwrap_or_else(|_| "".into()).into(),
+                print_h_m_s(min_mile * 60.0, false).unwrap_or_else(|_| "".into()).into(),
                 print_h_m_s(min_mile * 60.0 / METERS_PER_MILE * 1000., false)
-                    .unwrap_or_else(|_| "".to_string()),
+                    .unwrap_or_else(|_| "".into()).into(),
             ],
         ),
         _ => (
@@ -778,7 +778,7 @@ fn get_file_html(
                 "".to_string(),
                 format!("{:.2} mi", gfile.total_distance / METERS_PER_MILE),
                 format!("{}", gfile.total_calories),
-                print_h_m_s(gfile.total_duration, true).unwrap_or_else(|_| "".to_string()),
+                print_h_m_s(gfile.total_duration, true).unwrap_or_else(|_| "".into()).into(),
                 format!("{}", mi_per_hr),
             ],
         ),
@@ -811,15 +811,15 @@ fn get_file_html(
 
     retval.push("</tr></tbody></table>".to_string());
 
-    retval.join("\n")
+    retval.join("\n").into()
 }
 
-fn get_lap_html(glap: &GarminLap, sport: &str) -> Vec<String> {
+fn get_lap_html(glap: &GarminLap, sport: &str) -> Vec<StackString> {
     let mut values = vec![
         sport.to_string(),
         format!("{}", glap.lap_number),
         format!("{:.2} mi", glap.lap_distance / METERS_PER_MILE),
-        print_h_m_s(glap.lap_duration, true).unwrap_or_else(|_| "".to_string()),
+        print_h_m_s(glap.lap_duration, true).unwrap_or_else(|_| "".into()).into(),
         format!("{}", glap.lap_calories),
         format!("{:.2} min", glap.lap_duration / 60.),
     ];
@@ -830,27 +830,27 @@ fn get_lap_html(glap: &GarminLap, sport: &str) -> Vec<String> {
                 glap.lap_duration / (glap.lap_distance / METERS_PER_MILE),
                 false
             )
-            .unwrap_or_else(|_| "".to_string())
+            .unwrap_or_else(|_| "".into())
         ));
         values.push(format!(
             "{} / km",
             print_h_m_s(glap.lap_duration / (glap.lap_distance / 1000.), false)
-                .unwrap_or_else(|_| "".to_string())
+                .unwrap_or_else(|_| "".into())
         ));
     }
     if let Some(lap_avg_hr) = glap.lap_avg_hr {
         values.push(format!("{} bpm", lap_avg_hr));
     }
-    values.iter().map(|v| format!("<td>{}</td>", v)).collect()
+    values.iter().map(|v| format!("<td>{}</td>", v).into()).collect()
 }
 
 fn get_html_splits(
     gfile: &GarminFile,
     split_distance_in_meters: f64,
     label: &str,
-) -> Result<String, Error> {
+) -> Result<StackString, Error> {
     if gfile.points.is_empty() {
-        Ok("".to_string())
+        Ok("".into())
     } else {
         let labels = vec![
             "Split",
@@ -869,16 +869,16 @@ fn get_html_splits(
                 let hrt = val.avg_heart_rate.unwrap_or(0.0) as i32;
                 vec![
                     format!("{} {}", dis, label),
-                    print_h_m_s(tim, true).unwrap_or_else(|_| "".to_string()),
+                    print_h_m_s(tim, true).unwrap_or_else(|_| "".into()).into(),
                     print_h_m_s(tim / (split_distance_in_meters / METERS_PER_MILE), false)
-                        .unwrap_or_else(|_| "".to_string()),
+                        .unwrap_or_else(|_| "".into()).into(),
                     print_h_m_s(tim / (split_distance_in_meters / 1000.), false)
-                        .unwrap_or_else(|_| "".to_string()),
+                        .unwrap_or_else(|_| "".into()).into(),
                     print_h_m_s(
                         tim / (split_distance_in_meters / METERS_PER_MILE) * MARATHON_DISTANCE_MI,
                         true,
                     )
-                    .unwrap_or_else(|_| "".to_string()),
+                    .unwrap_or_else(|_| "".into()).into(),
                     format!("{} bpm", hrt),
                 ]
             })
@@ -900,6 +900,6 @@ fn get_html_splits(
             retval.push("</tr>".to_string());
         }
         retval.push("</tbody></table>".to_string());
-        Ok(retval.join("\n"))
+        Ok(retval.join("\n").into())
     }
 }

@@ -11,7 +11,7 @@ use garmin_lib::{
     reports::garmin_templates::{PLOT_TEMPLATE, PLOT_TEMPLATE_DEMO},
     utils::{
         iso_8601_datetime::convert_datetime_to_str, plot_graph::generate_d3_plot,
-        plot_opts::PlotOpts,
+        plot_opts::PlotOpts, stack_string::StackString,
     },
 };
 
@@ -140,7 +140,7 @@ impl ScaleMeasurement {
     pub fn get_scale_measurement_plots(
         measurements: &[Self],
         is_demo: bool,
-    ) -> Result<String, Error> {
+    ) -> Result<StackString, Error> {
         let template = if is_demo {
             PLOT_TEMPLATE_DEMO
         } else {
@@ -149,7 +149,7 @@ impl ScaleMeasurement {
         if measurements.is_empty() {
             let body = template
                 .replace("INSERTOTHERIMAGESHERE", "")
-                .replace("INSERTTEXTHERE", "");
+                .replace("INSERTTEXTHERE", "").into();
             return Ok(body);
         }
         let mut graphs = Vec::new();
@@ -254,7 +254,7 @@ impl ScaleMeasurement {
 
         let body = template
             .replace("INSERTOTHERIMAGESHERE", &graphs.join("\n"))
-            .replace("INSERTTEXTHERE", &entries);
+            .replace("INSERTTEXTHERE", &entries).into();
         Ok(body)
     }
 }

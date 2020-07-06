@@ -8,23 +8,24 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use crate::common::pgpool::PgPool;
+use crate::utils::stack_string::StackString;
 
 #[derive(Serialize, Deserialize, Clone, Debug, FromSqlRow)]
 pub struct FitbitActivity {
     #[serde(rename = "logType")]
-    pub log_type: String,
+    pub log_type: StackString,
     #[serde(rename = "startTime")]
     pub start_time: DateTime<Utc>,
     #[serde(rename = "tcxLink")]
-    pub tcx_link: Option<String>,
+    pub tcx_link: Option<StackString>,
     #[serde(rename = "activityTypeId")]
     pub activity_type_id: Option<i64>,
     #[serde(rename = "activityName")]
-    pub activity_name: Option<String>,
+    pub activity_name: Option<StackString>,
     pub duration: i64,
     pub distance: Option<f64>,
     #[serde(rename = "distanceUnit")]
-    pub distance_unit: Option<String>,
+    pub distance_unit: Option<StackString>,
     pub steps: Option<i64>,
     #[serde(rename = "logId")]
     pub log_id: i64,
@@ -169,7 +170,7 @@ impl FitbitActivity {
     pub async fn upsert_activities(
         activities: &[Self],
         pool: &PgPool,
-    ) -> Result<Vec<String>, Error> {
+    ) -> Result<Vec<StackString>, Error> {
         let mut output = Vec::new();
         let existing_activities: HashMap<_, _> = Self::read_from_db(pool, None, None)
             .await?
@@ -185,7 +186,7 @@ impl FitbitActivity {
             let pool = pool.clone();
             async move {
                 activity.update_db(&pool).await?;
-                Ok(activity.log_id.to_string())
+                Ok(activity.log_id.to_string().into())
             }
         });
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
@@ -195,7 +196,7 @@ impl FitbitActivity {
             let pool = pool.clone();
             async move {
                 activity.insert_into_db(&pool).await?;
-                Ok(activity.log_id.to_string())
+                Ok(activity.log_id.to_string().into())
             }
         });
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;

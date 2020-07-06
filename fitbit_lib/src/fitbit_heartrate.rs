@@ -116,7 +116,7 @@ impl FitbitHeartRate {
                 .await?
                 .into_par_iter()
                 .filter_map(|filename| {
-                    let avro_file = config.cache_dir.join(filename).with_extension("avro");
+                    let avro_file = config.cache_dir.join(filename.as_str()).with_extension("avro");
                     if avro_file.exists() {
                         Some(avro_file)
                     } else {
@@ -215,7 +215,7 @@ impl FitbitHeartRate {
         start_date: NaiveDate,
         end_date: NaiveDate,
         is_demo: bool,
-    ) -> Result<String, Error> {
+    ) -> Result<StackString, Error> {
         let mut final_values: Vec<_> =
             Self::get_heartrate_values(config, pool, start_date, end_date)
                 .await?
@@ -297,7 +297,7 @@ impl FitbitHeartRate {
         };
         let body = template
             .replace("INSERTOTHERIMAGESHERE", &plots)
-            .replace("INSERTTEXTHERE", &buttons.join("\n"));
+            .replace("INSERTTEXTHERE", &buttons.join("\n")).into();
         Ok(body)
     }
 

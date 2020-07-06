@@ -15,12 +15,13 @@ use crate::{
             days_in_month, days_in_year, print_h_m_s, METERS_PER_MILE, MONTH_NAMES, WEEKDAY_NAMES,
         },
         iso_8601_datetime::convert_datetime_to_str,
+        stack_string::StackString,
     },
 };
 
 pub trait GarminReportTrait {
-    fn get_text_entry(&self) -> Result<Vec<String>, Error>;
-    fn get_html_entry(&self) -> Result<String, Error> {
+    fn get_text_entry(&self) -> Result<Vec<StackString>, Error>;
+    fn get_html_entry(&self) -> Result<StackString, Error> {
         let ent = self.get_text_entry()?.join("</td><td>");
         let cmd = self.generate_url_string();
         Ok(format!(
@@ -31,10 +32,10 @@ pub trait GarminReportTrait {
             cmd,
             "</button></td><td>",
             ent.trim()
-        ))
+        ).into())
     }
-    fn generate_url_string(&self) -> String {
-        "year,running".to_string()
+    fn generate_url_string(&self) -> StackString {
+        "year,running".to_string().into()
     }
 }
 
@@ -49,7 +50,7 @@ pub enum GarminReportQuery {
 }
 
 impl GarminReportQuery {
-    pub fn get_text_entries(&self) -> Result<Vec<Vec<String>>, Error> {
+    pub fn get_text_entries(&self) -> Result<Vec<Vec<StackString>>, Error> {
         match self {
             Self::Year(x) => x.iter().map(GarminReportTrait::get_text_entry).collect(),
             Self::Month(x) => x.iter().map(GarminReportTrait::get_text_entry).collect(),
@@ -60,7 +61,7 @@ impl GarminReportQuery {
             Self::Empty => Ok(Vec::new()),
         }
     }
-    pub fn get_html_entries(&self) -> Result<Vec<String>, Error> {
+    pub fn get_html_entries(&self) -> Result<Vec<StackString>, Error> {
         match self {
             Self::Year(x) => x.iter().map(GarminReportTrait::get_html_entry).collect(),
             Self::Month(x) => x.iter().map(GarminReportTrait::get_html_entry).collect(),
@@ -131,7 +132,7 @@ pub struct FileSummaryReport {
     datetime: DateTime<Utc>,
     week: f64,
     isodow: f64,
-    sport: String,
+    sport: StackString,
     total_calories: i64,
     total_distance: f64,
     total_duration: f64,
@@ -139,11 +140,11 @@ pub struct FileSummaryReport {
     total_hr_dis: f64,
     total_fitbit_steps: i64,
     total_connect_steps: i64,
-    strava_title: Option<String>,
+    strava_title: Option<StackString>,
 }
 
 impl GarminReportTrait for FileSummaryReport {
-    fn get_text_entry(&self) -> Result<Vec<String>, Error> {
+    fn get_text_entry(&self) -> Result<Vec<StackString>, Error> {
         let weekdayname = WEEKDAY_NAMES[self.isodow as usize - 1];
         let datetime = convert_datetime_to_str(self.datetime);
 
@@ -175,7 +176,7 @@ impl GarminReportTrait for FileSummaryReport {
                             )?
                         ),
                         print_h_m_s(self.total_duration, true)?
-                    ));
+                    ).into());
                 } else {
                     tmp_vec.push(format!(
                         "{:17} {:10} {:10} {:10} {:10} {:10} {:10}",
@@ -186,7 +187,7 @@ impl GarminReportTrait for FileSummaryReport {
                         "".to_string(),
                         "".to_string(),
                         print_h_m_s(self.total_duration, true)?
-                    ));
+                    ).into());
                 }
             }
             "biking" => {
@@ -202,7 +203,7 @@ impl GarminReportTrait for FileSummaryReport {
                     ),
                     "".to_string(),
                     print_h_m_s(self.total_duration, true)?
-                ));
+                ).into());
             }
             _ => {
                 tmp_vec.push(format!(
@@ -214,28 +215,28 @@ impl GarminReportTrait for FileSummaryReport {
                     "".to_string(),
                     "".to_string(),
                     print_h_m_s(self.total_duration, true)?
-                ));
+                ).into());
             }
         };
         if self.total_hr_dur > self.total_hr_dis {
             tmp_vec.push(format!(
                 "\t {:7}",
                 format!("{} bpm", (self.total_hr_dur / self.total_hr_dis) as i32)
-            ));
+            ).into());
         }
         if self.total_fitbit_steps > 0 || self.total_connect_steps > 0 {
             tmp_vec.push(format!(
                 " {:>16} steps",
                 format!("{} / {}", self.total_fitbit_steps, self.total_connect_steps),
-            ));
+            ).into());
         }
         if let Some(strava_title) = &self.strava_title {
-            tmp_vec.push(format!(" {}", strava_title));
+            tmp_vec.push(format!(" {}", strava_title).into());
         }
         Ok(tmp_vec)
     }
-    fn generate_url_string(&self) -> String {
-        convert_datetime_to_str(self.datetime)
+    fn generate_url_string(&self) -> StackString {
+        convert_datetime_to_str(self.datetime).into()
     }
 }
 
@@ -245,7 +246,7 @@ async fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<FileSumm
         datetime: DateTime<Utc>,
         week: f64,
         isodow: f64,
-        sport: String,
+        sport: StackString,
         total_calories: i64,
         total_distance: f64,
         total_duration: f64,
@@ -330,10 +331,10 @@ async fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<FileSumm
 
 #[derive(FromSqlRow, Debug)]
 pub struct DaySummaryReport {
-    date: String,
+    date: StackString,
     week: f64,
     isodow: f64,
-    sport: String,
+    sport: StackString,
     total_calories: i64,
     total_distance: f64,
     total_duration: f64,
@@ -342,7 +343,7 @@ pub struct DaySummaryReport {
 }
 
 impl GarminReportTrait for DaySummaryReport {
-    fn get_text_entry(&self) -> Result<Vec<String>, Error> {
+    fn get_text_entry(&self) -> Result<Vec<StackString>, Error> {
         let weekdayname = WEEKDAY_NAMES[self.isodow as usize - 1];
 
         debug!("{:?}", self);
@@ -373,7 +374,7 @@ impl GarminReportTrait for DaySummaryReport {
                             )?
                         ),
                         print_h_m_s(self.total_duration, true)?
-                    ));
+                    ).into());
                 } else {
                     tmp_vec.push(format!(
                         "{:17} {:10} {:10} {:10} {:10} {:10} {:10}",
@@ -384,7 +385,7 @@ impl GarminReportTrait for DaySummaryReport {
                         "".to_string(),
                         "".to_string(),
                         print_h_m_s(self.total_duration, true)?
-                    ));
+                    ).into());
                 }
             }
             "biking" => {
@@ -400,7 +401,7 @@ impl GarminReportTrait for DaySummaryReport {
                     ),
                     "".to_string(),
                     print_h_m_s(self.total_duration, true)?
-                ));
+                ).into());
             }
             _ => {
                 tmp_vec.push(format!(
@@ -412,19 +413,19 @@ impl GarminReportTrait for DaySummaryReport {
                     "".to_string(),
                     "".to_string(),
                     print_h_m_s(self.total_duration, true)?
-                ));
+                ).into());
             }
         };
         if self.total_hr_dur > self.total_hr_dis {
             tmp_vec.push(format!(
                 "\t {:7}",
                 format!("{} bpm", (self.total_hr_dur / self.total_hr_dis) as i32)
-            ));
+            ).into());
         }
         Ok(tmp_vec)
     }
-    fn generate_url_string(&self) -> String {
-        format!("{},file,{}", self.sport, self.date)
+    fn generate_url_string(&self) -> StackString {
+        format!("{},file,{}", self.sport, self.date).into()
     }
 }
 
@@ -474,7 +475,7 @@ async fn day_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<DaySummar
 pub struct WeekSummaryReport {
     year: f64,
     week: f64,
-    sport: String,
+    sport: StackString,
     total_calories: i64,
     total_distance: f64,
     total_duration: f64,
@@ -484,7 +485,7 @@ pub struct WeekSummaryReport {
 }
 
 impl GarminReportTrait for WeekSummaryReport {
-    fn get_text_entry(&self) -> Result<Vec<String>, Error> {
+    fn get_text_entry(&self) -> Result<Vec<StackString>, Error> {
         let total_days = 7;
 
         debug!("{:?}", self);
@@ -497,7 +498,7 @@ impl GarminReportTrait for WeekSummaryReport {
             self.sport,
             format!("{:4.2} mi", self.total_distance / METERS_PER_MILE),
             format!("{} cal", self.total_calories)
-        ));
+        ).into());
 
         match self.sport.as_str() {
             "running" | "walking" => {
@@ -511,7 +512,7 @@ impl GarminReportTrait for WeekSummaryReport {
                                 false
                             )?
                         )
-                    ));
+                    ).into());
                     tmp_vec.push(format!(
                         " {:10} \t",
                         format!(
@@ -521,10 +522,10 @@ impl GarminReportTrait for WeekSummaryReport {
                                 false
                             )?
                         )
-                    ));
+                    ).into());
                 } else {
-                    tmp_vec.push(format!(" {:10} \t", ""));
-                    tmp_vec.push(format!(" {:10} \t", ""));
+                    tmp_vec.push(format!(" {:10} \t", "").into());
+                    tmp_vec.push(format!(" {:10} \t", "").into());
                 }
             }
             "biking" => {
@@ -534,34 +535,34 @@ impl GarminReportTrait for WeekSummaryReport {
                         "{:.2} mph",
                         (self.total_distance / METERS_PER_MILE) / (self.total_duration / 3600.)
                     )
-                ));
+                ).into());
             }
             _ => {
-                tmp_vec.push(format!(" {:10} \t", ""));
+                tmp_vec.push(format!(" {:10} \t", "").into());
             }
         }
         tmp_vec.push(format!(
             " {:10} \t",
             print_h_m_s(self.total_duration, true)?
-        ));
+        ).into());
         if self.total_hr_dur > self.total_hr_dis {
             tmp_vec.push(format!(
                 " {:7} {:2}",
                 format!("{} bpm", (self.total_hr_dur / self.total_hr_dis) as i32),
                 ""
-            ));
+            ).into());
         } else {
-            tmp_vec.push(format!(" {:7} {:2}", "", ""));
+            tmp_vec.push(format!(" {:7} {:2}", "", "").into());
         };
         tmp_vec.push(format!(
             "{:16}",
             format!("{} / {} days", self.number_of_days, total_days)
-        ));
+        ).into());
 
         Ok(tmp_vec)
     }
-    fn generate_url_string(&self) -> String {
-        format!("{},day,{}w{}", self.sport, self.year, self.week)
+    fn generate_url_string(&self) -> StackString {
+        format!("{},day,{}w{}", self.sport, self.year, self.week).into()
     }
 }
 
@@ -611,7 +612,7 @@ async fn week_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<WeekSumm
 pub struct MonthSummaryReport {
     year: f64,
     month: f64,
-    sport: String,
+    sport: StackString,
     total_calories: i64,
     total_distance: f64,
     total_duration: f64,
@@ -621,7 +622,7 @@ pub struct MonthSummaryReport {
 }
 
 impl GarminReportTrait for MonthSummaryReport {
-    fn get_text_entry(&self) -> Result<Vec<String>, Error> {
+    fn get_text_entry(&self) -> Result<Vec<StackString>, Error> {
         let total_days = days_in_month(self.year as i32, self.month as u32);
 
         debug!("{:?}", self);
@@ -633,8 +634,8 @@ impl GarminReportTrait for MonthSummaryReport {
             format!("{} {}", self.year, MONTH_NAMES[self.month as usize - 1]),
             self.sport,
             format!("{:4.2} mi", (self.total_distance / METERS_PER_MILE)),
-        ));
-        tmp_vec.push(format!("{:10} \t", format!("{} cal", self.total_calories)));
+        ).into());
+        tmp_vec.push(format!("{:10} \t", format!("{} cal", self.total_calories)).into());
 
         match self.sport.as_str() {
             "running" | "walking" => {
@@ -647,14 +648,14 @@ impl GarminReportTrait for MonthSummaryReport {
                             false
                         )?
                     )
-                ));
+                ).into());
                 tmp_vec.push(format!(
                     " {:10} \t",
                     format!(
                         "{} / km",
                         print_h_m_s(self.total_duration / (self.total_distance / 1000.), false)?
                     )
-                ))
+                ).into())
             }
             "biking" => {
                 tmp_vec.push(format!(
@@ -663,36 +664,36 @@ impl GarminReportTrait for MonthSummaryReport {
                         "{:.2} mph",
                         (self.total_distance / METERS_PER_MILE) / (self.total_duration / 60. / 60.)
                     )
-                ));
+                ).into());
             }
             _ => {
-                tmp_vec.push(format!(" {:10} \t", ""));
+                tmp_vec.push(format!(" {:10} \t", "").into());
             }
         };
         tmp_vec.push(format!(
             " {:10} \t",
             print_h_m_s(self.total_duration, true)?
-        ));
+        ).into());
 
         if self.total_hr_dur > self.total_hr_dis {
             tmp_vec.push(format!(
                 " {:7} {:2}",
                 format!("{} bpm", (self.total_hr_dur / self.total_hr_dis) as i32),
                 ""
-            ));
+            ).into());
         } else {
-            tmp_vec.push(format!(" {:7} {:2}", " ", " "));
+            tmp_vec.push(format!(" {:7} {:2}", " ", " ").into());
         };
 
         tmp_vec.push(format!(
             "{:16}",
             format!("{} / {} days", self.number_of_days, total_days)
-        ));
+        ).into());
 
         Ok(tmp_vec)
     }
-    fn generate_url_string(&self) -> String {
-        format!("{},day,{:04}-{:02}", self.sport, self.year, self.month)
+    fn generate_url_string(&self) -> StackString {
+        format!("{},day,{:04}-{:02}", self.sport, self.year, self.month).into()
     }
 }
 
@@ -743,7 +744,7 @@ async fn month_summary_report(
 
 #[derive(FromSqlRow, Debug)]
 pub struct SportSummaryReport {
-    sport: String,
+    sport: StackString,
     total_calories: i64,
     total_distance: f64,
     total_duration: f64,
@@ -752,16 +753,16 @@ pub struct SportSummaryReport {
 }
 
 impl GarminReportTrait for SportSummaryReport {
-    fn get_text_entry(&self) -> Result<Vec<String>, Error> {
+    fn get_text_entry(&self) -> Result<Vec<StackString>, Error> {
         debug!("{:?}", self);
         let mut tmp_vec = Vec::new();
 
-        tmp_vec.push(format!("{:10} \t", self.sport));
+        tmp_vec.push(format!("{:10} \t", self.sport).into());
         tmp_vec.push(format!(
             "{:10} \t",
             format!("{:4.2} mi", self.total_distance / METERS_PER_MILE),
-        ));
-        tmp_vec.push(format!("{:10} \t", format!("{} cal", self.total_calories)));
+        ).into());
+        tmp_vec.push(format!("{:10} \t", format!("{} cal", self.total_calories)).into());
 
         match self.sport.as_str() {
             "running" | "walking" => {
@@ -774,14 +775,14 @@ impl GarminReportTrait for SportSummaryReport {
                             false
                         )?
                     )
-                ));
+                ).into());
                 tmp_vec.push(format!(
                     "{:10} ",
                     format!(
                         "{} / km",
                         print_h_m_s(self.total_duration / (self.total_distance / 1000.), false)?
                     )
-                ));
+                ).into());
             }
             "biking" => {
                 tmp_vec.push(format!(
@@ -790,7 +791,7 @@ impl GarminReportTrait for SportSummaryReport {
                         "{:.2} mph",
                         (self.total_distance / METERS_PER_MILE) / (self.total_duration / 60. / 60.)
                     )
-                ));
+                ).into());
             }
             _ => (),
         };
@@ -798,21 +799,21 @@ impl GarminReportTrait for SportSummaryReport {
         tmp_vec.push(format!(
             " {:10} \t",
             print_h_m_s(self.total_duration, true)?
-        ));
+        ).into());
         if self.total_hr_dur > self.total_hr_dis {
             tmp_vec.push(format!(
                 " {:7} {:2}",
                 format!("{} bpm", (self.total_hr_dur / self.total_hr_dis) as i32),
                 ""
-            ));
+            ).into());
         } else {
-            tmp_vec.push(format!(" {:7} {:2}", "", ""));
+            tmp_vec.push(format!(" {:7} {:2}", "", "").into());
         }
 
         Ok(tmp_vec)
     }
-    fn generate_url_string(&self) -> String {
-        format!("year,{}", self.sport)
+    fn generate_url_string(&self) -> StackString {
+        format!("year,{}", self.sport).into()
     }
 }
 
@@ -859,7 +860,7 @@ async fn sport_summary_report(
 #[derive(FromSqlRow, Debug)]
 pub struct YearSummaryReport {
     year: f64,
-    sport: String,
+    sport: StackString,
     total_calories: i64,
     total_distance: f64,
     total_duration: f64,
@@ -869,19 +870,19 @@ pub struct YearSummaryReport {
 }
 
 impl GarminReportTrait for YearSummaryReport {
-    fn get_text_entry(&self) -> Result<Vec<String>, Error> {
+    fn get_text_entry(&self) -> Result<Vec<StackString>, Error> {
         let total_days = days_in_year(self.year as i32);
 
         debug!("{:?}", self);
 
         let mut tmp_vec = Vec::new();
 
-        tmp_vec.push(format!("{:5} {:10} \t", self.year, self.sport,));
+        tmp_vec.push(format!("{:5} {:10} \t", self.year, self.sport,).into());
         tmp_vec.push(format!(
             "{:10} \t",
             format!("{:4.2} mi", self.total_distance / METERS_PER_MILE),
-        ));
-        tmp_vec.push(format!("{:10} \t", format!("{} cal", self.total_calories)));
+        ).into());
+        tmp_vec.push(format!("{:10} \t", format!("{} cal", self.total_calories)).into());
 
         match self.sport.as_str() {
             "running" | "walking" => {
@@ -894,14 +895,14 @@ impl GarminReportTrait for YearSummaryReport {
                             false
                         )?
                     )
-                ));
+                ).into());
                 tmp_vec.push(format!(
                     "{:10} ",
                     format!(
                         "{} / km",
                         print_h_m_s(self.total_duration / (self.total_distance / 1000.), false)?
                     )
-                ));
+                ).into());
             }
             "biking" => {
                 tmp_vec.push(format!(
@@ -910,7 +911,7 @@ impl GarminReportTrait for YearSummaryReport {
                         "{:.2} mph",
                         (self.total_distance / METERS_PER_MILE) / (self.total_duration / 60. / 60.)
                     )
-                ));
+                ).into());
             }
             _ => (),
         };
@@ -918,26 +919,26 @@ impl GarminReportTrait for YearSummaryReport {
         tmp_vec.push(format!(
             " {:10} \t",
             print_h_m_s(self.total_duration, true)?
-        ));
+        ).into());
         if self.total_hr_dur > self.total_hr_dis {
             tmp_vec.push(format!(
                 " {:7} {:2}",
                 format!("{} bpm", (self.total_hr_dur / self.total_hr_dis) as i32),
                 ""
-            ));
+            ).into());
         } else {
-            tmp_vec.push(format!(" {:7} {:2}", "", ""));
+            tmp_vec.push(format!(" {:7} {:2}", "", "").into());
         }
 
         tmp_vec.push(format!(
             "{:16}",
             format!("{} / {} days", self.number_of_days, total_days)
-        ));
+        ).into());
 
         Ok(tmp_vec)
     }
-    fn generate_url_string(&self) -> String {
-        format!("{},month,{}", self.sport, self.year)
+    fn generate_url_string(&self) -> StackString {
+        format!("{},month,{}", self.sport, self.year).into()
     }
 }
 

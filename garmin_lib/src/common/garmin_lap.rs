@@ -8,24 +8,25 @@ use std::fmt;
 use crate::utils::{
     garmin_util::{convert_time_string, convert_xml_local_time_to_utc},
     iso_8601_datetime::{self, convert_datetime_to_str, sentinel_datetime},
+    stack_string::StackString,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GarminLap {
-    pub lap_type: Option<String>,
+    pub lap_type: Option<StackString>,
     pub lap_index: i32,
     #[serde(with = "iso_8601_datetime")]
     pub lap_start: DateTime<Utc>,
     pub lap_duration: f64,
     pub lap_distance: f64,
-    pub lap_trigger: Option<String>,
+    pub lap_trigger: Option<StackString>,
     pub lap_max_speed: Option<f64>,
     pub lap_calories: i32,
     pub lap_avg_hr: Option<f64>,
     pub lap_max_hr: Option<i32>,
-    pub lap_intensity: Option<String>,
+    pub lap_intensity: Option<StackString>,
     pub lap_number: i32,
-    pub lap_start_string: Option<String>,
+    pub lap_start_string: Option<StackString>,
 }
 
 impl Default for GarminLap {
@@ -89,7 +90,7 @@ impl GarminLap {
                 "index" => new_lap.lap_index = entry.value().parse().unwrap_or(-1),
                 "start" => {
                     new_lap.lap_start = convert_xml_local_time_to_utc(entry.value())?;
-                    new_lap.lap_start_string = Some(convert_datetime_to_str(new_lap.lap_start));
+                    new_lap.lap_start_string = Some(convert_datetime_to_str(new_lap.lap_start).into());
                 }
                 "duration" => {
                     new_lap.lap_duration = convert_time_string(entry.value()).unwrap_or(0.0)
@@ -145,7 +146,7 @@ impl GarminLap {
         for entry in entries.attributes() {
             if entry.name() == "StartTime" {
                 new_lap.lap_start = convert_xml_local_time_to_utc(entry.value())?;
-                new_lap.lap_start_string = Some(convert_datetime_to_str(new_lap.lap_start));
+                new_lap.lap_start_string = Some(convert_datetime_to_str(new_lap.lap_start).into());
             }
         }
         Ok(new_lap)
@@ -171,13 +172,13 @@ impl GarminLap {
 
 impl fmt::Display for GarminLap {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let lap_type = self.lap_type.as_ref().map_or("None", String::as_str);
-        let lap_trigger = self.lap_trigger.as_ref().map_or("None", String::as_str);
-        let lap_intensity = self.lap_intensity.as_ref().map_or("None", String::as_str);
+        let lap_type = self.lap_type.as_ref().map_or("None", StackString::as_str);
+        let lap_trigger = self.lap_trigger.as_ref().map_or("None", StackString::as_str);
+        let lap_intensity = self.lap_intensity.as_ref().map_or("None", StackString::as_str);
         let lap_start_string = self
             .lap_start_string
             .as_ref()
-            .map_or("None", String::as_str);
+            .map_or("None", StackString::as_str);
         let lap_max_speed = self.lap_max_speed.unwrap_or(-1.0);
         let lap_avg_hr = self.lap_avg_hr.unwrap_or(-1.0);
         let lap_max_hr = self.lap_max_hr.unwrap_or(-1);

@@ -12,12 +12,13 @@ use crate::{
     utils::{
         iso_8601_datetime,
         sport_types::{self, SportTypes},
+        stack_string::StackString,
     },
 };
 
 #[derive(Serialize, Deserialize, FromSqlRow, Debug, Clone)]
 pub struct StravaActivity {
-    pub name: String,
+    pub name: StackString,
     #[serde(with = "iso_8601_datetime")]
     pub start_date: DateTime<Utc>,
     pub id: i64,
@@ -29,7 +30,7 @@ pub struct StravaActivity {
     pub elev_low: Option<f64>,
     #[serde(rename = "type", with = "sport_types")]
     pub activity_type: SportTypes,
-    pub timezone: String,
+    pub timezone: StackString,
 }
 
 impl StravaActivity {
@@ -148,7 +149,7 @@ impl StravaActivity {
     pub async fn upsert_activities(
         activities: &[Self],
         pool: &PgPool,
-    ) -> Result<Vec<String>, Error> {
+    ) -> Result<Vec<StackString>, Error> {
         let mut output = Vec::new();
         let existing_activities: HashMap<_, _> = Self::read_from_db(pool, None, None)
             .await?
@@ -164,7 +165,7 @@ impl StravaActivity {
             let pool = pool.clone();
             async move {
                 activity.update_db(&pool).await?;
-                Ok(activity.id.to_string())
+                Ok(activity.id.to_string().into())
             }
         });
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
@@ -174,7 +175,7 @@ impl StravaActivity {
             let pool = pool.clone();
             async move {
                 activity.insert_into_db(&pool).await?;
-                Ok(activity.id.to_string())
+                Ok(activity.id.to_string().into())
             }
         });
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;

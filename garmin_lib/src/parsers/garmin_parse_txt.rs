@@ -42,7 +42,7 @@ impl GarminParseTrait for GarminParseTxt {
             .file_name()
             .ok_or_else(|| format_err!("filename {:?} has no path", filename))?
             .to_string_lossy()
-            .to_string();
+            .to_string().into();
         let txt_output = self.parse_file(filename)?;
         let sport: SportTypes = txt_output
             .lap_list
@@ -241,7 +241,7 @@ impl GarminParseTxt {
         ))?;
 
         let lap_type = match entry_dict.get("type") {
-            Some(val) => match sport_type_map.get(val) {
+            Some(val) => match sport_type_map.get(val.as_str()) {
                 Some(_) => Some(val.into()),
                 None => None,
             },

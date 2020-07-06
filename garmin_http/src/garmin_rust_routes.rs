@@ -50,7 +50,7 @@ use crate::{
 
 #[derive(Deserialize)]
 pub struct FilterRequest {
-    pub filter: Option<String>,
+    pub filter: Option<StackString>,
 }
 
 fn proc_pattern_wrapper<T: AsRef<str>>(
@@ -61,9 +61,9 @@ fn proc_pattern_wrapper<T: AsRef<str>>(
     let filter = request
         .filter
         .as_ref()
-        .map_or_else(|| "sport", String::as_str);
+        .map_or_else(|| "sport", StackString::as_str);
 
-    let filter_vec: Vec<String> = filter.split(',').map(ToString::to_string).collect();
+    let filter_vec: Vec<_> = filter.split(',').map(ToString::to_string).collect();
 
     let req = GarminCli::process_pattern(&CONFIG, &filter_vec);
     let history: Vec<_> = history.iter().map(|s| s.as_ref().into()).collect();
@@ -97,7 +97,7 @@ pub async fn garmin(
     session: Session,
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
-    let mut history: Vec<String> = session
+    let mut history: Vec<StackString> = session
         .get("history")
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
         .unwrap_or_else(Vec::new);
@@ -105,14 +105,14 @@ pub async fn garmin(
     if history.len() > 5 {
         history.remove(0);
     }
-    history.push(grec.request.filter.as_str().to_string());
+    history.push(grec.request.filter.as_str().into());
     session
         .set("history", history)
         .map_err(|e| format_err!("Failed to set history {:?}", e))?;
 
     let body = state.db.handle(grec).await?;
 
-    form_http_response(body)
+    form_http_response(body.into())
 }
 
 pub async fn garmin_demo(
@@ -121,7 +121,7 @@ pub async fn garmin_demo(
     session: Session,
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
-    let mut history: Vec<String> = session
+    let mut history: Vec<StackString> = session
         .get("history")
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
         .unwrap_or_else(Vec::new);
@@ -129,17 +129,17 @@ pub async fn garmin_demo(
     if history.len() > 5 {
         history.remove(0);
     }
-    history.push(grec.request.filter.as_ref().to_string());
+    history.push(grec.request.filter.as_ref().into());
     session
         .set("history", history)
         .map_err(|e| format_err!("Failed to set history {:?}", e))?;
 
     let body = state.db.handle(grec).await?;
 
-    form_http_response(body)
+    form_http_response(body.into())
 }
 
-async fn save_file(file_path: String, mut field: Field) -> Result<(), Error> {
+async fn save_file(file_path: &str, mut field: Field) -> Result<(), Error> {
     let mut file = File::create(file_path).await?;
 
     while let Some(chunk) = field.next().await {
@@ -165,7 +165,7 @@ pub async fn garmin_upload(
 
     while let Some(item) = multipart.next().await {
         let field = item?;
-        save_file(fname.clone(), field).await?;
+        save_file(&fname, field).await?;
     }
 
     let flist = state
@@ -225,12 +225,12 @@ pub async fn strava_sync(_: LoggedUser, state: Data<AppState>) -> Result<HttpRes
 
 pub async fn strava_auth(_: LoggedUser, state: Data<AppState>) -> Result<HttpResponse, Error> {
     let body = state.db.handle(StravaAuthRequest {}).await?;
-    form_http_response(body)
+    form_http_response(body.into())
 }
 
 pub async fn strava_refresh(_: LoggedUser, state: Data<AppState>) -> Result<HttpResponse, Error> {
     let body = state.db.handle(StravaRefreshRequest {}).await?;
-    form_http_response(body)
+    form_http_response(body.into())
 }
 
 pub async fn strava_callback(
@@ -240,7 +240,7 @@ pub async fn strava_callback(
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
     let body = state.db.handle(query).await?;
-    form_http_response(body)
+    form_http_response(body.into())
 }
 
 pub async fn strava_activities(
@@ -279,7 +279,7 @@ pub async fn strava_upload(
 ) -> Result<HttpResponse, Error> {
     let payload = payload.into_inner();
     let body = state.db.handle(payload).await?;
-    form_http_response(body)
+    form_http_response(body.into())
 }
 
 pub async fn strava_update(
@@ -289,19 +289,19 @@ pub async fn strava_update(
 ) -> Result<HttpResponse, Error> {
     let payload = payload.into_inner();
     let body = state.db.handle(payload).await?;
-    form_http_response(body)
+    form_http_response(body.into())
 }
 
 pub async fn fitbit_auth(_: LoggedUser, state: Data<AppState>) -> Result<HttpResponse, Error> {
     let req = FitbitAuthRequest {};
     let body = state.db.handle(req).await?;
-    form_http_response(body)
+    form_http_response(body.into())
 }
 
 pub async fn fitbit_refresh(_: LoggedUser, state: Data<AppState>) -> Result<HttpResponse, Error> {
     let req = FitbitRefreshRequest {};
     let body = state.db.handle(req).await?;
-    form_http_response(body)
+    form_http_response(body.into())
 }
 
 pub async fn fitbit_heartrate_api(
@@ -358,7 +358,7 @@ pub async fn fitbit_callback(
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
     let body = state.db.handle(query).await?;
-    form_http_response(body)
+    form_http_response(body.into())
 }
 
 pub async fn fitbit_sync(
@@ -379,7 +379,7 @@ pub async fn heartrate_statistics_plots(
 ) -> Result<HttpResponse, Error> {
     let query: FitbitStatisticsPlotRequest = query.into_inner().into();
 
-    let history: Vec<String> = session
+    let history: Vec<StackString> = session
         .get("history")
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
         .unwrap_or_else(Vec::new);
@@ -397,7 +397,7 @@ async fn fitbit_plots_impl(
     state: Data<AppState>,
     session: Session,
 ) -> Result<HttpResponse, Error> {
-    let history: Vec<String> = session
+    let history: Vec<StackString> = session
         .get("history")
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
         .unwrap_or_else(Vec::new);
@@ -435,7 +435,7 @@ async fn heartrate_plots_impl(
     state: Data<AppState>,
     session: Session,
 ) -> Result<HttpResponse, Error> {
-    let history: Vec<String> = session
+    let history: Vec<StackString> = session
         .get("history")
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
         .unwrap_or_else(Vec::new);
@@ -514,7 +514,7 @@ pub async fn garmin_list_gps_tracks(
     session: Session,
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
-    let history: Vec<String> = session
+    let history: Vec<StackString> = session
         .get("history")
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
         .unwrap_or_else(Vec::new);
@@ -543,7 +543,7 @@ pub async fn garmin_get_hr_data(
     session: Session,
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
-    let history: Vec<String> = session
+    let history: Vec<StackString> = session
         .get("history")
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
         .unwrap_or_else(Vec::new);
@@ -557,13 +557,13 @@ pub async fn garmin_get_hr_data(
         1 => {
             let config = &CONFIG;
             let file_name = &file_list[0];
-            let avro_file = config.cache_dir.join(file_name).with_extension("avro");
+            let avro_file = config.cache_dir.join(file_name.as_str()).with_extension("avro");
             let a = avro_file.clone();
 
             if let Ok(g) = spawn_blocking(move || GarminFile::read_avro(&a)).await? {
                 g
             } else {
-                let gps_file = config.gps_dir.join(&file_name);
+                let gps_file = config.gps_dir.join(file_name.as_str());
                 let corr_map = state.db.handle(GarminCorrRequest {}).await?;
                 let gfile =
                     spawn_blocking(move || GarminParse::new().with_file(&gps_file, &corr_map))
@@ -605,7 +605,7 @@ pub async fn garmin_get_hr_pace(
     session: Session,
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
-    let history: Vec<String> = session
+    let history: Vec<StackString> = session
         .get("history")
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
         .unwrap_or_else(Vec::new);
@@ -619,14 +619,14 @@ pub async fn garmin_get_hr_pace(
         1 => {
             let config = &CONFIG;
             let file_name = &file_list[0];
-            let avro_file = config.cache_dir.join(file_name).with_extension("avro");
+            let avro_file = config.cache_dir.join(file_name.as_str()).with_extension("avro");
 
             let gfile = if let Ok(g) =
                 spawn_blocking(move || GarminFile::read_avro(&avro_file)).await?
             {
                 g
             } else {
-                let gps_file = config.gps_dir.join(&file_name);
+                let gps_file = config.gps_dir.join(file_name.as_str());
 
                 let corr_map = state.db.handle(GarminCorrRequest {}).await?;
 

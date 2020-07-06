@@ -155,7 +155,7 @@ impl GarminCli {
         Ok(())
     }
 
-    pub async fn proc_everything(&self) -> Result<Vec<String>, Error> {
+    pub async fn proc_everything(&self) -> Result<Vec<StackString>, Error> {
         let pool = self.get_pool();
         let corr_map = GarminCorrectionLap::read_corrections_from_db(&pool).await?;
         let summary_list = Arc::new(self.get_summary_list(&corr_map).await?);
@@ -205,18 +205,18 @@ impl GarminCli {
                 &corr_map,
             )?,
             _ => {
-                let cacheset: HashSet<String> = get_file_list(&self.get_config().cache_dir)
+                let cacheset: HashSet<StackString> = get_file_list(&self.get_config().cache_dir)
                     .into_par_iter()
                     .filter_map(|f| {
                         if f.to_string_lossy().contains("garmin_correction.avro") {
                             None
                         } else {
-                            f.file_name().map(|f| f.to_string_lossy().to_string())
+                            f.file_name().map(|f| f.to_string_lossy().to_string().into())
                         }
                     })
                     .collect();
 
-                let dbset: HashSet<String> = get_list_of_files_from_db("", &pg_conn)
+                let dbset: HashSet<StackString> = get_list_of_files_from_db("", &pg_conn)
                     .await?
                     .into_iter()
                     .collect();
@@ -226,7 +226,7 @@ impl GarminCli {
                     .filter_map(|f| f.file_name().map(|x| x.to_string_lossy().to_string()))
                     .filter_map(|f| {
                         let cachefile = format!("{}.avro", f);
-                        if dbset.contains(&f) && cacheset.contains(&cachefile) {
+                        if dbset.contains(f.as_str()) && cacheset.contains(cachefile.as_str()) {
                             None
                         } else {
                             let gps_path = self.get_config().gps_dir.join(&f);
@@ -248,11 +248,11 @@ impl GarminCli {
         Ok(gsum_list)
     }
 
-    pub async fn run_bootstrap(&self) -> Result<Vec<String>, Error> {
+    pub async fn run_bootstrap(&self) -> Result<Vec<StackString>, Error> {
         self.sync_everything(true).await
     }
 
-    pub async fn sync_everything(&self, check_md5: bool) -> Result<Vec<String>, Error> {
+    pub async fn sync_everything(&self, check_md5: bool) -> Result<Vec<StackString>, Error> {
         let gsync = GarminSync::new();
 
         let options = vec![
@@ -292,7 +292,7 @@ impl GarminCli {
         results.map(|results| {
             results
                 .into_iter()
-                .map(|output| output.join("\n"))
+                .map(|output| output.join("\n").into())
                 .collect()
         })
     }
@@ -419,7 +419,7 @@ impl GarminCli {
                 let avro_file = self
                     .get_config()
                     .cache_dir
-                    .join(file_name)
+                    .join(file_name.as_str())
                     .with_extension("avro");
 
                 let gfile =
@@ -427,7 +427,7 @@ impl GarminCli {
                         debug!("Cached avro file read: {:?}", &avro_file);
                         g
                     } else {
-                        let gps_file = self.get_config().gps_dir.join(file_name);
+                        let gps_file = self.get_config().gps_dir.join(file_name.as_str());
                         let pool = self.get_pool();
                         let corr_map = GarminCorrectionLap::read_corrections_from_db(&pool).await?;
                         debug!("Reading gps_file: {:?}", &gps_file);
@@ -454,26 +454,26 @@ impl GarminCli {
         Ok(())
     }
 
-    pub async fn run_html(&self, req: &GarminRequest, is_demo: bool) -> Result<String, Error> {
+    pub async fn run_html(&self, req: &GarminRequest, is_demo: bool) -> Result<StackString, Error> {
         let pg_conn = self.get_pool();
 
         let file_list = get_list_of_files_from_db(&req.constraints.join(" OR "), &pg_conn).await?;
 
         match file_list.len() {
-            0 => Ok("".to_string()),
+            0 => Ok("".into()),
             1 => {
                 let file_name = file_list
                     .get(0)
                     .ok_or_else(|| format_err!("This shouldn't be happening..."))?;
                 debug!("{}", &file_name);
-                let avro_file = self.get_config().cache_dir.join(file_name);
+                let avro_file = self.get_config().cache_dir.join(file_name.as_str());
 
                 let gfile =
                     if let Ok(g) = garmin_file::GarminFile::read_avro_async(&avro_file).await {
                         debug!("Cached avro file read: {:?}", &avro_file);
                         g
                     } else {
-                        let gps_file = self.get_config().gps_dir.join(file_name);
+                        let gps_file = self.get_config().gps_dir.join(file_name.as_str());
                         let pool = self.get_pool();
                         let corr_map = GarminCorrectionLap::read_corrections_from_db(&pool).await?;
 
@@ -552,7 +552,7 @@ impl GarminCli {
                     };
                     let gfile = GarminParse::new().with_file(&filename, &HashMap::new())?;
 
-                    let outfile = config.gps_dir.join(gfile.get_standardized_name(suffix));
+                    let outfile = config.gps_dir.join(gfile.get_standardized_name(suffix).as_str());
 
                     stdout.send(format!("{:?} {:?}", filename, outfile).into())?;
 

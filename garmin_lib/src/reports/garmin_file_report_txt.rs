@@ -6,11 +6,12 @@ use crate::{
     utils::{
         garmin_util::{print_h_m_s, MARATHON_DISTANCE_MI, METERS_PER_MILE},
         sport_types::SportTypes,
+        stack_string::StackString,
     },
 };
 
-pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<String>, Error> {
-    let mut return_vec = vec![format!("Start time {}", gfile.filename)];
+pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<StackString>, Error> {
+    let mut return_vec = vec![format!("Start time {}", gfile.filename).into()];
 
     let sport_type = gfile.sport;
 
@@ -53,10 +54,10 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<String>, Error> {
             (gfile.total_hr_dur / gfile.total_hr_dis) as i32
         ));
     };
-    return_vec.push(tmp_str.join(" "));
-    return_vec.push("".to_string());
+    return_vec.push(tmp_str.join(" ").into());
+    return_vec.push("".into());
     return_vec.push(print_splits(&gfile, METERS_PER_MILE, "mi")?);
-    return_vec.push("".to_string());
+    return_vec.push("".into());
     return_vec.push(print_splits(&gfile, 5000.0, "km")?);
 
     let avg_hr: f64 = gfile
@@ -109,12 +110,12 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<String>, Error> {
     };
 
     if (sum_time > 0.0) & !hr_vals.is_empty() {
-        return_vec.push("".to_string());
+        return_vec.push("".into());
         return_vec.push(format!(
             "Heart Rate {:2.2} avg {:2.2} max",
             avg_hr,
             hr_vals.iter().map(|x| *x as i32).max().unwrap_or(0)
-        ));
+        ).into());
     }
 
     let mut vertical_climb = 0.0;
@@ -144,14 +145,14 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<String>, Error> {
             "max altitude diff: {:.2} m",
             alt_vals.iter().map(|x| *x as i32).max().unwrap_or(0)
                 - alt_vals.iter().map(|x| *x as i32).min().unwrap_or(0)
-        ));
-        return_vec.push(format!("vertical climb: {:.2} m", vertical_climb));
+        ).into());
+        return_vec.push(format!("vertical climb: {:.2} m", vertical_climb).into());
     }
 
     Ok(return_vec)
 }
 
-fn print_lap_string(glap: &GarminLap, sport: SportTypes) -> Result<String, Error> {
+fn print_lap_string(glap: &GarminLap, sport: SportTypes) -> Result<StackString, Error> {
     let sport_str = sport.to_string();
 
     let mut outstr = vec![format!(
@@ -168,12 +169,12 @@ fn print_lap_string(glap: &GarminLap, sport: SportTypes) -> Result<String, Error
         outstr.push(print_h_m_s(
             glap.lap_duration / (glap.lap_distance / METERS_PER_MILE),
             false,
-        )?);
+        )?.into());
         outstr.push("/ mi ".to_string());
         outstr.push(print_h_m_s(
             glap.lap_duration / (glap.lap_distance / 1000.),
             false,
-        )?);
+        )?.into());
         outstr.push("/ km".to_string());
     };
     if let Some(x) = glap.lap_avg_hr {
@@ -182,16 +183,16 @@ fn print_lap_string(glap: &GarminLap, sport: SportTypes) -> Result<String, Error
         }
     }
 
-    Ok(outstr.join(" "))
+    Ok(outstr.join(" ").into())
 }
 
 fn print_splits(
     gfile: &GarminFile,
     split_distance_in_meters: f64,
     label: &str,
-) -> Result<String, Error> {
+) -> Result<StackString, Error> {
     if gfile.points.is_empty() {
-        return Ok("".to_string());
+        return Ok("".into());
     }
 
     let retval: Vec<_> = get_splits(gfile, split_distance_in_meters, label, true)?
@@ -205,21 +206,21 @@ fn print_splits(
                 "{} {} \t {} \t {} / mi \t {} / km \t {} \t {:.2} bpm avg",
                 dis,
                 label,
-                print_h_m_s(tim, true).unwrap_or_else(|_| "".to_string()),
+                print_h_m_s(tim, true).unwrap_or_else(|_| "".into()),
                 print_h_m_s(tim / (split_distance_in_meters / METERS_PER_MILE), false)
-                    .unwrap_or_else(|_| "".to_string()),
+                    .unwrap_or_else(|_| "".into()),
                 print_h_m_s(tim / (split_distance_in_meters / 1000.), false)
-                    .unwrap_or_else(|_| "".to_string()),
+                    .unwrap_or_else(|_| "".into()),
                 print_h_m_s(
                     tim / (split_distance_in_meters / METERS_PER_MILE) * MARATHON_DISTANCE_MI,
                     true
                 )
-                .unwrap_or_else(|_| "".to_string()),
+                .unwrap_or_else(|_| "".into()),
                 hrt
             )
         })
         .collect();
-    Ok(retval.join("\n"))
+    Ok(retval.join("\n").into())
 }
 
 #[derive(Debug)]

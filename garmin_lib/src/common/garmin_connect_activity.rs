@@ -8,14 +8,15 @@ use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 
 use super::pgpool::PgPool;
+use crate::utils::stack_string::StackString;
 
 #[derive(Serialize, Deserialize, Debug, FromSqlRow)]
 pub struct GarminConnectActivity {
     #[serde(rename = "activityId")]
     pub activity_id: i64,
     #[serde(rename = "activityName")]
-    pub activity_name: Option<String>,
-    pub description: Option<String>,
+    pub activity_name: Option<StackString>,
+    pub description: Option<StackString>,
     #[serde(rename = "startTimeGMT", deserialize_with = "deserialize_start_time")]
     pub start_time_gmt: DateTime<Utc>,
     pub distance: Option<f64>,
@@ -150,7 +151,7 @@ impl GarminConnectActivity {
     pub async fn upsert_activities(
         activities: &[Self],
         pool: &PgPool,
-    ) -> Result<Vec<String>, Error> {
+    ) -> Result<Vec<StackString>, Error> {
         let mut output = Vec::new();
         let existing_activities: HashMap<_, _> = Self::read_from_db(pool, None, None)
             .await?
@@ -166,7 +167,7 @@ impl GarminConnectActivity {
             let pool = pool.clone();
             async move {
                 activity.update_db(&pool).await?;
-                Ok(activity.activity_id.to_string())
+                Ok(activity.activity_id.to_string().into())
             }
         });
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
@@ -176,7 +177,7 @@ impl GarminConnectActivity {
             let pool = pool.clone();
             async move {
                 activity.insert_into_db(&pool).await?;
-                Ok(activity.activity_id.to_string())
+                Ok(activity.activity_id.to_string().into())
             }
         });
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;

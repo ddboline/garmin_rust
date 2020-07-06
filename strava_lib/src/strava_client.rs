@@ -110,9 +110,9 @@ impl StravaClient {
         Ok(())
     }
 
-    fn get_random_string() -> String {
+    fn get_random_string() -> StackString {
         let random_bytes: Vec<u8> = (0..16).map(|_| thread_rng().gen::<u8>()).collect();
-        encode_config(&random_bytes, URL_SAFE_NO_PAD)
+        encode_config(&random_bytes, URL_SAFE_NO_PAD).into()
     }
 
     pub async fn get_authorization_url_api(&self) -> Result<Url, Error> {
@@ -280,7 +280,7 @@ impl StravaClient {
         filepath: &Path,
         title: &str,
         description: &str,
-    ) -> Result<String, Error> {
+    ) -> Result<StackString, Error> {
         #[derive(Deserialize)]
         struct UploadResp {
             activity_id: i64,
@@ -310,7 +310,7 @@ impl StravaClient {
         } else if filepath.ends_with("tcx.gz") {
             "tcx.gz"
         } else {
-            return Ok("".to_string());
+            return Ok("".into());
         };
 
         let part = Part::bytes(tokio::fs::read(&filename).await?).file_name(filename);
@@ -339,7 +339,7 @@ impl StravaClient {
         let url = format!(
             "https://www.strava.com/activities/{}",
             resp.activity_id.to_string()
-        );
+        ).into();
 
         Ok(url)
     }
@@ -350,25 +350,25 @@ impl StravaClient {
         title: &str,
         description: Option<&str>,
         sport: SportTypes,
-    ) -> Result<String, Error> {
+    ) -> Result<StackString, Error> {
         #[derive(Serialize)]
         struct UpdatableActivity {
             id: u64,
             commute: bool,
             trainer: bool,
-            description: Option<String>,
-            name: String,
+            description: Option<StackString>,
+            name: StackString,
             #[serde(alias = "type")]
-            activity_type: String,
-            gear_id: Option<String>,
+            activity_type: StackString,
+            gear_id: Option<StackString>,
         }
 
         let data = UpdatableActivity {
             id: activity_id,
             commute: false,
             trainer: false,
-            description: description.map(ToString::to_string),
-            name: title.to_string(),
+            description: description.map(Into::into),
+            name: title.into(),
             activity_type: sport.to_strava_activity(),
             gear_id: None,
         };
@@ -382,7 +382,7 @@ impl StravaClient {
             .send()
             .await?
             .error_for_status()?;
-        let url = format!("https://{}/garmin/strava_sync", self.config.domain);
+        let url = format!("https://{}/garmin/strava_sync", self.config.domain).into();
         Ok(url)
     }
 }
@@ -390,12 +390,12 @@ impl StravaClient {
 #[derive(Serialize, Deserialize)]
 pub struct StravaAthlete {
     pub id: u64,
-    pub username: String,
-    pub firstname: String,
-    pub lastname: String,
-    pub city: String,
-    pub state: String,
-    pub sex: String,
+    pub username: StackString,
+    pub firstname: StackString,
+    pub lastname: StackString,
+    pub city: StackString,
+    pub state: StackString,
+    pub sex: StackString,
 }
 
 #[cfg(test)]

@@ -5,10 +5,11 @@ use std::collections::HashMap;
 use crate::{
     reports::garmin_templates::{LINEPLOTTEMPLATE, SCATTERPLOTTEMPLATE},
     utils::plot_opts::PlotOpts,
+    utils::stack_string::StackString,
 };
 
 #[allow(clippy::similar_names)]
-pub fn generate_d3_plot(opts: &PlotOpts) -> Result<String, Error> {
+pub fn generate_d3_plot(opts: &PlotOpts) -> Result<StackString, Error> {
     let err_str = format!("No data points {}", opts.name);
 
     let data = match opts.data.as_ref() {
@@ -104,7 +105,7 @@ pub fn generate_d3_plot(opts: &PlotOpts) -> Result<String, Error> {
             })
             .collect::<Vec<_>>()
             .join("\n");
-        format!("<script>\n{}\n</script>", js_str)
+        format!("<script>\n{}\n</script>", js_str).into()
     } else {
         let js_str = LINEPLOTTEMPLATE
             .split('\n')
@@ -126,7 +127,7 @@ pub fn generate_d3_plot(opts: &PlotOpts) -> Result<String, Error> {
             })
             .collect::<Vec<_>>()
             .join("\n");
-        format!("<script>\n{}\n</script>", js_str)
+        format!("<script>\n{}\n</script>", js_str).into()
     };
     Ok(body)
 }

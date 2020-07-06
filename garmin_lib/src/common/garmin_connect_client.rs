@@ -11,6 +11,8 @@ use serde::Deserialize;
 use std::{path::PathBuf, thread::sleep, time::Duration};
 use tokio::{fs::File, io::AsyncWriteExt, stream::StreamExt};
 
+use crate::utils::stack_string::StackString;
+
 use super::{
     garmin_config::GarminConfig, garmin_connect_activity::GarminConnectActivity,
     reqwest_session::ReqwestSession,
@@ -28,7 +30,7 @@ pub struct GarminConnectHrData {
 pub struct GarminConnectClient {
     pub config: GarminConfig,
     session: ReqwestSession,
-    display_name: Option<String>,
+    display_name: Option<StackString>,
 }
 
 impl GarminConnectClient {
@@ -149,7 +151,7 @@ impl GarminConnectClient {
                         #[derive(Deserialize)]
                         struct SocialProfile {
                             #[serde(rename = "displayName")]
-                            display_name: String,
+                            display_name: StackString,
                         }
                         let val: SocialProfile = serde_json::from_str(entries[1])?;
                         display_name.replace(val.display_name);

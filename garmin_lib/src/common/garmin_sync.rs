@@ -114,7 +114,7 @@ impl GarminSync {
         local_dir: &Path,
         s3_bucket: &str,
         check_md5sum: bool,
-    ) -> Result<Vec<String>, Error> {
+    ) -> Result<Vec<StackString>, Error> {
         let file_list: Result<Vec<_>, Error> = local_dir
             .read_dir()?
             .filter_map(|dir_line| {
@@ -258,7 +258,7 @@ impl GarminSync {
             downloaded_files.len()
         );
 
-        Ok(vec![msg])
+        Ok(vec![msg.into()])
     }
 
     pub async fn download_file(
@@ -266,7 +266,7 @@ impl GarminSync {
         local_file: &Path,
         s3_bucket: &str,
         s3_key: &str,
-    ) -> Result<String, Error> {
+    ) -> Result<StackString, Error> {
         exponential_retry(|| async move {
             let etag = self
                 .s3_client
@@ -281,7 +281,7 @@ impl GarminSync {
                 .await?
                 .e_tag
                 .unwrap_or_else(|| "".to_string());
-            Ok(etag)
+            Ok(etag.into())
         })
         .await
     }
@@ -292,7 +292,7 @@ impl GarminSync {
         s3_bucket: &str,
         s3_key: &str,
     ) -> Result<(), Error> {
-        self.upload_file_acl(local_file, s3_bucket, s3_key, &None)
+        self.upload_file_acl(local_file, s3_bucket, s3_key)
             .await
     }
 
@@ -301,7 +301,6 @@ impl GarminSync {
         local_file: &Path,
         s3_bucket: &str,
         s3_key: &str,
-        acl: &Option<String>,
     ) -> Result<(), Error> {
         exponential_retry(|| async move {
             self.s3_client
@@ -310,7 +309,6 @@ impl GarminSync {
                     PutObjectRequest {
                         bucket: s3_bucket.to_string(),
                         key: s3_key.to_string(),
-                        acl: acl.clone(),
                         ..PutObjectRequest::default()
                     },
                 )

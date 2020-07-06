@@ -15,6 +15,8 @@ use std::{
 use subprocess::{Exec, Redirection};
 use tokio::time::{delay_for, Duration};
 
+use super::stack_string::StackString;
+
 pub const METERS_PER_MILE: f64 = 1609.344;
 pub const MARATHON_DISTANCE_M: i32 = 42195;
 pub const MARATHON_DISTANCE_MI: f64 = MARATHON_DISTANCE_M as f64 / METERS_PER_MILE;
@@ -45,7 +47,7 @@ pub fn convert_xml_local_time_to_utc(xml_local_time: &str) -> Result<DateTime<Ut
         .map_err(Into::into)
 }
 
-pub fn get_md5sum(filename: &Path) -> Result<String, Error> {
+pub fn get_md5sum(filename: &Path) -> Result<StackString, Error> {
     let command = format!("md5sum {}", filename.to_string_lossy());
 
     let stream = Exec::shell(command).stream_stdout()?;
@@ -54,23 +56,20 @@ pub fn get_md5sum(filename: &Path) -> Result<String, Error> {
 
     if let Some(line) = reader.lines().next() {
         if let Some(entry) = line?.split_whitespace().next() {
-            Ok(entry.to_string())
-        } else {
-            Ok("".to_string())
+            return Ok(entry.into());
         }
-    } else {
-        Ok("".to_string())
     }
+    Ok("".into())
 }
 
-pub fn print_h_m_s(second: f64, do_hours: bool) -> Result<String, Error> {
+pub fn print_h_m_s(second: f64, do_hours: bool) -> Result<StackString, Error> {
     let hours = (second / 3600.0) as i32;
     let minutes = (second / 60.0) as i32 - hours * 60;
     let seconds = second as i32 - minutes * 60 - hours * 3600;
     if (hours > 0) | ((hours == 0) & do_hours) {
-        Ok(format!("{:02}:{:02}:{:02}", hours, minutes, seconds))
+        Ok(format!("{:02}:{:02}:{:02}", hours, minutes, seconds).into())
     } else if hours == 0 {
-        Ok(format!("{:02}:{:02}", minutes, seconds))
+        Ok(format!("{:02}:{:02}", minutes, seconds).into())
     } else {
         Err(format_err!("Negative result!"))
     }
@@ -102,16 +101,16 @@ pub fn expected_calories(weight: f64, pace_min_per_mile: f64, distance: f64) -> 
     cal_per_mi * distance
 }
 
-pub fn titlecase(input: &str) -> String {
+pub fn titlecase(input: &str) -> StackString {
     if input.is_empty() {
-        "".to_string()
+        "".into()
     } else {
         let firstchar = input[0..1].to_uppercase();
-        format!("{}{}", firstchar, &input[1..input.len()])
+        format!("{}{}", firstchar, &input[1..input.len()]).into()
     }
 }
 
-pub fn generate_random_string(nchar: usize) -> String {
+pub fn generate_random_string(nchar: usize) -> StackString {
     let mut rng = thread_rng();
     Alphanumeric.sample_iter(&mut rng).take(nchar).collect()
 }

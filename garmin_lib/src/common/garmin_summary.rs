@@ -346,7 +346,7 @@ impl fmt::Display for GarminSummary {
 pub async fn get_list_of_files_from_db(
     constraints: &str,
     pool: &PgPool,
-) -> Result<Vec<String>, Error> {
+) -> Result<Vec<StackString>, Error> {
     let constr = if constraints.is_empty() {
         "".to_string()
     } else {
@@ -389,7 +389,7 @@ pub async fn get_filename_from_datetime(
 pub async fn get_list_of_activities_from_db(
     constraints: &str,
     pool: &PgPool,
-) -> Result<Vec<(DateTime<Utc>, String)>, Error> {
+) -> Result<Vec<(DateTime<Utc>, StackString)>, Error> {
     let constr = if constraints.is_empty() {
         "".to_string()
     } else {

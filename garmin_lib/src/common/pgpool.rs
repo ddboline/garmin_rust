@@ -4,12 +4,14 @@ use deadpool_postgres::{ClientWrapper, Config, Pool};
 use std::fmt;
 use tokio_postgres::{error::Error as PgError, Config as PgConfig, NoTls};
 
+use crate::utils::stack_string::StackString;
+
 /// Wrapper around `r2d2::Pool`, two pools are considered equal if they have the
 /// same connection string The only way to use `PgPool` is through the get
 /// method, which returns a `PooledConnection` object
 #[derive(Clone, Default)]
 pub struct PgPool {
-    pgurl: String,
+    pgurl: StackString,
     pool: Option<Pool>,
 }
 
@@ -47,7 +49,7 @@ impl PgPool {
         }
 
         Self {
-            pgurl: pgurl.to_string(),
+            pgurl: pgurl.into(),
             pool: Some(
                 config
                     .create_pool(NoTls)

@@ -7,7 +7,7 @@ use statistical::{mean, median, standard_deviation};
 use garmin_lib::{
     common::pgpool::PgPool,
     reports::garmin_templates::{PLOT_TEMPLATE, PLOT_TEMPLATE_DEMO},
-    utils::{plot_graph::generate_d3_plot, plot_opts::PlotOpts},
+    utils::{plot_graph::generate_d3_plot, plot_opts::PlotOpts, stack_string::StackString},
 };
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, FromSqlRow)]
@@ -146,7 +146,7 @@ impl FitbitStatisticsSummary {
             .map_err(Into::into)
     }
 
-    pub fn get_fitbit_statistics_plots(stats: &[Self], is_demo: bool) -> Result<String, Error> {
+    pub fn get_fitbit_statistics_plots(stats: &[Self], is_demo: bool) -> Result<StackString, Error> {
         let template = if is_demo {
             PLOT_TEMPLATE_DEMO
         } else {
@@ -155,7 +155,7 @@ impl FitbitStatisticsSummary {
         if stats.is_empty() {
             let body = template
                 .replace("INSERTOTHERIMAGESHERE", "")
-                .replace("INSERTTEXTHERE", "");
+                .replace("INSERTTEXTHERE", "").into();
             return Ok(body);
         }
         let mut graphs = Vec::new();
@@ -250,7 +250,7 @@ impl FitbitStatisticsSummary {
 
         let body = template
             .replace("INSERTOTHERIMAGESHERE", &graphs.join("\n"))
-            .replace("INSERTTEXTHERE", &entries);
+            .replace("INSERTTEXTHERE", &entries).into();
         Ok(body)
     }
 }

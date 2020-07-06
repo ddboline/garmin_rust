@@ -68,7 +68,7 @@ pub struct GarminHtmlRequest {
 
 #[async_trait]
 impl HandleRequest<GarminHtmlRequest> for PgPool {
-    type Result = Result<String, Error>;
+    type Result = Result<StackString, Error>;
     async fn handle(&self, msg: GarminHtmlRequest) -> Self::Result {
         let body = GarminCli::from_pool(&self)?
             .run_html(&msg.request, msg.is_demo)
@@ -78,7 +78,7 @@ impl HandleRequest<GarminHtmlRequest> for PgPool {
 }
 
 impl GarminHtmlRequest {
-    pub async fn get_list_of_files_from_db(&self, pool: &PgPool) -> Result<Vec<String>, Error> {
+    pub async fn get_list_of_files_from_db(&self, pool: &PgPool) -> Result<Vec<StackString>, Error> {
         get_list_of_files_from_db(&self.request.constraints.join(" OR "), &pool)
             .await
             .map_err(Into::into)
@@ -99,7 +99,7 @@ impl Into<GarminListRequest> for GarminHtmlRequest {
 }
 
 impl GarminListRequest {
-    pub async fn get_list_of_files_from_db(&self, pool: &PgPool) -> Result<Vec<String>, Error> {
+    pub async fn get_list_of_files_from_db(&self, pool: &PgPool) -> Result<Vec<StackString>, Error> {
         get_list_of_files_from_db(&self.constraints.join(" OR "), &pool)
             .await
             .map_err(Into::into)
@@ -108,7 +108,7 @@ impl GarminListRequest {
 
 #[async_trait]
 impl HandleRequest<GarminListRequest> for PgPool {
-    type Result = Result<Vec<String>, Error>;
+    type Result = Result<Vec<StackString>, Error>;
     async fn handle(&self, msg: GarminListRequest) -> Self::Result {
         msg.get_list_of_files_from_db(self).await
     }
@@ -244,7 +244,7 @@ pub struct StravaSyncRequest {}
 
 #[async_trait]
 impl HandleRequest<StravaSyncRequest> for PgPool {
-    type Result = Result<Vec<String>, Error>;
+    type Result = Result<Vec<StackString>, Error>;
     async fn handle(&self, _: StravaSyncRequest) -> Self::Result {
         let config = CONFIG.clone();
         let pool = PgPool::new(&config.pgurl);
@@ -266,7 +266,7 @@ pub struct GarminSyncRequest {}
 
 #[async_trait]
 impl HandleRequest<GarminSyncRequest> for PgPool {
-    type Result = Result<Vec<String>, Error>;
+    type Result = Result<Vec<StackString>, Error>;
     async fn handle(&self, _: GarminSyncRequest) -> Self::Result {
         let gcli = GarminCli::from_pool(&self)?;
         let mut output = gcli.sync_everything(false).await?;
@@ -279,7 +279,7 @@ pub struct FitbitAuthRequest {}
 
 #[async_trait]
 impl HandleRequest<FitbitAuthRequest> for PgPool {
-    type Result = Result<String, Error>;
+    type Result = Result<StackString, Error>;
     async fn handle(&self, _: FitbitAuthRequest) -> Self::Result {
         let config = CONFIG.clone();
         let client = FitbitClient::from_file(config).await?;
@@ -292,7 +292,7 @@ pub struct FitbitRefreshRequest {}
 
 #[async_trait]
 impl HandleRequest<FitbitRefreshRequest> for PgPool {
-    type Result = Result<String, Error>;
+    type Result = Result<StackString, Error>;
     async fn handle(&self, _: FitbitRefreshRequest) -> Self::Result {
         let config = CONFIG.clone();
         let mut client = FitbitClient::from_file(config).await?;
@@ -310,7 +310,7 @@ pub struct FitbitCallbackRequest {
 
 #[async_trait]
 impl HandleRequest<FitbitCallbackRequest> for PgPool {
-    type Result = Result<String, Error>;
+    type Result = Result<StackString, Error>;
     async fn handle(&self, msg: FitbitCallbackRequest) -> Self::Result {
         let config = CONFIG.clone();
         let mut client = FitbitClient::from_file(config).await?;
@@ -496,7 +496,7 @@ impl From<ScaleMeasurementRequest> for FitbitStatisticsPlotRequest {
 
 #[async_trait]
 impl HandleRequest<FitbitStatisticsPlotRequest> for PgPool {
-    type Result = Result<String, Error>;
+    type Result = Result<StackString, Error>;
     async fn handle(&self, req: FitbitStatisticsPlotRequest) -> Self::Result {
         let stats = FitbitStatisticsSummary::read_from_db(
             req.request.start_date,
@@ -526,7 +526,7 @@ impl From<ScaleMeasurementRequest> for ScaleMeasurementPlotRequest {
 
 #[async_trait]
 impl HandleRequest<ScaleMeasurementPlotRequest> for PgPool {
-    type Result = Result<String, Error>;
+    type Result = Result<StackString, Error>;
     async fn handle(&self, req: ScaleMeasurementPlotRequest) -> Self::Result {
         let measurements =
             ScaleMeasurement::read_from_db(self, req.request.start_date, req.request.end_date)
@@ -555,7 +555,7 @@ impl From<ScaleMeasurementRequest> for FitbitHeartratePlotRequest {
 
 #[async_trait]
 impl HandleRequest<FitbitHeartratePlotRequest> for PgPool {
-    type Result = Result<String, Error>;
+    type Result = Result<StackString, Error>;
     async fn handle(&self, req: FitbitHeartratePlotRequest) -> Self::Result {
         let config = CONFIG.clone();
         FitbitHeartRate::get_heartrate_plot(
@@ -607,7 +607,7 @@ pub struct StravaAuthRequest {}
 
 #[async_trait]
 impl HandleRequest<StravaAuthRequest> for PgPool {
-    type Result = Result<String, Error>;
+    type Result = Result<StackString, Error>;
     async fn handle(&self, _: StravaAuthRequest) -> Self::Result {
         let config = CONFIG.clone();
         let client = StravaClient::from_file(config).await?;
@@ -623,7 +623,7 @@ pub struct StravaRefreshRequest {}
 
 #[async_trait]
 impl HandleRequest<StravaRefreshRequest> for PgPool {
-    type Result = Result<String, Error>;
+    type Result = Result<StackString, Error>;
     async fn handle(&self, _: StravaRefreshRequest) -> Self::Result {
         let config = CONFIG.clone();
         let mut client = StravaClient::from_file(config).await?;
@@ -645,7 +645,7 @@ pub struct StravaCallbackRequest {
 
 #[async_trait]
 impl HandleRequest<StravaCallbackRequest> for PgPool {
-    type Result = Result<String, Error>;
+    type Result = Result<StackString, Error>;
     async fn handle(&self, msg: StravaCallbackRequest) -> Self::Result {
         let config = CONFIG.clone();
         let mut client = StravaClient::from_file(config).await?;
@@ -703,7 +703,7 @@ pub struct StravaActiviesDBUpdateRequest {
 
 #[async_trait]
 impl HandleRequest<StravaActiviesDBUpdateRequest> for PgPool {
-    type Result = Result<Vec<String>, Error>;
+    type Result = Result<Vec<StackString>, Error>;
     async fn handle(&self, msg: StravaActiviesDBUpdateRequest) -> Self::Result {
         StravaActivity::upsert_activities(&msg.updates, self)
             .await
@@ -722,10 +722,10 @@ pub struct StravaUploadRequest {
 
 #[async_trait]
 impl HandleRequest<StravaUploadRequest> for PgPool {
-    type Result = Result<String, Error>;
+    type Result = Result<StackString, Error>;
     async fn handle(&self, msg: StravaUploadRequest) -> Self::Result {
         if !Path::new(msg.filename.as_str()).exists() {
-            return Ok(format!("File {} does not exist", msg.filename));
+            return Ok(format!("File {} does not exist", msg.filename).into());
         }
         let config = CONFIG.clone();
         let client = StravaClient::with_auth(config).await?;
@@ -736,7 +736,7 @@ impl HandleRequest<StravaUploadRequest> for PgPool {
                 msg.description.as_ref().map_or("", StackString::as_str),
             )
             .await
-            .map(|id| format!("http://strava.com/activities/{}", id))
+            .map(|id| format!("http://strava.com/activities/{}", id).into())
             .map_err(Into::into)
     }
 }
@@ -752,7 +752,7 @@ pub struct StravaUpdateRequest {
 
 #[async_trait]
 impl HandleRequest<StravaUpdateRequest> for PgPool {
-    type Result = Result<String, Error>;
+    type Result = Result<StackString, Error>;
     async fn handle(&self, msg: StravaUpdateRequest) -> Self::Result {
         let sport = msg.activity_type.parse()?;
 
@@ -780,7 +780,7 @@ pub struct AddGarminCorrectionRequest {
 
 #[async_trait]
 impl HandleRequest<AddGarminCorrectionRequest> for PgPool {
-    type Result = Result<String, Error>;
+    type Result = Result<StackString, Error>;
     async fn handle(&self, msg: AddGarminCorrectionRequest) -> Self::Result {
         let mut corr_map = self.handle(GarminCorrRequest {}).await?;
         let filename = get_filename_from_datetime(self, msg.start_time)
@@ -829,7 +829,7 @@ impl HandleRequest<AddGarminCorrectionRequest> for PgPool {
         let gcli = GarminCli::from_pool(&self)?;
         gcli.proc_everything().await?;
 
-        Ok("".to_string())
+        Ok("".into())
     }
 }
 
@@ -837,7 +837,7 @@ pub struct FitbitActivityTypesRequest {}
 
 #[async_trait]
 impl HandleRequest<FitbitActivityTypesRequest> for PgPool {
-    type Result = Result<HashMap<u64, String>, Error>;
+    type Result = Result<HashMap<u64, StackString>, Error>;
     async fn handle(&self, _: FitbitActivityTypesRequest) -> Self::Result {
         let config = CONFIG.clone();
         let client = FitbitClient::with_auth(config).await?;
@@ -933,7 +933,7 @@ pub struct GarminConnectActivitiesDBUpdateRequest {
 
 #[async_trait]
 impl HandleRequest<GarminConnectActivitiesDBUpdateRequest> for PgPool {
-    type Result = Result<Vec<String>, Error>;
+    type Result = Result<Vec<StackString>, Error>;
     async fn handle(&self, msg: GarminConnectActivitiesDBUpdateRequest) -> Self::Result {
         GarminConnectActivity::upsert_activities(&msg.updates, self)
             .await
@@ -960,7 +960,7 @@ pub struct FitbitActivitiesDBUpdateRequest {
 
 #[async_trait]
 impl HandleRequest<FitbitActivitiesDBUpdateRequest> for PgPool {
-    type Result = Result<Vec<String>, Error>;
+    type Result = Result<Vec<StackString>, Error>;
     async fn handle(&self, msg: FitbitActivitiesDBUpdateRequest) -> Self::Result {
         FitbitActivity::upsert_activities(&msg.updates, self)
             .await

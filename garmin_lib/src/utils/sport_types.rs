@@ -5,12 +5,14 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{collections::HashMap, convert::TryFrom, fmt, str::FromStr};
 use tokio_postgres::types::{FromSql, IsNull, ToSql, Type};
 
+use super::stack_string::StackString;
+
 lazy_static! {
-    static ref SPORT_TYPE_MAP: HashMap<String, SportTypes> = init_sport_type_map();
+    static ref SPORT_TYPE_MAP: HashMap<StackString, SportTypes> = init_sport_type_map();
 }
 
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(into = "String", try_from = "String")]
+#[serde(into = "StackString", try_from = "StackString")]
 pub enum SportTypes {
     Running,
     Biking,
@@ -54,9 +56,9 @@ impl fmt::Display for SportTypes {
     }
 }
 
-impl From<SportTypes> for String {
-    fn from(item: SportTypes) -> String {
-        item.to_string()
+impl From<SportTypes> for StackString {
+    fn from(item: SportTypes) -> StackString {
+        item.to_string().into()
     }
 }
 
@@ -78,7 +80,7 @@ where
 }
 
 impl SportTypes {
-    pub fn to_strava_activity(self) -> String {
+    pub fn to_strava_activity(self) -> StackString {
         match self {
             Self::Running => "Run",
             Self::Biking => "Ride",
@@ -93,7 +95,7 @@ impl SportTypes {
             Self::None => "None",
             _ => "Other",
         }
-        .to_string()
+        .into()
     }
 
     pub fn from_strava_activity(item: &str) -> Result<Self, Error> {
@@ -134,7 +136,7 @@ impl FromStr for SportTypes {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match SPORT_TYPE_MAP.get(&s.to_lowercase()) {
+        match SPORT_TYPE_MAP.get(s.to_lowercase().as_str()) {
             Some(sport) => Ok(*sport),
             None => Err(format_err!("Invalid Sport Type {}", s)),
         }
@@ -148,14 +150,14 @@ impl TryFrom<&str> for SportTypes {
     }
 }
 
-impl TryFrom<String> for SportTypes {
+impl TryFrom<StackString> for SportTypes {
     type Error = Error;
-    fn try_from(s: String) -> Result<Self, Self::Error> {
-        Self::from_str(&s)
+    fn try_from(s: StackString) -> Result<Self, Self::Error> {
+        Self::from_str(s.as_str())
     }
 }
 
-fn init_sport_type_map() -> HashMap<String, SportTypes> {
+fn init_sport_type_map() -> HashMap<StackString, SportTypes> {
     [
         ("running", SportTypes::Running),
         ("run", SportTypes::Running),
@@ -182,19 +184,19 @@ fn init_sport_type_map() -> HashMap<String, SportTypes> {
         ("none", SportTypes::None),
     ]
     .iter()
-    .map(|(k, v)| ((*k).to_string(), *v))
+    .map(|(k, v)| ((*k).into(), *v))
     .collect()
 }
 
-pub fn get_sport_type_map() -> &'static HashMap<String, SportTypes> {
+pub fn get_sport_type_map() -> &'static HashMap<StackString, SportTypes> {
     &SPORT_TYPE_MAP
 }
 
-pub fn convert_sport_name(sport: &str) -> Option<String> {
-    sport.parse().ok().map(|s: SportTypes| s.to_string())
+pub fn convert_sport_name(sport: &str) -> Option<StackString> {
+    sport.parse().ok().map(|s: SportTypes| s.to_string().into())
 }
 
-pub fn convert_sport_name_to_activity_type(sport: &str) -> Option<String> {
+pub fn convert_sport_name_to_activity_type(sport: &str) -> Option<StackString> {
     sport.parse().ok().map(SportTypes::to_strava_activity)
 }
 

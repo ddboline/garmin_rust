@@ -273,7 +273,7 @@ impl FitbitClient {
         &mut self,
         code: &str,
         state: &str,
-    ) -> Result<String, Error> {
+    ) -> Result<StackString, Error> {
         let current_state = CSRF_TOKEN.lock().await.take();
         if let Some(current_state) = current_state {
             if state != current_state.as_str() {
@@ -515,7 +515,7 @@ impl FitbitClient {
     pub async fn get_tcx_urls(
         &self,
         start_date: NaiveDate,
-    ) -> Result<Vec<(DateTime<Utc>, String)>, Error> {
+    ) -> Result<Vec<(DateTime<Utc>, StackString)>, Error> {
         let activities = self.get_activities(start_date, None).await?;
 
         activities
@@ -550,17 +550,17 @@ impl FitbitClient {
             .map_err(Into::into)
     }
 
-    pub async fn get_fitbit_activity_types(&self) -> Result<HashMap<u64, String>, Error> {
+    pub async fn get_fitbit_activity_types(&self) -> Result<HashMap<u64, StackString>, Error> {
         #[derive(Deserialize)]
         struct FitbitActivityType {
-            name: String,
+            name: StackString,
             id: u64,
         }
         #[derive(Deserialize)]
         struct FitbitSubCategory {
             activities: Vec<FitbitActivityType>,
             id: u64,
-            name: String,
+            name: StackString,
         }
         #[derive(Deserialize)]
         struct FitbitCategory {
@@ -568,7 +568,7 @@ impl FitbitClient {
             #[serde(rename = "subCategories")]
             sub_categories: Option<Vec<FitbitSubCategory>>,
             id: u64,
-            name: String,
+            name: StackString,
         }
         #[derive(Deserialize)]
         struct FitbitActivityCategories {
@@ -586,22 +586,22 @@ impl FitbitClient {
             .error_for_status()?
             .json()
             .await?;
-        let mut id_map: HashMap<u64, String> = HashMap::new();
+        let mut id_map: HashMap<u64, StackString> = HashMap::new();
         for category in &categories.categories {
-            id_map.insert(category.id, category.name.to_string());
+            id_map.insert(category.id, category.name.clone());
             for activity in &category.activities {
-                let name = format!("{}/{}", category.name, activity.name);
+                let name = format!("{}/{}", category.name, activity.name).into();
                 id_map.insert(activity.id, name);
             }
             if let Some(sub_categories) = category.sub_categories.as_ref() {
                 for sub_category in sub_categories.iter() {
-                    let name = format!("{}/{}", category.name, sub_category.name);
+                    let name = format!("{}/{}", category.name, sub_category.name).into();
                     id_map.insert(sub_category.id, name);
                     for sub_activity in &sub_category.activities {
                         let name = format!(
                             "{}/{}/{}",
                             category.name, sub_category.name, sub_activity.name
-                        );
+                        ).into();
                         id_map.insert(sub_activity.id, name);
                     }
                 }
@@ -639,7 +639,7 @@ impl FitbitClient {
         Ok((resp.activity_log.activity_id, resp.activity_log.steps))
     }
 
-    pub async fn remove_duplicate_entries(&self, pool: &PgPool) -> Result<Vec<String>, Error> {
+    pub async fn remove_duplicate_entries(&self, pool: &PgPool) -> Result<Vec<StackString>, Error> {
         let existing_activities: Vec<_> = FitbitActivity::read_from_db(&pool, None, None)
             .await?
             .into_iter()
@@ -677,9 +677,9 @@ impl FitbitClient {
             }
             if let Some(activity) = FitbitActivity::get_by_id(&pool, log_id).await? {
                 activity.delete_from_db(&pool).await?;
-                Ok(format!("fully deleted {}", log_id))
+                Ok(format!("fully deleted {}", log_id).into())
             } else {
-                Ok(format!("not fully deleted {}", log_id))
+                Ok(format!("not fully deleted {}", log_id).into())
             }
         });
         try_join_all(futures).await
@@ -850,20 +850,20 @@ impl FitbitClient {
     }
 }
 
-pub type FitbitBodyWeightFatUpdateOutput = (Vec<ScaleMeasurement>, Vec<DateTime<Utc>>, Vec<String>);
+pub type FitbitBodyWeightFatUpdateOutput = (Vec<ScaleMeasurement>, Vec<DateTime<Utc>>, Vec<StackString>);
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct ActivityLoggingEntry {
     #[serde(rename = "activityId")]
     activity_id: Option<u64>,
     #[serde(rename = "startTime")]
-    start_time: String,
+    start_time: StackString,
     #[serde(rename = "durationMillis")]
     duration_millis: u64,
     date: NaiveDate,
     distance: Option<f64>,
     #[serde(rename = "distanceUnit")]
-    distance_unit: Option<String>,
+    distance_unit: Option<StackString>,
 }
 
 impl ActivityLoggingEntry {
@@ -873,8 +873,8 @@ impl ActivityLoggingEntry {
             start_time: item
                 .begin_datetime
                 .with_timezone(&offset)
-                .format("%H:%M")
-                .to_string(),
+                .format("%H:%M").to_string().into()
+                ,
             duration_millis: (item.total_duration * 1000.0) as u64,
             date: item
                 .begin_datetime
@@ -882,7 +882,7 @@ impl ActivityLoggingEntry {
                 .date()
                 .naive_local(),
             distance: Some(item.total_distance / 1000.0),
-            distance_unit: Some("Kilometer".to_string()),
+            distance_unit: Some("Kilometer".into()),
         })
     }
 }
@@ -891,26 +891,26 @@ impl ActivityLoggingEntry {
 pub struct FitbitUserProfile {
     #[serde(rename = "averageDailySteps")]
     pub average_daily_steps: u64,
-    pub country: String,
+    pub country: StackString,
     #[serde(rename = "dateOfBirth")]
-    pub date_of_birth: String,
+    pub date_of_birth: StackString,
     #[serde(rename = "displayName")]
-    pub display_name: String,
+    pub display_name: StackString,
     #[serde(rename = "distanceUnit")]
-    pub distance_unit: String,
+    pub distance_unit: StackString,
     #[serde(rename = "encodedId")]
-    pub encoded_id: String,
+    pub encoded_id: StackString,
     #[serde(rename = "firstName")]
-    pub first_name: String,
+    pub first_name: StackString,
     #[serde(rename = "lastName")]
-    pub last_name: String,
+    pub last_name: StackString,
     #[serde(rename = "fullName")]
-    pub full_name: String,
-    pub gender: String,
+    pub full_name: StackString,
+    pub gender: StackString,
     pub height: f64,
     #[serde(rename = "heightUnit")]
-    pub height_unit: String,
-    pub timezone: String,
+    pub height_unit: StackString,
+    pub timezone: StackString,
     #[serde(rename = "offsetFromUTCMillis")]
     pub offset_from_utc_millis: i64,
     #[serde(rename = "strideLengthRunning")]
@@ -919,7 +919,7 @@ pub struct FitbitUserProfile {
     pub stride_length_walking: f64,
     pub weight: f64,
     #[serde(rename = "weightUnit")]
-    pub weight_unit: String,
+    pub weight_unit: StackString,
 }
 
 #[cfg(test)]

@@ -11,7 +11,6 @@ garmin_lib = { path = "garmin_lib" }
 garmin_http = { path = "garmin_http" }
 strava_lib = { path = "strava_lib" }
 fitbit_bot = {path="fitbit_bot"}
-sheets_lib = {path="sheets_lib"}
 actix = "0.9"
 actix-rt = "1.1"
 log = "0.4"
@@ -21,7 +20,7 @@ structopt = "0.3"
 anyhow = "1.0"
 thiserror = "1.0"
 tokio = {version="0.2", features=["full"]}
-dirs = "2.0"
+dirs = "3.0"
 
 [dev-dependencies]
 approx = "0.3"
@@ -34,7 +33,6 @@ members = [
     "garmin_http",
     "strava_lib",
     "fitbit_bot",
-    "sheets_lib",
 ]
 
 [[bin]]
@@ -55,9 +53,4 @@ doc = false
 [[bin]]
 name = "garmin-rust-cli"
 path = "src/garmin_rust_cli.rs"
-doc = false
-
-[[bin]]
-name = "pull-scale-measurements-from-sheets"
-path = "src/pull_scale_measurements_from_sheets.rs"
 doc = false

@@ -8,6 +8,7 @@ use std::{
     fmt::{self, Display, Formatter},
     ops::{Deref, DerefMut},
     str::FromStr,
+    iter::FromIterator,
 };
 use tokio_postgres::types::{FromSql, IsNull, ToSql, Type};
 
@@ -15,6 +16,10 @@ use tokio_postgres::types::{FromSql, IsNull, ToSql, Type};
 pub struct StackString(SmartString);
 
 impl StackString {
+    pub fn new() -> Self {
+        Self(SmartString::new())
+    }
+
     pub fn as_str(&self) -> &str {
         self.0.as_ref()
     }
@@ -205,5 +210,13 @@ impl<'a> PartialEq<&'a str> for StackString {
     #[inline]
     fn eq(&self, other: &&'a str) -> bool {
         PartialEq::eq(&self[..], &other[..])
+    }
+}
+
+impl FromIterator<char> for StackString {
+    fn from_iter<I: IntoIterator<Item=char>>(iter: I) -> Self {
+        let mut buf = Self::new();
+        buf.0.extend(iter);
+        buf
     }
 }

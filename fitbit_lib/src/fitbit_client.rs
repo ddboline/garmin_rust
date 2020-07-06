@@ -601,7 +601,8 @@ impl FitbitClient {
                         let name = format!(
                             "{}/{}/{}",
                             category.name, sub_category.name, sub_activity.name
-                        ).into();
+                        )
+                        .into();
                         id_map.insert(sub_activity.id, name);
                     }
                 }
@@ -850,7 +851,8 @@ impl FitbitClient {
     }
 }
 
-pub type FitbitBodyWeightFatUpdateOutput = (Vec<ScaleMeasurement>, Vec<DateTime<Utc>>, Vec<StackString>);
+pub type FitbitBodyWeightFatUpdateOutput =
+    (Vec<ScaleMeasurement>, Vec<DateTime<Utc>>, Vec<StackString>);
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct ActivityLoggingEntry {
@@ -873,8 +875,9 @@ impl ActivityLoggingEntry {
             start_time: item
                 .begin_datetime
                 .with_timezone(&offset)
-                .format("%H:%M").to_string().into()
-                ,
+                .format("%H:%M")
+                .to_string()
+                .into(),
             duration_millis: (item.total_duration * 1000.0) as u64,
             date: item
                 .begin_datetime

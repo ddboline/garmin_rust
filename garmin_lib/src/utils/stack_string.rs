@@ -6,9 +6,9 @@ use smartstring::alias::String as SmartString;
 use std::{
     borrow::{Borrow, Cow},
     fmt::{self, Display, Formatter},
+    iter::FromIterator,
     ops::{Deref, DerefMut},
     str::FromStr,
-    iter::FromIterator,
 };
 use tokio_postgres::types::{FromSql, IsNull, ToSql, Type};
 
@@ -214,7 +214,7 @@ impl<'a> PartialEq<&'a str> for StackString {
 }
 
 impl FromIterator<char> for StackString {
-    fn from_iter<I: IntoIterator<Item=char>>(iter: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = char>>(iter: I) -> Self {
         let mut buf = Self::new();
         buf.0.extend(iter);
         buf

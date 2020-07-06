@@ -149,7 +149,8 @@ impl ScaleMeasurement {
         if measurements.is_empty() {
             let body = template
                 .replace("INSERTOTHERIMAGESHERE", "")
-                .replace("INSERTTEXTHERE", "").into();
+                .replace("INSERTTEXTHERE", "")
+                .into();
             return Ok(body);
         }
         let mut graphs = Vec::new();
@@ -254,7 +255,8 @@ impl ScaleMeasurement {
 
         let body = template
             .replace("INSERTOTHERIMAGESHERE", &graphs.join("\n"))
-            .replace("INSERTTEXTHERE", &entries).into();
+            .replace("INSERTTEXTHERE", &entries)
+            .into();
         Ok(body)
     }
 }

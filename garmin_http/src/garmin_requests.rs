@@ -78,7 +78,10 @@ impl HandleRequest<GarminHtmlRequest> for PgPool {
 }
 
 impl GarminHtmlRequest {
-    pub async fn get_list_of_files_from_db(&self, pool: &PgPool) -> Result<Vec<StackString>, Error> {
+    pub async fn get_list_of_files_from_db(
+        &self,
+        pool: &PgPool,
+    ) -> Result<Vec<StackString>, Error> {
         get_list_of_files_from_db(&self.request.constraints.join(" OR "), &pool)
             .await
             .map_err(Into::into)
@@ -99,7 +102,10 @@ impl Into<GarminListRequest> for GarminHtmlRequest {
 }
 
 impl GarminListRequest {
-    pub async fn get_list_of_files_from_db(&self, pool: &PgPool) -> Result<Vec<StackString>, Error> {
+    pub async fn get_list_of_files_from_db(
+        &self,
+        pool: &PgPool,
+    ) -> Result<Vec<StackString>, Error> {
         get_list_of_files_from_db(&self.constraints.join(" OR "), &pool)
             .await
             .map_err(Into::into)

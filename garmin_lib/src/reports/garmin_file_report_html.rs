@@ -35,7 +35,8 @@ pub fn generate_history_buttons<T: AsRef<str>>(history_vec: &[T]) -> StackString
             r#"');"> "#,
             most_recent,
             " </button>"
-        ).into()
+        )
+        .into()
     }
 
     let local: Date<Local> = Local::today();
@@ -49,7 +50,8 @@ pub fn generate_history_buttons<T: AsRef<str>>(history_vec: &[T]) -> StackString
     let default_string: StackString = format!(
         "{:04}-{:02},{:04}-{:02},week",
         prev_year, prev_month, year, month
-    ).into();
+    )
+    .into();
     let mut used_buttons: HashSet<StackString> = HashSet::new();
     let mut history_buttons = vec![history_button_string(&default_string)];
     used_buttons.insert(default_string);
@@ -398,18 +400,21 @@ fn get_garmin_template_vec<T: AsRef<str>>(
 
     for line in template.split('\n') {
         if line.contains("INSERTTEXTHERE") {
-            htmlvec.push(format!(
-                "{}\n",
-                get_file_html(&gfile, fitbit_activity, connect_activity)
-            ).into());
-            htmlvec.push(format!(
-                "<br><br>{}\n",
-                get_html_splits(&gfile, METERS_PER_MILE, "mi")?
-            ).into());
-            htmlvec.push(format!(
-                "<br><br>{}\n",
-                get_html_splits(&gfile, 5000.0, "km")?
-            ).into());
+            htmlvec.push(
+                format!(
+                    "{}\n",
+                    get_file_html(&gfile, fitbit_activity, connect_activity)
+                )
+                .into(),
+            );
+            htmlvec.push(
+                format!(
+                    "<br><br>{}\n",
+                    get_html_splits(&gfile, METERS_PER_MILE, "mi")?
+                )
+                .into(),
+            );
+            htmlvec.push(format!("<br><br>{}\n", get_html_splits(&gfile, 5000.0, "km")?).into());
         } else if line.contains("SPORTTITLEDATE") {
             let newtitle = format!(
                 "Garmin Event {} on {}",
@@ -433,13 +438,18 @@ fn get_garmin_template_vec<T: AsRef<str>>(
             htmlvec.push(line.replace("SPORTTITLELINK", &newtitle).to_string().into());
         } else if line.contains("HISTORYBUTTONS") {
             let history_button = generate_history_buttons(history);
-            htmlvec.push(line.replace("HISTORYBUTTONS", &history_button).to_string().into());
+            htmlvec.push(
+                line.replace("HISTORYBUTTONS", &history_button)
+                    .to_string()
+                    .into(),
+            );
         } else if line.contains("DOMAIN") {
             htmlvec.push(line.replace("DOMAIN", domain).into());
         } else {
             htmlvec.push(
                 line.replace("<pre>", "<div>")
-                    .replace("</pre>", "</div>").into(),
+                    .replace("</pre>", "</div>")
+                    .into(),
             );
         }
     }
@@ -568,18 +578,21 @@ where
                 }
             }
         } else if line.contains("INSERTTABLESHERE") {
-            htmlvec.push(format!(
-                "{}\n",
-                get_file_html(&gfile, fitbit_activity, connect_activity)
-            ).into());
-            htmlvec.push(format!(
-                "<br><br>{}\n",
-                get_html_splits(&gfile, METERS_PER_MILE, "mi")?
-            ).into());
-            htmlvec.push(format!(
-                "<br><br>{}\n",
-                get_html_splits(&gfile, 5000.0, "km")?
-            ).into());
+            htmlvec.push(
+                format!(
+                    "{}\n",
+                    get_file_html(&gfile, fitbit_activity, connect_activity)
+                )
+                .into(),
+            );
+            htmlvec.push(
+                format!(
+                    "<br><br>{}\n",
+                    get_html_splits(&gfile, METERS_PER_MILE, "mi")?
+                )
+                .into(),
+            );
+            htmlvec.push(format!("<br><br>{}\n", get_html_splits(&gfile, 5000.0, "km")?).into());
         } else if line.contains("INSERTMAPSEGMENTSHERE") {
             for (latv, lonv) in report_objs.lat_vals.iter().zip(report_objs.lon_vals.iter()) {
                 htmlvec.push(format!("new google.maps.LatLng({},{}),", latv, lonv).into());
@@ -614,7 +627,8 @@ where
             let activity_type = gfile.sport.to_strava_activity();
             htmlvec.push(
                 line.replace("FILENAME", filename.to_string_lossy().as_ref())
-                    .replace("ACTIVITYTYPE", &activity_type).into(),
+                    .replace("ACTIVITYTYPE", &activity_type)
+                    .into(),
             );
         } else if line.contains("DOMAIN") {
             htmlvec.push(line.replace("DOMAIN", &config.domain).into());
@@ -646,14 +660,16 @@ fn get_sport_selector(current_sport: SportTypes) -> StackString {
     format!(
         r#"<select id="sport_select">{}</select>"#,
         sport_types.join("\n")
-    ).into()
+    )
+    .into()
 }
 
 fn get_correction_button(begin_datetime: DateTime<Utc>) -> StackString {
     format!(
         r#"<button type="submit" onclick="addGarminCorrectionSport('{}')">Apply</button>"#,
         begin_datetime
-    ).into()
+    )
+    .into()
 }
 
 fn get_file_html(
@@ -760,10 +776,15 @@ fn get_file_html(
                 "total".to_string(),
                 format!("{:.2} mi", gfile.total_distance / METERS_PER_MILE),
                 format!("{}", gfile.total_calories),
-                print_h_m_s(gfile.total_duration, true).unwrap_or_else(|_| "".into()).into(),
-                print_h_m_s(min_mile * 60.0, false).unwrap_or_else(|_| "".into()).into(),
+                print_h_m_s(gfile.total_duration, true)
+                    .unwrap_or_else(|_| "".into())
+                    .into(),
+                print_h_m_s(min_mile * 60.0, false)
+                    .unwrap_or_else(|_| "".into())
+                    .into(),
                 print_h_m_s(min_mile * 60.0 / METERS_PER_MILE * 1000., false)
-                    .unwrap_or_else(|_| "".into()).into(),
+                    .unwrap_or_else(|_| "".into())
+                    .into(),
             ],
         ),
         _ => (
@@ -778,7 +799,9 @@ fn get_file_html(
                 "".to_string(),
                 format!("{:.2} mi", gfile.total_distance / METERS_PER_MILE),
                 format!("{}", gfile.total_calories),
-                print_h_m_s(gfile.total_duration, true).unwrap_or_else(|_| "".into()).into(),
+                print_h_m_s(gfile.total_duration, true)
+                    .unwrap_or_else(|_| "".into())
+                    .into(),
                 format!("{}", mi_per_hr),
             ],
         ),
@@ -819,7 +842,9 @@ fn get_lap_html(glap: &GarminLap, sport: &str) -> Vec<StackString> {
         sport.to_string(),
         format!("{}", glap.lap_number),
         format!("{:.2} mi", glap.lap_distance / METERS_PER_MILE),
-        print_h_m_s(glap.lap_duration, true).unwrap_or_else(|_| "".into()).into(),
+        print_h_m_s(glap.lap_duration, true)
+            .unwrap_or_else(|_| "".into())
+            .into(),
         format!("{}", glap.lap_calories),
         format!("{:.2} min", glap.lap_duration / 60.),
     ];
@@ -841,7 +866,10 @@ fn get_lap_html(glap: &GarminLap, sport: &str) -> Vec<StackString> {
     if let Some(lap_avg_hr) = glap.lap_avg_hr {
         values.push(format!("{} bpm", lap_avg_hr));
     }
-    values.iter().map(|v| format!("<td>{}</td>", v).into()).collect()
+    values
+        .iter()
+        .map(|v| format!("<td>{}</td>", v).into())
+        .collect()
 }
 
 fn get_html_splits(
@@ -871,14 +899,17 @@ fn get_html_splits(
                     format!("{} {}", dis, label),
                     print_h_m_s(tim, true).unwrap_or_else(|_| "".into()).into(),
                     print_h_m_s(tim / (split_distance_in_meters / METERS_PER_MILE), false)
-                        .unwrap_or_else(|_| "".into()).into(),
+                        .unwrap_or_else(|_| "".into())
+                        .into(),
                     print_h_m_s(tim / (split_distance_in_meters / 1000.), false)
-                        .unwrap_or_else(|_| "".into()).into(),
+                        .unwrap_or_else(|_| "".into())
+                        .into(),
                     print_h_m_s(
                         tim / (split_distance_in_meters / METERS_PER_MILE) * MARATHON_DISTANCE_MI,
                         true,
                     )
-                    .unwrap_or_else(|_| "".into()).into(),
+                    .unwrap_or_else(|_| "".into())
+                    .into(),
                     format!("{} bpm", hrt),
                 ]
             })

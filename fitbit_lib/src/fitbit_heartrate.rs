@@ -116,7 +116,10 @@ impl FitbitHeartRate {
                 .await?
                 .into_par_iter()
                 .filter_map(|filename| {
-                    let avro_file = config.cache_dir.join(filename.as_str()).with_extension("avro");
+                    let avro_file = config
+                        .cache_dir
+                        .join(filename.as_str())
+                        .with_extension("avro");
                     if avro_file.exists() {
                         Some(avro_file)
                     } else {
@@ -297,7 +300,8 @@ impl FitbitHeartRate {
         };
         let body = template
             .replace("INSERTOTHERIMAGESHERE", &plots)
-            .replace("INSERTTEXTHERE", &buttons.join("\n")).into();
+            .replace("INSERTTEXTHERE", &buttons.join("\n"))
+            .into();
         Ok(body)
     }
 

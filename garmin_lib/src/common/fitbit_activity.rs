@@ -7,8 +7,7 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use crate::common::pgpool::PgPool;
-use crate::utils::stack_string::StackString;
+use crate::{common::pgpool::PgPool, utils::stack_string::StackString};
 
 #[derive(Serialize, Deserialize, Clone, Debug, FromSqlRow)]
 pub struct FitbitActivity {

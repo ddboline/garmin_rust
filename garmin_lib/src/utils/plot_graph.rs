@@ -4,8 +4,7 @@ use std::collections::HashMap;
 
 use crate::{
     reports::garmin_templates::{LINEPLOTTEMPLATE, SCATTERPLOTTEMPLATE},
-    utils::plot_opts::PlotOpts,
-    utils::stack_string::StackString,
+    utils::{plot_opts::PlotOpts, stack_string::StackString},
 };
 
 #[allow(clippy::similar_names)]

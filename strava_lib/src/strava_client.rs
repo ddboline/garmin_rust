@@ -339,7 +339,8 @@ impl StravaClient {
         let url = format!(
             "https://www.strava.com/activities/{}",
             resp.activity_id.to_string()
-        ).into();
+        )
+        .into();
 
         Ok(url)
     }

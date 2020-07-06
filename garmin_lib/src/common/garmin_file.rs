@@ -96,7 +96,8 @@ impl GarminFile {
             r#"}},{"name": "points", "type": {"type": "array", "items": "#,
             GARMIN_POINT_AVRO_SCHEMA,
             r#"}}]}"#,
-        ).into()
+        )
+        .into()
     }
 
     pub fn dump_avro(&self, output_filename: &Path) -> Result<(), Error> {
@@ -137,7 +138,8 @@ impl GarminFile {
                 .format("%Y-%m-%d_%H-%M-%S_1_1")
                 .to_string(),
             suffix
-        ).into()
+        )
+        .into()
     }
 }
 

@@ -111,11 +111,14 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<StackString>, Error
 
     if (sum_time > 0.0) & !hr_vals.is_empty() {
         return_vec.push("".into());
-        return_vec.push(format!(
-            "Heart Rate {:2.2} avg {:2.2} max",
-            avg_hr,
-            hr_vals.iter().map(|x| *x as i32).max().unwrap_or(0)
-        ).into());
+        return_vec.push(
+            format!(
+                "Heart Rate {:2.2} avg {:2.2} max",
+                avg_hr,
+                hr_vals.iter().map(|x| *x as i32).max().unwrap_or(0)
+            )
+            .into(),
+        );
     }
 
     let mut vertical_climb = 0.0;
@@ -141,11 +144,14 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<StackString>, Error
         .collect();
 
     if !alt_vals.is_empty() {
-        return_vec.push(format!(
-            "max altitude diff: {:.2} m",
-            alt_vals.iter().map(|x| *x as i32).max().unwrap_or(0)
-                - alt_vals.iter().map(|x| *x as i32).min().unwrap_or(0)
-        ).into());
+        return_vec.push(
+            format!(
+                "max altitude diff: {:.2} m",
+                alt_vals.iter().map(|x| *x as i32).max().unwrap_or(0)
+                    - alt_vals.iter().map(|x| *x as i32).min().unwrap_or(0)
+            )
+            .into(),
+        );
         return_vec.push(format!("vertical climb: {:.2} m", vertical_climb).into());
     }
 
@@ -166,15 +172,15 @@ fn print_lap_string(glap: &GarminLap, sport: SportTypes) -> Result<StackString, 
     )];
 
     if (sport == SportTypes::Running) & (glap.lap_distance > 0.0) {
-        outstr.push(print_h_m_s(
-            glap.lap_duration / (glap.lap_distance / METERS_PER_MILE),
-            false,
-        )?.into());
+        outstr.push(
+            print_h_m_s(
+                glap.lap_duration / (glap.lap_distance / METERS_PER_MILE),
+                false,
+            )?
+            .into(),
+        );
         outstr.push("/ mi ".to_string());
-        outstr.push(print_h_m_s(
-            glap.lap_duration / (glap.lap_distance / 1000.),
-            false,
-        )?.into());
+        outstr.push(print_h_m_s(glap.lap_duration / (glap.lap_distance / 1000.), false)?.into());
         outstr.push("/ km".to_string());
     };
     if let Some(x) = glap.lap_avg_hr {

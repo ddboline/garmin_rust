@@ -40,7 +40,8 @@ impl GarminParseTrait for GarminParseTcx {
             .file_name()
             .ok_or_else(|| format_err!("filename {:?} has no path", filename))?
             .to_string_lossy()
-            .to_string().into();
+            .to_string()
+            .into();
         let gfile = GarminFile {
             filename,
             filetype: "tcx".into(),

@@ -292,8 +292,7 @@ impl GarminSync {
         s3_bucket: &str,
         s3_key: &str,
     ) -> Result<(), Error> {
-        self.upload_file_acl(local_file, s3_bucket, s3_key)
-            .await
+        self.upload_file_acl(local_file, s3_bucket, s3_key).await
     }
 
     pub async fn upload_file_acl(

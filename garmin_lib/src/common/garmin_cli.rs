@@ -211,7 +211,8 @@ impl GarminCli {
                         if f.to_string_lossy().contains("garmin_correction.avro") {
                             None
                         } else {
-                            f.file_name().map(|f| f.to_string_lossy().to_string().into())
+                            f.file_name()
+                                .map(|f| f.to_string_lossy().to_string().into())
                         }
                     })
                     .collect();
@@ -552,7 +553,9 @@ impl GarminCli {
                     };
                     let gfile = GarminParse::new().with_file(&filename, &HashMap::new())?;
 
-                    let outfile = config.gps_dir.join(gfile.get_standardized_name(suffix).as_str());
+                    let outfile = config
+                        .gps_dir
+                        .join(gfile.get_standardized_name(suffix).as_str());
 
                     stdout.send(format!("{:?} {:?}", filename, outfile).into())?;
 

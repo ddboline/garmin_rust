@@ -129,7 +129,7 @@ impl StravaClient {
                 ("state", state.as_str()),
             ],
         )?;
-        CSRF_TOKEN.lock().await.replace(state.into());
+        CSRF_TOKEN.lock().await.replace(state);
         Ok(url)
     }
 

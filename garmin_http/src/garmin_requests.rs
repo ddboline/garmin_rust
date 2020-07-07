@@ -304,7 +304,7 @@ impl HandleRequest<FitbitRefreshRequest> for PgPool {
         let mut client = FitbitClient::from_file(config).await?;
         let body = client.refresh_fitbit_access_token().await?;
         client.to_file().await?;
-        Ok(body.into())
+        Ok(body)
     }
 }
 

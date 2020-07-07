@@ -87,7 +87,7 @@ impl Display for StackString {
 
 impl From<StackString> for String {
     fn from(item: StackString) -> Self {
-        item.into()
+        item.0.into()
     }
 }
 

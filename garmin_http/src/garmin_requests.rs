@@ -2,7 +2,6 @@ use anyhow::format_err;
 use async_trait::async_trait;
 use chrono::{DateTime, Duration, Local, NaiveDate, NaiveDateTime, NaiveTime, Utc};
 use futures::future::try_join_all;
-use lazy_static::lazy_static;
 use log::debug;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
@@ -11,7 +10,7 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
-use tokio::{fs::remove_file, sync::RwLock, task::spawn_blocking};
+use tokio::{fs::remove_file, task::spawn_blocking};
 
 use fitbit_lib::{
     fitbit_client::{FitbitBodyWeightFatUpdateOutput, FitbitClient, FitbitUserProfile},
@@ -27,7 +26,7 @@ use garmin_lib::{
         fitbit_activity::FitbitActivity,
         garmin_cli::{GarminCli, GarminRequest},
         garmin_connect_activity::GarminConnectActivity,
-        garmin_connect_client::GarminConnectClient,
+        garmin_connect_client::get_garmin_connect_session,
         garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionMap},
         garmin_summary::{get_filename_from_datetime, get_list_of_files_from_db},
         pgpool::PgPool,
@@ -37,11 +36,6 @@ use garmin_lib::{
 };
 
 use crate::{errors::ServiceError as Error, CONFIG};
-
-lazy_static! {
-    static ref CONNECT_SESSION: RwLock<Option<(GarminConnectClient, DateTime<Utc>)>> =
-        RwLock::new(None);
-}
 
 #[async_trait]
 pub trait HandleRequest<T> {
@@ -137,37 +131,6 @@ impl HandleRequest<GarminUploadRequest> for PgPool {
     }
 }
 
-async fn try_get_user_summary(session: GarminConnectClient) -> Result<GarminConnectClient, Error> {
-    if session
-        .get_user_summary(Utc::now().naive_local().date())
-        .await
-        .is_err()
-    {
-        let session = GarminConnectClient::get_session(CONFIG.clone()).await?;
-        CONNECT_SESSION
-            .write()
-            .await
-            .replace((session.clone(), Utc::now()));
-    }
-    Ok(session)
-}
-
-async fn get_garmin_connect_session() -> Result<GarminConnectClient, Error> {
-    if let Some((session, timestamp)) = CONNECT_SESSION.read().await.as_ref() {
-        if *timestamp > (Utc::now() - Duration::hours(1)) {
-            return try_get_user_summary(session.clone()).await;
-        }
-    }
-
-    let session = GarminConnectClient::get_session(CONFIG.clone()).await?;
-    CONNECT_SESSION
-        .write()
-        .await
-        .replace((session.clone(), Utc::now()));
-
-    Ok(session)
-}
-
 pub struct GarminConnectSyncRequest {}
 
 #[async_trait]
@@ -178,7 +141,7 @@ impl HandleRequest<GarminConnectSyncRequest> for PgPool {
 
         let max_timestamp = Utc::now() - Duration::days(30);
 
-        let session = get_garmin_connect_session().await?;
+        let session = get_garmin_connect_session(&CONFIG).await?;
         let activities: HashMap<_, _> = GarminConnectActivity::read_from_db(
             self,
             Some(max_timestamp.naive_local().date()),
@@ -220,7 +183,7 @@ pub struct GarminConnectHrSyncRequest {
 impl HandleRequest<GarminConnectHrSyncRequest> for PgPool {
     type Result = Result<(), Error>;
     async fn handle(&self, req: GarminConnectHrSyncRequest) -> Self::Result {
-        let session = get_garmin_connect_session().await?;
+        let session = get_garmin_connect_session(&CONFIG).await?;
         FitbitClient::import_garmin_connect_heartrate(req.date, &session).await?;
         let config = CONFIG.clone();
         FitbitHeartRate::calculate_summary_statistics(&config, &self, req.date)
@@ -239,7 +202,7 @@ pub struct GarminConnectHrApiRequest {
 impl HandleRequest<GarminConnectHrApiRequest> for PgPool {
     type Result = Result<Vec<FitbitHeartRate>, Error>;
     async fn handle(&self, req: GarminConnectHrApiRequest) -> Self::Result {
-        let session = get_garmin_connect_session().await?;
+        let session = get_garmin_connect_session(&CONFIG).await?;
         let hr_vals =
             FitbitHeartRate::from_garmin_connect_hr(&session.get_heartrate(req.date).await?);
         Ok(hr_vals)
@@ -888,7 +851,7 @@ impl HandleRequest<GarminConnectActivitiesRequest> for PgPool {
             NaiveDateTime::new(start_date, NaiveTime::from_hms(0, 0, 0)),
             Utc,
         );
-        let session = get_garmin_connect_session().await?;
+        let session = get_garmin_connect_session(&CONFIG).await?;
         session
             .get_activities(start_datetime)
             .await

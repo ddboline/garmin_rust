@@ -1,15 +1,16 @@
 use anyhow::{format_err, Error};
 use chrono::{DateTime, NaiveDate, Utc};
 use futures::future::try_join_all;
+use lazy_static::lazy_static;
 use log::debug;
 use maplit::hashmap;
 use reqwest::{
     header::{HeaderMap, HeaderName, HeaderValue},
     Url,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, thread::sleep, time::Duration};
-use tokio::{fs::File, io::AsyncWriteExt, stream::StreamExt};
+use tokio::{fs::File, io::AsyncWriteExt, stream::StreamExt, sync::RwLock};
 
 use crate::utils::stack_string::StackString;
 
@@ -19,6 +20,11 @@ use super::{
 };
 
 const GARMIN_PREFIX: &str = "https://connect.garmin.com/modern";
+
+lazy_static! {
+    static ref CONNECT_SESSION: RwLock<Option<(GarminConnectClient, DateTime<Utc>)>> =
+        RwLock::new(None);
+}
 
 #[derive(Deserialize)]
 pub struct GarminConnectHrData {
@@ -174,7 +180,10 @@ impl GarminConnectClient {
         })
     }
 
-    pub async fn get_user_summary(&self, date: NaiveDate) -> Result<(), Error> {
+    pub async fn get_user_summary(
+        &self,
+        date: NaiveDate,
+    ) -> Result<GarminConnectUserDailySummary, Error> {
         let display_name = self
             .display_name
             .as_ref()
@@ -184,11 +193,13 @@ impl GarminConnectClient {
             GARMIN_PREFIX, display_name,
         );
         let url = Url::parse_with_params(&url_prefix, &[("calendarDate", &date.to_string())])?;
-        self.session
+        let resp = self
+            .session
             .get(&url, &HeaderMap::new())
             .await?
             .error_for_status()?;
-        Ok(())
+        let user_summary = resp.json().await?;
+        Ok(user_summary)
     }
 
     pub async fn get_heartrate(&self, date: NaiveDate) -> Result<GarminConnectHrData, Error> {
@@ -289,6 +300,62 @@ impl GarminConnectClient {
     }
 }
 
+async fn try_get_user_summary(
+    session: GarminConnectClient,
+    config: &GarminConfig,
+) -> Result<GarminConnectClient, Error> {
+    if session
+        .get_user_summary(Utc::now().naive_local().date())
+        .await
+        .is_err()
+    {
+        let session = GarminConnectClient::get_session(config.clone()).await?;
+        CONNECT_SESSION
+            .write()
+            .await
+            .replace((session.clone(), Utc::now()));
+    }
+    Ok(session)
+}
+
+pub async fn get_garmin_connect_session(
+    config: &GarminConfig,
+) -> Result<GarminConnectClient, Error> {
+    if let Some((session, timestamp)) = CONNECT_SESSION.read().await.as_ref() {
+        if *timestamp > (Utc::now() - chrono::Duration::hours(12)) {
+            return try_get_user_summary(session.clone(), &config).await;
+        }
+    }
+
+    let session = GarminConnectClient::get_session(config.clone()).await?;
+    CONNECT_SESSION
+        .write()
+        .await
+        .replace((session.clone(), Utc::now()));
+
+    Ok(session)
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GarminConnectUserDailySummary {
+    #[serde(rename = "userProfileId")]
+    pub user_profile_id: u64,
+    #[serde(rename = "totalKilocalories")]
+    pub total_kilocalories: f64,
+    #[serde(rename = "activeKilocalories")]
+    pub active_kilocalories: f64,
+    #[serde(rename = "bmrKilocalories")]
+    pub bmr_kilocalories: f64,
+    #[serde(rename = "totalSteps")]
+    pub total_steps: u64,
+    #[serde(rename = "totalDistanceMeters")]
+    pub total_distance_meters: u64,
+    #[serde(rename = "userDailySummaryId")]
+    pub user_daily_summary_id: u64,
+    #[serde(rename = "calendarDate")]
+    pub calendar_date: NaiveDate,
+}
+
 #[cfg(test)]
 mod tests {
     use anyhow::Error;
@@ -298,7 +365,7 @@ mod tests {
 
     use crate::common::{
         garmin_config::GarminConfig,
-        garmin_connect_client::{GarminConnectActivity, GarminConnectClient},
+        garmin_connect_client::{get_garmin_connect_session, GarminConnectActivity},
         pgpool::PgPool,
     };
 
@@ -306,10 +373,22 @@ mod tests {
     #[ignore]
     async fn test_get_activities() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
-        let session = GarminConnectClient::get_session(config).await?;
+        let session = get_garmin_connect_session(&config).await?;
         let max_timestamp = Utc::now() - Duration::days(14);
         let result = session.get_activities(max_timestamp).await?;
         assert!(result.len() > 0);
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_get_user_summary() -> Result<(), Error> {
+        let config = GarminConfig::get_config(None)?;
+        let session = get_garmin_connect_session(&config).await?;
+        let user_summary = session
+            .get_user_summary(Utc::now().naive_local().date())
+            .await?;
+        assert_eq!(user_summary.user_profile_id, 1377808);
         Ok(())
     }
 
@@ -325,7 +404,7 @@ mod tests {
             .map(|activity| (activity.activity_id, activity))
             .collect();
 
-        let session = GarminConnectClient::get_session(config).await?;
+        let session = get_garmin_connect_session(&config).await?;
         let max_timestamp = Utc::now() - Duration::days(30);
         let new_activities: Vec<_> = session
             .get_activities(max_timestamp)

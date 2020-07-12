@@ -10,7 +10,7 @@ use reqwest::{
 };
 use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, thread::sleep, time::Duration};
-use tokio::{fs::File, io::AsyncWriteExt, stream::StreamExt, sync::RwLock};
+use tokio::{fs::File, io::AsyncWriteExt, stream::StreamExt, sync::Mutex};
 
 use crate::utils::stack_string::StackString;
 
@@ -22,8 +22,8 @@ use super::{
 const GARMIN_PREFIX: &str = "https://connect.garmin.com/modern";
 
 lazy_static! {
-    static ref CONNECT_SESSION: RwLock<Option<(GarminConnectClient, DateTime<Utc>)>> =
-        RwLock::new(None);
+    static ref CONNECT_SESSION: Mutex<GarminConnectClient> =
+        Mutex::new(GarminConnectClient::default());
 }
 
 #[derive(Deserialize)]
@@ -39,8 +39,23 @@ pub struct GarminConnectClient {
     display_name: Option<StackString>,
 }
 
+impl Default for GarminConnectClient {
+    fn default() -> Self {
+        let config = GarminConfig::default();
+        Self::new(config)
+    }
+}
+
 impl GarminConnectClient {
-    pub async fn get_session(config: GarminConfig) -> Result<Self, Error> {
+    pub fn new(config: GarminConfig) -> Self {
+        Self {
+            config,
+            session: ReqwestSession::new(false),
+            display_name: None,
+        }
+    }
+
+    pub async fn authorize(&mut self) -> Result<(), Error> {
         let obligatory_headers = hashmap! {
             "Referer" => "https://sync.tapiriik.com",
         };
@@ -49,8 +64,8 @@ impl GarminConnectClient {
         };
 
         let data = hashmap! {
-            "username" => config.garmin_connect_email.as_str(),
-            "password" => config.garmin_connect_password.as_str(),
+            "username" => self.config.garmin_connect_email.as_str(),
+            "password" => self.config.garmin_connect_password.as_str(),
             "_eventId" => "submit",
             "embed" => "true",
         };
@@ -62,10 +77,8 @@ impl GarminConnectClient {
             "consumeServiceTicket"=>"false",
         };
 
-        let session = ReqwestSession::new(false);
-
         let url = Url::parse_with_params("https://sso.garmin.com/sso/signin", params.iter())?;
-        let pre_resp = session.get(&url, &HeaderMap::new()).await?;
+        let pre_resp = self.session.get_no_retry(&url, &HeaderMap::new()).await?;
         if pre_resp.status() != 200 {
             return Err(format_err!(
                 "SSO prestart error {} {}",
@@ -84,7 +97,10 @@ impl GarminConnectClient {
             .collect();
         let signin_headers = result?;
 
-        let sso_resp = session.post(&url, &signin_headers, &data).await?;
+        let sso_resp = self
+            .session
+            .post_no_retry(&url, &signin_headers, &data)
+            .await?;
         let status = sso_resp.status();
         if status != 200 {
             return Err(format_err!(
@@ -107,8 +123,9 @@ impl GarminConnectClient {
             return Err(format_err!("Reset password"));
         }
 
-        let mut gc_redeem_resp = session
-            .get(&GARMIN_PREFIX.parse()?, &HeaderMap::new())
+        let mut gc_redeem_resp = self
+            .session
+            .get_no_retry(&GARMIN_PREFIX.parse()?, &HeaderMap::new())
             .await?;
         if gc_redeem_resp.status() != 302 {
             return Err(format_err!(
@@ -122,7 +139,7 @@ impl GarminConnectClient {
 
         let max_redirect_count = 7;
         let mut current_redirect_count = 1;
-        let mut display_name = None;
+        self.display_name.take();
         loop {
             sleep(Duration::from_secs(2));
             let url = gc_redeem_resp
@@ -138,7 +155,7 @@ impl GarminConnectClient {
             url_prefix = url.split('/').take(3).collect::<Vec<_>>().join("/");
 
             let url: Url = url.parse()?;
-            gc_redeem_resp = session.get(&url, &HeaderMap::new()).await?;
+            gc_redeem_resp = self.session.get_no_retry(&url, &HeaderMap::new()).await?;
             let status = gc_redeem_resp.status();
             if current_redirect_count >= max_redirect_count && status != 200 {
                 return Err(format_err!(
@@ -160,7 +177,7 @@ impl GarminConnectClient {
                             display_name: StackString,
                         }
                         let val: SocialProfile = serde_json::from_str(entries[1])?;
-                        display_name.replace(val.display_name);
+                        self.display_name.replace(val.display_name);
                     }
                 }
                 break;
@@ -171,13 +188,14 @@ impl GarminConnectClient {
             }
         }
 
-        session.set_default_headers(obligatory_headers).await?;
+        self.session.set_default_headers(obligatory_headers).await?;
+        Ok(())
+    }
 
-        Ok(Self {
-            config,
-            session,
-            display_name,
-        })
+    pub async fn get_session(config: GarminConfig) -> Result<Self, Error> {
+        let mut session = Self::new(config);
+        session.authorize().await?;
+        Ok(session)
     }
 
     pub async fn get_user_summary(
@@ -300,40 +318,21 @@ impl GarminConnectClient {
     }
 }
 
-async fn try_get_user_summary(
-    session: GarminConnectClient,
+pub async fn get_garmin_connect_session(
     config: &GarminConfig,
 ) -> Result<GarminConnectClient, Error> {
+    let mut session = CONNECT_SESSION.lock().await;
+    session.config = config.clone();
+
     if session
         .get_user_summary(Utc::now().naive_local().date())
         .await
         .is_err()
     {
-        let session = GarminConnectClient::get_session(config.clone()).await?;
-        CONNECT_SESSION
-            .write()
-            .await
-            .replace((session.clone(), Utc::now()));
-    }
-    Ok(session)
-}
-
-pub async fn get_garmin_connect_session(
-    config: &GarminConfig,
-) -> Result<GarminConnectClient, Error> {
-    if let Some((session, timestamp)) = CONNECT_SESSION.read().await.as_ref() {
-        if *timestamp > (Utc::now() - chrono::Duration::hours(12)) {
-            return try_get_user_summary(session.clone(), &config).await;
-        }
+        session.authorize().await?;
     }
 
-    let session = GarminConnectClient::get_session(config.clone()).await?;
-    CONNECT_SESSION
-        .write()
-        .await
-        .replace((session.clone(), Utc::now()));
-
-    Ok(session)
+    Ok(session.clone())
 }
 
 #[derive(Serialize, Deserialize, Debug)]

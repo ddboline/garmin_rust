@@ -86,6 +86,12 @@ impl ReqwestSession {
         .await
     }
 
+    pub async fn get_no_retry(&self, url: &Url, headers: &HeaderMap) -> Result<Response, Error> {
+        let url = url.clone();
+        let headers = headers.clone();
+        self.client.lock().await.get(url, headers).await
+    }
+
     pub async fn post(
         &self,
         url: &Url,
@@ -104,6 +110,21 @@ impl ReqwestSession {
             }
         })
         .await
+    }
+
+    pub async fn post_no_retry(
+        &self,
+        url: &Url,
+        headers: &HeaderMap,
+        form: &HashMap<&str, &str>,
+    ) -> Result<Response, Error> {
+        let url = url.clone();
+        let headers = headers.clone();
+        self.client
+            .lock()
+            .await
+            .post(url.clone(), headers.clone(), form)
+            .await
     }
 
     pub async fn set_default_headers(&self, headers: HashMap<&str, &str>) -> Result<(), Error> {

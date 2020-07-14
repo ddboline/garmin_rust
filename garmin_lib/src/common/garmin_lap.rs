@@ -9,6 +9,7 @@ use std::fmt;
 use crate::utils::{
     garmin_util::{convert_time_string, convert_xml_local_time_to_utc, get_f64, get_i64},
     iso_8601_datetime::{self, convert_datetime_to_str, sentinel_datetime},
+    sport_types::SportTypes,
     stack_string::StackString,
 };
 
@@ -154,8 +155,9 @@ impl GarminLap {
         Ok(new_lap)
     }
 
-    pub fn read_lap_fit(fields: &[FitDataField]) -> Result<Self, Error> {
+    pub fn read_lap_fit(fields: &[FitDataField]) -> Result<(Self, Option<SportTypes>), Error> {
         let mut new_lap = Self::new();
+        let mut lap_sport = None;
         for field in fields {
             match field.name() {
                 "start_time" => {
@@ -196,10 +198,17 @@ impl GarminLap {
                         new_lap.lap_max_hr = Some(i as i32);
                     }
                 }
+                "sport" => {
+                    if let Value::String(s) = field.value() {
+                        if let Ok(sport) = s.parse() {
+                            lap_sport.replace(sport);
+                        }
+                    }
+                }
                 _ => {}
             }
         }
-        Ok(new_lap)
+        Ok((new_lap, lap_sport))
     }
 
     pub fn fix_lap_number(lap_list: Vec<Self>) -> Vec<Self> {

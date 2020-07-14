@@ -76,14 +76,19 @@ impl GarminParseTrait for GarminParseFit {
                     }
                 }
                 MesgNum::Lap => {
-                    debug!("{:?}", record.fields());
-                    lap_list.push(GarminLap::read_lap_fit(record.fields())?);
+                    let (new_lap, lap_sport) = GarminLap::read_lap_fit(record.fields())?;
+                    if let Some(sp) = lap_sport {
+                        sport = sp;
+                    }
+                    lap_list.push(new_lap);
                 }
                 MesgNum::Session => {
                     for field in record.fields() {
                         if field.name() == "sport" {
                             if let Value::String(s) = field.value() {
-                                sport = s.parse().unwrap_or(SportTypes::None);
+                                if let Ok(sp) = s.parse() {
+                                    sport = sp;
+                                }
                             }
                         }
                     }

@@ -87,7 +87,9 @@ impl GarminParseTrait for GarminParseGmn {
             if d.node_type() == NodeType::Element && d.tag_name().name() == "run" {
                 for a in d.attributes() {
                     if a.name() == "sport" {
-                        sport = a.value().parse().unwrap_or(SportTypes::None);
+                        if let Ok(sp) = a.value().parse() {
+                            sport = sp;
+                        }
                     }
                 }
             }

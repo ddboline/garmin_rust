@@ -1,7 +1,6 @@
 use anyhow::{format_err, Error};
 use chrono::{DateTime, Utc};
-use fitparser::FitDataField;
-use fitparser::Value;
+use fitparser::{FitDataField, Value};
 use roxmltree::{Node, NodeType};
 use serde::{Deserialize, Serialize};
 use std::fmt;

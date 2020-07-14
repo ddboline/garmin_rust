@@ -1,7 +1,6 @@
 use anyhow::Error;
 use chrono::{DateTime, Utc};
-use fitparser::FitDataField;
-use fitparser::Value;
+use fitparser::{FitDataField, Value};
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 use roxmltree::{Node, NodeType};
 use serde::{Deserialize, Serialize};

@@ -1,10 +1,8 @@
 use anyhow::{format_err, Error};
 use chrono::{DateTime, Utc};
-use fitparser::profile::field_types::MesgNum;
-use fitparser::Value;
+use fitparser::{profile::field_types::MesgNum, Value};
 use log::debug;
-use std::fs::File;
-use std::{collections::HashMap, path::Path};
+use std::{collections::HashMap, fs::File, path::Path};
 
 use super::garmin_parse::{GarminParseTrait, ParseOutput};
 use crate::{

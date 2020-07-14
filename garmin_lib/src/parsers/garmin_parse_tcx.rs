@@ -1,8 +1,7 @@
 use anyhow::{format_err, Error};
 use chrono::{DateTime, Utc};
 use roxmltree::{Document, NodeType};
-use std::fs::read_to_string;
-use std::{collections::HashMap, path::Path};
+use std::{collections::HashMap, fs::read_to_string, path::Path};
 
 use super::garmin_parse::{GarminParseTrait, ParseOutput};
 use crate::{

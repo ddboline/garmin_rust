@@ -165,6 +165,7 @@ fn init_sport_type_map() -> HashMap<StackString, SportTypes> {
         ("bicycling", SportTypes::Biking),
         ("biking", SportTypes::Biking),
         ("bike", SportTypes::Biking),
+        ("cycling", SportTypes::Biking),
         ("ride", SportTypes::Biking),
         ("walking", SportTypes::Walking),
         ("walk", SportTypes::Walking),

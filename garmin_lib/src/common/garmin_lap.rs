@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use crate::utils::{
-    garmin_util::{convert_time_string, convert_xml_local_time_to_utc},
+    garmin_util::{convert_time_string, convert_xml_local_time_to_utc, get_f64, get_i64},
     iso_8601_datetime::{self, convert_datetime_to_str, sentinel_datetime},
     stack_string::StackString,
 };
@@ -167,19 +167,17 @@ impl GarminLap {
                     }
                 }
                 "total_elapsed_time" => {
-                    if let Value::Float64(f) = field.value() {
-                        new_lap.lap_duration = *f;
+                    if let Some(f) = get_f64(field.value()) {
+                        new_lap.lap_duration = f;
                     }
                 }
                 "total_distance" => {
-                    if let Value::Float64(f) = field.value() {
-                        new_lap.lap_distance = *f;
+                    if let Some(f) = get_f64(field.value()) {
+                        new_lap.lap_distance = f;
                     }
                 }
                 "enhanced_avg_speed" => {
-                    if let Value::Float64(f) = field.value() {
-                        new_lap.lap_max_speed = Some(*f);
-                    }
+                    new_lap.lap_max_speed = get_f64(field.value());
                 }
                 "lap_trigger" => {
                     if let Value::String(s) = field.value() {
@@ -187,18 +185,16 @@ impl GarminLap {
                     }
                 }
                 "total_calories" => {
-                    if let Value::UInt16(i) = field.value() {
-                        new_lap.lap_calories = *i as i32;
+                    if let Some(i) = get_i64(field.value()) {
+                        new_lap.lap_calories = i as i32;
                     }
                 }
                 "avg_heart_rate" => {
-                    if let Value::UInt8(u) = field.value() {
-                        new_lap.lap_avg_hr = Some(*u as f64);
-                    }
+                    new_lap.lap_avg_hr = get_f64(field.value());
                 }
                 "max_heart_rate" => {
-                    if let Value::UInt8(u) = field.value() {
-                        new_lap.lap_max_hr = Some(*u as i32);
+                    if let Some(i) = get_i64(field.value()) {
+                        new_lap.lap_max_hr = Some(i as i32);
                     }
                 }
                 _ => {}

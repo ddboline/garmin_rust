@@ -7,7 +7,9 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use crate::utils::{
-    garmin_util::{convert_xml_local_time_to_utc, METERS_PER_MILE},
+    garmin_util::{
+        convert_xml_local_time_to_utc, get_degrees_from_semicircles, get_f64, METERS_PER_MILE,
+    },
     iso_8601_datetime::{self, sentinel_datetime},
 };
 
@@ -144,33 +146,23 @@ impl GarminPoint {
                     }
                 }
                 "enhanced_altitude" => {
-                    if let Value::Float64(f) = field.value() {
-                        new_point.altitude = Some(*f);
-                    }
+                    new_point.altitude = get_f64(field.value());
                 }
                 "position_lat" => {
-                    if let Value::SInt32(s) = field.value() {
-                        new_point.latitude = Some((*s as f64) * 180.0 / (2147483648.0));
-                    }
+                    new_point.latitude = get_f64(field.value()).map(get_degrees_from_semicircles);
                 }
                 "position_long" => {
-                    if let Value::SInt32(s) = field.value() {
-                        new_point.longitude = Some((*s as f64) * 180.0 / (2147483648.0));
-                    }
+                    new_point.longitude = get_f64(field.value()).map(get_degrees_from_semicircles);
                 }
                 "distance" => {
-                    if let Value::Float64(f) = field.value() {
-                        new_point.distance = Some(*f);
-                    }
+                    new_point.distance = get_f64(field.value());
                 }
                 "heart_rate" => {
-                    if let Value::UInt8(u) = field.value() {
-                        new_point.heart_rate = Some(*u as f64);
-                    }
+                    new_point.heart_rate = get_f64(field.value());
                 }
                 "enhanced_speed" => {
-                    if let Value::Float64(f) = field.value() {
-                        new_point.speed_mps = *f;
+                    if let Some(f) = get_f64(field.value()) {
+                        new_point.speed_mps = f;
                         new_point.speed_mph = new_point.speed_mps * 3600.0 / METERS_PER_MILE;
                         if new_point.speed_mps > 0.0 {
                             new_point.speed_permi = METERS_PER_MILE / new_point.speed_mps / 60.0;

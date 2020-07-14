@@ -1,5 +1,6 @@
 use anyhow::{format_err, Error};
 use chrono::{DateTime, TimeZone, Utc};
+use fitparser::Value;
 use log::{debug, error};
 use num_traits::pow::Pow;
 use rand::{
@@ -192,4 +193,55 @@ pub fn gzip_file(input_filename: &str, output_filename: &str) -> Result<(), Erro
         return Err(format_err!("Failed with exit status {:?}", exit_status));
     }
     Ok(())
+}
+
+pub fn get_f64(value: &Value) -> Option<f64> {
+    match value {
+        Value::Timestamp(val) => Some(val.timestamp() as f64),
+        Value::Byte(val) => Some(f64::from(*val)),
+        Value::Enum(val) => Some(f64::from(*val)),
+        Value::SInt8(val) => Some(f64::from(*val)),
+        Value::UInt8(val) => Some(f64::from(*val)),
+        Value::UInt8z(val) => Some(f64::from(*val)),
+        Value::SInt16(val) => Some(f64::from(*val)),
+        Value::UInt16(val) => Some(f64::from(*val)),
+        Value::UInt16z(val) => Some(f64::from(*val)),
+        Value::SInt32(val) => Some(f64::from(*val)),
+        Value::UInt32(val) => Some(f64::from(*val)),
+        Value::UInt32z(val) => Some(f64::from(*val)),
+        Value::SInt64(val) => Some(*val as f64),
+        Value::UInt64(val) => Some(*val as f64),
+        Value::UInt64z(val) => Some(*val as f64),
+        Value::Float32(val) => Some(f64::from(*val)),
+        Value::Float64(val) => Some(*val),
+        _ => None,
+    }
+}
+
+pub fn get_i64(value: &Value) -> Option<i64> {
+    match value {
+        Value::Timestamp(val) => Some(val.timestamp() as i64),
+        Value::Byte(val) => Some(i64::from(*val)),
+        Value::Enum(val) => Some(i64::from(*val)),
+        Value::SInt8(val) => Some(i64::from(*val)),
+        Value::UInt8(val) => Some(i64::from(*val)),
+        Value::UInt8z(val) => Some(i64::from(*val)),
+        Value::SInt16(val) => Some(i64::from(*val)),
+        Value::UInt16(val) => Some(i64::from(*val)),
+        Value::UInt16z(val) => Some(i64::from(*val)),
+        Value::SInt32(val) => Some(i64::from(*val)),
+        Value::UInt32(val) => Some(i64::from(*val)),
+        Value::UInt32z(val) => Some(i64::from(*val)),
+        Value::SInt64(val) => Some(*val),
+        Value::UInt64(val) => Some(*val as i64),
+        Value::UInt64z(val) => Some(*val as i64),
+        Value::Float32(val) => Some(*val as i64),
+        Value::Float64(val) => Some(*val as i64),
+        _ => None,
+    }
+}
+
+#[inline]
+pub fn get_degrees_from_semicircles(s: f64) -> f64 {
+    s * 180.0 / (2_147_483_648.0)
 }

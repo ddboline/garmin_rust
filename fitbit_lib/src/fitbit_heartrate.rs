@@ -498,8 +498,8 @@ mod tests {
         let result = result.unwrap();
         assert_eq!(result.min_heartrate as i32, 39);
         assert_eq!(result.max_heartrate as i32, 181);
-        assert_eq!(result.median_heartrate as i32, 61);
-        assert_eq!(result.number_of_entries as i32, 11393);
+        assert_eq!(result.median_heartrate as i32, 62);
+        assert_eq!(result.number_of_entries as i32, 12597);
         Ok(())
     }
 }

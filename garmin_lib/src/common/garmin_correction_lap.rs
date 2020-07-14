@@ -333,11 +333,11 @@ pub fn apply_lap_corrections<S: BuildHasher + Sync>(
                     match &corr_map.get(&(lap_start, lap_number)) {
                         Some(corr) => {
                             let mut new_lap = lap.clone();
-                            new_sport = match corr.sport {
-                                None => SportTypes::None,
+                            match corr.sport {
+                                None | Some(SportTypes::None) => {},
                                 Some(s) => {
                                     debug!("change sport {} {:?} {}", lap_start, lap.lap_type, s);
-                                    s
+                                    new_sport = s;
                                 }
                             };
                             new_lap.lap_duration = match &corr.duration {

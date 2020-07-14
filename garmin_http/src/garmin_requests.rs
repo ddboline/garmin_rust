@@ -784,14 +784,10 @@ impl HandleRequest<AddGarminCorrectionRequest> for PgPool {
 
         GarminCorrectionLap::dump_corrections_to_db(&corr_map, self).await?;
 
-        let cache_path = CONFIG
-            .cache_dir
-            .join(filename.as_str())
-            .with_extension("avro");
+        let cache_path = CONFIG.cache_dir.join(&format!("{}.avro", filename));
         let summary_path = CONFIG
             .summary_cache
-            .join(filename.as_str())
-            .with_extension("summary.avro");
+            .join(&format!("{}.summary.avro", filename));
         remove_file(cache_path).await?;
         remove_file(summary_path).await?;
 

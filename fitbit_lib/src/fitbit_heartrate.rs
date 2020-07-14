@@ -116,10 +116,7 @@ impl FitbitHeartRate {
                 .await?
                 .into_par_iter()
                 .filter_map(|filename| {
-                    let avro_file = config
-                        .cache_dir
-                        .join(filename.as_str())
-                        .with_extension("avro");
+                    let avro_file = config.cache_dir.join(&format!("{}.avro", filename));
                     if avro_file.exists() {
                         Some(avro_file)
                     } else {

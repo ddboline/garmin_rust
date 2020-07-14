@@ -76,8 +76,10 @@ impl FailureCount {
 
 pub async fn run_bot(telegram_bot_token: &str, pool: PgPool) -> Result<(), Error> {
     initialize_last_weight(&pool).await?;
-    let pool_ = pool.clone();
-    let fill_user_ids = spawn(fill_telegram_user_ids(pool_));
+    let fill_user_ids = {
+        let pool = pool.clone();
+        spawn(fill_telegram_user_ids(pool))
+    };
     telegram_loop(&telegram_bot_token, &pool).await?;
     fill_user_ids.await?
 }
@@ -120,7 +122,7 @@ async fn _telegram_worker(telegram_bot_token: &str, pool: &PgPool) -> Result<(),
                         }
                     } else {
                         match ScaleMeasurement::from_telegram_text(data) {
-                            Ok(meas) => match process_measurement(&meas, pool).await {
+                            Ok(meas) => match process_measurement(meas, pool).await {
                                 Ok(_) => api
                                     .spawn(message.text_reply(format!("sent to the db {}", meas))),
                                 Err(e) => {
@@ -144,12 +146,10 @@ async fn _telegram_worker(telegram_bot_token: &str, pool: &PgPool) -> Result<(),
 }
 
 async fn initialize_last_weight(pool: &PgPool) -> Result<(), Error> {
-    let meas_list = ScaleMeasurement::read_from_db(&pool, None, None).await?;
     let mut last_weight = LAST_WEIGHT.load();
-    for meas in meas_list {
+    if let Some(meas) = ScaleMeasurement::read_latest_from_db(pool).await? {
         let current_dt = meas.datetime;
-        let last_meas = last_weight.replace(meas);
-        if let Some(last) = last_meas {
+        if let Some(last) = last_weight.replace(meas) {
             if last.datetime > current_dt {
                 last_weight.replace(last);
             }
@@ -161,10 +161,10 @@ async fn initialize_last_weight(pool: &PgPool) -> Result<(), Error> {
     Ok(())
 }
 
-async fn process_measurement(meas: &ScaleMeasurement, pool: &PgPool) -> Result<(), Error> {
+async fn process_measurement(meas: ScaleMeasurement, pool: &PgPool) -> Result<(), Error> {
     if meas.insert_into_db(pool).await.is_ok() {
         debug!("{:?}", meas);
-        LAST_WEIGHT.store(Some(*meas));
+        LAST_WEIGHT.store(Some(meas));
         FAILURE_COUNT.reset()?;
     } else {
         FAILURE_COUNT.increment()?;
@@ -175,9 +175,7 @@ async fn process_measurement(meas: &ScaleMeasurement, pool: &PgPool) -> Result<(
 async fn fill_telegram_user_ids(pool: PgPool) -> Result<(), Error> {
     loop {
         FAILURE_COUNT.check()?;
-        if let Ok(telegram_userids) = list_of_telegram_user_ids(&pool).await {
-            let telegram_userid_set: HashSet<_> =
-                telegram_userids.into_iter().map(UserId::new).collect();
+        if let Ok(telegram_userid_set) = list_of_telegram_user_ids(&pool).await {
             *USERIDS.write().await = telegram_userid_set;
             FAILURE_COUNT.reset()?;
         } else {
@@ -187,7 +185,7 @@ async fn fill_telegram_user_ids(pool: PgPool) -> Result<(), Error> {
     }
 }
 
-async fn list_of_telegram_user_ids(pool: &PgPool) -> Result<Vec<i64>, Error> {
+async fn list_of_telegram_user_ids(pool: &PgPool) -> Result<HashSet<UserId>, Error> {
     let query = "
         SELECT distinct telegram_userid
         FROM authorized_users
@@ -200,7 +198,7 @@ async fn list_of_telegram_user_ids(pool: &PgPool) -> Result<Vec<i64>, Error> {
         .into_par_iter()
         .map(|row| {
             let telegram_userid: i64 = row.try_get("telegram_userid")?;
-            Ok(telegram_userid)
+            Ok(UserId::new(telegram_userid))
         })
         .collect()
 }

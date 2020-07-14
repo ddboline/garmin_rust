@@ -70,9 +70,13 @@ impl GarminParseTrait for GarminParseFit {
         for record in records {
             match record.kind() {
                 MesgNum::Record => {
-                    point_list.push(GarminPoint::read_point_fit(record.fields())?);
+                    let new_point = GarminPoint::read_point_fit(record.fields())?;
+                    if new_point.latitude.is_some() && new_point.longitude.is_some() {
+                        point_list.push(new_point);
+                    }
                 }
                 MesgNum::Lap => {
+                    debug!("{:?}", record.fields());
                     lap_list.push(GarminLap::read_lap_fit(record.fields())?);
                 }
                 MesgNum::Session => {

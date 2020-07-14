@@ -165,7 +165,7 @@ impl GarminLap {
                             Some(convert_datetime_to_str(new_lap.lap_start).into());
                     }
                 }
-                "total_elapsed_time" => {
+                "total_timer_time" => {
                     if let Some(f) = get_f64(field.value()) {
                         new_lap.lap_duration = f;
                     }

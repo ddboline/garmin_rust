@@ -177,11 +177,10 @@ impl GarminPoint {
     pub fn calculate_durations(point_list: &[Self]) -> Vec<Self> {
         point_list
             .iter()
-            .enumerate()
-            .scan(0.0, |time_from_begin, (i, point)| {
-                let duration_from_last = match i {
-                    0 => 0.0,
-                    _ => (point.time - point_list[i - 1].time).num_seconds() as f64,
+            .scan((0.0, None), |(time_from_begin, last_time), point| {
+                let duration_from_last = match last_time.replace(point.time) {
+                    None => 0.0,
+                    Some(last_time) => (point.time - last_time).num_seconds() as f64,
                 };
                 *time_from_begin += duration_from_last;
                 let duration_from_begin = *time_from_begin;

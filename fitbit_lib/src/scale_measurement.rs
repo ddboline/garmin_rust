@@ -101,6 +101,21 @@ impl ScaleMeasurement {
             .map_err(Into::into)
     }
 
+    pub async fn read_latest_from_db(pool: &PgPool) -> Result<Option<Self>, Error> {
+        let query = "
+            SELECT * FROM scale_measurements
+            WHERE datetime = (
+                SELECT max(datetime) FROM scale_measurements
+            )";
+        let conn = pool.get().await?;
+        let result = conn
+            .query_opt(query, &[])
+            .await?
+            .map(|row| Self::from_row(&row))
+            .transpose()?;
+        Ok(result)
+    }
+
     pub async fn read_from_db(
         pool: &PgPool,
         start_date: Option<NaiveDate>,

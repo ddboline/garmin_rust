@@ -1,12 +1,13 @@
 use anyhow::Error;
 use chrono::{DateTime, Utc};
+use fitparser::{FitDataField, Value};
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 use roxmltree::{Node, NodeType};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use crate::utils::{
-    garmin_util::{convert_time_string, convert_xml_local_time_to_utc},
+    garmin_util::{convert_time_string, convert_xml_local_time_to_utc, get_f64, get_i64},
     iso_8601_datetime::{self, convert_datetime_to_str, sentinel_datetime},
     stack_string::StackString,
 };
@@ -148,6 +149,54 @@ impl GarminLap {
             if entry.name() == "StartTime" {
                 new_lap.lap_start = convert_xml_local_time_to_utc(entry.value())?;
                 new_lap.lap_start_string = Some(convert_datetime_to_str(new_lap.lap_start).into());
+            }
+        }
+        Ok(new_lap)
+    }
+
+    pub fn read_lap_fit(fields: &[FitDataField]) -> Result<Self, Error> {
+        let mut new_lap = Self::new();
+        for field in fields {
+            match field.name() {
+                "start_time" => {
+                    if let Value::Timestamp(t) = field.value() {
+                        new_lap.lap_start = t.with_timezone(&Utc);
+                        new_lap.lap_start_string =
+                            Some(convert_datetime_to_str(new_lap.lap_start).into());
+                    }
+                }
+                "total_elapsed_time" => {
+                    if let Some(f) = get_f64(field.value()) {
+                        new_lap.lap_duration = f;
+                    }
+                }
+                "total_distance" => {
+                    if let Some(f) = get_f64(field.value()) {
+                        new_lap.lap_distance = f;
+                    }
+                }
+                "enhanced_avg_speed" => {
+                    new_lap.lap_max_speed = get_f64(field.value());
+                }
+                "lap_trigger" => {
+                    if let Value::String(s) = field.value() {
+                        new_lap.lap_trigger = Some(s.into());
+                    }
+                }
+                "total_calories" => {
+                    if let Some(i) = get_i64(field.value()) {
+                        new_lap.lap_calories = i as i32;
+                    }
+                }
+                "avg_heart_rate" => {
+                    new_lap.lap_avg_hr = get_f64(field.value());
+                }
+                "max_heart_rate" => {
+                    if let Some(i) = get_i64(field.value()) {
+                        new_lap.lap_max_hr = Some(i as i32);
+                    }
+                }
+                _ => {}
             }
         }
         Ok(new_lap)

@@ -79,7 +79,7 @@ fn test_garmin_parse_fit() -> Result<(), Error> {
         .unwrap();
     assert_eq!(gfile.filename.as_str(), "test.fit");
     assert_eq!(gfile.sport, SportTypes::Running);
-    assert_eq!(gfile.filetype.as_str(), "tcx");
+    assert_eq!(gfile.filetype.as_str(), "fit");
     assert_eq!(
         convert_datetime_to_str(gfile.begin_datetime),
         "2014-01-12T16:00:05Z"

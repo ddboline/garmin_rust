@@ -1,11 +1,14 @@
 use anyhow::{format_err, Error};
 use chrono::{DateTime, Utc};
+use fitparser::{FitDataField, Value};
 use roxmltree::{Node, NodeType};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use crate::utils::{
-    garmin_util::{convert_xml_local_time_to_utc, METERS_PER_MILE},
+    garmin_util::{
+        convert_xml_local_time_to_utc, get_degrees_from_semicircles, get_f64, METERS_PER_MILE,
+    },
     iso_8601_datetime::{self, sentinel_datetime},
 };
 
@@ -127,6 +130,45 @@ impl GarminPoint {
                     }
                     _ => (),
                 }
+            }
+        }
+        Ok(new_point)
+    }
+
+    pub fn read_point_fit(fields: &[FitDataField]) -> Result<Self, Error> {
+        let mut new_point = Self::new();
+        for field in fields {
+            match field.name() {
+                "timestamp" => {
+                    if let Value::Timestamp(t) = field.value() {
+                        new_point.time = t.with_timezone(&Utc);
+                    }
+                }
+                "enhanced_altitude" => {
+                    new_point.altitude = get_f64(field.value());
+                }
+                "position_lat" => {
+                    new_point.latitude = get_f64(field.value()).map(get_degrees_from_semicircles);
+                }
+                "position_long" => {
+                    new_point.longitude = get_f64(field.value()).map(get_degrees_from_semicircles);
+                }
+                "distance" => {
+                    new_point.distance = get_f64(field.value());
+                }
+                "heart_rate" => {
+                    new_point.heart_rate = get_f64(field.value());
+                }
+                "enhanced_speed" => {
+                    if let Some(f) = get_f64(field.value()) {
+                        new_point.speed_mps = f;
+                        new_point.speed_mph = new_point.speed_mps * 3600.0 / METERS_PER_MILE;
+                        if new_point.speed_mps > 0.0 {
+                            new_point.speed_permi = METERS_PER_MILE / new_point.speed_mps / 60.0;
+                        }
+                    }
+                }
+                _ => {}
             }
         }
         Ok(new_point)

@@ -334,7 +334,7 @@ pub fn apply_lap_corrections<S: BuildHasher + Sync>(
                         Some(corr) => {
                             let mut new_lap = lap.clone();
                             match corr.sport {
-                                None | Some(SportTypes::None) => {},
+                                None | Some(SportTypes::None) => {}
                                 Some(s) => {
                                     debug!("change sport {} {:?} {}", lap_start, lap.lap_type, s);
                                     new_sport = s;

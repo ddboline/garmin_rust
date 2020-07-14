@@ -340,17 +340,17 @@ pub struct GarminConnectUserDailySummary {
     #[serde(rename = "userProfileId")]
     pub user_profile_id: u64,
     #[serde(rename = "totalKilocalories")]
-    pub total_kilocalories: f64,
+    pub total_kilocalories: Option<f64>,
     #[serde(rename = "activeKilocalories")]
-    pub active_kilocalories: f64,
+    pub active_kilocalories: Option<f64>,
     #[serde(rename = "bmrKilocalories")]
-    pub bmr_kilocalories: f64,
+    pub bmr_kilocalories: Option<f64>,
     #[serde(rename = "totalSteps")]
-    pub total_steps: u64,
+    pub total_steps: Option<u64>,
     #[serde(rename = "totalDistanceMeters")]
-    pub total_distance_meters: u64,
+    pub total_distance_meters: Option<u64>,
     #[serde(rename = "userDailySummaryId")]
-    pub user_daily_summary_id: u64,
+    pub user_daily_summary_id: Option<u64>,
     #[serde(rename = "calendarDate")]
     pub calendar_date: NaiveDate,
 }
@@ -385,7 +385,7 @@ mod tests {
         let config = GarminConfig::get_config(None)?;
         let session = get_garmin_connect_session(&config).await?;
         let user_summary = session
-            .get_user_summary(Utc::now().naive_local().date())
+            .get_user_summary((Utc::now() - Duration::days(1)).naive_local().date())
             .await?;
         assert_eq!(user_summary.user_profile_id, 1377808);
         Ok(())

@@ -1,7 +1,9 @@
 use anyhow::{format_err, Error};
 use chrono::{DateTime, Utc};
-use roxmltree::{Document, NodeType};
-use std::fs::read_to_string;
+use fitparser::profile::field_types::MesgNum;
+use fitparser::Value;
+use log::debug;
+use std::fs::File;
 use std::{collections::HashMap, path::Path};
 
 use super::garmin_parse::{GarminParseTrait, ParseOutput};
@@ -16,23 +18,23 @@ use crate::{
 };
 
 #[derive(Debug, Default)]
-pub struct GarminParseTcx {}
+pub struct GarminParseFit {}
 
-impl GarminParseTcx {
+impl GarminParseFit {
     pub fn new() -> Self {
-        Self {}
+        Self::default()
     }
 }
 
-impl GarminParseTrait for GarminParseTcx {
+impl GarminParseTrait for GarminParseFit {
     fn with_file(
         self,
         filename: &Path,
         corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
     ) -> Result<GarminFile, Error> {
-        let tcx_output = self.parse_file(filename)?;
+        let fit_output = self.parse_file(filename)?;
         let (lap_list, sport) =
-            apply_lap_corrections(&tcx_output.lap_list, tcx_output.sport, corr_map);
+            apply_lap_corrections(&fit_output.lap_list, fit_output.sport, corr_map);
         let first_lap = lap_list.get(0).ok_or_else(|| format_err!("No laps"))?;
         let filename = filename
             .file_name()
@@ -42,7 +44,7 @@ impl GarminParseTrait for GarminParseTcx {
             .into();
         let gfile = GarminFile {
             filename,
-            filetype: "tcx".into(),
+            filetype: "fit".into(),
             begin_datetime: first_lap.lap_start,
             sport,
             total_calories: lap_list.iter().map(|lap| lap.lap_calories).sum(),
@@ -54,35 +56,38 @@ impl GarminParseTrait for GarminParseTcx {
                 .sum(),
             total_hr_dis: lap_list.iter().map(|lap| lap.lap_duration).sum(),
             laps: lap_list,
-            points: tcx_output.point_list,
+            points: fit_output.point_list,
         };
         Ok(gfile)
     }
 
     fn parse_file(&self, filename: &Path) -> Result<ParseOutput, Error> {
-        let output = read_to_string(filename)?;
-        let doc = Document::parse(&output)?;
+        let mut f = File::open(filename)?;
+        let records = fitparser::from_reader(&mut f)?;
 
         let mut lap_list = Vec::new();
         let mut point_list: Vec<GarminPoint> = Vec::new();
         let mut sport = SportTypes::None;
 
-        for d in doc.root().descendants() {
-            if d.node_type() == NodeType::Element && d.tag_name().name() == "Activity" {
-                for a in d.attributes() {
-                    if a.name() == "Sport" {
-                        sport = a.value().parse().unwrap_or(SportTypes::None);
+        for record in records {
+            match record.kind() {
+                MesgNum::Record => {
+                    point_list.push(GarminPoint::read_point_fit(record.fields())?);
+                }
+                MesgNum::Lap => {
+                    lap_list.push(GarminLap::read_lap_fit(record.fields())?);
+                }
+                MesgNum::Session => {
+                    for field in record.fields() {
+                        if field.name() == "sport" {
+                            if let Value::String(s) = field.value() {
+                                sport = s.parse().unwrap_or(SportTypes::None);
+                            }
+                        }
                     }
                 }
-            }
-            if d.node_type() == NodeType::Element && d.tag_name().name() == "Lap" {
-                let new_lap = GarminLap::read_lap_tcx(&d)?;
-                lap_list.push(new_lap);
-            }
-            if d.node_type() == NodeType::Element && d.tag_name().name() == "Trackpoint" {
-                let new_point = GarminPoint::read_point_tcx(&d)?;
-                if new_point.latitude.is_some() && new_point.longitude.is_some() {
-                    point_list.push(new_point);
+                _ => {
+                    debug!("{:?}", record.kind());
                 }
             }
         }

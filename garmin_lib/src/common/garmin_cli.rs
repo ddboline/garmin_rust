@@ -19,6 +19,7 @@ use crate::{
     common::garmin_summary::get_maximum_begin_datetime,
     parsers::{
         garmin_parse::{GarminParse, GarminParseTrait},
+        garmin_parse_fit::GarminParseFit,
         garmin_parse_gmn::GarminParseGmn,
         garmin_parse_tcx::GarminParseTcx,
         garmin_parse_txt::GarminParseTxt,
@@ -513,8 +514,8 @@ impl GarminCli {
                 rename(&fname, &filename)?;
             };
         }
-        check_filename!("fit", GarminParseTcx::new(true));
-        check_filename!("tcx", GarminParseTcx::new(false));
+        check_filename!("fit", GarminParseFit::new());
+        check_filename!("tcx", GarminParseTcx::new());
         check_filename!("txt", GarminParseTxt::new());
         check_filename!("gmn", GarminParseGmn::new());
 

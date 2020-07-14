@@ -8,8 +8,8 @@ use crate::{
         garmin_point::GarminPoint,
     },
     parsers::{
-        garmin_parse_gmn::GarminParseGmn, garmin_parse_tcx::GarminParseTcx,
-        garmin_parse_txt::GarminParseTxt,
+        garmin_parse_fit::GarminParseFit, garmin_parse_gmn::GarminParseGmn,
+        garmin_parse_tcx::GarminParseTcx, garmin_parse_txt::GarminParseTxt,
     },
     utils::sport_types::SportTypes,
 };
@@ -31,8 +31,8 @@ impl GarminParseTrait for GarminParse {
     ) -> Result<GarminFile, Error> {
         match filename.extension().and_then(OsStr::to_str) {
             Some("txt") => GarminParseTxt::new().with_file(filename, corr_map),
-            Some("fit") => GarminParseTcx::new(true).with_file(filename, corr_map),
-            Some("tcx") | Some("TCX") => GarminParseTcx::new(false).with_file(filename, corr_map),
+            Some("fit") => GarminParseFit::new().with_file(filename, corr_map),
+            Some("tcx") | Some("TCX") => GarminParseTcx::new().with_file(filename, corr_map),
             Some("gmn") => GarminParseGmn::new().with_file(filename, corr_map),
             _ => Err(format_err!("Invalid extension")),
         }

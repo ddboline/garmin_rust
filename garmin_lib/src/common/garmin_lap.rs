@@ -1,7 +1,6 @@
 use anyhow::Error;
 use chrono::{DateTime, Utc};
 use fitparser::{FitDataField, Value};
-use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 use roxmltree::{Node, NodeType};
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -211,21 +210,13 @@ impl GarminLap {
         Ok((new_lap, lap_sport))
     }
 
-    pub fn fix_lap_number(lap_list: Vec<Self>) -> Vec<Self> {
-        lap_list
-            .into_par_iter()
-            .enumerate()
-            .map(|(i, lap)| {
-                let mut new_lap = lap;
-                new_lap.lap_index = i as i32;
-                new_lap.lap_number = if new_lap.lap_number == -1 {
-                    i as i32
-                } else {
-                    new_lap.lap_number
-                };
-                new_lap
-            })
-            .collect()
+    pub fn fix_lap_number(lap_list: &mut [Self]) {
+        for (i, lap) in lap_list.iter_mut().enumerate() {
+            lap.lap_index = i as i32;
+            if lap.lap_number == -1 {
+                lap.lap_number = i as i32;
+            }
+        }
     }
 }
 

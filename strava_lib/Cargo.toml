@@ -1,7 +1,7 @@
 [package]
 name = "strava_lib"
 version = "0.8.43"
-authors = ["Daniel Boline <dboline@mediamath.com>"]
+authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
 [dependencies]

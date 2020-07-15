@@ -1,6 +1,6 @@
 [package]
 name = "garmin_rust"
-version = "0.8.42"
+version = "0.8.43"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -21,7 +21,7 @@ anyhow = "1.0"
 thiserror = "1.0"
 tokio = {version="0.2", features=["full"]}
 dirs = "3.0"
-stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", branch="master", features=["postgres_types"] }
+stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.1.1", features=["postgres_types"] }
 
 [dev-dependencies]
 approx = "0.3"

@@ -97,13 +97,18 @@ impl GarminParseTrait for GarminParseGmn {
                 lap_list.push(GarminLap::read_lap_xml(&d)?);
             }
             if d.node_type() == NodeType::Element && d.tag_name().name() == "point" {
-                point_list.push(GarminPoint::read_point_xml(&d)?);
+                let new_point = GarminPoint::read_point_xml(&d)?;
+                if new_point.latitude.is_some()
+                    && new_point.longitude.is_some()
+                    && new_point.distance > Some(0.0)
+                {
+                    point_list.push(new_point);
+                }
             }
         }
 
-        let point_list = GarminPoint::calculate_durations(&point_list);
-
-        let lap_list: Vec<_> = GarminLap::fix_lap_number(lap_list);
+        GarminLap::fix_lap_number(&mut lap_list);
+        GarminPoint::calculate_durations(&mut point_list);
 
         Ok(ParseOutput {
             lap_list,

@@ -80,15 +80,17 @@ impl GarminParseTrait for GarminParseTcx {
             }
             if d.node_type() == NodeType::Element && d.tag_name().name() == "Trackpoint" {
                 let new_point = GarminPoint::read_point_tcx(&d)?;
-                if new_point.latitude.is_some() && new_point.longitude.is_some() {
+                if new_point.latitude.is_some()
+                    && new_point.longitude.is_some()
+                    && new_point.distance > Some(0.0)
+                {
                     point_list.push(new_point);
                 }
             }
         }
 
-        let point_list = GarminPoint::calculate_durations(&point_list);
-
-        let lap_list: Vec<_> = GarminLap::fix_lap_number(lap_list);
+        GarminLap::fix_lap_number(&mut lap_list);
+        GarminPoint::calculate_durations(&mut point_list);
 
         Ok(ParseOutput {
             lap_list,

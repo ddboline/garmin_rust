@@ -9,7 +9,7 @@ use tokio::{
     task::{spawn, JoinHandle},
 };
 
-use super::stack_string::StackString;
+use stack_string::StackString;
 #[derive(Clone, Debug)]
 pub struct StdoutChannel {
     receiver: Arc<Mutex<UnboundedReceiver<Option<StackString>>>>,

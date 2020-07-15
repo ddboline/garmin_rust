@@ -6,6 +6,7 @@ use json::{parse, JsonValue};
 use log::debug;
 use postgres_query::FromSqlRow;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use stack_string::StackString;
 use std::{collections::HashMap, fs::File, hash::BuildHasher, io::Read, str};
 
 use super::{garmin_lap::GarminLap, pgpool::PgPool};
@@ -257,9 +258,9 @@ impl GarminCorrectionLap {
         let stmt_insert = conn.prepare(query_insert).await?;
         let stmt_update = conn.prepare(query_update).await?;
         for corr in corr_list_map.values() {
-            let sport: Option<String> = corr.sport.and_then(|s| match s {
+            let sport: Option<StackString> = corr.sport.and_then(|s| match s {
                 SportTypes::None => None,
-                s => Some(s.to_string()),
+                s => Some(s.to_string().into()),
             });
 
             if conn

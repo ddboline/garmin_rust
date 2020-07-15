@@ -1,9 +1,9 @@
 use anyhow::Error;
 use chrono::{Date, DateTime, Datelike, Local, Utc};
 use log::debug;
-use std::collections::HashSet;
-
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use stack_string::StackString;
+use std::collections::HashSet;
 
 use crate::{
     common::{
@@ -22,7 +22,6 @@ use crate::{
         plot_graph::generate_d3_plot,
         plot_opts::PlotOpts,
         sport_types::{get_sport_type_map, SportTypes},
-        stack_string::StackString,
     },
 };
 

@@ -9,7 +9,7 @@ use std::{
     sync::Arc,
 };
 
-use crate::utils::stack_string::StackString;
+use stack_string::StackString;
 
 /// `GarminConfig` holds configuration information which can be set either
 /// through environment variables or the config.env file, see the dotenv crate

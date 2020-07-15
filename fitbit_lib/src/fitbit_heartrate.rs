@@ -10,6 +10,7 @@ use rayon::{
     slice::ParallelSliceMut,
 };
 use serde::{self, Deserialize, Deserializer, Serialize};
+use stack_string::StackString;
 use std::{collections::HashSet, fs::File, path::Path};
 use structopt::StructOpt;
 
@@ -19,7 +20,7 @@ use garmin_lib::{
         garmin_file::GarminFile, garmin_summary::get_list_of_files_from_db, pgpool::PgPool,
     },
     reports::garmin_templates::{PLOT_TEMPLATE, PLOT_TEMPLATE_DEMO, TIMESERIESTEMPLATE},
-    utils::{iso_8601_datetime, stack_string::StackString},
+    utils::iso_8601_datetime,
 };
 
 use crate::fitbit_statistics_summary::FitbitStatisticsSummary;

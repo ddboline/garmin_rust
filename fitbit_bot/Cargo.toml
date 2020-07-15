@@ -20,3 +20,4 @@ log = "0.4"
 anyhow = "1.0"
 thiserror = "1.0"
 rayon = "1.3"
+stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", branch="master", features=["postgres_types"] }

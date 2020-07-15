@@ -2,12 +2,13 @@ use anyhow::Error;
 use chrono::{DateTime, Duration, NaiveDate, Utc};
 use postgres_query::FromSqlRow;
 use serde::{Deserialize, Serialize};
+use stack_string::StackString;
 use statistical::{mean, median, standard_deviation};
 
 use garmin_lib::{
     common::pgpool::PgPool,
     reports::garmin_templates::{PLOT_TEMPLATE, PLOT_TEMPLATE_DEMO},
-    utils::{plot_graph::generate_d3_plot, plot_opts::PlotOpts, stack_string::StackString},
+    utils::{plot_graph::generate_d3_plot, plot_opts::PlotOpts},
 };
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, FromSqlRow)]

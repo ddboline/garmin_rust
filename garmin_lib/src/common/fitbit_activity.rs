@@ -5,9 +5,10 @@ use log::debug;
 use postgres_query::{FromSqlRow, Parameter};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
+use stack_string::StackString;
 use std::collections::HashMap;
 
-use crate::{common::pgpool::PgPool, utils::stack_string::StackString};
+use crate::common::pgpool::PgPool;
 
 #[derive(Serialize, Deserialize, Clone, Debug, FromSqlRow)]
 pub struct FitbitActivity {

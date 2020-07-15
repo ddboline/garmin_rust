@@ -45,3 +45,4 @@ smartstring = "0.2"
 rustls-native-certs = {version="0.4", default_features=false}
 envy = "0.4"
 fitparser = "0.2"
+stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", branch="master", features=["postgres_types"] }

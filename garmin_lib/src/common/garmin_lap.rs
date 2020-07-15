@@ -3,13 +3,13 @@ use chrono::{DateTime, Utc};
 use fitparser::{FitDataField, Value};
 use roxmltree::{Node, NodeType};
 use serde::{Deserialize, Serialize};
+use stack_string::StackString;
 use std::fmt;
 
 use crate::utils::{
     garmin_util::{convert_time_string, convert_xml_local_time_to_utc, get_f64, get_i64},
     iso_8601_datetime::{self, convert_datetime_to_str, sentinel_datetime},
     sport_types::SportTypes,
-    stack_string::StackString,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

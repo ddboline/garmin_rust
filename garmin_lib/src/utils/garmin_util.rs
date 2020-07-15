@@ -7,6 +7,7 @@ use rand::{
     distributions::{Alphanumeric, Distribution, Uniform},
     thread_rng,
 };
+use stack_string::StackString;
 use std::{
     fs::remove_file,
     future::Future,
@@ -15,8 +16,6 @@ use std::{
 };
 use subprocess::{Exec, Redirection};
 use tokio::time::{delay_for, Duration};
-
-use super::stack_string::StackString;
 
 pub const METERS_PER_MILE: f64 = 1609.344;
 pub const MARATHON_DISTANCE_M: i32 = 42195;

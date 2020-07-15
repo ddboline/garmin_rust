@@ -9,6 +9,7 @@ use maplit::hashmap;
 use rand::{thread_rng, Rng};
 use reqwest::{header::HeaderMap, Client, Response, Url};
 use serde::{Deserialize, Serialize};
+use stack_string::StackString;
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
@@ -21,15 +22,12 @@ use tokio::{
     time::{delay_for, Duration},
 };
 
-use garmin_lib::{
-    common::{
-        fitbit_activity::FitbitActivity,
-        garmin_config::GarminConfig,
-        garmin_connect_client::GarminConnectClient,
-        garmin_summary::{get_list_of_activities_from_db, GarminSummary},
-        pgpool::PgPool,
-    },
-    utils::stack_string::StackString,
+use garmin_lib::common::{
+    fitbit_activity::FitbitActivity,
+    garmin_config::GarminConfig,
+    garmin_connect_client::GarminConnectClient,
+    garmin_summary::{get_list_of_activities_from_db, GarminSummary},
+    pgpool::PgPool,
 };
 
 use crate::{

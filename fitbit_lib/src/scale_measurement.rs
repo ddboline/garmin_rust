@@ -4,6 +4,7 @@ use log::debug;
 use postgres_query::{FromSqlRow, Parameter};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use serde::{self, Deserialize, Serialize};
+use stack_string::StackString;
 use std::fmt;
 
 use garmin_lib::{
@@ -11,7 +12,7 @@ use garmin_lib::{
     reports::garmin_templates::{PLOT_TEMPLATE, PLOT_TEMPLATE_DEMO},
     utils::{
         iso_8601_datetime::convert_datetime_to_str, plot_graph::generate_d3_plot,
-        plot_opts::PlotOpts, stack_string::StackString,
+        plot_opts::PlotOpts,
     },
 };
 

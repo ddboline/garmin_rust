@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use crate::utils::stack_string::StackString;
+use stack_string::StackString;
 
 #[derive(Serialize, Default)]
 pub struct PlotOpts<'a> {

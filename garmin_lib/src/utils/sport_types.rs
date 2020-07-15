@@ -2,10 +2,9 @@ use anyhow::{format_err, Error};
 use bytes::BytesMut;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use stack_string::StackString;
 use std::{collections::HashMap, convert::TryFrom, fmt, str::FromStr};
 use tokio_postgres::types::{FromSql, IsNull, ToSql, Type};
-
-use super::stack_string::StackString;
 
 lazy_static! {
     static ref SPORT_TYPE_MAP: HashMap<StackString, SportTypes> = init_sport_type_map();
@@ -37,22 +36,7 @@ impl Default for SportTypes {
 
 impl fmt::Display for SportTypes {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let sport_str = match self {
-            Self::Running => "running",
-            Self::Biking => "biking",
-            Self::Walking => "walking",
-            Self::Hiking => "hiking",
-            Self::Ultimate => "ultimate",
-            Self::Elliptical => "elliptical",
-            Self::Stairs => "stairs",
-            Self::Lifting => "lifting",
-            Self::Swimming => "swimming",
-            Self::Other => "other",
-            Self::Snowshoeing => "snowshoeing",
-            Self::Skiing => "skiing",
-            Self::None => "none",
-        };
-        write!(f, "{}", sport_str)
+        write!(f, "{}", self.to_str())
     }
 }
 
@@ -80,6 +64,24 @@ where
 }
 
 impl SportTypes {
+    pub fn to_str(self) -> &'static str {
+        match self {
+            Self::Running => "running",
+            Self::Biking => "biking",
+            Self::Walking => "walking",
+            Self::Hiking => "hiking",
+            Self::Ultimate => "ultimate",
+            Self::Elliptical => "elliptical",
+            Self::Stairs => "stairs",
+            Self::Lifting => "lifting",
+            Self::Swimming => "swimming",
+            Self::Other => "other",
+            Self::Snowshoeing => "snowshoeing",
+            Self::Skiing => "skiing",
+            Self::None => "none",
+        }
+    }
+
     pub fn to_strava_activity(self) -> StackString {
         match self {
             Self::Running => "Run",

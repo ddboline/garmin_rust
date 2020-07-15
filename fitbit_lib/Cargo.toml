@@ -34,3 +34,4 @@ base64 = "0.12"
 maplit = "1.0"
 bytes = "0.5"
 statistical = "1.0"
+stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", branch="master", features=["postgres_types"] }

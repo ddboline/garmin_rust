@@ -5,6 +5,7 @@ use futures::future::try_join_all;
 use log::debug;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
+use stack_string::StackString;
 use std::{
     collections::{HashMap, HashSet},
     path::{Path, PathBuf},
@@ -32,7 +33,7 @@ use garmin_lib::{
         pgpool::PgPool,
         strava_activity::StravaActivity,
     },
-    utils::{sport_types::SportTypes, stack_string::StackString},
+    utils::sport_types::SportTypes,
 };
 
 use crate::{errors::ServiceError as Error, CONFIG};
@@ -731,7 +732,7 @@ impl HandleRequest<StravaUpdateRequest> for PgPool {
             .update_strava_activity(
                 msg.activity_id,
                 &msg.title,
-                msg.description.as_deref(),
+                msg.description.as_ref().map(StackString::as_str),
                 sport,
             )
             .await

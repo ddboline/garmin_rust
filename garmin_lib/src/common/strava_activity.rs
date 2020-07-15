@@ -5,6 +5,7 @@ use log::debug;
 use postgres_query::{FromSqlRow, Parameter};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
+use stack_string::StackString;
 use std::collections::HashMap;
 
 use crate::{
@@ -12,7 +13,6 @@ use crate::{
     utils::{
         iso_8601_datetime,
         sport_types::{self, SportTypes},
-        stack_string::StackString,
     },
 };
 

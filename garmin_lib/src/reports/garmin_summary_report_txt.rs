@@ -3,6 +3,7 @@ use chrono::{DateTime, Utc};
 use futures::future::try_join_all;
 use log::debug;
 use postgres_query::FromSqlRow;
+use stack_string::StackString;
 
 use crate::{
     common::{
@@ -15,7 +16,6 @@ use crate::{
             days_in_month, days_in_year, print_h_m_s, METERS_PER_MILE, MONTH_NAMES, WEEKDAY_NAMES,
         },
         iso_8601_datetime::convert_datetime_to_str,
-        stack_string::StackString,
     },
 };
 

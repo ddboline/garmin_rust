@@ -1,17 +1,15 @@
 use anyhow::Error;
 use chrono::{Duration, Utc};
+use stack_string::StackString;
 use std::path::PathBuf;
 use structopt::StructOpt;
 use tokio::try_join;
 
 use fitbit_lib::{fitbit_client::FitbitClient, fitbit_heartrate::FitbitHeartRate};
-use garmin_lib::{
-    common::{
-        garmin_cli::{GarminCli, GarminCliOptions},
-        garmin_config::GarminConfig,
-        pgpool::PgPool,
-    },
-    utils::stack_string::StackString,
+use garmin_lib::common::{
+    garmin_cli::{GarminCli, GarminCliOptions},
+    garmin_config::GarminConfig,
+    pgpool::PgPool,
 };
 
 #[derive(StructOpt)]

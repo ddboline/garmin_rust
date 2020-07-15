@@ -6,6 +6,7 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use rusoto_core::Region;
 use rusoto_s3::{GetObjectRequest, Object as S3Object, PutObjectRequest, S3Client};
 use s3_ext::S3Ext;
+use stack_string::StackString;
 use std::{
     borrow::Borrow,
     collections::{HashMap, HashSet},
@@ -16,10 +17,7 @@ use std::{
 };
 use sts_profile_auth::get_client_sts;
 
-use crate::utils::{
-    garmin_util::{exponential_retry, get_md5sum},
-    stack_string::StackString,
-};
+use crate::utils::garmin_util::{exponential_retry, get_md5sum};
 
 pub fn get_s3_client() -> S3Client {
     get_client_sts!(S3Client, Region::UsEast1).expect("Failed to obtain client")

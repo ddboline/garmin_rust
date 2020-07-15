@@ -5,6 +5,7 @@ use lazy_static::lazy_static;
 use log::debug;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use regex::Regex;
+use stack_string::StackString;
 use std::{
     collections::{HashMap, HashSet},
     ffi::OsStr,
@@ -34,7 +35,6 @@ use crate::{
     utils::{
         garmin_util::{extract_zip_from_garmin_connect, get_file_list},
         sport_types::get_sport_type_map,
-        stack_string::StackString,
         stdout_channel::StdoutChannel,
     },
 };

@@ -5,10 +5,10 @@ use log::debug;
 use postgres_query::{FromSqlRow, Parameter};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use serde::{Deserialize, Deserializer, Serialize};
+use stack_string::StackString;
 use std::collections::HashMap;
 
 use super::pgpool::PgPool;
-use crate::utils::stack_string::StackString;
 
 #[derive(Serialize, Deserialize, Debug, FromSqlRow)]
 pub struct GarminConnectActivity {

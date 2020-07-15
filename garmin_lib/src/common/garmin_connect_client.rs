@@ -9,10 +9,9 @@ use reqwest::{
     Url,
 };
 use serde::{Deserialize, Serialize};
+use stack_string::StackString;
 use std::{path::PathBuf, thread::sleep, time::Duration};
 use tokio::{fs::File, io::AsyncWriteExt, stream::StreamExt, sync::Mutex};
-
-use crate::utils::stack_string::StackString;
 
 use super::{
     garmin_config::GarminConfig, garmin_connect_activity::GarminConnectActivity,
@@ -321,7 +320,7 @@ impl GarminConnectClient {
 pub async fn get_garmin_connect_session(
     config: &GarminConfig,
 ) -> Result<GarminConnectClient, Error> {
-    let mut session = CONNECT_SESSION.lock().await;
+    let mut session = CONNECT_SESSION.lock().await.clone();
     session.config = config.clone();
 
     if session
@@ -329,10 +328,19 @@ pub async fn get_garmin_connect_session(
         .await
         .is_err()
     {
-        session.authorize().await?;
+        let mut session_guard = CONNECT_SESSION.lock().await;
+        session_guard.config = config.clone();
+        if session_guard
+            .get_user_summary(Utc::now().naive_local().date())
+            .await
+            .is_err()
+        {
+            session_guard.authorize().await?;
+        }
+        session = session_guard.clone();
     }
 
-    Ok(session.clone())
+    Ok(session)
 }
 
 #[derive(Serialize, Deserialize, Debug)]

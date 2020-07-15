@@ -6,6 +6,7 @@ use log::debug;
 use postgres_query::FromSqlRow;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
+use stack_string::StackString;
 use std::{collections::HashMap, fmt, fs::File, path::Path, sync::Arc};
 
 use super::{garmin_correction_lap::GarminCorrectionLap, garmin_file::GarminFile, pgpool::PgPool};
@@ -14,7 +15,6 @@ use crate::{
     utils::{
         garmin_util::{generate_random_string, get_file_list, get_md5sum},
         iso_8601_datetime::{self, convert_datetime_to_str, sentinel_datetime},
-        stack_string::StackString,
     },
 };
 

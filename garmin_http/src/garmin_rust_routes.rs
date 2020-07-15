@@ -10,6 +10,7 @@ use actix_web::{
 use anyhow::format_err;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
+use stack_string::StackString;
 use std::string::ToString;
 use tempdir::TempDir;
 use tokio::{fs::File, io::AsyncWriteExt, stream::StreamExt, task::spawn_blocking};
@@ -23,7 +24,7 @@ use garmin_lib::{
     reports::{
         garmin_file_report_html::generate_history_buttons, garmin_file_report_txt::get_splits,
     },
-    utils::{iso_8601_datetime::convert_datetime_to_str, stack_string::StackString},
+    utils::iso_8601_datetime::convert_datetime_to_str,
 };
 
 use super::{errors::ServiceError as Error, logged_user::LoggedUser};
@@ -129,7 +130,7 @@ pub async fn garmin_demo(
     if history.len() > 5 {
         history.remove(0);
     }
-    history.push(grec.request.filter.as_ref().into());
+    history.push(grec.request.filter.clone());
     session
         .set("history", history)
         .map_err(|e| format_err!("Failed to set history {:?}", e))?;

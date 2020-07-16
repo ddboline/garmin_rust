@@ -1,6 +1,6 @@
 [package]
 name = "garmin_http"
-version = "0.8.43"
+version = "0.8.44"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -29,4 +29,4 @@ anyhow = "1.0"
 thiserror = "1.0"
 async-trait = "0.1"
 rayon = "1.3"
-stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.1.1", features=["postgres_types"] }
+stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.1.2", features=["postgres_types"] }

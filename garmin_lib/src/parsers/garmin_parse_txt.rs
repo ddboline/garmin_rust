@@ -1,5 +1,5 @@
 use anyhow::{format_err, Error};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Utc, NaiveDate, NaiveTime, NaiveDateTime};
 use std::{
     collections::HashMap,
     fs::File,
@@ -17,7 +17,6 @@ use crate::{
     },
     utils::{
         garmin_util::{convert_time_string, METERS_PER_MILE},
-        iso_8601_datetime::convert_str_to_datetime,
         sport_types::{get_sport_type_map, SportTypes},
     },
 };
@@ -203,43 +202,33 @@ impl GarminParseTxt {
         let entry_dict: HashMap<_, _> = line
             .split_whitespace()
             .filter_map(|x| {
-                let entries: Vec<_> = x.split('=').collect();
-                match entries.get(0) {
-                    Some(key) => match entries.get(1) {
-                        Some(val) => Some(((*key).to_string(), val.trim().to_string())),
-                        _ => None,
-                    },
-                    _ => None,
+                let mut entries = x.split('=');
+                if let Some(key) = entries.next() {
+                    if let Some(val) = entries.next() {
+                        return Some(((*key).to_string(), val.trim().to_string()));
+                    }
                 }
+                None
             })
             .collect();
 
-        let (year, month, date): (i32, i32, i32) = match entry_dict.get("date") {
-            Some(val) => (val[0..4].parse()?, val[4..6].parse()?, val[6..8].parse()?),
-            _ => (-1, -1, -1),
-        };
-
-        let (hour, minute, second): (i32, i32, i32) = match entry_dict.get("time") {
+        let date = match entry_dict.get("date") {
             Some(val) => {
-                let entries: Vec<_> = val.split(':').collect();
-                match entries.get(0) {
-                    Some(h) => match entries.get(1) {
-                        Some(m) => match entries.get(2) {
-                            Some(s) => (h.parse()?, m.parse()?, s.parse()?),
-                            None => (h.parse()?, m.parse()?, 0),
-                        },
-                        None => (h.parse()?, 0, 0),
-                    },
-                    None => (12, 0, 0),
-                }
-            }
-            None => (12, 0, 0),
+                NaiveDate::parse_from_str(val, "%Y%m%d")?
+            },
+            None => return Err(format_err!("No date value")),
         };
 
-        let lap_start = convert_str_to_datetime(&format!(
-            "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
-            year, month, date, hour, minute, second
-        ))?;
+        let time = if let Some(val) = entry_dict.get("time") {
+            NaiveTime::parse_from_str(val, "%H:%M:%S")?
+        } else {
+            NaiveTime::from_hms(12,0,0)
+        };
+
+        let lap_start = {
+            let dt = NaiveDateTime::new(date, time);
+            DateTime::from_utc(dt, Utc)
+        };
 
         let lap_type = match entry_dict.get("type") {
             Some(val) => match sport_type_map.get(val.as_str()) {

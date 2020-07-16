@@ -41,7 +41,7 @@ use crate::{
 
 use super::{
     garmin_config::GarminConfig,
-    garmin_connect_client::GarminConnectClient,
+    garmin_connect_client::get_garmin_connect_session,
     garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionMap},
     garmin_file,
     garmin_summary::{get_list_of_files_from_db, GarminSummary},
@@ -575,7 +575,7 @@ impl GarminCli {
 
     pub async fn sync_with_garmin_connect(&self) -> Result<Vec<PathBuf>, Error> {
         if let Some(max_datetime) = get_maximum_begin_datetime(&self.pool).await? {
-            let session = GarminConnectClient::get_session(self.config.clone()).await?;
+            let session = get_garmin_connect_session(&self.config).await?;
             let activities = session.get_activities(max_datetime).await?;
             let filenames = session.get_activity_files(&activities).await?;
             session

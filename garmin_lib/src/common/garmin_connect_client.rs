@@ -191,12 +191,6 @@ impl GarminConnectClient {
         Ok(())
     }
 
-    pub async fn get_session(config: GarminConfig) -> Result<Self, Error> {
-        let mut session = Self::new(config);
-        session.authorize().await?;
-        Ok(session)
-    }
-
     pub async fn get_user_summary(
         &self,
         date: NaiveDate,
@@ -212,7 +206,7 @@ impl GarminConnectClient {
         let url = Url::parse_with_params(&url_prefix, &[("calendarDate", &date.to_string())])?;
         let resp = self
             .session
-            .get(&url, &HeaderMap::new())
+            .get_no_retry(&url, &HeaderMap::new())
             .await?
             .error_for_status()?;
         let user_summary = resp.json().await?;
@@ -384,24 +378,14 @@ mod tests {
         let max_timestamp = Utc::now() - Duration::days(14);
         let result = session.get_activities(max_timestamp).await?;
         assert!(result.len() > 0);
-        Ok(())
-    }
 
-    #[tokio::test]
-    #[ignore]
-    async fn test_get_user_summary() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
         let session = get_garmin_connect_session(&config).await?;
         let user_summary = session
             .get_user_summary((Utc::now() - Duration::days(1)).naive_local().date())
             .await?;
         assert_eq!(user_summary.user_profile_id, 1377808);
-        Ok(())
-    }
 
-    #[tokio::test]
-    #[ignore]
-    async fn test_dump_connect_activities() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
 
         let pool = PgPool::new(&config.pgurl);

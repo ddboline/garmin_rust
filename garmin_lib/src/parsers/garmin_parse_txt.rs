@@ -1,5 +1,5 @@
 use anyhow::{format_err, Error};
-use chrono::{DateTime, Utc, NaiveDate, NaiveTime, NaiveDateTime};
+use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, Utc};
 use std::{
     collections::HashMap,
     fs::File,
@@ -213,16 +213,14 @@ impl GarminParseTxt {
             .collect();
 
         let date = match entry_dict.get("date") {
-            Some(val) => {
-                NaiveDate::parse_from_str(val, "%Y%m%d")?
-            },
+            Some(val) => NaiveDate::parse_from_str(val, "%Y%m%d")?,
             None => return Err(format_err!("No date value")),
         };
 
         let time = if let Some(val) = entry_dict.get("time") {
             NaiveTime::parse_from_str(val, "%H:%M:%S")?
         } else {
-            NaiveTime::from_hms(12,0,0)
+            NaiveTime::from_hms(12, 0, 0)
         };
 
         let lap_start = {

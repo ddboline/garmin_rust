@@ -10,6 +10,7 @@ edition = "2018"
 serde = {version="1.0", features=["derive"]}
 serde_json = "1.0"
 garmin_lib = {path = "../garmin_lib"}
+garmin_connect_lib = {path = "../garmin_connect_lib"}
 chrono = "0.4"
 dotenv = "0.15"
 crossbeam-channel = "0.4"

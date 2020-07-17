@@ -13,10 +13,11 @@ use stack_string::StackString;
 use std::{path::PathBuf, thread::sleep, time::Duration};
 use tokio::{fs::File, io::AsyncWriteExt, stream::StreamExt, sync::Mutex};
 
-use super::{
+use garmin_lib::common::{
     garmin_config::GarminConfig, garmin_connect_activity::GarminConnectActivity,
-    reqwest_session::ReqwestSession,
 };
+
+use super::reqwest_session::ReqwestSession;
 
 const GARMIN_PREFIX: &str = "https://connect.garmin.com/modern";
 const CONNECT_SESSION_TIMEOUT: i64 = 3600;
@@ -375,11 +376,9 @@ mod tests {
     use futures::future::try_join_all;
     use std::collections::HashMap;
 
-    use crate::common::{
-        garmin_config::GarminConfig,
-        garmin_connect_client::{get_garmin_connect_session, GarminConnectActivity},
-        pgpool::PgPool,
-    };
+    use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
+
+    use crate::garmin_connect_client::{get_garmin_connect_session, GarminConnectActivity};
 
     #[tokio::test]
     #[ignore]

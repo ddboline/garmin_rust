@@ -17,7 +17,6 @@ use tempdir::TempDir;
 use tokio::task::spawn_blocking;
 
 use crate::{
-    common::garmin_summary::get_maximum_begin_datetime,
     parsers::{
         garmin_parse::{GarminParse, GarminParseTrait},
         garmin_parse_fit::GarminParseFit,
@@ -41,7 +40,6 @@ use crate::{
 
 use super::{
     garmin_config::GarminConfig,
-    garmin_connect_client::get_garmin_connect_session,
     garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionMap},
     garmin_file,
     garmin_summary::{get_list_of_files_from_db, GarminSummary},
@@ -134,26 +132,6 @@ impl GarminCli {
 
     pub fn get_parser(&self) -> &GarminParse {
         &self.parser
-    }
-
-    pub async fn garmin_proc(&self) -> Result<(), Error> {
-        if let Some(GarminCliOptions::Connect) = self.get_opts() {
-            self.sync_with_garmin_connect().await?;
-        }
-
-        if let Some(GarminCliOptions::ImportFileNames(filenames)) = self.get_opts() {
-            let filenames = filenames.clone();
-
-            self.process_filenames(&filenames).await?;
-        }
-
-        let results = match self.get_opts() {
-            Some(GarminCliOptions::Bootstrap) => self.run_bootstrap().await,
-            Some(GarminCliOptions::Sync(check_md5)) => self.sync_everything(*check_md5).await,
-            _ => self.proc_everything().await,
-        }?;
-        self.stdout.send(results.join("\n").into())?;
-        Ok(())
     }
 
     pub async fn proc_everything(&self) -> Result<Vec<StackString>, Error> {
@@ -571,20 +549,6 @@ impl GarminCli {
                 .collect()
         })
         .await?
-    }
-
-    pub async fn sync_with_garmin_connect(&self) -> Result<Vec<PathBuf>, Error> {
-        if let Some(max_datetime) = get_maximum_begin_datetime(&self.pool).await? {
-            let session = get_garmin_connect_session(&self.config).await?;
-            let activities = session.get_activities(max_datetime).await?;
-            let filenames = session.get_activity_files(&activities).await?;
-            session
-                .get_heartrate((Utc::now()).naive_local().date())
-                .await?;
-            self.process_filenames(&filenames).await?;
-            return Ok(filenames);
-        }
-        Ok(Vec::new())
     }
 }
 

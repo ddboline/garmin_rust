@@ -22,10 +22,11 @@ use tokio::{
     time::{delay_for, Duration},
 };
 
+use garmin_connect_lib::garmin_connect_client::GarminConnectClient;
+
 use garmin_lib::common::{
     fitbit_activity::FitbitActivity,
     garmin_config::GarminConfig,
-    garmin_connect_client::GarminConnectClient,
     garmin_summary::{get_list_of_activities_from_db, GarminSummary},
     pgpool::PgPool,
 };

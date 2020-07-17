@@ -22,12 +22,12 @@ use fitbit_lib::{
 
 use strava_lib::strava_client::{StravaAthlete, StravaClient};
 
+use garmin_connect_lib::garmin_connect_client::get_garmin_connect_session;
 use garmin_lib::{
     common::{
         fitbit_activity::FitbitActivity,
         garmin_cli::{GarminCli, GarminRequest},
         garmin_connect_activity::GarminConnectActivity,
-        garmin_connect_client::get_garmin_connect_session,
         garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionMap},
         garmin_summary::{get_filename_from_datetime, get_list_of_files_from_db},
         pgpool::PgPool,

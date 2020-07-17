@@ -7,7 +7,7 @@ use reqwest::{
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::Mutex;
 
-use crate::utils::garmin_util::exponential_retry;
+use garmin_lib::utils::garmin_util::exponential_retry;
 
 #[derive(Debug)]
 struct ReqwestSessionInner {

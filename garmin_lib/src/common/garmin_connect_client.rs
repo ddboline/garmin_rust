@@ -19,6 +19,7 @@ use super::{
 };
 
 const GARMIN_PREFIX: &str = "https://connect.garmin.com/modern";
+const CONNECT_SESSION_TIMEOUT: i64 = 3600;
 
 lazy_static! {
     static ref CONNECT_SESSION: Mutex<GarminConnectClient> =
@@ -36,6 +37,7 @@ pub struct GarminConnectClient {
     pub config: GarminConfig,
     session: ReqwestSession,
     display_name: Option<StackString>,
+    auth_time: Option<DateTime<Utc>>,
 }
 
 impl Default for GarminConnectClient {
@@ -51,6 +53,7 @@ impl GarminConnectClient {
             config,
             session: ReqwestSession::new(false),
             display_name: None,
+            auth_time: None,
         }
     }
 
@@ -188,6 +191,7 @@ impl GarminConnectClient {
         }
 
         self.session.set_default_headers(obligatory_headers).await?;
+        self.auth_time = Some(Utc::now());
         Ok(())
     }
 
@@ -317,10 +321,15 @@ pub async fn get_garmin_connect_session(
     let mut session = CONNECT_SESSION.lock().await.clone();
     session.config = config.clone();
 
+    // if session is old, OR hasn't been authorized, OR get_user_summary fails, then reauthorize
     if session
-        .get_user_summary(Utc::now().naive_local().date())
-        .await
-        .is_err()
+        .auth_time
+        .map(|t| (Utc::now() - t).num_seconds() > CONNECT_SESSION_TIMEOUT)
+        .unwrap_or(true)
+        || session
+            .get_user_summary(Utc::now().naive_local().date())
+            .await
+            .is_err()
     {
         let mut session_guard = CONNECT_SESSION.lock().await;
         session_guard.config = config.clone();

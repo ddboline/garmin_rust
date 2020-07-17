@@ -321,15 +321,14 @@ pub async fn get_garmin_connect_session(
     let mut session = CONNECT_SESSION.lock().await.clone();
     session.config = config.clone();
 
-    // if session is old, OR hasn't been authorized, OR get_user_summary fails, then reauthorize
-    if session
-        .auth_time
-        .map(|t| (Utc::now() - t).num_seconds() > CONNECT_SESSION_TIMEOUT)
-        .unwrap_or(true)
-        || session
-            .get_user_summary(Utc::now().naive_local().date())
-            .await
-            .is_err()
+    // if session is old, OR hasn't been authorized, OR get_user_summary fails, then
+    // reauthorize
+    if session.auth_time.map_or(true, |t| {
+        (Utc::now() - t).num_seconds() > CONNECT_SESSION_TIMEOUT
+    }) || session
+        .get_user_summary(Utc::now().naive_local().date())
+        .await
+        .is_err()
     {
         let mut session_guard = CONNECT_SESSION.lock().await;
         session_guard.config = config.clone();

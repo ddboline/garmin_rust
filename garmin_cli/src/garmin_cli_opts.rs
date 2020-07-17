@@ -6,9 +6,11 @@ use structopt::StructOpt;
 use tokio::try_join;
 
 use fitbit_lib::{fitbit_client::FitbitClient, fitbit_heartrate::FitbitHeartRate};
+use garmin_connect_lib::garmin_connect_client::get_garmin_connect_session;
 use garmin_lib::common::{
     garmin_cli::{GarminCli, GarminCliOptions},
     garmin_config::GarminConfig,
+    garmin_summary::get_maximum_begin_datetime,
     pgpool::PgPool,
 };
 
@@ -93,8 +95,42 @@ impl GarminCliOpts {
             }
         }
 
-        cli.garmin_proc().await?;
+        Self::garmin_proc(&cli).await?;
         cli.stdout.close().await?;
         stdout_task.await?
+    }
+
+    pub async fn garmin_proc(cli: &GarminCli) -> Result<(), Error> {
+        if let Some(GarminCliOptions::Connect) = cli.get_opts() {
+            Self::sync_with_garmin_connect(&cli).await?;
+        }
+
+        if let Some(GarminCliOptions::ImportFileNames(filenames)) = cli.get_opts() {
+            let filenames = filenames.clone();
+
+            cli.process_filenames(&filenames).await?;
+        }
+
+        let results = match cli.get_opts() {
+            Some(GarminCliOptions::Bootstrap) => cli.run_bootstrap().await,
+            Some(GarminCliOptions::Sync(check_md5)) => cli.sync_everything(*check_md5).await,
+            _ => cli.proc_everything().await,
+        }?;
+        cli.stdout.send(results.join("\n").into())?;
+        Ok(())
+    }
+
+    pub async fn sync_with_garmin_connect(cli: &GarminCli) -> Result<Vec<PathBuf>, Error> {
+        if let Some(max_datetime) = get_maximum_begin_datetime(&cli.pool).await? {
+            let session = get_garmin_connect_session(&cli.config).await?;
+            let activities = session.get_activities(max_datetime).await?;
+            let filenames = session.get_activity_files(&activities).await?;
+            session
+                .get_heartrate((Utc::now()).naive_local().date())
+                .await?;
+            cli.process_filenames(&filenames).await?;
+            return Ok(filenames);
+        }
+        Ok(Vec::new())
     }
 }

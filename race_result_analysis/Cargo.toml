@@ -1,0 +1,19 @@
+[package]
+name = "race_result_analysis"
+version = "0.1.0"
+authors = ["Daniel Boline <ddboline@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+garmin_lib = {path="../garmin_lib"}
+tokio-postgres = {version = "0.5", features = ["with-chrono-0_4"]}
+postgres-types = "0.1"
+bytes = "0.5"
+anyhow = "1.0"
+serde = {version="1.0", features=["derive"]}
+serde_json = "1.0"
+postgres_query = "0.3"
+chrono = "0.4"
+tokio = {version="0.2", features=["full"]}

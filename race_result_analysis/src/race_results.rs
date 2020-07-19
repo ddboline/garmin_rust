@@ -4,9 +4,10 @@ use postgres_query::FromSqlRow;
 use serde::{Deserialize, Serialize};
 use std::fmt::{self, Display, Formatter};
 
-use garmin_lib::common::pgpool::PgPool;
-use garmin_lib::utils::garmin_util::print_h_m_s;
-use garmin_lib::utils::garmin_util::METERS_PER_MILE;
+use garmin_lib::{
+    common::pgpool::PgPool,
+    utils::garmin_util::{print_h_m_s, METERS_PER_MILE},
+};
 
 use crate::race_type::RaceType;
 
@@ -25,12 +26,20 @@ impl Display for RaceResults {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "RaceResults(\nid: {}\nrace_type: {}{}{}\nrace_distance: {} km\nrace_time: {}\nrace_flag: \
-             {}\n)",
+            "RaceResults(\nid: {}\nrace_type: {}{}{}\nrace_distance: {} km\nrace_time: \
+             {}\nrace_flag: {}\n)",
             self.id,
             self.race_type,
-            if let Some(date) = self.race_date {format!("\nrace_date: {}", date)} else {"".to_string()},
-            if let Some(name) = &self.race_name {format!("\nrace_name: {}", name)} else {"".to_string()},
+            if let Some(date) = self.race_date {
+                format!("\nrace_date: {}", date)
+            } else {
+                "".to_string()
+            },
+            if let Some(name) = &self.race_name {
+                format!("\nrace_name: {}", name)
+            } else {
+                "".to_string()
+            },
             self.race_distance,
             print_h_m_s(self.race_time, true).unwrap_or_else(|_| "".into()),
             self.race_flag,
@@ -84,9 +93,14 @@ impl RaceResults {
             .collect()
     }
 
-    pub async fn get_race_by_distance(race_distance: i32, race_type: RaceType, pool: &PgPool) -> Result<Vec<Self>, Error> {
+    pub async fn get_race_by_distance(
+        race_distance: i32,
+        race_type: RaceType,
+        pool: &PgPool,
+    ) -> Result<Vec<Self>, Error> {
         let query = postgres_query::query!(
-            "SELECT * FROM race_results WHERE race_distance = $race_distance and race_type = $race_type",
+            "SELECT * FROM race_results WHERE race_distance = $race_distance and race_type = \
+             $race_type",
             race_distance = race_distance,
             race_type = race_type,
         );
@@ -248,11 +262,9 @@ mod tests {
     use anyhow::Error;
     use chrono::NaiveDate;
 
-    use garmin_lib::common::garmin_config::GarminConfig;
-    use garmin_lib::common::pgpool::PgPool;
+    use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
 
-    use crate::race_results::RaceResults;
-    use crate::race_type::RaceType;
+    use crate::{race_results::RaceResults, race_type::RaceType};
 
     fn get_test_race_result() -> RaceResults {
         RaceResults {
@@ -315,7 +327,8 @@ mod tests {
         let pool = PgPool::new(&config.pgurl);
         for result in &results {
             if let Some(date) = result.race_date {
-                let existing = RaceResults::get_race_by_date(date, RaceType::Personal, &pool).await?;
+                let existing =
+                    RaceResults::get_race_by_date(date, RaceType::Personal, &pool).await?;
                 for exist in existing {
                     exist.delete_from_db(&pool).await?;
                 }
@@ -345,15 +358,19 @@ mod tests {
         let pool = PgPool::new(&config.pgurl);
 
         for result in mens_results.into_iter().chain(womens_results.into_iter()) {
-            let existing = RaceResults::get_race_by_distance(result.race_distance, result.race_type, &pool).await?;
+            let existing =
+                RaceResults::get_race_by_distance(result.race_distance, result.race_type, &pool)
+                    .await?;
             for exist in existing {
                 exist.delete_from_db(&pool).await?;
             }
             result.insert_into_db(&pool).await?;
         }
-        let mens_results = RaceResults::get_results_by_type(RaceType::WorldRecordMen, &pool).await?;
+        let mens_results =
+            RaceResults::get_results_by_type(RaceType::WorldRecordMen, &pool).await?;
         assert_eq!(mens_results.len(), 24);
-        let womens_results = RaceResults::get_results_by_type(RaceType::WorldRecordWomen, &pool).await?;
+        let womens_results =
+            RaceResults::get_results_by_type(RaceType::WorldRecordWomen, &pool).await?;
         assert_eq!(womens_results.len(), 24);
         Ok(())
     }

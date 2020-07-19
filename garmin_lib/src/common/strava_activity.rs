@@ -16,7 +16,7 @@ use crate::{
     },
 };
 
-#[derive(Serialize, Deserialize, FromSqlRow, Debug, Clone)]
+#[derive(Serialize, Deserialize, FromSqlRow, Debug, Clone, PartialEq)]
 pub struct StravaActivity {
     pub name: StackString,
     #[serde(with = "iso_8601_datetime")]
@@ -161,13 +161,23 @@ impl StravaActivity {
             .iter()
             .partition(|activity| existing_activities.contains_key(&activity.id));
 
-        let futures = update_items.into_iter().map(|activity| {
-            let pool = pool.clone();
-            async move {
-                activity.update_db(&pool).await?;
-                Ok(activity.id.to_string().into())
-            }
-        });
+        let futures = update_items
+            .into_iter()
+            .filter(|activity| {
+                if let Some(existing_activity) = existing_activities.get(&activity.id) {
+                    if activity != &existing_activity {
+                        return true;
+                    }
+                }
+                false
+            })
+            .map(|activity| {
+                let pool = pool.clone();
+                async move {
+                    activity.update_db(&pool).await?;
+                    Ok(activity.id.to_string().into())
+                }
+            });
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
         output.extend_from_slice(&results?);
 

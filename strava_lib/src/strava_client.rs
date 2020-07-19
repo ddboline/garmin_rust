@@ -294,6 +294,11 @@ impl StravaClient {
             commute: bool,
         }
 
+        #[derive(Serialize, Deserialize)]
+        struct CreateActivityResp {
+            id: i64,
+        }
+
         let data = CreateActivityForm {
             name: activity.name.clone(),
             activity_type: activity.activity_type,
@@ -305,16 +310,11 @@ impl StravaClient {
             commute: false,
         };
 
-        #[derive(Serialize, Deserialize)]
-        struct CreateActivityResp {
-            id: i64,
-        }
-
         let headers = self.get_auth_headers()?;
-        let url = format!("https://www.strava.com/api/v3/activities");
+        let url = "https://www.strava.com/api/v3/activities";
         let resp: CreateActivityResp = self
             .client
-            .post(url.as_str())
+            .post(url)
             .headers(headers)
             .form(&data)
             .send()

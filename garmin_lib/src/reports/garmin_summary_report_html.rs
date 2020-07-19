@@ -40,6 +40,10 @@ where
             htmlvec.push(line.replace("HISTORYBUTTONS", &history_button).into());
         } else if line.contains("DOMAIN") {
             htmlvec.push(line.replace("DOMAIN", domain).into());
+        } else if line.contains("STRAVAUPLOADBUTTON") {
+            htmlvec.push("".into());
+        } else if line.contains("SPORTTITLELINK") {
+            htmlvec.push("".into());
         } else {
             htmlvec.push(line.into());
         }

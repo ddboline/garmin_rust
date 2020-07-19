@@ -21,7 +21,11 @@ use tokio::{
 
 use garmin_lib::{
     common::{garmin_config::GarminConfig, strava_activity::StravaActivity},
-    utils::{garmin_util::gzip_file, sport_types::SportTypes},
+    utils::{
+        garmin_util::gzip_file,
+        iso_8601_datetime,
+        sport_types::{self, SportTypes},
+    },
 };
 
 lazy_static! {
@@ -273,6 +277,57 @@ impl StravaClient {
             activities.extend_from_slice(&new_activities);
         }
         Ok(activities)
+    }
+
+    pub async fn create_strava_activity(
+        &self,
+        activity: &StravaActivity,
+    ) -> Result<StackString, Error> {
+        #[derive(Serialize, Deserialize)]
+        struct CreateActivityForm {
+            name: StackString,
+            #[serde(rename = "type", with = "sport_types")]
+            activity_type: SportTypes,
+            #[serde(with = "iso_8601_datetime")]
+            start_date_local: DateTime<Utc>,
+            elapsed_time: i64,
+            description: StackString,
+            distance: i64,
+            trainer: bool,
+            commute: bool,
+        }
+
+        let data = CreateActivityForm {
+            name: activity.name.clone(),
+            activity_type: activity.activity_type,
+            start_date_local: activity.start_date,
+            elapsed_time: activity.elapsed_time,
+            description: "".into(),
+            distance: activity.distance.map_or(0, |d| d as i64),
+            trainer: false,
+            commute: false,
+        };
+
+        #[derive(Serialize, Deserialize)]
+        struct CreateActivityResp {
+            id: i64,
+        }
+
+        let headers = self.get_auth_headers()?;
+        let url = format!("https://www.strava.com/api/v3/activities");
+        let resp: CreateActivityResp = self
+            .client
+            .post(url.as_str())
+            .headers(headers)
+            .form(&data)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+        let url = format!("https://www.strava.com/activities/{}", resp.id.to_string()).into();
+
+        Ok(url)
     }
 
     #[allow(clippy::similar_names)]

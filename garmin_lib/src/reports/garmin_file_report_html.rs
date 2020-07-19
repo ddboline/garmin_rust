@@ -444,6 +444,26 @@ fn get_garmin_template_vec<T: AsRef<str>>(
             );
         } else if line.contains("DOMAIN") {
             htmlvec.push(line.replace("DOMAIN", domain).into());
+        } else if line.contains("STRAVAUPLOADBUTTON") {
+            if let Some(strava_activity) = strava_activity {
+                let button_str = format!(
+                    r#"<form>{}</form>"#,
+                    if is_demo {
+                        "".to_string()
+                    } else {
+                        format!(
+                            r#"
+                                <input type="text" name="cmd" id="strava_upload"/>
+                                <input type="button" name="submitSTRAVA" value="Title" onclick="processStravaUpdate({});"/>
+                            "#,
+                            strava_activity.id
+                        )
+                    },
+                );
+                htmlvec.push(line.replace("STRAVAUPLOADBUTTON", &button_str).into());
+            } else {
+                htmlvec.push(line.replace("STRAVAUPLOADBUTTON", "").into());
+            }
         } else {
             htmlvec.push(
                 line.replace("<pre>", "<div>")

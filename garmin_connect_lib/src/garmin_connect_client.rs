@@ -10,7 +10,15 @@ use reqwest::{
 };
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
-use std::{path::PathBuf, thread::sleep, time::Duration};
+use std::{
+    path::PathBuf,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    thread::sleep,
+    time::Duration,
+};
 use tokio::{fs::File, io::AsyncWriteExt, stream::StreamExt, sync::Mutex};
 
 use garmin_lib::common::{
@@ -39,6 +47,7 @@ pub struct GarminConnectClient {
     session: ReqwestSession,
     display_name: Option<StackString>,
     auth_time: Option<DateTime<Utc>>,
+    auth_trigger: Arc<AtomicBool>,
 }
 
 impl Default for GarminConnectClient {
@@ -55,6 +64,7 @@ impl GarminConnectClient {
             session: ReqwestSession::new(false),
             display_name: None,
             auth_time: None,
+            auth_trigger: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -209,12 +219,11 @@ impl GarminConnectClient {
             GARMIN_PREFIX, display_name,
         );
         let url = Url::parse_with_params(&url_prefix, &[("calendarDate", &date.to_string())])?;
-        let resp = self
-            .session
-            .get_no_retry(&url, &HeaderMap::new())
-            .await?
-            .error_for_status()?;
-        let user_summary = resp.json().await?;
+        let resp = self.session.get_no_retry(&url, &HeaderMap::new()).await?;
+        if resp.status() == 403 {
+            self.auth_trigger.store(true, Ordering::SeqCst);
+        }
+        let user_summary = resp.error_for_status()?.json().await?;
         Ok(user_summary)
     }
 
@@ -228,13 +237,11 @@ impl GarminConnectClient {
             GARMIN_PREFIX, display_name
         );
         let url = Url::parse_with_params(&url_prefix, &[("date", &date.to_string())])?;
-        self.session
-            .get(&url, &HeaderMap::new())
-            .await?
-            .error_for_status()?
-            .json()
-            .await
-            .map_err(Into::into)
+        let resp = self.session.get(&url, &HeaderMap::new()).await?;
+        if resp.status() == 403 {
+            self.auth_trigger.store(true, Ordering::SeqCst);
+        }
+        resp.error_for_status()?.json().await.map_err(Into::into)
     }
 
     pub async fn get_activities(
@@ -258,13 +265,12 @@ impl GarminConnectClient {
             )?;
             current_start += limit;
             debug!("Call {}", url);
-            let new_entries: Vec<GarminConnectActivity> = self
-                .session
-                .get(&url, &HeaderMap::new())
-                .await?
-                .error_for_status()?
-                .json()
-                .await?;
+            let resp = self.session.get(&url, &HeaderMap::new()).await?;
+            if resp.status() == 403 {
+                self.auth_trigger.store(true, Ordering::SeqCst);
+            }
+
+            let new_entries: Vec<GarminConnectActivity> = resp.error_for_status()?.json().await?;
             if new_entries.is_empty() {
                 debug!("Empty result {} returning {} results", url, entries.len());
                 return Ok(entries);
@@ -326,9 +332,14 @@ pub async fn get_garmin_connect_session(
     let mut session = CONNECT_SESSION.lock().await.clone();
     session.config = config.clone();
 
+    let auth_trigger = session
+        .auth_trigger
+        .compare_and_swap(true, false, Ordering::SeqCst);
+
     // if session is old, OR hasn't been authorized, OR get_user_summary fails, then
     // reauthorize
-    if session.auth_time.map_or(true, has_timed_out)
+    if auth_trigger
+        || session.auth_time.map_or(true, has_timed_out)
         || session
             .get_user_summary(Utc::now().naive_local().date())
             .await

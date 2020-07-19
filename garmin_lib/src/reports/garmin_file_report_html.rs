@@ -364,7 +364,7 @@ where
         )?
     } else {
         get_garmin_template_vec(
-            &config.domain,
+            config,
             gfile,
             sport,
             &strava_activity,
@@ -380,7 +380,7 @@ where
 
 #[allow(clippy::too_many_arguments)]
 fn get_garmin_template_vec<T: AsRef<str>>(
-    domain: &str,
+    config: &GarminConfig,
     gfile: &GarminFile,
     sport: SportTypes,
     strava_activity: &Option<StravaActivity>,
@@ -443,7 +443,15 @@ fn get_garmin_template_vec<T: AsRef<str>>(
                     .into(),
             );
         } else if line.contains("DOMAIN") {
-            htmlvec.push(line.replace("DOMAIN", domain).into());
+            htmlvec.push(line.replace("DOMAIN", &config.domain).into());
+        } else if line.contains("FILENAME") | line.contains("ACTIVITYTYPE") {
+            let filename = config.gps_dir.join(gfile.filename.as_str());
+            let activity_type = gfile.sport.to_strava_activity();
+            htmlvec.push(
+                line.replace("FILENAME", filename.to_string_lossy().as_ref())
+                    .replace("ACTIVITYTYPE", &activity_type)
+                    .into(),
+            );
         } else if line.contains("STRAVAUPLOADBUTTON") {
             if let Some(strava_activity) = strava_activity {
                 let button_str = format!(

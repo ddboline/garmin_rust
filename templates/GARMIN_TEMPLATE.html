@@ -70,6 +70,14 @@
 
 HISTORYBUTTONS
 
+<br>
+
+STRAVAUPLOADBUTTON
+
+<br>
+
+<h1><center><b>SPORTTITLELINK</b></center></h1>
+
 <script src="https://d3js.org/d3.v3.min.js"></script>
 
 <pre id="garmin_text_box">
@@ -84,6 +92,41 @@ INSERTTEXTHERE
     function processFormData() {
         let garmin_filter = document.getElementById( 'garmin_filter' );
         send_command( 'filter=' + garmin_filter.value );
+    }
+    function processStravaUpdate(activity_id) {
+        let strava_title = document.getElementById( 'strava_upload' );
+        let ostr = '/garmin/strava/update';
+        let data = JSON.stringify(
+            {
+                "activity_id": activity_id,
+                "title": strava_title.value,
+                "activity_type": "ACTIVITYTYPE"
+            }
+        );
+        let xmlhttp = new XMLHttpRequest();
+        xmlhttp.onload = function() {
+            let xmlhttp2 = new XMLHttpRequest();
+            xmlhttp2.onload = function() {
+                location.reload()
+            }
+            xmlhttp2.open("GET", xmlhttp.responseText, true);
+            xmlhttp2.send(null);
+            document.getElementById("garminconnectoutput").innerHTML = "syncing";
+        }
+        xmlhttp.open( "POST", ostr , true );
+        xmlhttp.setRequestHeader("Content-Type", "application/json");
+        xmlhttp.send(data);
+    }
+    function createStravaActivity(filename) {
+        let ostr = '/garmin/strava/create?filename=' + filename;
+        let xmlhttp = new XMLHttpRequest();
+        xmlhttp.onload = function() {
+            document.getElementById("garminconnectoutput").innerHTML = "done";
+            document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
+        }
+        xmlhttp.open("GET", ostr, true);
+        xmlhttp.send(null);
+        document.getElementById("garminconnectoutput").innerHTML = "processing";
     }
     function garmin_sync() {
         let ostr = '/garmin/garmin_sync';

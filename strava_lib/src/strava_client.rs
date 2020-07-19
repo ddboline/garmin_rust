@@ -21,7 +21,11 @@ use tokio::{
 
 use garmin_lib::{
     common::{garmin_config::GarminConfig, strava_activity::StravaActivity},
-    utils::{garmin_util::gzip_file, sport_types::SportTypes},
+    utils::{
+        garmin_util::gzip_file,
+        iso_8601_datetime,
+        sport_types::{self, SportTypes},
+    },
 };
 
 lazy_static! {
@@ -275,13 +279,59 @@ impl StravaClient {
         Ok(activities)
     }
 
+    pub async fn create_strava_activity(&self, activity: &StravaActivity) -> Result<i64, Error> {
+        #[derive(Serialize, Deserialize)]
+        struct CreateActivityForm {
+            name: StackString,
+            #[serde(rename = "type", with = "sport_types")]
+            activity_type: SportTypes,
+            #[serde(with = "iso_8601_datetime")]
+            start_date_local: DateTime<Utc>,
+            elapsed_time: i64,
+            description: StackString,
+            distance: i64,
+            trainer: bool,
+            commute: bool,
+        }
+
+        #[derive(Serialize, Deserialize)]
+        struct CreateActivityResp {
+            id: i64,
+        }
+
+        let data = CreateActivityForm {
+            name: activity.name.clone(),
+            activity_type: activity.activity_type,
+            start_date_local: activity.start_date,
+            elapsed_time: activity.elapsed_time,
+            description: "".into(),
+            distance: activity.distance.map_or(0, |d| d as i64),
+            trainer: false,
+            commute: false,
+        };
+
+        let headers = self.get_auth_headers()?;
+        let url = "https://www.strava.com/api/v3/activities";
+        let resp: CreateActivityResp = self
+            .client
+            .post(url)
+            .headers(headers)
+            .form(&data)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+        Ok(resp.id)
+    }
+
     #[allow(clippy::similar_names)]
     pub async fn upload_strava_activity(
         &self,
         filepath: &Path,
         title: &str,
         description: &str,
-    ) -> Result<StackString, Error> {
+    ) -> Result<Option<i64>, Error> {
         #[derive(Deserialize)]
         struct UploadResp {
             activity_id: i64,
@@ -311,7 +361,7 @@ impl StravaClient {
         } else if filepath.ends_with("tcx.gz") {
             "tcx.gz"
         } else {
-            return Ok("".into());
+            return Ok(None);
         };
 
         let part = Part::bytes(tokio::fs::read(&filename).await?).file_name(filename);
@@ -337,13 +387,7 @@ impl StravaClient {
             .json()
             .await?;
 
-        let url = format!(
-            "https://www.strava.com/activities/{}",
-            resp.activity_id.to_string()
-        )
-        .into();
-
-        Ok(url)
+        Ok(Some(resp.activity_id))
     }
 
     pub async fn update_strava_activity(

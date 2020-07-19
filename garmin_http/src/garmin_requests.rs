@@ -29,7 +29,7 @@ use garmin_lib::{
         garmin_cli::{GarminCli, GarminRequest},
         garmin_connect_activity::GarminConnectActivity,
         garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionMap},
-        garmin_summary::{get_filename_from_datetime, get_list_of_files_from_db},
+        garmin_summary::{get_filename_from_datetime, get_list_of_files_from_db, GarminSummary},
         pgpool::PgPool,
         strava_activity::StravaActivity,
     },
@@ -706,7 +706,13 @@ impl HandleRequest<StravaUploadRequest> for PgPool {
                 msg.description.as_ref().map_or("", StackString::as_str),
             )
             .await
-            .map(|id| format!("http://strava.com/activities/{}", id).into())
+            .map(|id| {
+                if let Some(id) = id {
+                    format!("http://strava.com/activities/{}", id).into()
+                } else {
+                    "".into()
+                }
+            })
             .map_err(Into::into)
     }
 }
@@ -739,6 +745,30 @@ impl HandleRequest<StravaUpdateRequest> for PgPool {
             .map_err(Into::into)
     }
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct StravaCreateRequest {
+    pub filename: StackString,
+}
+
+#[async_trait]
+impl HandleRequest<StravaCreateRequest> for PgPool {
+    type Result = Result<Option<i64>, Error>;
+    async fn handle(&self, msg: StravaCreateRequest) -> Self::Result {
+        if let Some(gfile) = GarminSummary::get_by_filename(self, msg.filename.as_str()).await? {
+            let mut strava_activity: StravaActivity = gfile.into();
+            let config = CONFIG.clone();
+            let client = StravaClient::with_auth(config).await?;
+            let activity_id = client.create_strava_activity(&strava_activity).await?;
+            strava_activity.id = activity_id;
+            strava_activity.insert_into_db(self).await?;
+            Ok(Some(activity_id))
+        } else {
+            Ok(None)
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct AddGarminCorrectionRequest {
     pub start_time: DateTime<Utc>,

@@ -9,14 +9,14 @@ use stack_string::StackString;
 use std::collections::HashMap;
 
 use crate::{
-    common::pgpool::PgPool,
+    common::{garmin_summary::GarminSummary, pgpool::PgPool},
     utils::{
         iso_8601_datetime,
         sport_types::{self, SportTypes},
     },
 };
 
-#[derive(Serialize, Deserialize, FromSqlRow, Debug, Clone)]
+#[derive(Serialize, Deserialize, FromSqlRow, Debug, Clone, PartialEq)]
 pub struct StravaActivity {
     pub name: StackString,
     #[serde(with = "iso_8601_datetime")]
@@ -31,6 +31,24 @@ pub struct StravaActivity {
     #[serde(rename = "type", with = "sport_types")]
     pub activity_type: SportTypes,
     pub timezone: StackString,
+}
+
+impl Default for StravaActivity {
+    fn default() -> Self {
+        Self {
+            name: "".into(),
+            start_date: Utc::now(),
+            id: -1,
+            distance: None,
+            moving_time: None,
+            elapsed_time: 0,
+            total_elevation_gain: None,
+            elev_high: None,
+            elev_low: None,
+            activity_type: SportTypes::None,
+            timezone: "".into(),
+        }
+    }
 }
 
 impl StravaActivity {
@@ -146,6 +164,7 @@ impl StravaActivity {
         Ok(())
     }
 
+    #[allow(clippy::filter_map)]
     pub async fn upsert_activities(
         activities: &[Self],
         pool: &PgPool,
@@ -161,13 +180,23 @@ impl StravaActivity {
             .iter()
             .partition(|activity| existing_activities.contains_key(&activity.id));
 
-        let futures = update_items.into_iter().map(|activity| {
-            let pool = pool.clone();
-            async move {
-                activity.update_db(&pool).await?;
-                Ok(activity.id.to_string().into())
-            }
-        });
+        let futures = update_items
+            .into_iter()
+            .filter(|activity| {
+                if let Some(existing_activity) = existing_activities.get(&activity.id) {
+                    if activity != &existing_activity {
+                        return true;
+                    }
+                }
+                false
+            })
+            .map(|activity| {
+                let pool = pool.clone();
+                async move {
+                    activity.update_db(&pool).await?;
+                    Ok(activity.id.to_string().into())
+                }
+            });
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
         output.extend_from_slice(&results?);
 
@@ -182,5 +211,18 @@ impl StravaActivity {
         output.extend_from_slice(&results?);
 
         Ok(output)
+    }
+}
+
+impl From<GarminSummary> for StravaActivity {
+    fn from(item: GarminSummary) -> Self {
+        Self {
+            name: item.filename,
+            start_date: item.begin_datetime,
+            distance: Some(item.total_distance),
+            elapsed_time: item.total_duration as i64,
+            activity_type: item.sport,
+            ..Self::default()
+        }
     }
 }

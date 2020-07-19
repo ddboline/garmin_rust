@@ -9,7 +9,7 @@ all:
 	cp Dockerfile.build.ubuntu20.04 build/Dockerfile && \
 	cp -a Cargo.toml src scripts Makefile templates garmin_cli \
 		garmin_lib garmin_http fitbit_lib fitbit_bot strava_lib \
-		build/ && \
+		garmin_connect_lib build/ && \
 	cd build/ && \
 	docker build -t garmin_rust/build_rust:ubuntu20.04 . && \
 	cd ../ && \

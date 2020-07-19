@@ -9,7 +9,7 @@ use stack_string::StackString;
 use std::collections::HashMap;
 
 use crate::{
-    common::pgpool::PgPool,
+    common::{garmin_summary::GarminSummary, pgpool::PgPool},
     utils::{
         iso_8601_datetime,
         sport_types::{self, SportTypes},
@@ -31,6 +31,24 @@ pub struct StravaActivity {
     #[serde(rename = "type", with = "sport_types")]
     pub activity_type: SportTypes,
     pub timezone: StackString,
+}
+
+impl Default for StravaActivity {
+    fn default() -> Self {
+        Self {
+            name: "".into(),
+            start_date: Utc::now(),
+            id: -1,
+            distance: None,
+            moving_time: None,
+            elapsed_time: 0,
+            total_elevation_gain: None,
+            elev_high: None,
+            elev_low: None,
+            activity_type: SportTypes::None,
+            timezone: "".into(),
+        }
+    }
 }
 
 impl StravaActivity {
@@ -192,5 +210,18 @@ impl StravaActivity {
         output.extend_from_slice(&results?);
 
         Ok(output)
+    }
+}
+
+impl From<GarminSummary> for StravaActivity {
+    fn from(item: GarminSummary) -> Self {
+        Self {
+            name: item.filename,
+            start_date: item.begin_datetime,
+            distance: Some(item.total_distance),
+            elapsed_time: item.total_duration as i64,
+            activity_type: item.sport,
+            ..Self::default()
+        }
     }
 }

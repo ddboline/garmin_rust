@@ -279,10 +279,7 @@ impl StravaClient {
         Ok(activities)
     }
 
-    pub async fn create_strava_activity(
-        &self,
-        activity: &StravaActivity,
-    ) -> Result<StackString, Error> {
+    pub async fn create_strava_activity(&self, activity: &StravaActivity) -> Result<i64, Error> {
         #[derive(Serialize, Deserialize)]
         struct CreateActivityForm {
             name: StackString,
@@ -325,9 +322,7 @@ impl StravaClient {
             .error_for_status()?
             .json()
             .await?;
-        let url = format!("https://www.strava.com/activities/{}", resp.id.to_string()).into();
-
-        Ok(url)
+        Ok(resp.id)
     }
 
     #[allow(clippy::similar_names)]
@@ -336,7 +331,7 @@ impl StravaClient {
         filepath: &Path,
         title: &str,
         description: &str,
-    ) -> Result<StackString, Error> {
+    ) -> Result<Option<i64>, Error> {
         #[derive(Deserialize)]
         struct UploadResp {
             activity_id: i64,
@@ -366,7 +361,7 @@ impl StravaClient {
         } else if filepath.ends_with("tcx.gz") {
             "tcx.gz"
         } else {
-            return Ok("".into());
+            return Ok(None);
         };
 
         let part = Part::bytes(tokio::fs::read(&filename).await?).file_name(filename);
@@ -392,13 +387,7 @@ impl StravaClient {
             .json()
             .await?;
 
-        let url = format!(
-            "https://www.strava.com/activities/{}",
-            resp.activity_id.to_string()
-        )
-        .into();
-
-        Ok(url)
+        Ok(Some(resp.activity_id))
     }
 
     pub async fn update_strava_activity(

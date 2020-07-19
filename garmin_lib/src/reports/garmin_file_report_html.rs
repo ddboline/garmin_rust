@@ -402,7 +402,7 @@ fn get_garmin_template_vec<T: AsRef<str>>(
             htmlvec.push(
                 format!(
                     "{}\n",
-                    get_file_html(&gfile, fitbit_activity, connect_activity)
+                    get_file_html(&gfile, strava_activity, fitbit_activity, connect_activity)
                 )
                 .into(),
             );
@@ -580,7 +580,7 @@ where
             htmlvec.push(
                 format!(
                     "{}\n",
-                    get_file_html(&gfile, fitbit_activity, connect_activity)
+                    get_file_html(&gfile, strava_activity, fitbit_activity, connect_activity)
                 )
                 .into(),
             );
@@ -673,6 +673,7 @@ fn get_correction_button(begin_datetime: DateTime<Utc>) -> StackString {
 
 fn get_file_html(
     gfile: &GarminFile,
+    strava_activity: &Option<StravaActivity>,
     fitbit_activity: &Option<FitbitActivity>,
     connect_activity: &Option<GarminConnectActivity>,
 ) -> StackString {
@@ -684,17 +685,28 @@ fn get_file_html(
     retval.push(
         r#"<thead><tr style="text-align: center;"><th>Start Time</th>
                    <th>Sport</th><th></th><th>FitbitID</th><th>Fitbit Steps</th><th>GarminConnectID</th>
-                   <th>Garmin Steps</th></tr></thead>"#
+                   <th>Garmin Steps</th><th>StravaID</th></tr></thead>"#
             .to_string(),
     );
     retval.push(format!(
         "<tbody><tr style={qt}text-align: \
          center;{qt}><td>{dt}</td><td>{sp}</td><td>{gc}</td><td>{fid}</td><td>{fstep}</td>
-         <td>{gid}</td><td>{gstep}</td></tr></tbody>",
+         <td>{gid}</td><td>{gstep}</td><td>{sid}</td></tr></tbody>",
         qt = '"',
         dt=gfile.begin_datetime,
         sp=get_sport_selector(gfile.sport),
         gc=get_correction_button(gfile.begin_datetime),
+        sid = if let Some(strava_activity) = strava_activity {
+            format!(
+                r#"<a href="https://www.strava.com/activities/{0}" target="_blank">{0}</a>"#,
+                strava_activity.id,
+            )
+        } else {
+            format!(
+                r#"<button type="submit" onclick="createStravaActivity('{}');">create</button>"#,
+                gfile.filename,
+            )
+        },
         fid = if let Some(fitbit_activity) = fitbit_activity {
             format!(
                 r#"<a href="https://www.fitbit.com/activities/exercise/{0}" target="_blank">{0}</a>"#,

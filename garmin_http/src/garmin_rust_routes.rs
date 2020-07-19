@@ -44,7 +44,8 @@ use crate::{
         GarminUploadRequest, HandleRequest, ScaleMeasurementPlotRequest, ScaleMeasurementRequest,
         ScaleMeasurementUpdateRequest, StravaActiviesDBUpdateRequest, StravaActivitiesDBRequest,
         StravaActivitiesRequest, StravaAthleteRequest, StravaAuthRequest, StravaCallbackRequest,
-        StravaRefreshRequest, StravaSyncRequest, StravaUpdateRequest, StravaUploadRequest,
+        StravaCreateRequest, StravaRefreshRequest, StravaSyncRequest, StravaUpdateRequest,
+        StravaUploadRequest,
     },
     CONFIG,
 };
@@ -291,6 +292,20 @@ pub async fn strava_update(
     let payload = payload.into_inner();
     let body = state.db.handle(payload).await?;
     form_http_response(body.into())
+}
+
+pub async fn strava_create(
+    query: Query<StravaCreateRequest>,
+    _: LoggedUser,
+    state: Data<AppState>,
+) -> Result<HttpResponse, Error> {
+    let query = query.into_inner();
+    let activity_id = state.db.handle(query).await?;
+    if let Some(activity_id) = activity_id {
+        form_http_response(activity_id.to_string().into())
+    } else {
+        form_http_response("".into())
+    }
 }
 
 pub async fn fitbit_auth(_: LoggedUser, state: Data<AppState>) -> Result<HttpResponse, Error> {

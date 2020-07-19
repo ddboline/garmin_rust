@@ -172,6 +172,21 @@ impl GarminSummary {
             .collect()
     }
 
+    pub async fn get_by_filename(pool: &PgPool, filename: &str) -> Result<Option<Self>, Error> {
+        let query = postgres_query::query!(
+            "SELECT * FROM garmin_summary WHERE filename = $filename",
+            filename = filename,
+        );
+        let result = pool
+            .get()
+            .await?
+            .query_opt(query.sql(), query.parameters())
+            .await?
+            .map(|row| Self::from_row(&row))
+            .transpose()?;
+        Ok(result)
+    }
+
     pub fn dump_summary_to_avro(
         summary_list: &[&Self],
         output_filename: &Path,

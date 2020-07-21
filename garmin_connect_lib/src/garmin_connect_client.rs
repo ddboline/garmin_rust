@@ -2,7 +2,7 @@ use anyhow::{format_err, Error};
 use chrono::{DateTime, NaiveDate, Utc};
 use futures::future::try_join_all;
 use lazy_static::lazy_static;
-use log::debug;
+use log::{debug, error};
 use maplit::hashmap;
 use reqwest::{
     header::{HeaderMap, HeaderName, HeaderValue},
@@ -203,6 +203,7 @@ impl GarminConnectClient {
 
         self.session.set_default_headers(obligatory_headers).await?;
         self.auth_time = Some(Utc::now());
+        self.auth_trigger.store(false, Ordering::SeqCst);
         Ok(())
     }
 
@@ -222,6 +223,7 @@ impl GarminConnectClient {
         let resp = self.session.get_no_retry(&url, &HeaderMap::new()).await?;
         if resp.status() == 403 {
             self.auth_trigger.store(true, Ordering::SeqCst);
+            error!("trigger re-auth");
         }
         let user_summary = resp.error_for_status()?.json().await?;
         Ok(user_summary)
@@ -240,6 +242,7 @@ impl GarminConnectClient {
         let resp = self.session.get(&url, &HeaderMap::new()).await?;
         if resp.status() == 403 {
             self.auth_trigger.store(true, Ordering::SeqCst);
+            error!("trigger re-auth");
         }
         resp.error_for_status()?.json().await.map_err(Into::into)
     }
@@ -268,6 +271,7 @@ impl GarminConnectClient {
             let resp = self.session.get(&url, &HeaderMap::new()).await?;
             if resp.status() == 403 {
                 self.auth_trigger.store(true, Ordering::SeqCst);
+                error!("trigger re-auth");
             }
 
             let new_entries: Vec<GarminConnectActivity> = resp.error_for_status()?.json().await?;
@@ -332,9 +336,11 @@ pub async fn get_garmin_connect_session(
     let mut session = CONNECT_SESSION.lock().await.clone();
     session.config = config.clone();
 
-    let auth_trigger = session
-        .auth_trigger
-        .compare_and_swap(true, false, Ordering::SeqCst);
+    let auth_trigger = session.auth_trigger.load(Ordering::SeqCst);
+
+    if auth_trigger {
+        error!("re-auth session");
+    }
 
     // if session is old, OR hasn't been authorized, OR get_user_summary fails, then
     // reauthorize
@@ -347,13 +353,7 @@ pub async fn get_garmin_connect_session(
     {
         let mut session_guard = CONNECT_SESSION.lock().await;
         session_guard.config = config.clone();
-        if session_guard
-            .get_user_summary(Utc::now().naive_local().date())
-            .await
-            .is_err()
-        {
-            session_guard.authorize().await?;
-        }
+        session_guard.authorize().await?;
         session = session_guard.clone();
     }
 

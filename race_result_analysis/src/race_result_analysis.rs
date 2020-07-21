@@ -30,21 +30,17 @@ impl RaceResultAnalysis {
         let x_values: Array1<f64> = agg_results.iter().map(|r| r.race_distance as f64).collect();
         let y_values: Array1<f64> = agg_results.iter().map(|r| r.race_duration_mean).collect();
         let s_values: Array1<f64> = agg_results.iter().map(|r| r.race_duration_stddev).collect();
-        let (p0, n) = agg_results.iter().filter_map(|r| {
-            if (r.race_distance - MARATHON_DISTANCE_M).abs() < 1000 {
-                Some(r.race_duration_mean)
-            } else {
-                None
-            }
-        }).fold((0.0, 0), |(s, n), dur| {
-            (s + dur, n + 1)
-        });
-        let params = array![
-            MARATHON_DISTANCE_M as f64,
-            p0 / n as f64,
-            1.0,
-            1.0
-        ];
+        let (p0, n) = agg_results
+            .iter()
+            .filter_map(|r| {
+                if (r.race_distance - MARATHON_DISTANCE_M).abs() < 1000 {
+                    Some(r.race_duration_mean)
+                } else {
+                    None
+                }
+            })
+            .fold((0.0, 0), |(s, n), dur| (s + dur, n + 1));
+        let params = array![MARATHON_DISTANCE_M as f64, p0 / n as f64, 1.0, 1.0];
         let flags = array![true, true, true, true];
         let model_function = Func1D::new(&params, &x_values, power_law);
         let mut minimizer = Minimizer::init(&model_function, &y_values, &s_values, &flags, 0.01);
@@ -103,7 +99,7 @@ mod tests {
 
     use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
 
-    use crate::race_result_analysis::{RaceResultAnalysis, RaceResultAggregated};
+    use crate::race_result_analysis::{RaceResultAggregated, RaceResultAnalysis};
     use crate::race_type::RaceType;
 
     #[tokio::test]

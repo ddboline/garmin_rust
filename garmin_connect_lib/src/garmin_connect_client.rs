@@ -203,6 +203,7 @@ impl GarminConnectClient {
 
         self.session.set_default_headers(obligatory_headers).await?;
         self.auth_time = Some(Utc::now());
+        self.auth_trigger.store(false, Ordering::SeqCst);
         Ok(())
     }
 
@@ -335,9 +336,7 @@ pub async fn get_garmin_connect_session(
     let mut session = CONNECT_SESSION.lock().await.clone();
     session.config = config.clone();
 
-    let auth_trigger = session
-        .auth_trigger
-        .compare_and_swap(true, false, Ordering::SeqCst);
+    let auth_trigger = session.auth_trigger.load(Ordering::SeqCst);
 
     if auth_trigger {
         error!("re-auth session");
@@ -354,13 +353,7 @@ pub async fn get_garmin_connect_session(
     {
         let mut session_guard = CONNECT_SESSION.lock().await;
         session_guard.config = config.clone();
-        if session_guard
-            .get_user_summary(Utc::now().naive_local().date())
-            .await
-            .is_err()
-        {
-            session_guard.authorize().await?;
-        }
+        session_guard.authorize().await?;
         session = session_guard.clone();
     }
 

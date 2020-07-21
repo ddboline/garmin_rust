@@ -4,6 +4,8 @@ use postgres_query::FromSqlRow;
 use serde::{Deserialize, Serialize};
 use std::fmt::{self, Display, Formatter};
 
+use stack_string::StackString;
+
 use garmin_lib::{
     common::pgpool::PgPool,
     utils::garmin_util::{print_h_m_s, METERS_PER_MILE},
@@ -16,7 +18,7 @@ pub struct RaceResults {
     pub id: i32,
     pub race_type: RaceType,
     pub race_date: Option<NaiveDate>,
-    pub race_name: Option<String>,
+    pub race_name: Option<StackString>,
     pub race_distance: i32, // distance in meters
     pub race_time: f64,
     pub race_flag: bool,
@@ -198,7 +200,7 @@ impl RaceResults {
                     id: -1,
                     race_type: RaceType::Personal,
                     race_date,
-                    race_name: Some(race_name),
+                    race_name: Some(race_name.into()),
                     race_distance,
                     race_time,
                     race_flag: false,
@@ -241,18 +243,21 @@ impl RaceResults {
 }
 
 fn parse_time_string(s: &str) -> Option<f64> {
-    let mut times = s.split(':');
-    let hours: f64 = match times.next().and_then(|t| t.parse().ok()) {
+    let mut times = s.split(':').rev();
+
+    let seconds: f64 = match times.next().and_then(|t| t.parse().ok()) {
         Some(t) => t,
         None => return None,
     };
+
     let minutes: f64 = match times.next().and_then(|t| t.parse().ok()) {
         Some(t) => t,
         None => return None,
     };
-    let seconds: f64 = match times.next().and_then(|t| t.parse().ok()) {
+
+    let hours: f64 = match times.next().and_then(|t| t.parse().ok()) {
         Some(t) => t,
-        None => return None,
+        None => return Some(minutes * 60.0 + seconds),
     };
     Some(hours * 3600.0 + minutes * 60.0 + seconds)
 }
@@ -260,7 +265,10 @@ fn parse_time_string(s: &str) -> Option<f64> {
 #[cfg(test)]
 mod tests {
     use anyhow::Error;
-    use chrono::NaiveDate;
+    use chrono::{Datelike, NaiveDate, Utc};
+    use std::collections::HashMap;
+
+    use stack_string::StackString;
 
     use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
 
@@ -271,7 +279,7 @@ mod tests {
             id: 0,
             race_type: RaceType::Personal,
             race_date: Some(NaiveDate::from_ymd(2020, 1, 27)),
-            race_name: Some("A Test Race".to_string()),
+            race_name: Some("A Test Race".into()),
             race_distance: 5000,
             race_time: 1563.0,
             race_flag: false,
@@ -320,25 +328,76 @@ mod tests {
     async fn test_parse_from_race_results_text_file() -> Result<(), Error> {
         let input = include_str!("../../tests/data/Race_Results.txt");
 
-        let results = RaceResults::parse_from_race_results_text_file(&input)?;
-        assert_eq!(results.len(), 126);
+        let new_results = RaceResults::parse_from_race_results_text_file(&input)?;
+        assert_eq!(new_results.len(), 214);
 
         let config = GarminConfig::get_config(None)?;
         let pool = PgPool::new(&config.pgurl);
-        for result in &results {
-            if let Some(date) = result.race_date {
-                let existing =
-                    RaceResults::get_race_by_date(date, RaceType::Personal, &pool).await?;
-                for exist in existing {
-                    exist.delete_from_db(&pool).await?;
-                }
+
+        let existing_map: HashMap<_, _> =
+            RaceResults::get_results_by_type(RaceType::Personal, &pool)
+                .await?
+                .into_iter()
+                .fold(HashMap::new(), |mut map, result| {
+                    let name = result.race_name.clone().unwrap_or_else(|| "".into());
+                    let year = result
+                        .race_date
+                        .map_or_else(|| Utc::now().year(), |d| d.year());
+                    let key = (name, year);
+                    map.entry(key).or_insert_with(Vec::new).push(result);
+                    map
+                });
+
+        for result in &new_results {
+            let name = result.race_name.clone().unwrap_or_else(|| "".into());
+            let year = result
+                .race_date
+                .map_or_else(|| Utc::now().year(), |d| d.year());
+            let key = (name, year);
+            if !existing_map.contains_key(&key) {
+                result.insert_into_db(&pool).await?;
             }
         }
-        for result in results {
-            result.insert_into_db(&pool).await?;
-        }
+
         let personal_results = RaceResults::get_results_by_type(RaceType::Personal, &pool).await?;
-        assert_eq!(personal_results.len(), 126);
+        assert_eq!(personal_results.len(), 214);
+
+        let mut existing_map: HashMap<_, _> =
+            personal_results
+                .into_iter()
+                .fold(HashMap::new(), |mut map, result| {
+                    let name = result.race_name.clone().unwrap_or_else(|| "".into());
+                    let year = result
+                        .race_date
+                        .map_or_else(|| Utc::now().year(), |d| d.year());
+                    let key = (name, year);
+                    map.entry(key).or_insert_with(Vec::new).push(result);
+                    map
+                });
+        let input = include_str!("../../tests/data/running_paces_backup1.txt");
+        for line in input.split('\n') {
+            let entries: Vec<_> = line.split_whitespace().collect();
+            if entries.len() < 6 {
+                continue;
+            }
+            let year: i32 = entries[3].parse()?;
+            let race_flag: u8 = entries[4].parse()?;
+            let title = entries[5..].join(" ");
+            let key = (title.into(), year);
+            if let Some(entries) = existing_map.get_mut(&key) {
+                println!("existing {:?} {} {}", key, entries.len(), race_flag);
+                assert!(entries.len() == 1);
+                if race_flag != 1 {
+                    continue;
+                }
+                for entry in entries.iter_mut() {
+                    entry.race_flag = true;
+                    entry.upsert_db(&pool).await?;
+                }
+            } else {
+                assert!(false, "No existing entry {:?}", key);
+            }
+        }
         Ok(())
     }
 
@@ -357,14 +416,16 @@ mod tests {
         let config = GarminConfig::get_config(None)?;
         let pool = PgPool::new(&config.pgurl);
 
-        for result in mens_results.into_iter().chain(womens_results.into_iter()) {
+        for mut result in mens_results.into_iter().chain(womens_results.into_iter()) {
             let existing =
                 RaceResults::get_race_by_distance(result.race_distance, result.race_type, &pool)
                     .await?;
-            for exist in existing {
-                exist.delete_from_db(&pool).await?;
+            assert!(existing.len() == 0 || existing.len() == 1);
+            if existing.len() == 1 {
+                result.id = existing[0].id;
+                result.race_flag = true;
             }
-            result.insert_into_db(&pool).await?;
+            result.upsert_db(&pool).await?;
         }
         let mens_results =
             RaceResults::get_results_by_type(RaceType::WorldRecordMen, &pool).await?;

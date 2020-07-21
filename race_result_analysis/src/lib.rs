@@ -10,5 +10,6 @@
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::used_underscore_binding)]
 
+pub mod race_result_analysis;
 pub mod race_results;
 pub mod race_type;

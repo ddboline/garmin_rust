@@ -167,7 +167,7 @@ Race Distance   Race Time       Pace    Date            Race Name
       5 km           21:25      06:53   2013-01-20      NYS Parks Winter Run Series 2013    NY
      10 mi         1:10:37      07:03   2013-01-19      Sayville Running Company 10 Mile Run to the Brewery NY
       5 km           20:29      06:35   2013-01-13      NYS Parks Winter Series - Heckscher State Park  NY
-   14.1 mi         2:13:13      09:26   2012-12-30      Rodeo Valley Trail Run ??? Winter - Trail-Half-Marathon   CA
+   14.1 mi         2:13:13      09:26   2012-12-30      Rodeo Valley Trail Run – Winter - Trail-Half-Marathon CA
       5 km           20:14      06:30   2012-12-15      Ho Ho Ho 5k Race 2012   NY
       5 mi           34:03      06:48   2012-12-08      Wantagh Snowball 5 Mile Run 2012    NY
       5 km           20:51      06:42   2012-12-02      Santa's 5k Toy Trot 2012    NY

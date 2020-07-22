@@ -185,9 +185,9 @@ impl RaceResults {
                     Ok(d) => d,
                     Err(_) => return None,
                 };
-                let race_distance: i32 = match entries[1] {
-                    "km" => (distance * 1000.0) as i32,
-                    "mi" => (distance * METERS_PER_MILE) as i32,
+                let race_distance: i32 = match entries.get(1) {
+                    Some(&"km") => (distance * 1000.0) as i32,
+                    Some(&"mi") => (distance * METERS_PER_MILE) as i32,
                     _ => return None,
                 };
                 let race_time: f64 = match parse_time_string(entries[2]) {

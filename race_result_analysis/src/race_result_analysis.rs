@@ -22,7 +22,7 @@ pub struct RaceResultAnalysis {
 
 fn power_law(p: &Array1<f64>, x: &Array1<f64>) -> Array1<f64> {
     assert_eq!(p.len(), 3);
-    let mdist = MARATHON_DISTANCE_M as f64 / METERS_PER_MILE;
+    let mdist = f64::from(MARATHON_DISTANCE_M) / METERS_PER_MILE;
     x.map(|x| {
         if x <= &mdist {
             p[0] * (x / mdist).powf(p[1])
@@ -32,6 +32,7 @@ fn power_law(p: &Array1<f64>, x: &Array1<f64>) -> Array1<f64> {
     })
 }
 
+#[derive(Copy, Clone)]
 pub enum ParamType {
     Nom,
     Pos,
@@ -46,7 +47,7 @@ impl RaceResultAnalysis {
 
         let x_values: Array1<f64> = agg_results
             .iter()
-            .map(|r| r.race_distance as f64 / METERS_PER_MILE)
+            .map(|r| f64::from(r.race_distance) / METERS_PER_MILE)
             .collect();
         let y_values: Array1<f64> = agg_results
             .iter()
@@ -66,7 +67,7 @@ impl RaceResultAnalysis {
                 }
             })
             .fold((0.0, 0), |(s, n), dur| (s + dur, n + 1));
-        let params = array![p0 / n as f64, 1.0, 1.0];
+        let params = array![p0 / f64::from(n), 1.0, 1.0];
         let flags = array![true, true, true];
 
         let model_function = Func1D::new(&params, &x_values, power_law);
@@ -90,7 +91,7 @@ impl RaceResultAnalysis {
 
     pub fn create_plot(&self, is_demo: bool) -> Result<StackString, Error> {
         fn extract_points(result: &RaceResults) -> (i32, f64) {
-            let distance = result.race_distance as f64 / METERS_PER_MILE;
+            let distance = f64::from(result.race_distance) / METERS_PER_MILE;
             let duration = result.race_time / 60.0;
             let x = result.race_distance;
             let y = duration / distance;

@@ -220,6 +220,7 @@ impl FitbitHeartRate {
         is_demo: bool,
     ) -> Result<StackString, Error> {
         let button_date = button_date.unwrap_or_else(|| Local::today().naive_local());
+
         let mut final_values: Vec<_> =
             Self::get_heartrate_values(config, pool, start_date, end_date)
                 .await?
@@ -258,7 +259,7 @@ impl FitbitHeartRate {
             .replace("XAXIS", "Date")
             .replace("YAXIS", "Heart Rate");
         let plots = format!("<script>\n{}\n</script>", plots);
-        let buttons: Vec<_> = (0..5)
+        let mut buttons: Vec<_> = (0..5)
             .map(|i| {
                 let date = button_date - Duration::days(i);
                 format!(
@@ -266,8 +267,9 @@ impl FitbitHeartRate {
                     format!(
                         r#"
                         <button type="submit" id="ID"
-                         onclick="heartrate_plot_date('{date}','{date}');"">Plot {date}</button>"#,
-                        date = date
+                         onclick="heartrate_plot_button('{date}','{date}', '{button_date}');"">Plot {date}</button>"#,
+                        date = date,
+                        button_date=button_date,
                     ),
                     if is_demo {
                         "".to_string()
@@ -294,6 +296,31 @@ impl FitbitHeartRate {
                 )
             })
             .collect();
+        let prev_date = button_date + Duration::days(5);
+        let next_date = button_date - Duration::days(5);
+        if prev_date < Local::now().naive_local().date() {
+            buttons.push(
+                format!(r#"
+                        <button type="submit"
+                        onclick="heartrate_plot_button('{start_date}', '{end_date}', '{button_date}');">
+                        Prev</button>
+                    "#,
+                    start_date=start_date,
+                    end_date=end_date,
+                    button_date=prev_date,
+                )
+            );
+        }
+        buttons.push(format!(
+            r#"
+                    <button type="submit"
+                    onclick="heartrate_plot_button('{start_date}', '{end_date}', '{button_date}');">
+                    Next</button>
+                "#,
+            start_date = start_date,
+            end_date = end_date,
+            button_date = next_date,
+        ));
         let template = if is_demo {
             PLOT_TEMPLATE_DEMO
         } else {

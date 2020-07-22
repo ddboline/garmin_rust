@@ -435,7 +435,14 @@ impl ScaleMeasurementRequest {
                 Some(d) => Some(d),
                 None => Some(Local::now().naive_local().date()),
             },
-            button_date: None,
+            button_date: match self.button_date {
+                Some(d) => Some(d),
+                None => Some(
+                    (Local::now() - Duration::days(ndays + 1))
+                        .naive_local()
+                        .date(),
+                ),
+            },
         }
     }
 }
@@ -520,7 +527,7 @@ impl From<ScaleMeasurementRequest> for FitbitHeartratePlotRequest {
         Self {
             start_date: item.start_date.expect("this should be impossible"),
             end_date: item.end_date.expect("this should be impossible"),
-            button_date: None,
+            button_date: item.button_date,
             is_demo: false,
         }
     }

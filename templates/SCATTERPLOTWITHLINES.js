@@ -3,9 +3,22 @@ var margin = {top: 30, right: 20, bottom: 30, left: 50},
     width = 600 - margin.left - margin.right,
     height = 270 - margin.top - margin.bottom;
 
+// Get the data
+var data = DATA;
+
+var xmax = d3.max(data, function(d) {return d[0]});
+var xmin = d3.min(data, function(d) {return d[0]});
+var ymax = d3.max(data, function(d) {return d[1]});
+var ymin = d3.min(data, function(d) {return d[1]});
+
+xmax = xmax + 0.1 * Math.abs(xmax);
+xmin = xmin - 0.1 * Math.abs(xmin);
+ymax = ymax + 0.1 * Math.abs(ymax);
+ymin = ymin - 0.1 * Math.abs(ymin);
+
 // Set the ranges
-var x = d3.scale.linear().range([0, width]);
-var y = d3.scale.linear().range([height, 0]);
+var x = d3.scaleLinear().domain([xmin, xmax]).range([0, width]);
+var y = d3.scale.linear().domain([ymin, ymax]).range([height, 0]);
 
 // Define the axes
 var xAxis = d3.svg.axis().scale(x)
@@ -50,32 +63,15 @@ svg.append("text")      // text label for the y-axis
         .style("font-size", "16px")
         .text("YAXIS");
 
-// Get the data
-var data = DATA;
-
-var xmax = d3.max(data, function(d) {return d[0]});
-var xmin = d3.min(data, function(d) {return d[0]});
-var ymax = d3.max(data, function(d) {return d[1]});
-var ymin = d3.min(data, function(d) {return d[1]});
-
-xmax = xmax + 0.1 * Math.abs(xmax);
-xmin = xmin - 0.1 * Math.abs(xmin);
-ymax = ymax + 0.1 * Math.abs(ymax);
-ymin = ymin - 0.1 * Math.abs(ymin);
-
-x.domain([xmin, xmax]);
-y.domain([ymin, ymax]);
-
 svg.append("g")
-    .attr("fill", "black")
-    .attr("stroke", "black")
-    .attr("stroke-width", 2)
-    .selectAll("circle")
+    .selectAll("dot")
     .data(data)
-    .join("circle")
-    .attr("cx", d => x(d[0]))
-    .attr("cy", d => y(d[1]))
-    .attr("r", 2);
+    .enter()
+    .append("circle")
+        .attr("cx", function(d) {return x(d[0]);})
+        .attr("cy", function(d) {return y(d[1]);})
+        .attr("r", 1.5)
+        .style("fill", "#69b3a2");
 
 svg.append("g").attr("class", "xaxis").attr("transform", "translate(0," + height + ")").call(xAxis);
 svg.append("g").attr("class", "yaxis").call(yAxis);

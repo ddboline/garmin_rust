@@ -966,6 +966,7 @@ impl HandleRequest<FitbitActivitiesDBUpdateRequest> for PgPool {
 #[derive(Serialize, Deserialize)]
 pub struct RaceResultPlotRequest {
     pub race_type: RaceType,
+    pub demo: Option<bool>,
 }
 
 #[async_trait]
@@ -973,6 +974,7 @@ impl HandleRequest<RaceResultPlotRequest> for PgPool {
     type Result = Result<StackString, Error>;
     async fn handle(&self, req: RaceResultPlotRequest) -> Self::Result {
         let model = RaceResultAnalysis::run_analysis(req.race_type, self).await?;
-        model.create_plot(false).map_err(Into::into)
+        let demo = req.demo.unwrap_or(true);
+        model.create_plot(demo).map_err(Into::into)
     }
 }

@@ -266,6 +266,8 @@ fn parse_time_string(s: &str) -> Option<f64> {
 mod tests {
     use anyhow::Error;
     use chrono::{Datelike, NaiveDate, Utc};
+    use lazy_static::lazy_static;
+    use parking_lot::Mutex;
     use std::collections::HashMap;
 
     use stack_string::StackString;
@@ -273,6 +275,13 @@ mod tests {
     use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
 
     use crate::{race_results::RaceResults, race_type::RaceType};
+
+    const WORLD_RECORD_ENTRIES: usize = 24;
+    const TEST_RACE_ENTRIES: usize = 214;
+
+    lazy_static! {
+        static ref DB_LOCK: Mutex<()> = Mutex::new(());
+    }
 
     fn get_test_race_result() -> RaceResults {
         RaceResults {
@@ -297,6 +306,8 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_insert_delete_entry() -> Result<(), Error> {
+        let _ = DB_LOCK.lock();
+
         let config = GarminConfig::get_config(None)?;
         let pool = PgPool::new(&config.pgurl);
         let result = get_test_race_result();
@@ -329,7 +340,9 @@ mod tests {
         let input = include_str!("../../tests/data/Race_Results.txt");
 
         let new_results = RaceResults::parse_from_race_results_text_file(&input)?;
-        assert_eq!(new_results.len(), 214);
+        assert_eq!(new_results.len(), TEST_RACE_ENTRIES);
+
+        let _ = DB_LOCK.lock();
 
         let config = GarminConfig::get_config(None)?;
         let pool = PgPool::new(&config.pgurl);
@@ -360,7 +373,7 @@ mod tests {
         }
 
         let personal_results = RaceResults::get_results_by_type(RaceType::Personal, &pool).await?;
-        assert_eq!(personal_results.len(), 214);
+        assert_eq!(personal_results.len(), TEST_RACE_ENTRIES);
 
         let mut existing_map: HashMap<_, _> =
             personal_results
@@ -413,6 +426,8 @@ mod tests {
         assert_eq!(mens_results.len(), 24);
         assert_eq!(womens_results.len(), 24);
 
+        let _ = DB_LOCK.lock();
+
         let config = GarminConfig::get_config(None)?;
         let pool = PgPool::new(&config.pgurl);
 
@@ -429,10 +444,10 @@ mod tests {
         }
         let mens_results =
             RaceResults::get_results_by_type(RaceType::WorldRecordMen, &pool).await?;
-        assert_eq!(mens_results.len(), 24);
+        assert_eq!(mens_results.len(), WORLD_RECORD_ENTRIES);
         let womens_results =
             RaceResults::get_results_by_type(RaceType::WorldRecordWomen, &pool).await?;
-        assert_eq!(womens_results.len(), 24);
+        assert_eq!(womens_results.len(), WORLD_RECORD_ENTRIES);
         Ok(())
     }
 }

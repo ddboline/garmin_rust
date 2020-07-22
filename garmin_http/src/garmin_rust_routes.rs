@@ -41,11 +41,11 @@ use crate::{
         GarminConnectActivitiesDBUpdateRequest, GarminConnectActivitiesRequest,
         GarminConnectHrApiRequest, GarminConnectHrSyncRequest, GarminConnectSyncRequest,
         GarminCorrRequest, GarminHtmlRequest, GarminListRequest, GarminSyncRequest,
-        GarminUploadRequest, HandleRequest, ScaleMeasurementPlotRequest, ScaleMeasurementRequest,
-        ScaleMeasurementUpdateRequest, StravaActiviesDBUpdateRequest, StravaActivitiesDBRequest,
-        StravaActivitiesRequest, StravaAthleteRequest, StravaAuthRequest, StravaCallbackRequest,
-        StravaCreateRequest, StravaRefreshRequest, StravaSyncRequest, StravaUpdateRequest,
-        StravaUploadRequest,
+        GarminUploadRequest, HandleRequest, RaceResultPlotRequest, ScaleMeasurementPlotRequest,
+        ScaleMeasurementRequest, ScaleMeasurementUpdateRequest, StravaActiviesDBUpdateRequest,
+        StravaActivitiesDBRequest, StravaActivitiesRequest, StravaAthleteRequest,
+        StravaAuthRequest, StravaCallbackRequest, StravaCreateRequest, StravaRefreshRequest,
+        StravaSyncRequest, StravaUpdateRequest, StravaUploadRequest,
     },
     CONFIG,
 };
@@ -757,4 +757,25 @@ pub async fn fitbit_activities_db_update(
     let req = payload.into_inner();
     let body = state.db.handle(req).await?;
     form_http_response(body.join("\n"))
+}
+
+pub async fn race_result_plot(
+    query: Query<RaceResultPlotRequest>,
+    state: Data<AppState>,
+    session: Session,
+) -> Result<HttpResponse, Error> {
+    let query = query.into_inner();
+
+    let history: Vec<StackString> = session
+        .get("history")
+        .map_err(|e| format_err!("Failed to set history {:?}", e))?
+        .unwrap_or_else(Vec::new);
+
+    let body = state
+        .db
+        .handle(query)
+        .await?
+        .replace("HISTORYBUTTONS", &generate_history_buttons(&history));
+
+    form_http_response(body)
 }

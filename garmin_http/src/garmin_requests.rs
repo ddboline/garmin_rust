@@ -19,9 +19,6 @@ use fitbit_lib::{
     fitbit_statistics_summary::FitbitStatisticsSummary,
     scale_measurement::ScaleMeasurement,
 };
-
-use strava_lib::strava_client::{StravaAthlete, StravaClient};
-
 use garmin_connect_lib::garmin_connect_client::get_garmin_connect_session;
 use garmin_lib::{
     common::{
@@ -35,6 +32,8 @@ use garmin_lib::{
     },
     utils::sport_types::SportTypes,
 };
+use race_result_analysis::{race_result_analysis::RaceResultAnalysis, race_type::RaceType};
+use strava_lib::strava_client::{StravaAthlete, StravaClient};
 
 use crate::{errors::ServiceError as Error, CONFIG};
 
@@ -961,5 +960,19 @@ impl HandleRequest<FitbitActivitiesDBUpdateRequest> for PgPool {
         FitbitActivity::upsert_activities(&msg.updates, self)
             .await
             .map_err(Into::into)
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct RaceResultPlotRequest {
+    pub race_type: RaceType,
+}
+
+#[async_trait]
+impl HandleRequest<RaceResultPlotRequest> for PgPool {
+    type Result = Result<StackString, Error>;
+    async fn handle(&self, req: RaceResultPlotRequest) -> Self::Result {
+        let model = RaceResultAnalysis::run_analysis(req.race_type, self).await?;
+        model.create_plot(false).map_err(Into::into)
     }
 }

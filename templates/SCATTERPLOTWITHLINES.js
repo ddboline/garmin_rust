@@ -66,6 +66,16 @@ ymin = ymin - 0.1 * Math.abs(ymin);
 x.domain([xmin, xmax]);
 y.domain([ymin, ymax]);
 
-svg.append("path").attr("class", "line").attr("d", valueline(data));
+svg.append("g")
+    .attr("fill", "black")
+    .attr("stroke", "black")
+    .attr("stroke-width", 2)
+    .selectAll("circle")
+    .data(data)
+    .join("circle")
+    .attr("cx", d => x(d[0]))
+    .attr("cy", d => y(d[1]))
+    .attr("r", 2);
+
 svg.append("g").attr("class", "xaxis").attr("transform", "translate(0," + height + ")").call(xAxis);
 svg.append("g").attr("class", "yaxis").call(yAxis);

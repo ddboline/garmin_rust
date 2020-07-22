@@ -421,6 +421,7 @@ impl HandleRequest<FitbitTcxSyncRequest> for PgPool {
 pub struct ScaleMeasurementRequest {
     pub start_date: Option<NaiveDate>,
     pub end_date: Option<NaiveDate>,
+    pub button_date: Option<NaiveDate>,
 }
 
 impl ScaleMeasurementRequest {
@@ -433,6 +434,14 @@ impl ScaleMeasurementRequest {
             end_date: match self.end_date {
                 Some(d) => Some(d),
                 None => Some(Local::now().naive_local().date()),
+            },
+            button_date: match self.button_date {
+                Some(d) => Some(d),
+                None => Some(
+                    (Local::now() - Duration::days(ndays + 1))
+                        .naive_local()
+                        .date(),
+                ),
             },
         }
     }
@@ -508,6 +517,7 @@ impl HandleRequest<ScaleMeasurementPlotRequest> for PgPool {
 pub struct FitbitHeartratePlotRequest {
     pub start_date: NaiveDate,
     pub end_date: NaiveDate,
+    pub button_date: Option<NaiveDate>,
     pub is_demo: bool,
 }
 
@@ -517,6 +527,7 @@ impl From<ScaleMeasurementRequest> for FitbitHeartratePlotRequest {
         Self {
             start_date: item.start_date.expect("this should be impossible"),
             end_date: item.end_date.expect("this should be impossible"),
+            button_date: item.button_date,
             is_demo: false,
         }
     }
@@ -532,6 +543,7 @@ impl HandleRequest<FitbitHeartratePlotRequest> for PgPool {
             self,
             req.start_date,
             req.end_date,
+            req.button_date,
             req.is_demo,
         )
         .await

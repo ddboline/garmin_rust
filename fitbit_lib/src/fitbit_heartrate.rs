@@ -216,8 +216,10 @@ impl FitbitHeartRate {
         pool: &PgPool,
         start_date: NaiveDate,
         end_date: NaiveDate,
+        button_date: Option<NaiveDate>,
         is_demo: bool,
     ) -> Result<StackString, Error> {
+        let button_date = button_date.unwrap_or_else(|| Local::today().naive_local());
         let mut final_values: Vec<_> =
             Self::get_heartrate_values(config, pool, start_date, end_date)
                 .await?
@@ -258,7 +260,7 @@ impl FitbitHeartRate {
         let plots = format!("<script>\n{}\n</script>", plots);
         let buttons: Vec<_> = (0..5)
             .map(|i| {
-                let date = Local::today().naive_local() - Duration::days(i);
+                let date = button_date - Duration::days(i);
                 format!(
                     "{}{}{}<br>",
                     format!(
@@ -481,7 +483,7 @@ mod tests {
         let start_date = NaiveDate::from_ymd(2019, 8, 1);
         let end_date = NaiveDate::from_ymd(2019, 8, 2);
         let results =
-            FitbitHeartRate::get_heartrate_plot(&config, &pool, start_date, end_date, false)
+            FitbitHeartRate::get_heartrate_plot(&config, &pool, start_date, end_date, None, false)
                 .await?;
         debug!("{}", results);
         assert!(results.len() > 0);

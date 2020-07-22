@@ -249,10 +249,6 @@ impl RaceResultAggregated {
 #[cfg(test)]
 mod tests {
     use anyhow::Error;
-    use chrono::{Datelike, NaiveDate, Utc};
-    use std::collections::HashMap;
-
-    use stack_string::StackString;
 
     use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
 
@@ -282,11 +278,8 @@ mod tests {
         let pool = PgPool::new(&config.pgurl);
 
         let personal = RaceResultAnalysis::run_analysis(RaceType::Personal, &pool).await?;
-        personal.create_plot(false)?;
-        // let _ = RaceResultAnalysis::run_analysis(RaceType::WorldRecordMen,
-        // &pool).await?; let _ = RaceResultAnalysis::run_analysis(RaceType::
-        // WorldRecordWomen, &pool).await?;
-        assert!(false);
+        let result = personal.create_plot(false)?;
+        assert!(result.len() > 0);
         Ok(())
     }
 }

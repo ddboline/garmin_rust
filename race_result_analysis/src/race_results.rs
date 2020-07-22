@@ -270,8 +270,6 @@ mod tests {
     use parking_lot::Mutex;
     use std::collections::HashMap;
 
-    use stack_string::StackString;
-
     use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
 
     use crate::{race_results::RaceResults, race_type::RaceType};

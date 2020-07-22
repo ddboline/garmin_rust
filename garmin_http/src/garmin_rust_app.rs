@@ -20,10 +20,10 @@ use crate::{
         garmin_connect_activities_db_update, garmin_connect_hr_api, garmin_connect_hr_sync,
         garmin_connect_sync, garmin_demo, garmin_get_hr_data, garmin_get_hr_pace,
         garmin_list_gps_tracks, garmin_sync, garmin_upload, heartrate_plots, heartrate_plots_demo,
-        heartrate_statistics_plots, scale_measurement, scale_measurement_update, strava_activities,
-        strava_activities_db, strava_activities_db_update, strava_athlete, strava_auth,
-        strava_callback, strava_create, strava_refresh, strava_sync, strava_update, strava_upload,
-        user,
+        heartrate_statistics_plots, race_result_plot, race_result_plot_demo, scale_measurement,
+        scale_measurement_update, strava_activities, strava_activities_db,
+        strava_activities_db_update, strava_athlete, strava_auth, strava_callback, strava_create,
+        strava_refresh, strava_sync, strava_update, strava_upload, user,
     },
     CONFIG,
 };
@@ -193,6 +193,13 @@ pub async fn start_app() {
             .service(web::resource("/garmin/strava/update").route(web::post().to(strava_update)))
             .service(web::resource("/garmin/strava/create").route(web::get().to(strava_create)))
             .service(web::resource("/garmin/user").route(web::get().to(user)))
+            .service(
+                web::resource("/garmin/race_result_plot").route(web::get().to(race_result_plot)),
+            )
+            .service(
+                web::resource("/garmin/race_result_plot_demo")
+                    .route(web::get().to(race_result_plot_demo)),
+            )
     })
     .bind(&format!("127.0.0.1:{}", config.port))
     .unwrap_or_else(|_| panic!("Failed to bind to port {}", config.port))

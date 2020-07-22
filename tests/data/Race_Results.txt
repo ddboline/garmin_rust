@@ -1,0 +1,216 @@
+Race Distance   Race Time       Pace    Date            Race Name
+-------------------------------------------------------------------------------------------------------------------------
+     10 km         1:00:48      09:27   2019-11-28      Turkey Day Trail Trot
+     50 km         6:36:51      13:25   2019-10-19      Castle to River 50k
+ 42.195 km         3:55:18      08:58   2019-09-29      Chicago Marathon
+ 42.195 km         3:48:03      08:42   2019-09-29      Berlin Marathon
+     50 km         6:58:38      13:43   2019-08-10      Wildcat Ridge 50k
+     50 km         6:42:30      12:33   2019-05-11      Mayapple 50k
+     50 km         6:13:43      12:16   2019-04-20      Shore 2 Shore 50k
+21.0975 km         4:01:21      17:27   2019-04-13      Breakneck Trail Half Marathon
+     50 km         6:46:55      13:03   2019-03-23      Tito's Tacos and Trails 50k
+21.0975 km         1:56:46      08:58   2018-10-07      Paine to Pain Half Marathon, New Rochelle NY
+     50 km         5:31:34      10:43   2018-10-06      Tesla Hertz 50k
+     50 km         5:43:50      11:05   2018-08-19      Smart Ass Trail Mixup 50k
+     54 mi        22:08:30      24:45   2018-06-23      Manitou's Revenge
+     50 km         8:01:11      15:32   2018-06-09      North Face Endurance Challenge MA 50k
+     50 km         6:54:00      12:59   2018-05-19      Mayapple 50k
+     70 km         9:33:55      13:29   2018-04-08      Paumanok Pursuit 70k Trail Run
+     50 km         4:36:08      08:46   2018-03-04      Caumsett 50k
+     50 km         5:37:19      11:08   2018-02-17      Febapple 50k
+     50 km         5:17:59      10:10   2017-12-03      Half-Ass Trail Mixup 50k
+     50 mi        12:51:14      15:02   2017-11-18      NFEC CA 50 mi
+ 42.195 km         3:53:16      08:46   2017-11-05      NYC Marathon
+ 42.195 km         4:26:13      10:03   2017-10-14      Whistlestop Marathon
+     50 km         6:57:23      13:24   2017-10-07      Tesla Hertz 50k
+     50 km         6:46:16      13:24   2017-08-12      Wildcat Ridge 50k
+     54 mi        15:28:44      17:06   2017-07-29      Lost Turkey 50 mi
+     32 mi         7:13:01      13:35   2017-07-01      Finger Lakes 50k (more like 32mi on the dot...)
+21.0975 km         2:50:27      12:51   2017-06-10      Palisades Cliffhanger Half Marathon
+     50 mi        13:49:50      16:11   2017-06-03      Cayuga Trail 50 mile
+     50 km         7:17:22      13:42   2017-05-20      Mayapple 50k
+     50 mi        13:35:54      16:04   2017-05-13      North Face Endurance Challenge NY 50mi
+     50 km         6:36:20      12:32   2017-04-29      North Face Endurance Challenge DC 50k
+     10 km           57:03      09:07   2017-04-23      Leatherman's Loop 10k Trail Run
+     28 mi         9:30:26      20:20   2017-04-15      Breakneck Trail "Marathon"
+     70 km        10:18:34      14:18   2017-04-02      Paumanok Pursuit 70k Trail Run
+21.0975 km         1:43:26      07:53   2017-03-25      Sleepy Hollow Half Marathon
+21.0975 km         1:40:22      07:40   2017-03-19      NYC Half Marathon
+     50 km         4:42:54      09:06   2017-03-05      Caumsett 50k
+     50 km         5:46:03      11:08   2017-02-18      Febapple 50k
+    100 mi        27:38:13      16:47   2017-02-04      Rocky Racoon 100 mile
+21.0975 km         1:40:49      07:42   2017-01-22      Fred Lebow Manhattan Half Marathon
+     50 km         6:35:09      12:58   2017-01-15      Fat Ass 50(k)
+   26.5 mi         5:12:53      11:47   2017-01-07      Watchung (Marathon)
+     50 km         5:06:03      09:43   2016-12-11      BUS Dumb Ass 50k
+     10 km           53:26      08:14   2016-11-24      Turkey Day Trail Trot 10k
+ 42.195 km         4:13:53      09:41   2016-11-20      Brooklyn Marathon
+     60 km         6:03:39      09:45   2016-11-19      NYC 60k
+21.0975 km         1:40:26      07:47   2016-11-13      After the Leaves Have Fallen
+   13.9 mi         3:28:00      14:55   2016-11-12      Black Rock 25k
+   20.3 mi         5:41:07      16:46   2016-10-22      Great Schunemunk Traverse
+   34.8 mi         6:00:00      10:20   2016-10-16      GLIRC 6 Hour Birthday Run
+    104 mi        28:04:54      16:12   2016-10-08      Tesla Hertz 104 mile trail run
+21.0975 km         1:45:12      08:02   2016-09-25      Paine to Pain Half Marathon, New Rochelle NY
+  31.26 mi         8:04:51      15:30   2016-09-17      SRT 30 mile Run Hike
+     50 km         5:58:01      11:31   2016-09-10      Dirty Dozen 50k
+     50 km         7:29:44      14:28   2016-08-13      Wildcat Ridge 50k
+  30.83 mi         6:00:00      11:46   2016-07-23      Pajama 6hr Run
+     10 km         1:25:57      13:52   2016-08-06      Lime Kiln Weekend 10k
+   14.7 mi         2:31:00      10:16   2016-08-06      Lime Kiln Weekend "Half Marathon"
+     32 mi         6:17:22      11:45   2016-07-02      Finger Lakes 50k (more like 32mi on the dot...)
+     50 km         6:39:03      12:50   2016-06-05      NJTrailSeries Spring Watchung 50k
+21.0975 km         1:38:49      07:33   2016-05-21      Brooklyn Half Marathon
+     50 km         6:27:02      11:30   2016-05-07      Greenbelt 50k
+     51 mi        13:25:04      15:49   2016-04-30      North Face Endurance Challenge NY
+     70 km         9:01:18      12:26   2016-04-03      Paumanok Pursuit 70k Trail Run
+21.0975 km         1:40:10      07:38   2016-03-26      Sleepy Hollow Half Marathon
+21.0975 km         1:40:58      07:43   2016-03-13      Celebrate Life Half Marathon
+     15 km         1:04:30      06:56   2016-03-12      Kings Park 15k
+     50 km         4:33:32      08:49   2016-03-06      Caumsett 50k USATF Championships
+ 42.195 km         3:58:08      09:05   2016-02-21      NYCRUNS Central Park Marathon
+     50 km         5:22:16      10:22   2016-02-20      Febapple 50k
+     10 mi         1:10:10      07:01   2016-01-10      NYCRuns Hot Cocoa Central Park 10 miler
+     50 km         5:37:13      10:51   2015-12-13      BUS Fat Ass 50k
+     50 mi        10:34:13      12:39   2015-11-21      JFK 50 miler
+     15 km         1:22:22      08:50   2015-11-07      Manorville Hills 15k Trail Race
+   31.4 mi         6:00:00      11:28   2015-10-18      GLIRC 6 Hour Birthday Run
+     50 km         5:47:54      11:18   2015-10-10      Tesla Hertz 50k trail run
+21.0975 km         1:47:32      08:13   2015-10-04      Paine to Pain Half Marathon, New Rochelle NY
+     50 km         8:13:32      15:40   2015-09-26      Mountain Madness 50k
+     10 km           43:08      06:56   2015-09-19      The Great Cow Harbor 10k Run - 10K Run  NY
+     10 km           45:17      07:17   2015-08-23      Run for the Hill of It
+     10 mi         1:53:27      11:21   2015-08-15      Wildcat Ridge 10mi (DNF'd 50k)
+      5 km           20:26      06:34   2015-08-09      Fire Island 5k, Run for Rose
+     10 km           45:27      07:27   2015-06-20      Shelter Island 10k
+   1.15 mi           06:54      06:00   2015-06-13      Northport Nautical Mile
+     50 km         6:27:02      12:27   2015-05-09      Greenbelt 50k
+     50 km         8:13:14      15:52   2015-05-02      North Face Endurance Challenge NY
+     10 km           55:06      08:52   2015-04-26      Leatherman's Loop 10k Trail Run
+      5 km           23:10      07:27   2015-04-11      Doug Woods 5k
+     15 km         1:09:17      07:26   2015-03-14      Kings Park 15k
+     50 km         4:35:33      08:52   2015-03-01      Caumsett 50k USATF Championships
+ 42.195 km         4:13:57      09:41   2015-02-12      Lincoln's Birthday Marathon, East Meadow, NY
+     10 mi         1:12:27      07:14   2015-01-17      10 Mile Run To The Brewery  NY
+      5 km           22:18      07:12   2015-01-11      NYS Parks Winter Series - Heckscher NY
+      5 km           20:28      06:35   2014-12-20      Ho Ho Ho Holiday run    NY
+   5.35 mi           42:43      07:59   2014-12-07      Tough Cookie "8k"
+     15 km         1:07:02      07:10   2014-12-06      Indian Island 15k
+      5 km           21:56      07:03   2014-11-30      Rob's Run 5k
+     50 mi        10:56:19      13:07   2014-11-22      JFK 50 miler
+      4 mi           26:33      06:38   2014-11-15      Fly with the Owls 4mi
+     15 km         1:17:59      08:21   2014-11-08      Manorville Hills 15k Trail Race
+      4 km           15:50      06:22   2014-11-01      VA 4k Race
+      5 mi           40:41      08:09   2014-10-26      Run the Farm 5miler
+   32.9 mi         5:50:00      10:38   2014-10-19      GLIRC 6 Hour Birthday Run
+     50 km         5:25:37      10:28   2014-10-11      Tesla Hertz 50k trail run
+21.0975 km         1:39:50      07:36   2014-10-04      Great South Bay Run - Half Marathon NY
+     50 mi        10:43:04      12:51   2014-09-28      Ocean to Sound 50 mile
+21.0975 km         1:56:52      08:54   2014-09-21      Paine to Pain Half Marathon, New Rochelle NY
+     10 km           42:00      06:45   2014-09-20      The Great Cow Harbor 10k Run - 10K Run  NY
+     10 km           41:11      06:37   2014-09-07      Angel's on the Bay 10k
+      1 mi           05:29      05:29   2014-08-30      Farmingdale Main St Mile
+      5 km           20:42      06:39   2014-08-25      Run for the Ranch 5k
+    2.6 mi           16:22      06:18   2014-08-24      Sarcoidosis 2.6mi
+     10 km           41:35      06:41   2014-08-17      Dirty Sock Run 10k
+     50 km         7:23:33      14:16   2014-08-09      Wildcat Ridge 50k
+      5 km           19:42      06:20   2014-08-07      Corporate Challenge
+      5 mi           35:02      07:00   2014-08-04      Jones Beach 5mi
+      4 mi           25:48      06:27   2014-08-02      Summerfest 4mi
+      5 km           20:48      06:41   2014-07-28      Robert Moses 5k
+      5 km           20:09      06:29   2014-07-21      Caumsett 5k
+      4 mi           26:15      06:33   2014-07-19      Cystic Fibrosis 4mi
+      5 km           21:28      06:55   2014-07-13      Thunder Run 5k
+      5 km           20:37      06:38   2014-07-07      Bethpage 5k
+      4 mi           26:18      06:34   2014-07-04      Bellmore 4mi
+      5 km           20:15      06:32   2014-06-30      Belmont Lake 5k
+      5 km           20:33      06:36   2014-06-29      Massapequa Firecracker 5k
+      5 km           19:48      06:23   2014-06-29      Community Ambulance Corp 5k
+      4 mi           28:07      07:01   2014-06-28      4mi Run Around the Lake
+     10 km           43:17      06:57   2014-06-23      Sunken Meadow 10k
+     10 km           42:49      06:53   2014-06-21      Shelter Island 10k
+      5 mi           35:18      07:04   2014-06-16      Heckscher 5mi
+      5 km           20:18      06:33   2014-06-14      Diamond Dash 5k
+      5 km           20:47      06:40   2014-06-07      Keith Nintzel 5k
+      8 km           33:47      06:47   2014-06-01      New Hyde Park 8k
+     50 km         7:22:00      14:14   2014-05-10      Greenbelt 50k
+     50 km         7:24:12      14:18   2014-05-03      North Face Endurance Challenge NY
+     10 km           55:32      08:57   2014-04-27      Leatherman's Loop 10k Trail Run
+      5 km           22:10      07:08   2014-04-12      Doug Wood 5k XC Trail Run
+     10 km           45:05      07:15   2014-04-05      Aspire 10k
+     70 km         9:51:10      13:35   2014-03-30      Paumanok Pursuit 70k Trail Run
+     50 km         4:34:21      08:49   2014-03-02      Caumsett 50k USATF Championships
+      5 km           21:31      06:59   2014-02-02      NYS Parks Winter Run Series - Jones Beach State Park NY
+      5 km           22:07      07:07   2014-01-26      NYS Parks Winter Run Series - Caumsett State Park   NY
+      5 km           23:42      07:37   2014-01-19      NYS State Parks Winter Run Series Robert Moses 5K   NY
+     10 mi         1:11:50      07:10   2014-01-18      10 Mile Run To The Brewery  NY
+      5 km           24:11      07:47   2014-01-12      NYS Parks Winter Series - Heckscher NY
+      5 km           20:31      06:36   2013-12-21      Ho Ho Ho Holiday run    NY
+      8 km           39:01      07:50   2013-12-08      Tough Cookie 8k Trail Race  NY
+     10 km           43:45      07:02   2013-11-28      Drumstick Dash 10K - 10K Run    MN
+      4 mi           26:22      06:35   2013-11-23      Blazing Trails 4-Autism Four Mile Run   NY
+ 42.195 km         3:28:29      07:57   2013-11-17      Philadelphia Marathon & Half Marathon, 8k - Marathon    PA
+  10.36 mi         1:20:13      07:44   2013-10-13      Tesla Hertz 10 mile trail run
+21.0975 km         1:33:11      07:06   2013-10-05      Great South Bay Run - Half Marathon NY
+     10 km           41:27      06:40   2013-09-21      The Great Cow Harbor 10k Run - 10K Run  NY
+     10 km           41:47      06:43   2013-09-02      MDRA Victory - 10K Run  MN
+      5 km           21:01      06:45   2013-09-02      MDRA Victory - 5K Run   MN
+      4 mi           26:10      06:32   2013-08-03      Sayville Summerfest Hon. John Cohalan 4 Mile Run    NY
+      4 mi           28:32      07:08   2013-07-06      Cystic Fibrosis 4Mi Run   NY
+      5 km           20:50      06:42   2013-06-15      Shwachman-Diamond Dash for a Cure 5K    NY
+ 42.195 km         3:42:29      08:29   2013-06-02      Minneapolis Marathon - Marathon MN
+      5 km           20:02      06:26   2013-05-11      The Bench 5k    NY
+21.0975 km         2:19:54      10:40   2013-05-04      North Face Endurance Challenge - Half Marathon Trail    NY
+      5 km           20:07      06:28   2013-04-21      Debbie Whittemore Memorial 5k Run/Walk  NY
+21.0975 km         1:38:11      07:29   2013-03-24      Suffolk County Half Marathon - Half Marathon    NY
+     25 km         2:04:49      08:02   2013-03-03      GLIRC 25K/50K Caumsett Park Run - 25k Run   NY
+      5 km           21:25      06:53   2013-01-20      NYS Parks Winter Run Series 2013    NY
+     10 mi         1:10:37      07:03   2013-01-19      Sayville Running Company 10 Mile Run to the Brewery NY
+      5 km           20:29      06:35   2013-01-13      NYS Parks Winter Series - Heckscher State Park  NY
+   14.1 mi         2:13:13      09:26   2012-12-30      Rodeo Valley Trail Run – Winter - Trail-Half-Marathon CA
+      5 km           20:14      06:30   2012-12-15      Ho Ho Ho 5k Race 2012   NY
+      5 mi           34:03      06:48   2012-12-08      Wantagh Snowball 5 Mile Run 2012    NY
+      5 km           20:51      06:42   2012-12-02      Santa's 5k Toy Trot 2012    NY
+     10 km           42:22      06:49   2012-11-22      Drumstick Dash 2012 MN
+      5 km           20:40      06:39   2012-10-27      Village of Brightwaters 12th Annual Pumpkin Run 2012    NY
+ 42.195 km         3:38:26      08:19   2012-10-13      Whistle Stop Marathon 2012 - Run-Marathon   WI
+     10 km           42:34      06:51   2012-09-15      The Great Cow Harbor 10k Run 2012   NY
+ 42.195 km         4:17:49      09:49   2012-05-06      Long Island Marathon - Half Marathon 2012 - Run-Marathon    NY
+21.0975 km         1:39:11      07:33   2012-03-24      13.1 Marathon NYC
+      4 mi           27:49      06:57   2012-03-11      Nickerson 4 Mile Run 2012 Open 2012 NY
+      5 km           21:48      07:01   2012-03-10      Conquer The Hills 5K 2012   NY
+     25 km         1:50:58      07:08   2012-03-04      Caumsett Park 50K/25K 2012 - Run-25K    NY
+      5 km           19:43      06:20   2012-01-29      NYS Parks Winter Run Series 2012 - Jones Beach  NY
+     10 mi         1:05:41      06:34   2012-01-28      Sayville Running Company 10 Mile Run to the Brewery 2012    NY
+      5 km           19:25      06:14   2012-01-22      NYS Parks Winter Run Series 2012 - Caumsett 5k  NY
+      5 km           19:21      06:13   2012-01-15      NYS Parks Winter Run Series 2012    NY
+      5 km           19:50      06:23   2012-01-08      NYS Parks Winter Run Series 2012 - Heckscher 5k NY
+      5 km           19:17      06:12   2011-12-17      Ho Ho Ho Holiday 5k Run 2011    NY
+      5 km           21:29      06:54   2011-11-13      Stony Brook Turkey Trot 5K Run/Walk 2011    NY
+ 42.195 km         4:04:39      09:19   2011-10-09      Towpath Marathon - Run-Marathon OH
+21.0975 km         1:29:14      06:48   2011-09-11      Chicago Half Marathon & 5K 2011 - Run-Half Marathon IL
+     10 km           39:02      06:16   2011-09-05      MDRA Victory 10K and 5K 2011 - Run-10K  MN
+      5 km           19:34      06:17   2011-09-05      MDRA Victory 10K and 5K 2011 - Run-5K   MN
+     10 km           40:03      06:26   2011-08-21      Windrunner 10K 2011 IL
+      5 km           18:21      05:54   2011-07-04      Firecracker 5K 2011 IL
+ 42.195 km         4:22:44      10:01   2010-06-19      Grandma's Marathon 2010 - Grandma's Marathon    MN
+ 42.195 km         3:59:04      09:07   2005-06-18      Grandma's Marathon 2005 - Marathon  MN
+ 42.195 km         3:42:39      08:29   2004-10-03      Twin Cities Marathon 2004 - Run Marathon    MN
+ 42.195 km         3:28:01      07:56   2004-06-19      Grandma's Marathon 2004 MN
+ 42.195 km         3:35:45      08:13   2003-10-12      Cerrone Ocean State Marathon RI
+ 42.195 km         3:38:13      08:19   2003-06-21      Grandma's Marathon 2003 - Run - 26.22Mi MN
+ 42.195 km         3:26:12      07:51   2002-09-29      Twin Cities Marathon - Run - 26.2Miles  MN
+ 42.195 km         3:33:08      08:07   2002-06-22      Grandma's Marathon 2002 MN
+      5 km           20:56      06:44   2002-06-02      Grand Old Day On the Go 2002 - Run-5K   MN
+21.0975 km         1:37:17      07:25   2002-05-11      New Prague Half Marathon    MN
+21.0975 km         1:31:07      06:57   2001-10-13      Whistlestop Marathon 2001 - Run -Half Marathon  WI
+21.0975 km         1:30:04      06:52   2001-08-18      Mora Half Marathon 2001 MN
+ 42.195 km         3:36:15      08:14   2001-06-16      Grandma's Marathon 2001 MN
+     10 km           39:33      06:21   2000-08-06      Hennepin Lake Classic
+      5 mi           33:30      06:42   2000-06-10      Easy Does It 5 miler
+21.0975 km         1:26:08      06:34   1999-08-21      Mora Half Marathon
+      5 km           18:37      05:59   1999-08-08      Hennepin Lake Classic
+     10 km           41:38      06:42   1999-07-04      FIRECRACKER RUN 10K 1999    MN
+      5 km           21:00      06:45   1999-06-18      William Irvin 5K, Duluth MN
+      5 mi           29:03      05:48   1999-06-12      Easy Does It 5 miler
+      5 km           17:33      05:39   1997-08-10      Hennepin Lake Classic

@@ -79,6 +79,7 @@ shape-rendering: crispEdges;
     <button type="submit" onclick="scale_measurement_plots();">Scale Plots</button>
     <button type="submit" onclick="heartrate_stat_plot();">Hear Rate Stats</button>
     <button type="submit" onclick="heartrate_plot();">Hear Rate Plots</button>
+    <button type="submit" onclick="race_result_plot_personal();">Race Result Plot</button>
     <button name="garminconnectoutput" id="garminconnectoutput"> &nbsp; </button>
     <button type="submit" onclick="send_command('filter=latest');"> latest </button>
     <button type="submit" onclick="send_command('filter=sport');"> sport </button>
@@ -315,6 +316,18 @@ STRAVAUPLOADBUTTON
         xmlhttp.open( "POST", ostr , true );
         xmlhttp.setRequestHeader("Content-Type", "application/json");
         xmlhttp.send(data);
+    }
+    function race_result_plot_personal() {
+        let ostr = "/garmin/race_result_plot?race_type=personal"
+        location.replace(ostr)
+    }
+    function race_result_plot_world_record_men() {
+        let ostr = "/garmin/race_result_plot?race_type=world_record_men"
+        location.replace(ostr)
+    }
+    function race_result_plot_world_record_women() {
+        let ostr = "/garmin/race_result_plot?race_type=world_record_women"
+        location.replace(ostr)
     }
 </script>
 

@@ -11,6 +11,7 @@ heartrate_statistics_summary
 fitbit_activities
 garmin_connect_activities
 strava_activities
+race_results
 "
 
 mkdir -p backup/

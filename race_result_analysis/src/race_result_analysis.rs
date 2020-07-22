@@ -1,25 +1,23 @@
 use anyhow::Error;
-use chrono::{Duration, Local};
 use ndarray::{array, Array1};
 use postgres_query::FromSqlRow;
-use rusfun::curve_fit::Minimizer;
-use rusfun::func1d::Func1D;
+use rusfun::{curve_fit::Minimizer, func1d::Func1D};
 use stack_string::StackString;
-use std::path::Path;
+use std::collections::HashMap;
 
-use garmin_lib::common::pgpool::PgPool;
-use garmin_lib::reports::garmin_templates::{
-    PLOT_TEMPLATE, PLOT_TEMPLATE_DEMO, SCATTERPLOTWITHLINES,
+use garmin_lib::{
+    common::pgpool::PgPool,
+    reports::garmin_templates::{PLOT_TEMPLATE, PLOT_TEMPLATE_DEMO, SCATTERPLOTWITHLINES},
+    utils::garmin_util::{MARATHON_DISTANCE_M, METERS_PER_MILE},
 };
-use garmin_lib::utils::garmin_util::{MARATHON_DISTANCE_M, METERS_PER_MILE};
 
-use crate::race_results::RaceResults;
-use crate::race_type::RaceType;
+use crate::{race_results::RaceResults, race_type::RaceType};
 
 pub struct RaceResultAnalysis {
     data: Vec<RaceResults>,
     parameters: Array1<f64>,
     errors: Array1<f64>,
+    race_type: RaceType,
 }
 
 fn power_law(p: &Array1<f64>, x: &Array1<f64>) -> Array1<f64> {
@@ -70,14 +68,15 @@ impl RaceResultAnalysis {
             .fold((0.0, 0), |(s, n), dur| (s + dur, n + 1));
         let params = array![p0 / n as f64, 1.0, 1.0];
         let flags = array![true, true, true];
+
         let model_function = Func1D::new(&params, &x_values, power_law);
         let mut minimizer = Minimizer::init(&model_function, &y_values, &s_values, &flags, 0.1);
         minimizer.minimize();
-        minimizer.report();
         Ok(Self {
             data,
             parameters: minimizer.minimizer_parameters,
             errors: minimizer.parameter_errors,
+            race_type,
         })
     }
 
@@ -90,61 +89,110 @@ impl RaceResultAnalysis {
     }
 
     pub fn create_plot(&self, is_demo: bool) -> Result<StackString, Error> {
-        let data: Vec<(f64, f64)> = self
-            .data
+        fn extract_points(result: &RaceResults) -> (i32, f64) {
+            let distance = result.race_distance as f64 / METERS_PER_MILE;
+            let duration = result.race_time / 60.0;
+            let x = result.race_distance;
+            let y = duration / distance;
+            (x, y)
+        }
+
+        let xticks: Vec<_> = [
+            100,
+            200,
+            400,
+            800,
+            METERS_PER_MILE as i32,
+            5000,
+            10_000,
+            MARATHON_DISTANCE_M / 2,
+            MARATHON_DISTANCE_M,
+            50 * METERS_PER_MILE as i32,
+            100 * METERS_PER_MILE as i32,
+            300 * METERS_PER_MILE as i32,
+        ]
+        .iter()
+        .collect();
+        let xlabels = [
+            "100m", "", "", "800m", "1mi", "5k", "10k", "", "Marathon", "", "100mi", "300mi",
+        ];
+        let xmap: HashMap<_, _> = xticks.iter().zip(xlabels.iter()).collect();
+
+        let (ymin, ymax) = match self.race_type {
+            RaceType::Personal => (5, 24),
+            RaceType::WorldRecordMen => (2, 12),
+            RaceType::WorldRecordWomen => (2, 16),
+        };
+        let yticks: Vec<_> = (ymin..ymax).collect();
+
+        let (data, other_data): (Vec<_>, Vec<_>) =
+            self.data.iter().partition(|result| result.race_flag);
+
+        let data: Vec<_> = data.into_iter().map(extract_points).collect();
+        let other_data: Vec<_> = other_data.into_iter().map(extract_points).collect();
+
+        let (xmin, xmax) = match self.race_type {
+            RaceType::Personal => (1.0, 100.0),
+            RaceType::WorldRecordMen | RaceType::WorldRecordWomen => (0.25, 300.0),
+        };
+
+        let x_vals = Array1::linspace(xmin, xmax, 200);
+        let y_nom = power_law(&self.params(ParamType::Nom), &x_vals);
+        let y_neg = power_law(&self.params(ParamType::Neg), &x_vals);
+        let y_pos = power_law(&self.params(ParamType::Pos), &x_vals);
+
+        let x_vals: Vec<f64> = x_vals.map(|x| x * METERS_PER_MILE).to_vec();
+        let y_nom: Vec<(f64, f64)> = y_nom
             .iter()
-            .map(|result| {
-                let distance = result.race_distance as f64 / METERS_PER_MILE;
-                let duration = result.race_time / 60.0;
-                let x = distance;
-                let y = duration / distance;
-                (x, y)
-            })
+            .zip(x_vals.iter())
+            .map(|(y, x)| (*x, *y))
+            .collect();
+        let y_neg: Vec<(f64, f64)> = y_neg
+            .iter()
+            .zip(x_vals.iter())
+            .map(|(y, x)| (*x, *y))
+            .collect();
+        let y_pos: Vec<(f64, f64)> = y_pos
+            .iter()
+            .zip(x_vals.iter())
+            .map(|(y, x)| (*x, *y))
             .collect();
 
-        let js_str = serde_json::to_string(&data).unwrap_or_else(|_| "".to_string());
+        let data = serde_json::to_string(&data).unwrap_or_else(|_| "".to_string());
+        let other_data = serde_json::to_string(&other_data).unwrap_or_else(|_| "".to_string());
+        let xticks = serde_json::to_string(&xticks).unwrap_or_else(|_| "".to_string());
+        let xmap = serde_json::to_string(&xmap).unwrap_or_else(|_| "".to_string());
+        let yticks = serde_json::to_string(&yticks).unwrap_or_else(|_| "".to_string());
+        let fitdata = serde_json::to_string(&y_nom).unwrap_or_else(|_| "".to_string());
+        let negdata = serde_json::to_string(&y_neg).unwrap_or_else(|_| "".to_string());
+        let posdata = serde_json::to_string(&y_pos).unwrap_or_else(|_| "".to_string());
         let plots = SCATTERPLOTWITHLINES
-            .replace("DATA", &js_str)
-            .replace("EXAMPLETITLE", "Heart Rate")
-            .replace("XAXIS", "Date")
-            .replace("YAXIS", "Heart Rate");
+            .replace("FITDATA", &fitdata)
+            .replace("NEGDATA", &negdata)
+            .replace("POSDATA", &posdata)
+            .replace("OTHERDATA", &other_data)
+            .replace("DATA", &data)
+            .replace(
+                "EXAMPLETITLE",
+                match self.race_type {
+                    RaceType::Personal => "Race Results",
+                    RaceType::WorldRecordMen => "Men's World Record",
+                    RaceType::WorldRecordWomen => "Women's World Record",
+                },
+            )
+            .replace("XAXIS", "Distance")
+            .replace("YAXIS", "Pace (min/mi)")
+            .replace("XTICKS", &xticks)
+            .replace("XMAP", &xmap)
+            .replace("YTICKS", &yticks)
+            .replace("YMIN", &ymin.to_string())
+            .replace("YMAX", &ymax.to_string());
         let plots = format!("<script>\n{}\n</script>", plots);
-        let buttons: Vec<_> = (0..10)
-            .map(|i| {
-                let date = Local::today().naive_local() - Duration::days(i);
-                format!(
-                    "{}{}{}<br>",
-                    format!(
-                        r#"
-                        <button type="submit" id="ID"
-                         onclick="heartrate_plot_date('{date}','{date}');"">Plot {date}</button>"#,
-                        date = date
-                    ),
-                    if is_demo {
-                        "".to_string()
-                    } else {
-                        format!(
-                            r#"
-                        <button type="submit" id="ID"
-                         onclick="heartrate_sync('{date}');">Sync {date}</button>
-                        "#,
-                            date = date
-                        )
-                    },
-                    if is_demo {
-                        "".to_string()
-                    } else {
-                        format!(
-                            r#"
-                        <button type="submit" id="ID"
-                         onclick="connect_hr_sync('{date}');">Sync Garmin {date}</button>
-                        "#,
-                            date = date
-                        )
-                    },
-                )
-            })
-            .collect();
+        let buttons = [
+            r#"<button type="submit" onclick="race_result_plot_personal();">Personal</button>"#,
+            r#"<button type="submit" onclick="race_result_plot_world_record_men();">Mens World Records</button>"#,
+            r#"<button type="submit" onclick="race_result_plot_world_record_women();">Womens World Records</button>"#,
+        ];
         let template = if is_demo {
             PLOT_TEMPLATE_DEMO
         } else {
@@ -152,7 +200,7 @@ impl RaceResultAnalysis {
         };
         let body = template
             .replace("INSERTOTHERIMAGESHERE", &plots)
-            .replace("INSERTTEXTHERE", "")
+            .replace("INSERTTEXTHERE", &buttons.join(""))
             .into();
         Ok(body)
     }
@@ -175,10 +223,10 @@ impl RaceResultAggregated {
             "
             SELECT
                 race_distance,
-                AVG(race_distance / race_time) AS race_pace_mean,
+                AVG(race_time / race_distance) AS race_pace_mean,
                 CASE
-                    WHEN COUNT(*) = 1 THEN AVG(race_distance / race_time) * 0.10
-                    ELSE STDDEV(race_distance / race_time) END AS race_pace_stddev,
+                    WHEN COUNT(*) = 1 THEN AVG(race_time / race_distance) * 0.10
+                    ELSE STDDEV(race_time / race_distance) END AS race_pace_stddev,
                 COUNT(*) AS race_count
             FROM race_results
             WHERE race_type = $race_type AND race_flag = 't'
@@ -207,8 +255,10 @@ mod tests {
 
     use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
 
-    use crate::race_result_analysis::{RaceResultAggregated, RaceResultAnalysis};
-    use crate::race_type::RaceType;
+    use crate::{
+        race_result_analysis::{RaceResultAggregated, RaceResultAnalysis},
+        race_type::RaceType,
+    };
 
     #[tokio::test]
     #[ignore]
@@ -232,8 +282,9 @@ mod tests {
 
         let personal = RaceResultAnalysis::run_analysis(RaceType::Personal, &pool).await?;
         personal.create_plot(false)?;
-        // let _ = RaceResultAnalysis::run_analysis(RaceType::WorldRecordMen, &pool).await?;
-        // let _ = RaceResultAnalysis::run_analysis(RaceType::WorldRecordWomen, &pool).await?;
+        // let _ = RaceResultAnalysis::run_analysis(RaceType::WorldRecordMen,
+        // &pool).await?; let _ = RaceResultAnalysis::run_analysis(RaceType::
+        // WorldRecordWomen, &pool).await?;
         assert!(false);
         Ok(())
     }

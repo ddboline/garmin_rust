@@ -40,6 +40,7 @@ shape-rendering: crispEdges;
 <H3>
     <button type="submit" onclick="scale_measurement_plots();">Scale Plots</button>
     <button type="submit" onclick="heartrate_plot();">Hear Rate Plot</button>
+    <button type="submit" onclick="race_result_plot_personal();">Race Result Plot</button>
     <button name="garminconnectoutput" id="garminconnectoutput"> &nbsp; </button>
     <button type="submit" onclick="send_command('filter=latest');"> latest </button>
     <button type="submit" onclick="send_command('filter=sport');"> sport </button>
@@ -57,6 +58,8 @@ HISTORYBUTTONS
 <div id="garmin_text_box">
     INSERTTEXTHERE
 </div>
+
+<br>
 
 <script src="https://d3js.org/d3.v3.min.js"></script>
 
@@ -234,6 +237,18 @@ HISTORYBUTTONS
         }
         xmlhttp.send(null);
         document.getElementById("garminconnectoutput").innerHTML = "syncing";
+    }
+    function race_result_plot_personal() {
+        let ostr = "/garmin/race_result_plot?race_type=personal"
+        location.replace(ostr)
+    }
+    function race_result_plot_world_record_men() {
+        let ostr = "/garmin/race_result_plot?race_type=world_record_men"
+        location.replace(ostr)
+    }
+    function race_result_plot_world_record_women() {
+        let ostr = "/garmin/race_result_plot?race_type=world_record_women"
+        location.replace(ostr)
     }
 </script>
 

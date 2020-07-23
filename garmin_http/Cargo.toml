@@ -1,6 +1,6 @@
 [package]
 name = "garmin_http"
-version = "0.8.52"
+version = "0.8.53"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 

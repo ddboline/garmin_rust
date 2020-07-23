@@ -437,7 +437,7 @@ impl ScaleMeasurementRequest {
             },
             button_date: match self.button_date {
                 Some(d) => Some(d),
-                None => Some((Local::now() - Duration::days(ndays)).naive_local().date()),
+                None => Some(Local::now().naive_local().date()),
             },
         }
     }

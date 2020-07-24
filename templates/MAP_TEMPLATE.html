@@ -137,8 +137,13 @@ STRAVAUPLOADBUTTON
         );
         let xmlhttp = new XMLHttpRequest();
         xmlhttp.onload = function() {
-            let win = window.open(xmlhttp.responseText, '_blank');
-            win.focus()
+            let xmlhttp2 = new XMLHttpRequest();
+            xmlhttp2.onload = function() {
+                location.reload()
+            }
+            xmlhttp2.open("GET", xmlhttp.responseText, true);
+            xmlhttp2.send(null);
+            document.getElementById("garminconnectoutput").innerHTML = "syncing";
         }
         xmlhttp.open( "POST", ostr , true );
         xmlhttp.setRequestHeader("Content-Type", "application/json");

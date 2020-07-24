@@ -331,12 +331,7 @@ impl StravaClient {
         filepath: &Path,
         title: &str,
         description: &str,
-    ) -> Result<Option<i64>, Error> {
-        #[derive(Deserialize)]
-        struct UploadResp {
-            activity_id: i64,
-        }
-
+    ) -> Result<StackString, Error> {
         let mut _tempfile: Option<_> = None;
 
         let ext = filepath
@@ -348,7 +343,7 @@ impl StravaClient {
         let filename = if &ext == "gz" {
             filepath.canonicalize()?.to_string_lossy().to_string()
         } else {
-            let tfile = Builder::new().suffix(&format!("{}.gz", ext)).tempfile()?;
+            let tfile = Builder::new().suffix(&format!(".{}.gz", ext)).tempfile()?;
             let infname = filepath.canonicalize()?.to_string_lossy().to_string();
             let outfname = tfile.path().to_string_lossy().to_string();
             gzip_file(&infname, &outfname)?;
@@ -356,13 +351,17 @@ impl StravaClient {
             outfname
         };
 
-        let fext = if filepath.ends_with("fit.gz") {
+        println!("upload {:?}", filename);
+
+        let fext = if filename.ends_with("fit.gz") {
             "fit.gz"
-        } else if filepath.ends_with("tcx.gz") {
+        } else if filename.ends_with("tcx.gz") {
             "tcx.gz"
         } else {
-            return Ok(None);
+            return Ok("".into());
         };
+
+        println!("fext {:?}", fext);
 
         let part = Part::bytes(tokio::fs::read(&filename).await?).file_name(filename);
         let form = Form::new()
@@ -374,10 +373,12 @@ impl StravaClient {
             .text("data_type", fext.to_string())
             .text("external_id", uuid::Uuid::new_v4().to_string());
 
+        println!("{:?}", form);
+
         let headers = self.get_auth_headers()?;
         let url = "https://www.strava.com/api/v3/uploads";
-        let resp: UploadResp = self
-            .client
+
+        self.client
             .post(url)
             .multipart(form)
             .headers(headers)
@@ -387,7 +388,8 @@ impl StravaClient {
             .json()
             .await?;
 
-        Ok(Some(resp.activity_id))
+        let url = format!("https://{}/garmin/strava_sync", self.config.domain).into();
+        Ok(url)
     }
 
     pub async fn update_strava_activity(

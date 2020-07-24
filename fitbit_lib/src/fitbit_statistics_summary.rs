@@ -180,7 +180,7 @@ impl FitbitStatisticsSummary {
             .replace("XAXIS", "Date")
             .replace("YAXIS", "Heartrate [bpm]");
         let plot = format!("<script>\n{}\n</script>", plot);
-        graphs.push(plot.into());
+        graphs.push(plot);
 
         let max_heartrate: Vec<_> = stats
             .iter()

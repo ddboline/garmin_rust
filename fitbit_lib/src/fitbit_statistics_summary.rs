@@ -160,6 +160,7 @@ impl FitbitStatisticsSummary {
             let body = template
                 .replace("INSERTOTHERIMAGESHERE", "")
                 .replace("INSERTTEXTHERE", "")
+                .replace("INSERTOTHERTEXTHERE", "")
                 .into();
             return Ok(body);
         }
@@ -256,6 +257,7 @@ impl FitbitStatisticsSummary {
         let body = template
             .replace("INSERTOTHERIMAGESHERE", &graphs.join("\n"))
             .replace("INSERTTEXTHERE", &entries)
+            .replace("INSERTOTHERTEXTHERE", "")
             .into();
         Ok(body)
     }

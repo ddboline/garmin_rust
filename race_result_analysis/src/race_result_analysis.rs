@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use garmin_lib::{
     common::pgpool::PgPool,
     reports::garmin_templates::{PLOT_TEMPLATE, PLOT_TEMPLATE_DEMO, SCATTERPLOTWITHLINES},
-    utils::garmin_util::{MARATHON_DISTANCE_M, METERS_PER_MILE},
+    utils::garmin_util::{print_h_m_s, MARATHON_DISTANCE_M, METERS_PER_MILE},
 };
 
 use crate::{race_results::RaceResults, race_type::RaceType};
@@ -108,6 +108,7 @@ impl RaceResultAnalysis {
             10_000,
             MARATHON_DISTANCE_M / 2,
             MARATHON_DISTANCE_M,
+            50_000,
             50 * METERS_PER_MILE as i32,
             100 * METERS_PER_MILE as i32,
             300 * METERS_PER_MILE as i32,
@@ -115,7 +116,7 @@ impl RaceResultAnalysis {
         .iter()
         .collect();
         let xlabels = [
-            "100m", "", "", "800m", "1mi", "5k", "10k", "", "Marathon", "", "100mi", "300mi",
+            "100m", "", "", "800m", "1mi", "5k", "10k", "Half", "Mar", "", "50mi", "100mi", "300mi",
         ];
         let xmap: HashMap<_, _> = xticks.iter().zip(xlabels.iter()).collect();
 
@@ -141,6 +142,39 @@ impl RaceResultAnalysis {
         let y_nom = power_law(&self.params(ParamType::Nom), &x_vals);
         let y_neg = power_law(&self.params(ParamType::Neg), &x_vals);
         let y_pos = power_law(&self.params(ParamType::Pos), &x_vals);
+
+        let x_proj: Array1<f64> = xticks
+            .iter()
+            .map(|x| f64::from(**x) / METERS_PER_MILE)
+            .collect();
+        let y_proj = power_law(&self.params(ParamType::Nom), &x_proj);
+
+        let entries: Vec<_> = x_proj
+            .iter()
+            .zip(y_proj.iter())
+            .map(|(x, y)| {
+                format!(
+                    r#"
+                    <td>{:.02}</td><td>{}</td><td>{}</td>"#,
+                    x,
+                    print_h_m_s(*y * 60.0, false).unwrap_or_else(|_| "".into()),
+                    print_h_m_s(x * (*y) * 60.0, true).unwrap_or_else(|_| "".into())
+                )
+            })
+            .collect();
+        let entries = format!(
+            r#"
+            <table border=1>
+            <thead>
+            <th>Distance (mi)</th><th>Pace (min/mi)</th>
+            <th>Time</th>
+            </thead>
+            <tbody>
+            <tr>{}</tr>
+            </tbody>
+            </table>"#,
+            entries.join("</tr><tr>")
+        );
 
         let x_vals: Vec<f64> = x_vals.map(|x| x * METERS_PER_MILE).to_vec();
         let y_nom: Vec<(f64, f64)> = y_nom
@@ -202,6 +236,7 @@ impl RaceResultAnalysis {
         let body = template
             .replace("INSERTOTHERIMAGESHERE", &plots)
             .replace("INSERTTEXTHERE", &buttons.join(""))
+            .replace("INSERTOTHERTEXTHERE", &entries)
             .into();
         Ok(body)
     }

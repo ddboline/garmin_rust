@@ -329,6 +329,7 @@ impl FitbitHeartRate {
         let body = template
             .replace("INSERTOTHERIMAGESHERE", &plots)
             .replace("INSERTTEXTHERE", &buttons.join("\n"))
+            .replace("INSERTOTHERTEXTHERE", "")
             .into();
         Ok(body)
     }

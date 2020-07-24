@@ -2,9 +2,9 @@ var margin = {top: 20, right: 90, bottom: 30, left: 50},
     width = 960 - margin.left - margin.right,
     height = 500 - margin.top - margin.bottom;
 
-var x = d3.scale.linear().range([0, width]),
-    y = d3.scale.linear().range([height, 0]),
-    z = d3.scale.linear().range(["white", "steelblue"]);
+var x = d3.scaleLinear().range([0, width]),
+    y = d3.scaleLinear().range([height, 0]),
+    z = d3.scaleLinear().range(["white", "steelblue"]);
 
 // The size of the buckets in the CSV data file.
 // This could be inferred from the data if it weren't sparse.
@@ -78,7 +78,7 @@ svg.append("text")      // text label for chart Title
 svg.append("g")
     .attr("class", "x axis")
     .attr("transform", "translate(0," + height + ")")
-    .call(d3.svg.axis().scale(x).orient("bottom"))
+    .call(d3.axisBottom(x))
 .append("text")
     .attr("class", "label")
     .attr("x", width)
@@ -89,7 +89,7 @@ svg.append("g")
 // Add a y-axis with label.
 svg.append("g")
     .attr("class", "y axis")
-    .call(d3.svg.axis().scale(y).orient("left"))
+    .call(d3.axisLeft(y))
 .append("text")
     .attr("class", "label")
     .attr("y", 6)

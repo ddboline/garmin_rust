@@ -24,21 +24,19 @@ ymin = YMIN;
 let xmap = XMAP;
 
 // Set the ranges
-var x = d3.scale.log().domain([xmin, xmax]).range([0, width]);
-var y = d3.scale.linear().domain([ymin, ymax]).range([height, 0]);
+var x = d3.scaleLog().domain([xmin, xmax]).range([0, width]);
+var y = d3.scaleLinear().domain([ymin, ymax]).range([height, 0]);
 
 // Define the axes
-var xAxis = d3.svg.axis().scale(x)
-    .orient("bottom")
+var xAxis = d3.axisBottom(x)
     .tickValues(XTICKS)
     .tickFormat(function(d) {return xmap[d];});
 
-var yAxis = d3.svg.axis().scale(y)
-    .orient("left")
+var yAxis = d3.axisLeft(y)
     .tickValues(YTICKS);
 
 // Define the line
-var valueline = d3.svg.line()
+var valueline = d3.line()
     .x(function(d) { return x(d[0]); })
     .y(function(d) { return y(d[1]); });
     
@@ -93,7 +91,7 @@ svg.append("g")
         .attr("r", 1)
         .style("fill", "green");
 
-var valueline = d3.svg.line()
+var valueline = d3.line()
     .x(function(d) { return x(d[0]); })
     .y(function(d) { return y(d[1]); });
 

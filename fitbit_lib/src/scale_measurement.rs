@@ -9,11 +9,8 @@ use std::fmt;
 
 use garmin_lib::{
     common::pgpool::PgPool,
-    reports::garmin_templates::{PLOT_TEMPLATE, PLOT_TEMPLATE_DEMO},
-    utils::{
-        iso_8601_datetime::convert_datetime_to_str, plot_graph::generate_d3_plot,
-        plot_opts::PlotOpts,
-    },
+    reports::garmin_templates::{PLOT_TEMPLATE, PLOT_TEMPLATE_DEMO, TIMESERIESTEMPLATE},
+    utils::iso_8601_datetime::convert_datetime_to_str,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, Copy, FromSqlRow, PartialEq)]
@@ -170,77 +167,91 @@ impl ScaleMeasurement {
             return Ok(body);
         }
         let mut graphs = Vec::new();
-        let start_datetime = measurements[0].datetime;
 
         let mass: Vec<_> = measurements
             .iter()
             .map(|meas| {
-                let days = (meas.datetime - start_datetime).num_days();
-                (days as f64, meas.mass)
+                let key = meas.datetime.format("%Y-%m-%dT%H:%M:%S%z").to_string();
+                (key, meas.mass)
             })
             .collect();
-        let plot_opt = PlotOpts::new()
-            .with_name("weight")
-            .with_title("Weight")
-            .with_data(&mass)
-            .with_labels("days", "Weight [lbs]");
-        graphs.push(generate_d3_plot(&plot_opt)?);
+
+        let js_str = serde_json::to_string(&mass).unwrap_or_else(|_| "".to_string());
+        let plot = TIMESERIESTEMPLATE
+            .replace("DATA", &js_str)
+            .replace("EXAMPLETITLE", "Weight")
+            .replace("XAXIS", "Date")
+            .replace("YAXIS", "Weight [lbs]");
+        let plot: StackString = format!("<script>\n{}\n</script>", plot).into();
+        graphs.push(plot);
 
         let fat: Vec<_> = measurements
             .iter()
             .map(|meas| {
-                let days = (meas.datetime - start_datetime).num_days();
-                (days as f64, meas.fat_pct)
+                let key = meas.datetime.format("%Y-%m-%dT%H:%M:%S%z").to_string();
+                (key, meas.fat_pct)
             })
             .collect();
-        let plot_opt = PlotOpts::new()
-            .with_name("fat")
-            .with_title("Fat %")
-            .with_data(&fat)
-            .with_labels("days", "Fat %");
-        graphs.push(generate_d3_plot(&plot_opt)?);
+
+        let js_str = serde_json::to_string(&fat).unwrap_or_else(|_| "".to_string());
+        let plot = TIMESERIESTEMPLATE
+            .replace("DATA", &js_str)
+            .replace("EXAMPLETITLE", "Fat %")
+            .replace("XAXIS", "Date")
+            .replace("YAXIS", "Fat %");
+        let plot = format!("<script>\n{}\n</script>", plot);
+        graphs.push(plot.into());
 
         let water: Vec<_> = measurements
             .iter()
             .map(|meas| {
-                let days = (meas.datetime - start_datetime).num_days();
-                (days as f64, meas.water_pct)
+                let key = meas.datetime.format("%Y-%m-%dT%H:%M:%S%z").to_string();
+                (key, meas.water_pct)
             })
             .collect();
-        let plot_opt = PlotOpts::new()
-            .with_name("water")
-            .with_title("Water %")
-            .with_data(&water)
-            .with_labels("days", "Water %");
-        graphs.push(generate_d3_plot(&plot_opt)?);
+
+        let js_str = serde_json::to_string(&water).unwrap_or_else(|_| "".to_string());
+        let plot = TIMESERIESTEMPLATE
+            .replace("DATA", &js_str)
+            .replace("EXAMPLETITLE", "Water %")
+            .replace("XAXIS", "Date")
+            .replace("YAXIS", "Water %");
+        let plot = format!("<script>\n{}\n</script>", plot);
+        graphs.push(plot.into());
 
         let muscle: Vec<_> = measurements
             .iter()
             .map(|meas| {
-                let days = (meas.datetime - start_datetime).num_days();
-                (days as f64, meas.muscle_pct)
+                let key = meas.datetime.format("%Y-%m-%dT%H:%M:%S%z").to_string();
+                (key, meas.muscle_pct)
             })
             .collect();
-        let plot_opt = PlotOpts::new()
-            .with_name("muscle")
-            .with_title("Muscle %")
-            .with_data(&muscle)
-            .with_labels("days", "Muscle %");
-        graphs.push(generate_d3_plot(&plot_opt)?);
+
+        let js_str = serde_json::to_string(&muscle).unwrap_or_else(|_| "".to_string());
+        let plot = TIMESERIESTEMPLATE
+            .replace("DATA", &js_str)
+            .replace("EXAMPLETITLE", "Muscle %")
+            .replace("XAXIS", "Date")
+            .replace("YAXIS", "Muscle %");
+        let plot = format!("<script>\n{}\n</script>", plot);
+        graphs.push(plot.into());
 
         let bone: Vec<_> = measurements
             .iter()
             .map(|meas| {
-                let days = (meas.datetime - start_datetime).num_days();
-                (days as f64, meas.bone_pct)
+                let key = meas.datetime.format("%Y-%m-%dT%H:%M:%S%z").to_string();
+                (key, meas.bone_pct)
             })
             .collect();
-        let plot_opt = PlotOpts::new()
-            .with_name("bone")
-            .with_title("Bone %")
-            .with_data(&bone)
-            .with_labels("days", "Bone %");
-        graphs.push(generate_d3_plot(&plot_opt)?);
+
+        let js_str = serde_json::to_string(&bone).unwrap_or_else(|_| "".to_string());
+        let plot = TIMESERIESTEMPLATE
+            .replace("DATA", &js_str)
+            .replace("EXAMPLETITLE", "Bone %")
+            .replace("XAXIS", "Date")
+            .replace("YAXIS", "Bone %");
+        let plot = format!("<script>\n{}\n</script>", plot);
+        graphs.push(plot.into());
 
         let n = measurements.len();
         let entries: Vec<_> = measurements[n - 10..n]

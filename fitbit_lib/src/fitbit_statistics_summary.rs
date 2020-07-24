@@ -7,8 +7,7 @@ use statistical::{mean, median, standard_deviation};
 
 use garmin_lib::{
     common::pgpool::PgPool,
-    reports::garmin_templates::{PLOT_TEMPLATE, PLOT_TEMPLATE_DEMO},
-    utils::{plot_graph::generate_d3_plot, plot_opts::PlotOpts},
+    reports::garmin_templates::{PLOT_TEMPLATE, PLOT_TEMPLATE_DEMO, TIMESERIESTEMPLATE},
 };
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, FromSqlRow)]
@@ -165,63 +164,71 @@ impl FitbitStatisticsSummary {
             return Ok(body);
         }
         let mut graphs = Vec::new();
-        let start_date = stats[0].date;
 
         let min_heartrate: Vec<_> = stats
             .iter()
             .map(|stat| {
-                let days = (stat.date - start_date).num_days();
-                (days as f64, stat.min_heartrate)
+                let key = stat.date.format("%Y-%m-%dT00:00:00Z").to_string();
+                (key, stat.min_heartrate)
             })
             .collect();
-        let plot_opt = PlotOpts::new()
-            .with_name("min_heartrate")
-            .with_title("Minimum Heartrate")
-            .with_data(&min_heartrate)
-            .with_labels("days", "Heartrate [bpm]");
-        graphs.push(generate_d3_plot(&plot_opt)?);
+
+        let js_str = serde_json::to_string(&min_heartrate).unwrap_or_else(|_| "".to_string());
+        let plot = TIMESERIESTEMPLATE
+            .replace("DATA", &js_str)
+            .replace("EXAMPLETITLE", "Minimum Heartrate")
+            .replace("XAXIS", "Date")
+            .replace("YAXIS", "Heartrate [bpm]");
+        let plot = format!("<script>\n{}\n</script>", plot);
+        graphs.push(plot.into());
 
         let max_heartrate: Vec<_> = stats
             .iter()
             .map(|stat| {
-                let days = (stat.date - start_date).num_days();
-                (days as f64, stat.max_heartrate)
+                let key = stat.date.format("%Y-%m-%dT00:00:00Z").to_string();
+                (key, stat.max_heartrate)
             })
             .collect();
-        let plot_opt = PlotOpts::new()
-            .with_name("max_heartrate")
-            .with_title("Maximum Heartrate")
-            .with_data(&max_heartrate)
-            .with_labels("days", "Heartrate [bpm]");
-        graphs.push(generate_d3_plot(&plot_opt)?);
+        let js_str = serde_json::to_string(&max_heartrate).unwrap_or_else(|_| "".to_string());
+        let plot = TIMESERIESTEMPLATE
+            .replace("DATA", &js_str)
+            .replace("EXAMPLETITLE", "Maximum Heartrate")
+            .replace("XAXIS", "Date")
+            .replace("YAXIS", "Heartrate [bpm]");
+        let plot = format!("<script>\n{}\n</script>", plot);
+        graphs.push(plot);
 
         let mean_heartrate: Vec<_> = stats
             .iter()
             .map(|stat| {
-                let days = (stat.date - start_date).num_days();
-                (days as f64, stat.mean_heartrate)
+                let key = stat.date.format("%Y-%m-%dT00:00:00Z").to_string();
+                (key, stat.mean_heartrate)
             })
             .collect();
-        let plot_opt = PlotOpts::new()
-            .with_name("mean_heartrate")
-            .with_title("Mean Heartrate")
-            .with_data(&mean_heartrate)
-            .with_labels("days", "Heartrate [bpm]");
-        graphs.push(generate_d3_plot(&plot_opt)?);
+        let js_str = serde_json::to_string(&mean_heartrate).unwrap_or_else(|_| "".to_string());
+        let plot = TIMESERIESTEMPLATE
+            .replace("DATA", &js_str)
+            .replace("EXAMPLETITLE", "Mean Heartrate")
+            .replace("XAXIS", "Date")
+            .replace("YAXIS", "Heartrate [bpm]");
+        let plot = format!("<script>\n{}\n</script>", plot);
+        graphs.push(plot);
 
         let median_heartrate: Vec<_> = stats
             .iter()
             .map(|stat| {
-                let days = (stat.date - start_date).num_days();
-                (days as f64, stat.median_heartrate)
+                let key = stat.date.format("%Y-%m-%dT00:00:00Z").to_string();
+                (key, stat.median_heartrate)
             })
             .collect();
-        let plot_opt = PlotOpts::new()
-            .with_name("median_heartrate")
-            .with_title("Median Heartrate")
-            .with_data(&median_heartrate)
-            .with_labels("days", "Heartrate [bpm]");
-        graphs.push(generate_d3_plot(&plot_opt)?);
+        let js_str = serde_json::to_string(&median_heartrate).unwrap_or_else(|_| "".to_string());
+        let plot = TIMESERIESTEMPLATE
+            .replace("DATA", &js_str)
+            .replace("EXAMPLETITLE", "Median Heartrate")
+            .replace("XAXIS", "Date")
+            .replace("YAXIS", "Heartrate [bpm]");
+        let plot = format!("<script>\n{}\n</script>", plot);
+        graphs.push(plot);
 
         let n = stats.len();
         let entries: Vec<_> = stats[n - 10..n]

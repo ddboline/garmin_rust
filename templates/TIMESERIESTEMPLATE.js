@@ -1,31 +1,22 @@
 // Set the dimensions of the canvas / graph
-var margin = {top: 30, right: 20, bottom: 30, left: 50},
+var margin = {top: 30, right: 20, bottom: 30, left: 60},
     width = 600 - margin.left - margin.right,
     height = 270 - margin.top - margin.bottom;
 
 // Parse the date / time
-var parseDateTime = d3.time.format("%Y-%m-%dT%H:%M:%S%Z").parse;
+var parseDateTime = d3.timeParse("%Y-%m-%dT%H:%M:%S%Z");
 
 // Set the ranges
-var x = d3.time.scale().range([0, width]);
-var y = d3.scale.linear().range([height, 0]);
+var x = d3.scaleTime().range([0, width]);
+var y = d3.scaleLinear().range([height, 0]);
 
 // Define the axes
-var xAxis = d3.svg.axis().scale(x)
-    .ticks(d3.time.hours, 24)
-    .tickSize(5)
-    .orient("bottom");
+var xAxis = d3.axisBottom(x).ticks(5);
 
-var xMinorAxis = d3.svg.axis()
-    .scale(x)
-	.ticks(d3.time.hours, 12)
-    .orient("bottom");
-
-var yAxis = d3.svg.axis().scale(y)
-    .orient("left").ticks(5);
+var yAxis = d3.axisLeft(y).ticks(5);
 
 // Define the line
-var valueline = d3.svg.line()
+var valueline = d3.line()
     .x(function(d) { return x(d[0]); })
     .y(function(d) { return y(d[1]); });
     
@@ -83,13 +74,6 @@ svg.append("g")
       .call(xAxis)
 	    .selectAll(".tick text")
       .call(wrap, 35);
-
-svg.append("g")
-    .attr("class","xMinorAxis")
-    .attr("transform", "translate(0," + height + ")")
-    .style({ 'stroke': 'Black', 'fill': 'none', 'stroke-width': '1px'})
-    .call(xMinorAxis)
-    .selectAll("text").remove();
 
 svg.append("g").attr("class", "yaxis").call(yAxis);
 

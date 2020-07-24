@@ -713,13 +713,6 @@ impl HandleRequest<StravaUploadRequest> for PgPool {
                 msg.description.as_ref().map_or("", StackString::as_str),
             )
             .await
-            .map(|id| {
-                if let Some(id) = id {
-                    format!("http://strava.com/activities/{}", id).into()
-                } else {
-                    "".into()
-                }
-            })
             .map_err(Into::into)
     }
 }

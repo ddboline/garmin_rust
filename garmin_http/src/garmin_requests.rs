@@ -32,7 +32,9 @@ use garmin_lib::{
     },
     utils::sport_types::SportTypes,
 };
-use race_result_analysis::{race_result_analysis::RaceResultAnalysis, race_type::RaceType};
+use race_result_analysis::{
+    race_result_analysis::RaceResultAnalysis, race_results::RaceResults, race_type::RaceType,
+};
 use strava_lib::strava_client::{StravaAthlete, StravaClient};
 
 use crate::{errors::ServiceError as Error, CONFIG};
@@ -977,5 +979,47 @@ impl HandleRequest<RaceResultPlotRequest> for PgPool {
         let model = RaceResultAnalysis::run_analysis(req.race_type, self).await?;
         let demo = req.demo.unwrap_or(true);
         model.create_plot(demo).map_err(Into::into)
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct RaceResultFlagRequest {
+    pub id: i32,
+}
+
+#[async_trait]
+impl HandleRequest<RaceResultFlagRequest> for PgPool {
+    type Result = Result<StackString, Error>;
+    async fn handle(&self, req: RaceResultFlagRequest) -> Self::Result {
+        if let Some(mut result) = RaceResults::get_result_by_id(req.id, self).await? {
+            result.race_flag = if result.race_flag { false } else { true };
+            result.update_db(self).await?;
+            Ok(result.race_flag.to_string().into())
+        } else {
+            Ok("".into())
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct RaceResultImportRequest {
+    pub filename: StackString,
+}
+
+#[async_trait]
+impl HandleRequest<RaceResultImportRequest> for PgPool {
+    type Result = Result<(), Error>;
+    async fn handle(&self, req: RaceResultImportRequest) -> Self::Result {
+        if let Some(summary) = GarminSummary::get_by_filename(self, req.filename.as_str()).await? {
+            let begin_datetime = summary.begin_datetime;
+            let mut result: RaceResults = summary.into();
+            if let Some(activity) =
+                StravaActivity::get_by_begin_datetime(self, begin_datetime).await?
+            {
+                result.race_name = Some(activity.name);
+            }
+            result.insert_into_db(self).await?;
+        }
+        Ok(())
     }
 }

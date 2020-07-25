@@ -32,6 +32,7 @@ where
         if line.contains("INSERTTEXTHERE") {
             htmlvec.push(r#"<table border="0">"#.into());
             htmlvec.push(htmlostr.clone().into());
+            htmlvec.push("</table>".into());
         } else if line.contains("SPORTTITLEDATE") {
             let newtitle = "Garmin Summary";
             htmlvec.push(line.replace("SPORTTITLEDATE", newtitle).into());

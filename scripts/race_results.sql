@@ -5,5 +5,6 @@ CREATE TABLE IF NOT EXISTS race_results (
     race_name TEXT,
     race_distance INTEGER NOT NULL,
     race_time DOUBLE PRECISION NOT NULL,
-    race_flag BOOLEAN NOT NULL DEFAULT FALSE
+    race_flag BOOLEAN NOT NULL DEFAULT FALSE,
+    race_filename TEXT
 );

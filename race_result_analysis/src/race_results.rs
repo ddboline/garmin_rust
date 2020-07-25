@@ -7,7 +7,7 @@ use std::fmt::{self, Display, Formatter};
 use stack_string::StackString;
 
 use garmin_lib::{
-    common::pgpool::PgPool,
+    common::{garmin_summary::GarminSummary, pgpool::PgPool},
     utils::garmin_util::{print_h_m_s, METERS_PER_MILE},
 };
 
@@ -22,6 +22,7 @@ pub struct RaceResults {
     pub race_distance: i32, // distance in meters
     pub race_time: f64,
     pub race_flag: bool,
+    pub race_filename: Option<StackString>,
 }
 
 impl Display for RaceResults {
@@ -29,7 +30,7 @@ impl Display for RaceResults {
         write!(
             f,
             "RaceResults(\nid: {}\nrace_type: {}{}{}\nrace_distance: {} km\nrace_time: \
-             {}\nrace_flag: {}\n)",
+             {}\nrace_flag: {}{}\n)",
             self.id,
             self.race_type,
             if let Some(date) = self.race_date {
@@ -45,6 +46,11 @@ impl Display for RaceResults {
             self.race_distance,
             print_h_m_s(self.race_time, true).unwrap_or_else(|_| "".into()),
             self.race_flag,
+            if let Some(filename) = &self.race_filename {
+                format!("\nrace_filename: {}", filename)
+            } else {
+                "".to_string()
+            }
         )
     }
 }
@@ -95,6 +101,23 @@ impl RaceResults {
             .collect()
     }
 
+    pub async fn get_race_by_filename(
+        race_filename: &str,
+        pool: &PgPool,
+    ) -> Result<Option<Self>, Error> {
+        let query = postgres_query::query!(
+            "SELECT * FROM race_results WHERE race_filename = $race_filename",
+            race_filename = race_filename,
+        );
+        let conn = pool.get().await?;
+        let result = conn
+            .query_opt(query.sql(), query.parameters())
+            .await?
+            .map(|row| Self::from_row(&row))
+            .transpose()?;
+        Ok(result)
+    }
+
     pub async fn get_race_by_distance(
         race_distance: i32,
         race_type: RaceType,
@@ -138,7 +161,8 @@ impl RaceResults {
         let query = postgres_query::query!(
             "UPDATE race_results
             SET race_type=$race_type,race_date=$race_date,race_name=$race_name,
-                race_distance=$race_distance,race_time=$race_time,race_flag=$race_flag
+                race_distance=$race_distance,race_time=$race_time,race_flag=$race_flag,
+                race_filename=$race_filename
             WHERE id=$id",
             id = self.id,
             race_type = self.race_type,
@@ -147,6 +171,7 @@ impl RaceResults {
             race_distance = self.race_distance,
             race_time = self.race_time,
             race_flag = self.race_flag,
+            race_filename = self.race_filename,
         );
         let conn = pool.get().await?;
         conn.execute(query.sql(), query.parameters())
@@ -204,6 +229,7 @@ impl RaceResults {
                     race_distance,
                     race_time,
                     race_flag: false,
+                    race_filename: None,
                 })
             })
             .collect();
@@ -235,6 +261,7 @@ impl RaceResults {
                     race_distance,
                     race_time,
                     race_flag: false,
+                    race_filename: None,
                 })
             })
             .collect();
@@ -262,6 +289,21 @@ fn parse_time_string(s: &str) -> Option<f64> {
     Some(hours * 3600.0 + minutes * 60.0 + seconds)
 }
 
+impl From<GarminSummary> for RaceResults {
+    fn from(item: GarminSummary) -> Self {
+        Self {
+            id: -1,
+            race_type: RaceType::Personal,
+            race_date: Some(item.begin_datetime.naive_local().date()),
+            race_name: None,
+            race_distance: item.total_distance as i32,
+            race_time: item.total_duration,
+            race_flag: false,
+            race_filename: Some(item.filename),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use anyhow::Error;
@@ -270,7 +312,11 @@ mod tests {
     use parking_lot::Mutex;
     use std::collections::HashMap;
 
-    use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
+    use garmin_lib::common::{
+        garmin_config::GarminConfig,
+        garmin_summary::{get_list_of_files_from_db, GarminSummary},
+        pgpool::PgPool,
+    };
 
     use crate::{race_results::RaceResults, race_type::RaceType};
 
@@ -290,6 +336,7 @@ mod tests {
             race_distance: 5000,
             race_time: 1563.0,
             race_flag: false,
+            race_filename: None,
         }
     }
 
@@ -395,20 +442,60 @@ mod tests {
             let race_flag: u8 = entries[4].parse()?;
             let title = entries[5..].join(" ");
             let key = (title.into(), year);
-            if let Some(entries) = existing_map.get_mut(&key) {
-                println!("existing {:?} {} {}", key, entries.len(), race_flag);
-                assert!(entries.len() == 1);
+            if let Some(races) = existing_map.get_mut(&key) {
+                assert!(races.len() == 1);
                 if race_flag != 1 {
                     continue;
                 }
-                for entry in entries.iter_mut() {
-                    entry.race_flag = true;
-                    entry.upsert_db(&pool).await?;
+                for race in races.iter_mut() {
+                    race.race_flag = true;
+                    race.upsert_db(&pool).await?;
                 }
             } else {
                 assert!(false, "No existing entry {:?}", key);
             }
         }
+
+        let personal_results = RaceResults::get_results_by_type(RaceType::Personal, &pool).await?;
+        assert_eq!(personal_results.len(), TEST_RACE_ENTRIES);
+
+        for mut result in personal_results {
+            if result.race_filename.is_some() {
+                continue;
+            }
+            if let Some(race_date) = result.race_date {
+                let constraint = format!(
+                    "replace({}, '%', 'T') like '{}%'",
+                    "to_char(begin_datetime at time zone 'localtime', 'YYYY-MM-DD%HH24:MI:SS')",
+                    race_date,
+                );
+                let filenames = get_list_of_files_from_db(&constraint, &pool).await?;
+                if filenames.is_empty() {
+                    continue;
+                }
+                for filename in filenames {
+                    if let Some(summary) =
+                        GarminSummary::get_by_filename(&pool, filename.as_str()).await?
+                    {
+                        if (summary.total_distance as i32 - result.race_distance).abs() < 4000 {
+                            println!("set filename: {}", filename);
+                            result.race_filename = Some(filename);
+                            result.upsert_db(&pool).await?;
+                        } else {
+                            println!(
+                                "{} difference {} {} {} {}",
+                                race_date,
+                                summary.total_distance as i32,
+                                result.race_distance,
+                                (summary.total_distance as i32 - result.race_distance).abs(),
+                                filename,
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        assert!(false);
         Ok(())
     }
 

@@ -41,11 +41,12 @@ use crate::{
         GarminConnectActivitiesDBUpdateRequest, GarminConnectActivitiesRequest,
         GarminConnectHrApiRequest, GarminConnectHrSyncRequest, GarminConnectSyncRequest,
         GarminCorrRequest, GarminHtmlRequest, GarminListRequest, GarminSyncRequest,
-        GarminUploadRequest, HandleRequest, RaceResultPlotRequest, ScaleMeasurementPlotRequest,
-        ScaleMeasurementRequest, ScaleMeasurementUpdateRequest, StravaActiviesDBUpdateRequest,
-        StravaActivitiesDBRequest, StravaActivitiesRequest, StravaAthleteRequest,
-        StravaAuthRequest, StravaCallbackRequest, StravaCreateRequest, StravaRefreshRequest,
-        StravaSyncRequest, StravaUpdateRequest, StravaUploadRequest,
+        GarminUploadRequest, HandleRequest, RaceResultFlagRequest, RaceResultImportRequest,
+        RaceResultPlotRequest, ScaleMeasurementPlotRequest, ScaleMeasurementRequest,
+        ScaleMeasurementUpdateRequest, StravaActiviesDBUpdateRequest, StravaActivitiesDBRequest,
+        StravaActivitiesRequest, StravaAthleteRequest, StravaAuthRequest, StravaCallbackRequest,
+        StravaCreateRequest, StravaRefreshRequest, StravaSyncRequest, StravaUpdateRequest,
+        StravaUploadRequest,
     },
     CONFIG,
 };
@@ -761,6 +762,7 @@ pub async fn fitbit_activities_db_update(
 
 pub async fn race_result_plot(
     query: Query<RaceResultPlotRequest>,
+    _: LoggedUser,
     state: Data<AppState>,
     session: Session,
 ) -> Result<HttpResponse, Error> {
@@ -801,4 +803,24 @@ pub async fn race_result_plot_demo(
         .replace("HISTORYBUTTONS", &generate_history_buttons(&history));
 
     form_http_response(body)
+}
+
+pub async fn race_result_flag(
+    query: Query<RaceResultFlagRequest>,
+    state: Data<AppState>,
+    _: LoggedUser,
+) -> Result<HttpResponse, Error> {
+    let query = query.into_inner();
+    let result = state.db.handle(query).await?;
+    form_http_response(result.into())
+}
+
+pub async fn race_result_import(
+    query: Query<RaceResultImportRequest>,
+    state: Data<AppState>,
+    _: LoggedUser,
+) -> Result<HttpResponse, Error> {
+    let query = query.into_inner();
+    state.db.handle(query).await?;
+    form_http_response("".into())
 }

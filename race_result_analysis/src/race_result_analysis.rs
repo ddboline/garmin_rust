@@ -1,4 +1,5 @@
 use anyhow::Error;
+use itertools::Itertools;
 use ndarray::{array, Array1};
 use postgres_query::FromSqlRow;
 use rusfun::{curve_fit::Minimizer, func1d::Func1D};
@@ -174,6 +175,47 @@ impl RaceResultAnalysis {
             </tbody>
             </table>"#,
             entries.join("</tr><tr>")
+        );
+
+        let race_results: Vec<_> = self.data.iter().sorted_by(|x, y| x.race_date.cmp(&y.race_date)).rev().map(|result| {
+            let distance = f64::from(result.race_distance) / METERS_PER_MILE;
+            let time = print_h_m_s(result.race_time, true).unwrap_or_else(|_| "".into());
+            let pace = print_h_m_s(result.race_time / distance, false).unwrap_or_else(|_| "".into());
+            let date = if let Some(date) = result.race_date {
+                if is_demo {"".into()} else {
+                    format!(
+                        r#"<button type="submit"
+                          onclick="send_command('filter={date},file');"> {date},file </button>
+                        "#, date=date)
+                }
+            } else {"".into()};
+            let flag = if is_demo {
+                result.race_flag.to_string()
+            } else {
+                format!(
+                    r#"<button type="button" id="race_flag_{id}" onclick="flipRaceResultFlag({id});">{flag}</button>"#,
+                    flag=result.race_flag, id=result.id
+                )
+            };
+            format!(
+                r#"<td align="right">{distance:0.1}</td><td>{time}</td><td align="center">{pace}</td><td>{date}</td>
+                 <td>{name}</td>
+                 <td>{flag}</td>"#,
+                distance = distance,
+                time = time,
+                pace = pace,
+                date = date,
+                name = result.race_name.as_ref().map_or("", |s| s.as_str()),
+                flag = flag,
+            )
+        }).collect();
+        let entries = format!(
+            r#"{}<br><table border="1"><thead>
+            <th>Distance (mi)</th><th>Time</th><th>Pace (min/mi)</th><th>Date</th><th>Name</th><th>Flag</th>
+            </thead>
+            <tr>{}</tr></table>"#,
+            entries,
+            race_results.join("</tr><tr>")
         );
 
         let x_vals: Vec<f64> = x_vals.map(|x| x * METERS_PER_MILE).to_vec();

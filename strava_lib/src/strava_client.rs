@@ -351,8 +351,6 @@ impl StravaClient {
             outfname
         };
 
-        println!("upload {:?}", filename);
-
         let fext = if filename.ends_with("fit.gz") {
             "fit.gz"
         } else if filename.ends_with("tcx.gz") {
@@ -360,8 +358,6 @@ impl StravaClient {
         } else {
             return Ok("".into());
         };
-
-        println!("fext {:?}", fext);
 
         let part = Part::bytes(tokio::fs::read(&filename).await?).file_name(filename);
         let form = Form::new()
@@ -372,8 +368,6 @@ impl StravaClient {
             .text("commute", "false")
             .text("data_type", fext.to_string())
             .text("external_id", uuid::Uuid::new_v4().to_string());
-
-        println!("{:?}", form);
 
         let headers = self.get_auth_headers()?;
         let url = "https://www.strava.com/api/v3/uploads";

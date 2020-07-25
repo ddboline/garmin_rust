@@ -320,6 +320,17 @@ HISTORYBUTTONS
         let ostr = "/garmin/race_result_plot?race_type=world_record_women"
         location.replace(ostr)
     }
+    function flipRaceResultFlag(id) {
+        let ostr = '/garmin/race_result_flag?id=' + id;
+        let xmlhttp = new XMLHttpRequest();
+        xmlhttp.open("GET", ostr, true);
+        xmlhttp.onload = function nothing() {
+            document.getElementById("garminconnectoutput").innerHTML = "done";
+            document.getElementById("race_flag_" + id).innerHTML = xmlhttp.responseText;
+        }
+        xmlhttp.send(null);
+        document.getElementById("garminconnectoutput").innerHTML = "updating";
+    }
 </script>
 
 </body>

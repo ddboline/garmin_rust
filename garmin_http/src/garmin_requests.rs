@@ -992,7 +992,7 @@ impl HandleRequest<RaceResultFlagRequest> for PgPool {
     type Result = Result<StackString, Error>;
     async fn handle(&self, req: RaceResultFlagRequest) -> Self::Result {
         if let Some(mut result) = RaceResults::get_result_by_id(req.id, self).await? {
-            result.race_flag = if result.race_flag { false } else { true };
+            result.race_flag = !result.race_flag;
             result.update_db(self).await?;
             Ok(result.race_flag.to_string().into())
         } else {

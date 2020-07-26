@@ -19,11 +19,11 @@ use fitbit_lib::{
     fitbit_statistics_summary::FitbitStatisticsSummary,
     scale_measurement::ScaleMeasurement,
 };
+use garmin_cli::garmin_cli::{GarminCli, GarminRequest};
 use garmin_connect_lib::garmin_connect_client::get_garmin_connect_session;
 use garmin_lib::{
     common::{
         fitbit_activity::FitbitActivity,
-        garmin_cli::{GarminCli, GarminRequest},
         garmin_connect_activity::GarminConnectActivity,
         garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionMap},
         garmin_summary::{get_filename_from_datetime, get_list_of_files_from_db, GarminSummary},
@@ -1018,6 +1018,7 @@ impl HandleRequest<RaceResultImportRequest> for PgPool {
             {
                 result.race_name = Some(activity.name);
             }
+            result.race_filename = Some(req.filename.into());
             result.insert_into_db(self).await?;
         }
         Ok(())

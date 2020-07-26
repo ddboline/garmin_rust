@@ -11,4 +11,5 @@
 #![allow(clippy::similar_names)]
 #![allow(clippy::used_underscore_binding)]
 
+pub mod garmin_cli;
 pub mod garmin_cli_opts;

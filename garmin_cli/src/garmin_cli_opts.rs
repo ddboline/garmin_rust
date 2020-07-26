@@ -8,11 +8,10 @@ use tokio::try_join;
 use fitbit_lib::{fitbit_client::FitbitClient, fitbit_heartrate::FitbitHeartRate};
 use garmin_connect_lib::garmin_connect_client::get_garmin_connect_session;
 use garmin_lib::common::{
-    garmin_cli::{GarminCli, GarminCliOptions},
-    garmin_config::GarminConfig,
-    garmin_summary::get_maximum_begin_datetime,
-    pgpool::PgPool,
+    garmin_config::GarminConfig, garmin_summary::get_maximum_begin_datetime, pgpool::PgPool,
 };
+
+use crate::garmin_cli::{GarminCli, GarminCliOptions};
 
 #[derive(StructOpt)]
 pub enum GarminCliOpts {

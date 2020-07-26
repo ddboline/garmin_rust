@@ -2,7 +2,7 @@ use anyhow::Error;
 use log::debug;
 use stack_string::StackString;
 
-use crate::{
+use garmin_lib::{
     common::{garmin_file::GarminFile, garmin_lap::GarminLap},
     utils::{
         garmin_util::{print_h_m_s, MARATHON_DISTANCE_MI, METERS_PER_MILE},

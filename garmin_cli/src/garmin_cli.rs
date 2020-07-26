@@ -16,7 +16,15 @@ use std::{
 use tempdir::TempDir;
 use tokio::task::spawn_blocking;
 
-use crate::{
+use garmin_lib::{
+    common::{
+        garmin_config::GarminConfig,
+        garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionMap},
+        garmin_file,
+        garmin_summary::{get_list_of_files_from_db, GarminSummary},
+        garmin_sync::GarminSync,
+        pgpool::PgPool,
+    },
     parsers::{
         garmin_parse::{GarminParse, GarminParseTrait},
         garmin_parse_fit::GarminParseFit,
@@ -24,27 +32,18 @@ use crate::{
         garmin_parse_tcx::GarminParseTcx,
         garmin_parse_txt::GarminParseTxt,
     },
-    reports::{
-        garmin_file_report_html::file_report_html,
-        garmin_file_report_txt::generate_txt_report,
-        garmin_report_options::{GarminReportAgg, GarminReportOptions},
-        garmin_summary_report_html::summary_report_html,
-        garmin_summary_report_txt::create_report_query,
-    },
     utils::{
         garmin_util::{extract_zip_from_garmin_connect, get_file_list},
         sport_types::get_sport_type_map,
         stdout_channel::StdoutChannel,
     },
 };
-
-use super::{
-    garmin_config::GarminConfig,
-    garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionMap},
-    garmin_file,
-    garmin_summary::{get_list_of_files_from_db, GarminSummary},
-    garmin_sync::GarminSync,
-    pgpool::PgPool,
+use garmin_reports::{
+    garmin_file_report_html::file_report_html,
+    garmin_file_report_txt::generate_txt_report,
+    garmin_report_options::{GarminReportAgg, GarminReportOptions},
+    garmin_summary_report_html::summary_report_html,
+    garmin_summary_report_txt::create_report_query,
 };
 
 lazy_static! {
@@ -76,7 +75,7 @@ pub struct GarminCli {
 
 impl GarminCli {
     /// ```
-    /// # use garmin_lib::common::garmin_cli::GarminCli;
+    /// # use garmin_cli::garmin_cli::GarminCli;
     /// # use garmin_lib::parsers::garmin_parse::GarminParse;
     /// # use garmin_lib::common::garmin_correction_lap::GarminCorrectionMap;
     /// let gcli = GarminCli::new();

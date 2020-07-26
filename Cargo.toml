@@ -13,6 +13,7 @@ strava_lib = { path = "strava_lib" }
 fitbit_bot = {path="fitbit_bot"}
 garmin_connect_lib = {path="garmin_connect_lib"}
 race_result_analysis = {path="race_result_analysis"}
+garmin_reports = {path="garmin_reports"}
 actix = "0.9"
 actix-rt = "1.1"
 log = "0.4"
@@ -38,6 +39,7 @@ members = [
     "fitbit_bot",
     "garmin_connect_lib",
     "race_result_analysis",
+    "garmin_reports",
 ]
 
 [[bin]]

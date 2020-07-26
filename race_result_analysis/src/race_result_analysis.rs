@@ -7,8 +7,10 @@ use stack_string::StackString;
 use std::collections::HashMap;
 
 use garmin_lib::{
-    common::pgpool::PgPool,
-    reports::garmin_templates::{PLOT_TEMPLATE, PLOT_TEMPLATE_DEMO, SCATTERPLOTWITHLINES},
+    common::{
+        garmin_templates::{PLOT_TEMPLATE, PLOT_TEMPLATE_DEMO, SCATTERPLOTWITHLINES},
+        pgpool::PgPool,
+    },
     utils::garmin_util::{print_h_m_s, MARATHON_DISTANCE_M, METERS_PER_MILE},
 };
 

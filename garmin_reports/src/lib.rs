@@ -10,6 +10,16 @@
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::used_underscore_binding)]
 
-pub mod common;
-pub mod parsers;
-pub mod utils;
+pub mod garmin_file_report_html;
+pub mod garmin_file_report_txt;
+pub mod garmin_report_options;
+pub mod garmin_summary_report_html;
+pub mod garmin_summary_report_txt;
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn it_works() {
+        assert_eq!(2 + 2, 4);
+    }
+}

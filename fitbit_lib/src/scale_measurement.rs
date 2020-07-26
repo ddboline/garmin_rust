@@ -8,8 +8,10 @@ use stack_string::StackString;
 use std::fmt;
 
 use garmin_lib::{
-    common::pgpool::PgPool,
-    reports::garmin_templates::{PLOT_TEMPLATE, PLOT_TEMPLATE_DEMO, TIMESERIESTEMPLATE},
+    common::{
+        garmin_templates::{PLOT_TEMPLATE, PLOT_TEMPLATE_DEMO, TIMESERIESTEMPLATE},
+        pgpool::PgPool,
+    },
     utils::iso_8601_datetime::convert_datetime_to_str,
 };
 

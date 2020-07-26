@@ -141,14 +141,15 @@ impl RaceResults {
         let query = postgres_query::query!(
             "
             INSERT INTO race_results (race_type, race_date, race_name, race_distance, race_time,
-                race_flag)
-            VALUES ($race_type,$race_date,$race_name,$race_distance,$race_time,$race_flag)",
+                race_flag,race_filename)
+            VALUES ($race_type,$race_date,$race_name,$race_distance,$race_time,$race_flag,$race_filename)",
             race_type = self.race_type,
             race_date = self.race_date,
             race_name = self.race_name,
             race_distance = self.race_distance,
             race_time = self.race_time,
             race_flag = self.race_flag,
+            race_filename = self.race_filename,
         );
         let conn = pool.get().await?;
         conn.execute(query.sql(), query.parameters())

@@ -1,10 +1,10 @@
 use anyhow::Error;
 use stack_string::StackString;
 
-use crate::reports::{
-    garmin_file_report_html::generate_history_buttons,
-    garmin_summary_report_txt::GarminReportQuery,
-    garmin_templates::{GARMIN_TEMPLATE, GARMIN_TEMPLATE_DEMO},
+use garmin_lib::common::garmin_templates::{GARMIN_TEMPLATE, GARMIN_TEMPLATE_DEMO};
+
+use crate::{
+    garmin_file_report_html::generate_history_buttons, garmin_summary_report_txt::GarminReportQuery,
 };
 
 pub fn summary_report_html<T>(

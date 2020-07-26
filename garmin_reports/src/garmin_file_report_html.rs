@@ -5,17 +5,19 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use stack_string::StackString;
 use std::collections::HashSet;
 
-use crate::{
+use race_result_analysis::race_results::RaceResults;
+use garmin_lib::{
     common::{
-        fitbit_activity::FitbitActivity, garmin_config::GarminConfig,
-        garmin_connect_activity::GarminConnectActivity, garmin_file::GarminFile,
-        garmin_lap::GarminLap, pgpool::PgPool, strava_activity::StravaActivity,
-    },
-    reports::{
-        garmin_file_report_txt::get_splits,
+        fitbit_activity::FitbitActivity,
+        garmin_config::GarminConfig,
+        garmin_connect_activity::GarminConnectActivity,
+        garmin_file::GarminFile,
+        garmin_lap::GarminLap,
         garmin_templates::{
             GARMIN_TEMPLATE, GARMIN_TEMPLATE_DEMO, MAP_TEMPLATE, MAP_TEMPLATE_DEMO,
         },
+        pgpool::PgPool,
+        strava_activity::StravaActivity,
     },
     utils::{
         garmin_util::{print_h_m_s, titlecase, MARATHON_DISTANCE_MI, METERS_PER_MILE},
@@ -24,6 +26,8 @@ use crate::{
         sport_types::{get_sport_type_map, SportTypes},
     },
 };
+
+use crate::garmin_file_report_txt::get_splits;
 
 pub fn generate_history_buttons<T: AsRef<str>>(history_vec: &[T]) -> StackString {
     fn history_button_string(most_recent: &str) -> StackString {
@@ -345,6 +349,7 @@ where
     let fitbit_activity = FitbitActivity::get_by_start_time(pool, gfile.begin_datetime).await?;
     let connect_activity =
         GarminConnectActivity::get_by_begin_datetime(pool, gfile.begin_datetime).await?;
+    let race_result = RaceResults::get_race_by_filename(gfile.filename.as_str(), pool).await?;
 
     let htmlvec = if !report_objs.lat_vals.is_empty()
         & !report_objs.lon_vals.is_empty()
@@ -357,6 +362,7 @@ where
             &strava_activity,
             &fitbit_activity,
             &connect_activity,
+            &race_result,
             history,
             graphs,
             config,
@@ -370,6 +376,7 @@ where
             &strava_activity,
             &fitbit_activity,
             &connect_activity,
+            &race_result,
             history,
             is_demo,
         )?
@@ -386,6 +393,7 @@ fn get_garmin_template_vec<T: AsRef<str>>(
     strava_activity: &Option<StravaActivity>,
     fitbit_activity: &Option<FitbitActivity>,
     connect_activity: &Option<GarminConnectActivity>,
+    race_result: &Option<RaceResults>,
     history: &[T],
     is_demo: bool,
 ) -> Result<Vec<StackString>, Error> {
@@ -402,7 +410,7 @@ fn get_garmin_template_vec<T: AsRef<str>>(
             htmlvec.push(
                 format!(
                     "{}\n",
-                    get_file_html(&gfile, strava_activity, fitbit_activity, connect_activity)
+                    get_file_html(&gfile, strava_activity, fitbit_activity, connect_activity, race_result)
                 )
                 .into(),
             );
@@ -491,6 +499,7 @@ fn get_map_tempate_vec<T, U>(
     strava_activity: &Option<StravaActivity>,
     fitbit_activity: &Option<FitbitActivity>,
     connect_activity: &Option<GarminConnectActivity>,
+    race_result: &Option<RaceResults>,
     history: &[T],
     graphs: &[U],
     config: &GarminConfig,
@@ -608,7 +617,7 @@ where
             htmlvec.push(
                 format!(
                     "{}\n",
-                    get_file_html(&gfile, strava_activity, fitbit_activity, connect_activity)
+                    get_file_html(&gfile, strava_activity, fitbit_activity, connect_activity, race_result)
                 )
                 .into(),
             );
@@ -704,6 +713,7 @@ fn get_file_html(
     strava_activity: &Option<StravaActivity>,
     fitbit_activity: &Option<FitbitActivity>,
     connect_activity: &Option<GarminConnectActivity>,
+    race_result: &Option<RaceResults>,
 ) -> StackString {
     let mut retval = Vec::new();
 
@@ -761,6 +771,14 @@ fn get_file_html(
         } else {0},
     ));
     retval.push(r#"</table><br>"#.to_string());
+    if race_result.is_none() && gfile.sport == SportTypes::Running {
+        retval.push(
+            format!(
+                r#"<button type="submit" onclick="raceResultImport('{}');">ImportRace</button>"#,
+                gfile.filename,
+            )
+        );
+    }
 
     let labels = vec![
         "Sport",

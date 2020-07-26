@@ -334,6 +334,17 @@ STRAVAUPLOADBUTTON
         let ostr = "/garmin/race_result_plot?race_type=world_record_women"
         location.replace(ostr)
     }
+    function raceResultImport(filename) {
+        let ostr = '/garmin/race_result_import?filename=' + filename;
+        let xmlhttp = new XMLHttpRequest();
+        xmlhttp.open("GET", ostr, true);
+        xmlhttp.onload = function nothing() {
+            document.getElementById("garminconnectoutput").innerHTML = "done";
+            document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
+        }
+        xmlhttp.send(null);
+        document.getElementById("garminconnectoutput").innerHTML = "syncing";
+    }
 </script>
 
 </body>

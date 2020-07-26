@@ -17,10 +17,12 @@ use structopt::StructOpt;
 use garmin_connect_lib::garmin_connect_client::GarminConnectHrData;
 use garmin_lib::{
     common::{
-        garmin_config::GarminConfig, garmin_file::GarminFile,
-        garmin_summary::get_list_of_files_from_db, pgpool::PgPool,
+        garmin_config::GarminConfig,
+        garmin_file::GarminFile,
+        garmin_summary::get_list_of_files_from_db,
+        garmin_templates::{PLOT_TEMPLATE, PLOT_TEMPLATE_DEMO, TIMESERIESTEMPLATE},
+        pgpool::PgPool,
     },
-    reports::garmin_templates::{PLOT_TEMPLATE, PLOT_TEMPLATE_DEMO, TIMESERIESTEMPLATE},
     utils::iso_8601_datetime,
 };
 

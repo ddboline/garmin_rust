@@ -4,7 +4,7 @@ use stack_string::StackString;
 use std::collections::HashMap;
 
 use crate::{
-    reports::garmin_templates::{LINEPLOTTEMPLATE, SCATTERPLOTTEMPLATE},
+    common::garmin_templates::{LINEPLOTTEMPLATE, SCATTERPLOTTEMPLATE},
     utils::plot_opts::PlotOpts,
 };
 

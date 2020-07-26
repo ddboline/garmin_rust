@@ -15,16 +15,14 @@ use std::string::ToString;
 use tempdir::TempDir;
 use tokio::{fs::File, io::AsyncWriteExt, stream::StreamExt, task::spawn_blocking};
 
+use garmin_cli::garmin_cli::{GarminCli, GarminRequest};
 use garmin_lib::{
-    common::{
-        garmin_cli::{GarminCli, GarminRequest},
-        garmin_file::GarminFile,
-    },
+    common::garmin_file::GarminFile,
     parsers::garmin_parse::{GarminParse, GarminParseTrait},
-    reports::{
-        garmin_file_report_html::generate_history_buttons, garmin_file_report_txt::get_splits,
-    },
     utils::iso_8601_datetime::convert_datetime_to_str,
+};
+use garmin_reports::{
+    garmin_file_report_html::generate_history_buttons, garmin_file_report_txt::get_splits,
 };
 
 use super::{errors::ServiceError as Error, logged_user::LoggedUser};

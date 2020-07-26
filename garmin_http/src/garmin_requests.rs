@@ -1018,7 +1018,7 @@ impl HandleRequest<RaceResultImportRequest> for PgPool {
             {
                 result.race_name = Some(activity.name);
             }
-            result.race_filename = Some(req.filename.into());
+            result.race_filename = Some(req.filename);
             result.insert_into_db(self).await?;
         }
         Ok(())

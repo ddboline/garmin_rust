@@ -1,5 +1,5 @@
 FROM ubuntu:bionic
-MAINTAINER Daniel Boline
+LABEL maintainer="Daniel Boline"
 
 RUN echo deb [trusted=yes] https://py2deb-repo.s3.amazonaws.com/deb/bionic/python3 bionic main > /etc/apt/sources.list.d/py2deb.list && \
     apt-key adv --keyserver keyserver.ubuntu.com --recv 25508FAF711C1DEB && \
@@ -20,3 +20,4 @@ ADD strava_lib /garmin_rust/strava_lib
 ADD fitbit_bot /garmin_rust/fitbit_bot
 ADD garmin_connect_lib /garmin_rust/garmin_connect_lib
 ADD race_result_analysis /garmin_rust/race_result_analysis
+ADD garmin_reports /garmin_rust/garmin_reports

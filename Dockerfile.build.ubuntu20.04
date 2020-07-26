@@ -1,5 +1,5 @@
 FROM rust_stable:latest
-MAINTAINER Daniel Boline
+LABEL maintainer="Daniel Boline"
 
 WORKDIR /garmin_rust
 
@@ -16,3 +16,4 @@ ADD strava_lib /garmin_rust/strava_lib
 ADD fitbit_bot /garmin_rust/fitbit_bot
 ADD garmin_connect_lib /garmin_rust/garmin_connect_lib
 ADD race_result_analysis /garmin_rust/race_result_analysis
+ADD garmin_reports /garmin_rust/garmin_reports

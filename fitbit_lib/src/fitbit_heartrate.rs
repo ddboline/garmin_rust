@@ -508,7 +508,7 @@ mod tests {
     use anyhow::Error;
     use chrono::NaiveDate;
     use log::debug;
-    use std::{collections::HashSet, fs::File, path::Path};
+    use std::{collections::HashSet, path::Path};
 
     use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
 

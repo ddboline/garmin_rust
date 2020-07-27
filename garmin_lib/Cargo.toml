@@ -1,6 +1,6 @@
 [package]
 name = "garmin_lib"
-version = "0.8.60"
+version = "0.8.61"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -14,8 +14,8 @@ json = "0.12"
 tokio-postgres = {version = "0.5", features = ["with-chrono-0_4"]}
 postgres-types = "0.1"
 log = "0.4"
-rusoto_core = {version = "0.44", default_features = false, features=["rustls"]}
-rusoto_s3 = {version = "0.44", default_features = false, features=["rustls"]}
+rusoto_core = {version = "0.45", default_features = false, features=["rustls"]}
+rusoto_s3 = {version = "0.45", default_features = false, features=["rustls"]}
 futures = "0.3"
 s3-ext = "0.1"
 sts_profile_auth = "0.5"

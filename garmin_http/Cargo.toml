@@ -1,6 +1,6 @@
 [package]
 name = "garmin_http"
-version = "0.8.60"
+version = "0.8.61"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -12,7 +12,7 @@ garmin_cli = {path = "../garmin_cli"}
 garmin_connect_lib = {path="../garmin_connect_lib"}
 garmin_reports = {path="../garmin_reports"}
 race_result_analysis = {path="../race_result_analysis"}
-rust_auth_server = { git = "https://github.com/ddboline/rust-auth-server.git", tag="0.5.14" }
+rust_auth_server = { git = "https://github.com/ddboline/rust-auth-server.git", tag="0.5.15" }
 actix-web = {version="2.0", features=["rustls", "compress"], default_features=false}
 actix = "0.9"
 actix-identity = "0.2"

@@ -5,7 +5,6 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use stack_string::StackString;
 use std::collections::HashSet;
 
-use race_result_analysis::race_results::RaceResults;
 use garmin_lib::{
     common::{
         fitbit_activity::FitbitActivity,
@@ -26,6 +25,7 @@ use garmin_lib::{
         sport_types::{get_sport_type_map, SportTypes},
     },
 };
+use race_result_analysis::race_results::RaceResults;
 
 use crate::garmin_file_report_txt::get_splits;
 
@@ -410,7 +410,13 @@ fn get_garmin_template_vec<T: AsRef<str>>(
             htmlvec.push(
                 format!(
                     "{}\n",
-                    get_file_html(&gfile, strava_activity, fitbit_activity, connect_activity, race_result)
+                    get_file_html(
+                        &gfile,
+                        strava_activity,
+                        fitbit_activity,
+                        connect_activity,
+                        race_result
+                    )
                 )
                 .into(),
             );
@@ -617,7 +623,13 @@ where
             htmlvec.push(
                 format!(
                     "{}\n",
-                    get_file_html(&gfile, strava_activity, fitbit_activity, connect_activity, race_result)
+                    get_file_html(
+                        &gfile,
+                        strava_activity,
+                        fitbit_activity,
+                        connect_activity,
+                        race_result
+                    )
                 )
                 .into(),
             );
@@ -772,12 +784,10 @@ fn get_file_html(
     ));
     retval.push(r#"</table><br>"#.to_string());
     if race_result.is_none() && gfile.sport == SportTypes::Running {
-        retval.push(
-            format!(
-                r#"<button type="submit" onclick="raceResultImport('{}');">ImportRace</button>"#,
-                gfile.filename,
-            )
-        );
+        retval.push(format!(
+            r#"<button type="submit" onclick="raceResultImport('{}');">ImportRace</button>"#,
+            gfile.filename,
+        ));
     }
 
     let labels = vec![

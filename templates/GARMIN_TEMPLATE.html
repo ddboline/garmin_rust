@@ -41,6 +41,7 @@
 <H3>
     <button type="submit" onclick="garmin_sync();">sync with S3</button>
     <button type="submit" onclick="garmin_connect_sync();">sync with Garmin Connect</button>
+    <button type="submit" onclick="garminConnectUserSummary();">Connect User Summary</button>
     <button type="submit" onclick="fitbit_tcx_sync();">sync with Fitbit TCX</button>
     <button type="submit" onclick="stravaAuth();">read auth Strava</button>
     <button type="submit" onclick="fitbitAuth();">Fitbit Auth</button>
@@ -260,6 +261,17 @@ INSERTTEXTHERE
     function race_result_plot_world_record_women() {
         let ostr = "/garmin/race_result_plot?race_type=world_record_women"
         location.replace(ostr)
+    }
+    function garminConnectUserSummary() {
+        let ostr = "/garmin/garmin_connect_user_summary";
+        let xmlhttp = new XMLHttpRequest();
+        xmlhttp.open("GET", ostr, true);
+        xmlhttp.onload = function nothing() {
+            document.getElementById("garminconnectoutput").innerHTML = "done";
+            document.getElementById("garmin_text_box").innerHTML = JSON.stringify(JSON.parse(xmlhttp.responseText),null,2);
+        }
+        xmlhttp.send(null);
+        document.getElementById("garminconnectoutput").innerHTML = "syncing";
     }
 </script>
 

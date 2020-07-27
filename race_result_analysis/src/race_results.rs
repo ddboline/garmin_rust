@@ -142,7 +142,9 @@ impl RaceResults {
             "
             INSERT INTO race_results (race_type, race_date, race_name, race_distance, race_time,
                 race_flag,race_filename)
-            VALUES ($race_type,$race_date,$race_name,$race_distance,$race_time,$race_flag,$race_filename)",
+            VALUES \
+             ($race_type,$race_date,$race_name,$race_distance,$race_time,$race_flag,\
+             $race_filename)",
             race_type = self.race_type,
             race_date = self.race_date,
             race_name = self.race_name,

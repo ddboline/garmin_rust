@@ -1,6 +1,7 @@
 use anyhow::{format_err, Error};
 use avro_rs::{from_value, Codec, Reader, Schema, Writer};
 use chrono::{DateTime, Duration, FixedOffset, Local, NaiveDate, NaiveDateTime, TimeZone, Utc};
+use fitparser::{profile::field_types::MesgNum, Value};
 use futures::future::try_join_all;
 use glob::glob;
 use itertools::Itertools;
@@ -23,7 +24,7 @@ use garmin_lib::{
         garmin_templates::{PLOT_TEMPLATE, PLOT_TEMPLATE_DEMO, TIMESERIESTEMPLATE},
         pgpool::PgPool,
     },
-    utils::iso_8601_datetime,
+    utils::{garmin_util::get_f64, iso_8601_datetime},
 };
 
 use crate::fitbit_statistics_summary::FitbitStatisticsSummary;
@@ -459,6 +460,42 @@ pub fn import_fitbit_json_files(directory: &str) -> Result<(), Error> {
         .collect()
 }
 
+pub fn import_garmin_heartrate_file(filename: &Path) -> Result<(), Error> {
+    let config = GarminConfig::get_config(None)?;
+
+    let mut timestamp = None;
+    let mut heartrates = Vec::new();
+    let mut f = File::open(&filename)?;
+    let records = fitparser::from_reader(&mut f)?;
+    for record in records {
+        if record.kind() == MesgNum::StressLevel {
+            for field in record.fields() {
+                if field.name() == "stress_level_time" {
+                    if let Value::Timestamp(t) = field.value() {
+                        timestamp.replace(t.with_timezone(&Utc));
+                    }
+                }
+            }
+        }
+        if record.kind() == MesgNum::Monitoring {
+            for field in record.fields() {
+                if field.name() == "heart_rate" {
+                    if let Some(datetime) = timestamp {
+                        if let Some(heartrate) = get_f64(field.value()) {
+                            let value = heartrate as i32;
+                            heartrates.push(FitbitHeartRate { datetime, value })
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    FitbitHeartRate::merge_slice_to_avro(&config, &heartrates)?;
+
+    Ok(())
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct FitbitBodyWeightFat {
     pub datetime: DateTime<Utc>,
@@ -471,7 +508,7 @@ mod tests {
     use anyhow::Error;
     use chrono::NaiveDate;
     use log::debug;
-    use std::{collections::HashSet, path::Path};
+    use std::{collections::HashSet, fs::File, path::Path};
 
     use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
 

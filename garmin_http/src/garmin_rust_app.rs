@@ -18,13 +18,13 @@ use crate::{
         fitbit_plots, fitbit_plots_demo, fitbit_profile, fitbit_refresh, fitbit_sync,
         fitbit_tcx_sync, garmin, garmin_connect_activities, garmin_connect_activities_db,
         garmin_connect_activities_db_update, garmin_connect_hr_api, garmin_connect_hr_sync,
-        garmin_connect_sync, garmin_demo, garmin_get_hr_data, garmin_get_hr_pace,
-        garmin_list_gps_tracks, garmin_sync, garmin_upload, heartrate_plots, heartrate_plots_demo,
-        heartrate_statistics_plots, race_result_flag, race_result_import, race_result_plot,
-        race_result_plot_demo, scale_measurement, scale_measurement_update, strava_activities,
-        strava_activities_db, strava_activities_db_update, strava_athlete, strava_auth,
-        strava_callback, strava_create, strava_refresh, strava_sync, strava_update, strava_upload,
-        user,
+        garmin_connect_sync, garmin_connect_user_summary, garmin_demo, garmin_get_hr_data,
+        garmin_get_hr_pace, garmin_list_gps_tracks, garmin_sync, garmin_upload, heartrate_plots,
+        heartrate_plots_demo, heartrate_statistics_plots, race_result_flag, race_result_import,
+        race_result_plot, race_result_plot_demo, scale_measurement, scale_measurement_update,
+        strava_activities, strava_activities_db, strava_activities_db_update, strava_athlete,
+        strava_auth, strava_callback, strava_create, strava_refresh, strava_sync, strava_update,
+        strava_upload, user,
     },
     CONFIG,
 };
@@ -113,6 +113,10 @@ pub async fn start_app() {
             .service(
                 web::resource("/garmin/garmin_connect_hr_api")
                     .route(web::get().to(garmin_connect_hr_api)),
+            )
+            .service(
+                web::resource("/garmin/garmin_connect_user_summary")
+                    .route(web::get().to(garmin_connect_user_summary)),
             )
             .service(web::resource("/garmin/garmin_sync").route(web::get().to(garmin_sync)))
             .service(web::resource("/garmin/strava_sync").route(web::get().to(strava_sync)))

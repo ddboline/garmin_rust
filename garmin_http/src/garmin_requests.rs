@@ -20,7 +20,9 @@ use fitbit_lib::{
     scale_measurement::ScaleMeasurement,
 };
 use garmin_cli::garmin_cli::{GarminCli, GarminRequest};
-use garmin_connect_lib::garmin_connect_client::get_garmin_connect_session;
+use garmin_connect_lib::garmin_connect_client::{
+    get_garmin_connect_session, GarminConnectUserDailySummary,
+};
 use garmin_lib::{
     common::{
         fitbit_activity::FitbitActivity,
@@ -909,6 +911,24 @@ impl HandleRequest<FitbitProfileRequest> for PgPool {
         let config = CONFIG.clone();
         let client = FitbitClient::with_auth(config).await?;
         client.get_user_profile().await.map_err(Into::into)
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct GarminConnectUserSummaryRequest {
+    pub date: Option<NaiveDate>,
+}
+
+#[async_trait]
+impl HandleRequest<GarminConnectUserSummaryRequest> for PgPool {
+    type Result = Result<GarminConnectUserDailySummary, Error>;
+    async fn handle(&self, msg: GarminConnectUserSummaryRequest) -> Self::Result {
+        let config = CONFIG.clone();
+        let session = get_garmin_connect_session(&config).await?;
+        let date = msg
+            .date
+            .unwrap_or_else(|| Local::now().naive_local().date());
+        session.get_user_summary(date).await.map_err(Into::into)
     }
 }
 

@@ -38,13 +38,13 @@ use crate::{
         FitbitTcxSyncRequest, GarminConnectActivitiesDBRequest,
         GarminConnectActivitiesDBUpdateRequest, GarminConnectActivitiesRequest,
         GarminConnectHrApiRequest, GarminConnectHrSyncRequest, GarminConnectSyncRequest,
-        GarminCorrRequest, GarminHtmlRequest, GarminListRequest, GarminSyncRequest,
-        GarminUploadRequest, HandleRequest, RaceResultFlagRequest, RaceResultImportRequest,
-        RaceResultPlotRequest, ScaleMeasurementPlotRequest, ScaleMeasurementRequest,
-        ScaleMeasurementUpdateRequest, StravaActiviesDBUpdateRequest, StravaActivitiesDBRequest,
-        StravaActivitiesRequest, StravaAthleteRequest, StravaAuthRequest, StravaCallbackRequest,
-        StravaCreateRequest, StravaRefreshRequest, StravaSyncRequest, StravaUpdateRequest,
-        StravaUploadRequest,
+        GarminConnectUserSummaryRequest, GarminCorrRequest, GarminHtmlRequest, GarminListRequest,
+        GarminSyncRequest, GarminUploadRequest, HandleRequest, RaceResultFlagRequest,
+        RaceResultImportRequest, RaceResultPlotRequest, ScaleMeasurementPlotRequest,
+        ScaleMeasurementRequest, ScaleMeasurementUpdateRequest, StravaActiviesDBUpdateRequest,
+        StravaActivitiesDBRequest, StravaActivitiesRequest, StravaAthleteRequest,
+        StravaAuthRequest, StravaCallbackRequest, StravaCreateRequest, StravaRefreshRequest,
+        StravaSyncRequest, StravaUpdateRequest, StravaUploadRequest,
     },
     CONFIG,
 };
@@ -736,6 +736,16 @@ pub async fn garmin_connect_activities_db_update(
     let req = payload.into_inner();
     let body = state.db.handle(req).await?;
     form_http_response(body.join("\n"))
+}
+
+pub async fn garmin_connect_user_summary(
+    query: Query<GarminConnectUserSummaryRequest>,
+    _: LoggedUser,
+    state: Data<AppState>,
+) -> Result<HttpResponse, Error> {
+    let query = query.into_inner();
+    let js = state.db.handle(query).await?;
+    to_json(js)
 }
 
 pub async fn fitbit_activities_db(

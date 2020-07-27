@@ -61,3 +61,8 @@ doc = false
 name = "garmin-rust-cli"
 path = "src/garmin_rust_cli.rs"
 doc = false
+
+[[bin]]
+name = "pull-garmin-heartrate-data"
+path = "src/pull_garmin_heartrate_data.rs"
+doc = false

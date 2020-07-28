@@ -454,7 +454,7 @@ mod tests {
                 }
                 for race in races.iter_mut() {
                     race.race_flag = true;
-                    race.upsert_db(&pool).await?;
+                    // race.upsert_db(&pool).await?;
                 }
             } else {
                 assert!(false, "No existing entry {:?}", key);

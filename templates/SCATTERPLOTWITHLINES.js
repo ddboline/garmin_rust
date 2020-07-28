@@ -131,17 +131,17 @@ function handleMouseOverOtherData(d, i) {
         .attr("id", 'otherdata' + i)
         .attr("x", function() {return x(xmin) + 30;})
         .attr("y", function() {return y(ymax) + 15;})
-        .text(function() {return data[i][2];});
+        .text(function() {return other_data[i][2];});
     svg.append('text')
         .attr("id", 'otherdata_date' + i)
         .attr("x", function() {return x(xmin) + 30;})
         .attr("y", function() {return y(ymax) + 30;})
-        .text(function() {return data[i][3];});
+        .text(function() {return other_data[i][3];});
     svg.append('text')
         .attr("id", 'otherdata_time' + i)
         .attr("x", function() {return x(xmin) + 30;})
         .attr("y", function() {return y(ymax) + 45;})
-        .text(function() {return data[i][4];});
+        .text(function() {return other_data[i][4];});
 }
 
 function handleMouseOutOtherData(d, i) {

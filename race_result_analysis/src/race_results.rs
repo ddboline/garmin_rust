@@ -61,7 +61,9 @@ impl RaceResults {
         pool: &PgPool,
     ) -> Result<Vec<Self>, Error> {
         let query = postgres_query::query!(
-            "SELECT * FROM race_results WHERE race_type = $race_type",
+            "SELECT * FROM race_results
+            WHERE race_type = $race_type
+            ORDER BY race_distance",
             race_type = race_type
         );
         let conn = pool.get().await?;

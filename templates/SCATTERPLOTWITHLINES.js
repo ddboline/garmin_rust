@@ -13,8 +13,6 @@ var pos_data = POSDATA;
 
 var xmax = d3.max(data, function(d) {return d[0]});
 var xmin = d3.min(data, function(d) {return d[0]});
-var ymax = d3.max(data, function(d) {return d[1]});
-var ymin = d3.min(data, function(d) {return d[1]});
 
 xmax = xmax + 0.1 * Math.abs(xmax);
 xmin = xmin - 0.1 * Math.abs(xmin);
@@ -78,8 +76,10 @@ svg.append("g")
     .append("circle")
         .attr("cx", function(d) {return x(d[0]);})
         .attr("cy", function(d) {return y(d[1]);})
-        .attr("r", 3)
-        .style("fill", "blue");
+        .attr("r", 4)
+        .style("fill", "blue")
+        .on("mouseover", handleMouseOverData)
+        .on("mouseout", handleMouseOutData);
 
 svg.append("g")
     .selectAll("dot")
@@ -88,12 +88,10 @@ svg.append("g")
     .append("circle")
         .attr("cx", function(d) {return x(d[0]);})
         .attr("cy", function(d) {return y(d[1]);})
-        .attr("r", 1)
-        .style("fill", "green");
-
-var valueline = d3.line()
-    .x(function(d) { return x(d[0]); })
-    .y(function(d) { return y(d[1]); });
+        .attr("r", 3)
+        .style("fill", "green")
+        .on("mouseover", handleMouseOverOtherData)
+        .on("mouseout", handleMouseOutOtherData);
 
 svg.append("path").attr("class", "line").attr("d", valueline(fit_data));
 svg.append("path").attr("class", "line")
@@ -103,3 +101,51 @@ svg.append("path").attr("class", "line")
 
 svg.append("g").attr("class", "xaxis").attr("transform", "translate(0," + height + ")").call(xAxis);
 svg.append("g").attr("class", "yaxis").call(yAxis);
+
+function handleMouseOverData(d, i) {
+    svg.append('text')
+        .attr("id", 'data' + i)
+        .attr("x", function() {return x(xmin) + 30;})
+        .attr("y", function() {return y(ymax) + 15;})
+        .text(function() {return data[i][2];});
+    svg.append('text')
+        .attr("id", 'data_date' + i)
+        .attr("x", function() {return x(xmin) + 30;})
+        .attr("y", function() {return y(ymax) + 30;})
+        .text(function() {return data[i][3];});
+    svg.append('text')
+        .attr("id", 'data_time' + i)
+        .attr("x", function() {return x(xmin) + 30;})
+        .attr("y", function() {return y(ymax) + 45;})
+        .text(function() {return data[i][4];});
+}
+
+function handleMouseOutData(d, i) {
+    d3.select('#data' + i).remove();
+    d3.select('#data_date' + i).remove();
+    d3.select('#data_time' + i).remove();
+}
+
+function handleMouseOverOtherData(d, i) {
+    svg.append('text')
+        .attr("id", 'otherdata' + i)
+        .attr("x", function() {return x(xmin) + 30;})
+        .attr("y", function() {return y(ymax) + 15;})
+        .text(function() {return data[i][2];});
+    svg.append('text')
+        .attr("id", 'otherdata_date' + i)
+        .attr("x", function() {return x(xmin) + 30;})
+        .attr("y", function() {return y(ymax) + 30;})
+        .text(function() {return data[i][3];});
+    svg.append('text')
+        .attr("id", 'otherdata_time' + i)
+        .attr("x", function() {return x(xmin) + 30;})
+        .attr("y", function() {return y(ymax) + 45;})
+        .text(function() {return data[i][4];});
+}
+
+function handleMouseOutOtherData(d, i) {
+    d3.select('#otherdata' + i).remove();
+    d3.select('#otherdata_date' + i).remove();
+    d3.select('#otherdata_time' + i).remove();
+}

@@ -1,4 +1,5 @@
 use anyhow::Error;
+use chrono::{NaiveDate, Utc};
 use itertools::Itertools;
 use ndarray::{array, Array1};
 use postgres_query::FromSqlRow;
@@ -93,12 +94,20 @@ impl RaceResultAnalysis {
     }
 
     pub fn create_plot(&self, is_demo: bool) -> Result<StackString, Error> {
-        fn extract_points(result: &RaceResults) -> (i32, f64) {
+        fn extract_points(result: &RaceResults) -> (i32, f64, StackString, NaiveDate, StackString) {
             let distance = f64::from(result.race_distance) / METERS_PER_MILE;
             let duration = result.race_time / 60.0;
             let x = result.race_distance;
             let y = duration / distance;
-            (x, y)
+            (
+                x,
+                y,
+                result.race_name.clone().unwrap_or_else(|| "".into()),
+                result
+                    .race_date
+                    .unwrap_or_else(|| Utc::now().naive_local().date()),
+                print_h_m_s(result.race_time, true).unwrap_or_else(|_| "".into()),
+            )
         }
 
         let xticks: Vec<_> = [

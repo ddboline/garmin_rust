@@ -7,7 +7,6 @@ use maplit::hashmap;
 use reqwest::{
     header::{HeaderMap, HeaderName, HeaderValue},
     Url,
-    Response,
 };
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;

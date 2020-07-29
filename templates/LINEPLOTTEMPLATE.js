@@ -53,17 +53,17 @@ svg.append("text")      // text label for the y-axis
 var data = DATA;
 
 var xmax = d3.max(data, function(d) {return d[0]});
-var xmin = d3.min(data, function(d) {return d[0]});
-var ymax = d3.max(data, function(d) {return d[1]});
+var xmin_NAME = d3.min(data, function(d) {return d[0]});
+var ymax_NAME = d3.max(data, function(d) {return d[1]});
 var ymin = d3.min(data, function(d) {return d[1]});
 
 xmax = xmax + 0.1 * Math.abs(xmax);
-xmin = xmin - 0.1 * Math.abs(xmin);
-ymax = ymax + 0.1 * Math.abs(ymax);
+xmin_NAME = xmin_NAME - 0.1 * Math.abs(xmin_NAME);
+ymax_NAME = ymax_NAME + 0.1 * Math.abs(ymax_NAME);
 ymin = ymin - 0.1 * Math.abs(ymin);
 
-x.domain([xmin, xmax]);
-y.domain([ymin, ymax]);
+x.domain([xmin_NAME, xmax]);
+y.domain([ymin, ymax_NAME]);
 
 svg.append("path").attr("class", "line").attr("d", valueline(data));
 svg.append("g").attr("class", "xaxis").attr("transform", "translate(0," + height + ")").call(xAxis);
@@ -72,7 +72,7 @@ svg.append("g").attr("class", "yaxis").call(yAxis);
 let rule_NAME = svg.append("g")
     .append("line")
       .attr("y1", y(ymin))
-      .attr("y2", y(ymax))
+      .attr("y2", y(ymax_NAME))
       .attr("stroke", "black");
 
 function handleMouseOverData() {
@@ -96,12 +96,12 @@ function handleMouseOverData() {
 
     svg.append('text')
         .attr("id", 'data_date_NAME')
-        .attr("x", function() {return x(xmin) + 30;})
-        .attr("y", function() {return y(ymax) + 15;})
+        .attr("x", function() {return x(xmin_NAME) + 30;})
+        .attr("y", function() {return y(ymax_NAME) + 15;})
         .text(function() {return date;});
     svg.append('text')
         .attr("id", 'data_heartrate_NAME')
-        .attr("x", function() {return x(xmin) + 30;})
-        .attr("y", function() {return y(ymax) + 30;})
+        .attr("x", function() {return x(xmin_NAME) + 30;})
+        .attr("y", function() {return y(ymax_NAME) + 30;})
         .text(function() {return heartrate;});
 }

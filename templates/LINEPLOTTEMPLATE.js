@@ -85,22 +85,22 @@ function handleMouseOverData() {
     svg.property("value", date).dispatch("input");
     d3.event.preventDefault();
 
-    let data_date = d3.select('#data_date');
+    let data_date = d3.select('#data_date_NAME');
     if (data_date) {
         data_date.remove();
     }
-    let data_heartrate = d3.select('#data_heartrate');
+    let data_heartrate = d3.select('#data_heartrate_NAME');
     if (data_heartrate) {
         data_heartrate.remove();
     }
 
     svg.append('text')
-        .attr("id", 'data_date')
+        .attr("id", 'data_date_NAME')
         .attr("x", function() {return x(xmin) + 30;})
         .attr("y", function() {return y(ymax) + 15;})
         .text(function() {return date;});
     svg.append('text')
-        .attr("id", 'data_heartrate')
+        .attr("id", 'data_heartrate_NAME')
         .attr("x", function() {return x(xmin) + 30;})
         .attr("y", function() {return y(ymax) + 30;})
         .text(function() {return heartrate;});

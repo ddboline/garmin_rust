@@ -23,7 +23,7 @@ var svg = d3.select("body")
     .append("g")
         .attr("transform",
               "translate(" + margin.left + "," + margin.top + ")")
-        .on("mousemove touchmove", handleMouseOverData);
+    .on("mousemove touchmove", handleMouseOverData);
 
 svg.append("text")      // text label for chart Title
         .attr("x", width / 2 )

@@ -13,7 +13,7 @@ let xAxis_NAME = d3.axisBottom(x_NAME).ticks(5);
 let yAxis_NAME = d3.axisLeft(y_NAME).ticks(5);
 
 // Define the line
-var valueline = d3.line()
+let valueline_NAME = d3.line()
     .x(function(d) { return x_NAME(d[0]); })
     .y(function(d) { return y_NAME(d[1]); });
     
@@ -66,7 +66,7 @@ ymin_NAME = ymin_NAME - 0.1 * Math.abs(ymin_NAME);
 x_NAME.domain([xmin_NAME, xmax_NAME]);
 y_NAME.domain([ymin_NAME, ymax_NAME]);
 
-svg.append("path").attr("class", "line").attr("d", valueline(data_NAME));
+svg.append("path").attr("class", "line").attr("d", valueline_NAME(data_NAME));
 svg.append("g").attr("class", "xaxis").attr("transform", "translate(0," + height_NAME + ")").call(xAxis_NAME);
 svg.append("g").attr("class", "yaxis").call(yAxis_NAME);
 

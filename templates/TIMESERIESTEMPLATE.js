@@ -79,24 +79,46 @@ svg.append("g").attr("class", "yaxis").call(yAxis);
 
 function wrap(text, width) {
     text.each(function() {
-      var text = d3.select(this),
-          words = text.text().split(/\s+/).reverse(),
-          word,
-          line = [],
-          lineNumber = 0,
-          lineHeight = 1.1, // ems
-          y = text.attr("y"),
-          dy = parseFloat(text.attr("dy")),
-          tspan = text.text(null).append("tspan").attr("x", 0).attr("y", y).attr("dy", dy + "em");
-      while (word = words.pop()) {
+        var text = d3.select(this),
+            words = text.text().split(/\s+/).reverse(),
+            word,
+            line = [],
+            lineNumber = 0,
+            lineHeight = 1.1, // ems
+            y = text.attr("y"),
+            dy = parseFloat(text.attr("dy")),
+            tspan = text.text(null).append("tspan").attr("x", 0).attr("y", y).attr("dy", dy + "em");
+        while (word = words.pop()) {
         line.push(word);
         tspan.text(line.join(" "));
         if (tspan.node().getComputedTextLength() > width) {
-          line.pop();
-          tspan.text(line.join(" "));
-          line = [word];
-          tspan = text.append("tspan").attr("x", 0).attr("y", y).attr("dy", ++lineNumber * lineHeight + dy + "em").text(word);
+            line.pop();
+            tspan.text(line.join(" "));
+            line = [word];
+            tspan = text.append("tspan").attr("x", 0).attr("y", y).attr("dy", ++lineNumber * lineHeight + dy + "em").text(word);
         }
-      }
+        }
     });
-  }
+}
+
+function handleMouseOverData(d, i) {
+    svg.append('line')
+        .attr("id", "data_line")
+        .attr("x1", x(d[0]))
+        .attr("y1", y(ymin))
+        .attr("x2", x(d[0]))
+        .attr("y2", y(ymax))
+        .style("stroke-width", 2)
+        .style("stroke", "black")
+        .style("fill", "none");
+    svg.append('text')
+        .attr("id", 'data')
+        .attr("x", function() {return x(xmin) + 30;})
+        .attr("y", function() {return y(ymax) + 15;})
+        .text(function() {return d[0];});
+    svg.append('text')
+        .attr("id", 'data_date')
+        .attr("x", function() {return x(xmin) + 30;})
+        .attr("y", function() {return y(ymax) + 30;})
+        .text(function() {return d[1];});
+}

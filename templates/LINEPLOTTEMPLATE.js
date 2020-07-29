@@ -4,18 +4,18 @@ var margin = {top: 30, right: 20, bottom: 30, left: 60},
     height = 270 - margin.top - margin.bottom;
 
 // Set the ranges
-var x = d3.scaleLinear().range([0, width]);
-var y = d3.scaleLinear().range([height, 0]);
+let x_NAME = d3.scaleLinear().range([0, width]);
+let y_NAME = d3.scaleLinear().range([height, 0]);
 
 // Define the axes
-var xAxis = d3.axisBottom(x).ticks(5);
+var xAxis = d3.axisBottom(x_NAME).ticks(5);
 
-var yAxis = d3.axisLeft(y).ticks(5);
+var yAxis = d3.axisLeft(y_NAME).ticks(5);
 
 // Define the line
 var valueline = d3.line()
-    .x(function(d) { return x(d[0]); })
-    .y(function(d) { return y(d[1]); });
+    .x(function(d) { return x_NAME(d[0]); })
+    .y(function(d) { return y_NAME(d[1]); });
     
 // Adds the svg canvas
 var svg = d3.select("body")
@@ -52,18 +52,18 @@ svg.append("text")      // text label for the y-axis
 // Get the data
 var data = DATA;
 
-var xmax = d3.max(data, function(d) {return d[0]});
+var xmax_NAME = d3.max(data, function(d) {return d[0]});
 var xmin_NAME = d3.min(data, function(d) {return d[0]});
 var ymax_NAME = d3.max(data, function(d) {return d[1]});
-var ymin = d3.min(data, function(d) {return d[1]});
+var ymin_NAME = d3.min(data, function(d) {return d[1]});
 
-xmax = xmax + 0.1 * Math.abs(xmax);
+xmax_NAME = xmax_NAME + 0.1 * Math.abs(xmax_NAME);
 xmin_NAME = xmin_NAME - 0.1 * Math.abs(xmin_NAME);
 ymax_NAME = ymax_NAME + 0.1 * Math.abs(ymax_NAME);
-ymin = ymin - 0.1 * Math.abs(ymin);
+ymin_NAME = ymin_NAME - 0.1 * Math.abs(ymin_NAME);
 
-x.domain([xmin_NAME, xmax]);
-y.domain([ymin, ymax_NAME]);
+x_NAME.domain([xmin_NAME, xmax_NAME]);
+y_NAME.domain([ymin_NAME, ymax_NAME]);
 
 svg.append("path").attr("class", "line").attr("d", valueline(data));
 svg.append("g").attr("class", "xaxis").attr("transform", "translate(0," + height + ")").call(xAxis);
@@ -71,14 +71,14 @@ svg.append("g").attr("class", "yaxis").call(yAxis);
 
 let rule_NAME = svg.append("g")
     .append("line")
-      .attr("y1", y(ymin))
-      .attr("y2", y(ymax_NAME))
+      .attr("y1", y_NAME(ymin_NAME))
+      .attr("y2", y_NAME(ymax_NAME))
       .attr("stroke", "black");
 
 function handleMouseOverData() {
     let d = d3.mouse(this)
-    let date = x.invert(d[0]);
-    let heartrate = y.invert(d[1]);
+    let date = x_NAME.invert(d[0]);
+    let heartrate = y_NAME.invert(d[1]);
 
     rule_NAME.attr("transform", `translate(${d[0]}, 0)`);
 
@@ -96,12 +96,12 @@ function handleMouseOverData() {
 
     svg.append('text')
         .attr("id", 'data_date_NAME')
-        .attr("x", function() {return x(xmin_NAME) + 30;})
-        .attr("y", function() {return y(ymax_NAME) + 15;})
+        .attr("x", function() {return x_NAME(xmin_NAME) + 30;})
+        .attr("y", function() {return y_NAME(ymax_NAME) + 15;})
         .text(function() {return date;});
     svg.append('text')
         .attr("id", 'data_heartrate_NAME')
-        .attr("x", function() {return x(xmin_NAME) + 30;})
-        .attr("y", function() {return y(ymax_NAME) + 30;})
+        .attr("x", function() {return x_NAME(xmin_NAME) + 30;})
+        .attr("y", function() {return y_NAME(ymax_NAME) + 30;})
         .text(function() {return heartrate;});
 }

@@ -18,7 +18,7 @@ let valueline_NAME = d3.line()
     .y(function(d) { return y_NAME(d[1]); });
     
 // Adds the svg canvas
-var svg = d3.select("body")
+let svg_NAME = d3.select("body")
     .append("svg")
         .attr("width", width_NAME + margin_NAME.left + margin_NAME.right)
         .attr("height", height_NAME + margin_NAME.top + margin_NAME.bottom)
@@ -27,7 +27,7 @@ var svg = d3.select("body")
               "translate(" + margin_NAME.left + "," + margin_NAME.top + ")")
     .on("mousemove touchmove", handleMouseOverData_NAME);
 
-svg.append("text")      // text label for chart Title
+svg_NAME.append("text")      // text label for chart Title
         .attr("x", width_NAME / 2 )
         .attr("y", 0 - (margin_NAME.top/2))
         .style("text-anchor", "middle")
@@ -35,13 +35,13 @@ svg.append("text")      // text label for chart Title
         .style("text-decoration", "underline")
         .text("EXAMPLETITLE");
 
-svg.append("text")      // text label for the x-axis
+svg_NAME.append("text")      // text label for the x-axis
         .attr("x", width_NAME / 2 )
         .attr("y",  height_NAME + margin_NAME.bottom)
         .style("text-anchor", "middle")
         .text("XAXIS");
 
-svg.append("text")      // text label for the y-axis
+svg_NAME.append("text")      // text label for the y-axis
         .attr("y",30 - margin_NAME.left)
         .attr("x",50 - (height_NAME / 2))
         .attr("transform", "rotate(-90)")
@@ -66,11 +66,18 @@ ymin_NAME = ymin_NAME - 0.1 * Math.abs(ymin_NAME);
 x_NAME.domain([xmin_NAME, xmax_NAME]);
 y_NAME.domain([ymin_NAME, ymax_NAME]);
 
-svg.append("path").attr("class", "line").attr("d", valueline_NAME(data_NAME));
-svg.append("g").attr("class", "xaxis").attr("transform", "translate(0," + height_NAME + ")").call(xAxis_NAME);
-svg.append("g").attr("class", "yaxis").call(yAxis_NAME);
+svg_NAME.append("path")
+    .attr("class", "line")
+    .attr("d", valueline_NAME(data_NAME));
+svg_NAME.append("g")
+    .attr("class", "xaxis")
+    .attr("transform", "translate(0," + height_NAME + ")")
+    .call(xAxis_NAME);
+svg_NAME.append("g")
+    .attr("class", "yaxis")
+    .call(yAxis_NAME);
 
-let rule_NAME = svg.append("g")
+let rule_NAME = svg_NAME.append("g")
     .append("line")
       .attr("y1", y_NAME(ymin_NAME))
       .attr("y2", y_NAME(ymax_NAME))
@@ -83,7 +90,7 @@ function handleMouseOverData_NAME() {
 
     rule_NAME.attr("transform", `translate(${d[0]}, 0)`);
 
-    svg.property("value", date).dispatch("input");
+    svg_NAME.property("value", date).dispatch("input");
     d3.event.preventDefault();
 
     let data_date = d3.select('#data_date_NAME');
@@ -95,12 +102,12 @@ function handleMouseOverData_NAME() {
         data_heartrate.remove();
     }
 
-    svg.append('text')
+    svg_NAME.append('text')
         .attr("id", 'data_date_NAME')
         .attr("x", function() {return x_NAME(xmin_NAME) + 30;})
         .attr("y", function() {return y_NAME(ymax_NAME) + 15;})
         .text(function() {return date;});
-    svg.append('text')
+    svg_NAME.append('text')
         .attr("id", 'data_heartrate_NAME')
         .attr("x", function() {return x_NAME(xmin_NAME) + 30;})
         .attr("y", function() {return y_NAME(ymax_NAME) + 30;})

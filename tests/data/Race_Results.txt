@@ -2,7 +2,7 @@ Race Distance   Race Time       Pace    Date            Race Name
 -------------------------------------------------------------------------------------------------------------------------
      10 km         1:00:48      09:27   2019-11-28      Turkey Day Trail Trot
      50 km         6:36:51      13:25   2019-10-19      Castle to River 50k
- 42.195 km         3:55:18      08:58   2019-09-29      Chicago Marathon
+ 42.195 km         3:55:18      08:58   2019-10-13      Chicago Marathon
  42.195 km         3:48:03      08:42   2019-09-29      Berlin Marathon
      50 km         6:58:38      13:43   2019-08-10      Wildcat Ridge 50k
      50 km         6:42:30      12:33   2019-05-11      Mayapple 50k

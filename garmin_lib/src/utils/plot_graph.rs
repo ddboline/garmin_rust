@@ -121,6 +121,8 @@ pub fn generate_d3_plot(opts: &PlotOpts) -> Result<StackString, Error> {
                         "DATA",
                         &serde_json::to_string(&data).unwrap_or_else(|_| "".to_string()),
                     )
+                } else if line.contains("NAME") {
+                    line.replace("NAME", &opts.name)
                 } else {
                     line.to_string()
                 }

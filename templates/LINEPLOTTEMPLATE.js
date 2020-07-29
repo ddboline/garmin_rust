@@ -69,7 +69,7 @@ svg.append("path").attr("class", "line").attr("d", valueline(data));
 svg.append("g").attr("class", "xaxis").attr("transform", "translate(0," + height + ")").call(xAxis);
 svg.append("g").attr("class", "yaxis").call(yAxis);
 
-let rule = svg.append("g")
+let rule_NAME = svg.append("g")
     .append("line")
       .attr("y1", y(ymin))
       .attr("y2", y(ymax))
@@ -80,7 +80,7 @@ function handleMouseOverData() {
     let date = x.invert(d[0]);
     let heartrate = y.invert(d[1]);
 
-    rule.attr("transform", `translate(${d[0]}, 0)`);
+    rule_NAME.attr("transform", `translate(${d[0]}, 0)`);
 
     svg.property("value", date).dispatch("input");
     d3.event.preventDefault();

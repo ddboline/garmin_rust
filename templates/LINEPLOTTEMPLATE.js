@@ -50,7 +50,8 @@ svg.append("text")      // text label for the y-axis
         .text("YAXIS");
 
 // Get the data
-let data_NAME = DATA;
+let data_NAME =
+    DATA;
 
 let xmax_NAME = d3.max(data_NAME, function(d) {return d[0]});
 let xmin_NAME = d3.min(data_NAME, function(d) {return d[0]});

@@ -1,5 +1,5 @@
 use anyhow::{format_err, Error};
-use chrono::{DateTime, NaiveDate, Utc, Duration};
+use chrono::{DateTime, Duration, NaiveDate, Utc};
 use futures::future::try_join_all;
 use lazy_static::lazy_static;
 use log::{debug, error};
@@ -132,26 +132,33 @@ impl GarminConnectClient {
         let status = resp.status();
         if status == 429 {
             self.retry_time = Self::get_next_attempt_time(resp.headers())?;
-            return Err(format_err!("Too many requests, try again after {}", self.retry_time));
+            return Err(format_err!(
+                "Too many requests, try again after {}",
+                self.retry_time
+            ));
         }
 
         let resp_text = resp.error_for_status()?.text().await?;
         Self::check_signin_response(status.into(), &resp_text)?;
         let response_url = Self::get_response_url(&resp_text)?;
 
-        let resp = self.session.get_no_retry(
-            &response_url,
-            &HeaderMap::new(),
-        ).await?;
+        let resp = self
+            .session
+            .get_no_retry(&response_url, &HeaderMap::new())
+            .await?;
 
         if resp.status() == 429 {
             self.retry_time = Self::get_next_attempt_time(resp.headers())?;
-            return Err(format_err!("Too many requests, try again after {}", self.retry_time));
+            return Err(format_err!(
+                "Too many requests, try again after {}",
+                self.retry_time
+            ));
         }
 
         let resp_text = resp.error_for_status()?.text().await?;
 
-        self.display_name.replace(Self::extract_display_name(&resp_text)?);
+        self.display_name
+            .replace(Self::extract_display_name(&resp_text)?);
 
         self.auth_time = Some(Utc::now());
         self.auth_trigger.store(false, Ordering::SeqCst);

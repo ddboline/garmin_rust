@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html class="no-js">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge;" />
+                <title>Success</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta http-equiv="cleartype" content="on">
+                <script type="8374d5ae20c582aff8e16c38-text/javascript" src="/sso/js/jquery/3.1.1/jquery.min.js?20190208"></script>
+            <script type="8374d5ae20c582aff8e16c38-text/javascript">jQuery.noConflict();</script>
+            <script type="8374d5ae20c582aff8e16c38-text/javascript" src="/sso/js/json2.js"></script>
+            <script type="8374d5ae20c582aff8e16c38-text/javascript" src="/sso/js/consoleUtils.js?20190208"></script>
+            <script type="8374d5ae20c582aff8e16c38-text/javascript" src="/sso/js/postmessage.js?20190208"></script>
+                <script type="8374d5ae20c582aff8e16c38-text/javascript">
+                        var redirectAfterAccountLoginUrl        = "https:\/\/connect.garmin.com\/modern";
+                        var redirectAfterAccountCreationUrl = "https:\/\/connect.garmin.com\/modern";
+                var consumeServiceTicket                = "false";
+                var service_url                         = "https:\/\/connect.garmin.com\/modern";
+                var parent_url                          = "https:\/\/sso.garmin.com\/sso\/signin";
+            var response_url                    = "https:\/\/connect.garmin.com\/modern?ticket=ST-0765302-muiAj3bYsqmU1TyBFMZB-cas";
+                var logintoken                          = "";
+                var social_uid                          = "";
+
+                // Decode url if it's encoded unnecessarily (which is happening when SSO GAuth logins redisplay the login page due to session timeouts.)
+                if (response_url.indexOf('%3A%2F%2F') != -1) {
+                    response_url = decodeURIComponent(response_url);
+                }
+                response_url = response_url.replace(new RegExp("&amp;", 'g'),"&");
+
+                var service_ticket = response_url.substring(response_url.indexOf('ticket=') + 7, response_url.length);
+
+                if (redirectAfterAccountLoginUrl) {
+                    consoleInfo('casEmbedSuccess.html: redirectAfterAccountLoginUrl: [' + redirectAfterAccountLoginUrl + ']');
+                }
+                consoleInfo('casEmbedSuccess.html: consumeServiceTicket:         [' + consumeServiceTicket + ']');
+                consoleInfo('casEmbedSuccess.html: service_url:                  [' + service_url + ']');
+                consoleInfo('casEmbedSuccess.html: parent_url:                   [' + parent_url + ']');
+                consoleInfo('casEmbedSuccess.html: response_url:                 [' + response_url + ']');
+                consoleInfo('casEmbedSuccess.html: service_ticket:               [' + service_ticket + ']');
+                if (logintoken) {
+                    consoleInfo('casEmbedSuccess.html: logintoken:                   [' + logintoken + ']');
+                }
+                if (social_uid) {
+                    consoleInfo('casEmbedSuccess.html: social_uid:                   [' + social_uid + ']');
+                }
+
+                function send(msg) {
+                    consoleInfo('casEmbedSuccess.html: send(): Calling XD.postMessage(msg:[' + JSON.stringify(msg) + '], target_url:[' + parent_url + '])...');
+                    XD.postMessage(msg, parent_url, parent);
+                    return false;
+                }
+
+                        function redirect(target){
+                                var embedWidget = "false";
+                    if (embedWidget != 'true') {
+                        if (logintoken || social_uid) {
+                            //  Tell parent to close opened Gauth lite box.
+                            send({'closeLiteBox':'1'});
+                        } else {
+                            // Tell parent to resize Gauth widget's height to just that of the loading icon.
+                            send({'gauthHeight':jQuery("#GAuth-component").height()});
+                        }
+                    }
+
+                                if (window.opener != null) {
+                                        var iframeParent = window.opener.parent;
+                                        iframeParent.location.href = target;
+                                        window.close();
+                                } else {
+                        // If the "redirectAfterAccountLoginUrl" GAuth config parameter was specified,
+                        // a full page refresh upon logon was requested, so redirect the parent window upon login.
+                        if (redirectAfterAccountLoginUrl || redirectAfterAccountCreationUrl) {
+
+                                if (embedWidget != 'true') {
+                                send({'status':'SUCCESS', 'successDetails':'Login Successful'});
+                                }
+
+                            // Redirect parent of login iframe to requested service URL with ?ST=<Service Ticket ID> appended,
+                            // so the webapp can validate the service ticket and log the user on to the webapp.
+                            consoleInfo('casEmbedSuccess.html: Calling parent.location.href = [' + response_url + '];...');
+                            top.location.href = response_url;
+
+                            // Else if GAuth was configured not to consume the service ticket, send the service ticket and service url.
+                            // It's then up to the parent page to hide the GAuth widget and validate the service ticket.
+                        } else if (consumeServiceTicket == 'false') {
+
+                            send({'status':'SUCCESS', 'successDetails':'Login Successful', 'serviceTicket':service_ticket, 'serviceUrl':service_url});
+
+                        } else {
+                        // Else consume the service ticket and log the user into the parent webapp, by making a JSONP request to the response url.
+                        // This service ticket request to the parent webapp will return a small amount of JSON that we
+                                        // can send in the success event to the parent page to notify them of successful logon
+                                        // It's then up to the parent page to hide the GAuth widget and do whatever it wants.
+                            consoleInfo('casEmbedSuccess.html: Loading ajax jsonp URL: [' + response_url + ']');
+                            jQuery.ajax({
+                              url: response_url,
+                              dataType: 'jsonp',
+                              error: function(xhr, status, error) {
+                                  consoleError('casEmbedSuccess.html: Error loading ajax jsonp URL: [' + response_url + ']! Error: ' + error);
+                              },
+                              success: function( data, status, xhr ) {
+                                consoleInfo('casEmbedSuccess.html: success loading ajax jsonp url. data: [' + data + ']');
+                                  var userdata = data;
+                                  if (typeof(userdata) === 'string') {
+                                      userdata = JSON.parse(data);
+                                  }
+                                  consoleInfo('casGenericRedirect.jsp: customerId: ['             + userdata.customerId
+                                                                  + '], username: ['               + userdata.username
+                                                                  + '], rememberMe: ['             + userdata.rememberMe
+                                                                  + '], password: ['               + userdata.password
+                                                                  + '], email: ['                  + userdata.email
+                                                                  + '], displayName: ['            + userdata.displayName
+                                                                  + '], firstName: ['              + userdata.firstName
+                                                                  + '], lastName: ['               + userdata.lastName
+                                                                  + '], localePreference: ['       + userdata.localePreference
+                                                                  + '], addressLine1: ['           + userdata.addressLine1
+                                                                  + '], addressLine2: ['           + userdata.addressLine2
+                                                                  + '], cityName: ['               + userdata.cityName
+                                                                  + '], state: ['                  + userdata.state
+                                                                  + '], postalCode: ['             + userdata.postalCode
+                                                                  + '], country: ['                + userdata.country
+                                                                  + '], passwordChangeRequired: [' + userdata.passwordChangeRequired
+                                                                  + '], lastLogin: ['              + userdata.lastLogin
+                                                                  + '], erpCustomerNumber: ['      + userdata.erpCustomerNumber
+                                                                  + ']');
+                                  send({'status'                 : 'SUCCESS',
+                                        'successDetails'         : 'Login Successful',
+                                        'customerId'             : userdata.customerId,
+                                        'username'               : userdata.username,
+                                        'rememberMe'             : userdata.rememberMe,
+                                        'password'               : userdata.password,
+                                        'email'                  : userdata.email,
+                                        'displayName'            : userdata.displayName,
+                                        'firstName'              : userdata.firstName,
+                                        'lastName'               : userdata.lastName,
+                                        'localePreference'       : userdata.localePreference,
+                                        'addressLine1'           : userdata.addressLine1,
+                                        'addressLine2'           : userdata.addressLine2,
+                                        'cityName'               : userdata.cityName,
+                                        'state'                  : userdata.state,
+                                        'postalCode'             : userdata.postalCode,
+                                        'country'                : userdata.country,
+                                        'passwordChangeRequired' : userdata.passwordChangeRequired,
+                                        'lastLogin'              : userdata.lastLogin,
+                                        'erpCustomerNumber'      : userdata.erpCustomerNumber
+                                       });
+                              }
+                            });
+                        }
+                                }
+                        }
+                </script>
+    </head>
+    <body>
+            <div id="GAuth-component">
+                <img src='/sso/images/ajax-loader.gif' class="loaderImage"/>
+            </div>
+            <script type="8374d5ae20c582aff8e16c38-text/javascript">
+                jQuery(document).ready(function(){
+                        var service = "https:\/\/connect.garmin.com\/modern";
+
+                    consoleInfo("casEmbedSuccess.html: ready, calling redirect('" + service + "')...");
+                    redirect(service);
+                });
+            </script>
+        <script src="https://ajax.cloudflare.com/cdn-cgi/scripts/7089c43e/cloudflare-static/rocket-loader.min.js" data-cf-settings="8374d5ae20c582aff8e16c38-|49" defer=""></script></body>
+</html>

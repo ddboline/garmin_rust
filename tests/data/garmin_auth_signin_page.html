@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html class="no-js">
+    <head>
+        <script charset='UTF-8' type="8aa719346d55c83e4d7d5376-text/javascript">
+            window['adrum-start-time'] = new Date().getTime();
+            (function(config){
+                config.appKey = 'AD-AAB-AAM-PWF';
+                config.adrumExtUrlHttp = 'http://cdn.appdynamics.com';
+                config.adrumExtUrlHttps = 'https://cdn.appdynamics.com';
+                config.beaconUrlHttp = 'http://col.eum-appdynamics.com';
+                config.beaconUrlHttps = 'https://col.eum-appdynamics.com';
+                config.xd = {enable : false};
+            })(window['adrum-config'] || (window['adrum-config'] = {}));
+        </script>
+        <script src='//cdn.appdynamics.com/adrum/adrum-4.5.2.1326.js' type="8aa719346d55c83e4d7d5376-text/javascript"></script>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <meta name="viewport" content="width=device-width" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge;" />
+        <title>GARMIN Authentication Application</title>
+        <link href="/sso/css/GAuth.css?20190208" rel="stylesheet" type="text/css" media="all" />
+
+	    <link rel="stylesheet" href="https://connect.garmin.com/gauth-custom-v1.2-min.css"/>
+
+        <script type="8aa719346d55c83e4d7d5376-text/javascript" src="/sso/js/jquery/3.1.1/jquery.min.js?20190208"></script>
+        <script type="8aa719346d55c83e4d7d5376-text/javascript">jQuery.noConflict();</script>
+		<script type="8aa719346d55c83e4d7d5376-text/javascript" src="/sso/js/jquery-validate/1.16.0/jquery.validate.min.js?20190208"></script>
+        <script type="8aa719346d55c83e4d7d5376-text/javascript" src="/sso/js/jsUtils.js?20190208"></script>
+        <script type="8aa719346d55c83e4d7d5376-text/javascript" src="/sso/js/json2.js"></script>
+        <script type="8aa719346d55c83e4d7d5376-text/javascript" src="/sso/js/consoleUtils.js?20190208"></script>
+        <script type="8aa719346d55c83e4d7d5376-text/javascript" src="/sso/js/postmessage.js?20190208"></script>
+        <script type="8aa719346d55c83e4d7d5376-text/javascript" src="/sso/js/popupWindow.js"></script>
+        <script type="8aa719346d55c83e4d7d5376-text/javascript" src="/sso/js/base.js?20191120"></script>
+		<script type="8aa719346d55c83e4d7d5376-text/javascript" src="/sso/js/gigyaUtils.js?20190208"></script>
+        <script type="8aa719346d55c83e4d7d5376-text/javascript" src="/sso/js/login.js?20190208"></script>
+        <script type="8aa719346d55c83e4d7d5376-text/javascript">
+            var parent_url      = "https:\/\/connect.garmin.com\/signin";
+            var status 			= "";
+			var result          = "";
+			var clientId		= 'GarminConnect';
+			var embedWidget 	= false;
+			var isUsernameDefined = (false == true) || (false == true);
+
+            // Gigya callback to SocialSignInController for brand new social network users redirects to this page
+            // to popup Create or Link Social Account page, but has a possibly mangled source parameter
+            // where "?" is set as "<QM>", so translate it back to "?" here.
+            parent_url = parent_url.replace('<QM>', '?');
+            var parent_scheme   = parent_url.substring(0, parent_url.indexOf("://"));
+            var parent_hostname = parent_url.substring(parent_scheme.length + 3, parent_url.length);
+            if (parent_hostname.indexOf("/") != -1) {
+                parent_hostname = parent_hostname.substring(0, parent_hostname.indexOf("/"));
+            }
+            var parentHost      	   = parent_scheme + "://" + parent_hostname;
+			var createAccountConfigURL = '\/createNewAccount?service%3Dhttps%253A%252F%252Fconnect.garmin.com%252Fmodern%252F%26webhost%3Dhttps%253A%252F%252Fconnect.garmin.com%252Fmodern%252F%26source%3Dhttps%253A%252F%252Fconnect.garmin.com%252Fsignin%26redirectAfterAccountLoginUrl%3Dhttps%253A%252F%252Fconnect.garmin.com%252Fmodern%252F%26redirectAfterAccountCreationUrl%3Dhttps%253A%252F%252Fconnect.garmin.com%252Fmodern%252F%26gauthHost%3Dhttps%253A%252F%252Fsso.garmin.com%252Fsso%26locale%3Den_US%26id%3Dgauth-widget%26cssUrl%3Dhttps%253A%252F%252Fconnect.garmin.com%252Fgauth-custom-v1.2-min.css%26privacyStatementUrl%3Dhttps%253A%252F%252Fwww.garmin.com%252Fen-US%252Fprivacy%252Fconnect%252F%26clientId%3DGarminConnect%26rememberMeShown%3Dtrue%26rememberMeChecked%3Dfalse%26createAccountShown%3Dtrue%26openCreateAccount%3Dfalse%26displayNameShown%3Dfalse%26consumeServiceTicket%3Dfalse%26initialFocus%3Dtrue%26embedWidget%3Dfalse%26generateExtraServiceTicket%3Dtrue%26generateTwoExtraServiceTickets%3Dfalse%26generateNoServiceTicket%3Dfalse%26globalOptInShown%3Dtrue%26globalOptInChecked%3Dfalse%26mobile%3Dfalse%26connectLegalTerms%3Dtrue%26showTermsOfUse%3Dfalse%26showPrivacyPolicy%3Dfalse%26showConnectLegalAge%3Dfalse%26locationPromptShown%3Dtrue%26showPassword%3Dtrue%26useCustomHeader%3Dfalse';
+            var socialConfigURL        = 'https://sso.garmin.com/sso/socialSignIn?service%3Dhttps%3A%2F%2Fconnect.garmin.com%2Fmodern%2F%26webhost%3Dhttps%3A%2F%2Fconnect.garmin.com%2Fmodern%2F%26source%3Dhttps%3A%2F%2Fconnect.garmin.com%2Fsignin%26redirectAfterAccountLoginUrl%3Dhttps%3A%2F%2Fconnect.garmin.com%2Fmodern%2F%26redirectAfterAccountCreationUrl%3Dhttps%3A%2F%2Fconnect.garmin.com%2Fmodern%2F%26gauthHost%3Dhttps%3A%2F%2Fsso.garmin.com%2Fsso%26locale%3Den_US%26id%3Dgauth-widget%26cssUrl%3Dhttps%3A%2F%2Fconnect.garmin.com%2Fgauth-custom-v1.2-min.css%26privacyStatementUrl%3Dhttps%3A%2F%2Fwww.garmin.com%2Fen-US%2Fprivacy%2Fconnect%2F%26clientId%3DGarminConnect%26rememberMeShown%3Dtrue%26rememberMeChecked%3Dfalse%26createAccountShown%3Dtrue%26openCreateAccount%3Dfalse%26displayNameShown%3Dfalse%26consumeServiceTicket%3Dfalse%26initialFocus%3Dtrue%26embedWidget%3Dfalse%26generateExtraServiceTicket%3Dtrue%26generateTwoExtraServiceTickets%3Dfalse%26generateNoServiceTicket%3Dfalse%26globalOptInShown%3Dtrue%26globalOptInChecked%3Dfalse%26mobile%3Dfalse%26connectLegalTerms%3Dtrue%26showTermsOfUse%3Dfalse%26showPrivacyPolicy%3Dfalse%26showConnectLegalAge%3Dfalse%26locationPromptShown%3Dtrue%26showPassword%3Dtrue%26useCustomHeader%3Dfalse';
+            var gigyaURL               = "https://cdns.gigya.com/js/gigya.js?apiKey=2_R3ZGY8Bqlwwk3_63knoD9wA_m-Y19mAgW61bF_s5k9gymYnMEAtMrJiF5MjF-U7B";
+
+            if (createAccountConfigURL.indexOf('%253A%252F%252F') != -1) {
+            	createAccountConfigURL = decodeURIComponent(createAccountConfigURL);
+            }
+            consoleInfo('signin.html embedWidget: false, createAccountConfigURL: \/createNewAccount?service%3Dhttps%253A%252F%252Fconnect.garmin.com%252Fmodern%252F%26webhost%3Dhttps%253A%252F%252Fconnect.garmin.com%252Fmodern%252F%26source%3Dhttps%253A%252F%252Fconnect.garmin.com%252Fsignin%26redirectAfterAccountLoginUrl%3Dhttps%253A%252F%252Fconnect.garmin.com%252Fmodern%252F%26redirectAfterAccountCreationUrl%3Dhttps%253A%252F%252Fconnect.garmin.com%252Fmodern%252F%26gauthHost%3Dhttps%253A%252F%252Fsso.garmin.com%252Fsso%26locale%3Den_US%26id%3Dgauth-widget%26cssUrl%3Dhttps%253A%252F%252Fconnect.garmin.com%252Fgauth-custom-v1.2-min.css%26privacyStatementUrl%3Dhttps%253A%252F%252Fwww.garmin.com%252Fen-US%252Fprivacy%252Fconnect%252F%26clientId%3DGarminConnect%26rememberMeShown%3Dtrue%26rememberMeChecked%3Dfalse%26createAccountShown%3Dtrue%26openCreateAccount%3Dfalse%26displayNameShown%3Dfalse%26consumeServiceTicket%3Dfalse%26initialFocus%3Dtrue%26embedWidget%3Dfalse%26generateExtraServiceTicket%3Dtrue%26generateTwoExtraServiceTickets%3Dfalse%26generateNoServiceTicket%3Dfalse%26globalOptInShown%3Dtrue%26globalOptInChecked%3Dfalse%26mobile%3Dfalse%26connectLegalTerms%3Dtrue%26showTermsOfUse%3Dfalse%26showPrivacyPolicy%3Dfalse%26showConnectLegalAge%3Dfalse%26locationPromptShown%3Dtrue%26showPassword%3Dtrue%26useCustomHeader%3Dfalse, socialEnabled: true, gigyaSupported: true, socialConfigURL(): https://sso.garmin.com/sso/socialSignIn?service%3Dhttps%3A%2F%2Fconnect.garmin.com%2Fmodern%2F%26webhost%3Dhttps%3A%2F%2Fconnect.garmin.com%2Fmodern%2F%26source%3Dhttps%3A%2F%2Fconnect.garmin.com%2Fsignin%26redirectAfterAccountLoginUrl%3Dhttps%3A%2F%2Fconnect.garmin.com%2Fmodern%2F%26redirectAfterAccountCreationUrl%3Dhttps%3A%2F%2Fconnect.garmin.com%2Fmodern%2F%26gauthHost%3Dhttps%3A%2F%2Fsso.garmin.com%2Fsso%26locale%3Den_US%26id%3Dgauth-widget%26cssUrl%3Dhttps%3A%2F%2Fconnect.garmin.com%2Fgauth-custom-v1.2-min.css%26privacyStatementUrl%3Dhttps%3A%2F%2Fwww.garmin.com%2Fen-US%2Fprivacy%2Fconnect%2F%26clientId%3DGarminConnect%26rememberMeShown%3Dtrue%26rememberMeChecked%3Dfalse%26createAccountShown%3Dtrue%26openCreateAccount%3Dfalse%26displayNameShown%3Dfalse%26consumeServiceTicket%3Dfalse%26initialFocus%3Dtrue%26embedWidget%3Dfalse%26generateExtraServiceTicket%3Dtrue%26generateTwoExtraServiceTickets%3Dfalse%26generateNoServiceTicket%3Dfalse%26globalOptInShown%3Dtrue%26globalOptInChecked%3Dfalse%26mobile%3Dfalse%26connectLegalTerms%3Dtrue%26showTermsOfUse%3Dfalse%26showPrivacyPolicy%3Dfalse%26showConnectLegalAge%3Dfalse%26locationPromptShown%3Dtrue%26showPassword%3Dtrue%26useCustomHeader%3Dfalse');
+
+            if (socialConfigURL.indexOf('%3A%2F%2F') != -1) {
+            	socialConfigURL = decodeURIComponent(socialConfigURL);
+            }
+
+            if( status != null && status != ''){
+            	send({'status':status});
+            }
+
+            jQuery(document).ready( function(){
+
+
+                consoleInfo("signin.html: setting field validation rules...");
+
+                jQuery("#username").rules("add",{
+                    required: true,
+                    messages: {
+                        required:  "Email is required."
+                }});
+
+                jQuery("#password").rules("add", {
+                    required: true,
+                    messages: {
+                        required:  "Password is required."
+                    }
+                });
+
+                consoleInfo("signin.html: done setting field validation rules...");
+
+            });
+
+            XD.receiveMessage(function(m){
+                consoleInfo("signin.html: " + m.data + " received on " + window.location.host);
+                 if (m && m.data) {
+                     var md = m.data;
+                     if (typeof(md) === 'string') {
+                         md = JSON.parse(m.data);
+                     }
+                     if (md.setUsername) {
+                         consoleInfo("signin.html: Setting username \"" + md.username + "\"...");
+                         jQuery("#signInWithDiffLink").click(); // Ensure the normal login form is shown.
+                         jQuery("#username").val(md.username);
+                         jQuery("#password").focus();
+                     }
+                 }
+             }, parentHost);
+        </script>
+    </head>
+    <body>
+
+        <!-- begin GAuth component -->
+        <div id="GAuth-component">
+            <!-- begin login component-->
+            <div id="login-component" class="blueForm-basic">
+               <input type="hidden" id="queryString" value="service=https%3A%2F%2Fconnect.garmin.com%2Fmodern%2F&amp;webhost=https%3A%2F%2Fconnect.garmin.com%2Fmodern%2F&amp;source=https%3A%2F%2Fconnect.garmin.com%2Fsignin&amp;redirectAfterAccountLoginUrl=https%3A%2F%2Fconnect.garmin.com%2Fmodern%2F&amp;redirectAfterAccountCreationUrl=https%3A%2F%2Fconnect.garmin.com%2Fmodern%2F&amp;gauthHost=https%3A%2F%2Fsso.garmin.com%2Fsso&amp;locale=en_US&amp;id=gauth-widget&amp;cssUrl=https%3A%2F%2Fconnect.garmin.com%2Fgauth-custom-v1.2-min.css&amp;privacyStatementUrl=https%3A%2F%2Fwww.garmin.com%2Fen-US%2Fprivacy%2Fconnect%2F&amp;clientId=GarminConnect&amp;rememberMeShown=true&amp;rememberMeChecked=false&amp;createAccountShown=true&amp;openCreateAccount=false&amp;displayNameShown=false&amp;consumeServiceTicket=false&amp;initialFocus=true&amp;embedWidget=false&amp;generateExtraServiceTicket=true&amp;generateTwoExtraServiceTickets=false&amp;generateNoServiceTicket=false&amp;globalOptInShown=true&amp;globalOptInChecked=false&amp;mobile=false&amp;connectLegalTerms=true&amp;showTermsOfUse=false&amp;showPrivacyPolicy=false&amp;showConnectLegalAge=false&amp;locationPromptShown=true&amp;showPassword=true&amp;useCustomHeader=false" />
+	     	   <input type="hidden" id="contextPath" value="/sso" />
+                <!-- begin login form -->
+                <div id="login-state-default">
+                    <h2>Sign In</h2>
+
+                    <form method="post" id="login-form">
+
+                        <div class="form-alert">
+							
+                            
+                            
+                            
+
+                            
+
+                            <div id="username-error" style="display:none;"></div>
+                            <div id="password-error" style="display:none;"></div>
+                        </div>
+                        <div class="textfield">
+							<label for="username">Email</label>
+                           		<!-- If the lockToEmailAddress parameter is specified then we want to mark the field as readonly,
+                           		preload the email address, and disable the other input so that null isn't sent to the server. We'll
+                           		also style the field to have a darker grey background and disable the mouse pointer
+                           		 -->
+							    
+								<!-- If the lockToEmailAddress parameter is NOT specified then keep the existing functionality and disable the readonly input field
+							     -->
+							    <input class="login_email" name="username" id="username" value="" type="email" spellcheck="false" autocorrect="off" autocapitalize="off"/>
+
+                        </div>
+
+                        <div class="textfield">
+                            <label for="password">Password</label>
+                            <a id="loginforgotpassword" class="login-forgot-password" style="cursor:pointer">(Forgot?)</a>
+                            <input type="password" name="password" id="password" spellcheck="false" autocorrect="off" autocapitalize="off" />
+                             <strong id="capslock-warning" class="information" title="Caps lock is on." style="display: none;">Caps lock is on.</strong>
+					    </div>
+                        <input type="hidden" name="embed" value="false"/>
+                        <input type="hidden" name="_csrf" value="C81618F6E4A555E98A6A4D344D9E484B0CCDF0A0207C96B0EB49D1D692EFC20569E86D26E6232471B86B35BC5CB24CE5DF7C" />
+                        <button type="submit" id="login-btn-signin" class="btn1" accesskey="l">Sign In</button>
+                        <span>
+	                        <input type="checkbox" name="rememberme" id="login-remember-checkbox" onClick="if (!window.__cfRLUnblockHandlers) return false; if (this.checked) { createAccountConfigURL += '&rememberme=on'; socialConfigURL += '&rememberme=on'; } else { createAccountConfigURL = createAccountConfigURL.replace('&rememberme=on', ''); socialConfigURL = socialConfigURL.replace('&rememberme=on', ''); }" data-cf-modified-8aa719346d55c83e4d7d5376-="" />
+                        	<label id="login-remember" for="login-remember-checkbox">Remember Me</label>
+                        </span>
+
+
+                        <!-- The existence of the "rememberme" parameter at all will remember the user! -->
+                        
+
+                    </form>
+                </div>
+                <!-- end login form -->
+
+                <!-- begin Create Account message -->
+	            <div id="login-create-account">
+	                <span>
+		                <span>Don&#39;t have an account?</span>
+
+	                    
+	                    <a href='javascript:void(0)' class="createAccountLink" id="lnkCreateAccount" title="Create Account" >Create One</a>
+					</span>
+	            </div>
+	            <!-- end Create Account message -->
+
+	            <!-- begin Social Sign In component -->
+	            <div id="SSI-component">
+                    
+
+					
+	            </div>
+	            <!-- end Social Sign In component -->
+                <div class="clearfix"></div> <!-- Ensure that GAuth-component div's height is computed correctly. -->
+            </div>
+            <!-- end login component-->
+
+		</div>
+		<!-- end GAuth component -->
+
+        <script type="8aa719346d55c83e4d7d5376-text/javascript">
+            jQuery(document).ready(function(){
+            	resizePageOnLoad(jQuery("#GAuth-component").height());
+
+		        if(isUsernameDefined == true){
+		            // If the user's login just failed, redisplay the email/username specified, and focus them in the password field.
+		            jQuery("#password").focus();
+		        } else if(true == true && result != "PASSWORD_RESET_RESULT"){
+                    // Otherwise focus them in the username field of the login dialog.
+                    jQuery("#username").focus();
+                }
+
+                // Scroll to top of iframe to fix problem where Firefox 3.0-3.6 browsers initially show top of iframe cutoff.
+                location.href="#";
+
+                if(!embedWidget){
+                	jQuery('.createAccountLink').click(function(){
+	                    send({'openLiteBox':'createAccountLink', 'popupUrl': createAccountConfigURL, 'popupTitle':'Create An Account', 'clientId':clientId});
+	                });
+                }
+            });
+        </script>
+    <script src="https://ajax.cloudflare.com/cdn-cgi/scripts/7089c43e/cloudflare-static/rocket-loader.min.js" data-cf-settings="8aa719346d55c83e4d7d5376-|49" defer=""></script></body>
+</html>

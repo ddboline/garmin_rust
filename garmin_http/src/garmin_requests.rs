@@ -146,27 +146,9 @@ impl HandleRequest<GarminConnectSyncRequest> for PgPool {
         let max_timestamp = Utc::now() - Duration::days(30);
 
         let session = get_garmin_connect_session(&CONFIG).await?;
-        let activities: HashMap<_, _> = GarminConnectActivity::read_from_db(
-            self,
-            Some(max_timestamp.naive_local().date()),
-            None,
-        )
-        .await?
-        .into_iter()
-        .map(|activity| (activity.activity_id, activity))
-        .collect();
-        let new_activities: Vec<_> = session
-            .get_activities(max_timestamp)
-            .await?
-            .into_iter()
-            .filter(|activity| !activities.contains_key(&activity.activity_id))
-            .collect();
-        let futures = new_activities.iter().map(|activity| async move {
-            activity.insert_into_db(self).await?;
-            Ok(())
-        });
-        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
-        results?;
+        let new_activities: Vec<_> = session.get_activities(max_timestamp).await?;
+        let new_activities =
+            GarminConnectActivity::merge_new_activities(new_activities, self).await?;
 
         let filenames = session.get_activity_files(&new_activities).await?;
         if !filenames.is_empty() {

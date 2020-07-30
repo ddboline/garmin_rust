@@ -28,7 +28,9 @@ use super::reqwest_session::ReqwestSession;
 const BASE_URL: &str = "https://connect.garmin.com";
 const SSO_URL: &str = "https://sso.garmin.com/sso";
 const MODERN_URL: &str = "https://connect.garmin.com/modern";
+const SOURCE_URL: &str = "https://connect.garmin.com/signin";
 const SIGNIN_URL: &str = "https://sso.garmin.com/sso/signin";
+const PRIVACY_URL: &str = "https://www.garmin.com/en-us/privacy/connect";
 
 const CONNECT_SESSION_TIMEOUT: i64 = 3600;
 
@@ -78,35 +80,38 @@ impl GarminConnectClient {
         }
 
         let params = hashmap! {
-            "webhost" => BASE_URL,
+            "webhost" => MODERN_URL,
             "service" => MODERN_URL,
-            "source" => SIGNIN_URL,
+            "source" => SOURCE_URL,
             "redirectAfterAccountLoginUrl" => MODERN_URL,
             "redirectAfterAccountCreationUrl" => MODERN_URL,
             "gauthHost" => SSO_URL,
+            "privacyStatementUrl" => PRIVACY_URL,
             "locale" => "en_US",
             "id" => "gauth-widget",
             "cssUrl" => "https://static.garmincdn.com/com.garmin.connect/ui/css/gauth-custom-v1.2-min.css",
             "clientId" => "GarminConnect",
             "rememberMeShown" => "true",
-            "rememberMeChecked" => "false",
+            "rememberMeChecked" => "true",
             "createAccountShown" => "true",
             "openCreateAccount" => "false",
-            "usernameShown" => "false",
             "displayNameShown" => "false",
             "consumeServiceTicket" => "false",
             "initialFocus" => "true",
             "embedWidget" => "false",
-            "generateExtraServiceTicket" => "false",
-        };
-
-        let data = hashmap! {
-            "username" => self.config.garmin_connect_email.as_str(),
-            "password" => self.config.garmin_connect_password.as_str(),
-            "embed" => "true",
-            "lt" => "e1s1",
-            "_eventId" => "submit",
-            "displayNameRequired" => "false",
+            "generateExtraServiceTicket" => "true",
+            "generateTwoExtraServiceTickets" => "false",
+            "generateNoServiceTicket" => "false",
+            "globalOptInShown" => "true",
+            "globalOptInChecked" => "false",
+            "mobile" => "false",
+            "connectLegalTerms" => "true",
+            "showTermsOfUse" => "false",
+            "showPrivacyPolicy" => "false",
+            "showConnectLegalAge" => "false",
+            "locationPromptShown" => "true",
+            "showPassword" => "true",
+            "useCustomHeader" => "false",
         };
 
         let garmin_signin_headers = hashmap! {
@@ -124,6 +129,26 @@ impl GarminConnectClient {
             })
             .collect();
         let signin_headers = signin_headers?;
+
+        let resp = self.session.get_no_retry(&url, &signin_headers).await?;
+        if resp.status() == 429 {
+            self.retry_time = Self::get_next_attempt_time(resp.headers())?;
+            return Err(format_err!(
+                "Too many requests, try again after {}",
+                self.retry_time
+            ));
+        }
+        let text = resp.error_for_status()?.text().await?;
+        let csrf = Self::extract_csrf(&text)?;
+
+        let data = hashmap! {
+            "username" => self.config.garmin_connect_email.as_str(),
+            "password" => self.config.garmin_connect_password.as_str(),
+            "embed" => "true",
+            "_eventId" => "submit",
+            "displayNameRequired" => "false",
+            "_csrf" => csrf.as_str(),
+        };
 
         let resp = self
             .session
@@ -144,7 +169,7 @@ impl GarminConnectClient {
 
         let resp = self
             .session
-            .get_no_retry(&response_url, &HeaderMap::new())
+            .get_no_retry(&response_url, &signin_headers)
             .await?;
 
         if resp.status() == 429 {
@@ -163,6 +188,19 @@ impl GarminConnectClient {
         self.auth_time = Some(Utc::now());
         self.auth_trigger.store(false, Ordering::SeqCst);
         Ok(())
+    }
+
+    fn extract_csrf(text: &str) -> Result<StackString, Error> {
+        for line in text.split('\n') {
+            if line.contains("_csrf") {
+                for entry in line.split_whitespace() {
+                    if entry.contains("value") {
+                        return Ok(entry.replace("value=", "").replace(r#"""#, "").into());
+                    }
+                }
+            }
+        }
+        Err(format_err!("No csrf found"))
     }
 
     fn get_next_attempt_time(headers: &HeaderMap) -> Result<DateTime<Utc>, Error> {
@@ -411,16 +449,15 @@ mod tests {
     async fn test_get_activities() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
         let session = get_garmin_connect_session(&config).await?;
-        let max_timestamp = Utc::now() - Duration::days(14);
-        let result = session.get_activities(max_timestamp).await?;
-        assert!(result.len() > 0);
 
-        let config = GarminConfig::get_config(None)?;
-        let session = get_garmin_connect_session(&config).await?;
         let user_summary = session
             .get_user_summary((Utc::now() - Duration::days(1)).naive_local().date())
             .await?;
         assert_eq!(user_summary.user_profile_id, 1377808);
+
+        let max_timestamp = Utc::now() - Duration::days(14);
+        let result = session.get_activities(max_timestamp).await?;
+        assert!(result.len() > 0);
 
         let config = GarminConfig::get_config(None)?;
 
@@ -431,7 +468,6 @@ mod tests {
             .map(|activity| (activity.activity_id, activity))
             .collect();
 
-        let session = get_garmin_connect_session(&config).await?;
         let max_timestamp = Utc::now() - Duration::days(30);
         let new_activities: Vec<_> = session
             .get_activities(max_timestamp)
@@ -469,6 +505,13 @@ mod tests {
         let resp_text = include_str!("../../tests/data/garmin_connect_display_name.html");
         let display_name = GarminConnectClient::extract_display_name(resp_text)?;
         assert_eq!(display_name.as_str(), "ddboline");
+        Ok(())
+    }
+
+    #[test]
+    fn test_extract_csrf() -> Result<(), Error> {
+        let text = include_str!("../../tests/data/garmin_auth_signin_page.html");
+        assert_eq!(GarminConnectClient::extract_csrf(text)?.as_str(), "C81618F6E4A555E98A6A4D344D9E484B0CCDF0A0207C96B0EB49D1D692EFC20569E86D26E6232471B86B35BC5CB24CE5DF7C");
         Ok(())
     }
 }

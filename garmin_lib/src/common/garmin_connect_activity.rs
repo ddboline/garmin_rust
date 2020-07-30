@@ -7,7 +7,10 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use serde::{Deserialize, Deserializer, Serialize};
 use stack_string::StackString;
 use std::collections::HashMap;
+use std::fs::File;
+use std::path::Path;
 
+use super::garmin_config::GarminConfig;
 use super::pgpool::PgPool;
 
 #[derive(Serialize, Deserialize, Debug, FromSqlRow)]
@@ -185,6 +188,40 @@ impl GarminConnectActivity {
 
         Ok(output)
     }
+
+    pub async fn merge_new_activities(
+        mut new_activities: Vec<Self>,
+        pool: &PgPool,
+    ) -> Result<Vec<Self>, Error> {
+        let activities: HashMap<_, _> = GarminConnectActivity::read_from_db(pool, None, None)
+            .await?
+            .into_iter()
+            .map(|activity| (activity.activity_id, activity))
+            .collect();
+
+        new_activities = new_activities
+            .into_iter()
+            .filter(|activity| !activities.contains_key(&activity.activity_id))
+            .collect();
+        let futures = new_activities.iter().map(|activity| async move {
+            activity.insert_into_db(pool).await?;
+            Ok(())
+        });
+        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+        results?;
+
+        Ok(new_activities)
+    }
+}
+
+pub async fn import_garmin_connect_activity_json_file(filename: &Path) -> Result<(), Error> {
+    let config = GarminConfig::get_config(None)?;
+    let pool = PgPool::new(&config.pgurl);
+
+    let activities: Vec<GarminConnectActivity> = serde_json::from_reader(File::open(&filename)?)?;
+    GarminConnectActivity::merge_new_activities(activities, &pool).await?;
+
+    Ok(())
 }
 
 pub fn deserialize_start_time<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>

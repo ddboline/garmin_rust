@@ -460,6 +460,18 @@ pub fn import_fitbit_json_files(directory: &str) -> Result<(), Error> {
         .collect()
 }
 
+pub fn import_garmin_json_file(filename: &Path) -> Result<(), Error> {
+    let config = GarminConfig::get_config(None)?;
+
+    let js: GarminConnectHrData = serde_json::from_reader(File::open(&filename)?)?;
+
+    let heartrates = FitbitHeartRate::from_garmin_connect_hr(&js);
+
+    FitbitHeartRate::merge_slice_to_avro(&config, &heartrates)?;
+
+    Ok(())
+}
+
 pub fn import_garmin_heartrate_file(filename: &Path) -> Result<(), Error> {
     let config = GarminConfig::get_config(None)?;
 
@@ -468,26 +480,31 @@ pub fn import_garmin_heartrate_file(filename: &Path) -> Result<(), Error> {
     let mut f = File::open(&filename)?;
     let records = fitparser::from_reader(&mut f)?;
     for record in records {
-        if record.kind() == MesgNum::StressLevel {
-            for field in record.fields() {
-                if field.name() == "stress_level_time" {
-                    if let Value::Timestamp(t) = field.value() {
-                        timestamp.replace(t.with_timezone(&Utc));
-                    }
-                }
-            }
-        }
-        if record.kind() == MesgNum::Monitoring {
-            for field in record.fields() {
-                if field.name() == "heart_rate" {
-                    if let Some(datetime) = timestamp {
-                        if let Some(heartrate) = get_f64(field.value()) {
-                            let value = heartrate as i32;
-                            heartrates.push(FitbitHeartRate { datetime, value })
+        match record.kind() {
+            MesgNum::StressLevel => {
+                for field in record.fields() {
+                    if field.name() == "stress_level_time" {
+                        if let Value::Timestamp(t) = field.value() {
+                            println!("timestamp {}", t);
+                            timestamp.replace(t.with_timezone(&Utc));
                         }
                     }
                 }
             }
+            MesgNum::Monitoring => {
+                for field in record.fields() {
+                    if field.name() == "heart_rate" {
+                        if let Some(datetime) = timestamp {
+                            if let Some(heartrate) = get_f64(field.value()) {
+                                let value = heartrate as i32;
+                                println!("heartrate {}", value);
+                                heartrates.push(FitbitHeartRate { datetime, value })
+                            }
+                        }
+                    }
+                }
+            }
+            other => println!("other {:?}", other),
         }
     }
 

@@ -25,7 +25,6 @@ use garmin_lib::common::{
 
 use super::reqwest_session::ReqwestSession;
 
-const BASE_URL: &str = "https://connect.garmin.com";
 const SSO_URL: &str = "https://sso.garmin.com/sso";
 const MODERN_URL: &str = "https://connect.garmin.com/modern";
 const SOURCE_URL: &str = "https://connect.garmin.com/signin";
@@ -167,9 +166,12 @@ impl GarminConnectClient {
         Self::check_signin_response(status.into(), &resp_text)?;
         let response_url = Self::get_response_url(&resp_text)?;
 
+        let mut headers = HeaderMap::new();
+        headers.insert("origin", "https://sso.garmin.com".parse()?);
+
         let resp = self
             .session
-            .get_no_retry(&response_url, &signin_headers)
+            .get_no_retry(&response_url, &headers)
             .await?;
 
         if resp.status() == 429 {
@@ -356,8 +358,8 @@ impl GarminConnectClient {
                 .join(activity.activity_id.to_string())
                 .with_extension("zip");
             let url: Url = format!(
-                "{}/{}/{}",
-                BASE_URL, "modern/proxy/download-service/files/activity", activity.activity_id
+                "{}/proxy/download-service/files/activity/{}",
+                MODERN_URL, activity.activity_id
             )
             .parse()?;
             let mut f = File::create(&fname).await?;

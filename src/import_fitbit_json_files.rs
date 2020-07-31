@@ -1,6 +1,13 @@
+use stack_string::StackString;
 use structopt::StructOpt;
 
-use fitbit_lib::fitbit_heartrate::{import_fitbit_json_files, JsonImportOpts};
+use fitbit_lib::fitbit_heartrate::import_fitbit_json_files;
+
+#[derive(StructOpt, Debug, Clone)]
+pub struct JsonImportOpts {
+    #[structopt(short = "d", long = "directory")]
+    pub directory: StackString,
+}
 
 fn main() {
     env_logger::init();

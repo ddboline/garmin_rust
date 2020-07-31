@@ -63,6 +63,6 @@ path = "src/garmin_rust_cli.rs"
 doc = false
 
 [[bin]]
-name = "pull-garmin-heartrate-data"
-path = "src/pull_garmin_heartrate_data.rs"
+name = "import-garmin-connect-data"
+path = "src/import_garmin_connect_data.rs"
 doc = false

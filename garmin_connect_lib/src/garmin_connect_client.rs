@@ -169,10 +169,7 @@ impl GarminConnectClient {
         let mut headers = HeaderMap::new();
         headers.insert("origin", "https://sso.garmin.com".parse()?);
 
-        let resp = self
-            .session
-            .get_no_retry(&response_url, &headers)
-            .await?;
+        let resp = self.session.get_no_retry(&response_url, &headers).await?;
 
         if resp.status() == 429 {
             self.retry_time = Self::get_next_attempt_time(resp.headers())?;

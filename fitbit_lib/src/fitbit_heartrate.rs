@@ -13,7 +13,6 @@ use rayon::{
 use serde::{self, Deserialize, Deserializer, Serialize};
 use stack_string::StackString;
 use std::{collections::HashSet, fs::File, path::Path};
-use structopt::StructOpt;
 
 use garmin_connect_lib::garmin_connect_client::GarminConnectHrData;
 use garmin_lib::{
@@ -438,12 +437,6 @@ pub fn process_fitbit_json_file(fname: &Path) -> Result<Vec<FitbitHeartRate>, Er
         .map(FitbitHeartRate::from_json_heartrate_entry)
         .collect();
     Ok(result)
-}
-
-#[derive(StructOpt, Debug, Clone)]
-pub struct JsonImportOpts {
-    #[structopt(short = "d", long = "directory")]
-    pub directory: StackString,
 }
 
 pub fn import_fitbit_json_files(directory: &str) -> Result<(), Error> {

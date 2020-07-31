@@ -11,7 +11,6 @@ fitbit_lib = {path="../fitbit_lib"}
 garmin_lib = {path="../garmin_lib"}
 futures = "0.3"
 tokio = {version="0.2", features=["full"]}
-crossbeam-channel = "0.4"
 crossbeam-utils = "0.7"
 lazy_static = "1.4"
 parking_lot = "0.11"

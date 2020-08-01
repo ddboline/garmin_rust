@@ -16,7 +16,7 @@ enum JsonImportOpts {
     Heartrate {
         #[structopt(short = "f", long = "files")]
         files: Vec<PathBuf>,
-    }
+    },
 }
 
 #[tokio::main]
@@ -24,10 +24,12 @@ async fn main() -> Result<(), Error> {
     let opts = JsonImportOpts::from_args();
 
     match opts {
-        JsonImportOpts::Activities {filename} => {import_garmin_connect_activity_json_file(&filename).await?;},
-        JsonImportOpts::Heartrate {files} => {
+        JsonImportOpts::Activities { filename } => {
+            import_garmin_connect_activity_json_file(&filename).await?;
+        }
+        JsonImportOpts::Heartrate { files } => {
             for file in files {
-                import_garmin_json_file(&file)?; 
+                import_garmin_json_file(&file)?;
             }
         }
     }

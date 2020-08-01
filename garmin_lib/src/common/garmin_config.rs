@@ -51,6 +51,10 @@ pub struct GarminConfigInner {
     pub strava_tokenfile: PathBuf,
     pub garmin_connect_email: StackString,
     pub garmin_connect_password: StackString,
+    #[serde(default = "default_webdriver_path")]
+    pub webdriver_path: PathBuf,
+    #[serde(default = "default_webdriver_port")]
+    pub webdriver_port: u32,
 }
 
 fn default_home_dir() -> PathBuf {
@@ -92,6 +96,12 @@ fn default_fitbit_tokenfile() -> PathBuf {
 }
 fn default_strava_tokenfile() -> PathBuf {
     default_home_dir().join(".stravacli")
+}
+fn default_webdriver_path() -> PathBuf {
+    default_home_dir().join("bin").join("chromedriver")
+}
+fn default_webdriver_port() -> u32 {
+    4444
 }
 
 impl GarminConfigInner {

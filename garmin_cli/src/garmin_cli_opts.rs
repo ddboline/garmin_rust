@@ -15,24 +15,24 @@ use crate::garmin_cli::{GarminCli, GarminCliOptions};
 
 #[derive(StructOpt)]
 pub enum GarminCliOpts {
-    #[structopt(alias="boot")]
+    #[structopt(alias = "boot")]
     Bootstrap,
     Proc {
         #[structopt(short, long)]
         filename: Vec<PathBuf>,
     },
-    #[structopt(alias="rpt")]
+    #[structopt(alias = "rpt")]
     Report {
         #[structopt(short, long)]
         patterns: Vec<StackString>,
     },
-    #[structopt(alias="cnt")]
+    #[structopt(alias = "cnt")]
     Connect,
     Sync {
         #[structopt(short, long)]
         md5sum: bool,
     },
-    #[structopt(alias="fit")]
+    #[structopt(alias = "fit")]
     Fitbit,
 }
 

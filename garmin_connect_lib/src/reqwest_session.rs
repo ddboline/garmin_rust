@@ -61,7 +61,7 @@ impl ReqwestSessionInner {
 impl ReqwestSession {
     pub fn new(allow_redirects: bool) -> Self {
         let redirect_policy = if allow_redirects {
-            Policy::default()
+            Policy::limited(20)
         } else {
             Policy::none()
         };

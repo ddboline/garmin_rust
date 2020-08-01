@@ -4,10 +4,7 @@ use futures::future::try_join_all;
 use lazy_static::lazy_static;
 use log::{debug, error};
 use maplit::hashmap;
-use reqwest::{
-    header::{HeaderMap, HeaderName, HeaderValue},
-    Url,
-};
+use reqwest::{header::HeaderMap, Url};
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
 use std::{
@@ -73,6 +70,18 @@ impl GarminConnectClient {
         }
     }
 
+    fn get_headers() -> Result<HeaderMap, Error> {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            "User-Agent",
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) \
+             Chrome/84.0.4147.105 Safari/537.36"
+                .parse()?,
+        );
+        headers.insert("Accept-Language", "en_US".parse()?);
+        Ok(headers)
+    }
+
     pub async fn authorize(&mut self) -> Result<(), Error> {
         if Utc::now() < self.retry_time {
             return Err(format_err!("Please retry after {}", self.retry_time));
@@ -113,23 +122,13 @@ impl GarminConnectClient {
             "useCustomHeader" => "false",
         };
 
-        let garmin_signin_headers = hashmap! {
-            "User-Agent" => "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36",
-            "origin" => "https://sso.garmin.com",
-        };
+        let mut signin_headers = Self::get_headers()?;
+        signin_headers.insert("origin", "https://sso.garmin.com".parse()?);
 
         let url = Url::parse_with_params(SIGNIN_URL, params.iter())?;
-        let signin_headers: Result<HeaderMap<_>, Error> = garmin_signin_headers
-            .into_iter()
-            .map(|(k, v)| {
-                let name: HeaderName = k.parse()?;
-                let val: HeaderValue = v.parse()?;
-                Ok((name, val))
-            })
-            .collect();
-        let signin_headers = signin_headers?;
 
         let resp = self.session.get_no_retry(&url, &signin_headers).await?;
+        println!("{} {}", url.as_str(), resp.status());
         if resp.status() == 429 {
             self.retry_time = Self::get_next_attempt_time(resp.headers())?;
             return Err(format_err!(
@@ -137,6 +136,7 @@ impl GarminConnectClient {
                 self.retry_time
             ));
         }
+        let resp_url = resp.url().to_string();
         let text = resp.error_for_status()?.text().await?;
         let csrf = Self::extract_csrf(&text)?;
 
@@ -144,16 +144,18 @@ impl GarminConnectClient {
             "username" => self.config.garmin_connect_email.as_str(),
             "password" => self.config.garmin_connect_password.as_str(),
             "embed" => "true",
-            "_eventId" => "submit",
-            "displayNameRequired" => "false",
             "_csrf" => csrf.as_str(),
         };
+
+        let mut signin_headers = Self::get_headers()?;
+        signin_headers.insert("Referer", resp_url.parse()?);
 
         let resp = self
             .session
             .post_no_retry(&url, &signin_headers, &data)
             .await?;
         let status = resp.status();
+        println!("{} {}", url.as_str(), status);
         if status == 429 {
             self.retry_time = Self::get_next_attempt_time(resp.headers())?;
             return Err(format_err!(
@@ -165,8 +167,13 @@ impl GarminConnectClient {
         let resp_text = resp.error_for_status()?.text().await?;
         Self::check_signin_response(status.into(), &resp_text)?;
         let response_url = Self::get_response_url(&resp_text)?;
+        let ticket = if let Some(query) = response_url.query() {
+            query.split('=').last().unwrap_or("")
+        } else {
+            ""
+        };
 
-        let mut headers = HeaderMap::new();
+        let mut headers = Self::get_headers()?;
         headers.insert("origin", "https://sso.garmin.com".parse()?);
 
         let resp = self.session.get_no_retry(&response_url, &headers).await?;
@@ -178,6 +185,18 @@ impl GarminConnectClient {
                 self.retry_time
             ));
         }
+
+        println!(
+            "{} {} {:?}",
+            response_url.as_str(),
+            resp.status(),
+            resp.headers()
+        );
+
+        let url = Url::parse(&format!("{}/?ticket={}", MODERN_URL, ticket))?;
+
+        let resp = self.session.get_no_retry(&url, &headers).await?;
+        println!("{} {} {:?}", url.as_str(), resp.status(), resp.headers());
 
         let resp_text = resp.error_for_status()?.text().await?;
 
@@ -239,7 +258,7 @@ impl GarminConnectClient {
         Err(format_err!("NO URL FOUND"))
     }
 
-    fn extract_display_name(text: &str) -> Result<StackString, Error> {
+    pub fn extract_display_name(text: &str) -> Result<StackString, Error> {
         for entry in text.split('\n').filter(|x| x.contains("JSON.parse")) {
             let entry = entry.replace(r#"\""#, r#"""#).replace(r#"");"#, "");
             let entries: Vec<_> = entry.split(r#" = JSON.parse(""#).take(2).collect();
@@ -268,8 +287,15 @@ impl GarminConnectClient {
             "{}/proxy/usersummary-service/usersummary/daily/{}",
             MODERN_URL, display_name,
         );
-        let url = Url::parse_with_params(&url_prefix, &[("calendarDate", &date.to_string())])?;
-        let resp = self.session.get_no_retry(&url, &HeaderMap::new()).await?;
+        let headers = Self::get_headers()?;
+        let url = Url::parse_with_params(
+            &url_prefix,
+            &[
+                ("calendarDate", &date.to_string()),
+                ("_", &Utc::now().timestamp_millis().to_string()),
+            ],
+        )?;
+        let resp = self.session.get_no_retry(&url, &headers).await?;
         if resp.status() == 403 {
             self.auth_trigger.store(true, Ordering::SeqCst);
             error!("trigger re-auth");
@@ -287,8 +313,15 @@ impl GarminConnectClient {
             "{}/proxy/wellness-service/wellness/dailyHeartRate/{}",
             MODERN_URL, display_name
         );
-        let url = Url::parse_with_params(&url_prefix, &[("date", &date.to_string())])?;
-        let resp = self.session.get(&url, &HeaderMap::new()).await?;
+        let headers = Self::get_headers()?;
+        let url = Url::parse_with_params(
+            &url_prefix,
+            &[
+                ("date", &date.to_string()),
+                ("_", &Utc::now().timestamp_millis().to_string()),
+            ],
+        )?;
+        let resp = self.session.get(&url, &headers).await?;
         if resp.status() == 403 {
             self.auth_trigger.store(true, Ordering::SeqCst);
             error!("trigger re-auth");
@@ -313,11 +346,13 @@ impl GarminConnectClient {
                 &[
                     ("start", current_start.to_string()),
                     ("limit", limit.to_string()),
+                    ("_", Utc::now().timestamp_millis().to_string()),
                 ],
             )?;
             current_start += limit;
             debug!("Call {}", url);
-            let resp = self.session.get(&url, &HeaderMap::new()).await?;
+            let headers = Self::get_headers()?;
+            let resp = self.session.get(&url, &headers).await?;
             if resp.status() == 403 {
                 println!("{:?}", resp);
                 println!("{}", resp.text().await?);
@@ -354,17 +389,16 @@ impl GarminConnectClient {
                 .join("Downloads")
                 .join(activity.activity_id.to_string())
                 .with_extension("zip");
-            let url: Url = format!(
-                "{}/proxy/download-service/files/activity/{}",
-                MODERN_URL, activity.activity_id
-            )
-            .parse()?;
+            let url = Url::parse_with_params(
+                &format!(
+                    "{}/proxy/download-service/files/activity/{}",
+                    MODERN_URL, activity.activity_id
+                ),
+                &[("_", &Utc::now().timestamp_millis().to_string())],
+            )?;
             let mut f = File::create(&fname).await?;
-            let resp = self
-                .session
-                .get(&url, &HeaderMap::new())
-                .await?
-                .error_for_status()?;
+            let headers = Self::get_headers()?;
+            let resp = self.session.get(&url, &headers).await?.error_for_status()?;
 
             let mut stream = resp.bytes_stream();
             while let Some(item) = stream.next().await {
@@ -447,7 +481,7 @@ mod tests {
     #[ignore]
     async fn test_get_activities() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
-        let session = get_garmin_connect_session(&config).await?;
+        let mut session = get_garmin_connect_session(&config).await?;
 
         let user_summary = session
             .get_user_summary((Utc::now() - Duration::days(1)).naive_local().date())
@@ -455,7 +489,14 @@ mod tests {
         assert_eq!(user_summary.user_profile_id, 1377808);
 
         let max_timestamp = Utc::now() - Duration::days(14);
-        let result = session.get_activities(max_timestamp).await?;
+        let result = match session.get_activities(max_timestamp).await {
+            Ok(r) => r,
+            Err(_) => {
+                println!("try reauth");
+                session.authorize().await?;
+                session.get_activities(max_timestamp).await?
+            }
+        };
         assert!(result.len() > 0);
 
         let config = GarminConfig::get_config(None)?;
@@ -492,6 +533,13 @@ mod tests {
     fn test_get_response_url() -> Result<(), Error> {
         let resp_text = include_str!("../../tests/data/garmin_auth_response.html");
         let url = GarminConnectClient::get_response_url(resp_text)?;
+        let ticket = if let Some(query) = url.query() {
+            query.split('=').last().unwrap_or("")
+        } else {
+            ""
+        };
+        assert_eq!(ticket, "ST-0765302-muiAj3bYsqmU1TyBFMZB-cas");
+
         assert_eq!(
             url.as_str(),
             "https://connect.garmin.com/modern?ticket=ST-0765302-muiAj3bYsqmU1TyBFMZB-cas"

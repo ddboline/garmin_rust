@@ -548,7 +548,7 @@ impl GarminCli {
                         .or_else(|_| copy(&filename, &outfile).map(|_| ()))?;
                     Ok(Some(gfile.begin_datetime))
                 })
-                .filter_map(|res| res.transpose())
+                .filter_map(Result::transpose)
                 .collect()
         })
         .await?

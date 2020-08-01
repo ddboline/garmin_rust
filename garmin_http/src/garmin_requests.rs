@@ -22,8 +22,7 @@ use fitbit_lib::{
 };
 use garmin_cli::garmin_cli::{GarminCli, GarminRequest};
 use garmin_connect_lib::{
-    garmin_connect_client::{get_garmin_connect_session, GarminConnectUserDailySummary},
-    garmin_connect_proxy::GarminConnectProxy,
+    garmin_connect_client::GarminConnectUserDailySummary, garmin_connect_proxy::GarminConnectProxy,
 };
 use garmin_lib::{
     common::{

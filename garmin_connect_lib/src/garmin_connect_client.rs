@@ -167,11 +167,11 @@ impl GarminConnectClient {
         let resp_text = resp.error_for_status()?.text().await?;
         Self::check_signin_response(status.into(), &resp_text)?;
         let response_url = Self::get_response_url(&resp_text)?;
-        let ticket = if let Some(query) = response_url.query() {
-            query.split('=').last().unwrap_or("")
-        } else {
-            ""
-        };
+        // let ticket = if let Some(query) = response_url.query() {
+        //     query.split('=').last().unwrap_or("")
+        // } else {
+        //     ""
+        // };
 
         let mut headers = Self::get_headers()?;
         headers.insert("origin", "https://sso.garmin.com".parse()?);
@@ -192,11 +192,6 @@ impl GarminConnectClient {
             resp.status(),
             resp.headers()
         );
-
-        let url = Url::parse(&format!("{}/?ticket={}", MODERN_URL, ticket))?;
-
-        let resp = self.session.get_no_retry(&url, &headers).await?;
-        println!("{} {} {:?}", url.as_str(), resp.status(), resp.headers());
 
         let resp_text = resp.error_for_status()?.text().await?;
 
@@ -333,6 +328,11 @@ impl GarminConnectClient {
         &self,
         max_timestamp: DateTime<Utc>,
     ) -> Result<Vec<GarminConnectActivity>, Error> {
+        let headers = Self::get_headers()?;
+        let url = MODERN_URL.parse()?;
+        let resp = self.session.get(&url, &headers).await?;
+        println!("{:?}", resp);
+
         let url_prefix = format!(
             "{}/proxy/activitylist-service/activities/search/activities",
             MODERN_URL
@@ -351,7 +351,10 @@ impl GarminConnectClient {
             )?;
             current_start += limit;
             debug!("Call {}", url);
-            let headers = Self::get_headers()?;
+
+            let mut headers = Self::get_headers()?;
+            headers.insert("Referer", MODERN_URL.parse()?);
+
             let resp = self.session.get(&url, &headers).await?;
             if resp.status() == 403 {
                 println!("{:?}", resp);

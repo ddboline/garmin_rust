@@ -499,7 +499,10 @@ impl GarminCli {
         Err(format_err!("Bad filename {:?}", filename))
     }
 
-    pub async fn process_filenames<T: AsRef<Path>>(&self, filenames: &[T]) -> Result<(), Error> {
+    pub async fn process_filenames<T: AsRef<Path>>(
+        &self,
+        filenames: &[T],
+    ) -> Result<Vec<DateTime<Utc>>, Error> {
         let config = self.get_config().clone();
         let stdout = self.stdout.clone();
         let filenames: Vec<_> = filenames.iter().map(|s| s.as_ref().to_path_buf()).collect();
@@ -538,13 +541,14 @@ impl GarminCli {
                     stdout.send(format!("{:?} {:?}", filename, outfile).into())?;
 
                     if outfile.exists() {
-                        return Ok(());
+                        return Ok(None);
                     }
 
                     rename(&filename, &outfile)
-                        .or_else(|_| copy(&filename, &outfile).map(|_| ()))
-                        .map_err(Into::into)
+                        .or_else(|_| copy(&filename, &outfile).map(|_| ()))?;
+                    Ok(Some(gfile.begin_datetime))
                 })
+                .filter_map(|res| res.transpose())
                 .collect()
         })
         .await?

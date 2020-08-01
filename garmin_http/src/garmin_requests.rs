@@ -138,13 +138,13 @@ pub struct GarminUploadRequest {
 
 #[async_trait]
 impl HandleRequest<GarminUploadRequest> for PgPool {
-    type Result = Result<Vec<PathBuf>, Error>;
+    type Result = Result<Vec<DateTime<Utc>>, Error>;
     async fn handle(&self, req: GarminUploadRequest) -> Self::Result {
         let gcli = GarminCli::from_pool(&self)?;
         let filenames = vec![req.filename];
-        gcli.process_filenames(&filenames).await?;
+        let datetimes = gcli.process_filenames(&filenames).await?;
         gcli.proc_everything().await?;
-        Ok(filenames)
+        Ok(datetimes)
     }
 }
 

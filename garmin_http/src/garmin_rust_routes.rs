@@ -170,14 +170,18 @@ pub async fn garmin_upload(
         save_file(&fname, field).await?;
     }
 
-    state
+    let datetimes = state
         .db
         .handle(GarminUploadRequest {
             filename: fname.into(),
         })
         .await?;
 
-    let query = FilterRequest { filter: None };
+    let query = FilterRequest {
+        filter: datetimes
+            .get(0)
+            .map(|dt| convert_datetime_to_str(*dt).into()),
+    };
     let history: Vec<StackString> = session
         .get("history")
         .map_err(|e| format_err!("Failed to set history {:?}", e))?

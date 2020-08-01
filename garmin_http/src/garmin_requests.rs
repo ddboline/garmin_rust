@@ -2,6 +2,7 @@ use anyhow::format_err;
 use async_trait::async_trait;
 use chrono::{DateTime, Duration, Local, NaiveDate, NaiveDateTime, NaiveTime, Utc};
 use futures::future::try_join_all;
+use lazy_static::lazy_static;
 use log::debug;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
@@ -11,7 +12,7 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
-use tokio::{fs::remove_file, task::spawn_blocking};
+use tokio::{fs::remove_file, sync::Mutex, task::spawn_blocking};
 
 use fitbit_lib::{
     fitbit_client::{FitbitBodyWeightFatUpdateOutput, FitbitClient, FitbitUserProfile},
@@ -20,8 +21,8 @@ use fitbit_lib::{
     scale_measurement::ScaleMeasurement,
 };
 use garmin_cli::garmin_cli::{GarminCli, GarminRequest};
-use garmin_connect_lib::garmin_connect_client::{
-    get_garmin_connect_session, GarminConnectUserDailySummary,
+use garmin_connect_lib::{
+    garmin_connect_client::GarminConnectUserDailySummary, garmin_connect_proxy::GarminConnectProxy,
 };
 use garmin_lib::{
     common::{
@@ -40,6 +41,18 @@ use race_result_analysis::{
 use strava_lib::strava_client::{StravaAthlete, StravaClient};
 
 use crate::{errors::ServiceError as Error, CONFIG};
+
+lazy_static! {
+    static ref CONNECT_PROXY: Mutex<GarminConnectProxy> = Mutex::new(GarminConnectProxy::default());
+}
+
+pub async fn close_connect_proxy() -> Result<(), Error> {
+    let mut proxy = CONNECT_PROXY.lock().await;
+    if proxy.last_used < Utc::now() - Duration::seconds(300) {
+        proxy.close().await?;
+    }
+    Ok(())
+}
 
 #[async_trait]
 pub trait HandleRequest<T> {
@@ -125,13 +138,13 @@ pub struct GarminUploadRequest {
 
 #[async_trait]
 impl HandleRequest<GarminUploadRequest> for PgPool {
-    type Result = Result<Vec<PathBuf>, Error>;
+    type Result = Result<Vec<DateTime<Utc>>, Error>;
     async fn handle(&self, req: GarminUploadRequest) -> Self::Result {
         let gcli = GarminCli::from_pool(&self)?;
         let filenames = vec![req.filename];
-        gcli.process_filenames(&filenames).await?;
+        let datetimes = gcli.process_filenames(&filenames).await?;
         gcli.proc_everything().await?;
-        Ok(filenames)
+        Ok(datetimes)
     }
 }
 
@@ -145,7 +158,10 @@ impl HandleRequest<GarminConnectSyncRequest> for PgPool {
 
         let max_timestamp = Utc::now() - Duration::days(30);
 
-        let session = get_garmin_connect_session(&CONFIG).await?;
+        // let session = get_garmin_connect_session(&CONFIG).await?;
+        let mut session = CONNECT_PROXY.lock().await;
+        session.init(CONFIG.clone()).await?;
+
         let new_activities: Vec<_> = session.get_activities(max_timestamp).await?;
         let new_activities =
             GarminConnectActivity::merge_new_activities(new_activities, self).await?;
@@ -169,8 +185,12 @@ pub struct GarminConnectHrSyncRequest {
 impl HandleRequest<GarminConnectHrSyncRequest> for PgPool {
     type Result = Result<(), Error>;
     async fn handle(&self, req: GarminConnectHrSyncRequest) -> Self::Result {
-        let session = get_garmin_connect_session(&CONFIG).await?;
-        FitbitClient::import_garmin_connect_heartrate(req.date, &session).await?;
+        // let session = get_garmin_connect_session(&CONFIG).await?;
+        let mut session = CONNECT_PROXY.lock().await;
+        session.init(CONFIG.clone()).await?;
+
+        let heartrate_data = session.get_heartrate(req.date).await?;
+        FitbitClient::import_garmin_connect_heartrate(CONFIG.clone(), &heartrate_data).await?;
         let config = CONFIG.clone();
         FitbitHeartRate::calculate_summary_statistics(&config, &self, req.date)
             .await
@@ -188,9 +208,12 @@ pub struct GarminConnectHrApiRequest {
 impl HandleRequest<GarminConnectHrApiRequest> for PgPool {
     type Result = Result<Vec<FitbitHeartRate>, Error>;
     async fn handle(&self, req: GarminConnectHrApiRequest) -> Self::Result {
-        let session = get_garmin_connect_session(&CONFIG).await?;
-        let hr_vals =
-            FitbitHeartRate::from_garmin_connect_hr(&session.get_heartrate(req.date).await?);
+        // let session = get_garmin_connect_session(&CONFIG).await?;
+        let mut session = CONNECT_PROXY.lock().await;
+        session.init(CONFIG.clone()).await?;
+
+        let heartrate_data = session.get_heartrate(req.date).await?;
+        let hr_vals = FitbitHeartRate::from_garmin_connect_hr(&heartrate_data);
         Ok(hr_vals)
     }
 }
@@ -864,7 +887,10 @@ impl HandleRequest<GarminConnectActivitiesRequest> for PgPool {
             NaiveDateTime::new(start_date, NaiveTime::from_hms(0, 0, 0)),
             Utc,
         );
-        let session = get_garmin_connect_session(&CONFIG).await?;
+        // let session = get_garmin_connect_session(&CONFIG).await?;
+        let mut session = CONNECT_PROXY.lock().await;
+        session.init(CONFIG.clone()).await?;
+
         session
             .get_activities(start_datetime)
             .await
@@ -905,8 +931,10 @@ pub struct GarminConnectUserSummaryRequest {
 impl HandleRequest<GarminConnectUserSummaryRequest> for PgPool {
     type Result = Result<GarminConnectUserDailySummary, Error>;
     async fn handle(&self, msg: GarminConnectUserSummaryRequest) -> Self::Result {
-        let config = CONFIG.clone();
-        let session = get_garmin_connect_session(&config).await?;
+        // let session = get_garmin_connect_session(&config).await?;
+        let mut session = CONNECT_PROXY.lock().await;
+        session.init(CONFIG.clone()).await?;
+
         let date = msg
             .date
             .unwrap_or_else(|| Local::now().naive_local().date());

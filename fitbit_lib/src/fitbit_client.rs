@@ -22,7 +22,7 @@ use tokio::{
     time::{delay_for, Duration},
 };
 
-use garmin_connect_lib::garmin_connect_client::GarminConnectClient;
+use garmin_connect_lib::garmin_connect_client::GarminConnectHrData;
 
 use garmin_lib::common::{
     fitbit_activity::FitbitActivity,
@@ -225,7 +225,6 @@ impl FitbitClient {
             )
             .parse()?,
         );
-        headers.insert("trakt-api-version", "2".parse()?);
         Ok(headers)
     }
 
@@ -366,12 +365,10 @@ impl FitbitClient {
     }
 
     pub async fn import_garmin_connect_heartrate(
-        date: NaiveDate,
-        session: &GarminConnectClient,
+        config: GarminConfig,
+        heartrate_data: &GarminConnectHrData,
     ) -> Result<(), Error> {
-        let heartrates =
-            FitbitHeartRate::from_garmin_connect_hr(&session.get_heartrate(date).await?);
-        let config = session.config.clone();
+        let heartrates = FitbitHeartRate::from_garmin_connect_hr(heartrate_data);
         spawn_blocking(move || FitbitHeartRate::merge_slice_to_avro(&config, &heartrates)).await?
     }
 

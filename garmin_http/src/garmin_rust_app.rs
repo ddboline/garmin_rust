@@ -9,7 +9,10 @@ use tokio::time::interval;
 
 use garmin_lib::common::pgpool::PgPool;
 
-use super::logged_user::{fill_from_db, TRIGGER_DB_UPDATE};
+use super::{
+    garmin_requests::close_connect_proxy,
+    logged_user::{fill_from_db, TRIGGER_DB_UPDATE},
+};
 use crate::{
     garmin_rust_routes::{
         add_garmin_correction, fitbit_activities, fitbit_activities_db,
@@ -52,6 +55,7 @@ pub async fn start_app() {
             i.tick().await;
             let p = pool.clone();
             fill_from_db(&p).await.unwrap_or(());
+            close_connect_proxy().await.unwrap_or(());
         }
     }
 

@@ -6,12 +6,9 @@ use postgres_query::{FromSqlRow, Parameter};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use serde::{Deserialize, Deserializer, Serialize};
 use stack_string::StackString;
-use std::collections::HashMap;
-use std::fs::File;
-use std::path::Path;
+use std::{collections::HashMap, fs::File, path::Path};
 
-use super::garmin_config::GarminConfig;
-use super::pgpool::PgPool;
+use super::{garmin_config::GarminConfig, pgpool::PgPool};
 
 #[derive(Serialize, Deserialize, Debug, FromSqlRow)]
 pub struct GarminConnectActivity {

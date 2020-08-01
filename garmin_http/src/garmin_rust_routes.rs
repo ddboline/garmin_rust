@@ -154,6 +154,7 @@ pub async fn garmin_upload(
     mut multipart: Multipart,
     _: LoggedUser,
     state: Data<AppState>,
+    session: Session,
 ) -> Result<HttpResponse, Error> {
     let tempdir = TempDir::new("garmin")?;
     let tempdir_str = tempdir.path().to_string_lossy().to_string();
@@ -169,13 +170,23 @@ pub async fn garmin_upload(
         save_file(&fname, field).await?;
     }
 
-    let flist = state
+    state
         .db
         .handle(GarminUploadRequest {
             filename: fname.into(),
         })
         .await?;
-    to_json(flist)
+
+    let query = FilterRequest { filter: None };
+    let history: Vec<StackString> = session
+        .get("history")
+        .map_err(|e| format_err!("Failed to set history {:?}", e))?
+        .unwrap_or_else(Vec::new);
+
+    let grec = proc_pattern_wrapper(query, &history, false);
+    let body = state.db.handle(grec).await?;
+
+    form_http_response(body.into())
 }
 
 pub async fn garmin_connect_sync(

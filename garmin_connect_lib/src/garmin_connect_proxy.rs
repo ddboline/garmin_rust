@@ -43,8 +43,20 @@ impl GarminConnectProxy {
     pub async fn init(&mut self, config: GarminConfig) -> Result<(), Error> {
         self.config = config;
         if self.client.is_none() {
+            let mut caps = serde_json::map::Map::new();
+            let opts = serde_json::json!({
+                "args": ["--headless", "--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage"],
+                "binary":
+                    "/usr/bin/google-chrome"
+            });
+            caps.insert("goog:chromeOptions".to_string(), opts.clone());
+
             self.client.replace(
-                Client::new(&format!("http://localhost:{}", self.config.webdriver_port)).await?,
+                Client::with_capabilities(
+                    &format!("http://localhost:{}", self.config.webdriver_port),
+                    caps,
+                )
+                .await?,
             );
             self.last_used = Utc::now();
         }

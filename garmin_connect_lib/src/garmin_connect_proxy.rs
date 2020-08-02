@@ -1,9 +1,12 @@
 use anyhow::{format_err, Error};
 use chrono::{DateTime, NaiveDate, Utc};
 use fantoccini::{Client, Locator};
+use log::debug;
 use stack_string::StackString;
 use std::path::PathBuf;
+use std::process::Stdio;
 use tokio::fs;
+use tokio::process::{Child, Command};
 use url::Url;
 
 use garmin_lib::common::{
@@ -19,6 +22,7 @@ const MODERN_URL: &str = "https://connect.garmin.com/modern";
 pub struct GarminConnectProxy {
     config: GarminConfig,
     client: Option<Client>,
+    webdriver: Option<Child>,
     pub last_used: DateTime<Utc>,
     display_name: Option<StackString>,
 }
@@ -35,6 +39,7 @@ impl GarminConnectProxy {
         Self {
             config,
             client: None,
+            webdriver: None,
             last_used: Utc::now(),
             display_name: None,
         }
@@ -42,6 +47,17 @@ impl GarminConnectProxy {
 
     pub async fn init(&mut self, config: GarminConfig) -> Result<(), Error> {
         self.config = config;
+        if self.webdriver.is_none() {
+            if self.config.webdriver_path.exists() {
+                let webdriver = Command::new(&self.config.webdriver_path)
+                    .args(&[&format!("--port={}", self.config.webdriver_port)])
+                    .kill_on_drop(true)
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .spawn()?;
+                self.webdriver.replace(webdriver);
+            }
+        }
         if self.client.is_none() {
             let mut caps = serde_json::map::Map::new();
             let opts = serde_json::json!({
@@ -67,10 +83,14 @@ impl GarminConnectProxy {
     }
 
     pub async fn close(&mut self) -> Result<(), Error> {
+        if let Some(mut webdriver) = self.webdriver.take() {
+            if let Err(e) = webdriver.kill() {
+                debug!("Failed to kill {}", e);
+            }
+        }
         if let Some(mut client) = self.client.take() {
             client.close().await?;
         }
-
         self.last_used = Utc::now();
         Ok(())
     }

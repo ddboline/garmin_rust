@@ -285,12 +285,14 @@ impl ScaleMeasurement {
             </table>"#,
             entries.join("</tr><tr>")
         );
+        let graphs = graphs.join("\n");
 
-        let body = template
-            .replace("INSERTOTHERIMAGESHERE", &graphs.join("\n"))
-            .replace("INSERTTEXTHERE", &entries)
-            .replace("INSERTOTHERTEXTHERE", "")
-            .into();
+        let params = hashmap! {
+            "INSERTOTHERTEXTHERE" => "",
+            "INSERTOTHERIMAGESHERE" => &graphs,
+            "INSERTTEXTHERE" => &entries,
+        };
+        let body = HBR.render(template, &params)?.into();
         Ok(body)
     }
 }

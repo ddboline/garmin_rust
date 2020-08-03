@@ -279,7 +279,6 @@ impl RaceResultAnalysis {
 
         let plots = HBR.render("SCATTERPLOTWITHLINES", &params)?;
 
-        let plots = format!("<script>\n{}\n</script>", plots);
         let buttons = [
             r#"<button type="submit" onclick="race_result_plot_personal();">Personal</button>"#,
             r#"<button type="submit" onclick="race_result_plot_world_record_men();">Mens World Records</button>"#,

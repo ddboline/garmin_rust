@@ -2,7 +2,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-<title>SPORTTITLEDATE</title>
+<title>{{SPORTTITLEDATE}}</title>
 <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
 <meta charset="utf-8">
 <meta http-equiv="Cache-Control" content="no-store" />
@@ -35,19 +35,19 @@ shape-rendering: crispEdges;
 
 </style>
 <script type="text/javascript"
-    src="https://maps.googleapis.com/maps/api/js?key=MAPSAPIKEY">
+    src="https://maps.googleapis.com/maps/api/js?key={{MAPSAPIKEY}}">
 </script>
 <script type="text/javascript">
     function initialize() {
     let mapOptions = {
-        center: { lat: CENTRALLAT, lng: CENTRALLON},
-        zoom: ZOOMVALUE ,
+        center: { lat: {{CENTRALLAT}}, lng: {{CENTRALLON}}},
+        zoom: {{ZOOMVALUE}} ,
         mapTypeId: google.maps.MapTypeId.SATELLITE
     };
     let map = new google.maps.Map(document.getElementById('garmin_text_box'),
         mapOptions);
     let runningRouteCoordinates = [
-        INSERTMAPSEGMENTSHERE
+        {{{INSERTMAPSEGMENTSHERE}}}
         ];
     let runningRoute = new google.maps.Polyline({
         path: runningRouteCoordinates,
@@ -131,9 +131,9 @@ shape-rendering: crispEdges;
         let ostr = '/garmin/strava/upload';
         let data = JSON.stringify(
             {
-                "filename": "FILENAME",
+                "filename": "{{FILENAME}}",
                 "title": strava_title.value,
-                "activity_type": "ACTIVITYTYPE"
+                "activity_type": "{{ACTIVITYTYPE}}"
             }
         );
         let xmlhttp = new XMLHttpRequest();
@@ -157,7 +157,7 @@ shape-rendering: crispEdges;
             {
                 "activity_id": activity_id,
                 "title": strava_title.value,
-                "activity_type": "ACTIVITYTYPE"
+                "activity_type": "{{ACTIVITYTYPE}}"
             }
         );
         let xmlhttp = new XMLHttpRequest();

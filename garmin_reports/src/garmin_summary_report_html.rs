@@ -1,7 +1,8 @@
 use anyhow::Error;
+use maplit::hashmap;
 use stack_string::StackString;
 
-use garmin_lib::common::garmin_templates::{GARMIN_TEMPLATE, GARMIN_TEMPLATE_DEMO};
+use garmin_lib::common::garmin_templates::HBR;
 
 use crate::{
     garmin_file_report_html::generate_history_buttons, garmin_summary_report_txt::GarminReportQuery,
@@ -20,33 +21,22 @@ where
 
     let htmlostr = htmlostr.join("\n").replace("\n\n", "<br>\n");
 
-    let mut htmlvec: Vec<StackString> = Vec::new();
-
     let template = if is_demo {
-        GARMIN_TEMPLATE_DEMO
+        "GARMIN_TEMPLATE_DEMO"
     } else {
-        GARMIN_TEMPLATE
+        "GARMIN_TEMPLATE"
     };
+    let insert_text_here = format!(r#"<table border="0">{}</table>"#, htmlostr);
+    let history_buttons = generate_history_buttons(history);
 
-    for line in template.split('\n') {
-        if line.contains("INSERTTEXTHERE") {
-            htmlvec.push(r#"<table border="0">"#.into());
-            htmlvec.push(htmlostr.clone().into());
-            htmlvec.push("</table>".into());
-        } else if line.contains("SPORTTITLEDATE") {
-            let newtitle = "Garmin Summary";
-            htmlvec.push(line.replace("SPORTTITLEDATE", newtitle).into());
-        } else if line.contains("HISTORYBUTTONS") {
-            let history_button = generate_history_buttons(history);
-            htmlvec.push(line.replace("HISTORYBUTTONS", &history_button).into());
-        } else if line.contains("DOMAIN") {
-            htmlvec.push(line.replace("DOMAIN", domain).into());
-        } else if line.contains("STRAVAUPLOADBUTTON") || line.contains("SPORTTITLELINK") {
-            htmlvec.push("".into());
-        } else {
-            htmlvec.push(line.into());
-        }
-    }
-
-    Ok(htmlvec.join("\n").into())
+    let params = hashmap! {
+        "SPORTTITLEDATE" => "Garmin Summary",
+        "INSERTTEXTHERE" => &insert_text_here,
+        "HISTORYBUTTONS" => &history_buttons,
+        "DOMAIN" => domain,
+        "STRAVAUPLOADBUTTON" => "",
+        "SPORTTITLELINK" => "",
+    };
+    let body = HBR.render(template, &params)?;
+    Ok(body.into())
 }

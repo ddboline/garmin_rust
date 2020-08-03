@@ -20,7 +20,7 @@ xmin = xmin - 0.1 * Math.abs(xmin);
 ymax = {{YMAX}};
 ymin = {{YMIN}};
 
-let xmap = {{XMAP}};
+let xmap = {{{XMAP}}};
 
 // Set the ranges
 var x = d3.scaleLog().domain([xmin, xmax]).range([0, width]);

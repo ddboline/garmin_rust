@@ -479,7 +479,7 @@ impl From<ScaleMeasurementRequest> for FitbitStatisticsPlotRequest {
 
 #[async_trait]
 impl HandleRequest<FitbitStatisticsPlotRequest> for PgPool {
-    type Result = Result<StackString, Error>;
+    type Result = Result<HashMap<StackString, StackString>, Error>;
     async fn handle(&self, req: FitbitStatisticsPlotRequest) -> Self::Result {
         let stats = FitbitStatisticsSummary::read_from_db(
             req.request.start_date,
@@ -487,8 +487,7 @@ impl HandleRequest<FitbitStatisticsPlotRequest> for PgPool {
             self,
         )
         .await?;
-        FitbitStatisticsSummary::get_fitbit_statistics_plots(&stats, req.is_demo)
-            .map_err(Into::into)
+        FitbitStatisticsSummary::get_fitbit_statistics_plots(&stats).map_err(Into::into)
     }
 }
 
@@ -509,13 +508,12 @@ impl From<ScaleMeasurementRequest> for ScaleMeasurementPlotRequest {
 
 #[async_trait]
 impl HandleRequest<ScaleMeasurementPlotRequest> for PgPool {
-    type Result = Result<StackString, Error>;
+    type Result = Result<HashMap<StackString, StackString>, Error>;
     async fn handle(&self, req: ScaleMeasurementPlotRequest) -> Self::Result {
         let measurements =
             ScaleMeasurement::read_from_db(self, req.request.start_date, req.request.end_date)
                 .await?;
-        ScaleMeasurement::get_scale_measurement_plots(&measurements, req.is_demo)
-            .map_err(Into::into)
+        ScaleMeasurement::get_scale_measurement_plots(&measurements).map_err(Into::into)
     }
 }
 
@@ -540,7 +538,7 @@ impl From<ScaleMeasurementRequest> for FitbitHeartratePlotRequest {
 
 #[async_trait]
 impl HandleRequest<FitbitHeartratePlotRequest> for PgPool {
-    type Result = Result<StackString, Error>;
+    type Result = Result<HashMap<StackString, StackString>, Error>;
     async fn handle(&self, req: FitbitHeartratePlotRequest) -> Self::Result {
         let config = CONFIG.clone();
         FitbitHeartRate::get_heartrate_plot(
@@ -1004,7 +1002,7 @@ pub struct RaceResultPlotRequest {
 
 #[async_trait]
 impl HandleRequest<RaceResultPlotRequest> for PgPool {
-    type Result = Result<StackString, Error>;
+    type Result = Result<HashMap<StackString, StackString>, Error>;
     async fn handle(&self, req: RaceResultPlotRequest) -> Self::Result {
         let model = RaceResultAnalysis::run_analysis(req.race_type, self).await?;
         let demo = req.demo.unwrap_or(true);

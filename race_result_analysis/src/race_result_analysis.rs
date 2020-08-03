@@ -91,7 +91,7 @@ impl RaceResultAnalysis {
         }
     }
 
-    pub fn create_plot(&self, is_demo: bool) -> Result<StackString, Error> {
+    pub fn create_plot(&self, is_demo: bool) -> Result<HashMap<StackString, StackString>, Error> {
         fn extract_points(result: &RaceResults) -> (i32, f64, StackString, NaiveDate, StackString) {
             let distance = f64::from(result.race_distance) / METERS_PER_MILE;
             let duration = result.race_time / 60.0;
@@ -284,22 +284,14 @@ impl RaceResultAnalysis {
             r#"<button type="submit" onclick="race_result_plot_world_record_men();">Mens World Records</button>"#,
             r#"<button type="submit" onclick="race_result_plot_world_record_women();">Womens World Records</button>"#,
         ];
-        let template = if is_demo {
-            "PLOT_TEMPLATE_DEMO"
-        } else {
-            "PLOT_TEMPLATE"
-        };
 
         let buttons = buttons.join("");
 
-        let params = hashmap! {
-            "INSERTOTHERIMAGESHERE" => &plots,
-            "INSERTTEXTHERE" => &buttons,
-            "INSERTOTHERTEXTHERE" => &entries,
-        };
-
-        let body = HBR.render(template, &params)?.into();
-        Ok(body)
+        Ok(hashmap! {
+            "INSERTOTHERIMAGESHERE".into() => plots.into(),
+            "INSERTTEXTHERE".into() => buttons.into(),
+            "INSERTOTHERTEXTHERE".into() => entries.into(),
+        })
     }
 }
 

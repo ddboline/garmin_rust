@@ -1,6 +1,7 @@
 use actix_multipart::MultipartError;
 use actix_web::{error::ResponseError, HttpResponse};
 use anyhow::Error as AnyhowError;
+use handlebars::RenderError;
 use rust_auth_server::static_files::login_html;
 use std::fmt::Debug;
 use thiserror::Error;
@@ -24,6 +25,8 @@ pub enum ServiceError {
     BlockingError(String),
     #[error("tokio join error {0}")]
     JoinError(#[from] JoinError),
+    #[error("handlebars RenderError {0}")]
+    RenderError(#[from] RenderError),
 }
 
 // impl ResponseError trait allows to convert our errors into http responses

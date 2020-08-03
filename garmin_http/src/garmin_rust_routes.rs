@@ -17,7 +17,7 @@ use tokio::{fs::File, io::AsyncWriteExt, stream::StreamExt, task::spawn_blocking
 
 use garmin_cli::garmin_cli::{GarminCli, GarminRequest};
 use garmin_lib::{
-    common::garmin_file::GarminFile,
+    common::{garmin_file::GarminFile, garmin_templates::HBR},
     parsers::garmin_parse::{GarminParse, GarminParseTrait},
     utils::iso_8601_datetime::convert_datetime_to_str,
 };
@@ -414,11 +414,14 @@ pub async fn heartrate_statistics_plots(
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
         .unwrap_or_else(Vec::new);
 
-    let body = state
-        .db
-        .handle(query)
-        .await?
-        .replace("HISTORYBUTTONS", &generate_history_buttons(&history));
+    let template = if query.is_demo {
+        "PLOT_TEMPLATE_DEMO"
+    } else {
+        "PLOT_TEMPLATE"
+    };
+    let mut params = state.db.handle(query).await?;
+    params.insert("HISTORYBUTTONS".into(), generate_history_buttons(&history));
+    let body = HBR.render(template, &params)?.into();
     form_http_response(body)
 }
 
@@ -431,12 +434,14 @@ async fn fitbit_plots_impl(
         .get("history")
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
         .unwrap_or_else(Vec::new);
-
-    let body = state
-        .db
-        .handle(query)
-        .await?
-        .replace("HISTORYBUTTONS", &generate_history_buttons(&history));
+    let template = if query.is_demo {
+        "PLOT_TEMPLATE_DEMO"
+    } else {
+        "PLOT_TEMPLATE"
+    };
+    let mut params = state.db.handle(query).await?;
+    params.insert("HISTORYBUTTONS".into(), generate_history_buttons(&history));
+    let body = HBR.render(template, &params)?.into();
     form_http_response(body)
 }
 
@@ -470,11 +475,17 @@ async fn heartrate_plots_impl(
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
         .unwrap_or_else(Vec::new);
 
-    let body = state
-        .db
-        .handle(query)
-        .await?
-        .replace("HISTORYBUTTONS", &generate_history_buttons(&history));
+    let template = if query.is_demo {
+        "PLOT_TEMPLATE_DEMO"
+    } else {
+        "PLOT_TEMPLATE"
+    };
+    let mut params = state.db.handle(query).await?;
+    params.insert(
+        "HISTORYBUTTONS".into(),
+        generate_history_buttons(&history).into(),
+    );
+    let body = HBR.render(template, &params)?.into();
     form_http_response(body)
 }
 
@@ -783,6 +794,26 @@ pub async fn fitbit_activities_db_update(
     form_http_response(body.join("\n"))
 }
 
+pub async fn race_result_plot_impl(
+    req: RaceResultPlotRequest,
+    state: Data<AppState>,
+    session: Session,
+) -> Result<StackString, Error> {
+    let history: Vec<StackString> = session
+        .get("history")
+        .map_err(|e| format_err!("Failed to set history {:?}", e))?
+        .unwrap_or_else(Vec::new);
+    let is_demo = req.demo.unwrap_or(true);
+    let template = if is_demo {
+        "PLOT_TEMPLATE_DEMO"
+    } else {
+        "PLOT_TEMPLATE"
+    };
+    let mut params = state.db.handle(req).await?;
+    params.insert("HISTORYBUTTONS".into(), generate_history_buttons(&history));
+    Ok(HBR.render(template, &params)?.into())
+}
+
 pub async fn race_result_plot(
     query: Query<RaceResultPlotRequest>,
     _: LoggedUser,
@@ -792,18 +823,8 @@ pub async fn race_result_plot(
     let mut query = query.into_inner();
     query.demo = Some(false);
 
-    let history: Vec<StackString> = session
-        .get("history")
-        .map_err(|e| format_err!("Failed to set history {:?}", e))?
-        .unwrap_or_else(Vec::new);
-
-    let body = state
-        .db
-        .handle(query)
-        .await?
-        .replace("HISTORYBUTTONS", &generate_history_buttons(&history));
-
-    form_http_response(body)
+    let body = race_result_plot_impl(query, state, session).await?;
+    form_http_response(body.into())
 }
 
 pub async fn race_result_plot_demo(
@@ -814,18 +835,8 @@ pub async fn race_result_plot_demo(
     let mut query = query.into_inner();
     query.demo = Some(true);
 
-    let history: Vec<StackString> = session
-        .get("history")
-        .map_err(|e| format_err!("Failed to set history {:?}", e))?
-        .unwrap_or_else(Vec::new);
-
-    let body = state
-        .db
-        .handle(query)
-        .await?
-        .replace("HISTORYBUTTONS", &generate_history_buttons(&history));
-
-    form_http_response(body)
+    let body = race_result_plot_impl(query, state, session).await?;
+    form_http_response(body.into())
 }
 
 pub async fn race_result_flag(

@@ -6,7 +6,7 @@ use postgres_query::{FromSqlRow, Parameter};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use serde::{self, Deserialize, Serialize};
 use stack_string::StackString;
-use std::fmt;
+use std::{collections::HashMap, fmt};
 
 use garmin_lib::{
     common::{garmin_templates::HBR, pgpool::PgPool},
@@ -152,20 +152,12 @@ impl ScaleMeasurement {
 
     pub fn get_scale_measurement_plots(
         measurements: &[Self],
-        is_demo: bool,
-    ) -> Result<StackString, Error> {
-        let template = if is_demo {
-            "PLOT_TEMPLATE_DEMO"
-        } else {
-            "PLOT_TEMPLATE"
-        };
+    ) -> Result<HashMap<StackString, StackString>, Error> {
         if measurements.is_empty() {
-            let params = hashmap! {
-                "INSERTOTHERIMAGESHERE" => "",
-                "INSERTTEXTHERE" => "",
-            };
-            let body = HBR.render(template, &params)?.into();
-            return Ok(body);
+            return Ok(hashmap! {
+                "INSERTOTHERIMAGESHERE".into() => "".into(),
+                "INSERTTEXTHERE".into() => "".into(),
+            });
         }
         let mut graphs = Vec::new();
 
@@ -292,13 +284,11 @@ impl ScaleMeasurement {
         );
         let graphs = graphs.join("\n");
 
-        let params = hashmap! {
-            "INSERTOTHERTEXTHERE" => "",
-            "INSERTOTHERIMAGESHERE" => &graphs,
-            "INSERTTEXTHERE" => &entries,
-        };
-        let body = HBR.render(template, &params)?.into();
-        Ok(body)
+        Ok(hashmap! {
+            "INSERTOTHERTEXTHERE".into() => "".into(),
+            "INSERTOTHERIMAGESHERE".into() => graphs.into(),
+            "INSERTTEXTHERE".into() => entries.into(),
+        })
     }
 }
 

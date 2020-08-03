@@ -5,6 +5,7 @@ use postgres_query::FromSqlRow;
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
 use statistical::{mean, median, standard_deviation};
+use std::collections::HashMap;
 
 use garmin_lib::common::{garmin_templates::HBR, pgpool::PgPool};
 
@@ -146,21 +147,13 @@ impl FitbitStatisticsSummary {
 
     pub fn get_fitbit_statistics_plots(
         stats: &[Self],
-        is_demo: bool,
-    ) -> Result<StackString, Error> {
-        let template = if is_demo {
-            "PLOT_TEMPLATE_DEMO"
-        } else {
-            "PLOT_TEMPLATE"
-        };
+    ) -> Result<HashMap<StackString, StackString>, Error> {
         if stats.is_empty() {
-            let params = hashmap! {
-                "INSERTOTHERIMAGESHERE"=> "",
-                "INSERTTEXTHERE"=> "",
-                "INSERTOTHERTEXTHERE"=> "",
-            };
-            let body = HBR.render(template, &params)?.into();
-            return Ok(body);
+            return Ok(hashmap! {
+                "INSERTOTHERIMAGESHERE".into() => "".into(),
+                "INSERTTEXTHERE".into() => "".into(),
+                "INSERTOTHERTEXTHERE".into() => "".into(),
+            });
         }
         let mut graphs = Vec::new();
 
@@ -269,12 +262,10 @@ impl FitbitStatisticsSummary {
         );
         let graphs = graphs.join("\n");
 
-        let params = hashmap! {
-            "INSERTOTHERTEXTHERE"=> "",
-            "INSERTOTHERIMAGESHERE"=> &graphs,
-            "INSERTTEXTHERE"=> &entries,
-        };
-        let body = HBR.render(template, &params)?.into();
-        Ok(body)
+        Ok(hashmap! {
+            "INSERTOTHERTEXTHERE".into() => "".into(),
+            "INSERTOTHERIMAGESHERE".into() => graphs.into(),
+            "INSERTTEXTHERE".into() => entries.into(),
+        })
     }
 }

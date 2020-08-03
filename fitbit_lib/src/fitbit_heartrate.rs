@@ -13,7 +13,11 @@ use rayon::{
 };
 use serde::{self, Deserialize, Deserializer, Serialize};
 use stack_string::StackString;
-use std::{collections::HashSet, fs::File, path::Path};
+use std::{
+    collections::{HashMap, HashSet},
+    fs::File,
+    path::Path,
+};
 
 use garmin_connect_lib::garmin_connect_client::GarminConnectHrData;
 use garmin_lib::{
@@ -218,7 +222,7 @@ impl FitbitHeartRate {
         end_date: NaiveDate,
         button_date: Option<NaiveDate>,
         is_demo: bool,
-    ) -> Result<StackString, Error> {
+    ) -> Result<HashMap<StackString, StackString>, Error> {
         let button_date = button_date.unwrap_or_else(|| Local::today().naive_local());
 
         let mut final_values: Vec<_> =
@@ -325,19 +329,14 @@ impl FitbitHeartRate {
             end_date = end_date,
             button_date = next_date,
         ));
-        let template = if is_demo {
-            "PLOT_TEMPLATE_DEMO"
-        } else {
-            "PLOT_TEMPLATE"
-        };
         let buttons = buttons.join("\n");
+
         let params = hashmap! {
-            "INSERTOTHERTEXTHERE" => "",
-            "INSERTOTHERIMAGESHERE" => &plots,
-            "INSERTTEXTHERE" => &buttons,
+            "INSERTOTHERTEXTHERE".into() => "".into(),
+            "INSERTOTHERIMAGESHERE".into() => plots.into(),
+            "INSERTTEXTHERE".into() => buttons.into(),
         };
-        let body = HBR.render(template, &params)?.into();
-        Ok(body)
+        Ok(params)
     }
 
     pub fn dump_to_avro(values: &[Self], output_filename: &str) -> Result<(), Error> {
@@ -566,7 +565,7 @@ mod tests {
         let results =
             FitbitHeartRate::get_heartrate_plot(&config, &pool, start_date, end_date, None, false)
                 .await?;
-        debug!("{}", results);
+        debug!("{:?}", results);
         assert!(results.len() > 0);
         Ok(())
     }

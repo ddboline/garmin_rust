@@ -178,6 +178,7 @@ impl FitbitStatisticsSummary {
             "DATA" => &js_str,
             "XAXIS" => "Date",
             "YAXIS" => "Heartrate [bpm]",
+            "NAME" => "minimum_heartrate",
         };
         let plot = HBR.render("TIMESERIESTEMPLATE", &params)?;
         graphs.push(plot);
@@ -195,6 +196,7 @@ impl FitbitStatisticsSummary {
             "DATA" => &js_str,
             "XAXIS" => "Date",
             "YAXIS" => "Heartrate [bpm]",
+            "NAME" => "maximum_heartrate",
         };
         let plot = HBR.render("TIMESERIESTEMPLATE", &params)?;
         graphs.push(plot);
@@ -212,6 +214,7 @@ impl FitbitStatisticsSummary {
             "DATA" => &js_str,
             "XAXIS" => "Date",
             "YAXIS" => "Heartrate [bpm]",
+            "NAME" => "mean_heartrate",
         };
         let plot = HBR.render("TIMESERIESTEMPLATE", &params)?;
         graphs.push(plot);
@@ -229,6 +232,7 @@ impl FitbitStatisticsSummary {
             "DATA" => &js_str,
             "XAXIS" => "Date",
             "YAXIS" => "Heartrate [bpm]",
+            "NAME" => "median_heartrate",
         };
         let plot = HBR.render("TIMESERIESTEMPLATE", &params)?;
         graphs.push(plot);

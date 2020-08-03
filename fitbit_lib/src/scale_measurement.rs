@@ -183,6 +183,7 @@ impl ScaleMeasurement {
             "XAXIS" => "Date",
             "YAXIS" => "Weight [lbs]",
             "DATA" => &js_str,
+            "NAME" => "weight",
         };
         let plot: StackString = HBR.render("TIMESERIESTEMPLATE", &params)?.into();
         graphs.push(plot);
@@ -201,6 +202,7 @@ impl ScaleMeasurement {
             "XAXIS" => "Date",
             "YAXIS" => "Fat %",
             "DATA" => &js_str,
+            "NAME" => "fat",
         };
         let plot = HBR.render("TIMESERIESTEMPLATE", &params)?;
         graphs.push(plot.into());
@@ -219,6 +221,7 @@ impl ScaleMeasurement {
             "XAXIS" => "Date",
             "YAXIS" => "Water %",
             "DATA" => &js_str,
+            "NAME" => "water",
         };
         let plot = HBR.render("TIMESERIESTEMPLATE", &params)?;
         graphs.push(plot.into());
@@ -237,6 +240,7 @@ impl ScaleMeasurement {
             "XAXIS" => "Date",
             "YAXIS" => "Muscle %",
             "DATA" => &js_str,
+            "NAME" => "muscle",
         };
         let plot = HBR.render("TIMESERIESTEMPLATE", &params)?;
         graphs.push(plot.into());
@@ -255,6 +259,7 @@ impl ScaleMeasurement {
             "XAXIS" => "Date",
             "YAXIS" => "Bone %",
             "DATA" => &js_str,
+            "NAME" => "bone",
         };
         let plot = HBR.render("TIMESERIESTEMPLATE", &params)?;
         graphs.push(plot.into());

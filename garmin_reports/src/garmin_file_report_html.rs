@@ -1,21 +1,16 @@
 use anyhow::Error;
 use chrono::{Date, DateTime, Datelike, Local, Utc};
 use log::debug;
+use maplit::hashmap;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use stack_string::StackString;
 use std::collections::HashSet;
 
 use garmin_lib::{
     common::{
-        fitbit_activity::FitbitActivity,
-        garmin_config::GarminConfig,
-        garmin_connect_activity::GarminConnectActivity,
-        garmin_file::GarminFile,
-        garmin_lap::GarminLap,
-        garmin_templates::{
-            GARMIN_TEMPLATE, GARMIN_TEMPLATE_DEMO, MAP_TEMPLATE, MAP_TEMPLATE_DEMO,
-        },
-        pgpool::PgPool,
+        fitbit_activity::FitbitActivity, garmin_config::GarminConfig,
+        garmin_connect_activity::GarminConnectActivity, garmin_file::GarminFile,
+        garmin_lap::GarminLap, garmin_templates::HBR, pgpool::PgPool,
         strava_activity::StravaActivity,
     },
     utils::{
@@ -397,104 +392,83 @@ fn get_garmin_template_vec<T: AsRef<str>>(
     history: &[T],
     is_demo: bool,
 ) -> Result<Vec<StackString>, Error> {
-    let mut htmlvec = Vec::new();
-
     let template = if is_demo {
-        GARMIN_TEMPLATE_DEMO
+        "GARMIN_TEMPLATE_DEMO"
     } else {
-        GARMIN_TEMPLATE
+        "GARMIN_TEMPLATE"
     };
 
-    for line in template.split('\n') {
-        if line.contains("INSERTTEXTHERE") {
-            htmlvec.push(
-                format!(
-                    "{}\n",
-                    get_file_html(
-                        &gfile,
-                        strava_activity,
-                        fitbit_activity,
-                        connect_activity,
-                        race_result
-                    )
-                )
-                .into(),
-            );
-            htmlvec.push(
-                format!(
-                    "<br><br>{}\n",
-                    get_html_splits(&gfile, METERS_PER_MILE, "mi")?
-                )
-                .into(),
-            );
-            htmlvec.push(format!("<br><br>{}\n", get_html_splits(&gfile, 5000.0, "km")?).into());
-        } else if line.contains("SPORTTITLEDATE") {
-            let newtitle = format!(
-                "Garmin Event {} on {}",
-                titlecase(&sport.to_string()),
-                gfile.begin_datetime
-            );
-            htmlvec.push(line.replace("SPORTTITLEDATE", &newtitle).to_string().into());
-        } else if line.contains("SPORTTITLELINK") {
-            let newtitle = format!(
-                "Garmin Event {} on {}",
-                titlecase(&sport.to_string()),
-                gfile.begin_datetime
-            );
-            let newtitle = match strava_activity {
-                Some(strava_activity) => format!(
-                    r#"<a href="https://www.strava.com/activities/{}" target="_blank">{} {}</a>"#,
-                    strava_activity.id, strava_activity.name, gfile.begin_datetime
-                ),
-                None => newtitle,
-            };
-            htmlvec.push(line.replace("SPORTTITLELINK", &newtitle).to_string().into());
-        } else if line.contains("HISTORYBUTTONS") {
-            let history_button = generate_history_buttons(history);
-            htmlvec.push(
-                line.replace("HISTORYBUTTONS", &history_button)
-                    .to_string()
-                    .into(),
-            );
-        } else if line.contains("DOMAIN") {
-            htmlvec.push(line.replace("DOMAIN", &config.domain).into());
-        } else if line.contains("FILENAME") | line.contains("ACTIVITYTYPE") {
-            let filename = config.gps_dir.join(gfile.filename.as_str());
-            let activity_type = gfile.sport.to_strava_activity();
-            htmlvec.push(
-                line.replace("FILENAME", filename.to_string_lossy().as_ref())
-                    .replace("ACTIVITYTYPE", &activity_type)
-                    .into(),
-            );
-        } else if line.contains("STRAVAUPLOADBUTTON") {
-            if let Some(strava_activity) = strava_activity {
-                let button_str = format!(
-                    r#"<form>{}</form>"#,
-                    if is_demo {
-                        "".to_string()
-                    } else {
-                        format!(
-                            r#"
-                                <input type="text" name="cmd" id="strava_upload"/>
-                                <input type="button" name="submitSTRAVA" value="Title" onclick="processStravaUpdate({});"/>
-                            "#,
-                            strava_activity.id
-                        )
-                    },
-                );
-                htmlvec.push(line.replace("STRAVAUPLOADBUTTON", &button_str).into());
+    let insert_text_here = vec![
+        format!(
+            "{}\n",
+            get_file_html(
+                &gfile,
+                strava_activity,
+                fitbit_activity,
+                connect_activity,
+                race_result
+            )
+        ),
+        format!(
+            "<br><br>{}\n",
+            get_html_splits(&gfile, METERS_PER_MILE, "mi")?
+        ),
+        format!("<br><br>{}\n", get_html_splits(&gfile, 5000.0, "km")?),
+    ];
+    let sport_title_link = format!(
+        "Garmin Event {} on {}",
+        titlecase(&sport.to_string()),
+        gfile.begin_datetime
+    );
+    let sport_title_link = match strava_activity {
+        Some(strava_activity) => format!(
+            r#"<a href="https://www.strava.com/activities/{}" target="_blank">{} {}</a>"#,
+            strava_activity.id, strava_activity.name, gfile.begin_datetime
+        ),
+        None => sport_title_link,
+    };
+
+    let button_str = if let Some(strava_activity) = strava_activity {
+        format!(
+            r#"<form>{}</form>"#,
+            if is_demo {
+                "".to_string()
             } else {
-                htmlvec.push(line.replace("STRAVAUPLOADBUTTON", "").into());
-            }
-        } else {
-            htmlvec.push(
-                line.replace("<pre>", "<div>")
-                    .replace("</pre>", "</div>")
-                    .into(),
-            );
-        }
-    }
-    Ok(htmlvec)
+                format!(
+                    r#"
+                        <input type="text" name="cmd" id="strava_upload"/>
+                        <input type="button" name="submitSTRAVA" value="Title" onclick="processStravaUpdate({});"/>
+                    "#,
+                    strava_activity.id
+                )
+            },
+        )
+    } else {
+        "".to_string()
+    };
+    let history_buttons = generate_history_buttons(history);
+    let insert_text_here = insert_text_here.join("\n");
+    let sport_title_date = format!(
+        "Garmin Event {} on {}",
+        titlecase(&sport.to_string()),
+        gfile.begin_datetime
+    );
+    let filename = config.gps_dir.join(gfile.filename.as_str());
+    let filename = filename.to_string_lossy();
+    let activity_type = gfile.sport.to_strava_activity();
+
+    let params = hashmap! {
+        "HISTORYBUTTONS" => history_buttons.as_str(),
+        "INSERTTEXTHERE" => &insert_text_here,
+        "SPORTTITLEDATE" => &sport_title_date,
+        "SPORTTITLELINK" => &sport_title_link,
+        "DOMAIN" => &config.domain,
+        "FILENAME" => filename.as_ref(),
+        "ACTIVITYTYPE" => &activity_type,
+        "STRAVAUPLOADBUTTON" => &button_str,
+    };
+    let body = HBR.render(template, &params)?;
+    Ok(body.split('\n').map(Into::into).collect())
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -551,140 +525,117 @@ where
         (10, 0.4),
     ];
 
-    let mut htmlvec = Vec::new();
-
     let template = if is_demo {
-        MAP_TEMPLATE_DEMO
+        "MAP_TEMPLATE_DEMO"
     } else {
-        MAP_TEMPLATE
+        "MAP_TEMPLATE"
     };
 
-    for line in template.split('\n') {
-        if line.contains("SPORTTITLEDATE") {
-            let newtitle = format!(
-                "Garmin Event {} on {}",
-                titlecase(&sport.to_string()),
-                gfile.begin_datetime
-            );
-            htmlvec.push(line.replace("SPORTTITLEDATE", &newtitle).into());
-        } else if line.contains("SPORTTITLELINK") {
-            let newtitle = format!(
-                "Garmin Event {} on {}",
-                titlecase(&sport.to_string()),
-                gfile.begin_datetime
-            );
-            let newtitle = match strava_activity {
-                Some(strava_activity) => format!(
-                    r#"<a href="https://www.strava.com/activities/{}" target="_blank">{} {}</a>"#,
-                    strava_activity.id, strava_activity.name, gfile.begin_datetime
-                ),
-                None => newtitle,
-            };
-            htmlvec.push(line.replace("SPORTTITLELINK", &newtitle).into());
-        } else if line.contains("STRAVAUPLOADBUTTON") {
-            if let Some(strava_activity) = strava_activity {
-                let button_str = format!(
-                    r#"<form>{}</form>"#,
-                    if is_demo {
-                        "".to_string()
-                    } else {
-                        format!(
-                            r#"
-                                <input type="text" name="cmd" id="strava_upload"/>
-                                <input type="button" name="submitSTRAVA" value="Title" onclick="processStravaUpdate({});"/>
-                            "#,
-                            strava_activity.id
-                        )
-                    },
-                );
-                htmlvec.push(line.replace("STRAVAUPLOADBUTTON", &button_str).into());
+    let sport_title_date = format!(
+        "Garmin Event {} on {}",
+        titlecase(&sport.to_string()),
+        gfile.begin_datetime
+    );
+    let sport_title_link = match strava_activity {
+        Some(strava_activity) => format!(
+            r#"<a href="https://www.strava.com/activities/{}" target="_blank">{} {}</a>"#,
+            strava_activity.id, strava_activity.name, gfile.begin_datetime
+        ),
+        None => format!(
+            "Garmin Event {} on {}",
+            titlecase(&sport.to_string()),
+            gfile.begin_datetime
+        ),
+    };
+    let button_str = if let Some(strava_activity) = strava_activity {
+        format!(
+            r#"<form>{}</form>"#,
+            if is_demo {
+                "".to_string()
             } else {
-                let button_str = format!(
-                    r#"<form>{}</form>"#,
-                    if is_demo {
-                        ""
-                    } else {
-                        r#"
+                format!(
+                    r#"
                         <input type="text" name="cmd" id="strava_upload"/>
-                        <input type="button" name="submitSTRAVA" value="Title" onclick="processStravaData();"/>
-                    "#
-                    },
-                );
-                htmlvec.push(line.replace("STRAVAUPLOADBUTTON", &button_str).into());
-            }
-        } else if line.contains("ZOOMVALUE") {
-            for (zoom, thresh) in &latlon_thresholds {
-                if (latlon_min < *thresh) | (*zoom == 10) {
-                    htmlvec.push(line.replace("ZOOMVALUE", &format!("{}", zoom)).into());
-                    break;
-                }
-            }
-        } else if line.contains("INSERTTABLESHERE") {
-            htmlvec.push(
-                format!(
-                    "{}\n",
-                    get_file_html(
-                        &gfile,
-                        strava_activity,
-                        fitbit_activity,
-                        connect_activity,
-                        race_result
-                    )
+                        <input type="button" name="submitSTRAVA" value="Title" onclick="processStravaUpdate({});"/>
+                    "#,
+                    strava_activity.id
                 )
-                .into(),
-            );
-            htmlvec.push(
-                format!(
-                    "<br><br>{}\n",
-                    get_html_splits(&gfile, METERS_PER_MILE, "mi")?
-                )
-                .into(),
-            );
-            htmlvec.push(format!("<br><br>{}\n", get_html_splits(&gfile, 5000.0, "km")?).into());
-        } else if line.contains("INSERTMAPSEGMENTSHERE") {
-            for (latv, lonv) in report_objs.lat_vals.iter().zip(report_objs.lon_vals.iter()) {
-                htmlvec.push(format!("new google.maps.LatLng({},{}),", latv, lonv).into());
-            }
-        } else if line.contains("MINLAT")
-            | line.contains("MAXLAT")
-            | line.contains("MINLON")
-            | line.contains("MAXLON")
-        {
-            htmlvec.push(
-                line.replace("MINLAT", &format!("{}", minlat))
-                    .replace("MAXLAT", &format!("{}", maxlat))
-                    .replace("MINLON", &format!("{}", minlon))
-                    .replace("MAXLON", &format!("{}", maxlon))
-                    .into(),
-            );
-        } else if line.contains("CENTRALLAT") | line.contains("CENTRALLON") {
-            htmlvec.push(
-                line.replace("CENTRALLAT", &central_lat.to_string())
-                    .replace("CENTRALLON", &central_lon.to_string())
-                    .into(),
-            );
-        } else if line.contains("INSERTOTHERIMAGESHERE") {
-            htmlvec.extend(graphs.iter().map(|s| s.as_ref().into()));
-        } else if line.contains("MAPSAPIKEY") {
-            htmlvec.push(line.replace("MAPSAPIKEY", &config.maps_api_key).into());
-        } else if line.contains("HISTORYBUTTONS") {
-            let history_button = generate_history_buttons(history);
-            htmlvec.push(line.replace("HISTORYBUTTONS", &history_button).into());
-        } else if line.contains("FILENAME") | line.contains("ACTIVITYTYPE") {
-            let filename = config.gps_dir.join(gfile.filename.as_str());
-            let activity_type = gfile.sport.to_strava_activity();
-            htmlvec.push(
-                line.replace("FILENAME", filename.to_string_lossy().as_ref())
-                    .replace("ACTIVITYTYPE", &activity_type)
-                    .into(),
-            );
-        } else if line.contains("DOMAIN") {
-            htmlvec.push(line.replace("DOMAIN", &config.domain).into());
-        } else {
-            htmlvec.push(line.into());
-        };
+            },
+        )
+    } else {
+        format!(
+            r#"<form>{}</form>"#,
+            if is_demo {
+                ""
+            } else {
+                r#"
+                <input type="text" name="cmd" id="strava_upload"/>
+                <input type="button" name="submitSTRAVA" value="Title" onclick="processStravaData();"/>
+            "#
+            },
+        )
+    };
+    let mut zoom_value = "".to_string();
+    for (zoom, thresh) in &latlon_thresholds {
+        if (latlon_min < *thresh) | (*zoom == 10) {
+            zoom_value = zoom.to_string();
+            break;
+        }
     }
-    Ok(htmlvec)
+    let insert_table_here = format!(
+        "{}\n<br><br>{}\n<br><br>{}\n",
+        get_file_html(
+            &gfile,
+            strava_activity,
+            fitbit_activity,
+            connect_activity,
+            race_result
+        ),
+        get_html_splits(&gfile, METERS_PER_MILE, "mi")?,
+        get_html_splits(&gfile, 5000.0, "km")?
+    );
+    let map_segment: Vec<_> = report_objs
+        .lat_vals
+        .iter()
+        .zip(report_objs.lon_vals.iter())
+        .map(|(latv, lonv)| format!("new google.maps.LatLng({},{}),", latv, lonv))
+        .collect();
+    let map_segment = map_segment.join("\n");
+    let minlat = minlat.to_string();
+    let maxlat = maxlat.to_string();
+    let minlon = minlon.to_string();
+    let maxlon = maxlon.to_string();
+    let central_lat = central_lat.to_string();
+    let central_lon = central_lon.to_string();
+    let insert_other_images_here: Vec<_> = graphs.iter().map(AsRef::as_ref).collect();
+    let insert_other_images_here = insert_other_images_here.join("\n");
+    let history_buttons = generate_history_buttons(history);
+    let filename = config.gps_dir.join(gfile.filename.as_str());
+    let filename = filename.to_string_lossy();
+    let activity_type = gfile.sport.to_strava_activity();
+
+    let params = hashmap! {
+        "SPORTTITLEDATE" => sport_title_date.as_str(),
+        "SPORTTITLELINK" => &sport_title_link,
+        "STRAVAUPLOADBUTTON" => &button_str,
+        "ZOOMVALUE" => &zoom_value,
+        "INSERTTABLESHERE" => &insert_table_here,
+        "INSERTMAPSEGMENTSHERE" => &map_segment,
+        "MINLAT" => &minlat,
+        "MAXLAT" => &maxlat,
+        "MINLON" => &minlon,
+        "MAXLON" => &maxlon,
+        "CENTRALLAT" => &central_lat,
+        "CENTRALLON" => &central_lon,
+        "INSERTOTHERIMAGESHERE" => &insert_other_images_here,
+        "MAPSAPIKEY" => &config.maps_api_key,
+        "HISTORYBUTTONS" => history_buttons.as_str(),
+        "FILENAME" => filename.as_ref(),
+        "ACTIVITYTYPE" => activity_type.as_str(),
+        "DOMAIN" => &config.domain,
+    };
+    let body = HBR.render(template, &params)?;
+    Ok(body.split('\n').map(Into::into).collect())
 }
 
 fn get_sport_selector(current_sport: SportTypes) -> StackString {

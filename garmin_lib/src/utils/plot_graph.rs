@@ -1,12 +1,10 @@
 use anyhow::{format_err, Error};
 use log::debug;
+use maplit::hashmap;
 use stack_string::StackString;
 use std::collections::HashMap;
 
-use crate::{
-    common::garmin_templates::{LINEPLOTTEMPLATE, SCATTERPLOTTEMPLATE},
-    utils::plot_opts::PlotOpts,
-};
+use crate::{common::garmin_templates::HBR, utils::plot_opts::PlotOpts};
 
 #[allow(clippy::similar_names)]
 pub fn generate_d3_plot(opts: &PlotOpts) -> Result<StackString, Error> {
@@ -81,55 +79,31 @@ pub fn generate_d3_plot(opts: &PlotOpts) -> Result<StackString, Error> {
             .map(|((xb, yb), c)| (*xb as f64 * xstep + xmin, *yb as f64 * ystep + ymin, c))
             .collect();
 
-        let js_str = SCATTERPLOTTEMPLATE
-            .split('\n')
-            .map(|line| {
-                if line.contains("EXAMPLETITLE") {
-                    line.replace("EXAMPLETITLE", &opts.title)
-                } else if line.contains("XSTEP") {
-                    line.replace("XSTEP", &xstep.to_string())
-                } else if line.contains("YSTEP") {
-                    line.replace("YSTEP", &ystep.to_string())
-                } else if line.contains("DATA") {
-                    line.replace(
-                        "DATA",
-                        &serde_json::to_string(&data).unwrap_or_else(|_| "".to_string()),
-                    )
-                } else if line.contains("XLABEL") {
-                    line.replace("XLABEL", &opts.xlabel)
-                } else if line.contains("YLABEL") {
-                    line.replace("YLABEL", &opts.ylabel)
-                } else {
-                    line.to_string()
-                }
-            })
-            .collect::<Vec<_>>()
-            .join("\n");
-        format!("<script>\n{}\n</script>", js_str).into()
+        let xstep = xstep.to_string();
+        let ystep = ystep.to_string();
+        let data = serde_json::to_string(&data).unwrap_or_else(|_| "".to_string());
+
+        let params = hashmap! {
+            "EXAMPLETITLE" => opts.title.as_str(),
+            "XSTEP"=> &xstep,
+            "YSTEP" => &ystep,
+            "DATA" => &data,
+            "XLABEL" => &opts.xlabel,
+            "YLABEL" => &opts.ylabel,
+        };
+
+        HBR.render("SCATTERPLOTTEMPLATE", &params)?.into()
     } else {
-        let js_str = LINEPLOTTEMPLATE
-            .split('\n')
-            .map(|line| {
-                if line.contains("EXAMPLETITLE") {
-                    line.replace("EXAMPLETITLE", &opts.title)
-                } else if line.contains("XAXIS") {
-                    line.replace("XAXIS", &opts.xlabel)
-                } else if line.contains("YAXIS") {
-                    line.replace("YAXIS", &opts.ylabel)
-                } else if line.contains("DATA") {
-                    line.replace(
-                        "DATA",
-                        &serde_json::to_string(&data).unwrap_or_else(|_| "".to_string()),
-                    )
-                } else if line.contains("NAME") {
-                    line.replace("NAME", &opts.name)
-                } else {
-                    line.to_string()
-                }
-            })
-            .collect::<Vec<_>>()
-            .join("\n");
-        format!("<script>\n{}\n</script>", js_str).into()
+        let data = serde_json::to_string(&data).unwrap_or_else(|_| "".to_string());
+        let params = hashmap! {
+            "EXAMPLETITLE" => opts.title.as_str(),
+            "XAXIS" => opts.xlabel.as_str(),
+            "YAXIS" => opts.ylabel.as_str(),
+            "DATA" => &data,
+            "NAME" => opts.name.as_str(),
+        };
+
+        HBR.render("LINEPLOTTEMPLATE", &params)?.into()
     };
     Ok(body)
 }

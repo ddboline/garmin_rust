@@ -1,25 +1,26 @@
+<script>
 // Set the dimensions of the canvas / graph
 var margin = {top: 30, right: 20, bottom: 30, left: 50},
     width = 600 - margin.left - margin.right,
     height = 400 - margin.top - margin.bottom;
 
 // Get the data
-var data = DATA;
-var other_data = OTHERDATA;
+var data = {{{DATA}}};
+var other_data = {{{OTHERDATA}}};
 
-var fit_data = FITDATA;
-var neg_data = NEGDATA;
-var pos_data = POSDATA;
+var fit_data = {{{FITDATA}}};
+var neg_data = {{{NEGDATA}}};
+var pos_data = {{{POSDATA}}};
 
 var xmax = d3.max(data, function(d) {return d[0]});
 var xmin = d3.min(data, function(d) {return d[0]});
 
 xmax = xmax + 0.1 * Math.abs(xmax);
 xmin = xmin - 0.1 * Math.abs(xmin);
-ymax = YMAX;
-ymin = YMIN;
+ymax = {{YMAX}};
+ymin = {{YMIN}};
 
-let xmap = XMAP;
+let xmap = {{{XMAP}}};
 
 // Set the ranges
 var x = d3.scaleLog().domain([xmin, xmax]).range([0, width]);
@@ -27,11 +28,11 @@ var y = d3.scaleLinear().domain([ymin, ymax]).range([height, 0]);
 
 // Define the axes
 var xAxis = d3.axisBottom(x)
-    .tickValues(XTICKS)
+    .tickValues({{XTICKS}})
     .tickFormat(function(d) {return xmap[d];});
 
 var yAxis = d3.axisLeft(y)
-    .tickValues(YTICKS);
+    .tickValues({{YTICKS}});
 
 // Define the line
 var valueline = d3.line()
@@ -53,13 +54,13 @@ svg.append("text")      // text label for chart Title
         .style("text-anchor", "middle")
 		.style("font-size", "16px")
         .style("text-decoration", "underline")
-        .text("EXAMPLETITLE");
+        .text("{{EXAMPLETITLE}}");
 
 svg.append("text")      // text label for the x-axis
         .attr("x", width / 2 )
         .attr("y",  height + margin.bottom)
         .style("text-anchor", "middle")
-        .text("XAXIS");
+        .text("{{XAXIS}}");
 
 svg.append("text")      // text label for the y-axis
         .attr("y",30 - margin.left)
@@ -67,7 +68,7 @@ svg.append("text")      // text label for the y-axis
         .attr("transform", "rotate(-90)")
         .style("text-anchor", "end")
         .style("font-size", "16px")
-        .text("YAXIS");
+        .text("{{YAXIS}}");
 
 svg.append("g")
     .selectAll("dot")
@@ -149,3 +150,4 @@ function handleMouseOutOtherData(d, i) {
     d3.select('#otherdata_date' + i).remove();
     d3.select('#otherdata_time' + i).remove();
 }
+</script>

@@ -1,6 +1,6 @@
 [package]
 name = "garmin_lib"
-version = "0.8.65"
+version = "0.8.66"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -41,3 +41,5 @@ rustls-native-certs = {version="0.4", default_features=false}
 envy = "0.4"
 fitparser = "0.2"
 stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.1.3", features=["postgres_types"] }
+handlebars = "3.3"
+maplit = "1.0"

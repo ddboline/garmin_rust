@@ -1,6 +1,7 @@
 use anyhow::{format_err, Error};
 use chrono::{DateTime, Local, NaiveDate, Utc};
 use log::debug;
+use maplit::hashmap;
 use postgres_query::{FromSqlRow, Parameter};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use serde::{self, Deserialize, Serialize};
@@ -8,10 +9,7 @@ use stack_string::StackString;
 use std::fmt;
 
 use garmin_lib::{
-    common::{
-        garmin_templates::{PLOT_TEMPLATE, PLOT_TEMPLATE_DEMO, TIMESERIESTEMPLATE},
-        pgpool::PgPool,
-    },
+    common::{garmin_templates::HBR, pgpool::PgPool},
     utils::iso_8601_datetime::convert_datetime_to_str,
 };
 
@@ -157,15 +155,16 @@ impl ScaleMeasurement {
         is_demo: bool,
     ) -> Result<StackString, Error> {
         let template = if is_demo {
-            PLOT_TEMPLATE_DEMO
+            "PLOT_TEMPLATE_DEMO"
         } else {
-            PLOT_TEMPLATE
+            "PLOT_TEMPLATE"
         };
         if measurements.is_empty() {
-            let body = template
-                .replace("INSERTOTHERIMAGESHERE", "")
-                .replace("INSERTTEXTHERE", "")
-                .into();
+            let params = hashmap! {
+                "INSERTOTHERIMAGESHERE" => "",
+                "INSERTTEXTHERE" => "",
+            };
+            let body = HBR.render(template, &params)?.into();
             return Ok(body);
         }
         let mut graphs = Vec::new();
@@ -179,12 +178,13 @@ impl ScaleMeasurement {
             .collect();
 
         let js_str = serde_json::to_string(&mass).unwrap_or_else(|_| "".to_string());
-        let plot = TIMESERIESTEMPLATE
-            .replace("DATA", &js_str)
-            .replace("EXAMPLETITLE", "Weight")
-            .replace("XAXIS", "Date")
-            .replace("YAXIS", "Weight [lbs]");
-        let plot: StackString = format!("<script>\n{}\n</script>", plot).into();
+        let params = hashmap! {
+            "EXAMPLETITLE" => "Weight",
+            "XAXIS" => "Date",
+            "YAXIS" => "Weight [lbs]",
+            "DATA" => &js_str,
+        };
+        let plot: StackString = HBR.render("TIMESERIESTEMPLATE", &params)?.into();
         graphs.push(plot);
 
         let fat: Vec<_> = measurements
@@ -196,12 +196,13 @@ impl ScaleMeasurement {
             .collect();
 
         let js_str = serde_json::to_string(&fat).unwrap_or_else(|_| "".to_string());
-        let plot = TIMESERIESTEMPLATE
-            .replace("DATA", &js_str)
-            .replace("EXAMPLETITLE", "Fat %")
-            .replace("XAXIS", "Date")
-            .replace("YAXIS", "Fat %");
-        let plot = format!("<script>\n{}\n</script>", plot);
+        let params = hashmap! {
+            "EXAMPLETITLE" => "Fat %",
+            "XAXIS" => "Date",
+            "YAXIS" => "Fat %",
+            "DATA" => &js_str,
+        };
+        let plot = HBR.render("TIMESERIESTEMPLATE", &params)?;
         graphs.push(plot.into());
 
         let water: Vec<_> = measurements
@@ -213,12 +214,13 @@ impl ScaleMeasurement {
             .collect();
 
         let js_str = serde_json::to_string(&water).unwrap_or_else(|_| "".to_string());
-        let plot = TIMESERIESTEMPLATE
-            .replace("DATA", &js_str)
-            .replace("EXAMPLETITLE", "Water %")
-            .replace("XAXIS", "Date")
-            .replace("YAXIS", "Water %");
-        let plot = format!("<script>\n{}\n</script>", plot);
+        let params = hashmap! {
+            "EXAMPLETITLE" => "Water %",
+            "XAXIS" => "Date",
+            "YAXIS" => "Water %",
+            "DATA" => &js_str,
+        };
+        let plot = HBR.render("TIMESERIESTEMPLATE", &params)?;
         graphs.push(plot.into());
 
         let muscle: Vec<_> = measurements
@@ -230,12 +232,13 @@ impl ScaleMeasurement {
             .collect();
 
         let js_str = serde_json::to_string(&muscle).unwrap_or_else(|_| "".to_string());
-        let plot = TIMESERIESTEMPLATE
-            .replace("DATA", &js_str)
-            .replace("EXAMPLETITLE", "Muscle %")
-            .replace("XAXIS", "Date")
-            .replace("YAXIS", "Muscle %");
-        let plot = format!("<script>\n{}\n</script>", plot);
+        let params = hashmap! {
+            "EXAMPLETITLE" => "Muscle %",
+            "XAXIS" => "Date",
+            "YAXIS" => "Muscle %",
+            "DATA" => &js_str,
+        };
+        let plot = HBR.render("TIMESERIESTEMPLATE", &params)?;
         graphs.push(plot.into());
 
         let bone: Vec<_> = measurements
@@ -247,12 +250,13 @@ impl ScaleMeasurement {
             .collect();
 
         let js_str = serde_json::to_string(&bone).unwrap_or_else(|_| "".to_string());
-        let plot = TIMESERIESTEMPLATE
-            .replace("DATA", &js_str)
-            .replace("EXAMPLETITLE", "Bone %")
-            .replace("XAXIS", "Date")
-            .replace("YAXIS", "Bone %");
-        let plot = format!("<script>\n{}\n</script>", plot);
+        let params = hashmap! {
+            "EXAMPLETITLE" => "Bone %",
+            "XAXIS" => "Date",
+            "YAXIS" => "Bone %",
+            "DATA" => &js_str,
+        };
+        let plot = HBR.render("TIMESERIESTEMPLATE", &params)?;
         graphs.push(plot.into());
 
         let n = measurements.len();
@@ -281,12 +285,14 @@ impl ScaleMeasurement {
             </table>"#,
             entries.join("</tr><tr>")
         );
+        let graphs = graphs.join("\n");
 
-        let body = template
-            .replace("INSERTOTHERIMAGESHERE", &graphs.join("\n"))
-            .replace("INSERTTEXTHERE", &entries)
-            .replace("INSERTOTHERTEXTHERE", "")
-            .into();
+        let params = hashmap! {
+            "INSERTOTHERTEXTHERE" => "",
+            "INSERTOTHERIMAGESHERE" => &graphs,
+            "INSERTTEXTHERE" => &entries,
+        };
+        let body = HBR.render(template, &params)?.into();
         Ok(body)
     }
 }

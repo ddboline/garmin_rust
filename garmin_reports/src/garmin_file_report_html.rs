@@ -607,7 +607,7 @@ where
     let maxlon = maxlon.to_string();
     let central_lat = central_lat.to_string();
     let central_lon = central_lon.to_string();
-    let insert_other_images_here: Vec<_> = graphs.iter().map(|s| s.as_ref()).collect();
+    let insert_other_images_here: Vec<_> = graphs.iter().map(AsRef::as_ref).collect();
     let insert_other_images_here = insert_other_images_here.join("\n");
     let history_buttons = generate_history_buttons(history);
     let filename = config.gps_dir.join(gfile.filename.as_str());
@@ -635,7 +635,7 @@ where
         "DOMAIN" => &config.domain,
     };
     let body = HBR.render(template, &params)?;
-    Ok(body.split("\n").map(Into::into).collect())
+    Ok(body.split('\n').map(Into::into).collect())
 }
 
 fn get_sport_selector(current_sport: SportTypes) -> StackString {

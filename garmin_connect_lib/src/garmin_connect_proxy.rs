@@ -47,16 +47,14 @@ impl GarminConnectProxy {
 
     pub async fn init(&mut self, config: GarminConfig) -> Result<(), Error> {
         self.config = config;
-        if self.webdriver.is_none() {
-            if self.config.webdriver_path.exists() {
-                let webdriver = Command::new(&self.config.webdriver_path)
-                    .args(&[&format!("--port={}", self.config.webdriver_port)])
-                    .kill_on_drop(true)
-                    .stdout(Stdio::piped())
-                    .stderr(Stdio::piped())
-                    .spawn()?;
-                self.webdriver.replace(webdriver);
-            }
+        if self.webdriver.is_none() && self.config.webdriver_path.exists() {
+            let webdriver = Command::new(&self.config.webdriver_path)
+                .args(&[&format!("--port={}", self.config.webdriver_port)])
+                .kill_on_drop(true)
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()?;
+            self.webdriver.replace(webdriver);
         }
         if self.client.is_none() {
             let mut caps = serde_json::map::Map::new();

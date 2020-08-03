@@ -3,10 +3,12 @@ use chrono::{DateTime, NaiveDate, Utc};
 use fantoccini::{Client, Locator};
 use log::debug;
 use stack_string::StackString;
-use std::path::PathBuf;
-use std::process::Stdio;
-use tokio::fs;
-use tokio::process::{Child, Command};
+use std::{path::PathBuf, process::Stdio};
+use tokio::{
+    fs,
+    process::{Child, Command},
+    time::delay_for,
+};
 use url::Url;
 
 use garmin_lib::common::{
@@ -55,6 +57,7 @@ impl GarminConnectProxy {
                 .stderr(Stdio::piped())
                 .spawn()?;
             self.webdriver.replace(webdriver);
+            delay_for(std::time::Duration::from_secs(5)).await;
         }
         if self.client.is_none() {
             let mut caps = serde_json::map::Map::new();

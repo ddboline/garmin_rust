@@ -1,6 +1,7 @@
 use anyhow::Error;
 use chrono::{NaiveDate, Utc};
 use itertools::Itertools;
+use maplit::hashmap;
 use ndarray::{array, Array1};
 use postgres_query::FromSqlRow;
 use rusfun::{curve_fit::Minimizer, func1d::Func1D};
@@ -8,10 +9,7 @@ use stack_string::StackString;
 use std::collections::HashMap;
 
 use garmin_lib::{
-    common::{
-        garmin_templates::{PLOT_TEMPLATE, PLOT_TEMPLATE_DEMO, SCATTERPLOTWITHLINES},
-        pgpool::PgPool,
-    },
+    common::{garmin_templates::HBR, pgpool::PgPool},
     utils::garmin_util::{print_h_m_s, MARATHON_DISTANCE_M, METERS_PER_MILE},
 };
 
@@ -254,27 +252,33 @@ impl RaceResultAnalysis {
         let fitdata = serde_json::to_string(&y_nom).unwrap_or_else(|_| "".to_string());
         let negdata = serde_json::to_string(&y_neg).unwrap_or_else(|_| "".to_string());
         let posdata = serde_json::to_string(&y_pos).unwrap_or_else(|_| "".to_string());
-        let plots = SCATTERPLOTWITHLINES
-            .replace("FITDATA", &fitdata)
-            .replace("NEGDATA", &negdata)
-            .replace("POSDATA", &posdata)
-            .replace("OTHERDATA", &other_data)
-            .replace("DATA", &data)
-            .replace(
-                "EXAMPLETITLE",
-                match self.race_type {
-                    RaceType::Personal => "Race Results",
-                    RaceType::WorldRecordMen => "Men's World Record",
-                    RaceType::WorldRecordWomen => "Women's World Record",
-                },
-            )
-            .replace("XAXIS", "Distance")
-            .replace("YAXIS", "Pace (min/mi)")
-            .replace("XTICKS", &xticks)
-            .replace("XMAP", &xmap)
-            .replace("YTICKS", &yticks)
-            .replace("YMIN", &ymin.to_string())
-            .replace("YMAX", &ymax.to_string());
+
+        let title = match self.race_type {
+            RaceType::Personal => "Race Results",
+            RaceType::WorldRecordMen => "Men's World Record",
+            RaceType::WorldRecordWomen => "Women's World Record",
+        };
+        let ymin = ymin.to_string();
+        let ymax = ymax.to_string();
+
+        let params = hashmap! {
+            "XAXIS" => "Distance",
+            "YAXIS" => "Pace (min/mi)",
+            "FITDATA" => &fitdata,
+            "NEGDATA" => &negdata,
+            "POSDATA" => &posdata,
+            "OTHERDATA" => &other_data,
+            "DATA" => &data,
+            "EXAMPLETITLE" => title,
+            "XTICKS" => &xticks,
+            "YTICKS" => &yticks,
+            "XMAP" => &xmap,
+            "YMIN" => &ymin,
+            "YMAX" => &ymax,
+        };
+
+        let plots = HBR.render("SCATTERPLOTWITHLINES", &params)?;
+
         let plots = format!("<script>\n{}\n</script>", plots);
         let buttons = [
             r#"<button type="submit" onclick="race_result_plot_personal();">Personal</button>"#,
@@ -282,15 +286,20 @@ impl RaceResultAnalysis {
             r#"<button type="submit" onclick="race_result_plot_world_record_women();">Womens World Records</button>"#,
         ];
         let template = if is_demo {
-            PLOT_TEMPLATE_DEMO
+            "PLOT_TEMPLATE_DEMO"
         } else {
-            PLOT_TEMPLATE
+            "PLOT_TEMPLATE"
         };
-        let body = template
-            .replace("INSERTOTHERIMAGESHERE", &plots)
-            .replace("INSERTTEXTHERE", &buttons.join(""))
-            .replace("INSERTOTHERTEXTHERE", &entries)
-            .into();
+
+        let buttons = buttons.join("");
+
+        let params = hashmap! {
+            "INSERTOTHERIMAGESHERE" => &plots,
+            "INSERTTEXTHERE" => &buttons,
+            "INSERTOTHERTEXTHERE" => &entries,
+        };
+
+        let body = HBR.render(template, &params)?.into();
         Ok(body)
     }
 }

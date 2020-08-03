@@ -1,3 +1,4 @@
+<script>
 // Set the dimensions of the canvas / graph
 var margin = {top: 30, right: 20, bottom: 30, left: 60},
     width = 600 - margin.left - margin.right,
@@ -31,13 +32,13 @@ svg.append("text")      // text label for chart Title
         .style("text-anchor", "middle")
 		.style("font-size", "16px")
         .style("text-decoration", "underline")
-        .text("EXAMPLETITLE");
+        .text("{{EXAMPLETITLE}}");
 
 svg.append("text")      // text label for the x-axis
         .attr("x", width / 2 )
         .attr("y",  height + margin.bottom)
         .style("text-anchor", "middle")
-        .text("XAXIS");
+        .text("{{XAXIS}}");
 
 svg.append("text")      // text label for the y-axis
         .attr("y",30 - margin.left)
@@ -45,10 +46,10 @@ svg.append("text")      // text label for the y-axis
         .attr("transform", "rotate(-90)")
         .style("text-anchor", "end")
         .style("font-size", "16px")
-        .text("YAXIS");
+        .text("{{YAXIS}}");
 
 // Get the data
-var data = DATA;
+var data = {{{DATA}}};
 data.forEach(function(d) {
     d[0] = parseDateTime(d[0]);
 });
@@ -140,3 +141,4 @@ function handleMouseOverData() {
         .attr("y", function() {return y(ymax) + 30;})
         .text(function() {return heartrate;});
 }
+</script>

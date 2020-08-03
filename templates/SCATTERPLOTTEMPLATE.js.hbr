@@ -1,3 +1,4 @@
+<script>
 var margin = {top: 20, right: 90, bottom: 30, left: 50},
     width = 960 - margin.left - margin.right,
     height = 500 - margin.top - margin.bottom;
@@ -8,8 +9,8 @@ var x = d3.scaleLinear().range([0, width]),
 
 // The size of the buckets in the CSV data file.
 // This could be inferred from the data if it weren't sparse.
-var xStep = XSTEP,
-    yStep = YSTEP;
+var xStep = {{XSTEP}},
+    yStep = {{YSTEP}};
 
 var svg = d3.select("body").append("svg")
     .attr("width", width + margin.left + margin.right)
@@ -17,7 +18,7 @@ var svg = d3.select("body").append("svg")
   .append("g")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-var data = DATA;
+var data = {{{DATA}}};
 
 // Compute the scale domains.
 x.domain(d3.extent(data, function(d) { return d[0]; }));
@@ -72,7 +73,7 @@ svg.append("text")      // text label for chart Title
     .style("text-anchor", "middle")
     .style("font-size", "16px")
     .style("text-decoration", "underline")
-    .text("EXAMPLETITLE");
+    .text("{{EXAMPLETITLE}}");
 
 // Add an x-axis with label.
 svg.append("g")
@@ -84,7 +85,7 @@ svg.append("g")
     .attr("x", width)
     .attr("y", -6)
     .attr("text-anchor", "end")
-    .text("XLABEL");
+    .text("{{XLABEL}}");
 
 // Add a y-axis with label.
 svg.append("g")
@@ -96,4 +97,5 @@ svg.append("g")
     .attr("dy", ".71em")
     .attr("text-anchor", "end")
     .attr("transform", "rotate(-90)")
-    .text("YLABEL");
+    .text("{{YLABEL}}");
+</script>

@@ -6,6 +6,7 @@ use futures::future::try_join_all;
 use glob::glob;
 use itertools::Itertools;
 use log::debug;
+use maplit::hashmap;
 use rayon::{
     iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelExtend, ParallelIterator},
     slice::ParallelSliceMut,
@@ -17,11 +18,8 @@ use std::{collections::HashSet, fs::File, path::Path};
 use garmin_connect_lib::garmin_connect_client::GarminConnectHrData;
 use garmin_lib::{
     common::{
-        garmin_config::GarminConfig,
-        garmin_file::GarminFile,
-        garmin_summary::get_list_of_files_from_db,
-        garmin_templates::{PLOT_TEMPLATE, PLOT_TEMPLATE_DEMO, TIMESERIESTEMPLATE},
-        pgpool::PgPool,
+        garmin_config::GarminConfig, garmin_file::GarminFile,
+        garmin_summary::get_list_of_files_from_db, garmin_templates::HBR, pgpool::PgPool,
     },
     utils::{garmin_util::get_f64, iso_8601_datetime},
 };
@@ -255,12 +253,16 @@ impl FitbitHeartRate {
 
         final_values.par_sort();
         let js_str = serde_json::to_string(&final_values).unwrap_or_else(|_| "".to_string());
-        let plots = TIMESERIESTEMPLATE
-            .replace("DATA", &js_str)
-            .replace("EXAMPLETITLE", "Heart Rate")
-            .replace("XAXIS", "Date")
-            .replace("YAXIS", "Heart Rate");
-        let plots = format!("<script>\n{}\n</script>", plots);
+
+        let params = hashmap! {
+            "DATA" => js_str.as_str(),
+            "EXAMPLETITLE" => "Heart Rate",
+            "XAXIS" => "Date",
+            "YAXIS" => "Heart Rate",
+        };
+
+        let plots = HBR.render("TIMESERIESTEMPLATE", &params)?;
+
         let mut buttons: Vec<_> = (0..5)
             .map(|i| {
                 let date = button_date - Duration::days(i);
@@ -324,15 +326,17 @@ impl FitbitHeartRate {
             button_date = next_date,
         ));
         let template = if is_demo {
-            PLOT_TEMPLATE_DEMO
+            "PLOT_TEMPLATE_DEMO"
         } else {
-            PLOT_TEMPLATE
+            "PLOT_TEMPLATE"
         };
-        let body = template
-            .replace("INSERTOTHERIMAGESHERE", &plots)
-            .replace("INSERTTEXTHERE", &buttons.join("\n"))
-            .replace("INSERTOTHERTEXTHERE", "")
-            .into();
+        let buttons = buttons.join("\n");
+        let params = hashmap! {
+            "INSERTOTHERTEXTHERE" => "",
+            "INSERTOTHERIMAGESHERE" => &plots,
+            "INSERTTEXTHERE" => &buttons,
+        };
+        let body = HBR.render(template, &params)?.into();
         Ok(body)
     }
 

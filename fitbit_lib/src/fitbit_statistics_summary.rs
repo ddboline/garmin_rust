@@ -1,14 +1,12 @@
 use anyhow::Error;
 use chrono::{DateTime, Duration, NaiveDate, Utc};
+use maplit::hashmap;
 use postgres_query::FromSqlRow;
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
 use statistical::{mean, median, standard_deviation};
 
-use garmin_lib::common::{
-    garmin_templates::{PLOT_TEMPLATE, PLOT_TEMPLATE_DEMO, TIMESERIESTEMPLATE},
-    pgpool::PgPool,
-};
+use garmin_lib::common::{garmin_templates::HBR, pgpool::PgPool};
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, FromSqlRow)]
 pub struct FitbitStatisticsSummary {
@@ -151,16 +149,17 @@ impl FitbitStatisticsSummary {
         is_demo: bool,
     ) -> Result<StackString, Error> {
         let template = if is_demo {
-            PLOT_TEMPLATE_DEMO
+            "PLOT_TEMPLATE_DEMO"
         } else {
-            PLOT_TEMPLATE
+            "PLOT_TEMPLATE"
         };
         if stats.is_empty() {
-            let body = template
-                .replace("INSERTOTHERIMAGESHERE", "")
-                .replace("INSERTTEXTHERE", "")
-                .replace("INSERTOTHERTEXTHERE", "")
-                .into();
+            let params = hashmap! {
+                "INSERTOTHERIMAGESHERE"=> "",
+                "INSERTTEXTHERE"=> "",
+                "INSERTOTHERTEXTHERE"=> "",
+            };
+            let body = HBR.render(template, &params)?.into();
             return Ok(body);
         }
         let mut graphs = Vec::new();
@@ -174,12 +173,13 @@ impl FitbitStatisticsSummary {
             .collect();
 
         let js_str = serde_json::to_string(&min_heartrate).unwrap_or_else(|_| "".to_string());
-        let plot = TIMESERIESTEMPLATE
-            .replace("DATA", &js_str)
-            .replace("EXAMPLETITLE", "Minimum Heartrate")
-            .replace("XAXIS", "Date")
-            .replace("YAXIS", "Heartrate [bpm]");
-        let plot = format!("<script>\n{}\n</script>", plot);
+        let params = hashmap! {
+            "EXAMPLETITLE" => "Minimum Heartrate",
+            "DATA" => &js_str,
+            "XAXIS" => "Date",
+            "YAXIS" => "Heartrate [bpm]",
+        };
+        let plot = HBR.render("TIMESERIESTEMPLATE", &params)?;
         graphs.push(plot);
 
         let max_heartrate: Vec<_> = stats
@@ -190,12 +190,13 @@ impl FitbitStatisticsSummary {
             })
             .collect();
         let js_str = serde_json::to_string(&max_heartrate).unwrap_or_else(|_| "".to_string());
-        let plot = TIMESERIESTEMPLATE
-            .replace("DATA", &js_str)
-            .replace("EXAMPLETITLE", "Maximum Heartrate")
-            .replace("XAXIS", "Date")
-            .replace("YAXIS", "Heartrate [bpm]");
-        let plot = format!("<script>\n{}\n</script>", plot);
+        let params = hashmap! {
+            "EXAMPLETITLE" => "Maximum Heartrate",
+            "DATA" => &js_str,
+            "XAXIS" => "Date",
+            "YAXIS" => "Heartrate [bpm]",
+        };
+        let plot = HBR.render("TIMESERIESTEMPLATE", &params)?;
         graphs.push(plot);
 
         let mean_heartrate: Vec<_> = stats
@@ -206,12 +207,13 @@ impl FitbitStatisticsSummary {
             })
             .collect();
         let js_str = serde_json::to_string(&mean_heartrate).unwrap_or_else(|_| "".to_string());
-        let plot = TIMESERIESTEMPLATE
-            .replace("DATA", &js_str)
-            .replace("EXAMPLETITLE", "Mean Heartrate")
-            .replace("XAXIS", "Date")
-            .replace("YAXIS", "Heartrate [bpm]");
-        let plot = format!("<script>\n{}\n</script>", plot);
+        let params = hashmap! {
+            "EXAMPLETITLE" => "Mean Heartrate",
+            "DATA" => &js_str,
+            "XAXIS" => "Date",
+            "YAXIS" => "Heartrate [bpm]",
+        };
+        let plot = HBR.render("TIMESERIESTEMPLATE", &params)?;
         graphs.push(plot);
 
         let median_heartrate: Vec<_> = stats
@@ -222,12 +224,13 @@ impl FitbitStatisticsSummary {
             })
             .collect();
         let js_str = serde_json::to_string(&median_heartrate).unwrap_or_else(|_| "".to_string());
-        let plot = TIMESERIESTEMPLATE
-            .replace("DATA", &js_str)
-            .replace("EXAMPLETITLE", "Median Heartrate")
-            .replace("XAXIS", "Date")
-            .replace("YAXIS", "Heartrate [bpm]");
-        let plot = format!("<script>\n{}\n</script>", plot);
+        let params = hashmap! {
+            "EXAMPLETITLE" => "Median Heartrate",
+            "DATA" => &js_str,
+            "XAXIS" => "Date",
+            "YAXIS" => "Heartrate [bpm]",
+        };
+        let plot = HBR.render("TIMESERIESTEMPLATE", &params)?;
         graphs.push(plot);
 
         let n = stats.len();

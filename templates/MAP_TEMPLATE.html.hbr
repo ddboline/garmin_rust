@@ -2,12 +2,12 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-<title>Scale Measurement Plots</title>
+<title>SPORTTITLEDATE</title>
 <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
 <meta charset="utf-8">
 <meta http-equiv="Cache-Control" content="no-store" />
 <style>
-    html, body {
+    html, body, #garmin_text_box {
     height: 80%;
     width: 80%;
     }
@@ -34,6 +34,32 @@ shape-rendering: crispEdges;
 }
 
 </style>
+<script type="text/javascript"
+    src="https://maps.googleapis.com/maps/api/js?key=MAPSAPIKEY">
+</script>
+<script type="text/javascript">
+    function initialize() {
+    let mapOptions = {
+        center: { lat: CENTRALLAT, lng: CENTRALLON},
+        zoom: ZOOMVALUE ,
+        mapTypeId: google.maps.MapTypeId.SATELLITE
+    };
+    let map = new google.maps.Map(document.getElementById('garmin_text_box'),
+        mapOptions);
+    let runningRouteCoordinates = [
+        INSERTMAPSEGMENTSHERE
+        ];
+    let runningRoute = new google.maps.Polyline({
+        path: runningRouteCoordinates,
+        geodesic: true,
+        strokeColor: '#FF0000',
+        strokeOpacity: 1.0,
+        strokeWeight: 2
+    });
+    runningRoute.setMap(map);
+    };
+    google.maps.event.addDomListener(window, 'load', initialize);
+</script>
 </head>
 <body>
 
@@ -69,24 +95,26 @@ shape-rendering: crispEdges;
 <input type="button" name="submitGARMIN" value="Search" onclick="processFormData();"/>
 </form>
 
-HISTORYBUTTONS
-
-<br><br>
-
-<div id="garmin_text_box">
-    INSERTTEXTHERE
-</div>
+{{{HISTORYBUTTONS}}}
 
 <br>
 
+{{{STRAVAUPLOADBUTTON}}}
+
+<br>
+
+<h1><center><b>{{{SPORTTITLELINK}}}</b></center></h1>
+
 <script src="https://d3js.org/d3.v4.min.js"></script>
 
+<div id="garmin_text_box"></div>
+
 <div>
-    INSERTOTHERIMAGESHERE
+    {{{INSERTTABLESHERE}}}
 </div>
 
 <div>
-    INSERTOTHERTEXTHERE
+    {{{INSERTOTHERIMAGESHERE}}}
 </div>
 
 <script language="JavaScript" type="text/javascript">
@@ -110,8 +138,13 @@ HISTORYBUTTONS
         );
         let xmlhttp = new XMLHttpRequest();
         xmlhttp.onload = function() {
-            let win = window.open(xmlhttp.responseText, '_blank');
-            win.focus()
+            let xmlhttp2 = new XMLHttpRequest();
+            xmlhttp2.onload = function() {
+                location.reload()
+            }
+            xmlhttp2.open("GET", xmlhttp.responseText, true);
+            xmlhttp2.send(null);
+            document.getElementById("garminconnectoutput").innerHTML = "syncing";
         }
         xmlhttp.open( "POST", ostr , true );
         xmlhttp.setRequestHeader("Content-Type", "application/json");
@@ -140,6 +173,17 @@ HISTORYBUTTONS
         xmlhttp.open( "POST", ostr , true );
         xmlhttp.setRequestHeader("Content-Type", "application/json");
         xmlhttp.send(data);
+    }
+    function createStravaActivity(filename) {
+        let ostr = '/garmin/strava/create?filename=' + filename;
+        let xmlhttp = new XMLHttpRequest();
+        xmlhttp.onload = function() {
+            document.getElementById("garminconnectoutput").innerHTML = "done";
+            document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
+        }
+        xmlhttp.open("GET", ostr, true);
+        xmlhttp.send(null);
+        document.getElementById("garminconnectoutput").innerHTML = "processing";
     }
     function garmin_sync() {
         let ostr = '/garmin/garmin_sync';
@@ -250,36 +294,6 @@ HISTORYBUTTONS
         let ostr = '/garmin/fitbit/heartrate_statistics_plots';
         location.replace(ostr)
     }
-    function heartrate_plot_date(start_date, end_date) {
-        let ostr = '/garmin/fitbit/heartrate_plots?start_date=' + start_date + "&end_date=" + end_date;
-        location.replace(ostr)
-    }
-    function heartrate_plot_button(start_date, end_date, button_date) {
-        let ostr = '/garmin/fitbit/heartrate_plots?start_date=' + start_date + '&end_date=' + end_date + '&button_date=' + button_date;
-        location.replace(ostr)
-    }
-    function heartrate_sync(date) {
-        let url = '/garmin/fitbit/sync?date=' + date;
-        let xmlhttp = new XMLHttpRequest();
-        xmlhttp.open("GET", url, true);
-        xmlhttp.onload = function nothing() {
-            document.getElementById("garminconnectoutput").innerHTML = "done";
-            heartrate_plot_date(date, date);
-        }
-        xmlhttp.send(null);
-        document.getElementById("garminconnectoutput").innerHTML = "syncing";
-    }
-    function connect_hr_sync(date) {
-        let url = '/garmin/garmin_connect_hr_sync?date=' + date;
-        let xmlhttp = new XMLHttpRequest();
-        xmlhttp.open("GET", url, true);
-        xmlhttp.onload = function nothing() {
-            document.getElementById("garminconnectoutput").innerHTML = "done";
-            heartrate_plot_date(date, date);
-        }
-        xmlhttp.send(null);
-        document.getElementById("garminconnectoutput").innerHTML = "syncing";
-    }
     function heartrateSync() {
         let ostr = '/sync/sync_garmin';
         let xmlhttp = new XMLHttpRequest();
@@ -321,16 +335,16 @@ HISTORYBUTTONS
         let ostr = "/garmin/race_result_plot?race_type=world_record_women"
         location.replace(ostr)
     }
-    function flipRaceResultFlag(id) {
-        let ostr = '/garmin/race_result_flag?id=' + id;
+    function raceResultImport(filename) {
+        let ostr = '/garmin/race_result_import?filename=' + filename;
         let xmlhttp = new XMLHttpRequest();
         xmlhttp.open("GET", ostr, true);
         xmlhttp.onload = function nothing() {
             document.getElementById("garminconnectoutput").innerHTML = "done";
-            document.getElementById("race_flag_" + id).innerHTML = xmlhttp.responseText;
+            document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
         }
         xmlhttp.send(null);
-        document.getElementById("garminconnectoutput").innerHTML = "updating";
+        document.getElementById("garminconnectoutput").innerHTML = "syncing";
     }
     function garminConnectUserSummary() {
         let ostr = "/garmin/garmin_connect_user_summary";

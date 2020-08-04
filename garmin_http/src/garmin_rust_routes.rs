@@ -401,14 +401,11 @@ pub async fn fitbit_sync(
     form_http_response("finished".into())
 }
 
-pub async fn heartrate_statistics_plots(
-    query: Query<ScaleMeasurementRequest>,
-    _: LoggedUser,
+pub async fn heartrate_statistics_plots_impl(
+    query: FitbitStatisticsPlotRequest,
     state: Data<AppState>,
     session: Session,
-) -> Result<HttpResponse, Error> {
-    let query: FitbitStatisticsPlotRequest = query.into_inner().into();
-
+) -> Result<StackString, Error> {
     let history: Vec<StackString> = session
         .get("history")
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
@@ -421,8 +418,31 @@ pub async fn heartrate_statistics_plots(
     };
     let mut params = state.db.handle(query).await?;
     params.insert("HISTORYBUTTONS".into(), generate_history_buttons(&history));
-    let body = HBR.render(template, &params)?;
-    form_http_response(body)
+    Ok(HBR.render(template, &params)?.into())
+}
+
+pub async fn heartrate_statistics_plots(
+    query: Query<ScaleMeasurementRequest>,
+    _: LoggedUser,
+    state: Data<AppState>,
+    session: Session,
+) -> Result<HttpResponse, Error> {
+    let query: FitbitStatisticsPlotRequest = query.into_inner().into();
+
+    let body = heartrate_statistics_plots_impl(query, state, session).await?;
+    form_http_response(body.into())
+}
+
+pub async fn heartrate_statistics_plots_demo(
+    query: Query<ScaleMeasurementRequest>,
+    state: Data<AppState>,
+    session: Session,
+) -> Result<HttpResponse, Error> {
+    let mut query: FitbitStatisticsPlotRequest = query.into_inner().into();
+    query.is_demo = true;
+
+    let body = heartrate_statistics_plots_impl(query, state, session).await?;
+    form_http_response(body.into())
 }
 
 async fn fitbit_plots_impl(

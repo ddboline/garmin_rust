@@ -53,7 +53,7 @@
     <button type="submit" onclick="fitbitSync();">Fitbit Sync</button>
     <br>
     <button type="submit" onclick="scale_measurement_plots(0);">Scale Plots</button>
-    <button type="submit" onclick="heartrate_stat_plot();">Hear Rate Stats</button>
+    <button type="submit" onclick="heartrate_stat_plot(0);">Hear Rate Stats</button>
     <button type="submit" onclick="heartrate_plot();">Hear Rate Plots</button>
     <button type="submit" onclick="race_result_plot_personal();">Race Result Plot</button>
     <button name="garminconnectoutput" id="garminconnectoutput"> &nbsp; </button>
@@ -235,8 +235,8 @@
         let ostr = '/garmin/fitbit/heartrate_plots';
         location.replace(ostr)
     }
-    function heartrate_stat_plot() {
-        let ostr = '/garmin/fitbit/heartrate_statistics_plots';
+    function heartrate_stat_plot(offset) {
+        let ostr = '/garmin/fitbit/heartrate_statistics_plots?offset=' + offset;
         location.replace(ostr)
     }
     function heartrateSync() {

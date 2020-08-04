@@ -39,6 +39,7 @@ shape-rendering: crispEdges;
 
 <H3>
     <button type="submit" onclick="scale_measurement_plots(0);">Scale Plots</button>
+    <button type="submit" onclick="heartrate_stat_plot(0);">Hear Rate Stats</button>
     <button type="submit" onclick="heartrate_plot();">Hear Rate Plot</button>
     <button type="submit" onclick="race_result_plot_personal();">Race Result Plot</button>
     <button name="garminconnectoutput" id="garminconnectoutput"> &nbsp; </button>
@@ -210,6 +211,10 @@ shape-rendering: crispEdges;
     }
     function scale_measurement_plots(offset) {
         let ostr = '/garmin/fitbit/plots_demo?offset=' + offset;
+        location.replace(ostr)
+    }
+    function heartrate_stat_plot(offset) {
+        let ostr = '/garmin/fitbit/heartrate_statistics_plots_demo?offset=' + offset;
         location.replace(ostr)
     }
     function heartrate_plot() {

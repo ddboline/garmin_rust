@@ -527,7 +527,8 @@ impl HandleRequest<FitbitStatisticsPlotRequest> for PgPool {
             self,
         )
         .await?;
-        FitbitStatisticsSummary::get_fitbit_statistics_plots(&stats).map_err(Into::into)
+        FitbitStatisticsSummary::get_fitbit_statistics_plots(&stats, req.request.offset)
+            .map_err(Into::into)
     }
 }
 

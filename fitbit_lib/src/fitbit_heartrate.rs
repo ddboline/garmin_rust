@@ -306,7 +306,7 @@ impl FitbitHeartRate {
             .collect();
         let prev_date = button_date + Duration::days(5);
         let next_date = button_date - Duration::days(5);
-        if prev_date < Local::now().naive_local().date() {
+        if prev_date <= Local::now().naive_local().date() {
             buttons.push(
                 format!(r#"
                         <button type="submit"

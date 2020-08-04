@@ -11,4 +11,5 @@
 #![allow(clippy::similar_names)]
 #![allow(clippy::used_underscore_binding)]
 
+pub mod failure_count;
 pub mod telegram_bot;

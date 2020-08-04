@@ -77,7 +77,7 @@ shape-rendering: crispEdges;
     <button type="submit" onclick="fitbitProfile();">Fitbit Profile</button>
     <button type="submit" onclick="fitbitSync();">Fitbit Sync</button>
     <br>
-    <button type="submit" onclick="scale_measurement_plots();">Scale Plots</button>
+    <button type="submit" onclick="scale_measurement_plots(0);">Scale Plots</button>
     <button type="submit" onclick="heartrate_stat_plot();">Hear Rate Stats</button>
     <button type="submit" onclick="heartrate_plot();">Hear Rate Plots</button>
     <button type="submit" onclick="race_result_plot_personal();">Race Result Plot</button>
@@ -282,8 +282,8 @@ shape-rendering: crispEdges;
         xmlhttp.send(null);
         document.getElementById("garminconnectoutput").innerHTML = "syncing";
     }
-    function scale_measurement_plots() {
-        let ostr = '/garmin/fitbit/plots';
+    function scale_measurement_plots(offset) {
+        let ostr = '/garmin/fitbit/plots?offset=' + offset;
         location.replace(ostr)
     }
     function heartrate_plot() {

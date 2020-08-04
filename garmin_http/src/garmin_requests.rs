@@ -431,6 +431,7 @@ pub struct ScaleMeasurementRequest {
     pub start_date: Option<NaiveDate>,
     pub end_date: Option<NaiveDate>,
     pub button_date: Option<NaiveDate>,
+    pub offset: Option<usize>,
 }
 
 impl ScaleMeasurementRequest {
@@ -448,6 +449,7 @@ impl ScaleMeasurementRequest {
                 Some(d) => Some(d),
                 None => Some(Local::now().naive_local().date()),
             },
+            offset: self.offset,
         }
     }
 }
@@ -513,7 +515,8 @@ impl HandleRequest<ScaleMeasurementPlotRequest> for PgPool {
         let measurements =
             ScaleMeasurement::read_from_db(self, req.request.start_date, req.request.end_date)
                 .await?;
-        ScaleMeasurement::get_scale_measurement_plots(&measurements).map_err(Into::into)
+        ScaleMeasurement::get_scale_measurement_plots(&measurements, req.request.offset)
+            .map_err(Into::into)
     }
 }
 

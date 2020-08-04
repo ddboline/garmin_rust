@@ -152,7 +152,9 @@ impl ScaleMeasurement {
 
     pub fn get_scale_measurement_plots(
         measurements: &[Self],
+        offset: Option<usize>,
     ) -> Result<HashMap<StackString, StackString>, Error> {
+        let offset = offset.unwrap_or(0);
         if measurements.is_empty() {
             return Ok(hashmap! {
                 "INSERTOTHERIMAGESHERE".into() => "".into(),
@@ -257,7 +259,7 @@ impl ScaleMeasurement {
         graphs.push(plot.into());
 
         let n = measurements.len();
-        let entries: Vec<_> = measurements[n - 10..n]
+        let entries: Vec<_> = measurements[(n - 10 - offset)..(n - offset)]
             .iter()
             .map(|meas| {
                 let date = meas.datetime.with_timezone(&Local).date().naive_local();
@@ -279,8 +281,21 @@ impl ScaleMeasurement {
             <tbody>
             <tr>{}</tr>
             </tbody>
-            </table>"#,
-            entries.join("</tr><tr>")
+            </table>
+            <br>{}{}"#,
+            entries.join("</tr><tr>"),
+            if offset >= 10 {
+                format!(
+                    r#"<button type="submit" onclick="scale_measurement_plots({});">Previous</button>"#,
+                    offset - 10
+                )
+            } else {
+                "".to_string()
+            },
+            format!(
+                r#"<button type="submit" onclick="scale_measurement_plots({});">Next</button>"#,
+                offset + 10
+            ),
         );
         let graphs = graphs.join("\n");
 

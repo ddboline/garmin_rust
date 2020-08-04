@@ -481,10 +481,7 @@ async fn heartrate_plots_impl(
         "PLOT_TEMPLATE"
     };
     let mut params = state.db.handle(query).await?;
-    params.insert(
-        "HISTORYBUTTONS".into(),
-        generate_history_buttons(&history),
-    );
+    params.insert("HISTORYBUTTONS".into(), generate_history_buttons(&history));
     let body = HBR.render(template, &params)?;
     form_http_response(body)
 }

@@ -59,7 +59,7 @@ impl GarminCliOpts {
             }
             Self::Connect => GarminCliOptions::Connect,
             Self::Sync { md5sum } => GarminCliOptions::Sync(md5sum),
-            Self::Fitbit {all} => {
+            Self::Fitbit { all } => {
                 let today = Utc::now().naive_local().date();
 
                 let cli = GarminCli::with_config()?;

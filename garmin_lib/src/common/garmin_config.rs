@@ -49,6 +49,8 @@ pub struct GarminConfigInner {
     pub fitbit_bucket: StackString,
     #[serde(default = "default_strava_tokenfile")]
     pub strava_tokenfile: PathBuf,
+    pub strava_email: Option<StackString>,
+    pub strava_password: Option<StackString>,
     pub garmin_connect_email: StackString,
     pub garmin_connect_password: StackString,
     #[serde(default = "default_webdriver_path")]

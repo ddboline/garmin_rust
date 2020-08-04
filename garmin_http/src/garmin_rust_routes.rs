@@ -421,7 +421,7 @@ pub async fn heartrate_statistics_plots(
     };
     let mut params = state.db.handle(query).await?;
     params.insert("HISTORYBUTTONS".into(), generate_history_buttons(&history));
-    let body = HBR.render(template, &params)?.into();
+    let body = HBR.render(template, &params)?;
     form_http_response(body)
 }
 
@@ -441,7 +441,7 @@ async fn fitbit_plots_impl(
     };
     let mut params = state.db.handle(query).await?;
     params.insert("HISTORYBUTTONS".into(), generate_history_buttons(&history));
-    let body = HBR.render(template, &params)?.into();
+    let body = HBR.render(template, &params)?;
     form_http_response(body)
 }
 
@@ -483,9 +483,9 @@ async fn heartrate_plots_impl(
     let mut params = state.db.handle(query).await?;
     params.insert(
         "HISTORYBUTTONS".into(),
-        generate_history_buttons(&history).into(),
+        generate_history_buttons(&history),
     );
-    let body = HBR.render(template, &params)?.into();
+    let body = HBR.render(template, &params)?;
     form_http_response(body)
 }
 

@@ -247,6 +247,7 @@ impl HandleRequest<StravaSyncRequest> for PgPool {
                 .map(|(d, _)| d)
                 .collect();
 
+        #[allow(clippy::filter_map)]
         let futures = new_activities
             .into_iter()
             .filter_map(|activity| {

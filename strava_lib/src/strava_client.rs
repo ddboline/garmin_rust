@@ -195,8 +195,7 @@ impl StravaClient {
             if line.contains("csrf-param") {
                 if let Some(p) = line
                     .split(r#"content=""#)
-                    .skip(1)
-                    .next()
+                    .nth(1)
                     .and_then(|t| t.split('"').next())
                 {
                     param.replace(p);
@@ -205,8 +204,7 @@ impl StravaClient {
             if line.contains("csrf-token") {
                 if let Some(p) = line
                     .split(r#"content=""#)
-                    .skip(1)
-                    .next()
+                    .nth(1)
                     .and_then(|t| t.split('"').next())
                 {
                     token.replace(p);

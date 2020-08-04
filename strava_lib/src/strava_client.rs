@@ -11,8 +11,7 @@ use reqwest::{
 };
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tempfile::Builder;
 use tokio::{
     fs::File,
@@ -672,7 +671,11 @@ mod tests {
         let text = include_str!("../../tests/data/strava_login_page.html");
         let (name, token) = StravaClient::extract_web_csrf(&text)?;
         assert_eq!(name.as_str(), "authenticity_token");
-        assert_eq!(token.as_str(), "1YVkvKYefXvFw1a++rprn9XM1xgT88O6A8UumIH99P4OVYl+wm9GyZp0zBrxNc8hRPqa8wzwJcJ/9YHsQAIZaQ==");
+        assert_eq!(
+            token.as_str(),
+            "1YVkvKYefXvFw1a++rprn9XM1xgT88O6A8UumIH99P4OVYl+wm9GyZp0zBrxNc8hRPqa8wzwJcJ/\
+             9YHsQAIZaQ=="
+        );
         Ok(())
     }
 }

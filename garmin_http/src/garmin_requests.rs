@@ -169,13 +169,15 @@ impl HandleRequest<GarminConnectSyncRequest> for PgPool {
         let new_activities =
             GarminConnectActivity::merge_new_activities(new_activities, self).await?;
 
-        let filenames = session.get_activity_files(&new_activities).await?;
-        if !filenames.is_empty() {
-            gcli.process_filenames(&filenames).await?;
-            gcli.proc_everything().await?;
+        if let Ok(filenames) = session.get_activity_files(&new_activites) {
+            if !filenames.is_empty() {
+                gcli.process_filenames(&filenames).await?;
+                gcli.proc_everything().await?;
+            }
+            Ok(filenames)
+        } else {
+            Ok(Vec::new())
         }
-
-        Ok(filenames)
     }
 }
 
@@ -256,7 +258,12 @@ impl HandleRequest<StravaSyncRequest> for PgPool {
             })
             .map(|activity_id| {
                 let client = client.clone();
-                async move { client.export_original(activity_id as u64).await.map_err(Into::into) }
+                async move {
+                    client
+                        .export_original(activity_id as u64)
+                        .await
+                        .map_err(Into::into)
+                }
             });
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
         let filenames = results?;

@@ -12,10 +12,12 @@ use reqwest::{
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
 use std::path::Path;
+use std::path::PathBuf;
 use tempfile::Builder;
 use tokio::{
     fs::File,
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
+    stream::StreamExt,
     sync::Mutex,
 };
 
@@ -30,7 +32,10 @@ use garmin_lib::{
 
 lazy_static! {
     static ref CSRF_TOKEN: Mutex<Option<StackString>> = Mutex::new(None);
+    static ref WEB_CSRF: Mutex<Option<(StackString, StackString)>> = Mutex::new(None);
 }
+
+const BASE_URL: &str = "https://www.strava.com";
 
 #[derive(Debug, Copy, Clone)]
 pub enum StravaAuthType {
@@ -95,6 +100,126 @@ impl StravaClient {
             }
         }
         Ok(client)
+    }
+
+    pub async fn webauth(&self) -> Result<(), Error> {
+        let login_url: Url = format!("{}/login", BASE_URL).parse()?;
+        let session_url: Url = format!("{}/session", BASE_URL).parse()?;
+        let email = self
+            .config
+            .strava_email
+            .as_ref()
+            .ok_or_else(|| format_err!("No Strava Email"))?;
+        let password = self
+            .config
+            .strava_password
+            .as_ref()
+            .ok_or_else(|| format_err!("No Strava Password"))?;
+
+        let text = self
+            .client
+            .get(login_url)
+            .send()
+            .await?
+            .error_for_status()?
+            .text()
+            .await?;
+        let (param, token) = Self::extract_web_csrf(&text)?;
+        let data = hashmap! {
+            "email" => email.as_str(),
+            "password" => password.as_str(),
+            "remember_me" => "on",
+            param.as_str() => token.as_str(),
+        };
+        self.client.post(session_url).form(&data).send().await?;
+        WEB_CSRF
+            .lock()
+            .await
+            .replace((param.clone(), token.clone()));
+        Ok(())
+    }
+
+    pub async fn export_original(&self, activity_id: u64) -> Result<PathBuf, Error> {
+        if WEB_CSRF.lock().await.is_none() {
+            self.webauth().await?;
+        }
+        let url: Url = format!(
+            "https://www.strava.com/activities/{}/export_original",
+            activity_id
+        )
+        .parse()?;
+        let resp = self.client.get(url).send().await?.error_for_status()?;
+
+        let fname = self
+            .config
+            .home_dir
+            .join("Downloads")
+            .join(activity_id.to_string())
+            .with_extension("fit");
+
+        let mut f = File::create(&fname).await?;
+        let mut stream = resp.bytes_stream();
+        while let Some(item) = stream.next().await {
+            f.write_all(&item?).await?;
+        }
+
+        Ok(fname)
+    }
+
+    pub async fn delete_activity(&self, activity_id: u64) -> Result<(), Error> {
+        if WEB_CSRF.lock().await.is_none() {
+            self.webauth().await?;
+        }
+        let (param, token) = WEB_CSRF
+            .lock()
+            .await
+            .clone()
+            .ok_or_else(|| format_err!("No csrf"))?;
+        let url: Url = format!("{}/activities/{}", BASE_URL, activity_id).parse()?;
+        let data = hashmap! {
+            "_method" => "delete",
+            param.as_str() => token.as_str(),
+        };
+        self.client
+            .post(url)
+            .form(&data)
+            .send()
+            .await?
+            .error_for_status()?;
+        Ok(())
+    }
+
+    fn extract_web_csrf(text: &str) -> Result<(StackString, StackString), Error> {
+        let mut param = None;
+        let mut token = None;
+        for line in text.split('\n') {
+            if line.contains("csrf-param") {
+                if let Some(p) = line
+                    .split(r#"content=""#)
+                    .skip(1)
+                    .next()
+                    .and_then(|t| t.split('"').next())
+                {
+                    param.replace(p);
+                }
+            }
+            if line.contains("csrf-token") {
+                if let Some(p) = line
+                    .split(r#"content=""#)
+                    .skip(1)
+                    .next()
+                    .and_then(|t| t.split('"').next())
+                {
+                    token.replace(p);
+                }
+            }
+            if let Some(param) = param {
+                if let Some(token) = token {
+                    return Ok((param.into(), token.into()));
+                }
+            }
+        }
+        Err(format_err!("No csrf token"))
     }
 
     pub async fn to_file(&self) -> Result<(), Error> {
@@ -529,6 +654,25 @@ mod tests {
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
         results?;
         assert_eq!(new_activities.len(), 0);
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_webauth() -> Result<(), Error> {
+        let config = GarminConfig::get_config(None)?;
+        let client = StravaClient::with_auth(config).await?;
+        client.webauth().await?;
+        client.export_original(3862793062).await?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_extract_web_csrf() -> Result<(), Error> {
+        let text = include_str!("../../tests/data/strava_login_page.html");
+        let (name, token) = StravaClient::extract_web_csrf(&text)?;
+        assert_eq!(name.as_str(), "authenticity_token");
+        assert_eq!(token.as_str(), "1YVkvKYefXvFw1a++rprn9XM1xgT88O6A8UumIH99P4OVYl+wm9GyZp0zBrxNc8hRPqa8wzwJcJ/9YHsQAIZaQ==");
         Ok(())
     }
 }

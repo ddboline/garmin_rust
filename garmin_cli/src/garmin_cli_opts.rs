@@ -1,15 +1,21 @@
 use anyhow::Error;
 use chrono::{Duration, Utc};
+use futures::future::try_join_all;
 use stack_string::StackString;
-use std::path::PathBuf;
+use std::{collections::HashSet, path::PathBuf, sync::Arc};
 use structopt::StructOpt;
 use tokio::try_join;
 
 use fitbit_lib::{fitbit_client::FitbitClient, fitbit_heartrate::FitbitHeartRate};
-use garmin_connect_lib::garmin_connect_client::get_garmin_connect_session;
+use garmin_connect_lib::garmin_connect_proxy::GarminConnectProxy;
 use garmin_lib::common::{
-    garmin_config::GarminConfig, garmin_summary::get_maximum_begin_datetime, pgpool::PgPool,
+    garmin_config::GarminConfig,
+    garmin_connect_activity::GarminConnectActivity,
+    garmin_summary::{get_list_of_activities_from_db, get_maximum_begin_datetime},
+    pgpool::PgPool,
+    strava_activity::StravaActivity,
 };
+use strava_lib::strava_client::StravaClient;
 
 use crate::garmin_cli::{GarminCli, GarminCliOptions};
 
@@ -132,15 +138,76 @@ impl GarminCliOpts {
 
     pub async fn sync_with_garmin_connect(cli: &GarminCli) -> Result<Vec<PathBuf>, Error> {
         if let Some(max_datetime) = get_maximum_begin_datetime(&cli.pool).await? {
-            let session = get_garmin_connect_session(&cli.config).await?;
+            // let session = get_garmin_connect_session(&cli.config).await?;
+            let mut session = GarminConnectProxy::default();
+            session.init(cli.config.clone()).await?;
+
             let activities = session.get_activities(max_datetime).await?;
-            let filenames = session.get_activity_files(&activities).await?;
+
+            let activities =
+                GarminConnectActivity::merge_new_activities(activities, &cli.pool).await?;
+
             session
                 .get_heartrate((Utc::now()).naive_local().date())
                 .await?;
-            cli.process_filenames(&filenames).await?;
-            return Ok(filenames);
+
+            if let Ok(filenames) = session.get_activity_files(&activities).await {
+                if !filenames.is_empty() {
+                    cli.process_filenames(&filenames).await?;
+                    cli.proc_everything().await?;
+                }
+                return Ok(filenames);
+            }
         }
         Ok(Vec::new())
+    }
+
+    pub async fn sync_with_strava(cli: &GarminCli) -> Result<Vec<PathBuf>, Error> {
+        let config = cli.config.clone();
+        let pool = PgPool::new(&config.pgurl);
+        let max_datetime = Utc::now() - Duration::days(15);
+
+        let client = Arc::new(StravaClient::with_auth(config).await?);
+        let new_activities: Vec<_> = client
+            .get_all_strava_activites(Some(max_datetime), None)
+            .await?;
+
+        StravaActivity::upsert_activities(&new_activities, &pool).await?;
+
+        let old_activities: HashSet<_> =
+            get_list_of_activities_from_db(&format!("begin_datetime >= '{}'", max_datetime), &pool)
+                .await?
+                .into_iter()
+                .map(|(d, _)| d)
+                .collect();
+
+        #[allow(clippy::filter_map)]
+        let futures = new_activities
+            .into_iter()
+            .filter_map(|activity| {
+                if old_activities.contains(&activity.start_date) {
+                    None
+                } else {
+                    Some(activity.id)
+                }
+            })
+            .map(|activity_id| {
+                let client = client.clone();
+                async move {
+                    client
+                        .export_original(activity_id as u64)
+                        .await
+                        .map_err(Into::into)
+                }
+            });
+        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+        let filenames = results?;
+
+        if !filenames.is_empty() {
+            cli.process_filenames(&filenames).await?;
+            cli.proc_everything().await?;
+        }
+
+        Ok(filenames)
     }
 }

@@ -10,6 +10,7 @@ edition = "2018"
 structopt = "0.3"
 garmin_lib = {path="../garmin_lib"}
 fitbit_lib = {path="../fitbit_lib"}
+strava_lib = {path="../strava_lib"}
 garmin_connect_lib = {path="../garmin_connect_lib"}
 garmin_reports = {path="../garmin_reports"}
 chrono = "0.4"

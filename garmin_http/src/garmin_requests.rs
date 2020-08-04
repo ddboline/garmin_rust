@@ -169,7 +169,7 @@ impl HandleRequest<GarminConnectSyncRequest> for PgPool {
         let new_activities =
             GarminConnectActivity::merge_new_activities(new_activities, self).await?;
 
-        if let Ok(filenames) = session.get_activity_files(&new_activites) {
+        if let Ok(filenames) = session.get_activity_files(&new_activities) {
             if !filenames.is_empty() {
                 gcli.process_filenames(&filenames).await?;
                 gcli.proc_everything().await?;

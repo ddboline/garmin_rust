@@ -33,7 +33,10 @@ pub enum GarminCliOpts {
         md5sum: bool,
     },
     #[structopt(alias = "fit")]
-    Fitbit,
+    Fitbit {
+        #[structopt(short, long)]
+        all: bool,
+    },
 }
 
 impl GarminCliOpts {
@@ -56,7 +59,7 @@ impl GarminCliOpts {
             }
             Self::Connect => GarminCliOptions::Connect,
             Self::Sync { md5sum } => GarminCliOptions::Sync(md5sum),
-            Self::Fitbit => {
+            Self::Fitbit {all} => {
                 let today = Utc::now().naive_local().date();
 
                 let cli = GarminCli::with_config()?;
@@ -71,6 +74,10 @@ impl GarminCliOpts {
                 cli.stdout.send(format!("{:?}", updates).into())?;
                 cli.stdout.close().await?;
                 FitbitHeartRate::calculate_summary_statistics(&client.config, &pool, today).await?;
+
+                if all {
+                    FitbitHeartRate::get_all_summary_statistics(&client.config, &pool).await?;
+                }
                 return stdout_task.await?;
             }
         };

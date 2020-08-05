@@ -399,7 +399,7 @@ pub async fn fitbit_sync(
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
     let heartrates = state.db.handle(query).await?;
-    form_http_response(FitbitHeartRate::to_table(&heartrates).into())
+    form_http_response(FitbitHeartRate::create_table(&heartrates).into())
 }
 
 pub async fn heartrate_statistics_plots_impl(

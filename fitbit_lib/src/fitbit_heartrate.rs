@@ -83,7 +83,7 @@ where
 }
 
 impl FitbitHeartRate {
-    pub fn to_table(heartrate_values: &[Self]) -> StackString {
+    pub fn create_table(heartrate_values: &[Self]) -> StackString {
         let rows: Vec<_> = heartrate_values
             .iter()
             .map(|entry| {

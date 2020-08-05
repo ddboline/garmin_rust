@@ -228,6 +228,7 @@ shape-rendering: crispEdges;
     function heartrate_plot_button(start_date, end_date, button_date) {
         let ostr = '/garmin/fitbit/heartrate_plots_demo?start_date=' + start_date + '&end_date=' + end_date + 
             '&button_date=' + button_date;
+        location.replace(ostr)
     }
     function heartrate_sync(date) {
         let url = '/garmin/fitbit/sync?date=' + date;

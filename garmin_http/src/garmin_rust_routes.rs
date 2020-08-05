@@ -13,18 +13,14 @@ use serde::{Deserialize, Serialize};
 use stack_string::StackString;
 use std::string::ToString;
 use tempdir::TempDir;
-use tokio::{fs::File, io::AsyncWriteExt, stream::StreamExt, task::spawn_blocking};
+use tokio::{fs::File, io::AsyncWriteExt, stream::StreamExt};
 
 use fitbit_lib::fitbit_heartrate::FitbitHeartRate;
 use garmin_cli::garmin_cli::{GarminCli, GarminRequest};
 use garmin_lib::{
-    common::{garmin_file::GarminFile, garmin_templates::HBR},
-    parsers::garmin_parse::{GarminParse, GarminParseTrait},
-    utils::iso_8601_datetime::convert_datetime_to_str,
+    common::garmin_templates::HBR, utils::iso_8601_datetime::convert_datetime_to_str,
 };
-use garmin_reports::{
-    garmin_file_report_html::generate_history_buttons, garmin_file_report_txt::get_splits,
-};
+use garmin_reports::garmin_file_report_html::generate_history_buttons;
 
 use super::{errors::ServiceError as Error, logged_user::LoggedUser};
 
@@ -39,13 +35,12 @@ use crate::{
         FitbitTcxSyncRequest, GarminConnectActivitiesDBRequest,
         GarminConnectActivitiesDBUpdateRequest, GarminConnectActivitiesRequest,
         GarminConnectHrApiRequest, GarminConnectHrSyncRequest, GarminConnectSyncRequest,
-        GarminConnectUserSummaryRequest, GarminCorrRequest, GarminHtmlRequest, GarminListRequest,
-        GarminSyncRequest, GarminUploadRequest, HandleRequest, RaceResultFlagRequest,
-        RaceResultImportRequest, RaceResultPlotRequest, ScaleMeasurementPlotRequest,
-        ScaleMeasurementRequest, ScaleMeasurementUpdateRequest, StravaActiviesDBUpdateRequest,
-        StravaActivitiesDBRequest, StravaActivitiesRequest, StravaAthleteRequest,
-        StravaAuthRequest, StravaCallbackRequest, StravaCreateRequest, StravaRefreshRequest,
-        StravaSyncRequest, StravaUpdateRequest, StravaUploadRequest,
+        GarminConnectUserSummaryRequest, GarminHtmlRequest, GarminSyncRequest, GarminUploadRequest,
+        HandleRequest, RaceResultFlagRequest, RaceResultImportRequest, RaceResultPlotRequest,
+        ScaleMeasurementPlotRequest, ScaleMeasurementRequest, ScaleMeasurementUpdateRequest,
+        StravaActiviesDBUpdateRequest, StravaActivitiesDBRequest, StravaActivitiesRequest,
+        StravaAthleteRequest, StravaAuthRequest, StravaCallbackRequest, StravaCreateRequest,
+        StravaRefreshRequest, StravaSyncRequest, StravaUpdateRequest, StravaUploadRequest,
     },
     CONFIG,
 };
@@ -141,7 +136,7 @@ pub async fn garmin_demo(
     form_http_response(body.into())
 }
 
-async fn save_file(file_path: &str, mut field: Field) -> Result<(), Error> {
+async fn save_file(file_path: &str, field: &mut Field) -> Result<(), Error> {
     let mut file = File::create(file_path).await?;
 
     while let Some(chunk) = field.next().await {
@@ -167,8 +162,8 @@ pub async fn garmin_upload(
     );
 
     while let Some(item) = multipart.next().await {
-        let field = item?;
-        save_file(&fname, field).await?;
+        let mut field = item?;
+        save_file(&fname, &mut field).await?;
     }
 
     let datetimes = state
@@ -495,7 +490,6 @@ async fn heartrate_plots_impl(
         .get("history")
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
         .unwrap_or_else(Vec::new);
-
     let template = if query.is_demo {
         "PLOT_TEMPLATE_DEMO"
     } else {
@@ -566,84 +560,9 @@ pub struct TimeValue {
     pub value: f64,
 }
 
-pub async fn garmin_list_gps_tracks(
-    query: Query<FilterRequest>,
-    _: LoggedUser,
-    state: Data<AppState>,
-    session: Session,
-) -> Result<HttpResponse, Error> {
-    let query = query.into_inner();
-    let history: Vec<StackString> = session
-        .get("history")
-        .map_err(|e| format_err!("Failed to set history {:?}", e))?
-        .unwrap_or_else(Vec::new);
-
-    let greq: GarminListRequest = proc_pattern_wrapper(query, &history, false).into();
-    let gps_list: Vec<_> = state
-        .db
-        .handle(greq)
-        .await?
-        .into_iter()
-        .map(Into::into)
-        .collect();
-    let glist = GpsList { gps_list };
-    to_json(glist)
-}
-
 #[derive(Serialize)]
 pub struct HrData {
     pub hr_data: Vec<TimeValue>,
-}
-
-pub async fn garmin_get_hr_data(
-    query: Query<FilterRequest>,
-    _: LoggedUser,
-    state: Data<AppState>,
-    session: Session,
-) -> Result<HttpResponse, Error> {
-    let query = query.into_inner();
-    let history: Vec<StackString> = session
-        .get("history")
-        .map_err(|e| format_err!("Failed to set history {:?}", e))?
-        .unwrap_or_else(Vec::new);
-
-    let greq: GarminListRequest = proc_pattern_wrapper(query, &history, false).into();
-
-    let s = state.clone();
-    let file_list = s.db.handle(greq).await?;
-
-    let hr_data = match file_list.len() {
-        1 => {
-            let config = &CONFIG;
-            let file_name = &file_list[0];
-            let avro_file = config.cache_dir.join(&format!("{}.avro", file_name));
-            let a = avro_file.clone();
-
-            if let Ok(g) = spawn_blocking(move || GarminFile::read_avro(&a)).await? {
-                g
-            } else {
-                let gps_file = config.gps_dir.join(file_name.as_str());
-                let corr_map = state.db.handle(GarminCorrRequest {}).await?;
-                let gfile =
-                    spawn_blocking(move || GarminParse::new().with_file(&gps_file, &corr_map))
-                        .await??;
-                spawn_blocking(move || gfile.dump_avro(&avro_file).map(|_| gfile)).await??
-            }
-            .points
-            .iter()
-            .filter_map(|point| match point.heart_rate {
-                Some(heart_rate) => Some(TimeValue {
-                    time: convert_datetime_to_str(point.time).into(),
-                    value: heart_rate,
-                }),
-                None => None,
-            })
-            .collect()
-        }
-        _ => Vec::new(),
-    };
-    let hdata = HrData { hr_data };
-    to_json(hdata)
 }
 
 #[derive(Serialize)]
@@ -655,66 +574,6 @@ pub struct HrPace {
 #[derive(Serialize)]
 pub struct HrPaceList {
     pub hr_pace: Vec<HrPace>,
-}
-
-pub async fn garmin_get_hr_pace(
-    query: Query<FilterRequest>,
-    _: LoggedUser,
-    state: Data<AppState>,
-    session: Session,
-) -> Result<HttpResponse, Error> {
-    let query = query.into_inner();
-    let history: Vec<StackString> = session
-        .get("history")
-        .map_err(|e| format_err!("Failed to set history {:?}", e))?
-        .unwrap_or_else(Vec::new);
-
-    let greq: GarminListRequest = proc_pattern_wrapper(query, &history, false).into();
-
-    let s = state.clone();
-    let file_list = s.db.handle(greq).await?;
-
-    let hrpace = match file_list.len() {
-        1 => {
-            let config = &CONFIG;
-            let file_name = &file_list[0];
-            let avro_file = config.cache_dir.join(&format!("{}.avro", file_name));
-
-            let gfile = if let Ok(g) =
-                spawn_blocking(move || GarminFile::read_avro(&avro_file)).await?
-            {
-                g
-            } else {
-                let gps_file = config.gps_dir.join(file_name.as_str());
-
-                let corr_map = state.db.handle(GarminCorrRequest {}).await?;
-
-                spawn_blocking(move || GarminParse::new().with_file(&gps_file, &corr_map)).await??
-            };
-
-            let splits = get_splits(&gfile, 400., "mi", true)?;
-
-            HrPaceList {
-                hr_pace: splits
-                    .iter()
-                    .filter_map(|v| {
-                        let s = v.time_value;
-                        let h = v.avg_heart_rate.unwrap_or(0.0);
-                        let pace = 4. * s / 60.;
-                        if pace >= 5.5 && pace <= 20. {
-                            Some(HrPace { hr: h, pace })
-                        } else {
-                            None
-                        }
-                    })
-                    .collect(),
-            }
-        }
-        _ => HrPaceList {
-            hr_pace: Vec::new(),
-        },
-    };
-    to_json(hrpace)
 }
 
 pub async fn user(user: LoggedUser) -> Result<HttpResponse, Error> {

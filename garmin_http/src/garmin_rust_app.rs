@@ -21,13 +21,13 @@ use crate::{
         fitbit_plots, fitbit_plots_demo, fitbit_profile, fitbit_refresh, fitbit_sync,
         fitbit_tcx_sync, garmin, garmin_connect_activities, garmin_connect_activities_db,
         garmin_connect_activities_db_update, garmin_connect_hr_api, garmin_connect_hr_sync,
-        garmin_connect_sync, garmin_connect_user_summary, garmin_demo, garmin_get_hr_data,
-        garmin_get_hr_pace, garmin_list_gps_tracks, garmin_sync, garmin_upload, heartrate_plots,
-        heartrate_plots_demo, heartrate_statistics_plots, heartrate_statistics_plots_demo,
-        race_result_flag, race_result_import, race_result_plot, race_result_plot_demo,
-        scale_measurement, scale_measurement_update, strava_activities, strava_activities_db,
-        strava_activities_db_update, strava_athlete, strava_auth, strava_callback, strava_create,
-        strava_refresh, strava_sync, strava_update, strava_upload, user,
+        garmin_connect_sync, garmin_connect_user_summary, garmin_demo, garmin_sync, garmin_upload,
+        heartrate_plots, heartrate_plots_demo, heartrate_statistics_plots,
+        heartrate_statistics_plots_demo, race_result_flag, race_result_import, race_result_plot,
+        race_result_plot_demo, scale_measurement, scale_measurement_update, strava_activities,
+        strava_activities_db, strava_activities_db_update, strava_athlete, strava_auth,
+        strava_callback, strava_create, strava_refresh, strava_sync, strava_update, strava_upload,
+        user,
     },
     CONFIG,
 };
@@ -45,9 +45,8 @@ pub struct AppState {
 /// more information. `PgPool` is a wrapper around a connection pool.
 /// We create several routes:
 ///    `/garmin` is the main route, providing the same functionality as the CLI
-/// interface, while adding the ability of upload to strava.    `/garmin/
-/// list_gps_tracks`, `/garmin/get_hr_data` and `/garmin/get_hr_pace` return
-/// structured json intended for separate analysis
+/// interface, while adding the ability of upload to strava, and
+/// `/garmin/get_hr_pace` return structured json intended for separate analysis
 pub async fn start_app() {
     async fn update_db(pool: PgPool) {
         let mut i = interval(time::Duration::from_secs(60));
@@ -91,12 +90,6 @@ pub async fn start_app() {
                 web::resource("/garmin/add_garmin_correction")
                     .route(web::post().to(add_garmin_correction)),
             )
-            .service(
-                web::resource("/garmin/list_gps_tracks")
-                    .route(web::get().to(garmin_list_gps_tracks)),
-            )
-            .service(web::resource("/garmin/get_hr_data").route(web::get().to(garmin_get_hr_data)))
-            .service(web::resource("/garmin/get_hr_pace").route(web::get().to(garmin_get_hr_pace)))
             .service(
                 web::resource("/garmin/garmin_connect_sync")
                     .route(web::get().to(garmin_connect_sync)),

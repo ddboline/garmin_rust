@@ -19,7 +19,7 @@ use std::{
     path::Path,
 };
 
-use garmin_connect_lib::garmin_connect_client::GarminConnectHrData;
+use garmin_connect_lib::garmin_connect_hr_data::GarminConnectHrData;
 use garmin_lib::{
     common::{
         garmin_config::GarminConfig, garmin_file::GarminFile,
@@ -83,6 +83,25 @@ where
 }
 
 impl FitbitHeartRate {
+    pub fn to_table(heartrate_values: &[Self]) -> StackString {
+        let rows: Vec<_> = heartrate_values
+            .iter()
+            .map(|entry| {
+                format!(
+                    "<tr><td>{datetime}</td><td>{heartrate}</td></tr>",
+                    datetime = entry.datetime,
+                    heartrate = entry.value
+                )
+            })
+            .collect();
+        format!(
+            "<table border=1><thead><th>Datetime</th><th>Heart \
+             Rate</th></thead><tbody>{}</tbody></table>",
+            rows.join("\n")
+        )
+        .into()
+    }
+
     pub fn from_json_heartrate_entry(entry: JsonHeartRateEntry) -> Self {
         Self {
             datetime: entry.datetime,
@@ -414,16 +433,9 @@ impl FitbitHeartRate {
         if let Some(hr_vals) = hr_data.heartrate_values.as_ref() {
             hr_vals
                 .iter()
-                .filter_map(|(timestamp_ms, hr_val_opt)| {
+                .filter_map(|(timestamp, hr_val_opt)| {
                     hr_val_opt.map(|value| {
-                        let timestamp: i64 = timestamp_ms / 1000;
-                        let datetime = DateTime::<Utc>::from_utc(
-                            NaiveDateTime::from_timestamp(
-                                timestamp,
-                                ((timestamp_ms - timestamp * 1000) * 1_000_000) as u32,
-                            ),
-                            Utc,
-                        );
+                        let datetime = (*timestamp).into();
                         Self { datetime, value }
                     })
                 })

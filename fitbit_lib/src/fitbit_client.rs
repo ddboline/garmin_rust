@@ -22,7 +22,7 @@ use tokio::{
     time::{delay_for, Duration},
 };
 
-use garmin_connect_lib::garmin_connect_client::GarminConnectHrData;
+use garmin_connect_lib::garmin_connect_hr_data::GarminConnectHrData;
 
 use garmin_lib::common::{
     fitbit_activity::FitbitActivity,
@@ -358,10 +358,17 @@ impl FitbitClient {
         Ok(hr_values)
     }
 
-    pub async fn import_fitbit_heartrate(&self, date: NaiveDate) -> Result<(), Error> {
+    pub async fn import_fitbit_heartrate(
+        &self,
+        date: NaiveDate,
+    ) -> Result<Vec<FitbitHeartRate>, Error> {
         let heartrates = self.get_fitbit_intraday_time_series_heartrate(date).await?;
         let config = self.config.clone();
-        spawn_blocking(move || FitbitHeartRate::merge_slice_to_avro(&config, &heartrates)).await?
+        spawn_blocking(move || {
+            FitbitHeartRate::merge_slice_to_avro(&config, &heartrates)?;
+            Ok(heartrates)
+        })
+        .await?
     }
 
     pub async fn import_garmin_connect_heartrate(

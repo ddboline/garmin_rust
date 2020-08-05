@@ -11,7 +11,9 @@
 #![allow(clippy::used_underscore_binding)]
 
 pub mod garmin_connect_client;
+pub mod garmin_connect_hr_data;
 pub mod garmin_connect_proxy;
+pub mod garmin_connect_timestamp;
 pub mod reqwest_session;
 
 #[cfg(test)]

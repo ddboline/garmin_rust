@@ -20,7 +20,7 @@ use garmin_lib::common::{
     garmin_config::GarminConfig, garmin_connect_activity::GarminConnectActivity,
 };
 
-use super::reqwest_session::ReqwestSession;
+use super::{garmin_connect_hr_data::GarminConnectHrData, reqwest_session::ReqwestSession};
 
 const SSO_URL: &str = "https://sso.garmin.com/sso";
 const MODERN_URL: &str = "https://connect.garmin.com/modern";
@@ -33,12 +33,6 @@ const CONNECT_SESSION_TIMEOUT: i64 = 3600;
 lazy_static! {
     static ref CONNECT_SESSION: Mutex<GarminConnectClient> =
         Mutex::new(GarminConnectClient::default());
-}
-
-#[derive(Deserialize)]
-pub struct GarminConnectHrData {
-    #[serde(rename = "heartRateValues")]
-    pub heartrate_values: Option<Vec<(i64, Option<i32>)>>,
 }
 
 #[derive(Clone)]

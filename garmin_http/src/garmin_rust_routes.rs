@@ -15,6 +15,7 @@ use std::string::ToString;
 use tempdir::TempDir;
 use tokio::{fs::File, io::AsyncWriteExt, stream::StreamExt, task::spawn_blocking};
 
+use fitbit_lib::fitbit_heartrate::FitbitHeartRate;
 use garmin_cli::garmin_cli::{GarminCli, GarminRequest};
 use garmin_lib::{
     common::{garmin_file::GarminFile, garmin_templates::HBR},
@@ -207,8 +208,8 @@ pub async fn garmin_connect_hr_sync(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
-    state.db.handle(query).await?;
-    form_http_response("".to_string())
+    let heartrates = state.db.handle(query).await?;
+    form_http_response(heartrates.to_table().into())
 }
 
 pub async fn garmin_connect_hr_api(
@@ -397,8 +398,8 @@ pub async fn fitbit_sync(
     state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
-    state.db.handle(query).await?;
-    form_http_response("finished".into())
+    let heartrates = state.db.handle(query).await?;
+    form_http_response(FitbitHeartRate::to_table(&heartrates).into())
 }
 
 pub async fn heartrate_statistics_plots_impl(

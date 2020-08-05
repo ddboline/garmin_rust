@@ -15,8 +15,9 @@ use garmin_lib::common::{
     garmin_config::GarminConfig, garmin_connect_activity::GarminConnectActivity,
 };
 
-use super::garmin_connect_client::{
-    GarminConnectClient, GarminConnectHrData, GarminConnectUserDailySummary,
+use super::{
+    garmin_connect_client::{GarminConnectClient, GarminConnectUserDailySummary},
+    garmin_connect_hr_data::GarminConnectHrData,
 };
 
 const MODERN_URL: &str = "https://connect.garmin.com/modern";

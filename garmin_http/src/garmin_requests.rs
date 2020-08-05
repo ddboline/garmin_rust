@@ -22,7 +22,8 @@ use fitbit_lib::{
 };
 use garmin_cli::garmin_cli::{GarminCli, GarminRequest};
 use garmin_connect_lib::{
-    garmin_connect_client::GarminConnectUserDailySummary, garmin_connect_proxy::GarminConnectProxy,
+    garmin_connect_client::GarminConnectUserDailySummary,
+    garmin_connect_hr_data::GarminConnectHrData, garmin_connect_proxy::GarminConnectProxy,
 };
 use garmin_lib::{
     common::{
@@ -188,7 +189,7 @@ pub struct GarminConnectHrSyncRequest {
 
 #[async_trait]
 impl HandleRequest<GarminConnectHrSyncRequest> for PgPool {
-    type Result = Result<(), Error>;
+    type Result = Result<GarminConnectHrData, Error>;
     async fn handle(&self, req: GarminConnectHrSyncRequest) -> Self::Result {
         // let session = get_garmin_connect_session(&CONFIG).await?;
         let mut session = CONNECT_PROXY.lock().await;
@@ -197,10 +198,8 @@ impl HandleRequest<GarminConnectHrSyncRequest> for PgPool {
         let heartrate_data = session.get_heartrate(req.date).await?;
         FitbitClient::import_garmin_connect_heartrate(CONFIG.clone(), &heartrate_data).await?;
         let config = CONFIG.clone();
-        FitbitHeartRate::calculate_summary_statistics(&config, &self, req.date)
-            .await
-            .map_err(Into::into)
-            .map(|_| ())
+        FitbitHeartRate::calculate_summary_statistics(&config, &self, req.date).await?;
+        Ok(heartrate_data)
     }
 }
 
@@ -404,15 +403,13 @@ pub struct FitbitSyncRequest {
 
 #[async_trait]
 impl HandleRequest<FitbitSyncRequest> for PgPool {
-    type Result = Result<(), Error>;
+    type Result = Result<Vec<FitbitHeartRate>, Error>;
     async fn handle(&self, msg: FitbitSyncRequest) -> Self::Result {
         let config = CONFIG.clone();
         let client = FitbitClient::with_auth(config).await?;
-        client.import_fitbit_heartrate(msg.date).await?;
-        FitbitHeartRate::calculate_summary_statistics(&client.config, &self, msg.date)
-            .await
-            .map_err(Into::into)
-            .map(|_| ())
+        let heartrates = client.import_fitbit_heartrate(msg.date).await?;
+        FitbitHeartRate::calculate_summary_statistics(&client.config, &self, msg.date).await?;
+        Ok(heartrates)
     }
 }
 

@@ -81,11 +81,11 @@ shape-rendering: crispEdges;
 
 <script src="https://d3js.org/d3.v4.min.js"></script>
 
-<div>
+<div id="garmin_image_box">
     {{{INSERTOTHERIMAGESHERE}}}
 </div>
 
-<div>
+<div id="garmin_other_text_box">
     {{{INSERTOTHERTEXTHERE}}}
 </div>
 
@@ -264,7 +264,7 @@ shape-rendering: crispEdges;
         xmlhttp.open("GET", url, true);
         xmlhttp.onload = function nothing() {
             document.getElementById("garminconnectoutput").innerHTML = "done";
-            heartrate_plot_date(date, date);
+            document.getElementById("garmin_other_text_box").innerHTML = xmlhttp.responseText;
         }
         xmlhttp.send(null);
         document.getElementById("garminconnectoutput").innerHTML = "syncing";
@@ -275,7 +275,7 @@ shape-rendering: crispEdges;
         xmlhttp.open("GET", url, true);
         xmlhttp.onload = function nothing() {
             document.getElementById("garminconnectoutput").innerHTML = "done";
-            heartrate_plot_date(date, date);
+            document.getElementById("garmin_other_text_box").innerHTML = xmlhttp.responseText;
         }
         xmlhttp.send(null);
         document.getElementById("garminconnectoutput").innerHTML = "syncing";

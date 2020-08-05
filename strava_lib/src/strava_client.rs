@@ -1,6 +1,7 @@
 use anyhow::{format_err, Error};
 use base64::{encode_config, URL_SAFE_NO_PAD};
 use chrono::{DateTime, Utc};
+use futures::future::try_join_all;
 use lazy_static::lazy_static;
 use maplit::hashmap;
 use rand::{thread_rng, Rng};
@@ -11,6 +12,7 @@ use reqwest::{
 };
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use tempfile::Builder;
 use tokio::{
@@ -21,6 +23,8 @@ use tokio::{
 };
 
 use garmin_lib::{
+    common::garmin_summary::get_list_of_activities_from_db,
+    common::pgpool::PgPool,
     common::{garmin_config::GarminConfig, strava_activity::StravaActivity},
     utils::{
         garmin_util::gzip_file,
@@ -138,7 +142,7 @@ impl StravaClient {
         Ok(())
     }
 
-    pub async fn export_original(&self, activity_id: u64) -> Result<PathBuf, Error> {
+    async fn export_original(&self, activity_id: u64) -> Result<PathBuf, Error> {
         if WEB_CSRF.lock().await.is_none() {
             self.webauth().await?;
         }
@@ -548,6 +552,40 @@ impl StravaClient {
             .error_for_status()?;
         let url = format!("https://{}/garmin/strava_sync", self.config.domain).into();
         Ok(url)
+    }
+
+    pub async fn sync_with_client(
+        &self,
+        max_datetime: DateTime<Utc>,
+        pool: &PgPool,
+    ) -> Result<Vec<PathBuf>, Error> {
+        let new_activities: Vec<_> = self.get_all_strava_activites(None, None).await?;
+
+        StravaActivity::upsert_activities(&new_activities, &pool).await?;
+
+        let old_activities: HashSet<_> =
+            get_list_of_activities_from_db(&format!("begin_datetime >= '{}'", max_datetime), &pool)
+                .await?
+                .into_iter()
+                .map(|(d, _)| d)
+                .collect();
+
+        #[allow(clippy::filter_map)]
+        let futures = new_activities
+            .into_iter()
+            .filter_map(|activity| {
+                if old_activities.contains(&activity.start_date) {
+                    None
+                } else {
+                    Some(activity.id)
+                }
+            })
+            .map(|activity_id| async move {
+                self.export_original(activity_id as u64)
+                    .await
+                    .map_err(Into::into)
+            });
+        try_join_all(futures).await
     }
 }
 

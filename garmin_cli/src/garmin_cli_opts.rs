@@ -1,19 +1,15 @@
 use anyhow::Error;
 use chrono::{Duration, Utc};
-use futures::future::try_join_all;
 use stack_string::StackString;
-use std::{collections::HashSet, path::PathBuf, sync::Arc};
+use std::path::PathBuf;
 use structopt::StructOpt;
 use tokio::try_join;
 
 use fitbit_lib::{fitbit_client::FitbitClient, fitbit_heartrate::FitbitHeartRate};
 use garmin_connect_lib::garmin_connect_client::GarminConnectClient;
 use garmin_lib::common::{
-    garmin_config::GarminConfig,
-    garmin_connect_activity::GarminConnectActivity,
-    garmin_summary::{get_list_of_activities_from_db, get_maximum_begin_datetime},
-    pgpool::PgPool,
-    strava_activity::StravaActivity,
+    garmin_config::GarminConfig, garmin_connect_activity::GarminConnectActivity,
+    garmin_summary::get_maximum_begin_datetime, pgpool::PgPool,
 };
 use strava_lib::strava_client::StravaClient;
 
@@ -99,16 +95,8 @@ impl GarminCliOpts {
             let config = cli.config.clone();
             let client = FitbitClient::with_auth(config.clone()).await?;
             let start_date = (Utc::now() - Duration::days(10)).naive_utc().date();
-            for (start_time, tcx_url) in client.get_tcx_urls(start_date).await? {
-                let fname = config
-                    .gps_dir
-                    .join(start_time.format("%Y-%m-%d_%H-%M-%S_1_1").to_string())
-                    .with_extension("tcx");
-                if !fname.exists() {
-                    let data = client.download_tcx(&tcx_url).await?;
-                    tokio::fs::write(&fname, &data).await?;
-                }
-            }
+            let filenames: Vec<_> = client.sync_tcx(start_date).await?.into_iter().map(|p| p.to_string_lossy().into_owned()).collect();
+            cli.stdout.send(filenames.join("\n").into())?;
         }
 
         Self::garmin_proc(&cli).await?;
@@ -166,41 +154,8 @@ impl GarminCliOpts {
         let pool = PgPool::new(&config.pgurl);
         let max_datetime = Utc::now() - Duration::days(15);
 
-        let client = Arc::new(StravaClient::with_auth(config).await?);
-        let new_activities: Vec<_> = client
-            .get_all_strava_activites(Some(max_datetime), None)
-            .await?;
-
-        StravaActivity::upsert_activities(&new_activities, &pool).await?;
-
-        let old_activities: HashSet<_> =
-            get_list_of_activities_from_db(&format!("begin_datetime >= '{}'", max_datetime), &pool)
-                .await?
-                .into_iter()
-                .map(|(d, _)| d)
-                .collect();
-
-        #[allow(clippy::filter_map)]
-        let futures = new_activities
-            .into_iter()
-            .filter_map(|activity| {
-                if old_activities.contains(&activity.start_date) {
-                    None
-                } else {
-                    Some(activity.id)
-                }
-            })
-            .map(|activity_id| {
-                let client = client.clone();
-                async move {
-                    client
-                        .export_original(activity_id as u64)
-                        .await
-                        .map_err(Into::into)
-                }
-            });
-        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
-        let filenames = results?;
+        let client = StravaClient::with_auth(config).await?;
+        let filenames = client.sync_with_client(max_datetime, &pool).await?;
 
         if !filenames.is_empty() {
             cli.process_filenames(&filenames).await?;

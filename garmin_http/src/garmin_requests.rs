@@ -30,10 +30,7 @@ use garmin_lib::{
         fitbit_activity::FitbitActivity,
         garmin_connect_activity::GarminConnectActivity,
         garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionMap},
-        garmin_summary::{
-            get_filename_from_datetime, get_list_of_activities_from_db, get_list_of_files_from_db,
-            GarminSummary,
-        },
+        garmin_summary::{get_filename_from_datetime, get_list_of_files_from_db, GarminSummary},
         pgpool::PgPool,
         strava_activity::StravaActivity,
     },
@@ -224,54 +221,20 @@ pub struct StravaSyncRequest {}
 
 #[async_trait]
 impl HandleRequest<StravaSyncRequest> for PgPool {
-    type Result = Result<Vec<StackString>, Error>;
+    type Result = Result<Vec<PathBuf>, Error>;
     async fn handle(&self, _: StravaSyncRequest) -> Self::Result {
         let gcli = GarminCli::from_pool(&self)?;
         let config = CONFIG.clone();
         let max_datetime = Utc::now() - Duration::days(15);
-
-        let client = Arc::new(StravaClient::with_auth(config).await?);
-        let new_activities: Vec<_> = client
-            .get_all_strava_activites(Some(max_datetime), None)
-            .await?;
-
-        let output = StravaActivity::upsert_activities(&new_activities, self).await?;
-
-        let old_activities: HashSet<_> =
-            get_list_of_activities_from_db(&format!("begin_datetime >= '{}'", max_datetime), self)
-                .await?
-                .into_iter()
-                .map(|(d, _)| d)
-                .collect();
-
-        #[allow(clippy::filter_map)]
-        let futures = new_activities
-            .into_iter()
-            .filter_map(|activity| {
-                if old_activities.contains(&activity.start_date) {
-                    None
-                } else {
-                    Some(activity.id)
-                }
-            })
-            .map(|activity_id| {
-                let client = client.clone();
-                async move {
-                    client
-                        .export_original(activity_id as u64)
-                        .await
-                        .map_err(Into::into)
-                }
-            });
-        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
-        let filenames = results?;
+        let client = StravaClient::with_auth(config).await?;
+        let filenames = client.sync_with_client(max_datetime, self).await?;
 
         if !filenames.is_empty() {
             gcli.process_filenames(&filenames).await?;
             gcli.proc_everything().await?;
         }
 
-        Ok(output)
+        Ok(filenames)
     }
 }
 
@@ -421,41 +384,15 @@ impl HandleRequest<FitbitTcxSyncRequest> for PgPool {
     type Result = Result<Vec<PathBuf>, Error>;
     async fn handle(&self, msg: FitbitTcxSyncRequest) -> Self::Result {
         let config = CONFIG.clone();
-        let client = Arc::new(FitbitClient::with_auth(config).await?);
+        let client = FitbitClient::with_auth(config).await?;
         let start_date = msg
             .start_date
             .unwrap_or_else(|| (Utc::now() - Duration::days(10)).naive_utc().date());
-
-        #[allow(clippy::filter_map)]
-        let futures = client
-            .get_tcx_urls(start_date)
-            .await?
-            .into_iter()
-            .filter_map(|(start_time, tcx_url)| {
-                let fname = client
-                    .config
-                    .gps_dir
-                    .join(start_time.format("%Y-%m-%d_%H-%M-%S_1_1").to_string())
-                    .with_extension("tcx");
-                if fname.exists() {
-                    None
-                } else {
-                    Some((fname, tcx_url))
-                }
-            })
-            .map(|(fname, tcx_url)| {
-                let client = client.clone();
-                async move {
-                    let data = client.download_tcx(&tcx_url).await?;
-                    tokio::fs::write(&fname, &data).await?;
-                    Ok(fname)
-                }
-            });
-        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+        let filenames = client.sync_tcx(start_date).await?;
 
         let gcli = GarminCli::from_pool(&self)?;
         gcli.proc_everything().await?;
-        results
+        Ok(filenames)
     }
 }
 

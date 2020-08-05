@@ -227,7 +227,13 @@ pub async fn garmin_sync(_: LoggedUser, state: Data<AppState>) -> Result<HttpRes
 }
 
 pub async fn strava_sync(_: LoggedUser, state: Data<AppState>) -> Result<HttpResponse, Error> {
-    let body = state.db.handle(StravaSyncRequest {}).await?;
+    let body: Vec<_> = state
+        .db
+        .handle(StravaSyncRequest {})
+        .await?
+        .into_iter()
+        .map(|p| p.to_string_lossy().into_owned())
+        .collect();
     let body = format!(
         r#"<textarea cols=100 rows=40>{}</textarea>"#,
         body.join("\n")
@@ -394,7 +400,7 @@ pub async fn fitbit_sync(
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
     let heartrates = state.db.handle(query).await?;
-    let range = (heartrates.len()-20)..(heartrates.len());
+    let range = (heartrates.len() - 20)..(heartrates.len());
     form_http_response(FitbitHeartRate::create_table(&heartrates[range]).into())
 }
 

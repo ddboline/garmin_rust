@@ -11,10 +11,12 @@ pub struct GarminConnectHrData {
 }
 
 impl GarminConnectHrData {
-    pub fn to_table(&self) -> StackString {
+    pub fn to_table(&self, entries: Option<usize>) -> StackString {
         if let Some(heartrate_values) = self.heartrate_values.as_ref() {
+            let entries = entries.unwrap_or(heartrate_values.len());
             let rows: Vec<_> = heartrate_values
                 .iter()
+                .skip(heartrate_values.len() - entries)
                 .filter_map(|(timestamp, heartrate)| {
                     let datetime: DateTime<Utc> = (*timestamp).into();
                     heartrate.map(|heartrate| {

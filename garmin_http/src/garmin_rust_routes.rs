@@ -204,7 +204,7 @@ pub async fn garmin_connect_hr_sync(
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
     let heartrates = state.db.handle(query).await?;
-    form_http_response(heartrates.to_table().into())
+    form_http_response(heartrates.to_table(Some(20)).into())
 }
 
 pub async fn garmin_connect_hr_api(
@@ -394,7 +394,8 @@ pub async fn fitbit_sync(
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
     let heartrates = state.db.handle(query).await?;
-    form_http_response(FitbitHeartRate::create_table(&heartrates).into())
+    let range = (heartrates.len()-20)..(heartrates.len());
+    form_http_response(FitbitHeartRate::create_table(&heartrates[range]).into())
 }
 
 pub async fn heartrate_statistics_plots_impl(

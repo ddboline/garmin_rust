@@ -13,6 +13,7 @@ use stack_string::StackString;
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
+    path::PathBuf,
 };
 use tokio::{
     fs::File,
@@ -851,6 +852,34 @@ impl FitbitClient {
         let duplicates = client.remove_duplicate_entries(pool).await?;
 
         Ok((new_measurements, new_activities, duplicates))
+    }
+
+    #[allow(clippy::filter_map)]
+    pub async fn sync_tcx(&self, start_date: NaiveDate) -> Result<Vec<PathBuf>, Error> {
+        let futures = self
+            .get_tcx_urls(start_date)
+            .await?
+            .into_iter()
+            .filter_map(|(start_time, tcx_url)| {
+                let fname = self
+                    .config
+                    .gps_dir
+                    .join(start_time.format("%Y-%m-%d_%H-%M-%S_1_1").to_string())
+                    .with_extension("tcx");
+                if fname.exists() {
+                    None
+                } else {
+                    Some((fname, tcx_url))
+                }
+            })
+            .map(|(fname, tcx_url)| {
+                async move {
+                    let data = self.download_tcx(&tcx_url).await?;
+                    tokio::fs::write(&fname, &data).await?;
+                    Ok(fname)
+                }
+            });
+        try_join_all(futures).await
     }
 }
 

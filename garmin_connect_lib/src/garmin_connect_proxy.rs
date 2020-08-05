@@ -220,3 +220,70 @@ impl GarminConnectProxy {
         Ok(filenames)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Error;
+    use chrono::{Duration, Utc};
+    use futures::future::try_join_all;
+    use std::collections::HashMap;
+
+    use garmin_lib::common::{
+        garmin_config::GarminConfig, garmin_connect_activity::GarminConnectActivity, pgpool::PgPool,
+    };
+
+    use crate::garmin_connect_proxy::GarminConnectProxy;
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_proxy_get_activities() -> Result<(), Error> {
+        let config = GarminConfig::get_config(None)?;
+        let mut session = GarminConnectProxy::new(config.clone());
+        session.init(config.clone()).await?;
+
+        let user_summary = session
+            .get_user_summary((Utc::now() - Duration::days(1)).naive_local().date())
+            .await?;
+        assert_eq!(user_summary.user_profile_id, 1377808);
+
+        let max_timestamp = Utc::now() - Duration::days(14);
+        let result = match session.get_activities(max_timestamp).await {
+            Ok(r) => r,
+            Err(_) => {
+                println!("try reauth");
+                session.authorize().await?;
+                session.get_activities(max_timestamp).await?
+            }
+        };
+        assert!(result.len() > 0);
+
+        let config = GarminConfig::get_config(None)?;
+
+        let pool = PgPool::new(&config.pgurl);
+        let activities: HashMap<_, _> = GarminConnectActivity::read_from_db(&pool, None, None)
+            .await?
+            .into_iter()
+            .map(|activity| (activity.activity_id, activity))
+            .collect();
+
+        let max_timestamp = Utc::now() - Duration::days(30);
+        let new_activities: Vec<_> = session
+            .get_activities(max_timestamp)
+            .await?
+            .into_iter()
+            .filter(|activity| !activities.contains_key(&activity.activity_id))
+            .collect();
+        println!("{:?}", new_activities);
+        let futures = new_activities.iter().map(|activity| {
+            let pool = pool.clone();
+            async move {
+                activity.insert_into_db(&pool).await?;
+                Ok(())
+            }
+        });
+        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+        results?;
+        assert_eq!(new_activities.len(), 0);
+        Ok(())
+    }
+}

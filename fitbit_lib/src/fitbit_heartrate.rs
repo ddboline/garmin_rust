@@ -263,6 +263,8 @@ impl FitbitHeartRate {
             "EXAMPLETITLE" => "Heart Rate",
             "XAXIS" => "Date",
             "YAXIS" => "Heart Rate",
+            "NAME" => "heartrate",
+            "UNITS" => "bpm",
         };
 
         let plots = HBR.render("TIMESERIESTEMPLATE", &params)?;

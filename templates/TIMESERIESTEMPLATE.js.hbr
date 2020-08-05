@@ -134,11 +134,11 @@ function handleMouseOverData() {
         .attr("id", 'data_date_{{NAME}}')
         .attr("x", function() {return x_{{NAME}}(xmin_{{NAME}}) + 30;})
         .attr("y", function() {return y_{{NAME}}(ymax_{{NAME}}) + 15;})
-        .text(function() {return date;});
+        .text(function() {return date.toISOString();});
     svg_{{NAME}}.append('text')
         .attr("id", 'data_heartrate_{{NAME}}')
         .attr("x", function() {return x_{{NAME}}(xmin_{{NAME}}) + 30;})
         .attr("y", function() {return y_{{NAME}}(ymax_{{NAME}}) + 30;})
-        .text(function() {return heartrate;});
+        .text(function() {return heartrate.toFixed(1) + " {{UNITS}}";});
 }
 </script>

@@ -7,7 +7,7 @@ use structopt::StructOpt;
 use tokio::try_join;
 
 use fitbit_lib::{fitbit_client::FitbitClient, fitbit_heartrate::FitbitHeartRate};
-use garmin_connect_lib::garmin_connect_proxy::GarminConnectProxy;
+use garmin_connect_lib::garmin_connect_client::GarminConnectClient;
 use garmin_lib::common::{
     garmin_config::GarminConfig,
     garmin_connect_activity::GarminConnectActivity,
@@ -138,8 +138,7 @@ impl GarminCliOpts {
 
     pub async fn sync_with_garmin_connect(cli: &GarminCli) -> Result<Vec<PathBuf>, Error> {
         if let Some(max_datetime) = get_maximum_begin_datetime(&cli.pool).await? {
-            // let session = get_garmin_connect_session(&cli.config).await?;
-            let mut session = GarminConnectProxy::default();
+            let mut session = GarminConnectClient::default();
             session.init(cli.config.clone()).await?;
 
             let activities = session.get_activities(max_datetime).await?;

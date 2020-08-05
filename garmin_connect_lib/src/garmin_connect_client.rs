@@ -1,48 +1,31 @@
 use anyhow::{format_err, Error};
-use chrono::{DateTime, Duration, NaiveDate, Utc};
-use futures::future::try_join_all;
-use lazy_static::lazy_static;
-use log::{debug, error};
-use maplit::hashmap;
-use reqwest::{header::HeaderMap, Url};
+use chrono::{DateTime, NaiveDate, Utc};
+use fantoccini::{Client, Locator};
+use log::debug;
+use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
-use std::{
-    path::PathBuf,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
+use std::{path::PathBuf, process::Stdio};
+use tokio::{
+    fs,
+    process::{Child, Command},
+    time::delay_for,
 };
-use tokio::{fs::File, io::AsyncWriteExt, stream::StreamExt, sync::Mutex};
 
 use garmin_lib::common::{
     garmin_config::GarminConfig, garmin_connect_activity::GarminConnectActivity,
 };
 
-use super::{garmin_connect_hr_data::GarminConnectHrData, reqwest_session::ReqwestSession};
+use super::garmin_connect_hr_data::GarminConnectHrData;
 
-const SSO_URL: &str = "https://sso.garmin.com/sso";
 const MODERN_URL: &str = "https://connect.garmin.com/modern";
-const SOURCE_URL: &str = "https://connect.garmin.com/signin";
-const SIGNIN_URL: &str = "https://sso.garmin.com/sso/signin";
-const PRIVACY_URL: &str = "https://www.garmin.com/en-us/privacy/connect";
 
-const CONNECT_SESSION_TIMEOUT: i64 = 3600;
-
-lazy_static! {
-    static ref CONNECT_SESSION: Mutex<GarminConnectClient> =
-        Mutex::new(GarminConnectClient::default());
-}
-
-#[derive(Clone)]
 pub struct GarminConnectClient {
-    pub config: GarminConfig,
-    session: ReqwestSession,
+    config: GarminConfig,
+    client: Option<Client>,
+    webdriver: Option<Child>,
+    pub last_used: DateTime<Utc>,
     display_name: Option<StackString>,
-    auth_time: Option<DateTime<Utc>>,
-    retry_time: DateTime<Utc>,
-    auth_trigger: Arc<AtomicBool>,
 }
 
 impl Default for GarminConnectClient {
@@ -56,195 +39,88 @@ impl GarminConnectClient {
     pub fn new(config: GarminConfig) -> Self {
         Self {
             config,
-            session: ReqwestSession::new(true),
+            client: None,
+            webdriver: None,
+            last_used: Utc::now(),
             display_name: None,
-            auth_time: None,
-            retry_time: Utc::now(),
-            auth_trigger: Arc::new(AtomicBool::new(false)),
         }
     }
 
-    fn get_headers() -> Result<HeaderMap, Error> {
-        let mut headers = HeaderMap::new();
-        headers.insert(
-            "User-Agent",
-            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) \
-             Chrome/84.0.4147.105 Safari/537.36"
-                .parse()?,
-        );
-        headers.insert("Accept-Language", "en_US".parse()?);
-        Ok(headers)
+    pub async fn init(&mut self, config: GarminConfig) -> Result<(), Error> {
+        self.config = config;
+        if self.webdriver.is_none() && self.config.webdriver_path.exists() {
+            let webdriver = Command::new(&self.config.webdriver_path)
+                .args(&[&format!("--port={}", self.config.webdriver_port)])
+                .kill_on_drop(true)
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()?;
+            self.webdriver.replace(webdriver);
+            delay_for(std::time::Duration::from_secs(5)).await;
+        }
+        if self.client.is_none() {
+            let mut caps = serde_json::map::Map::new();
+            let opts = serde_json::json!({
+                "args": ["--headless", "--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage"],
+                "binary":
+                    "/usr/bin/google-chrome"
+            });
+            caps.insert("goog:chromeOptions".to_string(), opts.clone());
+
+            self.client.replace(
+                Client::with_capabilities(
+                    &format!("http://localhost:{}", self.config.webdriver_port),
+                    caps,
+                )
+                .await?,
+            );
+            self.last_used = Utc::now();
+        }
+        if self.display_name.is_none() {
+            self.authorize().await?;
+        }
+        Ok(())
     }
 
     pub async fn authorize(&mut self) -> Result<(), Error> {
-        if Utc::now() < self.retry_time {
-            return Err(format_err!("Please retry after {}", self.retry_time));
-        }
-
-        let params = hashmap! {
-            "webhost" => MODERN_URL,
-            "service" => MODERN_URL,
-            "source" => SOURCE_URL,
-            "redirectAfterAccountLoginUrl" => MODERN_URL,
-            "redirectAfterAccountCreationUrl" => MODERN_URL,
-            "gauthHost" => SSO_URL,
-            "privacyStatementUrl" => PRIVACY_URL,
-            "locale" => "en_US",
-            "id" => "gauth-widget",
-            "cssUrl" => "https://static.garmincdn.com/com.garmin.connect/ui/css/gauth-custom-v1.2-min.css",
-            "clientId" => "GarminConnect",
-            "rememberMeShown" => "true",
-            "rememberMeChecked" => "true",
-            "createAccountShown" => "true",
-            "openCreateAccount" => "false",
-            "displayNameShown" => "false",
-            "consumeServiceTicket" => "false",
-            "initialFocus" => "true",
-            "embedWidget" => "false",
-            "generateExtraServiceTicket" => "true",
-            "generateTwoExtraServiceTickets" => "false",
-            "generateNoServiceTicket" => "false",
-            "globalOptInShown" => "true",
-            "globalOptInChecked" => "false",
-            "mobile" => "false",
-            "connectLegalTerms" => "true",
-            "showTermsOfUse" => "false",
-            "showPrivacyPolicy" => "false",
-            "showConnectLegalAge" => "false",
-            "locationPromptShown" => "true",
-            "showPassword" => "true",
-            "useCustomHeader" => "false",
-        };
-
-        let mut signin_headers = Self::get_headers()?;
-        signin_headers.insert("origin", "https://sso.garmin.com".parse()?);
-
-        let url = Url::parse_with_params(SIGNIN_URL, params.iter())?;
-
-        let resp = self.session.get_no_retry(&url, &signin_headers).await?;
-        println!("{} {}", url.as_str(), resp.status());
-        if resp.status() == 429 {
-            self.retry_time = Self::get_next_attempt_time(resp.headers())?;
-            return Err(format_err!(
-                "Too many requests, try again after {}",
-                self.retry_time
-            ));
-        }
-        let resp_url = resp.url().to_string();
-        let text = resp.error_for_status()?.text().await?;
-        let csrf = Self::extract_csrf(&text)?;
-
-        let data = hashmap! {
-            "username" => self.config.garmin_connect_email.as_str(),
-            "password" => self.config.garmin_connect_password.as_str(),
-            "embed" => "true",
-            "_csrf" => csrf.as_str(),
-        };
-
-        let mut signin_headers = Self::get_headers()?;
-        signin_headers.insert("Referer", resp_url.parse()?);
-
-        let resp = self
-            .session
-            .post_no_retry(&url, &signin_headers, &data)
+        let client = self
+            .client
+            .as_mut()
+            .ok_or_else(|| format_err!("No client"))?;
+        client.goto("https://sso.garmin.com/sso/signin").await?;
+        let mut form = client.form(Locator::Id("login-form")).await?;
+        form.set_by_name("username", &self.config.garmin_connect_email)
+            .await?
+            .set_by_name("password", &self.config.garmin_connect_password)
+            .await?
+            .submit()
             .await?;
-        let status = resp.status();
-        println!("{} {}", url.as_str(), status);
-        if status == 429 {
-            self.retry_time = Self::get_next_attempt_time(resp.headers())?;
-            return Err(format_err!(
-                "Too many requests, try again after {}",
-                self.retry_time
-            ));
-        }
 
-        let resp_text = resp.error_for_status()?.text().await?;
-        Self::check_signin_response(status.into(), &resp_text)?;
-        let response_url = Self::get_response_url(&resp_text)?;
-        // let ticket = if let Some(query) = response_url.query() {
-        //     query.split('=').last().unwrap_or("")
-        // } else {
-        //     ""
-        // };
-
-        let mut headers = Self::get_headers()?;
-        headers.insert("origin", "https://sso.garmin.com".parse()?);
-
-        let resp = self.session.get_no_retry(&response_url, &headers).await?;
-
-        if resp.status() == 429 {
-            self.retry_time = Self::get_next_attempt_time(resp.headers())?;
-            return Err(format_err!(
-                "Too many requests, try again after {}",
-                self.retry_time
-            ));
-        }
-
-        println!(
-            "{} {} {:?}",
-            response_url.as_str(),
-            resp.status(),
-            resp.headers()
-        );
-
-        let resp_text = resp.error_for_status()?.text().await?;
+        client.goto(MODERN_URL).await?;
+        let raw = client
+            .raw_client_for(fantoccini::Method::GET, MODERN_URL)
+            .await?;
+        self.last_used = Utc::now();
+        let js = hyper::body::to_bytes(raw.into_body()).await?;
+        let text = std::str::from_utf8(&js)?;
 
         self.display_name
-            .replace(Self::extract_display_name(&resp_text)?);
+            .replace(GarminConnectClient::extract_display_name(text)?);
 
-        self.auth_time = Some(Utc::now());
-        self.auth_trigger.store(false, Ordering::SeqCst);
         Ok(())
     }
 
-    fn extract_csrf(text: &str) -> Result<StackString, Error> {
-        for line in text.split('\n') {
-            if line.contains("_csrf") {
-                for entry in line.split_whitespace() {
-                    if entry.contains("value") {
-                        return Ok(entry.replace("value=", "").replace(r#"""#, "").into());
-                    }
-                }
+    pub async fn close(&mut self) -> Result<(), Error> {
+        if let Some(mut webdriver) = self.webdriver.take() {
+            if let Err(e) = webdriver.kill() {
+                debug!("Failed to kill {}", e);
             }
         }
-        Err(format_err!("No csrf found"))
-    }
-
-    fn get_next_attempt_time(headers: &HeaderMap) -> Result<DateTime<Utc>, Error> {
-        let retry_after = if let Some(retry_after) = headers.get("retry-after") {
-            retry_after.to_str()?.parse()?
-        } else {
-            60
-        };
-        Ok(Utc::now() + Duration::seconds(retry_after))
-    }
-
-    fn check_signin_response(status: u16, text: &str) -> Result<(), Error> {
-        if text.contains("temporarily unavailable") {
-            return Err(format_err!("SSO error {} {}", status, text));
-        } else if text.contains(">sendEvent('FAIL')") {
-            return Err(format_err!("Invalid login"));
-        } else if text.contains(">sendEvent('ACCOUNT_LOCKED')") {
-            return Err(format_err!("Account Locked"));
-        } else if text.contains("renewPassword") {
-            return Err(format_err!("Reset password"));
+        if let Some(mut client) = self.client.take() {
+            client.close().await?;
         }
+        self.last_used = Utc::now();
         Ok(())
-    }
-
-    fn get_response_url(text: &str) -> Result<Url, Error> {
-        for line in text.split('\n') {
-            if line.contains("var response_url") {
-                let new_line = line
-                    .replace(r#"""#, "")
-                    .replace(r#"\/"#, "/")
-                    .replace(";", "");
-                let url = new_line.split_whitespace().last().unwrap_or_else(|| "");
-                return Url::parse(url).map_err(Into::into);
-            }
-        }
-
-        Err(format_err!("NO URL FOUND"))
     }
 
     pub fn extract_display_name(text: &str) -> Result<StackString, Error> {
@@ -265,9 +141,13 @@ impl GarminConnectClient {
     }
 
     pub async fn get_user_summary(
-        &self,
+        &mut self,
         date: NaiveDate,
     ) -> Result<GarminConnectUserDailySummary, Error> {
+        let client = self
+            .client
+            .as_mut()
+            .ok_or_else(|| format_err!("No client"))?;
         let display_name = self
             .display_name
             .as_ref()
@@ -276,169 +156,85 @@ impl GarminConnectClient {
             "{}/proxy/usersummary-service/usersummary/daily/{}",
             MODERN_URL, display_name,
         );
-        let headers = Self::get_headers()?;
-        let url = Url::parse_with_params(
-            &url_prefix,
-            &[
-                ("calendarDate", &date.to_string()),
-                ("_", &Utc::now().timestamp_millis().to_string()),
-            ],
-        )?;
-        let resp = self.session.get_no_retry(&url, &headers).await?;
-        if resp.status() == 403 {
-            self.auth_trigger.store(true, Ordering::SeqCst);
-            error!("trigger re-auth");
-        }
-        let user_summary = resp.error_for_status()?.json().await?;
-        Ok(user_summary)
+        let url = Url::parse_with_params(&url_prefix, &[("calendarDate", &date.to_string())])?;
+        let raw = client
+            .raw_client_for(fantoccini::Method::GET, url.as_str())
+            .await?;
+        self.last_used = Utc::now();
+        let js = hyper::body::to_bytes(raw.into_body()).await?;
+        serde_json::from_slice(&js).map_err(Into::into)
     }
 
-    pub async fn get_heartrate(&self, date: NaiveDate) -> Result<GarminConnectHrData, Error> {
+    pub async fn get_heartrate(&mut self, date: NaiveDate) -> Result<GarminConnectHrData, Error> {
         let display_name = self
             .display_name
             .as_ref()
             .ok_or_else(|| format_err!("No display name"))?;
-        let url_prefix = format!(
+        let client = self
+            .client
+            .as_mut()
+            .ok_or_else(|| format_err!("No client"))?;
+        let url = format!(
             "{}/proxy/wellness-service/wellness/dailyHeartRate/{}",
             MODERN_URL, display_name
         );
-        let headers = Self::get_headers()?;
-        let url = Url::parse_with_params(
-            &url_prefix,
-            &[
-                ("date", &date.to_string()),
-                ("_", &Utc::now().timestamp_millis().to_string()),
-            ],
-        )?;
-        let resp = self.session.get(&url, &headers).await?;
-        if resp.status() == 403 {
-            self.auth_trigger.store(true, Ordering::SeqCst);
-            error!("trigger re-auth");
-        }
-        resp.error_for_status()?.json().await.map_err(Into::into)
+        let url = Url::parse_with_params(&url, &[("date", &date.to_string())])?;
+        let raw = client
+            .raw_client_for(fantoccini::Method::GET, url.as_str())
+            .await?;
+        self.last_used = Utc::now();
+        let js = hyper::body::to_bytes(raw.into_body()).await?;
+        serde_json::from_slice(&js).map_err(Into::into)
     }
 
     pub async fn get_activities(
-        &self,
-        max_timestamp: DateTime<Utc>,
+        &mut self,
+        _: DateTime<Utc>,
     ) -> Result<Vec<GarminConnectActivity>, Error> {
-        let headers = Self::get_headers()?;
-        let url = MODERN_URL.parse()?;
-        let resp = self.session.get(&url, &headers).await?;
-        println!("{:?}", resp);
-
-        let url_prefix = format!(
+        let client = self
+            .client
+            .as_mut()
+            .ok_or_else(|| format_err!("No client"))?;
+        let url = format!(
             "{}/proxy/activitylist-service/activities/search/activities",
             MODERN_URL
         );
-        let mut entries = Vec::new();
-        let mut current_start = 0;
-        let limit = 10;
-        loop {
-            let url = Url::parse_with_params(
-                &url_prefix,
-                &[
-                    ("start", current_start.to_string()),
-                    ("limit", limit.to_string()),
-                    ("_", Utc::now().timestamp_millis().to_string()),
-                ],
-            )?;
-            current_start += limit;
-            debug!("Call {}", url);
-
-            let mut headers = Self::get_headers()?;
-            headers.insert("Referer", MODERN_URL.parse()?);
-
-            let resp = self.session.get(&url, &headers).await?;
-            if resp.status() == 403 {
-                println!("{:?}", resp);
-                println!("{}", resp.text().await?);
-                self.auth_trigger.store(true, Ordering::SeqCst);
-                error!("trigger re-auth");
-                return Err(format_err!("No auth for some reason"));
-            }
-
-            let new_entries: Vec<GarminConnectActivity> = resp.error_for_status()?.json().await?;
-            if new_entries.is_empty() {
-                debug!("Empty result {} returning {} results", url, entries.len());
-                return Ok(entries);
-            }
-            for entry in new_entries {
-                if entry.start_time_gmt > max_timestamp {
-                    debug!("{} {}", entry.activity_id, entry.start_time_gmt);
-                    entries.push(entry);
-                } else {
-                    debug!("Returning {} results", entries.len());
-                    return Ok(entries);
-                }
-            }
-        }
+        let raw = client.raw_client_for(fantoccini::Method::GET, &url).await?;
+        self.last_used = Utc::now();
+        let js = hyper::body::to_bytes(raw.into_body()).await?;
+        serde_json::from_slice(&js).map_err(Into::into)
     }
 
     pub async fn get_activity_files(
-        &self,
+        &mut self,
         activities: &[GarminConnectActivity],
     ) -> Result<Vec<PathBuf>, Error> {
-        let futures = activities.iter().map(|activity| async move {
+        let client = self
+            .client
+            .as_mut()
+            .ok_or_else(|| format_err!("No client"))?;
+        let mut filenames = Vec::new();
+        for activity in activities {
             let fname = self
                 .config
                 .home_dir
                 .join("Downloads")
                 .join(activity.activity_id.to_string())
                 .with_extension("zip");
-            let url = Url::parse_with_params(
-                &format!(
-                    "{}/proxy/download-service/files/activity/{}",
-                    MODERN_URL, activity.activity_id
-                ),
-                &[("_", &Utc::now().timestamp_millis().to_string())],
-            )?;
-            let mut f = File::create(&fname).await?;
-            let headers = Self::get_headers()?;
-            let resp = self.session.get(&url, &headers).await?.error_for_status()?;
-
-            let mut stream = resp.bytes_stream();
-            while let Some(item) = stream.next().await {
-                f.write_all(&item?).await?;
-            }
-            Ok(fname)
-        });
-        try_join_all(futures).await
+            let url = format!(
+                "{}/proxy/download-service/files/activity/{}",
+                MODERN_URL, activity.activity_id
+            );
+            let raw = client
+                .raw_client_for(fantoccini::Method::GET, url.as_str())
+                .await?;
+            self.last_used = Utc::now();
+            let data = hyper::body::to_bytes(raw.into_body()).await?;
+            fs::write(&fname, &data).await?;
+            filenames.push(fname);
+        }
+        Ok(filenames)
     }
-}
-
-pub async fn get_garmin_connect_session(
-    config: &GarminConfig,
-) -> Result<GarminConnectClient, Error> {
-    fn has_timed_out(t: DateTime<Utc>) -> bool {
-        (Utc::now() - t).num_seconds() > CONNECT_SESSION_TIMEOUT
-    }
-
-    let mut session = CONNECT_SESSION.lock().await.clone();
-    session.config = config.clone();
-
-    let auth_trigger = session.auth_trigger.load(Ordering::SeqCst);
-
-    if auth_trigger {
-        error!("re-auth session");
-    }
-
-    // if session is old, OR hasn't been authorized, OR get_user_summary fails, then
-    // reauthorize
-    if auth_trigger
-        || session.auth_time.map_or(true, has_timed_out)
-        || session
-            .get_user_summary(Utc::now().naive_local().date())
-            .await
-            .is_err()
-    {
-        let mut session_guard = CONNECT_SESSION.lock().await;
-        session_guard.config = config.clone();
-        session_guard.authorize().await?;
-        session = session_guard.clone();
-    }
-
-    Ok(session)
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -472,16 +268,22 @@ mod tests {
         garmin_config::GarminConfig, garmin_connect_activity::GarminConnectActivity, pgpool::PgPool,
     };
 
-    use crate::garmin_connect_client::{get_garmin_connect_session, GarminConnectClient};
+    use crate::garmin_connect_client::GarminConnectClient;
+
+    #[test]
+    fn test_extract_display_name() -> Result<(), Error> {
+        let resp_text = include_str!("../../tests/data/garmin_connect_display_name.html");
+        let display_name = GarminConnectClient::extract_display_name(resp_text)?;
+        assert_eq!(display_name.as_str(), "ddboline");
+        Ok(())
+    }
 
     #[tokio::test]
     #[ignore]
-    async fn test_get_activities() -> Result<(), Error> {
-        if true {
-            return Ok(());
-        }
+    async fn test_proxy_get_activities() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
-        let mut session = get_garmin_connect_session(&config).await?;
+        let mut session = GarminConnectClient::new(config.clone());
+        session.init(config.clone()).await?;
 
         let user_summary = session
             .get_user_summary((Utc::now() - Duration::days(1)).naive_local().date())
@@ -526,39 +328,6 @@ mod tests {
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
         results?;
         assert_eq!(new_activities.len(), 0);
-        Ok(())
-    }
-
-    #[test]
-    fn test_get_response_url() -> Result<(), Error> {
-        let resp_text = include_str!("../../tests/data/garmin_auth_response.html");
-        let url = GarminConnectClient::get_response_url(resp_text)?;
-        let ticket = if let Some(query) = url.query() {
-            query.split('=').last().unwrap_or("")
-        } else {
-            ""
-        };
-        assert_eq!(ticket, "ST-0765302-muiAj3bYsqmU1TyBFMZB-cas");
-
-        assert_eq!(
-            url.as_str(),
-            "https://connect.garmin.com/modern?ticket=ST-0765302-muiAj3bYsqmU1TyBFMZB-cas"
-        );
-        Ok(())
-    }
-
-    #[test]
-    fn test_extract_display_name() -> Result<(), Error> {
-        let resp_text = include_str!("../../tests/data/garmin_connect_display_name.html");
-        let display_name = GarminConnectClient::extract_display_name(resp_text)?;
-        assert_eq!(display_name.as_str(), "ddboline");
-        Ok(())
-    }
-
-    #[test]
-    fn test_extract_csrf() -> Result<(), Error> {
-        let text = include_str!("../../tests/data/garmin_auth_signin_page.html");
-        assert_eq!(GarminConnectClient::extract_csrf(text)?.as_str(), "C81618F6E4A555E98A6A4D344D9E484B0CCDF0A0207C96B0EB49D1D692EFC20569E86D26E6232471B86B35BC5CB24CE5DF7C");
         Ok(())
     }
 }

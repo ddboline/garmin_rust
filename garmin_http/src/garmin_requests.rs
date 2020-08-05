@@ -22,8 +22,9 @@ use fitbit_lib::{
 };
 use garmin_cli::garmin_cli::{GarminCli, GarminRequest};
 use garmin_connect_lib::{
+    garmin_connect_client::GarminConnectClient,
     garmin_connect_client::GarminConnectUserDailySummary,
-    garmin_connect_hr_data::GarminConnectHrData, garmin_connect_proxy::GarminConnectProxy,
+    garmin_connect_hr_data::GarminConnectHrData,
 };
 use garmin_lib::{
     common::{
@@ -47,7 +48,8 @@ use strava_lib::strava_client::{StravaAthlete, StravaClient};
 use crate::{errors::ServiceError as Error, CONFIG};
 
 lazy_static! {
-    static ref CONNECT_PROXY: Mutex<GarminConnectProxy> = Mutex::new(GarminConnectProxy::default());
+    static ref CONNECT_PROXY: Mutex<GarminConnectClient> =
+        Mutex::new(GarminConnectClient::default());
 }
 
 pub async fn close_connect_proxy() -> Result<(), Error> {
@@ -162,7 +164,6 @@ impl HandleRequest<GarminConnectSyncRequest> for PgPool {
 
         let max_timestamp = Utc::now() - Duration::days(30);
 
-        // let session = get_garmin_connect_session(&CONFIG).await?;
         let mut session = CONNECT_PROXY.lock().await;
         session.init(CONFIG.clone()).await?;
 
@@ -191,7 +192,6 @@ pub struct GarminConnectHrSyncRequest {
 impl HandleRequest<GarminConnectHrSyncRequest> for PgPool {
     type Result = Result<GarminConnectHrData, Error>;
     async fn handle(&self, req: GarminConnectHrSyncRequest) -> Self::Result {
-        // let session = get_garmin_connect_session(&CONFIG).await?;
         let mut session = CONNECT_PROXY.lock().await;
         session.init(CONFIG.clone()).await?;
 
@@ -212,7 +212,6 @@ pub struct GarminConnectHrApiRequest {
 impl HandleRequest<GarminConnectHrApiRequest> for PgPool {
     type Result = Result<Vec<FitbitHeartRate>, Error>;
     async fn handle(&self, req: GarminConnectHrApiRequest) -> Self::Result {
-        // let session = get_garmin_connect_session(&CONFIG).await?;
         let mut session = CONNECT_PROXY.lock().await;
         session.init(CONFIG.clone()).await?;
 
@@ -924,7 +923,6 @@ impl HandleRequest<GarminConnectActivitiesRequest> for PgPool {
             NaiveDateTime::new(start_date, NaiveTime::from_hms(0, 0, 0)),
             Utc,
         );
-        // let session = get_garmin_connect_session(&CONFIG).await?;
         let mut session = CONNECT_PROXY.lock().await;
         session.init(CONFIG.clone()).await?;
 
@@ -968,7 +966,6 @@ pub struct GarminConnectUserSummaryRequest {
 impl HandleRequest<GarminConnectUserSummaryRequest> for PgPool {
     type Result = Result<GarminConnectUserDailySummary, Error>;
     async fn handle(&self, msg: GarminConnectUserSummaryRequest) -> Self::Result {
-        // let session = get_garmin_connect_session(&config).await?;
         let mut session = CONNECT_PROXY.lock().await;
         session.init(CONFIG.clone()).await?;
 

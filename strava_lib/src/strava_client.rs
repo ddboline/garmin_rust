@@ -559,7 +559,7 @@ impl StravaClient {
         max_datetime: DateTime<Utc>,
         pool: &PgPool,
     ) -> Result<Vec<PathBuf>, Error> {
-        let new_activities: Vec<_> = self.get_all_strava_activites(None, None).await?;
+        let new_activities: Vec<_> = self.get_all_strava_activites(Some(max_datetime), None).await?;
 
         StravaActivity::upsert_activities(&new_activities, &pool).await?;
 

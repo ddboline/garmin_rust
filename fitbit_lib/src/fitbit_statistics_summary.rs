@@ -22,6 +22,9 @@ pub struct FitbitStatisticsSummary {
 
 impl FitbitStatisticsSummary {
     pub fn from_heartrate_values(heartrate_values: &[(DateTime<Utc>, i32)]) -> Option<Self> {
+        if heartrate_values.len() < 2 {
+            return None;
+        }
         let date = heartrate_values[heartrate_values.len() / 2]
             .0
             .naive_local()

@@ -10,6 +10,8 @@ use reqwest::{
     multipart::{Form, Part},
     Client, Url,
 };
+use select::document::Document;
+use select::predicate::Attr;
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
 use std::{
@@ -196,31 +198,18 @@ impl StravaClient {
     }
 
     fn extract_web_csrf(text: &str) -> Result<(StackString, StackString), Error> {
-        let mut param = None;
-        let mut token = None;
-        for line in text.split('\n') {
-            if line.contains("csrf-param") {
-                if let Some(p) = line
-                    .split(r#"content=""#)
-                    .nth(1)
-                    .and_then(|t| t.split('"').next())
-                {
-                    param.replace(p);
-                }
-            }
-            if line.contains("csrf-token") {
-                if let Some(p) = line
-                    .split(r#"content=""#)
-                    .nth(1)
-                    .and_then(|t| t.split('"').next())
-                {
-                    token.replace(p);
-                }
-            }
-            if let Some(param) = param {
-                if let Some(token) = token {
-                    return Ok((param.into(), token.into()));
-                }
+        let document = Document::from(text);
+        if let Some(param) = document
+            .find(Attr("name", "csrf-param"))
+            .next()
+            .and_then(|node| node.attr("content"))
+        {
+            if let Some(token) = document
+                .find(Attr("name", "csrf-token"))
+                .next()
+                .and_then(|node| node.attr("content"))
+            {
+                return Ok((param.into(), token.into()));
             }
         }
         Err(format_err!("No csrf token"))

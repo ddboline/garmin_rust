@@ -12,8 +12,10 @@ use reqwest::{
 };
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
-use std::collections::HashSet;
-use std::path::{Path, PathBuf};
+use std::{
+    collections::HashSet,
+    path::{Path, PathBuf},
+};
 use tempfile::Builder;
 use tokio::{
     fs::File,
@@ -23,9 +25,10 @@ use tokio::{
 };
 
 use garmin_lib::{
-    common::garmin_summary::get_list_of_activities_from_db,
-    common::pgpool::PgPool,
-    common::{garmin_config::GarminConfig, strava_activity::StravaActivity},
+    common::{
+        garmin_config::GarminConfig, garmin_summary::get_list_of_activities_from_db,
+        pgpool::PgPool, strava_activity::StravaActivity,
+    },
     utils::{
         garmin_util::gzip_file,
         iso_8601_datetime,
@@ -559,7 +562,9 @@ impl StravaClient {
         max_datetime: DateTime<Utc>,
         pool: &PgPool,
     ) -> Result<Vec<PathBuf>, Error> {
-        let new_activities: Vec<_> = self.get_all_strava_activites(Some(max_datetime), None).await?;
+        let new_activities: Vec<_> = self
+            .get_all_strava_activites(Some(max_datetime), None)
+            .await?;
 
         StravaActivity::upsert_activities(&new_activities, &pool).await?;
 

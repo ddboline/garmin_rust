@@ -95,7 +95,12 @@ impl GarminCliOpts {
             let config = cli.config.clone();
             let client = FitbitClient::with_auth(config.clone()).await?;
             let start_date = (Utc::now() - Duration::days(10)).naive_utc().date();
-            let filenames: Vec<_> = client.sync_tcx(start_date).await?.into_iter().map(|p| p.to_string_lossy().into_owned()).collect();
+            let filenames: Vec<_> = client
+                .sync_tcx(start_date)
+                .await?
+                .into_iter()
+                .map(|p| p.to_string_lossy().into_owned())
+                .collect();
             cli.stdout.send(filenames.join("\n").into())?;
         }
 

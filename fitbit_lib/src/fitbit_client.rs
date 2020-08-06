@@ -12,8 +12,8 @@ use serde::{Deserialize, Serialize};
 use stack_string::StackString;
 use std::{
     collections::{HashMap, HashSet},
-    sync::Arc,
     path::PathBuf,
+    sync::Arc,
 };
 use tokio::{
     fs::File,
@@ -872,12 +872,10 @@ impl FitbitClient {
                     Some((fname, tcx_url))
                 }
             })
-            .map(|(fname, tcx_url)| {
-                async move {
-                    let data = self.download_tcx(&tcx_url).await?;
-                    tokio::fs::write(&fname, &data).await?;
-                    Ok(fname)
-                }
+            .map(|(fname, tcx_url)| async move {
+                let data = self.download_tcx(&tcx_url).await?;
+                tokio::fs::write(&fname, &data).await?;
+                Ok(fname)
             });
         try_join_all(futures).await
     }

@@ -10,8 +10,7 @@ use reqwest::{
     multipart::{Form, Part},
     Client, Url,
 };
-use select::document::Document;
-use select::predicate::Attr;
+use select::{document::Document, predicate::Attr};
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
 use std::{

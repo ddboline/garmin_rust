@@ -10,3 +10,4 @@ pub mod garmin_sync;
 pub mod garmin_templates;
 pub mod pgpool;
 pub mod strava_activity;
+pub mod strava_timezone;

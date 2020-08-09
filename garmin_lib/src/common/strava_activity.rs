@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use stack_string::StackString;
 use std::collections::HashMap;
 
+use crate::common::strava_timezone::StravaTimeZone;
 use crate::{
     common::{garmin_summary::GarminSummary, pgpool::PgPool},
     utils::{
@@ -30,7 +31,7 @@ pub struct StravaActivity {
     pub elev_low: Option<f64>,
     #[serde(rename = "type", with = "sport_types")]
     pub activity_type: SportTypes,
-    pub timezone: StackString,
+    pub timezone: StravaTimeZone,
 }
 
 impl Default for StravaActivity {
@@ -46,7 +47,7 @@ impl Default for StravaActivity {
             elev_high: None,
             elev_low: None,
             activity_type: SportTypes::None,
-            timezone: "".into(),
+            timezone: StravaTimeZone::default(),
         }
     }
 }

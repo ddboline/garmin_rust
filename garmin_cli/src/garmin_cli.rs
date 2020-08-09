@@ -424,9 +424,11 @@ impl GarminCli {
                     .await?
                     .get_text_entries()?
                     .into_iter()
-                    .map(|x| x.join(" "))
+                    .map(|x| {
+                        let v: Vec<_> = x.into_iter().map(|(s, _)| s).collect();
+                        v.join(" ")
+                    })
                     .collect();
-
                 self.stdout.send(txt_result.join("\n").into())?;
             }
         };

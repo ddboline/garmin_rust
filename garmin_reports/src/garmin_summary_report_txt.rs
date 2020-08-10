@@ -21,8 +21,10 @@ use garmin_lib::{
 
 use crate::garmin_report_options::{GarminReportAgg, GarminReportOptions};
 
+type GarminTextEntry = (StackString, Option<StackString>);
+
 pub trait GarminReportTrait {
-    fn get_text_entry(&self) -> Result<Vec<(StackString, Option<StackString>)>, Error>;
+    fn get_text_entry(&self) -> Result<Vec<GarminTextEntry>, Error>;
     fn get_html_entry(&self) -> Result<StackString, Error> {
         let ent: Vec<_> = self
             .get_text_entry()?
@@ -58,7 +60,7 @@ pub enum GarminReportQuery {
 }
 
 impl GarminReportQuery {
-    pub fn get_text_entries(&self) -> Result<Vec<Vec<(StackString, Option<StackString>)>>, Error> {
+    pub fn get_text_entries(&self) -> Result<Vec<Vec<GarminTextEntry>>, Error> {
         match self {
             Self::Year(x) => x.iter().map(GarminReportTrait::get_text_entry).collect(),
             Self::Month(x) => x.iter().map(GarminReportTrait::get_text_entry).collect(),
@@ -155,7 +157,7 @@ pub struct FileSummaryReport {
 }
 
 impl GarminReportTrait for FileSummaryReport {
-    fn get_text_entry(&self) -> Result<Vec<(StackString, Option<StackString>)>, Error> {
+    fn get_text_entry(&self) -> Result<Vec<GarminTextEntry>, Error> {
         let weekdayname = WEEKDAY_NAMES[self.isodow as usize - 1];
         let datetime = convert_datetime_to_str(self.datetime);
 
@@ -425,7 +427,7 @@ pub struct DaySummaryReport {
 }
 
 impl GarminReportTrait for DaySummaryReport {
-    fn get_text_entry(&self) -> Result<Vec<(StackString, Option<StackString>)>, Error> {
+    fn get_text_entry(&self) -> Result<Vec<GarminTextEntry>, Error> {
         let weekdayname = WEEKDAY_NAMES[self.isodow as usize - 1];
 
         debug!("{:?}", self);
@@ -587,7 +589,7 @@ pub struct WeekSummaryReport {
 }
 
 impl GarminReportTrait for WeekSummaryReport {
-    fn get_text_entry(&self) -> Result<Vec<(StackString, Option<StackString>)>, Error> {
+    fn get_text_entry(&self) -> Result<Vec<GarminTextEntry>, Error> {
         let total_days = 7;
 
         debug!("{:?}", self);
@@ -748,7 +750,7 @@ pub struct MonthSummaryReport {
 }
 
 impl GarminReportTrait for MonthSummaryReport {
-    fn get_text_entry(&self) -> Result<Vec<(StackString, Option<StackString>)>, Error> {
+    fn get_text_entry(&self) -> Result<Vec<GarminTextEntry>, Error> {
         let total_days = days_in_month(self.year as i32, self.month as u32);
 
         debug!("{:?}", self);
@@ -910,7 +912,7 @@ pub struct SportSummaryReport {
 }
 
 impl GarminReportTrait for SportSummaryReport {
-    fn get_text_entry(&self) -> Result<Vec<(StackString, Option<StackString>)>, Error> {
+    fn get_text_entry(&self) -> Result<Vec<GarminTextEntry>, Error> {
         debug!("{:?}", self);
         let mut tmp_vec = Vec::new();
 
@@ -1054,7 +1056,7 @@ pub struct YearSummaryReport {
 }
 
 impl GarminReportTrait for YearSummaryReport {
-    fn get_text_entry(&self) -> Result<Vec<(StackString, Option<StackString>)>, Error> {
+    fn get_text_entry(&self) -> Result<Vec<GarminTextEntry>, Error> {
         let total_days = days_in_year(self.year as i32);
 
         debug!("{:?}", self);

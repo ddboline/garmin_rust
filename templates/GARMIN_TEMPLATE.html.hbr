@@ -38,7 +38,7 @@
 {{{INSERTTEXTHERE}}}
 </div>
 
-<div>
+<div id="garmin_table_box">
     {{{INSERTTABLESHERE}}}
 </div>
 

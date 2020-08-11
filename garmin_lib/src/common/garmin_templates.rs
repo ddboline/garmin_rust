@@ -1,16 +1,13 @@
 use anyhow::Error;
 use handlebars::Handlebars;
 use lazy_static::lazy_static;
+use stack_string::StackString;
 
 fn get_templates() -> Result<Handlebars<'static>, Error> {
     let mut h = Handlebars::new();
     h.register_template_string(
         "GARMIN_TEMPLATE",
         include_str!("../../../templates/GARMIN_TEMPLATE.html.hbr"),
-    )?;
-    h.register_template_string(
-        "MAP_TEMPLATE",
-        include_str!("../../../templates/MAP_TEMPLATE.html.hbr"),
     )?;
     h.register_template_string(
         "LINEPLOTTEMPLATE",
@@ -27,10 +24,6 @@ fn get_templates() -> Result<Handlebars<'static>, Error> {
     h.register_template_string(
         "SCATTERPLOTWITHLINES",
         include_str!("../../../templates/SCATTERPLOTWITHLINES.js.hbr"),
-    )?;
-    h.register_template_string(
-        "PLOT_TEMPLATE",
-        include_str!("../../../templates/PLOT_TEMPLATE.html.hbr"),
     )?;
     h.register_template_string("GOOGLE_MAP_SCRIPT", google_map_script())?;
     Ok(h)
@@ -86,10 +79,10 @@ pub fn get_buttons(demo: bool) -> Vec<&'static str> {
     buttons
 }
 
-pub fn get_style() -> &'static str {
-    r#"
+pub fn get_style(is_map: bool) -> StackString {
+    let style_str = r#"
 <style>
-    html, body, #map-canvas {
+    html, body, #garmin_text_box {
     height: 80%;
     width: 80%;
     }
@@ -116,7 +109,12 @@ shape-rendering: crispEdges;
 }
 
 </style>
-    "#
+    "#;
+    if is_map {
+        style_str.into()
+    } else {
+        style_str.replace(", #garmin_text_box", "").into()
+    }
 }
 
 fn google_map_script() -> &'static str {

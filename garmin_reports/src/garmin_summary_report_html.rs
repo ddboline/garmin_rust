@@ -24,6 +24,7 @@ where
     let insert_text_here = format!(r#"<table border="0">{}</table>"#, htmlostr);
     let history_buttons = generate_history_buttons(history);
     let buttons = get_buttons(is_demo).join("\n");
+    let style = get_style(false);
 
     let params = hashmap! {
         "SPORTTITLEDATE" => "Garmin Summary",
@@ -32,7 +33,7 @@ where
         "DOMAIN" => domain,
         "STRAVAUPLOADBUTTON" => "",
         "SPORTTITLELINK" => "",
-        "GARMIN_STYLE" => get_style(),
+        "GARMIN_STYLE" => &style,
         "GARMINBUTTONS" => &buttons,
         "GARMIN_SCRIPTS" => get_scripts(is_demo),
     };

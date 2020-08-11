@@ -18,7 +18,8 @@ use tokio::{fs::File, io::AsyncWriteExt, stream::StreamExt};
 use fitbit_lib::fitbit_heartrate::FitbitHeartRate;
 use garmin_cli::garmin_cli::{GarminCli, GarminRequest};
 use garmin_lib::{
-    common::garmin_templates::HBR, utils::iso_8601_datetime::convert_datetime_to_str,
+    common::garmin_templates::{get_buttons, get_scripts, get_style, HBR},
+    utils::iso_8601_datetime::convert_datetime_to_str,
 };
 use garmin_reports::garmin_file_report_html::generate_history_buttons;
 
@@ -413,10 +414,14 @@ pub async fn heartrate_statistics_plots_impl(
         .get("history")
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
         .unwrap_or_else(Vec::new);
-
+    let is_demo = query.is_demo;
+    let buttons = get_buttons(is_demo).join("\n");
     let mut params = state.db.handle(query).await?;
     params.insert("HISTORYBUTTONS".into(), generate_history_buttons(&history));
-    Ok(HBR.render("PLOT_TEMPLATE", &params)?.into())
+    params.insert("GARMIN_STYLE".into(), get_style(false).into());
+    params.insert("GARMINBUTTONS".into(), buttons.into());
+    params.insert("GARMIN_SCRIPTS".into(), get_scripts(is_demo).into());
+    Ok(HBR.render("GARMIN_TEMPLATE", &params)?.into())
 }
 
 pub async fn heartrate_statistics_plots(
@@ -452,9 +457,14 @@ async fn fitbit_plots_impl(
         .get("history")
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
         .unwrap_or_else(Vec::new);
+    let is_demo = query.is_demo;
+    let buttons = get_buttons(is_demo).join("\n");
     let mut params = state.db.handle(query).await?;
     params.insert("HISTORYBUTTONS".into(), generate_history_buttons(&history));
-    let body = HBR.render("PLOT_TEMPLATE", &params)?;
+    params.insert("GARMIN_STYLE".into(), get_style(false).into());
+    params.insert("GARMINBUTTONS".into(), buttons.into());
+    params.insert("GARMIN_SCRIPTS".into(), get_scripts(is_demo).into());
+    let body = HBR.render("GARMIN_TEMPLATE", &params)?;
     form_http_response(body)
 }
 
@@ -487,9 +497,14 @@ async fn heartrate_plots_impl(
         .get("history")
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
         .unwrap_or_else(Vec::new);
+    let is_demo = query.is_demo;
+    let buttons = get_buttons(is_demo).join("\n");
     let mut params = state.db.handle(query).await?;
     params.insert("HISTORYBUTTONS".into(), generate_history_buttons(&history));
-    let body = HBR.render("PLOT_TEMPLATE", &params)?;
+    params.insert("GARMIN_STYLE".into(), get_style(false).into());
+    params.insert("GARMINBUTTONS".into(), buttons.into());
+    params.insert("GARMIN_SCRIPTS".into(), get_scripts(is_demo).into());
+    let body = HBR.render("GARMIN_TEMPLATE", &params)?;
     form_http_response(body)
 }
 
@@ -672,9 +687,14 @@ pub async fn race_result_plot_impl(
         .get("history")
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
         .unwrap_or_else(Vec::new);
+    let is_demo = req.demo.unwrap_or(true);
+    let buttons = get_buttons(is_demo).join("\n");
     let mut params = state.db.handle(req).await?;
     params.insert("HISTORYBUTTONS".into(), generate_history_buttons(&history));
-    Ok(HBR.render("PLOT_TEMPLATE", &params)?.into())
+    params.insert("GARMIN_STYLE".into(), get_style(false).into());
+    params.insert("GARMINBUTTONS".into(), buttons.into());
+    params.insert("GARMIN_SCRIPTS".into(), get_scripts(is_demo).into());
+    Ok(HBR.render("GARMIN_TEMPLATE", &params)?.into())
 }
 
 pub async fn race_result_plot(

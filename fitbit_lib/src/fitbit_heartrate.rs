@@ -353,8 +353,8 @@ impl FitbitHeartRate {
         let buttons = buttons.join("\n");
 
         let params = hashmap! {
-            "INSERTOTHERTEXTHERE".into() => "".into(),
-            "INSERTOTHERIMAGESHERE".into() => plots.into(),
+            "INSERTOTHERIMAGESHERE".into() => "".into(),
+            "INSERTTABLESHERE".into() => plots.into(),
             "INSERTTEXTHERE".into() => buttons.into(),
         };
         Ok(params)

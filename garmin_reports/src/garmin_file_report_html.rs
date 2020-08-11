@@ -457,6 +457,7 @@ fn get_garmin_template_vec<T: AsRef<str>>(
     let filename = filename.to_string_lossy();
     let activity_type = gfile.sport.to_strava_activity();
     let buttons = get_buttons(is_demo).join("\n");
+    let style = get_style(false);
 
     let params = hashmap! {
         "HISTORYBUTTONS" => history_buttons.as_str(),
@@ -467,7 +468,7 @@ fn get_garmin_template_vec<T: AsRef<str>>(
         "FILENAME" => filename.as_ref(),
         "ACTIVITYTYPE" => &activity_type,
         "STRAVAUPLOADBUTTON" => &button_str,
-        "GARMIN_STYLE" => get_style(),
+        "GARMIN_STYLE" => &style,
         "GARMINBUTTONS" => &buttons,
         "GARMIN_SCRIPTS" => get_scripts(is_demo),
     };
@@ -628,6 +629,7 @@ where
         "MAPSAPIKEY" => &config.maps_api_key,
     };
     let google_maps_script = HBR.render("GOOGLE_MAP_SCRIPT", &params)?;
+    let style = get_style(true);
 
     let params = hashmap! {
         "SPORTTITLEDATE" => sport_title_date.as_str(),
@@ -643,7 +645,7 @@ where
         "FILENAME" => filename.as_ref(),
         "ACTIVITYTYPE" => activity_type.as_str(),
         "DOMAIN" => &config.domain,
-        "GARMIN_STYLE" => get_style(),
+        "GARMIN_STYLE" => &style,
         "GARMINBUTTONS" => &buttons,
         "GARMIN_SCRIPTS" => get_scripts(is_demo),
         "GOOGLE_MAP_SCRIPT" => &google_maps_script,

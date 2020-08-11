@@ -306,8 +306,8 @@ impl ScaleMeasurement {
         let graphs = graphs.join("\n");
 
         Ok(hashmap! {
-            "INSERTOTHERTEXTHERE".into() => "".into(),
-            "INSERTOTHERIMAGESHERE".into() => graphs.into(),
+            "INSERTOTHERIMAGESHERE".into() => "".into(),
+            "INSERTTABLESHERE".into() => graphs.into(),
             "INSERTTEXTHERE".into() => entries.into(),
         })
     }

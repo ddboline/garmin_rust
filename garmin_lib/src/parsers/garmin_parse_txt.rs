@@ -1,5 +1,6 @@
 use anyhow::{format_err, Error};
 use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, Utc};
+use smallvec::SmallVec;
 use std::{
     collections::HashMap,
     fs::File,
@@ -202,9 +203,9 @@ impl GarminParseTxt {
         let entry_dict: HashMap<_, _> = line
             .split_whitespace()
             .filter_map(|x| {
-                let mut entries = x.split('=');
-                if let Some(key) = entries.next() {
-                    if let Some(val) = entries.next() {
+                let entries: SmallVec<[&str; 2]> = x.split('=').take(2).collect();
+                if let Some(key) = entries.get(0) {
+                    if let Some(val) = entries.get(1) {
                         return Some(((*key).to_string(), val.trim().to_string()));
                     }
                 }

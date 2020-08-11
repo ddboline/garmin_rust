@@ -2,9 +2,9 @@ use anyhow::Error;
 use chrono::NaiveDate;
 use postgres_query::FromSqlRow;
 use serde::{Deserialize, Serialize};
-use std::fmt::{self, Display, Formatter};
-
+use smallvec::SmallVec;
 use stack_string::StackString;
+use std::fmt::{self, Display, Formatter};
 
 use garmin_lib::{
     common::{garmin_summary::GarminSummary, pgpool::PgPool},
@@ -248,13 +248,13 @@ impl RaceResults {
         let results: Vec<_> = input
             .split('\n')
             .filter_map(|line| {
-                let mut entries = line.split_whitespace();
-                let distance: f64 = match entries.next().and_then(|e| e.parse().ok()) {
+                let entries: SmallVec<[&str; 2]> = line.split_whitespace().take(2).collect();
+                let distance: f64 = match entries.get(0).and_then(|e| e.parse().ok()) {
                     Some(d) => d,
                     None => return None,
                 };
                 let race_distance = (distance * 1000.0) as i32;
-                let race_time: f64 = match entries.next().and_then(|e| parse_time_string(e)) {
+                let race_time: f64 = match entries.get(1).and_then(|e| parse_time_string(e)) {
                     Some(t) => t,
                     None => return None,
                 };
@@ -275,19 +275,19 @@ impl RaceResults {
 }
 
 fn parse_time_string(s: &str) -> Option<f64> {
-    let mut times = s.split(':').rev();
+    let times: SmallVec<[&str; 3]> = s.split(':').rev().collect();
 
-    let seconds: f64 = match times.next().and_then(|t| t.parse().ok()) {
+    let seconds: f64 = match times.get(0).and_then(|t| t.parse().ok()) {
         Some(t) => t,
         None => return None,
     };
 
-    let minutes: f64 = match times.next().and_then(|t| t.parse().ok()) {
+    let minutes: f64 = match times.get(1).and_then(|t| t.parse().ok()) {
         Some(t) => t,
         None => return None,
     };
 
-    let hours: f64 = match times.next().and_then(|t| t.parse().ok()) {
+    let hours: f64 = match times.get(2).and_then(|t| t.parse().ok()) {
         Some(t) => t,
         None => return Some(minutes * 60.0 + seconds),
     };

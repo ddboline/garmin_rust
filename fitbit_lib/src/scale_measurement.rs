@@ -5,6 +5,7 @@ use maplit::hashmap;
 use postgres_query::{FromSqlRow, Parameter};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use serde::{self, Deserialize, Serialize};
+use smallvec::SmallVec;
 use stack_string::StackString;
 use std::{collections::HashMap, fmt};
 
@@ -41,13 +42,6 @@ impl fmt::Display for ScaleMeasurement {
 
 impl ScaleMeasurement {
     pub fn from_telegram_text(msg: &str) -> Result<Self, Error> {
-        fn opt2res<T>(item: Option<Result<T, Error>>) -> Result<T, Error> {
-            match item {
-                Some(x) => x,
-                None => Err(format_err!("Bad message")),
-            }
-        }
-
         let datetime = Utc::now();
         let sep = if msg.contains(',') {
             ','
@@ -59,21 +53,28 @@ impl ScaleMeasurement {
             return Err(format_err!("Bad message"));
         };
 
-        let mut iter = msg.split(sep).map(|x| {
-            let y: i32 = x.parse()?;
-            if y < 0 {
-                return Err(format_err!("Bad message"));
-            }
-            Ok(f64::from(y) / 10.)
-        });
+        let values = msg
+            .split(sep)
+            .map(|x| {
+                let y: i32 = x.parse()?;
+                if y < 0 {
+                    return Err(format_err!("Bad message"));
+                }
+                Ok(f64::from(y) / 10.)
+            })
+            .collect::<Result<SmallVec<[f64; 5]>, Error>>()?;
+
+        if values.len() < 5 {
+            return Err(format_err!("Bad message"));
+        }
 
         Ok(Self {
             datetime,
-            mass: opt2res(iter.next())?,
-            fat_pct: opt2res(iter.next())?,
-            water_pct: opt2res(iter.next())?,
-            muscle_pct: opt2res(iter.next())?,
-            bone_pct: opt2res(iter.next())?,
+            mass: values[0],
+            fat_pct: values[1],
+            water_pct: values[2],
+            muscle_pct: values[3],
+            bone_pct: values[4],
         })
     }
 

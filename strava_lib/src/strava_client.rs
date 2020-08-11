@@ -12,6 +12,7 @@ use reqwest::{
 };
 use select::{document::Document, predicate::Attr};
 use serde::{Deserialize, Serialize};
+use smallvec::SmallVec;
 use stack_string::StackString;
 use std::{
     collections::HashSet,
@@ -93,9 +94,9 @@ impl StravaClient {
             if b.read_line(&mut line).await? == 0 {
                 break;
             }
-            let mut items = line.split('=');
-            if let Some(key) = items.next() {
-                if let Some(val) = items.next() {
+            let items: SmallVec<[&str; 2]> = line.split('=').take(2).collect();
+            if let Some(key) = items.get(0) {
+                if let Some(val) = items.get(1) {
                     match key.trim() {
                         "client_id" => client.client_id = val.trim().into(),
                         "client_secret" => client.client_secret = val.trim().into(),

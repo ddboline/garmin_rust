@@ -7,45 +7,12 @@
 <meta charset="utf-8">
 <meta name="generator" content="HTML::TextToHTML v2.51"/>
 <meta http-equiv="Cache-Control" content="no-store" />
-<style>
-    html, body, #map-canvas {
-      height: 80%;
-      width: 80%;
-    }
-  body { font: 12px Arial;}
-  path {
-      stroke: steelblue;
-      stroke-width: 2;
-      fill: none;
-  }
-  .axis path,
-  .axis line {
-      fill: none;
-      stroke-width: 1;
-      shape-rendering: crispEdges;
-
-      stroke: #000;
-  }
-  .label {
-  font-weight: bold;
-  }
-
-  .tile {
-  shape-rendering: crispEdges;
-  }
-
-  </style>
+{{{GARMIN_STYLE}}}
 </head>
 <body>
 
 <H3>
-    <button type="submit" onclick="scale_measurement_plots(0);">Scale Plots</button>
-    <button type="submit" onclick="heartrate_stat_plot(0);">Hear Rate Stats</button>
-    <button type="submit" onclick="heartrate_plot();">Hear Rate Plot</button>
-    <button type="submit" onclick="race_result_plot_personal();">Race Result Plot</button>
-    <button name="garminconnectoutput" id="garminconnectoutput"> &nbsp; </button>
-    <button type="submit" onclick="send_command('filter=latest');"> latest </button>
-    <button type="submit" onclick="send_command('filter=sport');"> sport </button>
+    {{{GARMINBUTTONS}}}
 </H3>
 
 <form>
@@ -61,126 +28,7 @@
 {{{INSERTTEXTHERE}}}
 </pre>
 
-<script language="JavaScript" type="text/javascript">
-    function send_command( command ) {
-        let ostr = '/garmin/demo.html?' + command;
-        location.replace(ostr);
-    }
-    function processFormData() {
-        let garmin_filter = document.getElementById( 'garmin_filter' );
-        send_command( 'filter=' + garmin_filter.value );
-    }
-    function garmin_sync() {
-        let ostr = '/garmin/garmin_sync';
-        let xmlhttp = new XMLHttpRequest();
-        xmlhttp.open("GET", ostr, true);
-        xmlhttp.onload = function nothing() {
-            document.getElementById("garminconnectoutput").innerHTML = "done";
-            document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
-        }
-        xmlhttp.send(null);
-        document.getElementById("garminconnectoutput").innerHTML = "syncing";
-    }
-    function garmin_connect_sync() {
-        let ostr = '/garmin/garmin_connect_sync';
-        let xmlhttp = new XMLHttpRequest();
-        xmlhttp.open("GET", ostr, true);
-        xmlhttp.onload = function nothing() {
-            document.getElementById("garminconnectoutput").innerHTML = "done";
-            document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
-        }
-        xmlhttp.send(null);
-        document.getElementById("garminconnectoutput").innerHTML = "syncing";
-    }
-    function fitbit_tcx_sync() {
-        let ostr = '/garmin/fitbit/fitbit_tcx_sync';
-        let xmlhttp = new XMLHttpRequest();
-        xmlhttp.open("GET", ostr, true);
-        xmlhttp.onload = function nothing() {
-            document.getElementById("garminconnectoutput").innerHTML = "done";
-            document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
-        }
-        xmlhttp.send(null);
-        document.getElementById("garminconnectoutput").innerHTML = "syncing";
-    }
-    function stravaAuth() {
-        let ostr = "/garmin/strava/auth?auth_type=read";
-        let xmlhttp = new XMLHttpRequest();
-        xmlhttp.onload = function() {
-            let win = window.open(xmlhttp.responseText, '_blank');
-            win.focus()
-        }
-        xmlhttp.open( "GET", ostr, true );
-        xmlhttp.send(null);
-    }
-    function strava_sync() {
-        let ostr = '/garmin/strava_sync';
-        let xmlhttp = new XMLHttpRequest();
-        xmlhttp.open("GET", ostr, true);
-        xmlhttp.onload = function nothing() {
-            document.getElementById("garminconnectoutput").innerHTML = "done";
-            document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
-        }
-        xmlhttp.send(null);
-        document.getElementById("garminconnectoutput").innerHTML = "syncing";
-    }
-    function fitbitAuth() {
-        let url = '/garmin/fitbit/auth';
-        let xmlhttp = new XMLHttpRequest();
-        xmlhttp.onload = function() {
-            let win = window.open(xmlhttp.responseText, '_blank');
-            win.focus()
-        }
-        xmlhttp.open("GET", url, true);
-        xmlhttp.send(null);
-    }
-    function fitbitSync() {
-        let url = '/garmin/fitbit/bodyweight_sync';
-        let xmlhttp = new XMLHttpRequest();
-        xmlhttp.open("GET", url, true);
-        xmlhttp.onload = function nothing() {
-            document.getElementById("garminconnectoutput").innerHTML = "done";
-            document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
-        }
-        xmlhttp.send(null);
-        document.getElementById("garminconnectoutput").innerHTML = "syncing";
-    }
-    function scale_measurement_plots(offset) {
-        let ostr = '/garmin/fitbit/plots_demo?offset=' + offset;
-        location.replace(ostr)
-    }
-    function heartrate_stat_plot(offset) {
-        let ostr = '/garmin/fitbit/heartrate_statistics_plots_demo?offset=' + offset;
-        location.replace(ostr)
-    }
-    function heartrate_plot() {
-        let ostr = '/garmin/fitbit/heartrate_plots_demo';
-        location.replace(ostr)
-    }
-    function heartrateSync() {
-        let ostr = '/sync/sync_garmin';
-        let xmlhttp = new XMLHttpRequest();
-        xmlhttp.open("GET", ostr, true);
-        xmlhttp.onload = function nothing() {
-            document.getElementById("garminconnectoutput").innerHTML = "done";
-            document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
-        }
-        xmlhttp.send(null);
-        document.getElementById("garminconnectoutput").innerHTML = "syncing";
-    }
-    function race_result_plot_personal() {
-        let ostr = "/garmin/race_result_plot_demo?race_type=personal"
-        location.replace(ostr)
-    }
-    function race_result_plot_world_record_men() {
-        let ostr = "/garmin/race_result_plot_demo?race_type=world_record_men"
-        location.replace(ostr)
-    }
-    function race_result_plot_world_record_women() {
-        let ostr = "/garmin/race_result_plot_demo?race_type=world_record_women"
-        location.replace(ostr)
-    }
-</script>
+{{{GARMIN_SCRIPTS_DEMO}}}
 
 </body>
 </html>

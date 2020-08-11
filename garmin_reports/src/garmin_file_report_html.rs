@@ -8,9 +8,13 @@ use std::collections::HashSet;
 
 use garmin_lib::{
     common::{
-        fitbit_activity::FitbitActivity, garmin_config::GarminConfig,
-        garmin_connect_activity::GarminConnectActivity, garmin_file::GarminFile,
-        garmin_lap::GarminLap, garmin_templates::HBR, pgpool::PgPool,
+        fitbit_activity::FitbitActivity,
+        garmin_config::GarminConfig,
+        garmin_connect_activity::GarminConnectActivity,
+        garmin_file::GarminFile,
+        garmin_lap::GarminLap,
+        garmin_templates::{get_buttons, get_scripts, get_style, HBR},
+        pgpool::PgPool,
         strava_activity::StravaActivity,
     },
     utils::{
@@ -392,12 +396,6 @@ fn get_garmin_template_vec<T: AsRef<str>>(
     history: &[T],
     is_demo: bool,
 ) -> Result<Vec<StackString>, Error> {
-    let template = if is_demo {
-        "GARMIN_TEMPLATE_DEMO"
-    } else {
-        "GARMIN_TEMPLATE"
-    };
-
     let insert_text_here = vec![
         format!(
             "{}\n",
@@ -437,9 +435,11 @@ fn get_garmin_template_vec<T: AsRef<str>>(
                 format!(
                     r#"
                         <input type="text" name="cmd" id="strava_upload"/>
-                        <input type="button" name="submitSTRAVA" value="Title" onclick="processStravaUpdate({});"/>
+                        <input type="button" name="submitSTRAVA" value="Title"
+                         onclick="processStravaUpdate({}, '{}');"/>
                     "#,
-                    strava_activity.id
+                    strava_activity.id,
+                    gfile.sport.to_strava_activity(),
                 )
             },
         )
@@ -456,6 +456,7 @@ fn get_garmin_template_vec<T: AsRef<str>>(
     let filename = config.gps_dir.join(gfile.filename.as_str());
     let filename = filename.to_string_lossy();
     let activity_type = gfile.sport.to_strava_activity();
+    let buttons = get_buttons(is_demo).join("\n");
 
     let params = hashmap! {
         "HISTORYBUTTONS" => history_buttons.as_str(),
@@ -466,8 +467,11 @@ fn get_garmin_template_vec<T: AsRef<str>>(
         "FILENAME" => filename.as_ref(),
         "ACTIVITYTYPE" => &activity_type,
         "STRAVAUPLOADBUTTON" => &button_str,
+        "GARMIN_STYLE" => get_style(),
+        "GARMINBUTTONS" => &buttons,
+        "GARMIN_SCRIPTS" => get_scripts(is_demo),
     };
-    let body = HBR.render(template, &params)?;
+    let body = HBR.render("GARMIN_TEMPLATE", &params)?;
     Ok(body.split('\n').map(Into::into).collect())
 }
 
@@ -525,12 +529,6 @@ where
         (10, 0.4),
     ];
 
-    let template = if is_demo {
-        "MAP_TEMPLATE_DEMO"
-    } else {
-        "MAP_TEMPLATE"
-    };
-
     let sport_title_date = format!(
         "Garmin Event {} on {}",
         titlecase(&sport.to_string()),
@@ -556,9 +554,11 @@ where
                 format!(
                     r#"
                         <input type="text" name="cmd" id="strava_upload"/>
-                        <input type="button" name="submitSTRAVA" value="Title" onclick="processStravaUpdate({});"/>
+                        <input type="button" name="submitSTRAVA" value="Title"
+                         onclick="processStravaUpdate({}, '{}');"/>
                     "#,
-                    strava_activity.id
+                    strava_activity.id,
+                    gfile.sport.to_strava_activity(),
                 )
             },
         )
@@ -566,12 +566,17 @@ where
         format!(
             r#"<form>{}</form>"#,
             if is_demo {
-                ""
+                "".to_string()
             } else {
-                r#"
-                <input type="text" name="cmd" id="strava_upload"/>
-                <input type="button" name="submitSTRAVA" value="Title" onclick="processStravaData();"/>
-            "#
+                format!(
+                    r#"
+                        <input type="text" name="cmd" id="strava_upload"/>
+                        <input type="button" name="submitSTRAVA" value="Title"
+                        onclick="processStravaData('{}', '{}');"/>
+                    "#,
+                    gfile.filename,
+                    gfile.sport.to_strava_activity()
+                )
             },
         )
     };
@@ -613,28 +618,37 @@ where
     let filename = config.gps_dir.join(gfile.filename.as_str());
     let filename = filename.to_string_lossy();
     let activity_type = gfile.sport.to_strava_activity();
+    let buttons = get_buttons(is_demo).join("\n");
+
+    let params = hashmap! {
+        "CENTRALLAT" => central_lat.as_str(),
+        "CENTRALLON" => &central_lon,
+        "ZOOMVALUE" => &zoom_value,
+        "INSERTMAPSEGMENTSHERE" => &map_segment,
+        "MAPSAPIKEY" => &config.maps_api_key,
+    };
+    let google_maps_script = HBR.render("GOOGLE_MAP_SCRIPT", &params)?;
 
     let params = hashmap! {
         "SPORTTITLEDATE" => sport_title_date.as_str(),
         "SPORTTITLELINK" => &sport_title_link,
         "STRAVAUPLOADBUTTON" => &button_str,
-        "ZOOMVALUE" => &zoom_value,
         "INSERTTABLESHERE" => &insert_table_here,
-        "INSERTMAPSEGMENTSHERE" => &map_segment,
         "MINLAT" => &minlat,
         "MAXLAT" => &maxlat,
         "MINLON" => &minlon,
         "MAXLON" => &maxlon,
-        "CENTRALLAT" => &central_lat,
-        "CENTRALLON" => &central_lon,
         "INSERTOTHERIMAGESHERE" => &insert_other_images_here,
-        "MAPSAPIKEY" => &config.maps_api_key,
         "HISTORYBUTTONS" => history_buttons.as_str(),
         "FILENAME" => filename.as_ref(),
         "ACTIVITYTYPE" => activity_type.as_str(),
         "DOMAIN" => &config.domain,
+        "GARMIN_STYLE" => get_style(),
+        "GARMINBUTTONS" => &buttons,
+        "GARMIN_SCRIPTS" => get_scripts(is_demo),
+        "GOOGLE_MAP_SCRIPT" => &google_maps_script,
     };
-    let body = HBR.render(template, &params)?;
+    let body = HBR.render("GARMIN_TEMPLATE", &params)?;
     Ok(body.split('\n').map(Into::into).collect())
 }
 

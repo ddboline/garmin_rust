@@ -414,14 +414,9 @@ pub async fn heartrate_statistics_plots_impl(
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
         .unwrap_or_else(Vec::new);
 
-    let template = if query.is_demo {
-        "PLOT_TEMPLATE_DEMO"
-    } else {
-        "PLOT_TEMPLATE"
-    };
     let mut params = state.db.handle(query).await?;
     params.insert("HISTORYBUTTONS".into(), generate_history_buttons(&history));
-    Ok(HBR.render(template, &params)?.into())
+    Ok(HBR.render("PLOT_TEMPLATE", &params)?.into())
 }
 
 pub async fn heartrate_statistics_plots(
@@ -457,14 +452,9 @@ async fn fitbit_plots_impl(
         .get("history")
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
         .unwrap_or_else(Vec::new);
-    let template = if query.is_demo {
-        "PLOT_TEMPLATE_DEMO"
-    } else {
-        "PLOT_TEMPLATE"
-    };
     let mut params = state.db.handle(query).await?;
     params.insert("HISTORYBUTTONS".into(), generate_history_buttons(&history));
-    let body = HBR.render(template, &params)?;
+    let body = HBR.render("PLOT_TEMPLATE", &params)?;
     form_http_response(body)
 }
 
@@ -497,14 +487,9 @@ async fn heartrate_plots_impl(
         .get("history")
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
         .unwrap_or_else(Vec::new);
-    let template = if query.is_demo {
-        "PLOT_TEMPLATE_DEMO"
-    } else {
-        "PLOT_TEMPLATE"
-    };
     let mut params = state.db.handle(query).await?;
     params.insert("HISTORYBUTTONS".into(), generate_history_buttons(&history));
-    let body = HBR.render(template, &params)?;
+    let body = HBR.render("PLOT_TEMPLATE", &params)?;
     form_http_response(body)
 }
 
@@ -687,15 +672,9 @@ pub async fn race_result_plot_impl(
         .get("history")
         .map_err(|e| format_err!("Failed to set history {:?}", e))?
         .unwrap_or_else(Vec::new);
-    let is_demo = req.demo.unwrap_or(true);
-    let template = if is_demo {
-        "PLOT_TEMPLATE_DEMO"
-    } else {
-        "PLOT_TEMPLATE"
-    };
     let mut params = state.db.handle(req).await?;
     params.insert("HISTORYBUTTONS".into(), generate_history_buttons(&history));
-    Ok(HBR.render(template, &params)?.into())
+    Ok(HBR.render("PLOT_TEMPLATE", &params)?.into())
 }
 
 pub async fn race_result_plot(

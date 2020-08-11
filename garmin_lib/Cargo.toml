@@ -44,3 +44,4 @@ stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0
 handlebars = "3.3"
 maplit = "1.0"
 chrono-tz = "0.5"
+smallvec = "1.4"

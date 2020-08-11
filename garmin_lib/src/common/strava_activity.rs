@@ -8,9 +8,8 @@ use serde::{Deserialize, Serialize};
 use stack_string::StackString;
 use std::collections::HashMap;
 
-use crate::common::strava_timezone::StravaTimeZone;
 use crate::{
-    common::{garmin_summary::GarminSummary, pgpool::PgPool},
+    common::{garmin_summary::GarminSummary, pgpool::PgPool, strava_timezone::StravaTimeZone},
     utils::{
         iso_8601_datetime,
         sport_types::{self, SportTypes},

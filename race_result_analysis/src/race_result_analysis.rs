@@ -288,9 +288,9 @@ impl RaceResultAnalysis {
         let buttons = buttons.join("");
 
         Ok(hashmap! {
-            "INSERTOTHERIMAGESHERE".into() => plots.into(),
+            "INSERTTABLESHERE".into() => plots.into(),
             "INSERTTEXTHERE".into() => buttons.into(),
-            "INSERTOTHERTEXTHERE".into() => entries.into(),
+            "INSERTOTHERIMAGESHERE".into() => entries.into(),
         })
     }
 }

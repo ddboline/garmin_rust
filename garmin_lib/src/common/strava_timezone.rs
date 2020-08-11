@@ -4,9 +4,9 @@ use chrono::offset::FixedOffset;
 use chrono_tz::Tz;
 use derive_more::Into;
 use serde::{Deserialize, Serialize};
+use smallvec::SmallVec;
 use stack_string::StackString;
-use std::fmt;
-use std::{convert::TryFrom, ops::Deref, str::FromStr};
+use std::{convert::TryFrom, fmt, ops::Deref, str::FromStr};
 use tokio_postgres::types::{FromSql, IsNull, ToSql, Type};
 
 /// Direction in degrees
@@ -82,8 +82,8 @@ impl StravaTimeZone {
 
     pub fn from_strava_str(s: &str) -> Result<Self, Error> {
         let mut offset = None;
-        let mut tz_strs = s.split_whitespace();
-        if let Some(tz) = tz_strs.next() {
+        let tz_strs: SmallVec<[&str; 2]> = s.split_whitespace().take(2).collect();
+        if let Some(tz) = tz_strs.get(0) {
             assert_eq!(tz.get(1..=3), Some("GMT"));
             if let Some(hours) = tz.get(4..=6).and_then(|s| s.parse::<i32>().ok()) {
                 if let Some(minutes) = tz.get(8..=9).and_then(|s| s.parse::<i32>().ok()) {
@@ -91,7 +91,7 @@ impl StravaTimeZone {
                 }
             }
         }
-        if let Some(tz) = tz_strs.next() {
+        if let Some(tz) = tz_strs.get(1) {
             let tz: Tz = tz
                 .parse()
                 .map_err(|e| format_err!("{} is not a valid timezone", e))?;

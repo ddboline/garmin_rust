@@ -6,8 +6,7 @@ use derive_more::Into;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use stack_string::StackString;
-use std::fmt;
-use std::{convert::TryFrom, ops::Deref, str::FromStr};
+use std::{convert::TryFrom, fmt, ops::Deref, str::FromStr};
 use tokio_postgres::types::{FromSql, IsNull, ToSql, Type};
 
 /// Direction in degrees

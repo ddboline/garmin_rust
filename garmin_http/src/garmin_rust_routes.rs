@@ -418,7 +418,7 @@ pub async fn heartrate_statistics_plots_impl(
     let buttons = get_buttons(is_demo).join("\n");
     let mut params = state.db.handle(query).await?;
     params.insert("HISTORYBUTTONS".into(), generate_history_buttons(&history));
-    params.insert("GARMIN_STYLE".into(), get_style(false).into());
+    params.insert("GARMIN_STYLE".into(), get_style(false));
     params.insert("GARMINBUTTONS".into(), buttons.into());
     params.insert("GARMIN_SCRIPTS".into(), get_scripts(is_demo).into());
     Ok(HBR.render("GARMIN_TEMPLATE", &params)?.into())
@@ -461,7 +461,7 @@ async fn fitbit_plots_impl(
     let buttons = get_buttons(is_demo).join("\n");
     let mut params = state.db.handle(query).await?;
     params.insert("HISTORYBUTTONS".into(), generate_history_buttons(&history));
-    params.insert("GARMIN_STYLE".into(), get_style(false).into());
+    params.insert("GARMIN_STYLE".into(), get_style(false));
     params.insert("GARMINBUTTONS".into(), buttons.into());
     params.insert("GARMIN_SCRIPTS".into(), get_scripts(is_demo).into());
     let body = HBR.render("GARMIN_TEMPLATE", &params)?;
@@ -501,7 +501,7 @@ async fn heartrate_plots_impl(
     let buttons = get_buttons(is_demo).join("\n");
     let mut params = state.db.handle(query).await?;
     params.insert("HISTORYBUTTONS".into(), generate_history_buttons(&history));
-    params.insert("GARMIN_STYLE".into(), get_style(false).into());
+    params.insert("GARMIN_STYLE".into(), get_style(false));
     params.insert("GARMINBUTTONS".into(), buttons.into());
     params.insert("GARMIN_SCRIPTS".into(), get_scripts(is_demo).into());
     let body = HBR.render("GARMIN_TEMPLATE", &params)?;
@@ -691,7 +691,7 @@ pub async fn race_result_plot_impl(
     let buttons = get_buttons(is_demo).join("\n");
     let mut params = state.db.handle(req).await?;
     params.insert("HISTORYBUTTONS".into(), generate_history_buttons(&history));
-    params.insert("GARMIN_STYLE".into(), get_style(false).into());
+    params.insert("GARMIN_STYLE".into(), get_style(false));
     params.insert("GARMINBUTTONS".into(), buttons.into());
     params.insert("GARMIN_SCRIPTS".into(), get_scripts(is_demo).into());
     Ok(HBR.render("GARMIN_TEMPLATE", &params)?.into())

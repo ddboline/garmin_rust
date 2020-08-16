@@ -361,16 +361,14 @@ impl FitbitHeartRate {
     }
 
     pub fn dump_to_avro(values: &[Self], output_filename: &str) -> Result<(), Error> {
-        let schema = Schema::parse_str(FITBITHEARTRATE_SCHEMA).map_err(|e| format_err!("{}", e))?;
+        let schema = Schema::parse_str(FITBITHEARTRATE_SCHEMA)?;
 
         let output_file = File::create(output_filename)?;
 
         let mut writer = Writer::with_codec(&schema, output_file, Codec::Snappy);
-
-        writer
-            .append_ser(values)
-            .and_then(|_| writer.flush().map(|_| ()))
-            .map_err(|e| format_err!("{}", e))
+        writer.append_ser(values)?;
+        writer.flush()?;
+        Ok(())
     }
 
     pub fn read_avro_by_date(config: &GarminConfig, date: NaiveDate) -> Result<Vec<Self>, Error> {
@@ -388,17 +386,12 @@ impl FitbitHeartRate {
 
     pub fn read_avro(input_filename: &Path) -> Result<Vec<Self>, Error> {
         let input_file = File::open(input_filename)?;
-
-        Reader::new(input_file)
-            .map_err(|e| format_err!("{}", e))?
+        Reader::new(input_file)?
             .next()
-            .map(|record| {
-                let record = record.map_err(|e| format_err!("{}", e))?;
-                from_value::<Vec<Self>>(&record).map_err(|e| format_err!("{}", e))
-            })
+            .map(|record| from_value::<Vec<Self>>(&record?))
             .transpose()
             .map(|x| x.unwrap_or_else(Vec::new))
-            .map_err(|e| format_err!("{}", e))
+            .map_err(Into::into)
     }
 
     pub fn merge_slice_to_avro(config: &GarminConfig, values: &[Self]) -> Result<(), Error> {

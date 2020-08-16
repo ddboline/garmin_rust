@@ -191,17 +191,14 @@ impl GarminSummary {
         summary_list: &[&Self],
         output_filename: &Path,
     ) -> Result<(), Error> {
-        let schema =
-            Schema::parse_str(GARMIN_SUMMARY_AVRO_SCHEMA).map_err(|e| format_err!("{}", e))?;
+        let schema = Schema::parse_str(GARMIN_SUMMARY_AVRO_SCHEMA)?;
 
         let output_file = File::create(output_filename)?;
 
         let mut writer = Writer::with_codec(&schema, output_file, Codec::Snappy);
-
-        writer
-            .extend_ser(summary_list)
-            .and_then(|_| writer.flush().map(|_| ()))
-            .map_err(|e| format_err!("{}", e))
+        writer.extend_ser(summary_list)?;
+        writer.flush()?;
+        Ok(())
     }
 
     pub fn write_summary_to_avro_files(

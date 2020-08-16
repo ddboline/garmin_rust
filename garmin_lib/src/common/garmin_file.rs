@@ -101,17 +101,14 @@ impl GarminFile {
     }
 
     pub fn dump_avro(&self, output_filename: &Path) -> Result<(), Error> {
-        let schema =
-            Schema::parse_str(&GARMIN_FILE_AVRO_SCHEMA).map_err(|e| format_err!("{}", e))?;
+        let schema = Schema::parse_str(&GARMIN_FILE_AVRO_SCHEMA)?;
 
         let output_file = File::create(output_filename)?;
 
         let mut writer = Writer::with_codec(&schema, output_file, Codec::Snappy);
-
-        writer
-            .append_ser(&self)
-            .and_then(|_| writer.flush().map(|_| ()))
-            .map_err(|e| format_err!("{}", e))
+        writer.append_ser(&self)?;
+        writer.flush()?;
+        Ok(())
     }
 
     pub async fn read_avro_async(input_filename: &Path) -> Result<Self, Error> {
@@ -122,11 +119,10 @@ impl GarminFile {
     pub fn read_avro(input_filename: &Path) -> Result<Self, Error> {
         let input_file = File::open(input_filename)?;
 
-        let mut reader = Reader::new(input_file).map_err(|e| format_err!("{}", e))?;
+        let mut reader = Reader::new(input_file)?;
 
         if let Some(record) = reader.next() {
-            return from_value::<Self>(&record.map_err(|e| format_err!("{}", e))?)
-                .map_err(|e| format_err!("{}", e));
+            return from_value::<Self>(&record?).map_err(Into::into);
         }
         Err(format_err!("Failed to find file"))
     }

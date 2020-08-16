@@ -19,7 +19,7 @@ log = "0.4"
 lazy_static = "1.4"
 parking_lot = "0.11"
 itertools = "0.9"
-avro-rs = {version = "0.10", features = ["snappy"]}
+avro-rs = {version = "0.11", features = ["snappy"]}
 postgres_query = "0.3"
 anyhow = "1.0"
 thiserror = "1.0"

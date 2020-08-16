@@ -656,6 +656,7 @@ mod tests {
                     activity.name.as_str(),
                     Some("Test description"),
                     SportTypes::Running,
+                    None,
                 )
                 .await?;
             debug!("{}", result);

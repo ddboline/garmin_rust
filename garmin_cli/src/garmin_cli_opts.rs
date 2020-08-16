@@ -74,6 +74,16 @@ impl GarminCliOpts {
                     client.import_fitbit_heartrate(today)
                 )?;
                 cli.stdout.send(format!("{:?}", updates).into())?;
+
+                let start_date = (Utc::now() - Duration::days(10)).naive_utc().date();
+                let filenames: Vec<_> = client
+                    .sync_tcx(start_date)
+                    .await?
+                    .into_iter()
+                    .map(|p| p.to_string_lossy().into_owned())
+                    .collect();
+                cli.stdout.send(filenames.join("\n").into())?;
+
                 cli.stdout.close().await?;
                 FitbitHeartRate::calculate_summary_statistics(&client.config, &pool, today).await?;
 
@@ -90,19 +100,6 @@ impl GarminCliOpts {
         };
 
         let stdout_task = cli.stdout.spawn_stdout_task();
-
-        if let Some(GarminCliOptions::Connect) = cli.opts {
-            let config = cli.config.clone();
-            let client = FitbitClient::with_auth(config.clone()).await?;
-            let start_date = (Utc::now() - Duration::days(10)).naive_utc().date();
-            let filenames: Vec<_> = client
-                .sync_tcx(start_date)
-                .await?
-                .into_iter()
-                .map(|p| p.to_string_lossy().into_owned())
-                .collect();
-            cli.stdout.send(filenames.join("\n").into())?;
-        }
 
         Self::garmin_proc(&cli).await?;
         cli.stdout.close().await?;

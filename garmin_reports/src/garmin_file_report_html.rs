@@ -19,6 +19,7 @@ use garmin_lib::{
     },
     utils::{
         garmin_util::{print_h_m_s, titlecase, MARATHON_DISTANCE_MI, METERS_PER_MILE},
+        iso_8601_datetime::convert_datetime_to_str,
         plot_graph::generate_d3_plot,
         plot_opts::PlotOpts,
         sport_types::{get_sport_type_map, SportTypes},
@@ -436,10 +437,11 @@ fn get_garmin_template_vec<T: AsRef<str>>(
                     r#"
                         <input type="text" name="cmd" id="strava_upload"/>
                         <input type="button" name="submitSTRAVA" value="Title"
-                         onclick="processStravaUpdate({}, '{}');"/>
+                         onclick="processStravaUpdate({}, '{}', '{}');"/>
                     "#,
                     strava_activity.id,
                     gfile.sport.to_strava_activity(),
+                    convert_datetime_to_str(strava_activity.start_date),
                 )
             },
         )
@@ -556,10 +558,11 @@ where
                     r#"
                         <input type="text" name="cmd" id="strava_upload"/>
                         <input type="button" name="submitSTRAVA" value="Title"
-                         onclick="processStravaUpdate({}, '{}');"/>
+                         onclick="processStravaUpdate({}, '{}', '{}');"/>
                     "#,
                     strava_activity.id,
                     gfile.sport.to_strava_activity(),
+                    convert_datetime_to_str(strava_activity.start_date),
                 )
             },
         )

@@ -33,7 +33,7 @@ use garmin_lib::{
     },
     utils::{
         garmin_util::gzip_file,
-        iso_8601_datetime,
+        iso_8601_datetime::{self, convert_datetime_to_str},
         sport_types::{self, SportTypes},
     },
 };
@@ -510,6 +510,7 @@ impl StravaClient {
         title: &str,
         description: Option<&str>,
         sport: SportTypes,
+        start_time: Option<DateTime<Utc>>,
     ) -> Result<StackString, Error> {
         #[derive(Serialize)]
         struct UpdatableActivity {
@@ -542,27 +543,48 @@ impl StravaClient {
             .send()
             .await?
             .error_for_status()?;
-        let url = format!("https://{}/garmin/strava_sync", self.config.domain).into();
-        Ok(url)
+        let url = format!("https://{}/garmin/strava_sync", self.config.domain);
+        let url = if let Some(start_time) = start_time {
+            let start_time = convert_datetime_to_str(start_time);
+            Url::parse_with_params(
+                &url,
+                &[
+                    ("start_datetime", &start_time),
+                    ("end_datetime", &start_time),
+                ],
+            )?
+        } else {
+            url.parse()?
+        };
+        Ok(url.into_string().into())
     }
 
     pub async fn sync_with_client(
         &self,
-        max_datetime: DateTime<Utc>,
+        start_datetime: Option<DateTime<Utc>>,
+        end_datetime: Option<DateTime<Utc>>,
         pool: &PgPool,
     ) -> Result<Vec<PathBuf>, Error> {
         let new_activities: Vec<_> = self
-            .get_all_strava_activites(Some(max_datetime), None)
+            .get_all_strava_activites(start_datetime, end_datetime)
             .await?;
 
         StravaActivity::upsert_activities(&new_activities, &pool).await?;
 
-        let old_activities: HashSet<_> =
-            get_list_of_activities_from_db(&format!("begin_datetime >= '{}'", max_datetime), &pool)
-                .await?
-                .into_iter()
-                .map(|(d, _)| d)
-                .collect();
+        let mut constraints: SmallVec<[String; 2]> = SmallVec::new();
+        if let Some(start_datetime) = start_datetime {
+            constraints.push(format!("begin_datetime >= '{}'", start_datetime));
+        }
+        if let Some(end_datetime) = end_datetime {
+            constraints.push(format!("begin_datetime <= '{}'", end_datetime));
+        }
+        let constraints = constraints.join(" AND ");
+
+        let old_activities: HashSet<_> = get_list_of_activities_from_db(&constraints, &pool)
+            .await?
+            .into_iter()
+            .map(|(d, _)| d)
+            .collect();
 
         #[allow(clippy::filter_map)]
         let futures = new_activities

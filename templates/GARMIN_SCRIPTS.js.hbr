@@ -31,14 +31,15 @@
         xmlhttp.setRequestHeader("Content-Type", "application/json");
         xmlhttp.send(data);
     }
-    function processStravaUpdate(activity_id, activity_type) {
+    function processStravaUpdate(activity_id, activity_type, start_time) {
         let strava_title = document.getElementById( 'strava_upload' );
         let ostr = '/garmin/strava/update';
         let data = JSON.stringify(
             {
                 "activity_id": activity_id,
                 "title": strava_title.value,
-                "activity_type": activity_type
+                "activity_type": activity_type,
+                "start_time": start_time,
             }
         );
         let xmlhttp = new XMLHttpRequest();

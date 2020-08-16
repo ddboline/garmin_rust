@@ -167,11 +167,12 @@ impl GarminReportTrait for FileSummaryReport {
 
         match self.sport.as_str() {
             "running" | "walking" => {
+                tmp_vec.push((format!("{:17}", format!("{:10}", datetime),).into(), None));
+                tmp_vec.push((format!("{:02} {:3}", self.week, weekdayname).into(), None));
                 if self.total_distance > 0.0 {
                     tmp_vec.push((
                         format!(
-                            "{:27} {:10} {:10} {:10} {:10} {:10} {:10}",
-                            format!("{:20} {:02} {:3}", datetime, self.week, weekdayname),
+                            "{:10} {:10} {:10} {:10} {:10} {:10}",
                             self.sport,
                             format!("{:.2} mi", self.total_distance / METERS_PER_MILE),
                             format!("{} cal", self.total_calories),
@@ -197,8 +198,7 @@ impl GarminReportTrait for FileSummaryReport {
                 } else {
                     tmp_vec.push((
                         format!(
-                            "{:17} {:10} {:10} {:10} {:10} {:10} {:10}",
-                            format!("{:10} {:02} {:3}", datetime, self.week, weekdayname),
+                            "{:10} {:10} {:10} {:10} {:10} {:10}",
                             self.sport,
                             format!("{:.2} mi", self.total_distance / METERS_PER_MILE),
                             format!("{} cal", self.total_calories),
@@ -212,10 +212,11 @@ impl GarminReportTrait for FileSummaryReport {
                 }
             }
             "biking" => {
+                tmp_vec.push((format!("{:17}", format!("{:10}", datetime),).into(), None));
+                tmp_vec.push((format!("{:02} {:3}", self.week, weekdayname).into(), None));
                 tmp_vec.push((
                     format!(
-                        "{:17} {:10} {:10} {:10} {:10} {:10} {:10}",
-                        format!("{:10} {:02} {:3}", datetime, self.week, weekdayname),
+                        "{:10} {:10} {:10} {:10} {:10} {:10}",
                         self.sport,
                         format!("{:.2} mi", self.total_distance / METERS_PER_MILE),
                         format!("{} cal", self.total_calories),
@@ -231,10 +232,11 @@ impl GarminReportTrait for FileSummaryReport {
                 ));
             }
             _ => {
+                tmp_vec.push((format!("{:17}", format!("{:10}", datetime),).into(), None));
+                tmp_vec.push((format!("{:02} {:3}", self.week, weekdayname).into(), None));
                 tmp_vec.push((
                     format!(
-                        "{:17} {:10} {:10} {:10} {:10} {:10} {:10}",
-                        format!("{:10} {:02} {:3}", datetime, self.week, weekdayname),
+                        "{:10} {:10} {:10} {:10} {:10} {:10}",
                         self.sport,
                         format!("{:.2} mi", self.total_distance / METERS_PER_MILE),
                         format!("{} cal", self.total_calories),
@@ -364,7 +366,7 @@ async fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<FileSumm
             sum(total_hr_dis) as total_hr_dis
         FROM a
         GROUP BY sport, datetime, week, isodow
-        ORDER BY sport, datetime, week, isodow
+        ORDER BY datetime, sport, week, isodow
     ",
         constr
     );

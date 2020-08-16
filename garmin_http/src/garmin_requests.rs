@@ -217,17 +217,28 @@ impl HandleRequest<GarminConnectHrApiRequest> for PgPool {
     }
 }
 
-pub struct StravaSyncRequest {}
+#[derive(Serialize, Deserialize)]
+pub struct StravaSyncRequest {
+    pub start_datetime: Option<DateTime<Utc>>,
+    pub end_datetime: Option<DateTime<Utc>>,
+}
 
 #[async_trait]
 impl HandleRequest<StravaSyncRequest> for PgPool {
     type Result = Result<Vec<PathBuf>, Error>;
-    async fn handle(&self, _: StravaSyncRequest) -> Self::Result {
+    async fn handle(&self, req: StravaSyncRequest) -> Self::Result {
         let gcli = GarminCli::from_pool(&self)?;
         let config = CONFIG.clone();
-        let max_datetime = Utc::now() - Duration::days(15);
+
+        let start_datetime = req
+            .start_datetime
+            .or_else(|| Some(Utc::now() - Duration::days(15)));
+        let end_datetime = req.end_datetime.or_else(|| Some(Utc::now()));
+
         let client = StravaClient::with_auth(config).await?;
-        let filenames = client.sync_with_client(max_datetime, self).await?;
+        let filenames = client
+            .sync_with_client(start_datetime, end_datetime, self)
+            .await?;
 
         if !filenames.is_empty() {
             gcli.process_filenames(&filenames).await?;
@@ -705,6 +716,7 @@ pub struct StravaUpdateRequest {
     pub activity_type: StackString,
     pub description: Option<StackString>,
     pub is_private: Option<bool>,
+    pub start_time: Option<DateTime<Utc>>,
 }
 
 #[async_trait]
@@ -721,6 +733,7 @@ impl HandleRequest<StravaUpdateRequest> for PgPool {
                 &msg.title,
                 msg.description.as_ref().map(StackString::as_str),
                 sport,
+                msg.start_time,
             )
             .await
             .map_err(Into::into)

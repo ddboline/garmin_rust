@@ -154,10 +154,13 @@ impl GarminCliOpts {
     pub async fn sync_with_strava(cli: &GarminCli) -> Result<Vec<PathBuf>, Error> {
         let config = cli.config.clone();
         let pool = PgPool::new(&config.pgurl);
-        let max_datetime = Utc::now() - Duration::days(15);
+        let start_datetime = Some(Utc::now() - Duration::days(15));
+        let end_datetime = Some(Utc::now());
 
         let client = StravaClient::with_auth(config).await?;
-        let filenames = client.sync_with_client(max_datetime, &pool).await?;
+        let filenames = client
+            .sync_with_client(start_datetime, end_datetime, &pool)
+            .await?;
 
         if !filenames.is_empty() {
             cli.process_filenames(&filenames).await?;

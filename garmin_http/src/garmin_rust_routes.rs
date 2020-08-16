@@ -227,10 +227,15 @@ pub async fn garmin_sync(_: LoggedUser, state: Data<AppState>) -> Result<HttpRes
     form_http_response(body)
 }
 
-pub async fn strava_sync(_: LoggedUser, state: Data<AppState>) -> Result<HttpResponse, Error> {
+pub async fn strava_sync(
+    query: Query<StravaSyncRequest>,
+    _: LoggedUser,
+    state: Data<AppState>,
+) -> Result<HttpResponse, Error> {
+    let query = query.into_inner();
     let body: Vec<_> = state
         .db
-        .handle(StravaSyncRequest {})
+        .handle(query)
         .await?
         .into_iter()
         .map(|p| p.to_string_lossy().into_owned())

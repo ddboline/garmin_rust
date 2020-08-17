@@ -24,10 +24,10 @@ use crate::{
         garmin_connect_sync, garmin_connect_user_summary, garmin_demo, garmin_sync, garmin_upload,
         heartrate_plots, heartrate_plots_demo, heartrate_statistics_plots,
         heartrate_statistics_plots_demo, race_result_flag, race_result_import, race_result_plot,
-        race_result_plot_demo, scale_measurement, scale_measurement_update, strava_activities,
-        strava_activities_db, strava_activities_db_update, strava_athlete, strava_auth,
-        strava_callback, strava_create, strava_refresh, strava_sync, strava_update, strava_upload,
-        user,
+        race_result_plot_demo, race_results_db, race_results_db_update, scale_measurement,
+        scale_measurement_update, strava_activities, strava_activities_db,
+        strava_activities_db_update, strava_athlete, strava_auth, strava_callback, strava_create,
+        strava_refresh, strava_sync, strava_update, strava_upload, user,
     },
     CONFIG,
 };
@@ -212,6 +212,11 @@ pub async fn start_app() {
             .service(
                 web::resource("/garmin/race_result_plot_demo")
                     .route(web::get().to(race_result_plot_demo)),
+            )
+            .service(
+                web::resource("/garmin/race_results_db")
+                    .route(web::get().to(race_results_db))
+                    .route(web::post().to(race_results_db_update)),
             )
     })
     .bind(&format!("127.0.0.1:{}", config.port))

@@ -1037,3 +1037,38 @@ impl HandleRequest<RaceResultImportRequest> for PgPool {
         Ok(())
     }
 }
+
+#[derive(Serialize, Deserialize)]
+pub struct RaceResultsDBRequest {
+    pub race_type: Option<RaceType>,
+}
+
+#[async_trait]
+impl HandleRequest<RaceResultsDBRequest> for PgPool {
+    type Result = Result<Vec<RaceResults>, Error>;
+    async fn handle(&self, req: RaceResultsDBRequest) -> Self::Result {
+        let race_type = req.race_type.unwrap_or(RaceType::Personal);
+        RaceResults::get_results_by_type(race_type, self)
+            .await
+            .map_err(Into::into)
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct RaceResultsDBUpdateRequest {
+    pub updates: Vec<RaceResults>,
+}
+
+#[async_trait]
+impl HandleRequest<RaceResultsDBUpdateRequest> for PgPool {
+    type Result = Result<(), Error>;
+    async fn handle(&self, req: RaceResultsDBUpdateRequest) -> Self::Result {
+        let futures = req.updates.iter().map(|result| {
+            let pool = self.clone();
+            async move { result.upsert_db(&pool).await.map_err(Into::into) }
+        });
+        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+        results?;
+        Ok(())
+    }
+}

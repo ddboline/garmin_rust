@@ -38,10 +38,11 @@ use crate::{
         GarminConnectHrApiRequest, GarminConnectHrSyncRequest, GarminConnectSyncRequest,
         GarminConnectUserSummaryRequest, GarminHtmlRequest, GarminSyncRequest, GarminUploadRequest,
         HandleRequest, RaceResultFlagRequest, RaceResultImportRequest, RaceResultPlotRequest,
-        ScaleMeasurementPlotRequest, ScaleMeasurementRequest, ScaleMeasurementUpdateRequest,
-        StravaActiviesDBUpdateRequest, StravaActivitiesDBRequest, StravaActivitiesRequest,
-        StravaAthleteRequest, StravaAuthRequest, StravaCallbackRequest, StravaCreateRequest,
-        StravaRefreshRequest, StravaSyncRequest, StravaUpdateRequest, StravaUploadRequest,
+        RaceResultsDBRequest, RaceResultsDBUpdateRequest, ScaleMeasurementPlotRequest,
+        ScaleMeasurementRequest, ScaleMeasurementUpdateRequest, StravaActiviesDBUpdateRequest,
+        StravaActivitiesDBRequest, StravaActivitiesRequest, StravaAthleteRequest,
+        StravaAuthRequest, StravaCallbackRequest, StravaCreateRequest, StravaRefreshRequest,
+        StravaSyncRequest, StravaUpdateRequest, StravaUploadRequest,
     },
     CONFIG,
 };
@@ -744,5 +745,25 @@ pub async fn race_result_import(
 ) -> Result<HttpResponse, Error> {
     let query = query.into_inner();
     state.db.handle(query).await?;
+    form_http_response("".into())
+}
+
+pub async fn race_results_db(
+    query: Query<RaceResultsDBRequest>,
+    state: Data<AppState>,
+    _: LoggedUser,
+) -> Result<HttpResponse, Error> {
+    let query = query.into_inner();
+    let results = state.db.handle(query).await?;
+    to_json(&results)
+}
+
+pub async fn race_results_db_update(
+    payload: Json<RaceResultsDBUpdateRequest>,
+    state: Data<AppState>,
+    _: LoggedUser,
+) -> Result<HttpResponse, Error> {
+    let payload = payload.into_inner();
+    state.db.handle(payload).await?;
     form_http_response("".into())
 }

@@ -1,6 +1,6 @@
 <script language="JavaScript" type="text/javascript">
     function send_command( command ) {
-        let ostr = '/garmin?' + command;
+        let ostr = '/garmin/index.html?' + command;
         location.replace(ostr);
     }
     function processFormData() {

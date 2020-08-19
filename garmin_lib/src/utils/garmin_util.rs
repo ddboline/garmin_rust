@@ -1,8 +1,7 @@
 use anyhow::{format_err, Error};
 use chrono::{DateTime, TimeZone, Utc};
 use fitparser::Value;
-use flate2::read::GzEncoder;
-use flate2::Compression;
+use flate2::{read::GzEncoder, Compression};
 use log::{debug, error};
 use num_traits::pow::Pow;
 use rand::{

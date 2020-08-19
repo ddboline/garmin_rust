@@ -2,10 +2,13 @@ use anyhow::{format_err, Error};
 use chrono::{DateTime, Utc};
 use flate2::read::GzDecoder;
 use roxmltree::{Document, NodeType};
-use std::ffi::OsStr;
-use std::fs::File;
-use std::io::Read;
-use std::{collections::HashMap, fs::read_to_string, path::Path};
+use std::{
+    collections::HashMap,
+    ffi::OsStr,
+    fs::{read_to_string, File},
+    io::Read,
+    path::Path,
+};
 
 use super::garmin_parse::{GarminParseTrait, ParseOutput};
 use crate::{

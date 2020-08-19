@@ -1,6 +1,6 @@
 use anyhow::{format_err, Error};
 use base64::{encode_config, URL_SAFE_NO_PAD};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Local, Utc};
 use futures::future::try_join_all;
 use lazy_static::lazy_static;
 use maplit::hashmap;
@@ -403,8 +403,7 @@ impl StravaClient {
             name: StackString,
             #[serde(rename = "type", with = "sport_types")]
             activity_type: SportTypes,
-            #[serde(with = "iso_8601_datetime")]
-            start_date_local: DateTime<Utc>,
+            start_date_local: StackString,
             elapsed_time: i64,
             description: StackString,
             distance: i64,
@@ -420,7 +419,12 @@ impl StravaClient {
         let data = CreateActivityForm {
             name: activity.name.clone(),
             activity_type: activity.activity_type,
-            start_date_local: activity.start_date,
+            start_date_local: activity
+                .start_date
+                .with_timezone(&Local)
+                .format("%Y-%m-%dT%H:%M:%S%z")
+                .to_string()
+                .into(),
             elapsed_time: activity.elapsed_time,
             description: "".into(),
             distance: activity.distance.map_or(0, |d| d as i64),

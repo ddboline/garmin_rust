@@ -16,7 +16,7 @@ fn test_garmin_file_test_avro() -> Result<(), Error> {
     let corr_map = GarminCorrectionLap::corr_list_from_json("tests/data/garmin_corrections.json")?;
     let gfile = garmin_parse_fit::GarminParseFit::new()
         .with_file(Path::new("tests/data/test.fit"), &corr_map)?;
-    match gfile.dump_avro(Path::new("temp.avro.gz")) {
+    match gfile.dump_avro(Path::new("temp.avro")) {
         Ok(()) => {
             writeln!(stdout(), "Success")?;
         }
@@ -25,7 +25,7 @@ fn test_garmin_file_test_avro() -> Result<(), Error> {
         }
     }
 
-    match garmin_file::GarminFile::read_avro(Path::new("temp.avro.gz")) {
+    match garmin_file::GarminFile::read_avro(Path::new("temp.avro")) {
         Ok(g) => {
             writeln!(stdout(), "Success")?;
             assert_eq!(gfile.sport, g.sport);
@@ -47,6 +47,6 @@ fn test_garmin_file_test_avro() -> Result<(), Error> {
         }
     }
 
-    std::fs::remove_file("temp.avro.gz")?;
+    std::fs::remove_file("temp.avro")?;
     Ok(())
 }

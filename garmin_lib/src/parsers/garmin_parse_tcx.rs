@@ -1,7 +1,14 @@
 use anyhow::{format_err, Error};
 use chrono::{DateTime, Utc};
+use flate2::read::GzDecoder;
 use roxmltree::{Document, NodeType};
-use std::{collections::HashMap, fs::read_to_string, path::Path};
+use std::{
+    collections::HashMap,
+    ffi::OsStr,
+    fs::{read_to_string, File},
+    io::Read,
+    path::Path,
+};
 
 use super::garmin_parse::{GarminParseTrait, ParseOutput};
 use crate::{
@@ -15,20 +22,23 @@ use crate::{
 };
 
 #[derive(Debug, Default)]
-pub struct GarminParseTcx {}
+pub struct GarminParseTcx {
+    pub is_gzip: bool,
+}
 
 impl GarminParseTcx {
     pub fn new() -> Self {
-        Self {}
+        Self { is_gzip: false }
     }
 }
 
 impl GarminParseTrait for GarminParseTcx {
     fn with_file(
-        self,
+        mut self,
         filename: &Path,
         corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
     ) -> Result<GarminFile, Error> {
+        self.is_gzip = filename.extension().and_then(OsStr::to_str) == Some("gz");
         let tcx_output = self.parse_file(filename)?;
         let (lap_list, sport) =
             apply_lap_corrections(&tcx_output.lap_list, tcx_output.sport, corr_map);
@@ -59,7 +69,13 @@ impl GarminParseTrait for GarminParseTcx {
     }
 
     fn parse_file(&self, filename: &Path) -> Result<ParseOutput, Error> {
-        let output = read_to_string(filename)?;
+        let output = if self.is_gzip {
+            let mut buf = String::new();
+            GzDecoder::new(File::open(filename)?).read_to_string(&mut buf)?;
+            buf
+        } else {
+            read_to_string(filename)?
+        };
         let doc = Document::parse(&output)?;
 
         let mut lap_list = Vec::new();

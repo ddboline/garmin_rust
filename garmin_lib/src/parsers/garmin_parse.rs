@@ -34,6 +34,13 @@ impl GarminParseTrait for GarminParse {
             Some("fit") => GarminParseFit::new().with_file(filename, corr_map),
             Some("tcx") | Some("TCX") => GarminParseTcx::new().with_file(filename, corr_map),
             Some("gmn") => GarminParseGmn::new().with_file(filename, corr_map),
+            Some("gz") => {
+                if filename.to_string_lossy().ends_with("tcx.gz") {
+                    GarminParseTcx::new().with_file(filename, corr_map)
+                } else {
+                    Err(format_err!("Invalid extension"))
+                }
+            }
             _ => Err(format_err!("Invalid extension")),
         }
     }

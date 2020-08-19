@@ -24,6 +24,7 @@ fn test_garmin_file_test_filenames() -> Result<(), Error> {
             "tests/data/test.gmn".into(),
             "tests/data/test.tcx".into(),
             "tests/data/test.txt".into(),
+            "tests/data/test.tcx.gz".into(),
         ])),
         pool,
         corr,

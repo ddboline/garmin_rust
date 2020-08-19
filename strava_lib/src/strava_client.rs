@@ -462,11 +462,11 @@ impl StravaClient {
             filepath.canonicalize()?.to_string_lossy().to_string()
         } else {
             let tfile = Builder::new().suffix(&format!(".{}.gz", ext)).tempfile()?;
-            let infname = filepath.canonicalize()?.to_string_lossy().to_string();
-            let outfname = tfile.path().to_string_lossy().to_string();
+            let infname = filepath.canonicalize()?;
+            let outfname = tfile.path().to_path_buf();
             gzip_file(&infname, &outfname)?;
             _tempfile = Some(tfile);
-            outfname
+            outfname.to_string_lossy().to_string()
         };
 
         let fext = if filename.ends_with("fit.gz") {

@@ -1,6 +1,8 @@
 use anyhow::{format_err, Error};
 use chrono::{DateTime, TimeZone, Utc};
 use fitparser::Value;
+use flate2::read::GzEncoder;
+use flate2::Compression;
 use log::{debug, error};
 use num_traits::pow::Pow;
 use rand::{
@@ -9,7 +11,7 @@ use rand::{
 };
 use stack_string::StackString;
 use std::{
-    fs::remove_file,
+    fs::{remove_file, File},
     future::Future,
     io::{BufRead, BufReader, Read},
     path::{Path, PathBuf},
@@ -179,18 +181,20 @@ pub fn extract_zip_from_garmin_connect(
     Ok(new_filename)
 }
 
-pub fn gzip_file(input_filename: &str, output_filename: &str) -> Result<(), Error> {
-    let command = format!("gzip -c {} > {}", input_filename, output_filename);
-    let mut process = Exec::shell(command).stdout(Redirection::Pipe).popen()?;
-    let exit_status = process.wait()?;
-    if !exit_status.success() {
-        if let Some(mut f) = process.stdout.as_ref() {
-            let mut buf = String::new();
-            f.read_to_string(&mut buf)?;
-            error!("{}", buf);
-        }
-        return Err(format_err!("Failed with exit status {:?}", exit_status));
+pub fn gzip_file<T, U>(input_filename: T, output_filename: U) -> Result<(), Error>
+where
+    T: AsRef<Path>,
+    U: AsRef<Path>,
+{
+    let input_filename = input_filename.as_ref();
+    let output_filename = output_filename.as_ref();
+    if !input_filename.exists() {
+        return Err(format_err!("File {:?} does not exist", input_filename));
     }
+    std::io::copy(
+        &mut GzEncoder::new(File::open(input_filename)?, Compression::fast()),
+        &mut File::create(output_filename)?,
+    )?;
     Ok(())
 }
 

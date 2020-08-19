@@ -33,7 +33,7 @@ use garmin_lib::{
     },
     utils::{
         garmin_util::gzip_file,
-        iso_8601_datetime::{self, convert_datetime_to_str},
+        iso_8601_datetime::convert_datetime_to_str,
         sport_types::{self, SportTypes},
     },
 };

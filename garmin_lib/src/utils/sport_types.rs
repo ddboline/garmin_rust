@@ -132,6 +132,23 @@ impl SportTypes {
             _ => None,
         }
     }
+
+    pub fn from_fitbit_activity_id(id: usize) -> Self {
+        match id {
+            90009 => Self::Running,
+            90013 | 15000 => Self::Walking,
+            90001 | 1071 => Self::Biking,
+            90012 => Self::Hiking,
+            15250 => Self::Ultimate,
+            90017 => Self::Elliptical,
+            12170 => Self::Stairs,
+            2050 => Self::Lifting,
+            18300 => Self::Swimming,
+            19190 => Self::Snowshoeing,
+            90015 => Self::Skiing,
+            _ => Self::None,
+        }
+    }
 }
 
 impl FromStr for SportTypes {

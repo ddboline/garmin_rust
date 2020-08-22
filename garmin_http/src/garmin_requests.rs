@@ -145,6 +145,7 @@ impl HandleRequest<GarminUploadRequest> for PgPool {
         let gcli = GarminCli::from_pool(&self)?;
         let filenames = vec![req.filename];
         let datetimes = gcli.process_filenames(&filenames).await?;
+        gcli.sync_everything(false).await?;
         gcli.proc_everything().await?;
         Ok(datetimes)
     }
@@ -170,6 +171,7 @@ impl HandleRequest<GarminConnectSyncRequest> for PgPool {
         if let Ok(filenames) = session.get_activity_files(&new_activities).await {
             if !filenames.is_empty() {
                 gcli.process_filenames(&filenames).await?;
+                gcli.sync_everything(false).await?;
                 gcli.proc_everything().await?;
             }
             Ok(filenames)
@@ -242,6 +244,7 @@ impl HandleRequest<StravaSyncRequest> for PgPool {
 
         if !filenames.is_empty() {
             gcli.process_filenames(&filenames).await?;
+            gcli.sync_everything(false).await?;
             gcli.proc_everything().await?;
         }
 
@@ -402,6 +405,7 @@ impl HandleRequest<FitbitTcxSyncRequest> for PgPool {
         let filenames = client.sync_tcx(start_date).await?;
 
         let gcli = GarminCli::from_pool(&self)?;
+        gcli.sync_everything(false).await?;
         gcli.proc_everything().await?;
         Ok(filenames)
     }

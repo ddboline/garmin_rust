@@ -193,10 +193,7 @@ pub async fn garmin_upload(
     form_http_response(body.into())
 }
 
-pub async fn garmin_connect_sync(
-    _: LoggedUser,
-    state: Data<AppState>,
-) -> HttpResult {
+pub async fn garmin_connect_sync(_: LoggedUser, state: Data<AppState>) -> HttpResult {
     let flist = state.db.handle(GarminConnectSyncRequest {}).await?;
     to_json(flist)
 }
@@ -364,19 +361,13 @@ pub async fn fitbit_heartrate_cache(
     to_json(hlist)
 }
 
-pub async fn fitbit_bodyweight(
-    _: LoggedUser,
-    state: Data<AppState>,
-) -> HttpResult {
+pub async fn fitbit_bodyweight(_: LoggedUser, state: Data<AppState>) -> HttpResult {
     let req = FitbitBodyWeightFatRequest {};
     let hlist = state.db.handle(req).await?;
     to_json(hlist)
 }
 
-pub async fn fitbit_bodyweight_sync(
-    _: LoggedUser,
-    state: Data<AppState>,
-) -> HttpResult {
+pub async fn fitbit_bodyweight_sync(_: LoggedUser, state: Data<AppState>) -> HttpResult {
     let req = FitbitBodyWeightFatUpdateRequest {};
     let hlist = state.db.handle(req).await?;
     to_json(hlist)
@@ -409,8 +400,12 @@ pub async fn fitbit_sync(
 ) -> HttpResult {
     let query = query.into_inner();
     let heartrates = state.db.handle(query).await?;
-    let range = (heartrates.len() - 20)..(heartrates.len());
-    form_http_response(FitbitHeartRate::create_table(&heartrates[range]).into())
+    let start = if heartrates.len() > 20 {
+        heartrates.len() - 20
+    } else {
+        0
+    };
+    form_http_response(FitbitHeartRate::create_table(&heartrates[start..]).into())
 }
 
 pub async fn heartrate_statistics_plots_impl(
@@ -605,10 +600,7 @@ pub async fn add_garmin_correction(
     form_http_response("finised".to_string())
 }
 
-pub async fn fitbit_activity_types(
-    _: LoggedUser,
-    state: Data<AppState>,
-) -> HttpResult {
+pub async fn fitbit_activity_types(_: LoggedUser, state: Data<AppState>) -> HttpResult {
     let result = state.db.handle(FitbitActivityTypesRequest {}).await?;
     to_json(result)
 }

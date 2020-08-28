@@ -1,16 +1,26 @@
 use anyhow::Error;
 use chrono::{Duration, Utc};
+use futures::future::try_join_all;
 use stack_string::StackString;
 use std::path::PathBuf;
 use structopt::StructOpt;
-use tokio::try_join;
+use tokio::{
+    fs::{read_to_string, File},
+    io::{stdin, stdout, AsyncReadExt, AsyncWrite, AsyncWriteExt},
+    try_join,
+};
 
-use fitbit_lib::{fitbit_client::FitbitClient, fitbit_heartrate::FitbitHeartRate};
+use fitbit_lib::{
+    fitbit_client::FitbitClient, fitbit_heartrate::FitbitHeartRate,
+    scale_measurement::ScaleMeasurement,
+};
 use garmin_connect_lib::garmin_connect_client::GarminConnectClient;
 use garmin_lib::common::{
-    garmin_config::GarminConfig, garmin_connect_activity::GarminConnectActivity,
-    garmin_summary::get_maximum_begin_datetime, pgpool::PgPool,
+    fitbit_activity::FitbitActivity, garmin_config::GarminConfig,
+    garmin_connect_activity::GarminConnectActivity, garmin_summary::get_maximum_begin_datetime,
+    pgpool::PgPool, strava_activity::StravaActivity,
 };
+use race_result_analysis::{race_results::RaceResults, race_type::RaceType};
 use strava_lib::strava_client::StravaClient;
 
 use crate::garmin_cli::{GarminCli, GarminCliOptions};
@@ -38,6 +48,18 @@ pub enum GarminCliOpts {
     Fitbit {
         #[structopt(short, long)]
         all: bool,
+    },
+    Import {
+        #[structopt(short, long)]
+        table: StackString,
+        #[structopt(short, long)]
+        filepath: Option<PathBuf>,
+    },
+    Export {
+        #[structopt(short, long)]
+        table: StackString,
+        #[structopt(short, long)]
+        filepath: Option<PathBuf>,
     },
 }
 
@@ -91,6 +113,101 @@ impl GarminCliOpts {
                     FitbitHeartRate::get_all_summary_statistics(&client.config, &pool).await?;
                 }
                 return stdout_task.await?;
+            }
+            Self::Import { table, filepath } => {
+                let config = GarminConfig::get_config(None)?;
+                let pool = PgPool::new(&config.pgurl);
+                let data = if let Some(filepath) = filepath {
+                    read_to_string(&filepath).await?
+                } else {
+                    let mut stdin = stdin();
+                    let mut buf = String::new();
+                    stdin.read_to_string(&mut buf).await?;
+                    buf
+                };
+                match table.as_str() {
+                    "scale_measurements" => {
+                        let measurements: Vec<ScaleMeasurement> = serde_json::from_str(&data)?;
+                        ScaleMeasurement::merge_updates(&measurements, &pool).await?;
+                    }
+                    "strava_activities" => {
+                        let activities: Vec<StravaActivity> = serde_json::from_str(&data)?;
+                        StravaActivity::upsert_activities(&activities, &pool).await?;
+                    }
+                    "fitbit_activities" => {
+                        let activities: Vec<FitbitActivity> = serde_json::from_str(&data)?;
+                        FitbitActivity::upsert_activities(&activities, &pool).await?;
+                    }
+                    "garmin_connect_activities" => {
+                        let activities: Vec<GarminConnectActivity> = serde_json::from_str(&data)?;
+                        GarminConnectActivity::upsert_activities(&activities, &pool).await?;
+                    }
+                    "race_results" => {
+                        let results: Vec<RaceResults> = serde_json::from_str(&data)?;
+                        let futures = results.into_iter().map(|result| {
+                            let pool = pool.clone();
+                            async move { result.update_db(&pool).await.map_err(Into::into) }
+                        });
+                        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+                        results?;
+                    }
+                    _ => {}
+                }
+                return Ok(());
+            }
+            Self::Export { table, filepath } => {
+                let config = GarminConfig::get_config(None)?;
+                let pool = PgPool::new(&config.pgurl);
+                let mut file: Box<dyn AsyncWrite + Unpin> = if let Some(filepath) = filepath {
+                    Box::new(File::create(&filepath).await?)
+                } else {
+                    Box::new(stdout())
+                };
+                match table.as_str() {
+                    "scale_measurements" => {
+                        let start_date = (Utc::now() - Duration::days(7)).naive_local().date();
+                        for measurement in
+                            ScaleMeasurement::read_from_db(&pool, Some(start_date), None).await?
+                        {
+                            file.write_all(&serde_json::to_vec(&measurement)?).await?;
+                        }
+                    }
+                    "strava_activities" => {
+                        let start_date = (Utc::now() - Duration::days(7)).naive_local().date();
+                        for activity in
+                            StravaActivity::read_from_db(&pool, Some(start_date), None).await?
+                        {
+                            file.write_all(&serde_json::to_vec(&activity)?).await?;
+                        }
+                    }
+                    "fitbit_activities" => {
+                        let start_date = (Utc::now() - Duration::days(7)).naive_local().date();
+                        for activity in
+                            FitbitActivity::read_from_db(&pool, Some(start_date), None).await?
+                        {
+                            file.write_all(&serde_json::to_vec(&activity)?).await?;
+                        }
+                    }
+                    "garmin_connect_activities" => {
+                        let start_date = (Utc::now() - Duration::days(7)).naive_local().date();
+                        for activity in
+                            GarminConnectActivity::read_from_db(&pool, Some(start_date), None)
+                                .await?
+                        {
+                            file.write_all(&serde_json::to_vec(&activity)?).await?;
+                        }
+                    }
+                    "race_results" => {
+                        for result in
+                            RaceResults::get_results_by_type(RaceType::Personal, &pool).await?
+                        {
+                            file.write_all(&serde_json::to_vec(&result)?).await?;
+                        }
+                    }
+                    _ => {}
+                }
+
+                return Ok(());
             }
         };
 

@@ -3,12 +3,10 @@ use async_trait::async_trait;
 use chrono::{DateTime, Duration, Local, NaiveDate, NaiveDateTime, NaiveTime, Utc};
 use futures::future::try_join_all;
 use lazy_static::lazy_static;
-use log::debug;
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -552,26 +550,7 @@ pub struct ScaleMeasurementUpdateRequest {
 impl HandleRequest<ScaleMeasurementUpdateRequest> for PgPool {
     type Result = Result<(), Error>;
     async fn handle(&self, msg: ScaleMeasurementUpdateRequest) -> Self::Result {
-        let measurement_set: HashSet<_> = ScaleMeasurement::read_from_db(self, None, None)
-            .await?
-            .into_par_iter()
-            .map(|d| d.datetime)
-            .collect();
-        let measurement_set = Arc::new(measurement_set);
-        let futures = msg.measurements.into_iter().map(|meas| {
-            let measurement_set = measurement_set.clone();
-            async move {
-                if measurement_set.contains(&meas.datetime) {
-                    debug!("measurement exists {:?}", meas);
-                } else {
-                    meas.insert_into_db(self).await?;
-                    debug!("measurement inserted {:?}", meas);
-                }
-                Ok(())
-            }
-        });
-        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
-        results?;
+        ScaleMeasurement::merge_updates(&msg.measurements, self).await?;
         Ok(())
     }
 }

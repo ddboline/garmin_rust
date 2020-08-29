@@ -1,3 +1,5 @@
+#![type_length_limit = "1058849"]
+
 use garmin_cli::garmin_cli_opts::GarminCliOpts;
 
 #[tokio::main]

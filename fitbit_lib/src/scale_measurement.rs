@@ -324,7 +324,7 @@ impl ScaleMeasurement {
             .map(|d| d.datetime)
             .collect();
         let measurement_set = Arc::new(measurement_set);
-        let futures = measurements.into_iter().map(|meas| {
+        let futures = measurements.iter().map(|meas| {
             let measurement_set = measurement_set.clone();
             async move {
                 if measurement_set.contains(&meas.datetime) {

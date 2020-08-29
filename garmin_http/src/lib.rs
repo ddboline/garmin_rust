@@ -1,5 +1,4 @@
-#![type_length_limit="1058849"]
-
+#![type_length_limit = "1058849"]
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::module_name_repetitions)]

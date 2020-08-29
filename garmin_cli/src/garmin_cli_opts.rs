@@ -51,7 +51,8 @@ pub enum GarminCliOpts {
     },
     Import {
         #[structopt(short, long)]
-        /// table: allowed values: ['scale_measurements', 'strava_activities', 'fitbit_activities', 'garmin_connect_activities',
+        /// table: allowed values: ['scale_measurements', 'strava_activities',
+        /// 'fitbit_activities', 'garmin_connect_activities',
         /// 'race_results']
         table: StackString,
         #[structopt(short, long)]
@@ -59,7 +60,8 @@ pub enum GarminCliOpts {
     },
     Export {
         #[structopt(short, long)]
-        /// table: allowed values: ['scale_measurements', 'strava_activities', 'fitbit_activities', 'garmin_connect_activities',
+        /// table: allowed values: ['scale_measurements', 'strava_activities',
+        /// 'fitbit_activities', 'garmin_connect_activities',
         /// 'race_results']
         table: StackString,
         #[structopt(short, long)]

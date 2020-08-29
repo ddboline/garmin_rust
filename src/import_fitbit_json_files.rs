@@ -1,3 +1,5 @@
+#![type_length_limit = "1058849"]
+
 use stack_string::StackString;
 use structopt::StructOpt;
 

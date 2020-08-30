@@ -19,6 +19,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use tempfile::Builder;
+use tokio::task::spawn_blocking;
 use tokio::{
     fs::File,
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
@@ -467,10 +468,11 @@ impl StravaClient {
         } else {
             let tfile = Builder::new().suffix(&format!(".{}.gz", ext)).tempfile()?;
             let infname = filepath.canonicalize()?;
-            let outfname = tfile.path().to_path_buf();
-            gzip_file(&infname, &outfname)?;
+            let outfpath = tfile.path().to_path_buf();
+            let outfname = outfpath.to_string_lossy().to_string();
+            spawn_blocking(move || gzip_file(&infname, &outfpath)).await??;
             _tempfile = Some(tfile);
-            outfname.to_string_lossy().to_string()
+            outfname
         };
 
         let fext = if filename.ends_with("fit.gz") {

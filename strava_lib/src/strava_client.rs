@@ -480,7 +480,7 @@ impl StravaClient {
         } else if filename.ends_with("tcx.gz") {
             "tcx.gz"
         } else {
-            return Ok("".into());
+            return Err(format_err!("Bad extension {}", filename));
         };
 
         let part = Part::bytes(tokio::fs::read(&filename).await?).file_name(filename);

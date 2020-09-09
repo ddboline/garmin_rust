@@ -167,7 +167,7 @@ impl GarminCli {
                 let proc_list: Result<Vec<_>, Error> = flist
                     .par_iter()
                     .map(|f| {
-                        self.stdout.send(format!("Process {:?}", &f).into())?;
+                        self.stdout.send(format!("Process {:?}", &f));
                         Ok(GarminSummary::process_single_gps_file(
                             &f,
                             &self.get_config().cache_dir,
@@ -415,8 +415,7 @@ impl GarminCli {
                     };
 
                 debug!("gfile {} {}", gfile.laps.len(), gfile.points.len());
-                self.stdout
-                    .send(generate_txt_report(&gfile)?.join("\n").into())?;
+                self.stdout.send(generate_txt_report(&gfile)?.join("\n"));
             }
             _ => {
                 debug!("{:?}", options);
@@ -429,7 +428,7 @@ impl GarminCli {
                         v.join(" ")
                     })
                     .collect();
-                self.stdout.send(txt_result.join("\n").into())?;
+                self.stdout.send(txt_result.join("\n"));
             }
         };
         Ok(())
@@ -540,7 +539,7 @@ impl GarminCli {
                         .gps_dir
                         .join(gfile.get_standardized_name(suffix).as_str());
 
-                    stdout.send(format!("{:?} {:?}", filename, outfile).into())?;
+                    stdout.send(format!("{:?} {:?}", filename, outfile));
 
                     if outfile.exists() {
                         return Ok(None);

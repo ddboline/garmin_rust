@@ -82,10 +82,8 @@ impl GarminCliOpts {
                     GarminCli::process_pattern(&config, &patterns)
                 };
                 let cli = GarminCli::with_config()?;
-                let stdout_task = cli.stdout.spawn_stdout_task();
                 cli.run_cli(&req.options, &req.constraints).await?;
-                cli.stdout.close().await?;
-                return stdout_task.await?;
+                return cli.stdout.close().await;
             }
             Self::Connect => GarminCliOptions::Connect,
             Self::Sync { md5sum } => GarminCliOptions::Sync(md5sum),
@@ -93,7 +91,6 @@ impl GarminCliOpts {
                 let today = Utc::now().naive_local().date();
 
                 let cli = GarminCli::with_config()?;
-                let stdout_task = cli.stdout.spawn_stdout_task();
                 let config = GarminConfig::get_config(None)?;
                 let pool = PgPool::new(&config.pgurl);
                 let client = FitbitClient::with_auth(config.clone()).await?;
@@ -101,7 +98,7 @@ impl GarminCliOpts {
                     client.sync_everything(&pool),
                     client.import_fitbit_heartrate(today)
                 )?;
-                cli.stdout.send(format!("{:?}", updates).into())?;
+                cli.stdout.send(format!("{:?}", updates));
 
                 let start_date = (Utc::now() - Duration::days(10)).naive_utc().date();
                 let filenames: Vec<_> = client
@@ -110,7 +107,7 @@ impl GarminCliOpts {
                     .into_iter()
                     .map(|p| p.to_string_lossy().into_owned())
                     .collect();
-                cli.stdout.send(filenames.join("\n").into())?;
+                cli.stdout.send(filenames.join("\n"));
 
                 cli.stdout.close().await?;
                 FitbitHeartRate::calculate_summary_statistics(&client.config, &pool, today).await?;
@@ -118,7 +115,7 @@ impl GarminCliOpts {
                 if all {
                     FitbitHeartRate::get_all_summary_statistics(&client.config, &pool).await?;
                 }
-                return stdout_task.await?;
+                return cli.stdout.close().await;
             }
             Self::Import { table, filepath } => {
                 let config = GarminConfig::get_config(None)?;
@@ -222,11 +219,8 @@ impl GarminCliOpts {
             ..GarminCli::with_config()?
         };
 
-        let stdout_task = cli.stdout.spawn_stdout_task();
-
         Self::garmin_proc(&cli).await?;
-        cli.stdout.close().await?;
-        stdout_task.await?
+        cli.stdout.close().await
     }
 
     pub async fn garmin_proc(cli: &GarminCli) -> Result<(), Error> {
@@ -245,7 +239,7 @@ impl GarminCliOpts {
             Some(GarminCliOptions::Sync(check_md5)) => cli.sync_everything(*check_md5).await,
             _ => cli.proc_everything().await,
         }?;
-        cli.stdout.send(results.join("\n").into())?;
+        cli.stdout.send(results.join("\n"));
         Ok(())
     }
 

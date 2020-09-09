@@ -19,12 +19,12 @@ use std::{
     path::{Path, PathBuf},
 };
 use tempfile::Builder;
-use tokio::task::spawn_blocking;
 use tokio::{
     fs::File,
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     stream::StreamExt,
     sync::Mutex,
+    task::spawn_blocking,
 };
 
 use garmin_lib::{

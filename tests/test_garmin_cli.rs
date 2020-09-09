@@ -9,9 +9,9 @@ use garmin_lib::{
     utils::stdout_channel::StdoutChannel,
 };
 
-#[test]
+#[tokio::test]
 #[ignore]
-fn test_garmin_file_test_filenames() -> Result<(), Error> {
+async fn test_garmin_file_test_filenames() -> Result<(), Error> {
     let test_config = "tests/data/test.env";
     let config = GarminConfig::get_config(Some(test_config))?;
     let pool = PgPool::new(&config.pgurl);

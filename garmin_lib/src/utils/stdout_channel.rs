@@ -95,7 +95,7 @@ impl StdoutChannel {
 mod tests {
     use anyhow::Error;
 
-    use crate::stdout_channel::StdoutChannel;
+    use crate::utils::stdout_channel::StdoutChannel;
 
     #[tokio::test]
     async fn test_stdout_task() -> Result<(), Error> {

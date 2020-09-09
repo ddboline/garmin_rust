@@ -74,13 +74,6 @@ pub struct GarminCli {
 }
 
 impl GarminCli {
-    /// ```
-    /// # use garmin_cli::garmin_cli::GarminCli;
-    /// # use garmin_lib::parsers::garmin_parse::GarminParse;
-    /// # use garmin_lib::common::garmin_correction_lap::GarminCorrectionMap;
-    /// let gcli = GarminCli::new();
-    /// assert_eq!(gcli.opts, None);
-    /// ```
     pub fn new() -> Self {
         Self {
             config: GarminConfig::new(),

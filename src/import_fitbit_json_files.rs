@@ -1,4 +1,4 @@
-#![type_length_limit = "1058849"]
+#![type_length_limit = "1059389"]
 
 use stack_string::StackString;
 use structopt::StructOpt;

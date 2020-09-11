@@ -132,18 +132,39 @@ impl GarminCliOpts {
                     "scale_measurements" => {
                         let measurements: Vec<ScaleMeasurement> = serde_json::from_str(&data)?;
                         ScaleMeasurement::merge_updates(&measurements, &pool).await?;
+                        stdout()
+                            .write_all(
+                                format!("scale_measurements {}\n", measurements.len()).as_bytes(),
+                            )
+                            .await?;
                     }
                     "strava_activities" => {
                         let activities: Vec<StravaActivity> = serde_json::from_str(&data)?;
                         StravaActivity::upsert_activities(&activities, &pool).await?;
+                        stdout()
+                            .write_all(
+                                format!("strava_activities {}\n", activities.len()).as_bytes(),
+                            )
+                            .await?;
                     }
                     "fitbit_activities" => {
                         let activities: Vec<FitbitActivity> = serde_json::from_str(&data)?;
                         FitbitActivity::upsert_activities(&activities, &pool).await?;
+                        stdout()
+                            .write_all(
+                                format!("fitbit_activities {}\n", activities.len()).as_bytes(),
+                            )
+                            .await?;
                     }
                     "garmin_connect_activities" => {
                         let activities: Vec<GarminConnectActivity> = serde_json::from_str(&data)?;
                         GarminConnectActivity::upsert_activities(&activities, &pool).await?;
+                        stdout()
+                            .write_all(
+                                format!("garmin_connect_activities {}\n", activities.len())
+                                    .as_bytes(),
+                            )
+                            .await?;
                     }
                     "race_results" => {
                         let results: Vec<RaceResults> = serde_json::from_str(&data)?;
@@ -152,7 +173,9 @@ impl GarminCliOpts {
                             async move { result.update_db(&pool).await.map_err(Into::into) }
                         });
                         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
-                        results?;
+                        stdout()
+                            .write_all(format!("race_results {}\n", results?.len()).as_bytes())
+                            .await?;
                     }
                     _ => {}
                 }

@@ -169,43 +169,33 @@ impl GarminCliOpts {
                 match table.as_str() {
                     "scale_measurements" => {
                         let start_date = (Utc::now() - Duration::days(7)).naive_local().date();
-                        for measurement in
-                            ScaleMeasurement::read_from_db(&pool, Some(start_date), None).await?
-                        {
-                            file.write_all(&serde_json::to_vec(&measurement)?).await?;
-                        }
+                        let measurements =
+                            ScaleMeasurement::read_from_db(&pool, Some(start_date), None).await?;
+                        file.write_all(&serde_json::to_vec(&measurements)?).await?;
                     }
                     "strava_activities" => {
                         let start_date = (Utc::now() - Duration::days(7)).naive_local().date();
-                        for activity in
-                            StravaActivity::read_from_db(&pool, Some(start_date), None).await?
-                        {
-                            file.write_all(&serde_json::to_vec(&activity)?).await?;
-                        }
+                        let activities =
+                            StravaActivity::read_from_db(&pool, Some(start_date), None).await?;
+                        file.write_all(&serde_json::to_vec(&activities)?).await?;
                     }
                     "fitbit_activities" => {
                         let start_date = (Utc::now() - Duration::days(7)).naive_local().date();
-                        for activity in
-                            FitbitActivity::read_from_db(&pool, Some(start_date), None).await?
-                        {
-                            file.write_all(&serde_json::to_vec(&activity)?).await?;
-                        }
+                        let activities =
+                            FitbitActivity::read_from_db(&pool, Some(start_date), None).await?;
+                        file.write_all(&serde_json::to_vec(&activities)?).await?;
                     }
                     "garmin_connect_activities" => {
                         let start_date = (Utc::now() - Duration::days(7)).naive_local().date();
-                        for activity in
+                        let activities =
                             GarminConnectActivity::read_from_db(&pool, Some(start_date), None)
-                                .await?
-                        {
-                            file.write_all(&serde_json::to_vec(&activity)?).await?;
-                        }
+                                .await?;
+                        file.write_all(&serde_json::to_vec(&activities)?).await?;
                     }
                     "race_results" => {
-                        for result in
-                            RaceResults::get_results_by_type(RaceType::Personal, &pool).await?
-                        {
-                            file.write_all(&serde_json::to_vec(&result)?).await?;
-                        }
+                        let results =
+                            RaceResults::get_results_by_type(RaceType::Personal, &pool).await?;
+                        file.write_all(&serde_json::to_vec(&results)?).await?;
                     }
                     _ => {}
                 }

@@ -3,8 +3,7 @@
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_session::CookieSession;
 use actix_web::{web, App, HttpServer};
-use chrono::Duration;
-use std::time;
+use std::time::Duration;
 use tokio::time::interval;
 
 use garmin_lib::common::pgpool::PgPool;
@@ -49,7 +48,7 @@ pub struct AppState {
 /// `/garmin/get_hr_pace` return structured json intended for separate analysis
 pub async fn start_app() {
     async fn update_db(pool: PgPool) {
-        let mut i = interval(time::Duration::from_secs(60));
+        let mut i = interval(Duration::from_secs(60));
         loop {
             i.tick().await;
             let p = pool.clone();
@@ -73,7 +72,7 @@ pub async fn start_app() {
                     .name("auth")
                     .path("/")
                     .domain(config.domain.as_str())
-                    .max_age_time(Duration::days(1))
+                    .max_age(24*3600)
                     .secure(false), // this can only be true if you have https
             ))
             .wrap(

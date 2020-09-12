@@ -1,6 +1,6 @@
 [package]
 name = "garmin_http"
-version = "0.9.18"
+version = "0.9.19"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -12,13 +12,12 @@ garmin_cli = {path = "../garmin_cli"}
 garmin_connect_lib = {path="../garmin_connect_lib"}
 garmin_reports = {path="../garmin_reports"}
 race_result_analysis = {path="../race_result_analysis"}
-rust_auth_server = { git = "https://github.com/ddboline/rust-auth-server.git", tag="0.5.15" }
-actix-web = {version="2.0", features=["rustls", "compress"], default_features=false}
-actix = "0.9"
-actix-identity = "0.2"
+actix-web = {version="3.0", features=["rustls", "compress"], default_features=false}
+actix = "0.10"
+actix-identity = "0.3"
 actix-rt = "1.1"
-actix-session = "0.3"
-actix-multipart = "0.2"
+actix-session = "0.4"
+actix-multipart = "0.3"
 tokio = {version="0.2", features=["full"]}
 chrono = "0.4"
 futures = "0.3"
@@ -32,6 +31,7 @@ tempdir = "0.3"
 anyhow = "1.0"
 thiserror = "1.0"
 async-trait = "0.1"
-rayon = "1.3"
-stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.1.3", features=["postgres_types"] }
-handlebars = "3.3"
+rayon = "1.4"
+handlebars = "3.4"
+rust_auth_server = { git = "https://github.com/ddboline/rust-auth-server.git", tag="0.6.0" }
+stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.1.6", features=["postgres_types"] }

@@ -1,6 +1,6 @@
 [package]
 name = "garmin_rust"
-version = "0.9.18"
+version = "0.9.19"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -14,7 +14,7 @@ fitbit_bot = {path="fitbit_bot"}
 garmin_connect_lib = {path="garmin_connect_lib"}
 race_result_analysis = {path="race_result_analysis"}
 garmin_reports = {path="garmin_reports"}
-actix = "0.9"
+actix = "0.10"
 actix-rt = "1.1"
 log = "0.4"
 env_logger = "0.7"
@@ -24,7 +24,7 @@ anyhow = "1.0"
 thiserror = "1.0"
 tokio = {version="0.2", features=["full"]}
 dirs = "3.0"
-stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.1.3", features=["postgres_types"] }
+stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.1.6", features=["postgres_types"] }
 
 [dev-dependencies]
 approx = "0.3"

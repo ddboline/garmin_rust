@@ -72,7 +72,7 @@ pub async fn start_app() {
                     .name("auth")
                     .path("/")
                     .domain(config.domain.as_str())
-                    .max_age(24*3600)
+                    .max_age(24 * 3600)
                     .secure(false), // this can only be true if you have https
             ))
             .wrap(

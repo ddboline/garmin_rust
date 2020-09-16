@@ -3,6 +3,7 @@
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_session::CookieSession;
 use actix_web::{web, App, HttpServer};
+use anyhow::Error;
 use std::time::Duration;
 use tokio::time::interval;
 
@@ -10,7 +11,7 @@ use garmin_lib::common::pgpool::PgPool;
 
 use super::{
     garmin_requests::close_connect_proxy,
-    logged_user::{fill_from_db, TRIGGER_DB_UPDATE},
+    logged_user::{fill_from_db, get_secrets, SECRET_KEY, TRIGGER_DB_UPDATE},
 };
 use crate::{
     garmin_rust_routes::{
@@ -46,21 +47,20 @@ pub struct AppState {
 ///    `/garmin` is the main route, providing the same functionality as the CLI
 /// interface, while adding the ability of upload to strava, and
 /// `/garmin/get_hr_pace` return structured json intended for separate analysis
-pub async fn start_app() {
+pub async fn start_app() -> Result<(), Error> {
     async fn update_db(pool: PgPool) {
         let mut i = interval(Duration::from_secs(60));
         loop {
-            i.tick().await;
-            let p = pool.clone();
-            fill_from_db(&p).await.unwrap_or(());
+            fill_from_db(&pool).await.unwrap_or(());
             close_connect_proxy().await.unwrap_or(());
+            i.tick().await;
         }
     }
 
     TRIGGER_DB_UPDATE.set();
+    get_secrets(&CONFIG.secret_path, &CONFIG.jwt_secret_path).await?;
 
-    let config = &CONFIG;
-    let pool = PgPool::new(&config.pgurl);
+    let pool = PgPool::new(&CONFIG.pgurl);
 
     actix_rt::spawn(update_db(pool.clone()));
 
@@ -68,16 +68,16 @@ pub async fn start_app() {
         App::new()
             .data(AppState { db: pool.clone() })
             .wrap(IdentityService::new(
-                CookieIdentityPolicy::new(config.secret_key.as_bytes())
+                CookieIdentityPolicy::new(&SECRET_KEY.load())
                     .name("auth")
                     .path("/")
-                    .domain(config.domain.as_str())
+                    .domain(CONFIG.domain.as_str())
                     .max_age(24 * 3600)
                     .secure(false), // this can only be true if you have https
             ))
             .wrap(
-                CookieSession::private(config.secret_key.as_bytes())
-                    .domain(config.domain.as_str())
+                CookieSession::private(&SECRET_KEY.load())
+                    .domain(CONFIG.domain.as_str())
                     .path("/")
                     .name("session")
                     .secure(false),
@@ -236,9 +236,9 @@ pub async fn start_app() {
                     ),
             )
     })
-    .bind(&format!("127.0.0.1:{}", config.port))
-    .unwrap_or_else(|_| panic!("Failed to bind to port {}", config.port))
+    .bind(&format!("127.0.0.1:{}", CONFIG.port))
+    .unwrap_or_else(|_| panic!("Failed to bind to port {}", CONFIG.port))
     .run()
     .await
-    .expect("Failed to start app");
+    .map_err(Into::into)
 }

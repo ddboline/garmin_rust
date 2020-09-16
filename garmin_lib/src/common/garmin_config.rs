@@ -57,6 +57,10 @@ pub struct GarminConfigInner {
     pub webdriver_path: PathBuf,
     #[serde(default = "default_webdriver_port")]
     pub webdriver_port: u32,
+    #[serde(default = "default_secret_path")]
+    pub secret_path: PathBuf,
+    #[serde(default = "default_secret_path")]
+    pub jwt_secret_path: PathBuf,
 }
 
 fn default_home_dir() -> PathBuf {
@@ -74,10 +78,12 @@ fn default_domain() -> StackString {
 fn default_n_db_workers() -> usize {
     2
 }
-
-#[derive(Default, Debug, Clone)]
-pub struct GarminConfig(Arc<GarminConfigInner>);
-
+fn default_secret_path() -> PathBuf {
+    dirs::config_dir()
+        .unwrap()
+        .join("aws_app_rust")
+        .join("secret.bin")
+}
 fn cache_dir() -> PathBuf {
     default_home_dir().join(".garmin_cache").join("run")
 }
@@ -105,6 +111,9 @@ fn default_webdriver_path() -> PathBuf {
 fn default_webdriver_port() -> u32 {
     4444
 }
+
+#[derive(Default, Debug, Clone)]
+pub struct GarminConfig(Arc<GarminConfigInner>);
 
 impl GarminConfigInner {
     /// Some variables have natural default values, which we set in the new()

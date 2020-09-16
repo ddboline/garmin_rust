@@ -11,7 +11,7 @@ use garmin_lib::common::pgpool::PgPool;
 
 use super::{
     garmin_requests::close_connect_proxy,
-    logged_user::{fill_from_db, JWT_SECRET, SECRET_KEY, TRIGGER_DB_UPDATE},
+    logged_user::{fill_from_db, get_secrets, SECRET_KEY, TRIGGER_DB_UPDATE},
 };
 use crate::{
     garmin_rust_routes::{
@@ -31,12 +31,6 @@ use crate::{
     },
     CONFIG,
 };
-
-async fn get_secrets() -> Result<(), Error> {
-    SECRET_KEY.read_from_file(&CONFIG.secret_path).await?;
-    JWT_SECRET.read_from_file(&CONFIG.jwt_secret_path).await?;
-    Ok(())
-}
 
 /// `AppState` is the application state shared between all the handlers
 /// db can be used to send messages to the database workers, each running on
@@ -65,10 +59,9 @@ pub async fn start_app() -> Result<(), Error> {
     }
 
     TRIGGER_DB_UPDATE.set();
-    get_secrets().await?;
+    get_secrets(&CONFIG.secret_path, &CONFIG.jwt_secret_path).await?;
 
-    let config = &CONFIG;
-    let pool = PgPool::new(&config.pgurl);
+    let pool = PgPool::new(&CONFIG.pgurl);
 
     actix_rt::spawn(update_db(pool.clone()));
 
@@ -76,16 +69,16 @@ pub async fn start_app() -> Result<(), Error> {
         App::new()
             .data(AppState { db: pool.clone() })
             .wrap(IdentityService::new(
-                CookieIdentityPolicy::new(config.secret_key.as_bytes())
+                CookieIdentityPolicy::new(&SECRET_KEY.load())
                     .name("auth")
                     .path("/")
-                    .domain(config.domain.as_str())
+                    .domain(CONFIG.domain.as_str())
                     .max_age(24 * 3600)
                     .secure(false), // this can only be true if you have https
             ))
             .wrap(
-                CookieSession::private(config.secret_key.as_bytes())
-                    .domain(config.domain.as_str())
+                CookieSession::private(&SECRET_KEY.load())
+                    .domain(CONFIG.domain.as_str())
                     .path("/")
                     .name("session")
                     .secure(false),
@@ -244,8 +237,8 @@ pub async fn start_app() -> Result<(), Error> {
                     ),
             )
     })
-    .bind(&format!("127.0.0.1:{}", config.port))
-    .unwrap_or_else(|_| panic!("Failed to bind to port {}", config.port))
+    .bind(&format!("127.0.0.1:{}", CONFIG.port))
+    .unwrap_or_else(|_| panic!("Failed to bind to port {}", CONFIG.port))
     .run()
     .await
     .map_err(Into::into)

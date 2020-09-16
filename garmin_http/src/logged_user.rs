@@ -1,6 +1,9 @@
 use anyhow::Error;
+pub use auth_server_rust::logged_user::{
+    LoggedUser, AUTHORIZED_USERS, JWT_SECRET, SECRET_KEY, TRIGGER_DB_UPDATE,
+};
 use log::debug;
-pub use rust_auth_server::logged_user::{LoggedUser, AUTHORIZED_USERS, TRIGGER_DB_UPDATE};
+use stack_string::StackString;
 use std::env::var;
 
 use garmin_lib::common::pgpool::PgPool;
@@ -16,7 +19,7 @@ pub async fn fill_from_db(pool: &PgPool) -> Result<(), Error> {
             .await?
             .into_iter()
             .map(|row| {
-                let email: String = row.try_get(0)?;
+                let email: StackString = row.try_get(0)?;
                 Ok(LoggedUser { email })
             })
             .collect();
@@ -26,7 +29,7 @@ pub async fn fill_from_db(pool: &PgPool) -> Result<(), Error> {
     };
     if let Ok("true") = var("TESTENV").as_ref().map(String::as_str) {
         let user = LoggedUser {
-            email: "user@test".to_string(),
+            email: "user@test".into(),
         };
         AUTHORIZED_USERS.merge_users(&[user])?;
     }

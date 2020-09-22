@@ -68,7 +68,7 @@ pub async fn start_app() -> Result<(), Error> {
         App::new()
             .data(AppState { db: pool.clone() })
             .wrap(IdentityService::new(
-                CookieIdentityPolicy::new(&SECRET_KEY.load())
+                CookieIdentityPolicy::new(&SECRET_KEY.get())
                     .name("auth")
                     .path("/")
                     .domain(CONFIG.domain.as_str())
@@ -76,7 +76,7 @@ pub async fn start_app() -> Result<(), Error> {
                     .secure(false), // this can only be true if you have https
             ))
             .wrap(
-                CookieSession::private(&SECRET_KEY.load())
+                CookieSession::private(&SECRET_KEY.get())
                     .domain(CONFIG.domain.as_str())
                     .path("/")
                     .name("session")

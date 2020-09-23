@@ -79,7 +79,7 @@ impl GarminParseTrait for GarminParseTcx {
         let doc = Document::parse(&output)?;
 
         let mut lap_list = Vec::new();
-        let mut point_list: Vec<GarminPoint> = Vec::new();
+        let mut point_list = Vec::new();
         let mut sport = SportTypes::None;
 
         for d in doc.root().descendants() {

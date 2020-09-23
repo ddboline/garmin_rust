@@ -159,7 +159,7 @@ impl RaceResultAnalysis {
             .collect();
         let y_proj = power_law(&self.params(ParamType::Nom), &x_proj);
 
-        let entries: Vec<_> = x_proj
+        let entries = x_proj
             .iter()
             .zip(y_proj.iter())
             .map(|(x, y)| {
@@ -171,7 +171,7 @@ impl RaceResultAnalysis {
                     print_h_m_s(x * (*y) * 60.0, true).unwrap_or_else(|_| "".into())
                 )
             })
-            .collect();
+            .join("</tr><tr>");
         let entries = format!(
             r#"
             <table border=1>
@@ -183,10 +183,10 @@ impl RaceResultAnalysis {
             <tr>{}</tr>
             </tbody>
             </table>"#,
-            entries.join("</tr><tr>")
+            entries
         );
 
-        let race_results: Vec<_> = self.data.iter().sorted_by(|x, y| x.race_date.cmp(&y.race_date)).rev().map(|result| {
+        let race_results = self.data.iter().sorted_by(|x, y| x.race_date.cmp(&y.race_date)).rev().map(|result| {
             let distance = f64::from(result.race_distance) / METERS_PER_MILE;
             let time = print_h_m_s(result.race_time, true).unwrap_or_else(|_| "".into());
             let pace = print_h_m_s(result.race_time / distance, false).unwrap_or_else(|_| "".into());
@@ -217,14 +217,13 @@ impl RaceResultAnalysis {
                 name = result.race_name.as_ref().map_or("", |s| s.as_str()),
                 flag = flag,
             )
-        }).collect();
+        }).join("</tr><tr>");
         let entries = format!(
             r#"{}<br><table border="1"><thead>
             <th>Distance (mi)</th><th>Time</th><th>Pace (min/mi)</th><th>Date</th><th>Name</th><th>Flag</th>
             </thead>
             <tr>{}</tr></table>"#,
-            entries,
-            race_results.join("</tr><tr>")
+            entries, race_results
         );
 
         let x_vals: Vec<f64> = x_vals.map(|x| x * METERS_PER_MILE).to_vec();
@@ -283,9 +282,7 @@ impl RaceResultAnalysis {
             r#"<button type="submit" onclick="race_result_plot_personal();">Personal</button>"#,
             r#"<button type="submit" onclick="race_result_plot_world_record_men();">Mens World Records</button>"#,
             r#"<button type="submit" onclick="race_result_plot_world_record_women();">Womens World Records</button>"#,
-        ];
-
-        let buttons = buttons.join("");
+        ].join("");
 
         Ok(hashmap! {
             "INSERTTABLESHERE".into() => plots.into(),

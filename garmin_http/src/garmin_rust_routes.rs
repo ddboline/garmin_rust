@@ -9,6 +9,7 @@ use actix_web::{
 };
 use anyhow::format_err;
 use chrono::Utc;
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
 use std::string::ToString;
@@ -64,10 +65,10 @@ fn proc_pattern_wrapper<T: AsRef<str>>(
         .as_ref()
         .map_or_else(|| "sport", StackString::as_str);
 
-    let filter_vec: Vec<_> = filter.split(',').map(ToString::to_string).collect();
+    let filter_iter = filter.split(',').map(ToString::to_string);
 
-    let req = GarminCli::process_pattern(&CONFIG, &filter_vec);
-    let history: Vec<_> = history.iter().map(|s| s.as_ref().into()).collect();
+    let req = GarminCli::process_pattern(&CONFIG, filter_iter);
+    let history = history.iter().map(|s| s.as_ref().into()).collect();
 
     GarminHtmlRequest {
         request: GarminRequest {
@@ -233,17 +234,14 @@ pub async fn strava_sync(
     state: Data<AppState>,
 ) -> HttpResult {
     let query = query.into_inner();
-    let body: Vec<_> = state
+    let body = state
         .db
         .handle(query)
         .await?
         .into_iter()
         .map(|p| p.to_string_lossy().into_owned())
-        .collect();
-    let body = format!(
-        r#"<textarea cols=100 rows=40>{}</textarea>"#,
-        body.join("\n")
-    );
+        .join("\n");
+    let body = format!(r#"<textarea cols=100 rows=40>{}</textarea>"#, body);
     form_http_response(body)
 }
 

@@ -1,6 +1,7 @@
 use anyhow::{format_err, Error};
 use chrono::{DateTime, Utc};
 use fitparser::{FitDataField, Value};
+use itertools::Itertools;
 use roxmltree::{Node, NodeType};
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -226,7 +227,6 @@ impl fmt::Display for GarminPoint {
             keys.iter()
                 .zip(vals.iter())
                 .map(|(k, v)| format!("{}={}", k, v))
-                .collect::<Vec<_>>()
                 .join(",")
         )
     }

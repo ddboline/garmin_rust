@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
 
@@ -14,7 +15,7 @@ impl GarminConnectHrData {
     pub fn to_table(&self, entries: Option<usize>) -> StackString {
         if let Some(heartrate_values) = self.heartrate_values.as_ref() {
             let entries = entries.unwrap_or(heartrate_values.len());
-            let rows: Vec<_> = heartrate_values
+            let rows = heartrate_values
                 .iter()
                 .skip(heartrate_values.len() - entries)
                 .filter_map(|(timestamp, heartrate)| {
@@ -27,11 +28,11 @@ impl GarminConnectHrData {
                         )
                     })
                 })
-                .collect();
+                .join("\n");
             format!(
                 "<table border=1><thead><th>Datetime</th><th>Heart \
                  Rate</th></thead><tbody>{}</tbody></table>",
-                rows.join("\n")
+                rows
             )
             .into()
         } else {

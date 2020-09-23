@@ -64,7 +64,7 @@ impl GarminParseTrait for GarminParseFit {
         let records = fitparser::from_reader(&mut f)?;
 
         let mut lap_list = Vec::new();
-        let mut point_list: Vec<GarminPoint> = Vec::new();
+        let mut point_list = Vec::new();
         let mut sport = SportTypes::None;
 
         for record in records {

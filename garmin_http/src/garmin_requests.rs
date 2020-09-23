@@ -161,9 +161,11 @@ impl HandleRequest<GarminConnectSyncRequest> for PgPool {
         let mut session = CONNECT_PROXY.lock().await;
         session.init(CONFIG.clone()).await?;
 
-        let new_activities: Vec<_> = session.get_activities(max_timestamp).await?;
-        let new_activities =
-            GarminConnectActivity::merge_new_activities(new_activities, self).await?;
+        let new_activities = GarminConnectActivity::merge_new_activities(
+            session.get_activities(max_timestamp).await?,
+            self,
+        )
+        .await?;
 
         if let Ok(filenames) = session.get_activity_files(&new_activities).await {
             if !filenames.is_empty() {

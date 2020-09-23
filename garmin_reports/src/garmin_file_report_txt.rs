@@ -1,4 +1,5 @@
 use anyhow::Error;
+use itertools::Itertools;
 use log::debug;
 use stack_string::StackString;
 
@@ -201,7 +202,7 @@ fn print_splits(
         return Ok("".into());
     }
 
-    let retval: Vec<_> = get_splits(gfile, split_distance_in_meters, label, true)?
+    let retval = get_splits(gfile, split_distance_in_meters, label, true)?
         .into_iter()
         .map(|val| {
             let dis = val.split_distance as i32;
@@ -225,8 +226,9 @@ fn print_splits(
                 hrt
             )
         })
-        .collect();
-    Ok(retval.join("\n").into())
+        .join("\n")
+        .into();
+    Ok(retval)
 }
 
 #[derive(Debug)]

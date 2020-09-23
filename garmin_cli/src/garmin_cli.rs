@@ -328,7 +328,11 @@ impl GarminCli {
         constraints
     }
 
-    pub fn process_pattern<T: AsRef<str>>(config: &GarminConfig, patterns: &[T]) -> GarminRequest {
+    pub fn process_pattern<T, U>(config: &GarminConfig, patterns: T) -> GarminRequest
+    where
+        T: IntoIterator<Item = U>,
+        U: AsRef<str>,
+    {
         let mut options = GarminReportOptions::new();
 
         let sport_type_map = get_sport_type_map();

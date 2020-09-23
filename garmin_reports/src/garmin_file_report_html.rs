@@ -1,5 +1,6 @@
 use anyhow::Error;
 use chrono::{Date, DateTime, Datelike, Local, Utc};
+use itertools::Itertools;
 use log::debug;
 use maplit::hashmap;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
@@ -603,21 +604,19 @@ where
         get_html_splits(&gfile, METERS_PER_MILE, "mi")?,
         get_html_splits(&gfile, 5000.0, "km")?
     );
-    let map_segment: Vec<_> = report_objs
+    let map_segment = report_objs
         .lat_vals
         .iter()
         .zip(report_objs.lon_vals.iter())
         .map(|(latv, lonv)| format!("new google.maps.LatLng({},{}),", latv, lonv))
-        .collect();
-    let map_segment = map_segment.join("\n");
+        .join("\n");
     let minlat = minlat.to_string();
     let maxlat = maxlat.to_string();
     let minlon = minlon.to_string();
     let maxlon = maxlon.to_string();
     let central_lat = central_lat.to_string();
     let central_lon = central_lon.to_string();
-    let insert_other_images_here: Vec<_> = graphs.iter().map(AsRef::as_ref).collect();
-    let insert_other_images_here = insert_other_images_here.join("\n");
+    let insert_other_images_here = graphs.iter().map(AsRef::as_ref).join("\n");
     let history_buttons = generate_history_buttons(history);
     let filename = config.gps_dir.join(gfile.filename.as_str());
     let filename = filename.to_string_lossy();
@@ -671,15 +670,11 @@ fn get_sport_selector(current_sport: SportTypes) -> StackString {
         .collect();
     sport_types.sort();
     sport_types.insert(0, current_sport);
-    let sport_types: Vec<_> = sport_types
+    let sport_types = sport_types
         .into_iter()
         .map(|s| format!(r#"<option value="{sport}">{sport}</option>"#, sport = s))
-        .collect();
-    format!(
-        r#"<select id="sport_select">{}</select>"#,
-        sport_types.join("\n")
-    )
-    .into()
+        .join("\n");
+    format!(r#"<select id="sport_select">{}</select>"#, sport_types).into()
 }
 
 fn get_correction_button(begin_datetime: DateTime<Utc>) -> StackString {

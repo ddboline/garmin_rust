@@ -8,6 +8,7 @@ use rand::{
     distributions::{Alphanumeric, Distribution, Uniform},
     thread_rng,
 };
+use smallvec::SmallVec;
 use stack_string::StackString;
 use std::{
     fs::{remove_file, File},
@@ -28,7 +29,7 @@ pub const MONTH_NAMES: [&str; 12] = [
 pub const WEEKDAY_NAMES: [&str; 7] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 pub fn convert_time_string(time_str: &str) -> Result<f64, Error> {
-    let entries: Vec<_> = time_str.split(':').collect();
+    let entries: SmallVec<[&str; 3]> = time_str.split(':').take(3).collect();
     let (h, m, s): (i32, i32, f64) = match entries.get(0) {
         Some(h) => match entries.get(1) {
             Some(m) => match entries.get(2) {

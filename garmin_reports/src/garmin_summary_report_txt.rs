@@ -1,6 +1,7 @@
 use anyhow::Error;
 use chrono::{DateTime, Utc};
 use futures::future::try_join_all;
+use itertools::Itertools;
 use log::debug;
 use postgres_query::FromSqlRow;
 use stack_string::StackString;
@@ -26,12 +27,11 @@ type GarminTextEntry = (StackString, Option<StackString>);
 pub trait GarminReportTrait {
     fn get_text_entry(&self) -> Result<Vec<GarminTextEntry>, Error>;
     fn get_html_entry(&self) -> Result<StackString, Error> {
-        let ent: Vec<_> = self
+        let ent = self
             .get_text_entry()?
             .into_iter()
             .map(|(s, u)| if let Some(u) = u { u } else { s })
-            .collect();
-        let ent = ent.join("</td><td>");
+            .join("</td><td>");
         let cmd = self.generate_url_string();
         Ok(format!(
             "<tr><td>{}{}{}{}{}{}</td></tr>",
@@ -101,11 +101,16 @@ pub async fn create_report_query<T: AsRef<str>>(
             format!("WHERE {}", sport_constr)
         }
     } else if sport_constr.is_empty() {
-        let constraints: Vec<_> = constraints.iter().map(AsRef::as_ref).collect();
-        format!("WHERE {}", constraints.join(" OR "))
+        format!(
+            "WHERE {}",
+            constraints.iter().map(AsRef::as_ref).join(" OR ")
+        )
     } else {
-        let constraints: Vec<_> = constraints.iter().map(AsRef::as_ref).collect();
-        format!("WHERE ({}) AND {}", constraints.join(" OR "), sport_constr)
+        format!(
+            "WHERE ({}) AND {}",
+            constraints.iter().map(AsRef::as_ref).join(" OR "),
+            sport_constr
+        )
     };
 
     debug!("{}", constr);

@@ -2,6 +2,7 @@ use anyhow::{format_err, Error};
 use avro_rs::{Codec, Schema, Writer};
 use chrono::{DateTime, Utc};
 use futures::future::try_join_all;
+use itertools::Itertools;
 use log::debug;
 use postgres_query::FromSqlRow;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
@@ -348,7 +349,6 @@ impl fmt::Display for GarminSummary {
             keys.iter()
                 .zip(vals.iter())
                 .map(|(k, v)| format!("{}={}", k, v))
-                .collect::<Vec<_>>()
                 .join(",")
         )
     }

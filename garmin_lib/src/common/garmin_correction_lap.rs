@@ -7,7 +7,8 @@ use log::debug;
 use postgres_query::FromSqlRow;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use stack_string::StackString;
-use std::{collections::HashMap, fs::File, hash::BuildHasher, io::Read, str};
+use std::path::Path;
+use std::{collections::HashMap, fs, hash::BuildHasher, str};
 
 use super::{garmin_lap::GarminLap, pgpool::PgPool};
 use crate::utils::{
@@ -77,7 +78,7 @@ impl GarminCorrectionLap {
         self
     }
 
-    pub fn map_from_vec(corr_list: Vec<Self>) -> GarminCorrectionMap {
+    pub fn map_from_vec<T: IntoIterator<Item = Self>>(corr_list: T) -> GarminCorrectionMap {
         corr_list
             .into_iter()
             .map(|corr| ((corr.start_time, corr.lap_number), corr))
@@ -144,15 +145,11 @@ impl GarminCorrectionLap {
         Ok(corr_map)
     }
 
-    pub fn corr_list_from_json(json_filename: &str) -> Result<GarminCorrectionMap, Error> {
-        let mut file = File::open(json_filename)?;
-
-        let mut buffer = Vec::new();
-
-        match file.read_to_end(&mut buffer)? {
-            0 => Err(format_err!("Zero bytes read from {}", json_filename)),
-            _ => Self::corr_map_from_buffer(&buffer),
-        }
+    pub fn corr_list_from_json<T: AsRef<Path>>(
+        json_filename: T,
+    ) -> Result<GarminCorrectionMap, Error> {
+        let buffer = fs::read(json_filename.as_ref())?;
+        Self::corr_map_from_buffer(&buffer)
     }
 
     pub fn add_mislabeled_times_to_corr_list(corr_list_map: &mut GarminCorrectionMap) {

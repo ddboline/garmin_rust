@@ -204,7 +204,7 @@ impl RaceResults {
     }
 
     pub fn parse_from_race_results_text_file(input: &str) -> Result<Vec<Self>, Error> {
-        let results: Vec<_> = input
+        let results = input
             .split('\n')
             .filter_map(|line| {
                 let entries: Vec<_> = line.split_whitespace().collect();
@@ -245,7 +245,7 @@ impl RaceResults {
         input: &str,
         race_type: RaceType,
     ) -> Result<Vec<Self>, Error> {
-        let results: Vec<_> = input
+        let results = input
             .split('\n')
             .filter_map(|line| {
                 let entries: SmallVec<[&str; 2]> = line.split_whitespace().take(2).collect();
@@ -275,7 +275,7 @@ impl RaceResults {
 }
 
 fn parse_time_string(s: &str) -> Option<f64> {
-    let times: SmallVec<[&str; 3]> = s.split(':').rev().collect();
+    let times: SmallVec<[&str; 3]> = s.split(':').rev().take(3).collect();
 
     let seconds: f64 = match times.get(0).and_then(|t| t.parse().ok()) {
         Some(t) => t,

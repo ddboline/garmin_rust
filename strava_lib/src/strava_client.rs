@@ -235,7 +235,7 @@ impl StravaClient {
     }
 
     fn get_random_string() -> StackString {
-        let random_bytes: Vec<u8> = (0..16).map(|_| thread_rng().gen::<u8>()).collect();
+        let random_bytes: SmallVec<[u8; 16]> = (0..16).map(|_| thread_rng().gen::<u8>()).collect();
         encode_config(&random_bytes, URL_SAFE_NO_PAD).into()
     }
 

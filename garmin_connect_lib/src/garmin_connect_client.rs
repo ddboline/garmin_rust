@@ -6,6 +6,7 @@ use lazy_static::lazy_static;
 use log::debug;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
+use smallvec::SmallVec;
 use stack_string::StackString;
 use std::{path::PathBuf, process::Stdio};
 use tokio::{
@@ -148,7 +149,7 @@ impl GarminConnectClient {
     pub fn extract_display_name(text: &str) -> Result<StackString, Error> {
         for entry in text.split('\n').filter(|x| x.contains("JSON.parse")) {
             let entry = entry.replace(r#"\""#, r#"""#).replace(r#"");"#, "");
-            let entries: Vec<_> = entry.split(r#" = JSON.parse(""#).take(2).collect();
+            let entries: SmallVec<[&str; 2]> = entry.split(r#" = JSON.parse(""#).take(2).collect();
             if entries[0].contains("VIEWER_SOCIAL_PROFILE") {
                 #[derive(Deserialize)]
                 struct SocialProfile {

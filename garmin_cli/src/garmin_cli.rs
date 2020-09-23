@@ -407,7 +407,7 @@ impl GarminCli {
                     .await?
                     .get_text_entries()?
                     .into_iter()
-                    .flat_map(|x| x.into_iter().map(|(s, _)| s))
+                    .map(|x| x.into_iter().map(|(s, _)| s).join(" "))
                     .join("\n");
                 self.stdout.send(txt_result);
             }
@@ -491,14 +491,10 @@ impl GarminCli {
 
         let filenames: Result<Vec<_>, Error> = filenames
             .into_par_iter()
-            .map(|filename| {
-                match filename.extension().map(OsStr::to_str) {
-                    Some(Some("zip")) => extract_zip_from_garmin_connect(&filename, ziptmpdir),
-                    Some(Some("fit")) | Some(Some("tcx")) | Some(Some("txt")) => {
-                        Ok(filename)
-                    }
-                    _ => Self::transform_file_name(&filename),
-                }
+            .map(|filename| match filename.extension().map(OsStr::to_str) {
+                Some(Some("zip")) => extract_zip_from_garmin_connect(&filename, ziptmpdir),
+                Some(Some("fit")) | Some(Some("tcx")) | Some(Some("txt")) => Ok(filename),
+                _ => Self::transform_file_name(&filename),
             })
             .collect();
 

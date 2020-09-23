@@ -9,6 +9,7 @@ use maplit::hashmap;
 use rand::{thread_rng, Rng};
 use reqwest::{header::HeaderMap, Client, Response, Url};
 use serde::{Deserialize, Serialize};
+use smallvec::SmallVec;
 use stack_string::StackString;
 use std::{
     collections::{HashMap, HashSet},
@@ -180,7 +181,7 @@ impl FitbitClient {
     }
 
     fn get_random_string() -> String {
-        let random_bytes: Vec<u8> = (0..16).map(|_| thread_rng().gen::<u8>()).collect();
+        let random_bytes: SmallVec<[u8; 16]> = (0..16).map(|_| thread_rng().gen::<u8>()).collect();
         encode_config(&random_bytes, URL_SAFE_NO_PAD)
     }
 
@@ -343,7 +344,7 @@ impl FitbitClient {
             .json()
             .await?;
         let offset = self.get_offset();
-        let hr_values: Vec<_> = dataset
+        let hr_values = dataset
             .intraday
             .dataset
             .into_iter()
@@ -405,7 +406,7 @@ impl FitbitClient {
             .error_for_status()?
             .json()
             .await?;
-        let result: Vec<_> = body_weight
+        let result = body_weight
             .weight
             .into_iter()
             .map(|bw| {
@@ -426,13 +427,13 @@ impl FitbitClient {
     }
 
     #[allow(clippy::similar_names)]
-    pub async fn update_fitbit_bodyweightfat(
-        &self,
-        updates: Vec<ScaleMeasurement>,
-    ) -> Result<Vec<ScaleMeasurement>, Error> {
+    pub async fn update_fitbit_bodyweightfat<'a, T>(&self, updates: T) -> Result<(), Error>
+    where
+        T: IntoIterator<Item = &'a ScaleMeasurement>,
+    {
         let headers = self.get_auth_headers()?;
         let offset = self.get_offset();
-        let futures = updates.iter().map(|update| {
+        let futures = updates.into_iter().map(|update| {
             let headers = headers.clone();
             async move {
                 let datetime = update.datetime.with_timezone(&offset);
@@ -470,7 +471,7 @@ impl FitbitClient {
         });
         let result: Result<Vec<_>, Error> = try_join_all(futures).await;
         result?;
-        Ok(updates)
+        Ok(())
     }
 
     pub async fn get_activities(
@@ -795,9 +796,8 @@ impl FitbitClient {
                 Ok(None)
             }
         });
-        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
-        let updated: Vec<_> = results?.into_iter().filter_map(|x| x).collect();
-        Ok(updated)
+        let updated: Result<Vec<_>, Error> = try_join_all(futures).await;
+        Ok(updated?.into_iter().filter_map(|x| x).collect())
     }
 
     pub async fn delete_fitbit_activity(&self, log_id: u64) -> Result<(), Error> {
@@ -846,7 +846,9 @@ impl FitbitClient {
                 !existing_map.contains_key(&date)
             })
             .collect();
-        let new_measurements = client.update_fitbit_bodyweightfat(new_measurements).await?;
+        client
+            .update_fitbit_bodyweightfat(&new_measurements)
+            .await?;
 
         let new_activities = client.sync_fitbit_activities(start_datetime, pool).await?;
         let duplicates = client.remove_duplicate_entries(pool).await?;

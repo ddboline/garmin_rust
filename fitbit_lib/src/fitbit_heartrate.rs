@@ -84,7 +84,7 @@ where
 
 impl FitbitHeartRate {
     pub fn create_table(heartrate_values: &[Self]) -> StackString {
-        let rows: Vec<_> = heartrate_values
+        let rows = heartrate_values
             .iter()
             .map(|entry| {
                 format!(
@@ -93,11 +93,11 @@ impl FitbitHeartRate {
                     heartrate = entry.value
                 )
             })
-            .collect();
+            .join("\n");
         format!(
             "<table border=1><thead><th>Datetime</th><th>Heart \
              Rate</th></thead><tbody>{}</tbody></table>",
-            rows.join("\n")
+            rows
         )
         .into()
     }

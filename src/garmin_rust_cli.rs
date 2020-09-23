@@ -1,4 +1,4 @@
-#![type_length_limit = "1059389"]
+#![type_length_limit = "1059504"]
 
 use garmin_cli::garmin_cli_opts::GarminCliOpts;
 

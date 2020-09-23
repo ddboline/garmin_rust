@@ -273,9 +273,8 @@ impl FitbitHeartRate {
                     })
                 })
                 .collect();
-
         final_values.par_sort();
-        let js_str = serde_json::to_string(&final_values).unwrap_or_else(|_| "".to_string());
+        let js_str = serde_json::to_string(&final_values)?;
 
         let params = hashmap! {
             "DATA" => js_str.as_str(),

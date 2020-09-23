@@ -769,7 +769,7 @@ impl FitbitClient {
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
         results?;
 
-        let old_activities: Vec<_> = get_list_of_activities_from_db(
+        let old_activities = get_list_of_activities_from_db(
             &format!("begin_datetime >= '{}'", begin_datetime),
             &pool,
         )
@@ -778,10 +778,9 @@ impl FitbitClient {
         .filter(|(d, _)| {
             let key = d.format("%Y-%m-%dT%H:%M").to_string();
             !new_activities.contains_key(&key)
-        })
-        .collect();
+        });
 
-        let futures = old_activities.into_iter().map(|(d, f)| {
+        let futures = old_activities.map(|(d, f)| {
             let pool = pool.clone();
             async move {
                 if let Some(activity) = GarminSummary::read_summary_from_postgres(&pool, &f)
@@ -853,7 +852,7 @@ impl FitbitClient {
         let new_activities = client.sync_fitbit_activities(start_datetime, pool).await?;
         let duplicates = client.remove_duplicate_entries(pool).await?;
 
-        Ok((new_measurements, new_activities, duplicates))
+        Ok(FitbitBodyWeightFatUpdateOutput::new(new_measurements, new_activities, duplicates))
     }
 
     #[allow(clippy::filter_map)]
@@ -883,8 +882,22 @@ impl FitbitClient {
     }
 }
 
-pub type FitbitBodyWeightFatUpdateOutput =
-    (Vec<ScaleMeasurement>, Vec<DateTime<Utc>>, Vec<StackString>);
+#[derive(Debug, Serialize)]
+pub struct FitbitBodyWeightFatUpdateOutput {
+    pub measurements: Vec<ScaleMeasurement>,
+    pub activities: Vec<DateTime<Utc>>,
+    pub duplicates: Vec<StackString>,
+}
+
+impl FitbitBodyWeightFatUpdateOutput {
+    pub fn new(measurements: Vec<ScaleMeasurement>, activities: Vec<DateTime<Utc>>, duplicates: Vec<StackString>) -> Self {
+        Self {
+            measurements,
+            activities,
+            duplicates,
+        }
+    }
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct ActivityLoggingEntry {

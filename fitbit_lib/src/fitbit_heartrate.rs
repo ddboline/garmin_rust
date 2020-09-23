@@ -350,17 +350,16 @@ impl FitbitHeartRate {
             end_date = end_date,
             button_date = next_date,
         ));
-        let buttons = buttons.join("\n");
 
         let params = hashmap! {
             "INSERTOTHERIMAGESHERE".into() => "".into(),
             "INSERTTABLESHERE".into() => plots.into(),
-            "INSERTTEXTHERE".into() => buttons.into(),
+            "INSERTTEXTHERE".into() => buttons.join("\n").into(),
         };
         Ok(params)
     }
 
-    pub fn dump_to_avro(values: &[Self], output_filename: &str) -> Result<(), Error> {
+    pub fn dump_to_avro<T: AsRef<Path>>(values: &[Self], output_filename: T) -> Result<(), Error> {
         let schema = Schema::parse_str(FITBITHEARTRATE_SCHEMA)?;
 
         let output_file = File::create(output_filename)?;
@@ -396,11 +395,11 @@ impl FitbitHeartRate {
 
     pub fn merge_slice_to_avro(config: &GarminConfig, values: &[Self]) -> Result<(), Error> {
         let dates: HashSet<_> = values
-            .par_iter()
+            .iter()
             .map(|entry| entry.datetime.naive_utc().date())
             .collect();
         for date in dates {
-            let new_values = values.par_iter().filter_map(|entry| {
+            let new_values = values.iter().filter_map(|entry| {
                 if entry.datetime.naive_utc().date() == date {
                     Some(*entry)
                 } else {
@@ -408,7 +407,7 @@ impl FitbitHeartRate {
                 }
             });
             let mut merged_values: Vec<_> = Self::read_avro_by_date(config, date)?
-                .into_par_iter()
+                .into_iter()
                 .chain(new_values)
                 .collect();
             merged_values.par_sort_by_key(|entry| entry.datetime.timestamp());
@@ -417,7 +416,7 @@ impl FitbitHeartRate {
                 .fitbit_cachedir
                 .join(date.to_string())
                 .with_extension("avro");
-            Self::dump_to_avro(&merged_values, &input_filename.to_string_lossy())?;
+            Self::dump_to_avro(&merged_values, &input_filename)?;
         }
         Ok(())
     }

@@ -112,7 +112,7 @@ impl GarminSync {
         local_dir: &Path,
         s3_bucket: &str,
         check_md5sum: bool,
-    ) -> Result<Vec<StackString>, Error> {
+    ) -> Result<StackString, Error> {
         let file_list: Result<Vec<_>, Error> = local_dir
             .read_dir()?
             .filter_map(|dir_line| {
@@ -144,10 +144,7 @@ impl GarminSync {
         let uploaded: Vec<_> = file_list
             .into_par_iter()
             .filter_map(|(file, tmod, size)| {
-                let file_name: StackString = match file.file_name() {
-                    Some(x) => x.to_string_lossy().as_ref().into(),
-                    None => return None,
-                };
+                let file_name: StackString = file.file_name()?.to_string_lossy().as_ref().into();
                 let mut do_upload = false;
                 if key_set.contains(file_name.as_str()) {
                     let item = key_set.get(file_name.as_str()).unwrap();
@@ -254,9 +251,10 @@ impl GarminSync {
             n_keys,
             uploaded_files.len(),
             downloaded_files.len()
-        );
+        )
+        .into();
 
-        Ok(vec![msg.into()])
+        Ok(msg)
     }
 
     pub async fn download_file(

@@ -217,9 +217,10 @@ impl GarminCliOpts {
                         file.write_all(&serde_json::to_vec(&activities)?).await?;
                     }
                     "race_results" => {
-                        let results =
-                            RaceResults::get_results_by_type(RaceType::Personal, &pool).await?;
-                        file.write_all(&serde_json::to_vec(&results)?).await?;
+                        file.write_all(&serde_json::to_vec(
+                            &RaceResults::get_results_by_type(RaceType::Personal, &pool).await?,
+                        )?)
+                        .await?;
                     }
                     _ => {}
                 }

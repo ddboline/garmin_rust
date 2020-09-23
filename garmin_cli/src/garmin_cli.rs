@@ -1,6 +1,7 @@
 use anyhow::{format_err, Error};
 use chrono::{DateTime, Utc};
 use futures::future::try_join_all;
+use itertools::Itertools;
 use lazy_static::lazy_static;
 use log::debug;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
@@ -156,20 +157,17 @@ impl GarminCli {
         let pg_conn = self.get_pool();
 
         let gsum_list = match self.get_opts() {
-            Some(GarminCliOptions::FileNames(flist)) => {
-                let proc_list: Result<Vec<_>, Error> = flist
-                    .par_iter()
-                    .map(|f| {
-                        self.stdout.send(format!("Process {:?}", &f));
-                        Ok(GarminSummary::process_single_gps_file(
-                            &f,
-                            &self.get_config().cache_dir,
-                            &corr_map,
-                        )?)
-                    })
-                    .collect();
-                proc_list?
-            }
+            Some(GarminCliOptions::FileNames(flist)) => flist
+                .par_iter()
+                .map(|f| {
+                    self.stdout.send(format!("Process {:?}", &f));
+                    Ok(GarminSummary::process_single_gps_file(
+                        &f,
+                        &self.get_config().cache_dir,
+                        &corr_map,
+                    )?)
+                })
+                .collect::<Result<Vec<_>, Error>>()?,
             Some(GarminCliOptions::All) => GarminSummary::process_all_gps_files(
                 &self.get_config().gps_dir,
                 &self.get_config().cache_dir,
@@ -193,7 +191,7 @@ impl GarminCli {
                     .into_iter()
                     .collect();
 
-                let proc_list: Result<Vec<_>, Error> = get_file_list(&self.get_config().gps_dir)
+                get_file_list(&self.get_config().gps_dir)
                     .into_par_iter()
                     .filter_map(|f| f.file_name().map(|x| x.to_string_lossy().to_string()))
                     .filter_map(|f| {
@@ -213,8 +211,7 @@ impl GarminCli {
                             &corr_map,
                         )
                     })
-                    .collect();
-                proc_list?
+                    .collect::<Result<Vec<_>, Error>>()?
             }
         };
         Ok(gsum_list)
@@ -260,13 +257,7 @@ impl GarminCli {
                 debug!("{}", title);
                 gsync.sync_dir(title, &local_dir, &s3_bucket, check_md5)
             });
-        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
-        results.map(|results| {
-            results
-                .into_iter()
-                .map(|output| output.join("\n").into())
-                .collect()
-        })
+        try_join_all(futures).await
     }
 
     fn match_patterns(config: &GarminConfig, pat: &str) -> Vec<StackString> {
@@ -412,16 +403,13 @@ impl GarminCli {
             }
             _ => {
                 debug!("{:?}", options);
-                let txt_result: Vec<_> = create_report_query(&pg_conn, &options, &constraints)
+                let txt_result = create_report_query(&pg_conn, &options, &constraints)
                     .await?
                     .get_text_entries()?
                     .into_iter()
-                    .map(|x| {
-                        let v: Vec<_> = x.into_iter().map(|(s, _)| s).collect();
-                        v.join(" ")
-                    })
-                    .collect();
-                self.stdout.send(txt_result.join("\n"));
+                    .flat_map(|x| x.into_iter().map(|(s, _)| s))
+                    .join("\n");
+                self.stdout.send(txt_result);
             }
         };
         Ok(())
@@ -493,59 +481,69 @@ impl GarminCli {
         Err(format_err!("Bad filename {:?}", filename))
     }
 
-    pub async fn process_filenames<T: AsRef<Path>>(
-        &self,
-        filenames: &[T],
+    fn process_filenames_sync(
+        filenames: Vec<PathBuf>,
+        stdout: &StdoutChannel,
+        config: &GarminConfig,
     ) -> Result<Vec<DateTime<Utc>>, Error> {
+        let tempdir = TempDir::new("garmin_zip")?;
+        let ziptmpdir = tempdir.path();
+
+        let filenames: Result<Vec<_>, Error> = filenames
+            .into_par_iter()
+            .map(|filename| {
+                match filename.extension().map(OsStr::to_str) {
+                    Some(Some("zip")) => extract_zip_from_garmin_connect(&filename, ziptmpdir),
+                    Some(Some("fit")) | Some(Some("tcx")) | Some(Some("txt")) => {
+                        Ok(filename)
+                    }
+                    _ => Self::transform_file_name(&filename),
+                }
+            })
+            .collect();
+
+        filenames?
+            .into_par_iter()
+            .map(|filename| {
+                assert!(filename.exists(), "No such file");
+                let suffix = match filename.extension().and_then(OsStr::to_str) {
+                    Some("fit") => "fit",
+                    Some("tcx") => "tcx",
+                    Some("txt") => "txt",
+                    Some("gmn") => "gmn",
+                    _ => return Err(format_err!("Bad filename {:?}", filename)),
+                };
+                let gfile = GarminParse::new().with_file(&filename, &HashMap::new())?;
+
+                let outfile = config
+                    .gps_dir
+                    .join(gfile.get_standardized_name(suffix).as_str());
+
+                stdout.send(format!("{:?} {:?}", filename, outfile));
+
+                if outfile.exists() {
+                    return Ok(None);
+                }
+
+                rename(&filename, &outfile).or_else(|_| copy(&filename, &outfile).map(|_| ()))?;
+                Ok(Some(gfile.begin_datetime))
+            })
+            .filter_map(Result::transpose)
+            .collect()
+    }
+
+    pub async fn process_filenames<T, U>(&self, filenames: T) -> Result<Vec<DateTime<Utc>>, Error>
+    where
+        T: IntoIterator<Item = U>,
+        U: AsRef<Path>,
+    {
         let config = self.get_config().clone();
         let stdout = self.stdout.clone();
-        let filenames: Vec<_> = filenames.iter().map(|s| s.as_ref().to_path_buf()).collect();
-        spawn_blocking(move || {
-            let tempdir = TempDir::new("garmin_zip")?;
-            let ziptmpdir = tempdir.path();
-
-            let filenames: Result<Vec<_>, Error> = filenames
-                .iter()
-                .map(|filename| match filename.extension().map(OsStr::to_str) {
-                    Some(Some("zip")) => extract_zip_from_garmin_connect(filename, ziptmpdir),
-                    Some(Some("fit")) | Some(Some("tcx")) | Some(Some("txt")) => {
-                        Ok(filename.to_path_buf())
-                    }
-                    _ => Self::transform_file_name(filename.as_ref()),
-                })
-                .collect();
-
-            filenames?
-                .into_par_iter()
-                .map(|filename| {
-                    assert!(filename.exists(), "No such file");
-                    let suffix = match filename.extension().and_then(OsStr::to_str) {
-                        Some("fit") => "fit",
-                        Some("tcx") => "tcx",
-                        Some("txt") => "txt",
-                        Some("gmn") => "gmn",
-                        _ => return Err(format_err!("Bad filename {:?}", filename)),
-                    };
-                    let gfile = GarminParse::new().with_file(&filename, &HashMap::new())?;
-
-                    let outfile = config
-                        .gps_dir
-                        .join(gfile.get_standardized_name(suffix).as_str());
-
-                    stdout.send(format!("{:?} {:?}", filename, outfile));
-
-                    if outfile.exists() {
-                        return Ok(None);
-                    }
-
-                    rename(&filename, &outfile)
-                        .or_else(|_| copy(&filename, &outfile).map(|_| ()))?;
-                    Ok(Some(gfile.begin_datetime))
-                })
-                .filter_map(Result::transpose)
-                .collect()
-        })
-        .await?
+        let filenames: Vec<_> = filenames
+            .into_iter()
+            .map(|s| s.as_ref().to_path_buf())
+            .collect();
+        spawn_blocking(move || Self::process_filenames_sync(filenames, &stdout, &config)).await?
     }
 }
 

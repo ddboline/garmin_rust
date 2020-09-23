@@ -852,7 +852,11 @@ impl FitbitClient {
         let new_activities = client.sync_fitbit_activities(start_datetime, pool).await?;
         let duplicates = client.remove_duplicate_entries(pool).await?;
 
-        Ok(FitbitBodyWeightFatUpdateOutput::new(new_measurements, new_activities, duplicates))
+        Ok(FitbitBodyWeightFatUpdateOutput::new(
+            new_measurements,
+            new_activities,
+            duplicates,
+        ))
     }
 
     #[allow(clippy::filter_map)]
@@ -890,7 +894,11 @@ pub struct FitbitBodyWeightFatUpdateOutput {
 }
 
 impl FitbitBodyWeightFatUpdateOutput {
-    pub fn new(measurements: Vec<ScaleMeasurement>, activities: Vec<DateTime<Utc>>, duplicates: Vec<StackString>) -> Self {
+    pub fn new(
+        measurements: Vec<ScaleMeasurement>,
+        activities: Vec<DateTime<Utc>>,
+        duplicates: Vec<StackString>,
+    ) -> Self {
         Self {
             measurements,
             activities,

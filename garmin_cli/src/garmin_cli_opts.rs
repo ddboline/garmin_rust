@@ -1,6 +1,7 @@
 use anyhow::Error;
 use chrono::{Duration, Utc};
 use futures::future::try_join_all;
+use itertools::Itertools;
 use stack_string::StackString;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -101,13 +102,13 @@ impl GarminCliOpts {
                 cli.stdout.send(format!("{:?}", updates));
 
                 let start_date = (Utc::now() - Duration::days(10)).naive_utc().date();
-                let filenames: Vec<_> = client
+                let filenames = client
                     .sync_tcx(start_date)
                     .await?
                     .into_iter()
                     .map(|p| p.to_string_lossy().into_owned())
-                    .collect();
-                cli.stdout.send(filenames.join("\n"));
+                    .join("\n");
+                cli.stdout.send(filenames);
 
                 cli.stdout.close().await?;
                 FitbitHeartRate::calculate_summary_statistics(&client.config, &pool, today).await?;

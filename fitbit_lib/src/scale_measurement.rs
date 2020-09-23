@@ -317,14 +317,17 @@ impl ScaleMeasurement {
         })
     }
 
-    pub async fn merge_updates(measurements: &[Self], pool: &PgPool) -> Result<(), Error> {
+    pub async fn merge_updates<'a, T>(measurements: T, pool: &PgPool) -> Result<(), Error>
+    where
+        T: IntoIterator<Item = &'a Self>,
+    {
         let measurement_set: HashSet<_> = ScaleMeasurement::read_from_db(pool, None, None)
             .await?
             .into_par_iter()
             .map(|d| d.datetime)
             .collect();
         let measurement_set = Arc::new(measurement_set);
-        let futures = measurements.iter().map(|meas| {
+        let futures = measurements.into_iter().map(|meas| {
             let measurement_set = measurement_set.clone();
             async move {
                 if measurement_set.contains(&meas.datetime) {

@@ -85,6 +85,7 @@ impl StravaClient {
     pub async fn from_file(config: GarminConfig) -> Result<Self, Error> {
         let mut client = Self {
             config,
+            client: Client::builder().cookie_store(true).build()?,
             ..Self::default()
         };
         let f = File::open(&client.config.strava_tokenfile).await?;
@@ -140,7 +141,7 @@ impl StravaClient {
             "remember_me" => "on",
             param.as_str() => token.as_str(),
         };
-        self.client.post(session_url).form(&data).send().await?;
+        self.client.post(session_url).form(&data).send().await?.error_for_status()?;
         WEB_CSRF
             .lock()
             .await
@@ -152,6 +153,11 @@ impl StravaClient {
         if WEB_CSRF.lock().await.is_none() {
             self.webauth().await?;
         }
+        let (param, token) = WEB_CSRF
+            .lock()
+            .await
+            .clone()
+            .ok_or_else(|| format_err!("No csrf"))?;
         let url: Url = format!(
             "https://www.strava.com/activities/{}/export_original",
             activity_id
@@ -718,10 +724,21 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_webauth() -> Result<(), Error> {
+        use garmin_lib::utils::garmin_util::get_md5sum;
         let config = GarminConfig::get_config(None)?;
         let client = StravaClient::with_auth(config).await?;
         client.webauth().await?;
         client.export_original(3862793062).await?;
+
+        let fname = client
+            .config
+            .home_dir
+            .join("Downloads")
+            .join("3862793062")
+            .with_extension("fit");
+        assert!(fname.exists());
+        assert_eq!(&get_md5sum(&fname)?, "6365f391e3873cfdfeb5d716195f7271");
+
         Ok(())
     }
 

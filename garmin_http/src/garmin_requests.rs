@@ -229,14 +229,13 @@ impl HandleRequest<StravaSyncRequest> for PgPool {
     type Result = Result<Vec<PathBuf>, Error>;
     async fn handle(&self, req: StravaSyncRequest) -> Self::Result {
         let gcli = GarminCli::from_pool(&self)?;
-        let config = CONFIG.clone();
 
         let start_datetime = req
             .start_datetime
             .or_else(|| Some(Utc::now() - Duration::days(15)));
         let end_datetime = req.end_datetime.or_else(|| Some(Utc::now()));
 
-        let client = StravaClient::with_auth(config).await?;
+        let client = StravaClient::with_auth(CONFIG.clone()).await?;
         let filenames = client
             .sync_with_client(start_datetime, end_datetime, self)
             .await?;

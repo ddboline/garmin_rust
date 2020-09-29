@@ -153,11 +153,6 @@ impl StravaClient {
         if WEB_CSRF.lock().await.is_none() {
             self.webauth().await?;
         }
-        let (param, token) = WEB_CSRF
-            .lock()
-            .await
-            .clone()
-            .ok_or_else(|| format_err!("No csrf"))?;
         let url: Url = format!(
             "https://www.strava.com/activities/{}/export_original",
             activity_id

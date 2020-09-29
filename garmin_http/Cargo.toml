@@ -1,6 +1,6 @@
 [package]
 name = "garmin_http"
-version = "0.9.21"
+version = "0.9.22"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -32,7 +32,7 @@ anyhow = "1.0"
 thiserror = "1.0"
 async-trait = "0.1"
 rayon = "1.4"
-handlebars = "3.4"
+handlebars = "3.5"
 itertools = "0.9"
-auth_server_rust = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.1.14"}
+auth_server_rust = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.1.15"}
 stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.1.6", features=["postgres_types"] }

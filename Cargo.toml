@@ -48,8 +48,8 @@ path = "src/garmin_rust_http.rs"
 doc = false
 
 [[bin]]
-name = "pull-scale-measurements-from-telegram"
-path = "src/pull_scale_measurements_from_telegram.rs"
+name = "scale-measurement-bot"
+path = "src/scale_measurement_bot.rs"
 doc = false
 
 [[bin]]

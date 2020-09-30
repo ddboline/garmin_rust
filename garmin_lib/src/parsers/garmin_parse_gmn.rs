@@ -4,7 +4,6 @@ use roxmltree::{Document, NodeType};
 use std::{collections::HashMap, env::var, path::Path};
 use subprocess::{Exec, Redirection};
 
-use super::garmin_parse::{GarminParseTrait, ParseOutput};
 use crate::{
     common::{
         garmin_correction_lap::{apply_lap_corrections, GarminCorrectionLap},
@@ -14,6 +13,8 @@ use crate::{
     },
     utils::sport_types::SportTypes,
 };
+
+use super::garmin_parse::{GarminParseTrait, ParseOutput};
 
 #[derive(Debug, Default)]
 pub struct GarminParseGmn {}

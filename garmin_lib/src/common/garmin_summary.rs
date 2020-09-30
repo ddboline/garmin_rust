@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use stack_string::StackString;
 use std::{collections::HashMap, fmt, fs::File, path::Path, sync::Arc};
 
-use super::{garmin_correction_lap::GarminCorrectionLap, garmin_file::GarminFile, pgpool::PgPool};
+use crate::utils::sport_types::SportTypes;
 use crate::{
     parsers::garmin_parse::{GarminParse, GarminParseTrait},
     utils::{
@@ -19,7 +19,7 @@ use crate::{
     },
 };
 
-use crate::utils::sport_types::SportTypes;
+use super::{garmin_correction_lap::GarminCorrectionLap, garmin_file::GarminFile, pgpool::PgPool};
 
 pub const GARMIN_SUMMARY_AVRO_SCHEMA: &str = r#"
     {

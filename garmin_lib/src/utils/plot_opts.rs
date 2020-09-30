@@ -1,5 +1,4 @@
 use serde::Serialize;
-
 use stack_string::StackString;
 
 #[derive(Serialize, Default)]

@@ -7,11 +7,12 @@ use crate::{
         garmin_correction_lap::GarminCorrectionLap, garmin_file::GarminFile, garmin_lap::GarminLap,
         garmin_point::GarminPoint,
     },
-    parsers::{
-        garmin_parse_fit::GarminParseFit, garmin_parse_gmn::GarminParseGmn,
-        garmin_parse_tcx::GarminParseTcx, garmin_parse_txt::GarminParseTxt,
-    },
     utils::sport_types::SportTypes,
+};
+
+use super::{
+    garmin_parse_fit::GarminParseFit, garmin_parse_gmn::GarminParseGmn,
+    garmin_parse_tcx::GarminParseTcx, garmin_parse_txt::GarminParseTxt,
 };
 
 #[derive(Default, Debug)]

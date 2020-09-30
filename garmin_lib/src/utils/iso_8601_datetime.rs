@@ -1,6 +1,6 @@
 use anyhow::Error;
 use chrono::{DateTime, TimeZone, Utc};
-use serde::{self, Deserialize, Deserializer, Serializer};
+use serde::{de, Deserialize, Deserializer, Serializer};
 
 pub fn sentinel_datetime() -> DateTime<Utc> {
     Utc.ymd(0, 1, 1).and_hms(0, 0, 0)
@@ -28,5 +28,5 @@ where
     D: Deserializer<'de>,
 {
     let s = String::deserialize(deserializer)?;
-    convert_str_to_datetime(&s).map_err(serde::de::Error::custom)
+    convert_str_to_datetime(&s).map_err(de::Error::custom)
 }

@@ -24,10 +24,8 @@ use garmin_lib::{
 };
 use garmin_reports::garmin_file_report_html::generate_history_buttons;
 
-use super::{errors::ServiceError as Error, logged_user::LoggedUser};
-
-use super::garmin_rust_app::AppState;
 use crate::{
+    errors::ServiceError as Error,
     garmin_requests::{
         AddGarminCorrectionRequest, FitbitActivitiesDBRequest, FitbitActivitiesDBUpdateRequest,
         FitbitActivitiesRequest, FitbitActivityTypesRequest, FitbitAuthRequest,
@@ -45,6 +43,8 @@ use crate::{
         StravaAuthRequest, StravaCallbackRequest, StravaCreateRequest, StravaRefreshRequest,
         StravaSyncRequest, StravaUpdateRequest, StravaUploadRequest,
     },
+    garmin_rust_app::AppState,
+    logged_user::LoggedUser,
     CONFIG,
 };
 

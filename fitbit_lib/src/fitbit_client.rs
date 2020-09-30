@@ -1,6 +1,7 @@
 use anyhow::{format_err, Error};
 use base64::{encode, encode_config, URL_SAFE_NO_PAD};
 use chrono::{DateTime, FixedOffset, Local, NaiveDate, NaiveTime, Utc};
+use crossbeam_utils::atomic::AtomicCell;
 use futures::future::try_join_all;
 use itertools::Itertools;
 use lazy_static::lazy_static;
@@ -19,14 +20,11 @@ use std::{
 use tokio::{
     fs::File,
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
-    sync::Mutex,
     task::spawn_blocking,
     time::{delay_for, Duration},
 };
-use crossbeam_utils::atomic::AtomicCell;
 
 use garmin_connect_lib::garmin_connect_hr_data::GarminConnectHrData;
-
 use garmin_lib::common::{
     fitbit_activity::FitbitActivity,
     garmin_config::GarminConfig,
@@ -88,6 +86,7 @@ impl FitbitClient {
     pub async fn from_file(config: GarminConfig) -> Result<Self, Error> {
         let mut client = Self {
             config,
+            client: Client::builder().cookie_store(true).build()?,
             ..Self::default()
         };
         let f = File::open(&client.config.fitbit_tokenfile).await?;

@@ -1,4 +1,5 @@
 use anyhow::{format_err, Error};
+use arc_swap::ArcSwap;
 use base64::{encode_config, URL_SAFE_NO_PAD};
 use chrono::{DateTime, Local, Utc};
 use futures::future::try_join_all;
@@ -14,6 +15,7 @@ use select::{document::Document, predicate::Attr};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use stack_string::StackString;
+use std::sync::Arc;
 use std::{
     collections::HashSet,
     path::{Path, PathBuf},
@@ -23,7 +25,6 @@ use tokio::{
     fs::File,
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     stream::StreamExt,
-    sync::Mutex,
     task::spawn_blocking,
 };
 
@@ -40,8 +41,8 @@ use garmin_lib::{
 };
 
 lazy_static! {
-    static ref CSRF_TOKEN: Mutex<Option<StackString>> = Mutex::new(None);
-    static ref WEB_CSRF: Mutex<Option<(StackString, StackString)>> = Mutex::new(None);
+    static ref CSRF_TOKEN: ArcSwap<Option<StackString>> = ArcSwap::new(Arc::new(None));
+    static ref WEB_CSRF: ArcSwap<Option<(StackString, StackString)>> = ArcSwap::new(Arc::new(None));
 }
 
 const BASE_URL: &str = "https://www.strava.com";
@@ -141,16 +142,18 @@ impl StravaClient {
             "remember_me" => "on",
             param.as_str() => token.as_str(),
         };
-        self.client.post(session_url).form(&data).send().await?.error_for_status()?;
-        WEB_CSRF
-            .lock()
-            .await
-            .replace((param.clone(), token.clone()));
+        self.client
+            .post(session_url)
+            .form(&data)
+            .send()
+            .await?
+            .error_for_status()?;
+        WEB_CSRF.store(Arc::new(Some((param, token))));
         Ok(())
     }
 
     async fn export_original(&self, activity_id: u64) -> Result<PathBuf, Error> {
-        if WEB_CSRF.lock().await.is_none() {
+        if WEB_CSRF.load().is_none() {
             self.webauth().await?;
         }
         let url: Url = format!(
@@ -177,13 +180,11 @@ impl StravaClient {
     }
 
     pub async fn delete_activity(&self, activity_id: u64) -> Result<(), Error> {
-        if WEB_CSRF.lock().await.is_none() {
+        if WEB_CSRF.load().is_none() {
             self.webauth().await?;
         }
-        let (param, token) = WEB_CSRF
-            .lock()
-            .await
-            .clone()
+        let (param, token) = Arc::make_mut(&mut WEB_CSRF.swap(Arc::new(None)))
+            .take()
             .ok_or_else(|| format_err!("No csrf"))?;
         let url: Url = format!("{}/activities/{}", BASE_URL, activity_id).parse()?;
         let data = hashmap! {
@@ -254,7 +255,7 @@ impl StravaClient {
                 ("state", state.as_str()),
             ],
         )?;
-        CSRF_TOKEN.lock().await.replace(state);
+        CSRF_TOKEN.store(Arc::new(Some(state)));
         Ok(url)
     }
 
@@ -265,8 +266,7 @@ impl StravaClient {
             refresh_token: StackString,
         }
 
-        let current_state = CSRF_TOKEN.lock().await.take();
-        if let Some(current_state) = current_state {
+        if let Some(current_state) = Arc::make_mut(&mut CSRF_TOKEN.swap(Arc::new(None))).take() {
             if state != current_state.as_str() {
                 return Err(format_err!("Incorrect state"));
             }

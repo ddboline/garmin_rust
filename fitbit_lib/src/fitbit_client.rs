@@ -23,7 +23,6 @@ use tokio::{
     task::spawn_blocking,
     time::{delay_for, Duration},
 };
-use crossbeam_utils::atomic::AtomicCell;
 
 use garmin_connect_lib::garmin_connect_hr_data::GarminConnectHrData;
 use garmin_lib::common::{

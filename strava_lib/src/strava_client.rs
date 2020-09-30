@@ -1,7 +1,7 @@
 use anyhow::{format_err, Error};
-use crossbeam_utils::atomic::AtomicCell;
 use base64::{encode_config, URL_SAFE_NO_PAD};
 use chrono::{DateTime, Local, Utc};
+use crossbeam_utils::atomic::AtomicCell;
 use futures::future::try_join_all;
 use lazy_static::lazy_static;
 use maplit::hashmap;
@@ -153,7 +153,7 @@ impl StravaClient {
             .send()
             .await?
             .error_for_status()?;
-        WEB_CSRF.store(Some(WebCsrf{param, token}));
+        WEB_CSRF.store(Some(WebCsrf { param, token }));
         Ok(())
     }
 

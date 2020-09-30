@@ -6,8 +6,7 @@ use lazy_static::lazy_static;
 use log::debug;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use stack_string::StackString;
-use std::collections::HashSet;
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 use telegram_bot::{types::refs::UserId, Api, CanReplySendMessage, MessageKind, UpdateKind};
 use tokio::{
     task::spawn,

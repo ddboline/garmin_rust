@@ -7,13 +7,12 @@ use log::debug;
 use postgres_query::FromSqlRow;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use stack_string::StackString;
-use std::path::Path;
-use std::{collections::HashMap, fs, hash::BuildHasher, str};
+use std::{collections::HashMap, fs, hash::BuildHasher, path::Path, str};
 
-use crate::utils::sport_types::SportTypes;
 use crate::utils::{
     garmin_util::METERS_PER_MILE,
     iso_8601_datetime::{convert_str_to_datetime, sentinel_datetime},
+    sport_types::SportTypes,
 };
 
 use super::{garmin_lap::GarminLap, pgpool::PgPool};

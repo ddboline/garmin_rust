@@ -10,12 +10,12 @@ use serde::{Deserialize, Serialize};
 use stack_string::StackString;
 use std::{collections::HashMap, fmt, fs::File, path::Path, sync::Arc};
 
-use crate::utils::sport_types::SportTypes;
 use crate::{
     parsers::garmin_parse::{GarminParse, GarminParseTrait},
     utils::{
         garmin_util::{generate_random_string, get_file_list, get_md5sum},
         iso_8601_datetime::{self, convert_datetime_to_str, sentinel_datetime},
+        sport_types::SportTypes,
     },
 };
 

@@ -1,14 +1,14 @@
 use anyhow::Error;
+use arc_swap::ArcSwap;
 use crossbeam_utils::atomic::AtomicCell;
 use futures::StreamExt;
 use lazy_static::lazy_static;
 use log::debug;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use stack_string::StackString;
-use std::collections::HashSet;
+use std::{collections::HashSet, sync::Arc};
 use telegram_bot::{types::refs::UserId, Api, CanReplySendMessage, MessageKind, UpdateKind};
 use tokio::{
-    sync::RwLock,
     task::spawn,
     time::{delay_for, Duration},
 };
@@ -19,11 +19,11 @@ use garmin_lib::common::pgpool::PgPool;
 use super::failure_count::FailureCount;
 
 type WeightLock = AtomicCell<Option<ScaleMeasurement>>;
-type Userids = RwLock<HashSet<UserId>>;
+type Userids = ArcSwap<HashSet<UserId>>;
 
 lazy_static! {
     static ref LAST_WEIGHT: WeightLock = AtomicCell::new(None);
-    static ref USERIDS: Userids = RwLock::new(HashSet::new());
+    static ref USERIDS: Userids = ArcSwap::new(Arc::new(HashSet::new()));
     static ref FAILURE_COUNT: FailureCount = FailureCount::new(5);
 }
 
@@ -79,7 +79,7 @@ impl TelegramBot {
                     FAILURE_COUNT.check()?;
                     // Print received text message to stdout.
                     debug!("{:?}", message);
-                    if USERIDS.read().await.contains(&message.from.id) {
+                    if USERIDS.load().contains(&message.from.id) {
                         FAILURE_COUNT.check()?;
                         if &data.to_lowercase() == "check" {
                             if let Some(meas) = LAST_WEIGHT.load() {
@@ -148,7 +148,7 @@ impl TelegramBot {
         loop {
             FAILURE_COUNT.check()?;
             if let Ok(telegram_userid_set) = self.list_of_telegram_user_ids().await {
-                *USERIDS.write().await = telegram_userid_set;
+                USERIDS.store(Arc::new(telegram_userid_set));
                 FAILURE_COUNT.reset()?;
             } else {
                 FAILURE_COUNT.increment()?;

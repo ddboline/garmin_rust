@@ -9,11 +9,8 @@ use tokio::time::interval;
 
 use garmin_lib::common::pgpool::PgPool;
 
-use super::{
-    garmin_requests::close_connect_proxy,
-    logged_user::{fill_from_db, get_secrets, SECRET_KEY, TRIGGER_DB_UPDATE},
-};
 use crate::{
+    garmin_requests::close_connect_proxy,
     garmin_rust_routes::{
         add_garmin_correction, fitbit_activities, fitbit_activities_db,
         fitbit_activities_db_update, fitbit_activity_types, fitbit_auth, fitbit_bodyweight,
@@ -29,6 +26,7 @@ use crate::{
         strava_activities_db_update, strava_athlete, strava_auth, strava_callback, strava_create,
         strava_refresh, strava_sync, strava_update, strava_upload, user,
     },
+    logged_user::{fill_from_db, get_secrets, SECRET_KEY, TRIGGER_DB_UPDATE},
     CONFIG,
 };
 

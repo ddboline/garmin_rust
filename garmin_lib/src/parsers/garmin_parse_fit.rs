@@ -4,7 +4,6 @@ use fitparser::{profile::field_types::MesgNum, Value};
 use log::debug;
 use std::{collections::HashMap, fs::File, path::Path};
 
-use super::garmin_parse::{GarminParseTrait, ParseOutput};
 use crate::{
     common::{
         garmin_correction_lap::{apply_lap_corrections, GarminCorrectionLap},
@@ -14,6 +13,8 @@ use crate::{
     },
     utils::sport_types::SportTypes,
 };
+
+use super::garmin_parse::{GarminParseTrait, ParseOutput};
 
 #[derive(Debug, Default)]
 pub struct GarminParseFit {}

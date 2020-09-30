@@ -1,6 +1,7 @@
 use anyhow::{format_err, Error};
 use base64::{encode, encode_config, URL_SAFE_NO_PAD};
 use chrono::{DateTime, FixedOffset, Local, NaiveDate, NaiveTime, Utc};
+use crossbeam_utils::atomic::AtomicCell;
 use futures::future::try_join_all;
 use itertools::Itertools;
 use lazy_static::lazy_static;
@@ -19,13 +20,11 @@ use std::{
 use tokio::{
     fs::File,
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
-    sync::Mutex,
     task::spawn_blocking,
     time::{delay_for, Duration},
 };
 
 use garmin_connect_lib::garmin_connect_hr_data::GarminConnectHrData;
-
 use garmin_lib::common::{
     fitbit_activity::FitbitActivity,
     garmin_config::GarminConfig,
@@ -42,7 +41,7 @@ const FITBIT_OAUTH_AUTHORIZE: &str = "https://www.fitbit.com/oauth2/authorize";
 const FITBIT_OAUTH_TOKEN: &str = "https://api.fitbit.com/oauth2/token";
 
 lazy_static! {
-    static ref CSRF_TOKEN: Mutex<Option<StackString>> = Mutex::new(None);
+    static ref CSRF_TOKEN: AtomicCell<Option<StackString>> = AtomicCell::new(None);
     static ref FITBIT_ENDPOINT: Url = Url::parse("https://api.fitbit.com/").unwrap();
     static ref FITBIT_PREFIX: Url = Url::parse("https://api.fitbit.com/1/user/-/").unwrap();
 }
@@ -87,6 +86,7 @@ impl FitbitClient {
     pub async fn from_file(config: GarminConfig) -> Result<Self, Error> {
         let mut client = Self {
             config,
+            client: Client::builder().cookie_store(true).build()?,
             ..Self::default()
         };
         let f = File::open(&client.config.fitbit_tokenfile).await?;
@@ -209,7 +209,7 @@ impl FitbitClient {
                 ("state", state.as_str()),
             ],
         )?;
-        CSRF_TOKEN.lock().await.replace(state.into());
+        CSRF_TOKEN.store(Some(state.into()));
         Ok(url)
     }
 
@@ -274,8 +274,7 @@ impl FitbitClient {
         code: &str,
         state: &str,
     ) -> Result<StackString, Error> {
-        let current_state = CSRF_TOKEN.lock().await.take();
-        if let Some(current_state) = current_state {
+        if let Some(current_state) = CSRF_TOKEN.swap(None) {
             if state != current_state.as_str() {
                 return Err(format_err!("Incorrect state"));
             }

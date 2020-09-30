@@ -3,13 +3,12 @@
 
 use anyhow::{format_err, Error};
 use serde::Deserialize;
+use stack_string::StackString;
 use std::{
     ops::Deref,
     path::{Path, PathBuf},
     sync::Arc,
 };
-
-use stack_string::StackString;
 
 /// `GarminConfig` holds configuration information which can be set either
 /// through environment variables or the config.env file, see the dotenv crate

@@ -1,6 +1,6 @@
 [package]
 name = "strava_lib"
-version = "0.9.23"
+version = "0.9.24"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -14,7 +14,7 @@ thiserror = "1.0"
 reqwest = {version="0.10", features=["cookies", "json", "rustls-tls", "stream"], default_features=false}
 lazy_static = "1.4"
 tokio = {version="0.2", features=["full"]}
-base64 = "0.12"
+base64 = "0.13"
 rand = "0.7"
 maplit = "1.0"
 serde = {version="1.0", features=["derive"]}

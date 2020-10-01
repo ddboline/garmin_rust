@@ -1,6 +1,6 @@
 [package]
 name = "fitbit_bot"
-version = "0.9.23"
+version = "0.9.24"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -19,5 +19,5 @@ anyhow = "1.0"
 thiserror = "1.0"
 rayon = "1.4"
 arc-swap = "0.4"
-telegram-bot = {git = "https://github.com/ddboline/telegram-bot.git", tag="0.7.1-1"}
+telegram-bot = {git = "https://github.com/ddboline/telegram-bot.git", tag="0.7.2-1"}
 stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.1.6", features=["postgres_types"] }

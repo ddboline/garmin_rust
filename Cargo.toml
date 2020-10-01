@@ -14,7 +14,6 @@ fitbit_bot = {path="fitbit_bot"}
 garmin_connect_lib = {path="garmin_connect_lib"}
 race_result_analysis = {path="race_result_analysis"}
 garmin_reports = {path="garmin_reports"}
-actix = "0.10"
 actix-rt = "1.1"
 log = "0.4"
 env_logger = "0.7"

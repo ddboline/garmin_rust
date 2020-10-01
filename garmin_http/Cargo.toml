@@ -13,7 +13,6 @@ garmin_connect_lib = {path="../garmin_connect_lib"}
 garmin_reports = {path="../garmin_reports"}
 race_result_analysis = {path="../race_result_analysis"}
 actix-web = "3.1"
-actix = "0.10"
 actix-identity = "0.3"
 actix-rt = "1.1"
 actix-session = "0.4"

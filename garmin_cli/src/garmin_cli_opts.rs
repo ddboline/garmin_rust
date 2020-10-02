@@ -121,7 +121,11 @@ impl GarminCliOpts {
             }
             Self::Strava => {
                 let cli = GarminCli::with_config()?;
-                let filenames = Self::sync_with_strava(&cli).await?;
+                let filenames = Self::sync_with_strava(&cli)
+                    .await?
+                    .into_iter()
+                    .map(|p| p.to_string_lossy().into_owned())
+                    .join("\n");
                 cli.stdout.send(filenames);
                 return cli.stdout.close().await;
             }

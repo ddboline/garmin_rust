@@ -2,7 +2,7 @@
 
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_session::CookieSession;
-use actix_web::{web, App, HttpServer, middleware::Compress};
+use actix_web::{middleware::Compress, web, App, HttpServer};
 use anyhow::Error;
 use std::time::Duration;
 use tokio::time::interval;

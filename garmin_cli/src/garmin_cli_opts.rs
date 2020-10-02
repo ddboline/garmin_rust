@@ -50,6 +50,7 @@ pub enum GarminCliOpts {
         #[structopt(short, long)]
         all: bool,
     },
+    Strava,
     Import {
         #[structopt(short, long)]
         /// table: allowed values: ['scale_measurements', 'strava_activities',
@@ -116,6 +117,12 @@ impl GarminCliOpts {
                 if all {
                     FitbitHeartRate::get_all_summary_statistics(&client.config, &pool).await?;
                 }
+                return cli.stdout.close().await;
+            }
+            Self::Strava => {
+                let cli = GarminCli::with_config()?;
+                let filenames = sync_with_strava(&cli).await?;
+                cli.stdout.send(filenames);
                 return cli.stdout.close().await;
             }
             Self::Import { table, filepath } => {

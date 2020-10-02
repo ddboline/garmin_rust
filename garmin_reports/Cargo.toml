@@ -1,6 +1,6 @@
 [package]
 name = "garmin_reports"
-version = "0.9.24"
+version = "0.9.25"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 

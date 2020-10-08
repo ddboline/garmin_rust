@@ -61,8 +61,8 @@ pub fn get_buttons(demo: bool) -> Vec<&'static str> {
     }
     buttons.extend_from_slice(&[
         r#"<button type="submit" onclick="scale_measurement_plots(0);">Scale Plots</button>"#,
-        r#"<button type="submit" onclick="heartrate_stat_plot(0);">Hear Rate Stats</button>"#,
-        r#"<button type="submit" onclick="heartrate_plot();">Hear Rate Plots</button>"#,
+        r#"<button type="submit" onclick="heartrate_stat_plot(0);">Heart Rate Stats</button>"#,
+        r#"<button type="submit" onclick="heartrate_plot();">Heart Rate Plots</button>"#,
         r#"<button type="submit" onclick="race_result_plot_personal();">Race Result Plot</button>"#,
         r#"<button name="garminconnectoutput" id="garminconnectoutput"> &nbsp; </button>"#,
         r#"<button type="submit" onclick="send_command('filter=latest');"> latest </button>"#,

@@ -26,7 +26,7 @@ use strava_lib::strava_client::StravaClient;
 
 use crate::garmin_cli::{GarminCli, GarminCliOptions};
 
-#[derive(StructOpt)]
+#[derive(StructOpt, PartialEq)]
 pub enum GarminCliOpts {
     #[structopt(alias = "boot")]
     Bootstrap,
@@ -69,12 +69,26 @@ pub enum GarminCliOpts {
         #[structopt(short, long)]
         filepath: Option<PathBuf>,
     },
+    SyncAll,
 }
 
 impl GarminCliOpts {
     pub async fn process_args() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
-        let opts = match Self::from_args() {
+        let opts = Self::from_args();
+
+        if opts == Self::SyncAll {
+            Self::Connect.process_opts(&config).await?;
+            Self::Fitbit { all: false }.process_opts(&config).await?;
+            Self::Strava.process_opts(&config).await?;
+            Self::Sync { md5sum: false }.process_opts(&config).await
+        } else {
+            opts.process_opts(&config).await
+        }
+    }
+
+    async fn process_opts(self, config: &GarminConfig) -> Result<(), Error> {
+        let opts = match self {
             Self::Bootstrap => GarminCliOptions::Bootstrap,
             Self::Proc { filename } => GarminCliOptions::ImportFileNames(filename),
             Self::Report { patterns } => {
@@ -89,6 +103,9 @@ impl GarminCliOpts {
             }
             Self::Connect => GarminCliOptions::Connect,
             Self::Sync { md5sum } => GarminCliOptions::Sync(md5sum),
+            Self::SyncAll => {
+                return Ok(());
+            }
             Self::Fitbit { all } => {
                 let today = Utc::now().naive_local().date();
 

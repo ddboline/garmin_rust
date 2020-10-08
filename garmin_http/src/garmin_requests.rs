@@ -770,13 +770,14 @@ impl HandleRequest<AddGarminCorrectionRequest> for PgPool {
             })?;
         let unique_key = (msg.start_time, msg.lap_number);
 
-        let mut new_corr = if let Some(corr) = corr_map.get(&unique_key) {
-            *corr
-        } else {
-            GarminCorrectionLap::new()
-                .with_start_time(msg.start_time)
-                .with_lap_number(msg.lap_number)
-        };
+        let mut new_corr = corr_map.get(&unique_key).map_or_else(
+            || {
+                GarminCorrectionLap::new()
+                    .with_start_time(msg.start_time)
+                    .with_lap_number(msg.lap_number)
+            },
+            |corr| *corr,
+        );
 
         if msg.distance.is_some() {
             new_corr.distance = msg.distance;

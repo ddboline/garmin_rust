@@ -421,19 +421,20 @@ impl FitbitHeartRate {
     }
 
     pub fn from_garmin_connect_hr(hr_data: &GarminConnectHrData) -> Vec<Self> {
-        if let Some(hr_vals) = hr_data.heartrate_values.as_ref() {
-            hr_vals
-                .iter()
-                .filter_map(|(timestamp, hr_val_opt)| {
-                    hr_val_opt.map(|value| {
-                        let datetime = (*timestamp).into();
-                        Self { datetime, value }
+        hr_data
+            .heartrate_values
+            .as_ref()
+            .map_or_else(Vec::new, |hr_vals| {
+                hr_vals
+                    .iter()
+                    .filter_map(|(timestamp, hr_val_opt)| {
+                        hr_val_opt.map(|value| {
+                            let datetime = (*timestamp).into();
+                            Self { datetime, value }
+                        })
                     })
-                })
-                .collect()
-        } else {
-            Vec::new()
-        }
+                    .collect()
+            })
     }
 }
 

@@ -30,7 +30,7 @@ pub trait GarminReportTrait {
         let ent = self
             .get_text_entry()?
             .into_iter()
-            .map(|(s, u)| if let Some(u) = u { u } else { s })
+            .map(|(s, u)| u.map_or(s, |u| u))
             .join("</td><td>");
         let cmd = self.generate_url_string();
         Ok(format!(

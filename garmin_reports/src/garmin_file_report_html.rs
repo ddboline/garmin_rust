@@ -730,11 +730,7 @@ fn get_file_html(
         } else {
             "".to_string()
         },
-        fstep = if let Some(fitbit_activity) = fitbit_activity {
-            fitbit_activity.steps.unwrap_or(0)
-        } else {
-            0
-        },
+        fstep = fitbit_activity.as_ref().map_or(0, |x| x.steps.unwrap_or(0)),
         gid = if let Some(connect_activity) = connect_activity {
             format!(
                 r#"<a href="https://connect.garmin.com/modern/activity/{0}" target="_blank">{0}</a>"#,
@@ -743,9 +739,7 @@ fn get_file_html(
         } else {
             "".to_string()
         },
-        gstep = if let Some(connect_activity) = connect_activity {
-            connect_activity.steps.unwrap_or(0)
-        } else {0},
+        gstep = connect_activity.as_ref().map_or(0, |x| x.steps.unwrap_or(0)),
     ));
     retval.push(r#"</table><br>"#.to_string());
     if race_result.is_none() && gfile.sport == SportTypes::Running {

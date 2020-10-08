@@ -321,11 +321,10 @@ pub async fn strava_create(
 ) -> HttpResult {
     let query = query.into_inner();
     let activity_id = state.db.handle(query).await?;
-    if let Some(activity_id) = activity_id {
-        form_http_response(activity_id.to_string())
-    } else {
-        form_http_response("".into())
-    }
+    activity_id.map_or_else(
+        || form_http_response("".into()),
+        |activity_id| form_http_response(activity_id.to_string()),
+    )
 }
 
 pub async fn fitbit_auth(_: LoggedUser, state: Data<AppState>) -> HttpResult {

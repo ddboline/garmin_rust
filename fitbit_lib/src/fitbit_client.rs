@@ -530,11 +530,9 @@ impl FitbitClient {
                         return Ok(None);
                     }
                     let start_time = entry.start_time;
-                    if let Some(link) = entry.tcx_link {
-                        Ok(Some((start_time, link)))
-                    } else {
-                        Ok(None)
-                    }
+                    entry
+                        .tcx_link
+                        .map_or(Ok(None), |link| Ok(Some((start_time, link))))
                 };
                 res().transpose()
             })

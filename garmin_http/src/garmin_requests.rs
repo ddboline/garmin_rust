@@ -422,15 +422,15 @@ impl ScaleMeasurementRequest {
         Self {
             start_date: match self.start_date {
                 Some(d) => Some(d),
-                None => Some((Local::now() - Duration::days(ndays)).naive_local().date()),
+                None => Some((Local::now() - Duration::days(ndays)).naive_utc().date()),
             },
             end_date: match self.end_date {
                 Some(d) => Some(d),
-                None => Some(Local::now().naive_local().date()),
+                None => Some(Local::now().naive_utc().date()),
             },
             button_date: match self.button_date {
                 Some(d) => Some(d),
-                None => Some(Local::now().naive_local().date()),
+                None => Some(Local::now().naive_utc().date()),
             },
             offset: self.offset,
         }

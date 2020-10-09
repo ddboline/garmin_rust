@@ -1,8 +1,8 @@
 #!/bin/bash
 
-PASSWORD=`head -c1000 /dev/urandom | tr -dc [:alpha:][:digit:] | head -c 16; echo ;`
-JWT_SECRET=`head -c1000 /dev/urandom | tr -dc [:alpha:][:digit:] | head -c 32; echo ;`
-SECRET_KEY=`head -c1000 /dev/urandom | tr -dc [:alpha:][:digit:] | head -c 32; echo ;`
+if [ -z "$PASSWORD" ]; then
+    PASSWORD=`head -c1000 /dev/urandom | tr -dc [:alpha:][:digit:] | head -c 16; echo ;`
+fi
 DB=garmin_summary
 
 sudo apt-get install -y postgresql \
@@ -34,8 +34,8 @@ SUMMARY_BUCKET=garmin-scripts-summary-cache
 GPS_DIR=${HOME}/.garmin_cache/run/gps_tracks
 CACHE_DIR=${HOME}/.garmin_cache/run/cache
 SUMMARY_CACHE=${HOME}/.garmin_cache/run/summary_cache
-JWT_SECRET=$JWT_SECRET
-SECRET_KEY=$SECRET_KEY
+SECRET_PATH=${HOME}/.config/auth_server_rust/secret.bin
+JWT_SECRET_PATH=${HOME}/.config/auth_server_rust/jwt_secret.bin
 DOMAIN=$DOMAIN
 GARMIN_CONNECT_EMAIL=$GARMIN_CONNECT_EMAIL
 GARMIN_CONNECT_PASSWORD=$GARMIN_CONNECT_PASSWORD
@@ -46,6 +46,14 @@ FITBIT_CLIENTID=$FITBIT_CLIENTID
 FITBIT_CLIENTSECRET=$FITBIT_CLIENTSECRET
 FITBIT_CACHEDIR=${HOME}/.garmin_cache/run/fitbit_cache
 FITBIT_BUCKET=fitbit-cache-ddboline
+EOL
+
+cat > ${HOME}/.config/garmin_rust/postgres.toml <<EOL
+[garmin_rust]
+database_url = 'postgresql://$USER:$PASSWORD@localhost:5432/$DB'
+destination = 'file://${HOME}/setup_files/build/garmin_rust/backup'
+tables = ['garmin_corrections_laps', 'garmin_summary', 'strava_id_cache', 'scale_measurements', 'heartrate_statistics_summary', 'fitbit_activities', 'garmin_connect_activities', 'strava_activities', 'race_results']
+sequences = {garmin_corrections_laps_id_seq=['garmin_corrections_laps', 'id'], scale_measurements_id_seq=['scale_measurements', 'id'], race_results_id_seq=['race_results', 'id']}
 EOL
 
 psql $DB < ./scripts/garmin_corrections_laps.sql

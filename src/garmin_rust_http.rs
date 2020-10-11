@@ -2,7 +2,7 @@
 use garmin_http::garmin_rust_app::start_app;
 
 /// Start actix system and add our app to it
-#[actix_rt::main]
+#[actix_web::main]
 async fn main() {
     env_logger::init();
     start_app().await.unwrap();

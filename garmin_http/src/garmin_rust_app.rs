@@ -6,6 +6,7 @@ use actix_web::{middleware::Compress, web, App, HttpServer};
 use anyhow::Error;
 use std::time::Duration;
 use tokio::time::interval;
+use tokio::task::spawn;
 
 use garmin_lib::common::pgpool::PgPool;
 
@@ -60,7 +61,7 @@ pub async fn start_app() -> Result<(), Error> {
 
     let pool = PgPool::new(&CONFIG.pgurl);
 
-    actix_rt::spawn(update_db(pool.clone()));
+    spawn(update_db(pool.clone()));
 
     HttpServer::new(move || {
         App::new()

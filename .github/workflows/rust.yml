@@ -7,13 +7,52 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:12.4-alpine
+        env:
+          POSTGRES_DB: garmin_summary
+          POSTGRES_PASSWORD: 2UtcMAAvNuBHPqK9
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+
     steps:
     - uses: actions/checkout@v1
     - name: Install deps
       run: sudo apt-get update && sudo apt-get install libpq-dev && rustup update
+
     - name: Clippy
       run: cargo clippy -- -W clippy::pedantic
+
     - name: Build
       run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose --all
+
+    - name: Run tests / create coverage report
+      run: |
+        psql $DB < ./scripts/garmin_corrections_laps.sql
+        psql $DB < ./scripts/garmin_summary.sql
+        psql $DB < ./scripts/strava_id_cache.sql
+        psql $DB < ./scripts/scale_measurements.sql
+        psql $DB < ./scripts/heartrate_statistics_summary.sql
+        psql $DB < ./scripts/fitbit_activities.sql
+        psql $DB < ./scripts/garmin_connect_activities.sql
+        psql $DB < ./scripts/strava_activities.sql
+        psql $DB < ./scripts/race_results.sql
+        cargo test --verbose --all
+        cargo install cargo-tarpaulin && \
+        cargo tarpaulin --verbose --all-features --workspace --out Xml
+      env:
+        PGURL: postgresql://postgres:2UtcMAAvNuBHPqK9@localhost:5432/garmin_summary
+        DB: garmin_summary
+
+    - name: Upload to codecov.io
+      uses: codecov/codecov-action@v1.0.2
+      with:
+        token: ${{secrets.CODECOV_TOKEN}}
+
+    - name: Archive code coverage results
+      uses: actions/upload-artifact@v1
+      with:
+        name: code-coverage-report
+        path: cobertura.xml

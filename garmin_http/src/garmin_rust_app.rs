@@ -5,8 +5,7 @@ use actix_session::CookieSession;
 use actix_web::{middleware::Compress, web, App, HttpServer};
 use anyhow::Error;
 use std::time::Duration;
-use tokio::time::interval;
-use tokio::task::spawn;
+use tokio::{task::spawn, time::interval};
 
 use garmin_lib::common::pgpool::PgPool;
 

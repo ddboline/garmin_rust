@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{env, path::Path};
 
 use garmin_lib::common::garmin_config;
 
@@ -19,10 +19,17 @@ fn test_garmin_config_new() {
 
 #[test]
 fn test_garmin_config_get_config() {
+    let current_pgurl = env::var_os("PGURL");
+    if current_pgurl.is_some() {
+        env::remove_var("PGURL");
+    }
     let test_fname = "tests/data/test.env";
 
     let gc = garmin_config::GarminConfig::get_config(Some(test_fname)).unwrap();
 
+    if let Some(pgurl) = current_pgurl {
+        env::set_var("PGURL", pgurl);
+    }
     assert_eq!(&gc.maps_api_key, "TESTKEY");
     assert_eq!(
         &gc.pgurl,

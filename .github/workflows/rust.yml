@@ -30,21 +30,20 @@ jobs:
 
     - name: Run tests / create coverage report
       run: |
-        psql $DB < ./scripts/garmin_corrections_laps.sql
-        psql $DB < ./scripts/garmin_summary.sql
-        psql $DB < ./scripts/strava_id_cache.sql
-        psql $DB < ./scripts/scale_measurements.sql
-        psql $DB < ./scripts/heartrate_statistics_summary.sql
-        psql $DB < ./scripts/fitbit_activities.sql
-        psql $DB < ./scripts/garmin_connect_activities.sql
-        psql $DB < ./scripts/strava_activities.sql
-        psql $DB < ./scripts/race_results.sql
+        psql $PGURL < ./scripts/garmin_corrections_laps.sql
+        psql $PGURL < ./scripts/garmin_summary.sql
+        psql $PGURL < ./scripts/strava_id_cache.sql
+        psql $PGURL < ./scripts/scale_measurements.sql
+        psql $PGURL < ./scripts/heartrate_statistics_summary.sql
+        psql $PGURL < ./scripts/fitbit_activities.sql
+        psql $PGURL < ./scripts/garmin_connect_activities.sql
+        psql $PGURL < ./scripts/strava_activities.sql
+        psql $PGURL < ./scripts/race_results.sql
         cargo test --verbose --all
         cargo install cargo-tarpaulin && \
         cargo tarpaulin --verbose --all-features --workspace --out Xml
       env:
         PGURL: postgresql://postgres:2UtcMAAvNuBHPqK9@localhost:5432/garmin_summary
-        DB: garmin_summary
 
     - name: Upload to codecov.io
       uses: codecov/codecov-action@v1.0.2

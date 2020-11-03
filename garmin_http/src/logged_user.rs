@@ -1,19 +1,18 @@
-use anyhow::Error;
-use log::debug;
-use stack_string::StackString;
-use std::env::var;
 use actix_identity::Identity;
 use actix_web::{dev::Payload, FromRequest, HttpRequest};
+use anyhow::Error;
 pub use authorized_users::{
-    get_random_key, get_secrets, AuthorizedUser, AUTHORIZED_USERS, JWT_SECRET, KEY_LENGTH,
-    SECRET_KEY, TRIGGER_DB_UPDATE, token::Token,
+    get_random_key, get_secrets, token::Token, AuthorizedUser, AUTHORIZED_USERS, JWT_SECRET,
+    KEY_LENGTH, SECRET_KEY, TRIGGER_DB_UPDATE,
 };
 use futures::{
     executor::block_on,
     future::{ready, Ready},
 };
+use log::debug;
 use serde::{Deserialize, Serialize};
-use std::env;
+use stack_string::StackString;
+use std::{env, env::var};
 
 use garmin_lib::common::pgpool::PgPool;
 

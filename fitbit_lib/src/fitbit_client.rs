@@ -1042,7 +1042,7 @@ mod tests {
         let config = GarminConfig::get_config(None)?;
         let client = FitbitClient::with_auth(config.clone()).await?;
         let offset = client.offset.unwrap();
-        assert_eq!(offset.local_minus_utc(), -4 * 3600);
+        assert_eq!(offset.local_minus_utc(), -5 * 3600);
         Ok(())
     }
 

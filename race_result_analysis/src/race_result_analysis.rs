@@ -352,7 +352,7 @@ mod tests {
             RaceResultAggregated::get_aggregated_race_results(RaceType::Personal, &pool).await?;
         println!("{:#?}", results);
         println!("{}", results.len());
-        assert_eq!(results.len(), 23);
+        assert!(results.len() >= 23);
         Ok(())
     }
 

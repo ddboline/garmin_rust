@@ -1,7 +1,6 @@
 use actix_multipart::MultipartError;
 use actix_web::{error::ResponseError, HttpResponse};
 use anyhow::Error as AnyhowError;
-use auth_server_rust::static_files::login_html;
 use handlebars::RenderError;
 use std::fmt::Debug;
 use thiserror::Error;
@@ -50,4 +49,19 @@ impl From<MultipartError> for ServiceError {
     fn from(item: MultipartError) -> Self {
         Self::BlockingError(item.to_string())
     }
+}
+
+fn login_html() -> HttpResponse {
+    HttpResponse::Ok()
+        .content_type("text/html; charset=utf-8")
+        .body(
+            "
+            <script>
+                !function() {
+                    let final_url = location.href;
+                    location.replace('/auth/login.html?final_url=' + final_url);
+                }()
+            </script>
+        ",
+        )
 }

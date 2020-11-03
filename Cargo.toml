@@ -14,19 +14,19 @@ fitbit_bot = {path="fitbit_bot"}
 garmin_connect_lib = {path="garmin_connect_lib"}
 race_result_analysis = {path="race_result_analysis"}
 garmin_reports = {path="garmin_reports"}
-actix-web =  "3.1"
+actix-web =  "3.2"
 log = "0.4"
-env_logger = "0.7"
-crossbeam-utils = "0.7"
+env_logger = "0.8"
+crossbeam-utils = "0.8"
 structopt = "0.3"
 anyhow = "1.0"
 thiserror = "1.0"
 tokio = {version="0.2", features=["full"]}
 dirs = "3.0"
-stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.1.6", features=["postgres_types"] }
+stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.1.9", features=["postgres_types"] }
 
 [dev-dependencies]
-approx = "0.3"
+approx = "0.4"
 
 [workspace]
 members = [

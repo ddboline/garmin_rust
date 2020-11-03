@@ -11,13 +11,13 @@ fitbit_lib = {path="../fitbit_lib"}
 garmin_lib = {path="../garmin_lib"}
 futures = "0.3"
 tokio = {version="0.2", features=["full"]}
-crossbeam-utils = "0.7"
+crossbeam-utils = "0.8"
 lazy_static = "1.4"
 parking_lot = "0.11"
 log = "0.4"
 anyhow = "1.0"
 thiserror = "1.0"
-rayon = "1.4"
+rayon = "1.5"
 arc-swap = "0.4"
 telegram-bot = {git = "https://github.com/ddboline/telegram-bot.git", tag="0.7.2-1"}
-stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.1.6", features=["postgres_types"] }
+stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.1.9", features=["postgres_types"] }

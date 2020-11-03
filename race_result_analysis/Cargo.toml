@@ -23,5 +23,5 @@ lazy_static = "1.4"
 itertools = "0.9"
 maplit = "1.0"
 smallvec = "1.4"
-stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.1.6", features=["postgres_types"] }
+stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.1.9", features=["postgres_types"] }
 rusfun = { git = "https://github.com/ddboline/rusfun.git", tag="0.3.2" }

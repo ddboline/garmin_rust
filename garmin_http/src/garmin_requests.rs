@@ -8,8 +8,9 @@ use stack_string::StackString;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
+    time,
 };
-use tokio::{fs::remove_file, sync::Mutex, task::spawn_blocking};
+use tokio::{fs::remove_file, sync::Mutex, task::spawn_blocking, time::delay_for};
 
 use fitbit_lib::{
     fitbit_client::{FitbitBodyWeightFatUpdateOutput, FitbitClient, FitbitUserProfile},
@@ -710,7 +711,7 @@ impl HandleRequest<StravaUpdateRequest> for PgPool {
 
         let config = CONFIG.clone();
         let client = StravaClient::with_auth(config).await?;
-        client
+        let body = client
             .update_strava_activity(
                 msg.activity_id,
                 &msg.title,
@@ -718,8 +719,9 @@ impl HandleRequest<StravaUpdateRequest> for PgPool {
                 sport,
                 msg.start_time,
             )
-            .await
-            .map_err(Into::into)
+            .await?;
+        delay_for(time::Duration::from_secs(5)).await;
+        Ok(body)
     }
 }
 

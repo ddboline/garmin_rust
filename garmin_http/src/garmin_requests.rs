@@ -8,7 +8,6 @@ use stack_string::StackString;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
-    time,
 };
 use tokio::{fs::remove_file, sync::Mutex, task::spawn_blocking};
 

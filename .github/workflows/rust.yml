@@ -56,12 +56,12 @@ jobs:
         name: code-coverage-report
         path: cobertura.xml
 
-    -name: Outdated dependencies
+    - name: Outdated dependencies
       run: |
         cargo install cargo-outdated && \
         cargo outdated -d2
 
-    -name: Unused dependencies
+    - name: Unused dependencies
       run: |
         cargo +nightly install udeps && \
         cargo +nightly udeps --workspace --all-targets

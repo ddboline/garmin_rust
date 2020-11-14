@@ -10,7 +10,7 @@ use std::{
     path::{Path, PathBuf},
     time,
 };
-use tokio::{fs::remove_file, sync::Mutex, task::spawn_blocking, time::delay_for};
+use tokio::{fs::remove_file, sync::Mutex, task::spawn_blocking};
 
 use fitbit_lib::{
     fitbit_client::{FitbitBodyWeightFatUpdateOutput, FitbitClient, FitbitUserProfile},
@@ -720,7 +720,6 @@ impl HandleRequest<StravaUpdateRequest> for PgPool {
                 msg.start_time,
             )
             .await?;
-        delay_for(time::Duration::from_secs(5)).await;
         Ok(body)
     }
 }

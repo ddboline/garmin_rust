@@ -1,6 +1,6 @@
 [package]
 name = "garmin_lib"
-version = "0.9.31"
+version = "0.9.32"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -37,13 +37,13 @@ dirs = "3.0"
 tokio = {version="0.2", features=["full"]}
 derive_more = "0.99"
 smartstring = "0.2"
-rustls-native-certs = {version="0.4", default_features=false}
+rustls-native-certs = {version="0.5", default_features=false}
 envy = "0.4"
 fitparser = "0.2"
 handlebars = "3.5"
 maplit = "1.0"
 chrono-tz = "0.5"
-smallvec = "1.4"
+smallvec = "1.5"
 flate2 = "1.0"
 deadqueue = "0.1"
 itertools = "0.9"

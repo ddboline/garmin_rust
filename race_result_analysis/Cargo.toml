@@ -1,6 +1,6 @@
 [package]
 name = "race_result_analysis"
-version = "0.9.31"
+version = "0.9.32"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -22,6 +22,6 @@ parking_lot = "0.11"
 lazy_static = "1.4"
 itertools = "0.9"
 maplit = "1.0"
-smallvec = "1.4"
+smallvec = "1.5"
 stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.1.9", features=["postgres_types"] }
 rusfun = { git = "https://github.com/ddboline/rusfun.git", tag="0.3.2" }

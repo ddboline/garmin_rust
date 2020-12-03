@@ -505,7 +505,11 @@ impl GarminCli {
         filenames?
             .into_par_iter()
             .map(|filename| {
-                assert!(filename.exists(), "No such file");
+                assert!(
+                    filename.exists(),
+                    "No such file {}",
+                    filename.to_string_lossy()
+                );
                 let suffix = match filename.extension().and_then(OsStr::to_str) {
                     Some("fit") => "fit",
                     Some("tcx") => "tcx",

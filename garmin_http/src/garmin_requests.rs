@@ -5,10 +5,7 @@ use futures::future::try_join_all;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
-use std::{
-    collections::HashMap,
-    path::{Path, PathBuf},
-};
+use std::{collections::HashMap, path::PathBuf};
 use tokio::{fs::remove_file, sync::Mutex, task::spawn_blocking};
 
 use fitbit_lib::{
@@ -676,14 +673,15 @@ pub struct StravaUploadRequest {
 impl HandleRequest<StravaUploadRequest> for PgPool {
     type Result = Result<StackString, Error>;
     async fn handle(&self, msg: StravaUploadRequest) -> Self::Result {
-        if !Path::new(msg.filename.as_str()).exists() {
+        let filename = CONFIG.gps_dir.join(msg.filename.as_str());
+        if !filename.exists() {
             return Ok(format!("File {} does not exist", msg.filename).into());
         }
         let config = CONFIG.clone();
         let client = StravaClient::with_auth(config).await?;
         client
             .upload_strava_activity(
-                &Path::new(msg.filename.as_str()),
+                &filename,
                 &msg.title,
                 msg.description.as_ref().map_or("", StackString::as_str),
             )

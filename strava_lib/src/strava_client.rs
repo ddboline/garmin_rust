@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use stack_string::StackString;
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     path::{Path, PathBuf},
 };
 use tempfile::Builder;
@@ -509,7 +509,18 @@ impl StravaClient {
         let headers = self.get_auth_headers()?;
         let url = "https://www.strava.com/api/v3/uploads";
 
-        self.client
+        #[derive(Deserialize, Debug)]
+        struct UploadResponse {
+            id: u64,
+            id_str: StackString,
+            external_id: Option<StackString>,
+            error: Option<StackString>,
+            status: StackString,
+            activity_id: Option<u64>,
+        }
+
+        let result: UploadResponse = self
+            .client
             .post(url)
             .multipart(form)
             .headers(headers)
@@ -518,6 +529,8 @@ impl StravaClient {
             .error_for_status()?
             .json()
             .await?;
+
+        debug!("{:?}", result);
 
         let url = format!("https://{}/garmin/strava_sync", self.config.domain).into();
         Ok(url)

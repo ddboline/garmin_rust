@@ -469,6 +469,16 @@ impl StravaClient {
         title: &str,
         description: &str,
     ) -> Result<StackString, Error> {
+        #[derive(Deserialize, Debug)]
+        struct UploadResponse {
+            id: u64,
+            id_str: StackString,
+            external_id: Option<StackString>,
+            error: Option<StackString>,
+            status: StackString,
+            activity_id: Option<u64>,
+        }
+
         let mut _tempfile: Option<_> = None;
 
         let ext = filepath
@@ -509,16 +519,6 @@ impl StravaClient {
 
         let headers = self.get_auth_headers()?;
         let url = "https://www.strava.com/api/v3/uploads";
-
-        #[derive(Deserialize, Debug)]
-        struct UploadResponse {
-            id: u64,
-            id_str: StackString,
-            external_id: Option<StackString>,
-            error: Option<StackString>,
-            status: StackString,
-            activity_id: Option<u64>,
-        }
 
         let result: UploadResponse = self
             .client

@@ -76,7 +76,7 @@ impl GarminConnectClient {
             let opts = serde_json::json!({
                 "args": ["--headless", "--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage"],
                 "binary":
-                    "/usr/bin/google-chrome"
+                    &self.config.chrome_path.to_string_lossy()
             });
             caps.insert("goog:chromeOptions".to_string(), opts.clone());
 

@@ -288,8 +288,8 @@ impl GarminCliOpts {
 
     pub async fn sync_with_garmin_connect(cli: &GarminCli) -> Result<Vec<PathBuf>, Error> {
         if let Some(max_datetime) = get_maximum_begin_datetime(&cli.pool).await? {
-            let mut session = GarminConnectClient::default();
-            session.init(cli.config.clone()).await?;
+            let mut session = GarminConnectClient::new(cli.config.clone());
+            session.init().await?;
 
             let activities = session.get_activities(max_datetime).await?;
 

@@ -1,10 +1,9 @@
 use anyhow::{format_err, Error};
 use bytes::Bytes;
 use chrono::{DateTime, NaiveDate, Utc};
-use fantoccini::{Client, Locator, Method};
 use lazy_static::lazy_static;
 use log::debug;
-use reqwest::Url;
+use reqwest::{Url, Client, redirect::Policy};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use stack_string::StackString;
@@ -30,7 +29,6 @@ lazy_static! {
 pub struct GarminConnectClient {
     config: GarminConfig,
     client: Option<Client>,
-    webdriver: Option<Child>,
     pub last_used: DateTime<Utc>,
     display_name: Option<StackString>,
     trigger_auth: bool,
@@ -48,7 +46,6 @@ impl GarminConnectClient {
         Self {
             config,
             client: None,
-            webdriver: None,
             last_used: Utc::now(),
             display_name: None,
             trigger_auth: true,
@@ -56,36 +53,12 @@ impl GarminConnectClient {
     }
 
     pub async fn init(&mut self) -> Result<(), Error> {
-        if !self.config.webdriver_path.exists() {
-            return Err(format_err!(
-                "WEBDRIVER NOT FOUND {:?}",
-                self.config.webdriver_path
-            ));
-        }
         if self.trigger_auth {
-            let webdriver = Command::new(&self.config.webdriver_path)
-                .args(&[&format!("--port={}", self.config.webdriver_port)])
-                .kill_on_drop(true)
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .spawn()?;
-            self.webdriver.replace(webdriver);
-            delay_for(std::time::Duration::from_secs(5)).await;
-
-            let mut caps = serde_json::map::Map::new();
-            let opts = serde_json::json!({
-                "args": ["--headless", "--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage"],
-                "binary":
-                    &self.config.chrome_path.to_string_lossy()
-            });
-            caps.insert("goog:chromeOptions".to_string(), opts.clone());
-
             self.client.replace(
-                Client::with_capabilities(
-                    &format!("http://localhost:{}", self.config.webdriver_port),
-                    caps,
-                )
-                .await?,
+                Client::builder()
+                    .cookie_store(true)
+                    .redirect(Policy::limited(20))
+                    .build()?
             );
             self.last_used = Utc::now();
             self.trigger_auth = false;

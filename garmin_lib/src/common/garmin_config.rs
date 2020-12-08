@@ -56,6 +56,8 @@ pub struct GarminConfigInner {
     pub webdriver_path: PathBuf,
     #[serde(default = "default_webdriver_port")]
     pub webdriver_port: u32,
+    #[serde(default = "default_chrome_path")]
+    pub chrome_path: PathBuf,
     #[serde(default = "default_secret_path")]
     pub secret_path: PathBuf,
     #[serde(default = "default_secret_path")]
@@ -106,6 +108,9 @@ fn default_strava_tokenfile() -> PathBuf {
 }
 fn default_webdriver_path() -> PathBuf {
     default_home_dir().join("bin").join("chromedriver")
+}
+fn default_chrome_path() -> PathBuf {
+    Path::new("/usr/bin/google-chrome").to_path_buf()
 }
 fn default_webdriver_port() -> u32 {
     4444

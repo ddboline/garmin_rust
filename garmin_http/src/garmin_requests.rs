@@ -39,7 +39,7 @@ use crate::{errors::ServiceError as Error, CONFIG};
 
 lazy_static! {
     static ref CONNECT_PROXY: Mutex<GarminConnectClient> =
-        Mutex::new(GarminConnectClient::default());
+        Mutex::new(GarminConnectClient::new(CONFIG.clone()));
 }
 
 pub async fn close_connect_proxy() -> Result<(), Error> {
@@ -156,7 +156,7 @@ impl HandleRequest<GarminConnectSyncRequest> for PgPool {
         let max_timestamp = Utc::now() - Duration::days(30);
 
         let mut session = CONNECT_PROXY.lock().await;
-        session.init(CONFIG.clone()).await?;
+        session.init().await?;
 
         let new_activities = GarminConnectActivity::merge_new_activities(
             session.get_activities(max_timestamp).await?,
@@ -187,7 +187,7 @@ impl HandleRequest<GarminConnectHrSyncRequest> for PgPool {
     type Result = Result<GarminConnectHrData, Error>;
     async fn handle(&self, req: GarminConnectHrSyncRequest) -> Self::Result {
         let mut session = CONNECT_PROXY.lock().await;
-        session.init(CONFIG.clone()).await?;
+        session.init().await?;
 
         let heartrate_data = session.get_heartrate(req.date).await?;
         FitbitClient::import_garmin_connect_heartrate(CONFIG.clone(), &heartrate_data).await?;
@@ -207,7 +207,7 @@ impl HandleRequest<GarminConnectHrApiRequest> for PgPool {
     type Result = Result<Vec<FitbitHeartRate>, Error>;
     async fn handle(&self, req: GarminConnectHrApiRequest) -> Self::Result {
         let mut session = CONNECT_PROXY.lock().await;
-        session.init(CONFIG.clone()).await?;
+        session.init().await?;
 
         let heartrate_data = session.get_heartrate(req.date).await?;
         let hr_vals = FitbitHeartRate::from_garmin_connect_hr(&heartrate_data);
@@ -855,7 +855,7 @@ impl HandleRequest<GarminConnectActivitiesRequest> for PgPool {
             Utc,
         );
         let mut session = CONNECT_PROXY.lock().await;
-        session.init(CONFIG.clone()).await?;
+        session.init().await?;
 
         session
             .get_activities(start_datetime)
@@ -898,7 +898,7 @@ impl HandleRequest<GarminConnectUserSummaryRequest> for PgPool {
     type Result = Result<GarminConnectUserDailySummary, Error>;
     async fn handle(&self, msg: GarminConnectUserSummaryRequest) -> Self::Result {
         let mut session = CONNECT_PROXY.lock().await;
-        session.init(CONFIG.clone()).await?;
+        session.init().await?;
 
         let date = msg
             .date

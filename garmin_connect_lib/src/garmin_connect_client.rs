@@ -55,8 +55,7 @@ impl GarminConnectClient {
         }
     }
 
-    pub async fn init(&mut self, config: GarminConfig) -> Result<(), Error> {
-        self.config = config;
+    pub async fn init(&mut self) -> Result<(), Error> {
         if !self.config.webdriver_path.exists() {
             return Err(format_err!(
                 "WEBDRIVER NOT FOUND {:?}",
@@ -77,7 +76,7 @@ impl GarminConnectClient {
             let opts = serde_json::json!({
                 "args": ["--headless", "--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage"],
                 "binary":
-                    "/usr/bin/google-chrome"
+                    &self.config.chrome_path.to_string_lossy()
             });
             caps.insert("goog:chromeOptions".to_string(), opts.clone());
 
@@ -295,7 +294,7 @@ mod tests {
     async fn test_proxy_get_activities() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
         let mut session = GarminConnectClient::new(config.clone());
-        session.init(config.clone()).await?;
+        session.init().await?;
 
         let user_summary = session
             .get_user_summary((Utc::now() - Duration::days(1)).naive_local().date())

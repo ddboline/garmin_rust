@@ -4,6 +4,9 @@ version = "0.9.34"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
+[package.metadata.deb]
+name = "garmin-rust"
+
 [dependencies]
 fitbit_lib = {path="fitbit_lib"}
 garmin_cli = {path="garmin_cli"}

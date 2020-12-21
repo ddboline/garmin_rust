@@ -1,4 +1,5 @@
 use anyhow::Error;
+use stdout_channel::StdoutChannel;
 
 use garmin_cli::garmin_cli::{GarminCli, GarminCliOptions};
 use garmin_lib::{
@@ -6,7 +7,6 @@ use garmin_lib::{
         garmin_config::GarminConfig, garmin_correction_lap::GarminCorrectionMap, pgpool::PgPool,
     },
     parsers::garmin_parse::GarminParse,
-    utils::stdout_channel::StdoutChannel,
 };
 
 #[tokio::test]

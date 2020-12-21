@@ -1,11 +1,16 @@
 [package]
 name = "garmin_rust"
-version = "0.9.34"
+version = "0.9.35"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
 [package.metadata.deb]
 name = "garmin-rust"
+priority = "optional"
+section = "rust"
+provides = "garmin-rust"
+extended-description = """\
+Process and display info about gps activity files."""
 
 [dependencies]
 fitbit_lib = {path="fitbit_lib"}
@@ -17,7 +22,7 @@ fitbit_bot = {path="fitbit_bot"}
 garmin_connect_lib = {path="garmin_connect_lib"}
 race_result_analysis = {path="race_result_analysis"}
 garmin_reports = {path="garmin_reports"}
-actix-web =  "3.2"
+actix-web =  "3.3"
 log = "0.4"
 env_logger = "0.8"
 crossbeam-utils = "0.8"
@@ -26,10 +31,11 @@ anyhow = "1.0"
 thiserror = "1.0"
 tokio = {version="0.2", features=["full"]}
 dirs = "3.0"
-stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.1.9", features=["postgres_types"] }
+stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.1.10", features=["postgres_types"] }
 
 [dev-dependencies]
 approx = "0.4"
+stdout-channel = { git = "https://github.com/ddboline/stdout-channel-rs.git", tag="0.1.4" }
 
 [workspace]
 members = [

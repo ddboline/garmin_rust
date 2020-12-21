@@ -16,6 +16,7 @@ use std::{
 };
 use tempdir::TempDir;
 use tokio::task::spawn_blocking;
+use stdout_channel::StdoutChannel;
 
 use garmin_lib::{
     common::{
@@ -36,7 +37,6 @@ use garmin_lib::{
     utils::{
         garmin_util::{extract_zip_from_garmin_connect, get_file_list},
         sport_types::get_sport_type_map,
-        stdout_channel::StdoutChannel,
     },
 };
 use garmin_reports::{

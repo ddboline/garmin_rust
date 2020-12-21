@@ -1,6 +1,6 @@
 [package]
 name = "garmin_reports"
-version = "0.9.34"
+version = "0.9.35"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -18,4 +18,4 @@ postgres_query = "0.3"
 maplit = "1.0"
 url = "2.2"
 itertools = "0.9"
-stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.1.9", features=["postgres_types"] }
+stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.1.10", features=["postgres_types"] }

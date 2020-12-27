@@ -2,13 +2,16 @@
 #![allow(clippy::cognitive_complexity)]
 
 use anyhow::{format_err, Error};
-use serde::Deserialize;
+use derive_more::{Deref, Into};
+use serde::{Deserialize, Serialize};
 use stack_string::StackString;
+use std::convert::TryFrom;
 use std::{
     ops::Deref,
     path::{Path, PathBuf},
     sync::Arc,
 };
+use url::Url;
 
 /// `GarminConfig` holds configuration information which can be set either
 /// through environment variables or the config.env file, see the dotenv crate
@@ -18,8 +21,11 @@ pub struct GarminConfigInner {
     #[serde(default = "default_home_dir")]
     pub home_dir: PathBuf,
     pub pgurl: StackString,
+    #[serde(default = "default_secret_key")]
     pub maps_api_key: StackString,
+    #[serde(default = "default_gps_bucket")]
     pub gps_bucket: StackString,
+    #[serde(default = "default_gps_bucket")]
     pub cache_bucket: StackString,
     #[serde(default = "default_gps_dir")]
     pub gps_dir: PathBuf,
@@ -29,6 +35,7 @@ pub struct GarminConfigInner {
     pub port: u32,
     #[serde(default = "default_summary_cache")]
     pub summary_cache: PathBuf,
+    #[serde(default = "default_gps_bucket")]
     pub summary_bucket: StackString,
     #[serde(default = "default_n_db_workers")]
     pub n_db_workers: usize,
@@ -45,6 +52,7 @@ pub struct GarminConfigInner {
     pub fitbit_tokenfile: PathBuf,
     #[serde(default = "default_fitbit_cachedir")]
     pub fitbit_cachedir: PathBuf,
+    #[serde(default = "default_gps_bucket")]
     pub fitbit_bucket: StackString,
     #[serde(default = "default_strava_tokenfile")]
     pub strava_tokenfile: PathBuf,
@@ -52,6 +60,9 @@ pub struct GarminConfigInner {
     pub strava_password: Option<StackString>,
     pub garmin_connect_email: StackString,
     pub garmin_connect_password: StackString,
+    pub remote_url: Option<UrlWrapper>,
+    pub remote_email: Option<StackString>,
+    pub remote_password: Option<StackString>,
     #[serde(default = "default_webdriver_path")]
     pub webdriver_path: PathBuf,
     #[serde(default = "default_webdriver_port")]
@@ -62,6 +73,8 @@ pub struct GarminConfigInner {
     pub secret_path: PathBuf,
     #[serde(default = "default_secret_path")]
     pub jwt_secret_path: PathBuf,
+    #[serde(default = "default_download_directory")]
+    pub download_directory: PathBuf,
 }
 
 fn default_home_dir() -> PathBuf {
@@ -114,6 +127,12 @@ fn default_chrome_path() -> PathBuf {
 }
 fn default_webdriver_port() -> u32 {
     4444
+}
+fn default_gps_bucket() -> StackString {
+    "garmin_scripts_gps_files_ddboline".into()
+}
+fn default_download_directory() -> PathBuf {
+    default_home_dir().join("Downloads")
 }
 
 #[derive(Default, Debug, Clone)]
@@ -188,5 +207,23 @@ impl Deref for GarminConfig {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Into, PartialEq, Deref)]
+#[serde(into = "String", try_from = "String")]
+pub struct UrlWrapper(Url);
+
+impl From<UrlWrapper> for String {
+    fn from(item: UrlWrapper) -> String {
+        item.0.into_string()
+    }
+}
+
+impl TryFrom<String> for UrlWrapper {
+    type Error = Error;
+    fn try_from(item: String) -> Result<Self, Self::Error> {
+        let url: Url = item.parse()?;
+        Ok(Self(url))
     }
 }

@@ -1,3 +1,15 @@
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_possible_wrap)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::shadow_unrelated)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::used_underscore_binding)]
+
 use anyhow::{format_err, Error};
 use chrono::{Duration, NaiveDate, Utc};
 use fitbit_lib::fitbit_heartrate::FitbitHeartRate;
@@ -105,6 +117,7 @@ async fn get_next(client: &Client, url_base: &Url) -> Result<(), Error> {
     Ok(())
 }
 
+#[allow(clippy::too_many_lines)]
 async fn handler(client: &Client, event: CustomEvent) -> Result<CustomOutput, Error> {
     #[derive(Deserialize, Debug)]
     struct LoggedUser {
@@ -146,8 +159,7 @@ async fn handler(client: &Client, event: CustomEvent) -> Result<CustomOutput, Er
     connect.init().await?;
 
     let hr_date = match event.action {
-        LambdaAction::All(d) => Some(d),
-        LambdaAction::HeartRate(d) => Some(d),
+        LambdaAction::All(d) | LambdaAction::HeartRate(d) => Some(d),
         LambdaAction::Activities => None,
     };
 

@@ -5,8 +5,8 @@ use anyhow::{format_err, Error};
 use derive_more::{Deref, Into};
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
-use std::convert::TryFrom;
 use std::{
+    convert::TryFrom,
     ops::Deref,
     path::{Path, PathBuf},
     sync::Arc,

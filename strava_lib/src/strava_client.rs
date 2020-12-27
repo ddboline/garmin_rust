@@ -22,7 +22,7 @@ use std::{
 };
 use tempfile::Builder;
 use tokio::{
-    fs::{File, create_dir_all},
+    fs::{create_dir_all, File},
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     stream::StreamExt,
     task::spawn_blocking,
@@ -173,7 +173,9 @@ impl StravaClient {
 
         create_dir_all(&self.config.download_directory).await?;
 
-        let fname = self.config.download_directory
+        let fname = self
+            .config
+            .download_directory
             .join(activity_id.to_string())
             .with_extension("fit");
 

@@ -2,16 +2,18 @@ use anyhow::{format_err, Error};
 use chrono::{Duration, NaiveDate, Utc};
 use fitbit_lib::fitbit_heartrate::FitbitHeartRate;
 use garmin_connect_lib::garmin_connect_client::GarminConnectClient;
-use garmin_lib::common::garmin_config::GarminConfig;
-use garmin_lib::common::garmin_connect_activity::GarminConnectActivity;
+use garmin_lib::common::{
+    garmin_config::GarminConfig, garmin_connect_activity::GarminConnectActivity,
+};
 use log::debug;
 use maplit::hashmap;
-use reqwest::header::HeaderMap;
-use reqwest::multipart::{Form, Part};
-use reqwest::Client;
+use reqwest::{
+    header::HeaderMap,
+    multipart::{Form, Part},
+    Client,
+};
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
-use std::env::var;
+use std::{collections::HashSet, env::var};
 use url::Url;
 
 #[derive(Serialize, Deserialize, Clone, Copy)]

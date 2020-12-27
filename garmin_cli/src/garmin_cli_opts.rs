@@ -5,10 +5,10 @@ use itertools::Itertools;
 use stack_string::StackString;
 use std::path::PathBuf;
 use structopt::StructOpt;
-use tokio::task::spawn_blocking;
 use tokio::{
     fs::{read_to_string, File},
     io::{stdin, stdout, AsyncReadExt, AsyncWrite, AsyncWriteExt},
+    task::spawn_blocking,
     try_join,
 };
 

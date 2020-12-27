@@ -31,7 +31,7 @@ base64 = "0.13"
 maplit = "1.0"
 bytes = "0.5"
 statistical = "1.0"
-fitparser = "0.2"
+fitparser = "0.3"
 smallvec = "1.5"
 crossbeam-utils = "0.8"
 stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.1.10", features=["postgres_types"] }

@@ -5,6 +5,7 @@ use itertools::Itertools;
 use stack_string::StackString;
 use std::path::PathBuf;
 use structopt::StructOpt;
+use tokio::task::spawn_blocking;
 use tokio::{
     fs::{read_to_string, File},
     io::{stdin, stdout, AsyncReadExt, AsyncWrite, AsyncWriteExt},
@@ -296,9 +297,13 @@ impl GarminCliOpts {
             let activities =
                 GarminConnectActivity::merge_new_activities(activities, &cli.pool).await?;
 
-            session
+            let hr_values = session
                 .get_heartrate((Utc::now()).naive_local().date())
                 .await?;
+            let hr_values = FitbitHeartRate::from_garmin_connect_hr(&hr_values);
+            let config = cli.config.clone();
+            spawn_blocking(move || FitbitHeartRate::merge_slice_to_avro(&config, &hr_values))
+                .await??;
 
             if let Ok(filenames) = session.get_activity_files(&activities).await {
                 if !filenames.is_empty() {

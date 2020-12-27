@@ -229,11 +229,13 @@ impl GarminConnectClient {
             .as_mut()
             .ok_or_else(|| format_err!("No client"))?;
         let mut filenames = Vec::new();
+
+        fs::create_dir_all(&self.config.download_directory).await?;
+
         for activity in activities {
             let fname = self
                 .config
-                .home_dir
-                .join("Downloads")
+                .download_directory
                 .join(activity.activity_id.to_string())
                 .with_extension("zip");
             let url = MODERN_URL

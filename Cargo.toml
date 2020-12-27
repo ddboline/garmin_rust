@@ -34,6 +34,7 @@ dirs = "3.0"
 lambda_runtime = "0.2"
 chrono = "0.4"
 url = "2.2"
+maplit = "1.0"
 serde = {version="1.0", features=["derive"]}
 reqwest = {version="0.10", features=["cookies", "json", "rustls-tls", "stream"], default_features=false}
 stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.1.10", features=["postgres_types"] }

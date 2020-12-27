@@ -354,7 +354,8 @@ impl HandleRequest<FitbitHeartrateUpdateRequest> for PgPool {
         let config = CONFIG.clone();
         spawn_blocking(move || {
             FitbitHeartRate::merge_slice_to_avro(&config, &msg.updates).map_err(Into::into)
-        }).await?
+        })
+        .await?
     }
 }
 

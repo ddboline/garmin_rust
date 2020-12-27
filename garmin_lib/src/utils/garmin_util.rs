@@ -114,7 +114,11 @@ pub fn titlecase(input: &str) -> StackString {
 
 pub fn generate_random_string(nchar: usize) -> StackString {
     let mut rng = thread_rng();
-    Alphanumeric.sample_iter(&mut rng).take(nchar).map(Into::into).collect()
+    Alphanumeric
+        .sample_iter(&mut rng)
+        .take(nchar)
+        .map(Into::into)
+        .collect()
 }
 
 pub fn get_file_list(path: &Path) -> Vec<PathBuf> {

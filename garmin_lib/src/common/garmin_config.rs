@@ -43,8 +43,6 @@ pub struct GarminConfigInner {
     pub secret_key: StackString,
     #[serde(default = "default_domain")]
     pub domain: StackString,
-    pub google_secret_file: PathBuf,
-    pub google_token_path: PathBuf,
     pub telegram_bot_token: Option<StackString>,
     pub fitbit_clientid: StackString,
     pub fitbit_clientsecret: StackString,

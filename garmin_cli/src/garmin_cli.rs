@@ -14,9 +14,9 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
+use stdout_channel::StdoutChannel;
 use tempdir::TempDir;
 use tokio::task::spawn_blocking;
-use stdout_channel::StdoutChannel;
 
 use garmin_lib::{
     common::{

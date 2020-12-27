@@ -78,7 +78,7 @@ impl GarminParseTrait for GarminParseGmn {
             .stdout(Redirection::Pipe)
             .capture()?
             .stdout_str();
-        let doc = Document::parse(&output)?;
+        let doc = Document::parse(&output).map_err(|e| format_err!("{}", e))?;
 
         let mut lap_list = Vec::new();
         let mut point_list = Vec::new();

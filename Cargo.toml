@@ -31,6 +31,11 @@ anyhow = "1.0"
 thiserror = "1.0"
 tokio = {version="0.2", features=["full"]}
 dirs = "3.0"
+lambda_runtime = "0.2"
+chrono = "0.4"
+url = "2.2"
+serde = {version="1.0", features=["derive"]}
+reqwest = {version="0.10", features=["cookies", "json", "rustls-tls", "stream"], default_features=false}
 stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.1.10", features=["postgres_types"] }
 
 [dev-dependencies]
@@ -73,4 +78,9 @@ doc = false
 [[bin]]
 name = "import-garmin-connect-data"
 path = "src/import_garmin_connect_data.rs"
+doc = false
+
+[[bin]]
+name = "bootstrap"
+path = "src/garmin_lambda.rs"
 doc = false

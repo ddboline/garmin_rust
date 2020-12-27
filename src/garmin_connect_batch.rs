@@ -60,7 +60,7 @@ async fn main() -> Result<(), Error> {
 
     let url = remote_url.join("api/auth")?;
     let user: LoggedUser = client
-        .get(url)
+        .post(url)
         .json(&data)
         .send()
         .await?

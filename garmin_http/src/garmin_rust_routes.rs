@@ -41,7 +41,7 @@ use crate::{
         ScaleMeasurementRequest, ScaleMeasurementUpdateRequest, StravaActiviesDBUpdateRequest,
         StravaActivitiesDBRequest, StravaActivitiesRequest, StravaAthleteRequest,
         StravaAuthRequest, StravaCallbackRequest, StravaCreateRequest, StravaRefreshRequest,
-        StravaSyncRequest, StravaUpdateRequest, StravaUploadRequest,
+        StravaSyncRequest, StravaUpdateRequest, StravaUploadRequest, FitbitHeartrateUpdateRequest,
     },
     garmin_rust_app::AppState,
     logged_user::LoggedUser,
@@ -356,6 +356,15 @@ pub async fn fitbit_heartrate_cache(
     let query = query.into_inner();
     let hlist = state.db.handle(query).await?;
     to_json(hlist)
+}
+
+pub async fn fitbit_heartrate_cache_update(
+    payload: Json<FitbitHeartrateUpdateRequest>,
+    state: Data<AppState>,
+) -> HttpResult {
+    let payload = payload.into_inner();
+    state.db.handle(payload).await?;
+    form_http_response("".into())
 }
 
 pub async fn fitbit_bodyweight(_: LoggedUser, state: Data<AppState>) -> HttpResult {

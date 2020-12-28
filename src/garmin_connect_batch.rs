@@ -112,6 +112,7 @@ async fn main() -> Result<(), Error> {
         .into_iter()
         .filter(|a| !db_set.contains(&a.activity_id))
         .collect();
+    println!("new activities {:?}", new_activities);
     if let Ok(filenames) = connect.get_activity_files(&new_activities).await {
         if !filenames.is_empty() {
             for filename in &filenames {

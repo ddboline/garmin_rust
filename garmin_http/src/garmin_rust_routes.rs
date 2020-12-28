@@ -162,11 +162,7 @@ pub async fn garmin_upload(
     let tempdir = TempDir::new("garmin")?;
     let tempdir_str = tempdir.path().to_string_lossy().to_string();
 
-    let fname = format!(
-        "{}/{}",
-        tempdir_str,
-        query.filename,
-    );
+    let fname = format!("{}/{}", tempdir_str, query.filename,);
 
     while let Some(item) = multipart.next().await {
         let mut field = item?;

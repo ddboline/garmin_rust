@@ -115,7 +115,10 @@ async fn main() -> Result<(), Error> {
     if let Ok(filenames) = connect.get_activity_files(&new_activities).await {
         if !filenames.is_empty() {
             for filename in &filenames {
-                let dname = filename.file_name().ok_or_else(|| format_err!("no filename"))?.to_string_lossy();
+                let dname = filename
+                    .file_name()
+                    .ok_or_else(|| format_err!("no filename"))?
+                    .to_string_lossy();
                 let fname = filename.to_string_lossy().to_string();
                 let url = remote_url.join("/garmin/upload_file")?;
                 let url = Url::parse_with_params(url.as_str(), &[("filename", dname)])?;

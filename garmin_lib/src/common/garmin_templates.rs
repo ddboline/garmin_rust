@@ -70,7 +70,7 @@ pub fn get_buttons(demo: bool) -> Vec<&'static str> {
     ]);
     if !demo {
         buttons.extend_from_slice(&[
-            r#"<form action="/garmin/upload_file" method="post" enctype="multipart/form-data">"#,
+            r#"<form action="/garmin/upload_file?filename=file.fit" method="post" enctype="multipart/form-data">"#,
             r#"    <input type="file" name="filename">"#,
             r#"    <input type="submit">"#,
             r#"</form>"#,

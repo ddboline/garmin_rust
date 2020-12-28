@@ -153,6 +153,7 @@ async fn save_file(file_path: &str, field: &mut Field) -> Result<(), Error> {
 }
 
 pub async fn garmin_upload(
+    query: Query<StravaCreateRequest>,
     mut multipart: Multipart,
     _: LoggedUser,
     state: Data<AppState>,
@@ -164,7 +165,7 @@ pub async fn garmin_upload(
     let fname = format!(
         "{}/{}",
         tempdir_str,
-        Utc::now().format("%Y-%m-%d_%H-%M-%S").to_string()
+        query.filename,
     );
 
     while let Some(item) = multipart.next().await {

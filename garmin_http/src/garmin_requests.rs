@@ -342,6 +342,23 @@ impl HandleRequest<FitbitHeartrateCacheRequest> for PgPool {
     }
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct FitbitHeartrateUpdateRequest {
+    updates: Vec<FitbitHeartRate>,
+}
+
+#[async_trait]
+impl HandleRequest<FitbitHeartrateUpdateRequest> for PgPool {
+    type Result = Result<(), Error>;
+    async fn handle(&self, msg: FitbitHeartrateUpdateRequest) -> Self::Result {
+        let config = CONFIG.clone();
+        spawn_blocking(move || {
+            FitbitHeartRate::merge_slice_to_avro(&config, &msg.updates).map_err(Into::into)
+        })
+        .await?
+    }
+}
+
 pub struct FitbitBodyWeightFatRequest {}
 
 #[async_trait]

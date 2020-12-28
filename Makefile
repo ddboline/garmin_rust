@@ -50,6 +50,12 @@ pull:
 	docker tag 281914939654.dkr.ecr.us-east-1.amazonaws.com/rust_stable:latest rust_stable:latest
 	docker rmi 281914939654.dkr.ecr.us-east-1.amazonaws.com/rust_stable:latest
 
+pull_aws:
+	`aws ecr --region us-east-1 get-login --no-include-email`
+	docker pull 281914939654.dkr.ecr.us-east-1.amazonaws.com/rust_stable:latest_amazon
+	docker tag 281914939654.dkr.ecr.us-east-1.amazonaws.com/rust_stable:latest_amazon rust_stable:latest_amazon
+	docker rmi 281914939654.dkr.ecr.us-east-1.amazonaws.com/rust_stable:latest_amazon
+
 dev:
 	docker run -it --rm -v `pwd`:/garmin_rust rust_stable:latest /bin/bash || true
 

@@ -9,7 +9,6 @@ use tokio::{
     fs::{read_to_string, File},
     io::{stdin, stdout, AsyncReadExt, AsyncWrite, AsyncWriteExt},
     task::spawn_blocking,
-    try_join,
 };
 
 use fitbit_lib::{
@@ -114,10 +113,11 @@ impl GarminCliOpts {
                 let config = GarminConfig::get_config(None)?;
                 let pool = PgPool::new(&config.pgurl);
                 let client = FitbitClient::with_auth(config.clone()).await?;
-                let (updates, _) = try_join!(
-                    client.sync_everything(&pool),
-                    client.import_fitbit_heartrate(today)
-                )?;
+                let updates = client.sync_everything(&pool).await?;
+                for idx in 0..3 {
+                    let date = (Utc::now() - Duration::days(idx)).naive_utc().date();
+                    client.import_fitbit_heartrate(date).await?;
+                }
                 cli.stdout.send(format!("{:?}", updates));
 
                 let start_date = (Utc::now() - Duration::days(10)).naive_utc().date();

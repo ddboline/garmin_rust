@@ -1,6 +1,6 @@
 [package]
 name = "garmin_rust"
-version = "0.9.39"
+version = "0.10.0"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -22,26 +22,26 @@ fitbit_bot = {path="fitbit_bot"}
 garmin_connect_lib = {path="garmin_connect_lib"}
 race_result_analysis = {path="race_result_analysis"}
 garmin_reports = {path="garmin_reports"}
-actix-web =  "3.3"
+actix-web = "4.0.0-beta.1"
 log = "0.4"
 env_logger = "0.8"
 crossbeam-utils = "0.8"
 structopt = "0.3"
 anyhow = "1.0"
 thiserror = "1.0"
-tokio = {version="0.2", features=["full"]}
+tokio = {version="1.0", features=["full"]}
 dirs = "3.0"
 lambda_runtime = "0.2"
 chrono = "0.4"
 url = "2.2"
 maplit = "1.0"
 serde = {version="1.0", features=["derive"]}
-reqwest = {version="0.10", features=["cookies", "json", "rustls-tls", "stream"], default_features=false}
+reqwest = {version="0.11", features=["cookies", "json", "rustls-tls", "stream"], default_features=false}
 stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.1.10", features=["postgres_types"] }
 
 [dev-dependencies]
 approx = "0.4"
-stdout-channel = { git = "https://github.com/ddboline/stdout-channel-rs.git", tag="0.1.4" }
+stdout-channel = { git = "https://github.com/ddboline/stdout-channel-rs.git", tag="0.3.0" }
 
 [workspace]
 members = [

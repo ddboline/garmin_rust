@@ -24,9 +24,9 @@ use tempfile::Builder;
 use tokio::{
     fs::{create_dir_all, File},
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
-    stream::StreamExt,
     task::spawn_blocking,
 };
+use tokio_stream::StreamExt;
 
 use garmin_lib::{
     common::{

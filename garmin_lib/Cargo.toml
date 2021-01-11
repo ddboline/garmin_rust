@@ -29,7 +29,7 @@ roxmltree = "0.14"
 parking_lot = "0.11"
 avro-rs = {version = "0.12", features = ["snappy"]}
 regex = "1.4"
-postgres_query = "0.3"
+postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", branch="master"}
 bytes = "1.0"
 anyhow = "1.0"
 thiserror = "1.0"

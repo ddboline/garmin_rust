@@ -14,7 +14,7 @@ futures = "0.3"
 lazy_static = "1.4"
 log = "0.4"
 maplit = "1.0"
-reqwest = {version="0.10", features=["cookies", "json", "rustls-tls", "stream"], default_features=false}
+reqwest = {version="0.11", features=["cookies", "json", "rustls-tls", "stream"], default_features=false}
 serde = {version="1.0", features=["derive"]}
 serde_json = "1.0"
 tokio = {version="1.0", features=["full"]}

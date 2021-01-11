@@ -1,6 +1,6 @@
 [package]
 name = "garmin_lib"
-version = "0.9.39"
+version = "0.10.0"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -11,18 +11,18 @@ rayon = "1.5"
 chrono = "0.4"
 subprocess = "0.2"
 json = "0.12"
-tokio-postgres = {version = "0.5", features = ["with-chrono-0_4"]}
-postgres-types = "0.1"
+tokio-postgres = {version = "0.7", features = ["with-chrono-0_4"]}
+postgres-types = "0.2"
 log = "0.4"
-rusoto_core = {version = "0.45", default_features = false, features=["rustls"]}
-rusoto_s3 = {version = "0.45", default_features = false, features=["rustls"]}
+rusoto_core = {version = "0.46", default_features = false, features=["rustls"]}
+rusoto_s3 = {version = "0.46", default_features = false, features=["rustls"]}
 futures = "0.3"
-s3-ext = "0.1"
-sts_profile_auth = "0.5"
+s3-ext = "0.2"
+sts_profile_auth = "0.6"
 num-traits = "0.2"
 rand = "0.8"
-deadpool = "0.5"
-deadpool-postgres = "0.5"
+deadpool = "0.7"
+deadpool-postgres = "0.7"
 dotenv = "0.15"
 lazy_static = "1.4"
 roxmltree = "0.14"
@@ -30,11 +30,11 @@ parking_lot = "0.11"
 avro-rs = {version = "0.12", features = ["snappy"]}
 regex = "1.4"
 postgres_query = "0.3"
-bytes = "0.5"
+bytes = "1.0"
 anyhow = "1.0"
 thiserror = "1.0"
 dirs = "3.0"
-tokio = {version="0.2", features=["full"]}
+tokio = {version="1.0", features=["full"]}
 derive_more = "0.99"
 smartstring = "0.2"
 rustls-native-certs = {version="0.5", default_features=false}
@@ -43,9 +43,9 @@ fitparser = "0.3"
 handlebars = "3.5"
 maplit = "1.0"
 chrono-tz = "0.5"
-smallvec = "1.5"
+smallvec = "1.6"
 flate2 = "1.0"
-deadqueue = "0.1"
+deadqueue = "0.2"
 itertools = "0.10"
 url = "2.2"
-stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.1.10", features=["postgres_types"] }
+stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.2.0", features=["postgres_types"] }

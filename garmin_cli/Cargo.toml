@@ -1,6 +1,6 @@
 [package]
 name = "garmin_cli"
-version = "0.9.39"
+version = "0.10.0"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -17,7 +17,7 @@ structopt = "0.3"
 chrono = "0.4"
 anyhow = "1.0"
 thiserror = "1.0"
-tokio = {version="0.2", features=["full"]}
+tokio = {version="1.0", features=["full"]}
 futures = "0.3"
 lazy_static = "1.4"
 log = "0.4"
@@ -25,6 +25,6 @@ rayon = "1.5"
 regex = "1.4"
 tempdir = "0.3"
 serde_json = "1.0"
-itertools = "0.9"
-stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.1.10", features=["postgres_types"] }
-stdout-channel = { git = "https://github.com/ddboline/stdout-channel-rs.git", tag="0.1.4" }
+itertools = "0.10"
+stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.2.0", features=["postgres_types"] }
+stdout-channel = { git = "https://github.com/ddboline/stdout-channel-rs.git", tag="0.3.0" }

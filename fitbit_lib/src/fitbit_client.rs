@@ -21,7 +21,7 @@ use tokio::{
     fs::File,
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     task::spawn_blocking,
-    time::{delay_for, Duration},
+    time::{sleep, Duration},
 };
 
 use garmin_connect_lib::garmin_connect_hr_data::GarminConnectHrData;
@@ -138,7 +138,7 @@ impl FitbitClient {
             if let Some(retry_after) = resp.headers().get("retry-after") {
                 let retry_seconds: u64 = retry_after.to_str()?.parse()?;
                 if retry_seconds < 60 {
-                    delay_for(Duration::from_secs(retry_seconds)).await;
+                    sleep(Duration::from_secs(retry_seconds)).await;
                     let headers = self.get_auth_headers()?;
                     return self
                         .client

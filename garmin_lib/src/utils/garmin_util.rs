@@ -17,7 +17,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use subprocess::{Exec, Redirection};
-use tokio::time::{delay_for, Duration};
+use tokio::time::{sleep, Duration};
 
 pub const METERS_PER_MILE: f64 = 1609.344;
 pub const MARATHON_DISTANCE_M: i32 = 42195;
@@ -147,7 +147,7 @@ where
         match f().await {
             Ok(resp) => return Ok(resp),
             Err(err) => {
-                delay_for(Duration::from_millis((timeout * 1000.0) as u64)).await;
+                sleep(Duration::from_millis((timeout * 1000.0) as u64)).await;
                 timeout *= 4.0 * f64::from(range.sample(&mut thread_rng())) / 1000.0;
                 if timeout >= 64.0 {
                     return Err(err);

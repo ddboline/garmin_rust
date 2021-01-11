@@ -12,7 +12,7 @@ use std::{path::PathBuf, process::Stdio};
 use tokio::{
     fs,
     process::{Child, Command},
-    time::delay_for,
+    time::sleep,
 };
 
 use garmin_lib::common::{
@@ -70,7 +70,7 @@ impl GarminConnectClient {
                 .stderr(Stdio::piped())
                 .spawn()?;
             self.webdriver.replace(webdriver);
-            delay_for(std::time::Duration::from_secs(5)).await;
+            sleep(std::time::Duration::from_secs(5)).await;
 
             let mut caps = serde_json::map::Map::new();
             let opts = serde_json::json!({

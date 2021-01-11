@@ -135,7 +135,7 @@ impl GarminConnectClient {
             client.close().await?;
         }
         if let Some(mut webdriver) = self.webdriver.take() {
-            if let Err(e) = webdriver.kill() {
+            if let Err(e) = webdriver.kill().await {
                 debug!("Failed to kill {}", e);
             }
         }

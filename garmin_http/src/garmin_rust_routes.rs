@@ -13,7 +13,8 @@ use serde::{Deserialize, Serialize};
 use stack_string::StackString;
 use std::string::ToString;
 use tempdir::TempDir;
-use tokio::{fs::File, io::AsyncWriteExt, stream::StreamExt};
+use tokio::{fs::File, io::AsyncWriteExt};
+use tokio_stream::StreamExt;
 
 use fitbit_lib::fitbit_heartrate::FitbitHeartRate;
 use garmin_cli::garmin_cli::{GarminCli, GarminRequest};

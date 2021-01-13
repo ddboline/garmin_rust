@@ -10,7 +10,7 @@ use std::{collections::HashSet, sync::Arc};
 use telegram_bot::{types::refs::UserId, Api, CanReplySendMessage, MessageKind, UpdateKind};
 use tokio::{
     task::spawn,
-    time::{delay_for, Duration},
+    time::{sleep, Duration},
 };
 
 use fitbit_lib::scale_measurement::ScaleMeasurement;
@@ -153,7 +153,7 @@ impl TelegramBot {
             } else {
                 FAILURE_COUNT.increment()?;
             }
-            delay_for(Duration::from_secs(60)).await;
+            sleep(Duration::from_secs(60)).await;
         }
     }
 

@@ -310,8 +310,10 @@ impl GarminCliOpts {
                     cli.process_filenames(&filenames).await?;
                     cli.proc_everything().await?;
                 }
+                session.close().await?;
                 return Ok(filenames);
             }
+            session.close().await?;
         }
         Ok(Vec::new())
     }

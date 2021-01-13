@@ -116,24 +116,8 @@ pub async fn file_report_html<T: AsRef<str>>(
 }
 
 fn extract_report_objects_from_file(gfile: &GarminFile) -> Result<ReportObjects, Error> {
-    let mut report_objs = ReportObjects::default();
-
-    report_objs.avg_hr = 0.0;
-    report_objs.sum_time = 0.0;
-    report_objs.max_hr = 0.0;
-
-    report_objs.hr_vals = Vec::new();
-    report_objs.hr_values = Vec::new();
-    report_objs.alt_vals = Vec::new();
-    report_objs.alt_values = Vec::new();
-    report_objs.mph_speed_values = Vec::new();
-    report_objs.avg_speed_values = Vec::new();
-    report_objs.avg_mph_speed_values = Vec::new();
-    report_objs.lat_vals = Vec::new();
-    report_objs.lon_vals = Vec::new();
-
     let speed_values = get_splits(&gfile, 400., "lap", true)?;
-    report_objs.heart_rate_speed = speed_values
+    let heart_rate_speed = speed_values
         .iter()
         .map(|v| {
             let t = v.time_value;
@@ -142,7 +126,7 @@ fn extract_report_objects_from_file(gfile: &GarminFile) -> Result<ReportObjects,
         })
         .collect();
 
-    report_objs.speed_values = speed_values
+    let speed_values = speed_values
         .into_iter()
         .map(|v| {
             let d = v.split_distance;
@@ -151,7 +135,7 @@ fn extract_report_objects_from_file(gfile: &GarminFile) -> Result<ReportObjects,
         })
         .collect();
 
-    report_objs.mile_split_vals = get_splits(&gfile, METERS_PER_MILE, "mi", false)?
+    let mile_split_vals = get_splits(&gfile, METERS_PER_MILE, "mi", false)?
         .into_iter()
         .map(|v| {
             let d = v.split_distance;
@@ -159,6 +143,13 @@ fn extract_report_objects_from_file(gfile: &GarminFile) -> Result<ReportObjects,
             (d, t / 60.)
         })
         .collect();
+
+    let mut report_objs = ReportObjects {
+        heart_rate_speed,
+        speed_values,
+        mile_split_vals,
+        ..ReportObjects::default()
+    };
 
     for point in &gfile.points {
         if point.distance == None {

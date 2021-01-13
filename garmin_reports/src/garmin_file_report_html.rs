@@ -205,7 +205,7 @@ fn extract_report_objects_from_file(gfile: &GarminFile) -> Result<ReportObjects,
     Ok(report_objs)
 }
 
-fn get_plot_opts<'a>(report_objs: &'a ReportObjects) -> Vec<PlotOpts<'a>> {
+fn get_plot_opts(report_objs: &ReportObjects) -> Vec<PlotOpts> {
     let mut plot_opts = Vec::new();
 
     if !report_objs.mile_split_vals.is_empty() {

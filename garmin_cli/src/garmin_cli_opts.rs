@@ -264,6 +264,7 @@ impl GarminCliOpts {
             Self::RunMigrations => {
                 let config = GarminConfig::get_config(None)?;
                 let pool = PgPool::new(&config.pgurl);
+                let mut client = pool.get().await?;
                 migrations::runner()
                     .run_async(client.deref_mut().deref_mut())
                     .await?;

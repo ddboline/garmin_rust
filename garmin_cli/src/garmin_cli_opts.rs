@@ -2,6 +2,7 @@ use anyhow::Error;
 use chrono::{Duration, Utc};
 use futures::future::try_join_all;
 use itertools::Itertools;
+use refinery::embed_migrations;
 use stack_string::StackString;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -10,7 +11,6 @@ use tokio::{
     io::{stdin, stdout, AsyncReadExt, AsyncWrite, AsyncWriteExt},
     task::spawn_blocking,
 };
-use refinery::embed_migrations;
 
 use fitbit_lib::{
     fitbit_client::FitbitClient, fitbit_heartrate::FitbitHeartRate,
@@ -260,16 +260,13 @@ impl GarminCliOpts {
                 }
 
                 return Ok(());
-            },
+            }
             Self::RunMigrations => {
                 let config = GarminConfig::get_config(None)?;
-                let (mut client, conn) = tokio_postgres::connect(&config.pgurl, tokio_postgres::NoTls).await?;
-                tokio::spawn(async move {
-                    if let Err(e) = conn.await {
-                        eprintln!("connection error: {}", e);
-                    }
-                });
-                migrations::runner().run_async(&mut client).await?;
+                let pool = PgPool::new(&config.pgurl);
+                migrations::runner()
+                    .run_async(client.deref_mut().deref_mut())
+                    .await?;
                 return Ok(());
             }
         };

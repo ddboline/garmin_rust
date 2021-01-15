@@ -33,19 +33,12 @@ jobs:
       run: cargo clippy -- -W clippy::pedantic
 
     - name: Build
-      run: cargo build --verbose
+      run: |
+        cargo build --verbose && \
+        target/debug/garmin-rust-cli run-migrations
 
     - name: Run tests / create coverage report
       run: |
-        psql $PGURL < ./scripts/garmin_corrections_laps.sql
-        psql $PGURL < ./scripts/garmin_summary.sql
-        psql $PGURL < ./scripts/strava_id_cache.sql
-        psql $PGURL < ./scripts/scale_measurements.sql
-        psql $PGURL < ./scripts/heartrate_statistics_summary.sql
-        psql $PGURL < ./scripts/fitbit_activities.sql
-        psql $PGURL < ./scripts/garmin_connect_activities.sql
-        psql $PGURL < ./scripts/strava_activities.sql
-        psql $PGURL < ./scripts/race_results.sql
         cargo test --verbose --all
         cargo install cargo-tarpaulin && \
         cargo tarpaulin --verbose --all-features --workspace --out Xml

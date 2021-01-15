@@ -56,11 +56,4 @@ tables = ['garmin_corrections_laps', 'garmin_summary', 'scale_measurements', 'he
 sequences = {garmin_corrections_laps_id_seq=['garmin_corrections_laps', 'id'], scale_measurements_id_seq=['scale_measurements', 'id'], race_results_id_seq=['race_results', 'id']}
 EOL
 
-psql $DB < ./scripts/garmin_corrections_laps.sql
-psql $DB < ./scripts/garmin_summary.sql
-psql $DB < ./scripts/scale_measurements.sql
-psql $DB < ./scripts/heartrate_statistics_summary.sql
-psql $DB < ./scripts/fitbit_activities.sql
-psql $DB < ./scripts/garmin_connect_activities.sql
-psql $DB < ./scripts/strava_activities.sql
-psql $DB < ./scripts/race_results.sql
+garmin-rust-cli run-migrations

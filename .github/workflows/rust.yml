@@ -36,6 +36,8 @@ jobs:
       run: |
         cargo build --verbose && \
         target/debug/garmin-rust-cli run-migrations
+      env:
+        PGURL: postgresql://postgres:2UtcMAAvNuBHPqK9@localhost:5432/garmin_summary
 
     - name: Run tests / create coverage report
       run: |

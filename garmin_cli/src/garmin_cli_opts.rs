@@ -11,6 +11,7 @@ use tokio::{
     io::{stdin, stdout, AsyncReadExt, AsyncWrite, AsyncWriteExt},
     task::spawn_blocking,
 };
+use std::ops::DerefMut;
 
 use fitbit_lib::{
     fitbit_client::FitbitClient, fitbit_heartrate::FitbitHeartRate,

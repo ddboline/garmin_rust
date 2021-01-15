@@ -10,6 +10,7 @@ use tokio::{
     io::{stdin, stdout, AsyncReadExt, AsyncWrite, AsyncWriteExt},
     task::spawn_blocking,
 };
+use refinery::embed_migrations;
 
 use fitbit_lib::{
     fitbit_client::FitbitClient, fitbit_heartrate::FitbitHeartRate,
@@ -25,6 +26,8 @@ use race_result_analysis::{race_results::RaceResults, race_type::RaceType};
 use strava_lib::strava_client::StravaClient;
 
 use crate::garmin_cli::{GarminCli, GarminCliOptions};
+
+embed_migrations!("../migrations");
 
 #[derive(StructOpt, PartialEq)]
 pub enum GarminCliOpts {
@@ -70,6 +73,7 @@ pub enum GarminCliOpts {
         filepath: Option<PathBuf>,
     },
     SyncAll,
+    RunMigrations,
 }
 
 impl GarminCliOpts {
@@ -254,6 +258,17 @@ impl GarminCliOpts {
                     _ => {}
                 }
 
+                return Ok(());
+            },
+            Self::RunMigrations => {
+                let config = GarminConfig::get_config(None)?;
+                let (mut client, conn) = tokio_postgres::connect(&config.pgurl, tokio_postgres::NoTls).await?;
+                tokio::spawn(async move {
+                    if let Err(e) = conn.await {
+                        eprintln!("connection error: {}", e);
+                    }
+                });
+                migrations::runner().run_async(&mut client).await?;
                 return Ok(());
             }
         };

@@ -73,6 +73,7 @@ pub enum GarminCliOpts {
         filepath: Option<PathBuf>,
     },
     SyncAll,
+    /// Run refinery migrations
     RunMigrations,
 }
 

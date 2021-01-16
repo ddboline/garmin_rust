@@ -36,13 +36,13 @@ use crate::{
         GarminConnectActivitiesDBRequest, GarminConnectActivitiesDBUpdateRequest,
         GarminConnectActivitiesRequest, GarminConnectHrApiRequest, GarminConnectHrSyncRequest,
         GarminConnectSyncRequest, GarminConnectUserSummaryRequest, GarminHtmlRequest,
-        GarminSyncRequest, GarminUploadRequest, HandleRequest, RaceResultFlagRequest,
-        RaceResultImportRequest, RaceResultPlotRequest, RaceResultsDBRequest,
-        RaceResultsDBUpdateRequest, ScaleMeasurementPlotRequest, ScaleMeasurementRequest,
-        ScaleMeasurementUpdateRequest, StravaActiviesDBUpdateRequest, StravaActivitiesDBRequest,
-        StravaActivitiesRequest, StravaAthleteRequest, StravaAuthRequest, StravaCallbackRequest,
-        StravaCreateRequest, StravaRefreshRequest, StravaSyncRequest, StravaUpdateRequest,
-        StravaUploadRequest,
+        GarminSyncRequest, GarminUploadRequest, HandleRequest, HeartrateStatisticsSummaryDBRequest,
+        HeartrateStatisticsSummaryDBUpdateRequest, RaceResultFlagRequest, RaceResultImportRequest,
+        RaceResultPlotRequest, RaceResultsDBRequest, RaceResultsDBUpdateRequest,
+        ScaleMeasurementPlotRequest, ScaleMeasurementRequest, ScaleMeasurementUpdateRequest,
+        StravaActiviesDBUpdateRequest, StravaActivitiesDBRequest, StravaActivitiesRequest,
+        StravaAthleteRequest, StravaAuthRequest, StravaCallbackRequest, StravaCreateRequest,
+        StravaRefreshRequest, StravaSyncRequest, StravaUpdateRequest, StravaUploadRequest,
     },
     garmin_rust_app::AppState,
     logged_user::LoggedUser,
@@ -682,15 +682,27 @@ pub async fn fitbit_activities_db_update(
     form_http_response(body.join("\n"))
 }
 
-pub async fn heartrate_statistics_summary_db(_: LoggedUser, state: Data<AppState>) -> HttpResult {
-    form_http_response("".into())
-}
-
-pub async fn heartrate_statistics_summary_db_update(
+pub async fn heartrate_statistics_summary_db(
+    query: Query<StravaActivitiesRequest>,
     _: LoggedUser,
     state: Data<AppState>,
 ) -> HttpResult {
-    form_http_response("".into())
+    let query = query.into_inner();
+    let alist = state
+        .db
+        .handle(HeartrateStatisticsSummaryDBRequest(query))
+        .await?;
+    to_json(alist)
+}
+
+pub async fn heartrate_statistics_summary_db_update(
+    payload: Json<HeartrateStatisticsSummaryDBUpdateRequest>,
+    _: LoggedUser,
+    state: Data<AppState>,
+) -> HttpResult {
+    let req = payload.into_inner();
+    let body = state.db.handle(req).await?;
+    form_http_response(body.join("\n"))
 }
 
 pub async fn race_result_plot_impl(

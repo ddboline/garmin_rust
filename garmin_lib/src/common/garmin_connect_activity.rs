@@ -187,7 +187,7 @@ impl GarminConnectActivity {
     }
 
     pub async fn merge_new_activities(
-        mut new_activities: Vec<Self>,
+        new_activities: Vec<Self>,
         pool: &PgPool,
     ) -> Result<Vec<Self>, Error> {
         let activities: HashMap<_, _> = GarminConnectActivity::read_from_db(pool, None, None)
@@ -196,18 +196,15 @@ impl GarminConnectActivity {
             .map(|activity| (activity.activity_id, activity))
             .collect();
 
-        new_activities = new_activities
+        #[allow(clippy::filter_map)]
+        let futures = new_activities
             .into_iter()
             .filter(|activity| !activities.contains_key(&activity.activity_id))
-            .collect();
-        let futures = new_activities.iter().map(|activity| async move {
-            activity.insert_into_db(pool).await?;
-            Ok(())
-        });
-        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
-        results?;
-
-        Ok(new_activities)
+            .map(|activity| async move {
+                activity.insert_into_db(pool).await?;
+                Ok(activity)
+            });
+        try_join_all(futures).await
     }
 }
 

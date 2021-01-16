@@ -112,8 +112,6 @@ impl GarminCliOpts {
                 return Ok(());
             }
             Self::Fitbit { all } => {
-                let today = Utc::now().naive_local().date();
-
                 let cli = GarminCli::with_config()?;
                 let config = GarminConfig::get_config(None)?;
                 let pool = PgPool::new(&config.pgurl);
@@ -122,6 +120,8 @@ impl GarminCliOpts {
                 for idx in 0..3 {
                     let date = (Utc::now() - Duration::days(idx)).naive_utc().date();
                     client.import_fitbit_heartrate(date).await?;
+                    FitbitHeartRate::calculate_summary_statistics(&client.config, &pool, date)
+                        .await?;
                 }
                 cli.stdout.send(format!("{:?}", updates));
 
@@ -135,7 +135,6 @@ impl GarminCliOpts {
                 cli.stdout.send(filenames);
 
                 cli.stdout.close().await?;
-                FitbitHeartRate::calculate_summary_statistics(&client.config, &pool, today).await?;
 
                 if all {
                     FitbitHeartRate::get_all_summary_statistics(&client.config, &pool).await?;
@@ -332,18 +331,20 @@ impl GarminCliOpts {
 
             let activities = session.get_activities(max_datetime).await?;
 
-            let activities =
-                GarminConnectActivity::merge_new_activities(activities, &cli.pool).await?;
+            for idx in 0..3 {
+                let date = (Utc::now() - Duration::days(idx)).naive_utc().date();
+                let hr_values = session.get_heartrate(date).await?;
+                let hr_values = FitbitHeartRate::from_garmin_connect_hr(&hr_values);
+                let config = cli.config.clone();
+                spawn_blocking(move || FitbitHeartRate::merge_slice_to_avro(&config, &hr_values))
+                    .await??;
+                FitbitHeartRate::calculate_summary_statistics(&cli.config, &cli.pool, date).await?;
+            }
 
-            let hr_values = session
-                .get_heartrate((Utc::now()).naive_local().date())
-                .await?;
-            let hr_values = FitbitHeartRate::from_garmin_connect_hr(&hr_values);
-            let config = cli.config.clone();
-            spawn_blocking(move || FitbitHeartRate::merge_slice_to_avro(&config, &hr_values))
-                .await??;
-
-            if let Ok(filenames) = session.get_activity_files(&activities).await {
+            if let Ok(filenames) = session
+                .get_and_merge_activity_files(activities, &cli.pool)
+                .await
+            {
                 if !filenames.is_empty() {
                     cli.process_filenames(&filenames).await?;
                     cli.proc_everything().await?;

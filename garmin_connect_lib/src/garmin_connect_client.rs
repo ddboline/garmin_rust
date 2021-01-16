@@ -16,7 +16,7 @@ use tokio::{
 };
 
 use garmin_lib::common::{
-    garmin_config::GarminConfig, garmin_connect_activity::GarminConnectActivity,
+    garmin_config::GarminConfig, garmin_connect_activity::GarminConnectActivity, pgpool::PgPool,
 };
 
 use super::garmin_connect_hr_data::GarminConnectHrData;
@@ -247,6 +247,15 @@ impl GarminConnectClient {
             filenames.push(fname);
         }
         Ok(filenames)
+    }
+
+    pub async fn get_and_merge_activity_files(
+        &mut self,
+        activities: Vec<GarminConnectActivity>,
+        pool: &PgPool,
+    ) -> Result<Vec<PathBuf>, Error> {
+        let activities = GarminConnectActivity::merge_new_activities(activities, pool).await?;
+        self.get_activity_files(&activities).await
     }
 }
 

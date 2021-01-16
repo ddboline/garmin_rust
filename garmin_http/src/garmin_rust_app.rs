@@ -20,12 +20,12 @@ use crate::{
         garmin_connect_activities_db, garmin_connect_activities_db_update, garmin_connect_hr_api,
         garmin_connect_hr_sync, garmin_connect_sync, garmin_connect_user_summary, garmin_demo,
         garmin_sync, garmin_upload, heartrate_plots, heartrate_plots_demo,
-        heartrate_statistics_plots, heartrate_statistics_plots_demo, race_result_flag,
+        heartrate_statistics_plots, heartrate_statistics_plots_demo,
+        heartrate_statistics_summary_db, heartrate_statistics_summary_db_update, race_result_flag,
         race_result_import, race_result_plot, race_result_plot_demo, race_results_db,
         race_results_db_update, scale_measurement, scale_measurement_update, strava_activities,
         strava_activities_db, strava_activities_db_update, strava_athlete, strava_auth,
         strava_callback, strava_create, strava_refresh, strava_sync, strava_update, strava_upload,
-        heartrate_statistics_summary_db, heartrate_statistics_summary_db_update,
         user,
     },
     logged_user::{fill_from_db, get_secrets, SECRET_KEY, TRIGGER_DB_UPDATE},
@@ -184,10 +184,11 @@ pub async fn start_app() -> Result<(), Error> {
                                     .route(web::get().to(fitbit_activities_db))
                                     .route(web::post().to(fitbit_activities_db_update)),
                             )
-                            .service(web::resource("/heartrate_statistics_summary_db")
+                            .service(
+                                web::resource("/heartrate_statistics_summary_db")
                                     .route(web::get().to(heartrate_statistics_summary_db))
                                     .route(web::post().to(heartrate_statistics_summary_db_update)),
-                                )
+                            )
                             .service(
                                 web::resource("/profile").route(web::get().to(fitbit_profile)),
                             ),

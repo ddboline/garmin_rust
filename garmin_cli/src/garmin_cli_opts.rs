@@ -4,14 +4,13 @@ use futures::future::try_join_all;
 use itertools::Itertools;
 use refinery::embed_migrations;
 use stack_string::StackString;
-use std::path::PathBuf;
+use std::{ops::DerefMut, path::PathBuf};
 use structopt::StructOpt;
 use tokio::{
     fs::{read_to_string, File},
     io::{stdin, stdout, AsyncReadExt, AsyncWrite, AsyncWriteExt},
     task::spawn_blocking,
 };
-use std::ops::DerefMut;
 
 use fitbit_lib::{
     fitbit_client::FitbitClient, fitbit_heartrate::FitbitHeartRate,

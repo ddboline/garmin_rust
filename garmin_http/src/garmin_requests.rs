@@ -982,9 +982,11 @@ pub struct HeartrateStatisticsSummaryDBRequest(pub StravaActivitiesRequest);
 
 #[async_trait]
 impl HandleRequest<HeartrateStatisticsSummaryDBRequest> for PgPool {
-    type Result=Result<Vec<FitbitStatisticsSummary>, Error>;
+    type Result = Result<Vec<FitbitStatisticsSummary>, Error>;
     async fn handle(&self, msg: HeartrateStatisticsSummaryDBRequest) -> Self::Result {
-        FitbitStatisticsSummary::read_from_db(msg.0.start_date, msg.0.end_date, self).await.map_err(Into::into)
+        FitbitStatisticsSummary::read_from_db(msg.0.start_date, msg.0.end_date, self)
+            .await
+            .map_err(Into::into)
     }
 }
 

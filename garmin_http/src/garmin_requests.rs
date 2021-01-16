@@ -1001,11 +1001,13 @@ impl HandleRequest<HeartrateStatisticsSummaryDBUpdateRequest> for PgPool {
             let pool = self.clone();
             async move {
                 entry.upsert_entry(&pool).await?;
-                Ok(entry)
+                Ok(entry.date)
             }
         });
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
-        results.map_err(Into::into)
+        let mut output = vec!["update:".into()];
+        output.extend(results?.into_iter().map(|d| d.to_string().into()));
+        Ok(output)
     }
 }
 

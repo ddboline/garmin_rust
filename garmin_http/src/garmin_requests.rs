@@ -978,6 +978,41 @@ impl HandleRequest<FitbitActivitiesDBUpdateRequest> for PgPool {
     }
 }
 
+pub struct HeartrateStatisticsSummaryDBRequest(pub StravaActivitiesRequest);
+
+#[async_trait]
+impl HandleRequest<HeartrateStatisticsSummaryDBRequest> for PgPool {
+    type Result = Result<Vec<FitbitStatisticsSummary>, Error>;
+    async fn handle(&self, msg: HeartrateStatisticsSummaryDBRequest) -> Self::Result {
+        FitbitStatisticsSummary::read_from_db(msg.0.start_date, msg.0.end_date, self)
+            .await
+            .map_err(Into::into)
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct HeartrateStatisticsSummaryDBUpdateRequest {
+    pub updates: Vec<FitbitStatisticsSummary>,
+}
+
+#[async_trait]
+impl HandleRequest<HeartrateStatisticsSummaryDBUpdateRequest> for PgPool {
+    type Result = Result<Vec<StackString>, Error>;
+    async fn handle(&self, msg: HeartrateStatisticsSummaryDBUpdateRequest) -> Self::Result {
+        let futures = msg.updates.into_iter().map(|entry| {
+            let pool = self.clone();
+            async move {
+                entry.upsert_entry(&pool).await?;
+                Ok(entry.date)
+            }
+        });
+        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+        let mut output = vec!["update:".into()];
+        output.extend(results?.into_iter().map(|d| d.to_string().into()));
+        Ok(output)
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct RaceResultPlotRequest {
     pub race_type: RaceType,

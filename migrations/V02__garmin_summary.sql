@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS garmin_summary (
+CREATE TABLE garmin_summary (
     filename text NOT NULL PRIMARY KEY,
     begin_datetime TIMESTAMP WITH TIME ZONE NOT NULL,
     sport varchar(12) NOT NULL,

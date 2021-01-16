@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS heartrate_statistics_summary (
+CREATE TABLE heartrate_statistics_summary (
     date DATE UNIQUE NOT NULL,
     min_heartrate DOUBLE PRECISION NOT NULL,
     max_heartrate DOUBLE PRECISION NOT NULL,

@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS garmin_connect_activities (
+CREATE TABLE garmin_connect_activities (
     activity_id BIGINT PRIMARY KEY,
     activity_name TEXT,
     description TEXT,

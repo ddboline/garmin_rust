@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS strava_activities (
+CREATE TABLE strava_activities (
     id BIGINT PRIMARY KEY,
     name TEXT NOT NULL,
     start_date TIMESTAMP WITH TIME ZONE NOT NULL,

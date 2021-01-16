@@ -2,6 +2,7 @@ use anyhow::Error;
 use chrono::{Duration, Utc};
 use futures::future::try_join_all;
 use itertools::Itertools;
+use refinery::embed_migrations;
 use stack_string::StackString;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -10,6 +11,7 @@ use tokio::{
     io::{stdin, stdout, AsyncReadExt, AsyncWrite, AsyncWriteExt},
     task::spawn_blocking,
 };
+use std::ops::DerefMut;
 
 use fitbit_lib::{
     fitbit_client::FitbitClient, fitbit_heartrate::FitbitHeartRate,
@@ -25,6 +27,8 @@ use race_result_analysis::{race_results::RaceResults, race_type::RaceType};
 use strava_lib::strava_client::StravaClient;
 
 use crate::garmin_cli::{GarminCli, GarminCliOptions};
+
+embed_migrations!("../migrations");
 
 #[derive(StructOpt, PartialEq)]
 pub enum GarminCliOpts {
@@ -70,6 +74,8 @@ pub enum GarminCliOpts {
         filepath: Option<PathBuf>,
     },
     SyncAll,
+    /// Run refinery migrations
+    RunMigrations,
 }
 
 impl GarminCliOpts {
@@ -254,6 +260,15 @@ impl GarminCliOpts {
                     _ => {}
                 }
 
+                return Ok(());
+            }
+            Self::RunMigrations => {
+                let config = GarminConfig::get_config(None)?;
+                let pool = PgPool::new(&config.pgurl);
+                let mut client = pool.get().await?;
+                migrations::runner()
+                    .run_async(client.deref_mut().deref_mut())
+                    .await?;
                 return Ok(());
             }
         };

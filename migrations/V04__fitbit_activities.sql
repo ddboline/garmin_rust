@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS fitbit_activities (
+CREATE TABLE fitbit_activities (
     log_id BIGINT PRIMARY KEY,
     log_type TEXT NOT NULL,
     start_time TIMESTAMP WITH TIME ZONE NOT NULL,

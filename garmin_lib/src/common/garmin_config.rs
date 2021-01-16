@@ -44,7 +44,9 @@ pub struct GarminConfigInner {
     #[serde(default = "default_domain")]
     pub domain: StackString,
     pub telegram_bot_token: Option<StackString>,
+    #[serde(default = "default_gps_bucket")]
     pub fitbit_clientid: StackString,
+    #[serde(default = "default_gps_bucket")]
     pub fitbit_clientsecret: StackString,
     #[serde(default = "default_fitbit_tokenfile")]
     pub fitbit_tokenfile: PathBuf,
@@ -56,7 +58,9 @@ pub struct GarminConfigInner {
     pub strava_tokenfile: PathBuf,
     pub strava_email: Option<StackString>,
     pub strava_password: Option<StackString>,
+    #[serde(default = "default_gps_bucket")]
     pub garmin_connect_email: StackString,
+    #[serde(default = "default_gps_bucket")]
     pub garmin_connect_password: StackString,
     pub remote_url: Option<UrlWrapper>,
     pub remote_email: Option<StackString>,

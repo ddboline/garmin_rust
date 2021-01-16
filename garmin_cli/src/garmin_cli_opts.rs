@@ -14,7 +14,7 @@ use tokio::{
 
 use fitbit_lib::{
     fitbit_client::FitbitClient, fitbit_heartrate::FitbitHeartRate,
-    scale_measurement::ScaleMeasurement,
+    fitbit_statistics_summary::FitbitStatisticsSummary, scale_measurement::ScaleMeasurement,
 };
 use garmin_connect_lib::garmin_connect_client::GarminConnectClient;
 use garmin_lib::common::{
@@ -58,7 +58,7 @@ pub enum GarminCliOpts {
         #[structopt(short, long)]
         /// table: allowed values: ['scale_measurements', 'strava_activities',
         /// 'fitbit_activities', 'garmin_connect_activities',
-        /// 'race_results']
+        /// 'race_results', 'heartrate_statistics_summary']
         table: StackString,
         #[structopt(short, long)]
         filepath: Option<PathBuf>,
@@ -67,7 +67,7 @@ pub enum GarminCliOpts {
         #[structopt(short, long)]
         /// table: allowed values: ['scale_measurements', 'strava_activities',
         /// 'fitbit_activities', 'garmin_connect_activities',
-        /// 'race_results']
+        /// 'race_results', 'heartrate_statistics_summary']
         table: StackString,
         #[structopt(short, long)]
         filepath: Option<PathBuf>,
@@ -191,6 +191,23 @@ impl GarminCliOpts {
                             )
                             .await?;
                     }
+                    "heartrate_statistics_summary" => {
+                        let entries: Vec<FitbitStatisticsSummary> = serde_json::from_str(&data)?;
+                        let futures = entries.into_iter().map(|entry| {
+                            let pool = pool.clone();
+                            async move {
+                                FitbitStatisticsSummary::upsert_entry(&entry, &pool).await?;
+                                Ok(())
+                            }
+                        });
+                        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+                        stdout()
+                            .write_all(
+                                format!("heartrate_statistics_summary {}\n", results?.len())
+                                    .as_bytes(),
+                            )
+                            .await?;
+                    }
                     "garmin_connect_activities" => {
                         let activities: Vec<GarminConnectActivity> = serde_json::from_str(&data)?;
                         GarminConnectActivity::upsert_activities(&activities, &pool).await?;
@@ -242,6 +259,13 @@ impl GarminCliOpts {
                         let activities =
                             FitbitActivity::read_from_db(&pool, Some(start_date), None).await?;
                         file.write_all(&serde_json::to_vec(&activities)?).await?;
+                    }
+                    "heartrate_statistics_summary" => {
+                        let start_date = (Utc::now() - Duration::days(7)).naive_local().date();
+                        let entries =
+                            FitbitStatisticsSummary::read_from_db(Some(start_date), None, &pool)
+                                .await?;
+                        file.write_all(&serde_json::to_vec(&entries)?).await?;
                     }
                     "garmin_connect_activities" => {
                         let start_date = (Utc::now() - Duration::days(7)).naive_local().date();

@@ -58,7 +58,9 @@ pub struct GarminConfigInner {
     pub strava_tokenfile: PathBuf,
     pub strava_email: Option<StackString>,
     pub strava_password: Option<StackString>,
+    #[serde(default = "default_gps_bucket")]
     pub garmin_connect_email: StackString,
+    #[serde(default = "default_gps_bucket")]
     pub garmin_connect_password: StackString,
     pub remote_url: Option<UrlWrapper>,
     pub remote_email: Option<StackString>,

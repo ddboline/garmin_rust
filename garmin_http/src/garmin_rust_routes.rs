@@ -682,6 +682,20 @@ pub async fn fitbit_activities_db_update(
     form_http_response(body.join("\n"))
 }
 
+pub async fn heartrate_statistics_summary_db(
+    _: LoggedUser,
+    state: Data<AppState>,
+) -> HttpResult {
+    form_http_response("".into())
+}
+
+pub async fn heartrate_statistics_summary_db_update(
+    _: LoggedUser,
+    state: Data<AppState>,
+) -> HttpResult {
+    form_http_response("".into())
+}
+
 pub async fn race_result_plot_impl(
     req: RaceResultPlotRequest,
     state: Data<AppState>,

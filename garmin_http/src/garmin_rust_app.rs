@@ -25,6 +25,7 @@ use crate::{
         race_results_db_update, scale_measurement, scale_measurement_update, strava_activities,
         strava_activities_db, strava_activities_db_update, strava_athlete, strava_auth,
         strava_callback, strava_create, strava_refresh, strava_sync, strava_update, strava_upload,
+        heartrate_statistics_summary_db, heartrate_statistics_summary_db_update,
         user,
     },
     logged_user::{fill_from_db, get_secrets, SECRET_KEY, TRIGGER_DB_UPDATE},
@@ -183,6 +184,10 @@ pub async fn start_app() -> Result<(), Error> {
                                     .route(web::get().to(fitbit_activities_db))
                                     .route(web::post().to(fitbit_activities_db_update)),
                             )
+                            .service(web::resource("/heartrate_statistics_summary_db")
+                                    .route(web::get().to(heartrate_statistics_summary_db))
+                                    .route(web::post().to(heartrate_statistics_summary_db_update)),
+                                )
                             .service(
                                 web::resource("/profile").route(web::get().to(fitbit_profile)),
                             ),

@@ -25,6 +25,7 @@ pub struct GarminCorrectionLap {
     pub sport: Option<SportTypes>,
     pub distance: Option<f64>,
     pub duration: Option<f64>,
+    pub summary_id: Option<i32>,
 }
 
 pub type GarminCorrectionMap = HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>;
@@ -44,6 +45,7 @@ impl GarminCorrectionLap {
             sport: None,
             distance: None,
             duration: None,
+            summary_id: None,
         }
     }
 

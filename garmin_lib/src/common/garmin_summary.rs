@@ -174,8 +174,17 @@ impl GarminSummary {
     }
 
     pub async fn get_by_filename(pool: &PgPool, filename: &str) -> Result<Option<Self>, Error> {
-        let query = postgres_query::query!(
-            "SELECT * FROM garmin_summary WHERE filename = $filename",
+        let query = postgres_query::query!("
+            SELECT filename,
+                   begin_datetime,
+                   sport,
+                   total_calories,
+                   total_distance,
+                   total_duration,
+                   total_hr_dur,
+                   total_hr_dis,
+                   md5sum
+            FROM garmin_summary WHERE filename = $filename",
             filename = filename,
         );
         let result = pool

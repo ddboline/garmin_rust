@@ -1,14 +1,13 @@
 use anyhow::{format_err, Error};
-use avro_rs::{Codec, Schema, Writer};
 use chrono::{DateTime, Utc};
 use futures::future::try_join_all;
 use itertools::Itertools;
 use log::debug;
 use postgres_query::FromSqlRow;
-use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
-use std::{collections::HashMap, fmt, fs::File, path::Path, sync::Arc};
+use std::{collections::HashMap, fmt, path::Path, sync::Arc};
 
 use crate::{
     parsers::garmin_parse::{GarminParse, GarminParseTrait},
@@ -21,27 +20,9 @@ use crate::{
 
 use super::{garmin_correction_lap::GarminCorrectionLap, garmin_file::GarminFile, pgpool::PgPool};
 
-pub const GARMIN_SUMMARY_AVRO_SCHEMA: &str = r#"
-    {
-        "namespace": "garmin.avro",
-        "type": "record",
-        "name": "GarminSummary",
-        "fields": [
-            {"name": "filename", "type": "string"},
-            {"name": "begin_datetime", "type": "string"},
-            {"name": "sport", "type": "string"},
-            {"name": "total_calories", "type": "int"},
-            {"name": "total_distance", "type": "double"},
-            {"name": "total_duration", "type": "double"},
-            {"name": "total_hr_dur", "type": "double"},
-            {"name": "total_hr_dis", "type": "double"},
-            {"name": "md5sum", "type": "string"}
-        ]
-    }
-"#;
-
 #[derive(Debug, Clone, Serialize, Deserialize, FromSqlRow)]
 pub struct GarminSummary {
+    pub id: i32,
     pub filename: StackString,
     #[serde(with = "iso_8601_datetime")]
     pub begin_datetime: DateTime<Utc>,
@@ -57,6 +38,7 @@ pub struct GarminSummary {
 impl GarminSummary {
     pub fn new(gfile: &GarminFile, md5sum: &str) -> Self {
         Self {
+            id: -1,
             filename: gfile.filename.clone(),
             begin_datetime: gfile.begin_datetime,
             sport: gfile.sport,
@@ -151,7 +133,8 @@ impl GarminSummary {
 
         let query = format!(
             "
-            SELECT filename,
+            SELECT id,
+                   filename,
                    begin_datetime,
                    sport,
                    total_calories,
@@ -174,8 +157,10 @@ impl GarminSummary {
     }
 
     pub async fn get_by_filename(pool: &PgPool, filename: &str) -> Result<Option<Self>, Error> {
-        let query = postgres_query::query!("
-            SELECT filename,
+        let query = postgres_query::query!(
+            "
+            SELECT id,
+                   filename,
                    begin_datetime,
                    sport,
                    total_calories,
@@ -195,34 +180,6 @@ impl GarminSummary {
             .map(|row| Self::from_row(&row))
             .transpose()?;
         Ok(result)
-    }
-
-    pub fn dump_summary_to_avro(
-        summary_list: &[&Self],
-        output_filename: &Path,
-    ) -> Result<(), Error> {
-        let schema = Schema::parse_str(GARMIN_SUMMARY_AVRO_SCHEMA)?;
-
-        let output_file = File::create(output_filename)?;
-
-        let mut writer = Writer::with_codec(&schema, output_file, Codec::Snappy);
-        writer.extend_ser(summary_list)?;
-        writer.flush()?;
-        Ok(())
-    }
-
-    pub fn write_summary_to_avro_files(
-        summary_list: &[Self],
-        summary_cache_dir: &Path,
-    ) -> Result<(), Error> {
-        summary_list
-            .par_iter()
-            .map(|gsum| {
-                let summary_avro_fname =
-                    summary_cache_dir.join(&format!("{}.summary.avro", gsum.filename));
-                Self::dump_summary_to_avro(&[gsum], &summary_avro_fname)
-            })
-            .collect()
     }
 
     pub async fn write_summary_to_postgres(

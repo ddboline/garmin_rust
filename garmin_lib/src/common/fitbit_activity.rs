@@ -99,6 +99,23 @@ impl FitbitActivity {
         Ok(activity)
     }
 
+    pub async fn get_from_summary_id(
+        pool: &PgPool,
+        summary_id: i32,
+    ) -> Result<Option<Self>, Error> {
+        let query = postgres_query::query!(
+            "SELECT * FROM fitbit_activities WHERE summary_id = $summary_id",
+            summary_id = summary_id,
+        );
+        let conn = pool.get().await?;
+        let activity: Option<FitbitActivity> = conn
+            .query_opt(query.sql(), query.parameters())
+            .await?
+            .map(|row| FitbitActivity::from_row(&row))
+            .transpose()?;
+        Ok(activity)
+    }
+
     pub async fn delete_from_db(&self, pool: &PgPool) -> Result<(), Error> {
         let query = postgres_query::query!(
             "DELETE FROM fitbit_activities WHERE log_id=$id",

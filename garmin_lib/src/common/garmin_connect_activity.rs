@@ -87,6 +87,23 @@ impl GarminConnectActivity {
         Ok(activity)
     }
 
+    pub async fn get_from_summary_id(
+        pool: &PgPool,
+        summary_id: i32,
+    ) -> Result<Option<Self>, Error> {
+        let query = postgres_query::query!(
+            "SELECT * FROM garmin_connect_activities WHERE summary_id = $summary_id",
+            summary_id = summary_id,
+        );
+        let conn = pool.get().await?;
+        let activity: Option<GarminConnectActivity> = conn
+            .query_opt(query.sql(), query.parameters())
+            .await?
+            .map(|row| GarminConnectActivity::from_row(&row))
+            .transpose()?;
+        Ok(activity)
+    }
+
     pub async fn insert_into_db(&self, pool: &PgPool) -> Result<(), Error> {
         let query = postgres_query::query!(
             "

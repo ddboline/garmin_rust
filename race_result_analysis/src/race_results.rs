@@ -120,6 +120,25 @@ impl RaceResults {
         Ok(result)
     }
 
+    pub async fn get_race_by_summary_id(
+        summary_id: i32,
+        pool: &PgPool,
+    ) -> Result<Option<Self>, Error> {
+        let query = postgres_query::query!(
+            "SELECT a.* FROM race_results a
+            JOIN race_results_garmin_summary b ON a.id = b.summary_id
+            WHERE b.summary_id = $summary_id",
+            summary_id = summary_id,
+        );
+        let conn = pool.get().await?;
+        let result = conn
+            .query_opt(query.sql(), query.parameters())
+            .await?
+            .map(|row| Self::from_row(&row))
+            .transpose()?;
+        Ok(result)
+    }
+
     pub async fn get_race_by_distance(
         race_distance: i32,
         race_type: RaceType,

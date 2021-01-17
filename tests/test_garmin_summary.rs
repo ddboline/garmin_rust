@@ -15,6 +15,7 @@ fn test_garmin_file_test_display() {
         total_hr_dur: 1234.0,
         total_hr_dis: 23456.0,
         md5sum: "asjgpqowiqwe".into(),
+        ..garmin_summary::GarminSummary::default()
     };
     assert_eq!(
         format!("{}", garmin_summary),

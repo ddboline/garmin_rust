@@ -255,6 +255,7 @@ impl GarminConnectClient {
         pool: &PgPool,
     ) -> Result<Vec<PathBuf>, Error> {
         let activities = GarminConnectActivity::merge_new_activities(activities, pool).await?;
+        GarminConnectActivity::fix_summary_id_in_db(&pool).await?;
         self.get_activity_files(&activities).await
     }
 }

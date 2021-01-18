@@ -175,6 +175,7 @@ impl GarminCliOpts {
                     "strava_activities" => {
                         let activities: Vec<StravaActivity> = serde_json::from_str(&data)?;
                         StravaActivity::upsert_activities(&activities, &pool).await?;
+                        StravaActivity::fix_summary_id_in_db(&pool).await?;
                         stdout()
                             .write_all(
                                 format!("strava_activities {}\n", activities.len()).as_bytes(),
@@ -184,6 +185,7 @@ impl GarminCliOpts {
                     "fitbit_activities" => {
                         let activities: Vec<FitbitActivity> = serde_json::from_str(&data)?;
                         FitbitActivity::upsert_activities(&activities, &pool).await?;
+                        FitbitActivity::fix_summary_id_in_db(&pool).await?;
                         stdout()
                             .write_all(
                                 format!("fitbit_activities {}\n", activities.len()).as_bytes(),
@@ -210,6 +212,7 @@ impl GarminCliOpts {
                     "garmin_connect_activities" => {
                         let activities: Vec<GarminConnectActivity> = serde_json::from_str(&data)?;
                         GarminConnectActivity::upsert_activities(&activities, &pool).await?;
+                        GarminConnectActivity::fix_summary_id_in_db(&pool).await?;
                         stdout()
                             .write_all(
                                 format!("garmin_connect_activities {}\n", activities.len())
@@ -221,7 +224,11 @@ impl GarminCliOpts {
                         let results: Vec<RaceResults> = serde_json::from_str(&data)?;
                         let futures = results.into_iter().map(|result| {
                             let pool = pool.clone();
-                            async move { result.update_db(&pool).await.map_err(Into::into) }
+                            async move {
+                                result.update_db(&pool).await?;
+                                result.fix_summary_id_in_db(&pool).await?;
+                                Ok(())
+                            }
                         });
                         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
                         stdout()

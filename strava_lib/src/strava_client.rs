@@ -604,6 +604,7 @@ impl StravaClient {
             .await?;
 
         StravaActivity::upsert_activities(&new_activities, &pool).await?;
+        StravaActivity::fix_summary_id_in_db(&pool).await?;
 
         let mut constraints: SmallVec<[String; 2]> = SmallVec::new();
         if let Some(start_datetime) = start_datetime {

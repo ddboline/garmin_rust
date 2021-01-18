@@ -1,5 +1,5 @@
 use anyhow::Error;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Datelike, Utc};
 use futures::future::try_join_all;
 use itertools::Itertools;
 use log::debug;
@@ -145,8 +145,8 @@ pub async fn create_report_query<T: AsRef<str>>(
 #[derive(Debug)]
 pub struct FileSummaryReport {
     datetime: DateTime<Utc>,
-    week: f64,
-    isodow: f64,
+    week: u32,
+    isodow: u32,
     sport: StackString,
     total_calories: i64,
     total_distance: f64,
@@ -335,43 +335,29 @@ impl GarminReportTrait for FileSummaryReport {
 async fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<FileSummaryReport>, Error> {
     #[derive(FromSqlRow, Debug)]
     struct FileSummaryReportRow {
-        datetime: DateTime<Utc>,
-        week: f64,
-        isodow: f64,
+        begin_datetime: DateTime<Utc>,
         sport: StackString,
         total_calories: i64,
         total_distance: f64,
         total_duration: f64,
         total_hr_dur: f64,
         total_hr_dis: f64,
+        summary_id: i32,
     }
 
     let query = format!(
         "
-        WITH a AS (
-            SELECT begin_datetime,
-                   sport,
-                   total_calories,
-                   total_distance,
-                   total_duration,
-                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dur ELSE 0.0 END AS total_hr_dur,
-                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dis ELSE 0.0 END AS total_hr_dis
-            FROM garmin_summary
-            {}
-        )
-        SELECT
-            begin_datetime as datetime,
-            EXTRACT(week from begin_datetime at time zone 'localtime') as week,
-            EXTRACT(isodow from begin_datetime at time zone 'localtime') as isodow,
-            sport,
-            sum(total_calories) as total_calories,
-            sum(total_distance) as total_distance,
-            sum(total_duration) as total_duration,
-            sum(total_hr_dur) as total_hr_dur,
-            sum(total_hr_dis) as total_hr_dis
-        FROM a
-        GROUP BY sport, datetime, week, isodow
-        ORDER BY datetime, sport, week, isodow
+        SELECT begin_datetime,
+                sport,
+                total_calories,
+                total_distance,
+                total_duration,
+                CASE WHEN total_hr_dur > 0.0 THEN total_hr_dur ELSE 0.0 END AS total_hr_dur,
+                CASE WHEN total_hr_dis > 0.0 THEN total_hr_dis ELSE 0.0 END AS total_hr_dis,
+                id as summary_id,
+        FROM garmin_summary
+        {}
+        ORDER BY datetime, sport
     ",
         constr
     );
@@ -384,23 +370,24 @@ async fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<FileSumm
             let item = FileSummaryReportRow::from_row(row)?;
 
             let strava_activity =
-                StravaActivity::get_by_begin_datetime(&pool, item.datetime).await?;
+                StravaActivity::get_from_summary_id(&pool, item.summary_id).await?;
             let strava_title = strava_activity.as_ref().map(|s| s.name.clone());
             let strava_id = strava_activity.as_ref().map(|s| s.id);
 
-            let fitbit_activity = FitbitActivity::get_by_start_time(&pool, item.datetime).await?;
+            let fitbit_activity =
+                FitbitActivity::get_from_summary_id(&pool, item.summary_id).await?;
             let total_fitbit_steps = fitbit_activity.as_ref().and_then(|a| a.steps).unwrap_or(0);
             let fitbit_id = fitbit_activity.as_ref().map(|a| a.log_id);
 
             let connect_activity =
-                GarminConnectActivity::get_by_begin_datetime(&pool, item.datetime).await?;
+                GarminConnectActivity::get_from_summary_id(&pool, item.summary_id).await?;
             let total_connect_steps = connect_activity.as_ref().and_then(|a| a.steps).unwrap_or(0);
             let connect_id = connect_activity.as_ref().map(|a| a.activity_id);
 
             let result = FileSummaryReport {
-                datetime: item.datetime,
-                week: item.week,
-                isodow: item.isodow,
+                datetime: item.begin_datetime,
+                week: item.begin_datetime.iso_week().week(),
+                isodow: item.begin_datetime.weekday().num_days_from_monday(),
                 sport: item.sport,
                 total_calories: item.total_calories,
                 total_distance: item.total_distance,

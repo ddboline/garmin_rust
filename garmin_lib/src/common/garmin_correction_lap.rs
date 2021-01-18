@@ -25,6 +25,7 @@ pub struct GarminCorrectionLap {
     pub sport: Option<SportTypes>,
     pub distance: Option<f64>,
     pub duration: Option<f64>,
+    pub summary_id: Option<i32>,
 }
 
 pub type GarminCorrectionMap = HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>;
@@ -44,6 +45,7 @@ impl GarminCorrectionLap {
             sport: None,
             distance: None,
             duration: None,
+            summary_id: None,
         }
     }
 
@@ -308,6 +310,21 @@ impl GarminCorrectionLap {
             Ok(((corr.start_time, corr.lap_number), corr))
         })
         .collect()
+    }
+
+    pub async fn fix_corrections_in_db(pool: &PgPool) -> Result<(), Error> {
+        let query = "
+            UPDATE garmin_corrections_laps_backup SET summary_id = (
+                SELECT id FROM garmin_summary a WHERE a.begin_datetime = start_time
+            )
+            WHERE summary_id IS NULL
+        ";
+        pool.get()
+            .await?
+            .execute(query, &[])
+            .await
+            .map(|_| ())
+            .map_err(Into::into)
     }
 }
 

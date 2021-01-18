@@ -6,6 +6,7 @@ use garmin_lib::{
 #[test]
 fn test_garmin_file_test_display() {
     let garmin_summary = garmin_summary::GarminSummary {
+        id: -1,
         filename: "test_file".into(),
         begin_datetime: convert_str_to_datetime("2011-05-07T15:43:07-04:00").unwrap(),
         sport: SportTypes::Running,

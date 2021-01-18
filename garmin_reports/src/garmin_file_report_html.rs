@@ -14,6 +14,7 @@ use garmin_lib::{
         garmin_connect_activity::GarminConnectActivity,
         garmin_file::GarminFile,
         garmin_lap::GarminLap,
+        garmin_summary::GarminSummary,
         garmin_templates::{get_buttons, get_scripts, get_style, HBR},
         pgpool::PgPool,
         strava_activity::StravaActivity,
@@ -337,11 +338,27 @@ where
     T: AsRef<str>,
     U: AsRef<str>,
 {
-    let strava_activity = StravaActivity::get_by_begin_datetime(pool, gfile.begin_datetime).await?;
-    let fitbit_activity = FitbitActivity::get_by_start_time(pool, gfile.begin_datetime).await?;
-    let connect_activity =
-        GarminConnectActivity::get_by_begin_datetime(pool, gfile.begin_datetime).await?;
-    let race_result = RaceResults::get_race_by_filename(gfile.filename.as_str(), pool).await?;
+    let summary = GarminSummary::get_by_filename(pool, &gfile.filename).await?;
+    let strava_activity = if let Some(s) = &summary {
+        StravaActivity::get_from_summary_id(pool, s.id).await?
+    } else {
+        None
+    };
+    let fitbit_activity = if let Some(s) = &summary {
+        FitbitActivity::get_from_summary_id(pool, s.id).await?
+    } else {
+        None
+    };
+    let connect_activity = if let Some(s) = &summary {
+        GarminConnectActivity::get_from_summary_id(pool, s.id).await?
+    } else {
+        None
+    };
+    let race_result = if let Some(s) = &summary {
+        RaceResults::get_race_by_summary_id(s.id, pool).await?
+    } else {
+        None
+    };
 
     let htmlvec = if !report_objs.lat_vals.is_empty()
         & !report_objs.lon_vals.is_empty()

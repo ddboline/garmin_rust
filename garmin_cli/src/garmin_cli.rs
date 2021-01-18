@@ -135,14 +135,6 @@ impl GarminCli {
         if summary_list.is_empty() {
             Ok(Vec::new())
         } else {
-            spawn_blocking({
-                let config = self.get_config().clone();
-                let summary_list = summary_list.clone();
-                move || {
-                    GarminSummary::write_summary_to_avro_files(&summary_list, &config.summary_cache)
-                }
-            })
-            .await??;
             let pool = self.get_pool();
             GarminSummary::write_summary_to_postgres(&summary_list, &pool)
                 .await

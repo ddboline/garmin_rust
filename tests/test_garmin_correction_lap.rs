@@ -92,7 +92,8 @@ fn test_corr_map_from_buffer() -> Result<(), Error> {
             lap_number: 0,
             sport: None,
             distance: Some(3.10685596118667),
-            duration: None
+            duration: None,
+            ..GarminCorrectionLap::default()
         }
     );
     assert_eq!(
@@ -103,7 +104,8 @@ fn test_corr_map_from_buffer() -> Result<(), Error> {
             lap_number: 0,
             sport: None,
             distance: Some(0.507143),
-            duration: None
+            duration: None,
+            ..GarminCorrectionLap::default()
         }
     );
     assert_eq!(
@@ -114,7 +116,8 @@ fn test_corr_map_from_buffer() -> Result<(), Error> {
             lap_number: 1,
             sport: None,
             distance: Some(0.190476),
-            duration: None
+            duration: None,
+            ..GarminCorrectionLap::default()
         }
     );
     assert_eq!(
@@ -125,7 +128,8 @@ fn test_corr_map_from_buffer() -> Result<(), Error> {
             lap_number: 0,
             sport: None,
             distance: Some(6.5),
-            duration: Some(4099.0)
+            duration: Some(4099.0),
+            ..GarminCorrectionLap::default()
         }
     );
     Ok(())
@@ -170,7 +174,8 @@ fn test_add_mislabeled_times_to_corr_list() -> Result<(), Error> {
             lap_number: 0,
             sport: Some(SportTypes::Biking),
             distance: Some(10.0),
-            duration: None
+            duration: None,
+            ..GarminCorrectionLap::default()
         }
     );
     assert_eq!(
@@ -183,7 +188,8 @@ fn test_add_mislabeled_times_to_corr_list() -> Result<(), Error> {
             lap_number: 1,
             sport: Some(SportTypes::Biking),
             distance: Some(5.0),
-            duration: None
+            duration: None,
+            ..GarminCorrectionLap::default()
         }
     );
     Ok(())

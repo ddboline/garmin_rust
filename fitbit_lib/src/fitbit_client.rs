@@ -793,6 +793,7 @@ impl FitbitClient {
             }
         });
         let updated: Result<Vec<_>, Error> = try_join_all(futures).await;
+        FitbitActivity::fix_summary_id_in_db(&pool).await?;
         Ok(updated?.into_iter().filter_map(|x| x).collect())
     }
 

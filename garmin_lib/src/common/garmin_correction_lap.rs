@@ -298,7 +298,7 @@ impl GarminCorrectionLap {
         let conn = pool.get().await?;
         conn.query(
             r#"
-                    SELECT id, start_time, lap_number, sport, distance, duration
+                    SELECT id, start_time, lap_number, sport, distance, duration, summary_id
                     FROM garmin_corrections_laps
                 "#,
             &[],

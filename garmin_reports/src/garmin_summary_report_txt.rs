@@ -354,7 +354,7 @@ async fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<FileSumm
                 total_duration,
                 CASE WHEN total_hr_dur > 0.0 THEN total_hr_dur ELSE 0.0 END AS total_hr_dur,
                 CASE WHEN total_hr_dis > 0.0 THEN total_hr_dis ELSE 0.0 END AS total_hr_dis,
-                id as summary_id,
+                id as summary_id
         FROM garmin_summary
         {}
         ORDER BY datetime, sport

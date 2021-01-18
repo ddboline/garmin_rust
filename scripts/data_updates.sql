@@ -1,4 +1,4 @@
-UPDATE garmin_corrections_laps_backup SET summary_id = (
+UPDATE garmin_corrections_laps SET summary_id = (
     SELECT id FROM garmin_summary a WHERE a.begin_datetime = start_time
 );
 

@@ -335,7 +335,7 @@ impl GarminReportTrait for FileSummaryReport {
 async fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<FileSummaryReport>, Error> {
     #[derive(FromSqlRow, Debug)]
     struct FileSummaryReportRow {
-        begin_datetime: DateTime<Utc>,
+        datetime: DateTime<Utc>,
         sport: StackString,
         total_calories: i64,
         total_distance: f64,
@@ -347,7 +347,7 @@ async fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<FileSumm
 
     let query = format!(
         "
-        SELECT begin_datetime,
+        SELECT begin_datetime as datetime,
                 sport,
                 total_calories,
                 total_distance,
@@ -385,9 +385,9 @@ async fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<FileSumm
             let connect_id = connect_activity.as_ref().map(|a| a.activity_id);
 
             let result = FileSummaryReport {
-                datetime: item.begin_datetime,
-                week: item.begin_datetime.iso_week().week(),
-                isodow: item.begin_datetime.weekday().num_days_from_monday(),
+                datetime: item.datetime,
+                week: item.datetime.iso_week().week(),
+                isodow: item.datetime.weekday().num_days_from_monday(),
                 sport: item.sport,
                 total_calories: item.total_calories,
                 total_distance: item.total_distance,

@@ -23,7 +23,7 @@ use garmin_lib::{
     common::{
         fitbit_activity::FitbitActivity,
         garmin_connect_activity::GarminConnectActivity,
-        garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionMap},
+        garmin_correction_lap::GarminCorrectionLap,
         garmin_summary::{get_filename_from_datetime, get_list_of_files_from_db, GarminSummary},
         pgpool::PgPool,
         strava_activity::StravaActivity,
@@ -54,18 +54,6 @@ pub async fn close_connect_proxy() -> Result<(), Error> {
 pub trait HandleRequest<T> {
     type Result;
     async fn handle(&self, req: T) -> Self::Result;
-}
-
-pub struct GarminCorrRequest {}
-
-#[async_trait]
-impl HandleRequest<GarminCorrRequest> for PgPool {
-    type Result = Result<GarminCorrectionMap, Error>;
-    async fn handle(&self, _: GarminCorrRequest) -> Self::Result {
-        GarminCorrectionLap::read_corrections_from_db(self)
-            .await
-            .map_err(Into::into)
-    }
 }
 
 pub struct GarminHtmlRequest {
@@ -670,9 +658,9 @@ pub struct StravaActiviesDBUpdateRequest {
 impl HandleRequest<StravaActiviesDBUpdateRequest> for PgPool {
     type Result = Result<Vec<StackString>, Error>;
     async fn handle(&self, msg: StravaActiviesDBUpdateRequest) -> Self::Result {
-        StravaActivity::upsert_activities(&msg.updates, self)
-            .await
-            .map_err(Into::into)
+        let output = StravaActivity::upsert_activities(&msg.updates, self).await?;
+        StravaActivity::fix_summary_id_in_db(self).await?;
+        Ok(output)
     }
 }
 
@@ -753,6 +741,7 @@ impl HandleRequest<StravaCreateRequest> for PgPool {
             let activity_id = client.create_strava_activity(&strava_activity).await?;
             strava_activity.id = activity_id;
             strava_activity.insert_into_db(self).await?;
+            StravaActivity::fix_summary_id_in_db(self).await?;
             Ok(Some(activity_id))
         } else {
             Ok(None)
@@ -773,7 +762,7 @@ pub struct AddGarminCorrectionRequest {
 impl HandleRequest<AddGarminCorrectionRequest> for PgPool {
     type Result = Result<StackString, Error>;
     async fn handle(&self, msg: AddGarminCorrectionRequest) -> Self::Result {
-        let mut corr_map = self.handle(GarminCorrRequest {}).await?;
+        let mut corr_map = GarminCorrectionLap::read_corrections_from_db(self).await?;
         let filename = get_filename_from_datetime(self, msg.start_time)
             .await?
             .ok_or_else(|| {
@@ -806,6 +795,7 @@ impl HandleRequest<AddGarminCorrectionRequest> for PgPool {
         corr_map.insert(unique_key, new_corr);
 
         GarminCorrectionLap::dump_corrections_to_db(&corr_map, self).await?;
+        GarminCorrectionLap::fix_corrections_in_db(self).await?;
 
         let cache_path = CONFIG.cache_dir.join(&format!("{}.avro", filename));
         let summary_path = CONFIG
@@ -944,9 +934,9 @@ pub struct GarminConnectActivitiesDBUpdateRequest {
 impl HandleRequest<GarminConnectActivitiesDBUpdateRequest> for PgPool {
     type Result = Result<Vec<StackString>, Error>;
     async fn handle(&self, msg: GarminConnectActivitiesDBUpdateRequest) -> Self::Result {
-        GarminConnectActivity::upsert_activities(&msg.updates, self)
-            .await
-            .map_err(Into::into)
+        let output = GarminConnectActivity::upsert_activities(&msg.updates, self).await?;
+        GarminConnectActivity::fix_summary_id_in_db(self).await?;
+        Ok(output)
     }
 }
 
@@ -971,9 +961,9 @@ pub struct FitbitActivitiesDBUpdateRequest {
 impl HandleRequest<FitbitActivitiesDBUpdateRequest> for PgPool {
     type Result = Result<Vec<StackString>, Error>;
     async fn handle(&self, msg: FitbitActivitiesDBUpdateRequest) -> Self::Result {
-        FitbitActivity::upsert_activities(&msg.updates, self)
-            .await
-            .map_err(Into::into)
+        let output = FitbitActivity::upsert_activities(&msg.updates, self).await?;
+        FitbitActivity::fix_summary_id_in_db(self).await?;
+        Ok(output)
     }
 }
 
@@ -1066,6 +1056,8 @@ impl HandleRequest<RaceResultImportRequest> for PgPool {
             }
             result.race_filename = Some(req.filename);
             result.insert_into_db(self).await?;
+            result.set_race_id(self).await?;
+            result.fix_summary_id_in_db(self).await?;
         }
         Ok(())
     }
@@ -1096,7 +1088,7 @@ pub struct RaceResultsDBUpdateRequest {
 impl HandleRequest<RaceResultsDBUpdateRequest> for PgPool {
     type Result = Result<(), Error>;
     async fn handle(&self, req: RaceResultsDBUpdateRequest) -> Self::Result {
-        let futures = req.updates.iter().map(|result| {
+        let futures = req.updates.into_iter().map(|mut result| {
             let pool = self.clone();
             async move { result.upsert_db(&pool).await.map_err(Into::into) }
         });

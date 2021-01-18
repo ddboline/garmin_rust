@@ -80,25 +80,6 @@ impl FitbitActivity {
         Ok(activity)
     }
 
-    pub async fn get_by_start_time(
-        pool: &PgPool,
-        start_time: DateTime<Utc>,
-    ) -> Result<Option<Self>, Error> {
-        let key = start_time.format("%Y-%m-%d %H:%M").to_string();
-        let query = postgres_query::query!(
-            "SELECT * FROM fitbit_activities
-             WHERE to_char(start_time, 'YYYY-MM-DD HH24:MI') = $key LIMIT 1",
-            key = key,
-        );
-        let conn = pool.get().await?;
-        let activity: Option<FitbitActivity> = conn
-            .query_opt(query.sql(), query.parameters())
-            .await?
-            .map(|row| FitbitActivity::from_row(&row))
-            .transpose()?;
-        Ok(activity)
-    }
-
     pub async fn get_from_summary_id(
         pool: &PgPool,
         summary_id: i32,
@@ -220,5 +201,20 @@ impl FitbitActivity {
         output.extend_from_slice(&results?);
 
         Ok(output)
+    }
+
+    pub async fn fix_summary_id_in_db(pool: &PgPool) -> Result<(), Error> {
+        let query = "
+            UPDATE fitbit_activities SET summary_id = (
+                SELECT id
+                FROM garmin_summary a
+                WHERE to_char(a.begin_datetime, 'YYYY-MM-DD HH24:MI')
+                        = to_char(start_time, 'YYYY-MM-DD HH24:MI')
+            )
+            WHERE summary_id IS NULL
+        ";
+        let conn = pool.get().await?;
+        conn.execute(query, &[]).await?;
+        Ok(())
     }
 }

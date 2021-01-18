@@ -311,6 +311,21 @@ impl GarminCorrectionLap {
         })
         .collect()
     }
+
+    pub async fn fix_corrections_in_db(pool: &PgPool) -> Result<(), Error> {
+        let query = "
+            UPDATE garmin_corrections_laps_backup SET summary_id = (
+                SELECT id FROM garmin_summary a WHERE a.begin_datetime = start_time
+            )
+            WHERE summary_id IS NULL
+        ";
+        pool.get()
+            .await?
+            .execute(query, &[])
+            .await
+            .map(|_| ())
+            .map_err(Into::into)
+    }
 }
 
 pub fn apply_lap_corrections<S: BuildHasher + Sync>(

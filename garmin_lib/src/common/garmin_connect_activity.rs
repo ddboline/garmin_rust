@@ -223,6 +223,18 @@ impl GarminConnectActivity {
             });
         try_join_all(futures).await
     }
+
+    pub async fn fix_summary_id_in_db(pool: &PgPool) -> Result<(), Error> {
+        let query = "
+            UPDATE garmin_connect_activities SET summary_id = (
+                SELECT id FROM garmin_summary a WHERE a.begin_datetime = start_time_gmt
+            )
+            WHERE summary_id IS NULL
+        ";
+        let conn = pool.get().await?;
+        conn.execute(query, &[]).await?;
+        Ok(())
+    }
 }
 
 pub async fn import_garmin_connect_activity_json_file(filename: &Path) -> Result<(), Error> {

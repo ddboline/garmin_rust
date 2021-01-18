@@ -85,7 +85,7 @@ impl RaceResults {
         Ok(result)
     }
 
-    pub async fn get_race_by_date(
+    pub async fn get_races_by_date(
         race_date: NaiveDate,
         race_type: RaceType,
         pool: &PgPool,
@@ -101,23 +101,6 @@ impl RaceResults {
             .into_iter()
             .map(|row| Self::from_row(&row).map_err(Into::into))
             .collect()
-    }
-
-    pub async fn get_race_by_filename(
-        race_filename: &str,
-        pool: &PgPool,
-    ) -> Result<Option<Self>, Error> {
-        let query = postgres_query::query!(
-            "SELECT * FROM race_results WHERE race_filename = $race_filename",
-            race_filename = race_filename,
-        );
-        let conn = pool.get().await?;
-        let result = conn
-            .query_opt(query.sql(), query.parameters())
-            .await?
-            .map(|row| Self::from_row(&row))
-            .transpose()?;
-        Ok(result)
     }
 
     pub async fn get_race_by_summary_id(
@@ -158,14 +141,61 @@ impl RaceResults {
             .collect()
     }
 
+    pub async fn get_race_id(&self, pool: &PgPool) -> Result<Option<i32>, Error> {
+        let conn = pool.get().await?;
+        let query = match self.race_type {
+            RaceType::WorldRecordMen | RaceType::WorldRecordWomen => {
+                postgres_query::query!(
+                    "
+                        SELECT id
+                        FROM race_results
+                        WHERE race_type = $race_type AND race_distance = $race_distance
+                    ",
+                    race_type = self.race_type,
+                    race_distance = self.race_distance,
+                )
+            }
+            RaceType::Personal => {
+                postgres_query::query!(
+                    "
+                        SELECT id
+                        FROM race_results
+                        WHERE race_type = $race_type
+                          AND race_name = $race_name
+                          AND race_date = $race_date
+                    ",
+                    race_type = self.race_type,
+                    race_name = self.race_name,
+                    race_date = self.race_date,
+                )
+            }
+        };
+        let result = conn.query_opt(query.sql(), query.parameters()).await?;
+        result
+            .map(|row| row.try_get(0))
+            .transpose()
+            .map_err(Into::into)
+    }
+
+    pub async fn set_race_id(&mut self, pool: &PgPool) -> Result<(), Error> {
+        if let Some(id) = self.get_race_id(pool).await? {
+            self.id = id;
+        }
+        Ok(())
+    }
+
     pub async fn insert_into_db(&self, pool: &PgPool) -> Result<(), Error> {
         let query = postgres_query::query!(
             "
-            INSERT INTO race_results (race_type, race_date, race_name, race_distance, race_time,
-                race_flag,race_filename)
-            VALUES \
-             ($race_type,$race_date,$race_name,$race_distance,$race_time,$race_flag,\
-             $race_filename)",
+                INSERT INTO race_results (
+                    race_type, race_date, race_name, race_distance, race_time, race_flag,
+                    race_filename
+                )
+                VALUES (
+                    $race_type, $race_date, $race_name, $race_distance, $race_time, $race_flag,
+                    $race_filename
+                )
+             ",
             race_type = self.race_type,
             race_date = self.race_date,
             race_name = self.race_name,
@@ -175,10 +205,8 @@ impl RaceResults {
             race_filename = self.race_filename,
         );
         let conn = pool.get().await?;
-        conn.execute(query.sql(), query.parameters())
-            .await
-            .map(|_| ())
-            .map_err(Into::into)
+        conn.execute(query.sql(), query.parameters()).await?;
+        Ok(())
     }
 
     pub async fn update_db(&self, pool: &PgPool) -> Result<(), Error> {
@@ -204,11 +232,13 @@ impl RaceResults {
             .map_err(Into::into)
     }
 
-    pub async fn upsert_db(&self, pool: &PgPool) -> Result<(), Error> {
+    pub async fn upsert_db(&mut self, pool: &PgPool) -> Result<(), Error> {
         if Self::get_result_by_id(self.id, pool).await?.is_some() {
             self.update_db(pool).await?;
         } else {
             self.insert_into_db(pool).await?;
+            self.set_race_id(pool).await?;
+            self.fix_summary_id_in_db(pool).await?;
         }
         Ok(())
     }
@@ -220,6 +250,44 @@ impl RaceResults {
             .await
             .map(|_| ())
             .map_err(Into::into)
+    }
+
+    pub async fn fix_summary_id_in_db(&self, pool: &PgPool) -> Result<(), Error> {
+        if self.race_filename.is_some() {
+            let query = postgres_query::query!(
+                "
+                    INSERT INTO race_results_garmin_summary (race_id, summary_id)
+                    SELECT a.id, b.id
+                    FROM race_results a
+                    JOIN garmin_summary b ON b.filename = a.race_filename
+                    LEFT JOIN race_results_garmin_summary c
+                        ON c.race_id = a.race_id AND c.summary_id = b.id
+                    WHERE a.id = $race_id AND c.summary_id IS NULL
+                ",
+                race_id = self.id,
+            );
+            let conn = pool.get().await?;
+            conn.execute(query.sql(), query.parameters()).await?;
+        }
+        Ok(())
+    }
+
+    pub async fn add_summary_id_to_race(
+        &self,
+        summary_id: i32,
+        pool: &PgPool,
+    ) -> Result<(), Error> {
+        let query = postgres_query::query!(
+            "
+                INSERT INTO race_results_garmin_summary (race_id, summary_id)
+                VALUES ($race_id, $summary_id)
+            ",
+            race_id = self.id,
+            summary_id = summary_id,
+        );
+        let conn = pool.get().await?;
+        conn.execute(query.sql(), query.parameters()).await?;
+        Ok(())
     }
 
     pub fn parse_from_race_results_text_file(input: &str) -> Result<Vec<Self>, Error> {
@@ -382,7 +450,7 @@ mod tests {
         let result = get_test_race_result();
         result.insert_into_db(&pool).await?;
 
-        let db_result = RaceResults::get_race_by_date(
+        let db_result = RaceResults::get_races_by_date(
             NaiveDate::from_ymd(2020, 1, 27),
             RaceType::Personal,
             &pool,
@@ -393,7 +461,7 @@ mod tests {
         for r in db_result {
             r.delete_from_db(&pool).await?;
         }
-        let db_result = RaceResults::get_race_by_date(
+        let db_result = RaceResults::get_races_by_date(
             NaiveDate::from_ymd(2020, 1, 27),
             RaceType::Personal,
             &pool,

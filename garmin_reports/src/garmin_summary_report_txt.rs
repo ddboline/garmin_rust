@@ -337,7 +337,7 @@ async fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<FileSumm
     struct FileSummaryReportRow {
         datetime: DateTime<Utc>,
         sport: StackString,
-        total_calories: i64,
+        total_calories: i32,
         total_distance: f64,
         total_duration: f64,
         total_hr_dur: f64,
@@ -389,7 +389,7 @@ async fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<FileSumm
                 week: item.datetime.iso_week().week(),
                 isodow: item.datetime.weekday().num_days_from_monday(),
                 sport: item.sport,
-                total_calories: item.total_calories,
+                total_calories: item.total_calories as i64,
                 total_distance: item.total_distance,
                 total_duration: item.total_duration,
                 total_hr_dur: item.total_hr_dur,

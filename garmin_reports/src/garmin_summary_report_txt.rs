@@ -387,7 +387,7 @@ async fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<FileSumm
             let result = FileSummaryReport {
                 datetime: item.datetime,
                 week: item.datetime.iso_week().week(),
-                isodow: item.datetime.weekday().num_days_from_monday(),
+                isodow: item.datetime.weekday().num_days_from_monday() + 1,
                 sport: item.sport,
                 total_calories: item.total_calories as i64,
                 total_distance: item.total_distance,

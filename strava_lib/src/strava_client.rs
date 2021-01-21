@@ -4,7 +4,6 @@ use chrono::{DateTime, Local, Utc};
 use crossbeam_utils::atomic::AtomicCell;
 use futures::future::try_join_all;
 use lazy_static::lazy_static;
-use log::debug;
 use maplit::hashmap;
 use rand::{thread_rng, Rng};
 use reqwest::{

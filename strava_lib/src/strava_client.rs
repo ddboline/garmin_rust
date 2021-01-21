@@ -25,6 +25,7 @@ use tokio::{
     fs::{create_dir_all, File},
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     task::spawn_blocking,
+    time::sleep,
 };
 use tokio_stream::StreamExt;
 
@@ -525,14 +526,32 @@ impl StravaClient {
             .client
             .post(url)
             .multipart(form)
-            .headers(headers)
+            .headers(headers.clone())
             .send()
             .await?
             .error_for_status()?
             .json()
             .await?;
 
-        debug!("{:?}", result);
+        println!("{:?}", result);
+        let starting_status = result.status.clone();
+        for _ in 0..10 {
+            let url = format!("{}/{}", url, result.id);
+            let result: UploadResponse = self
+                .client
+                .get(&url)
+                .headers(headers.clone())
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+                .await?;
+            println!("{:?}", result);
+            if result.status != starting_status {
+                break;
+            }
+            sleep(std::time::Duration::from_secs(10)).await;
+        }
 
         let url = format!("https://{}/garmin/strava_sync", self.config.domain).into();
         Ok(url)

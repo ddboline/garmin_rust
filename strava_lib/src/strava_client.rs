@@ -533,10 +533,8 @@ impl StravaClient {
             .json()
             .await?;
 
-        println!("{:?}", result);
-        let starting_status = result.status.clone();
+        let url = format!("{}/{}", url, result.id);
         for _ in 0..10 {
-            let url = format!("{}/{}", url, result.id);
             let result: UploadResponse = self
                 .client
                 .get(&url)
@@ -546,11 +544,10 @@ impl StravaClient {
                 .error_for_status()?
                 .json()
                 .await?;
-            println!("{:?}", result);
-            if result.status != starting_status {
+            if result.activity_id.is_some() {
                 break;
             }
-            sleep(std::time::Duration::from_secs(10)).await;
+            sleep(std::time::Duration::from_secs(2)).await;
         }
 
         let url = format!("https://{}/garmin/strava_sync", self.config.domain).into();

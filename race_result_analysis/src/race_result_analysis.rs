@@ -9,7 +9,7 @@ use stack_string::StackString;
 use std::collections::HashMap;
 
 use garmin_lib::{
-    common::{garmin_templates::HBR, pgpool::PgPool},
+    common::{garmin_summary::GarminSummary, garmin_templates::HBR, pgpool::PgPool},
     utils::garmin_util::{print_h_m_s, MARATHON_DISTANCE_M, METERS_PER_MILE},
 };
 
@@ -17,6 +17,7 @@ use crate::{race_results::RaceResults, race_type::RaceType};
 
 pub struct RaceResultAnalysis {
     data: Vec<RaceResults>,
+    summary_map: HashMap<i32, GarminSummary>,
     parameters: Array1<f64>,
     errors: Array1<f64>,
     race_type: RaceType,
@@ -44,6 +45,7 @@ pub enum ParamType {
 impl RaceResultAnalysis {
     pub async fn run_analysis(race_type: RaceType, pool: &PgPool) -> Result<Self, Error> {
         let data = RaceResults::get_results_by_type(race_type, pool).await?;
+        let summary_map = RaceResults::get_summary_map(pool).await?;
         let agg_results =
             RaceResultAggregated::get_aggregated_race_results(race_type, pool).await?;
 
@@ -77,6 +79,7 @@ impl RaceResultAnalysis {
         minimizer.minimize();
         Ok(Self {
             data,
+            summary_map,
             parameters: minimizer.minimizer_parameters,
             errors: minimizer.parameter_errors,
             race_type,
@@ -192,10 +195,18 @@ impl RaceResultAnalysis {
             let pace = print_h_m_s(result.race_time / distance, false).unwrap_or_else(|_| "".into());
             let date = if let Some(date) = result.race_date {
                 if is_demo {"".into()} else {
-                    format!(
-                        r#"<button type="submit"
-                          onclick="send_command('filter={date},file');"> {date},file </button>
-                        "#, date=date)
+                    let filter = result.race_summary_ids.iter().filter_map(|id| {
+                        self.summary_map.get(id).map(|s| &s.filename)
+                    }).join(",");
+
+                    if filter.is_empty() {
+                        "".into()
+                    } else {
+                        format!(
+                            r#"<button type="submit"
+                              onclick="send_command('filter={filter},file');"> {date},file </button>
+                            "#, date=date, filter=filter)
+                    }
                 }
             } else {"".into()};
             let flag = if is_demo {

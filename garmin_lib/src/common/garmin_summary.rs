@@ -182,6 +182,32 @@ impl GarminSummary {
         Ok(result)
     }
 
+    pub async fn get_by_id(pool: &PgPool, id: i32) -> Result<Option<Self>, Error> {
+        let query = postgres_query::query!(
+            "
+            SELECT id,
+                   filename,
+                   begin_datetime,
+                   sport,
+                   total_calories,
+                   total_distance,
+                   total_duration,
+                   total_hr_dur,
+                   total_hr_dis,
+                   md5sum
+            FROM garmin_summary WHERE id = $id",
+            id = id,
+        );
+        let result = pool
+            .get()
+            .await?
+            .query_opt(query.sql(), query.parameters())
+            .await?
+            .map(|row| Self::from_row(&row))
+            .transpose()?;
+        Ok(result)
+    }
+
     pub async fn write_summary_to_postgres(
         summary_list: &[Self],
         pool: &PgPool,

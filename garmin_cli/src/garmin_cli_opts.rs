@@ -226,7 +226,6 @@ impl GarminCliOpts {
                             let pool = pool.clone();
                             async move {
                                 result.update_db(&pool).await?;
-                                result.fix_summary_id_in_db(&pool).await?;
                                 Ok(())
                             }
                         });

@@ -74,7 +74,7 @@ impl RaceResults {
             "SELECT a.id, a.race_type, a.race_date, a.race_name, a.race_distance, a.race_time,
                     a.race_flag, array_agg(b.summary_id) as race_summary_ids
             FROM race_results a
-            JOIN race_results_garmin_summary b ON a.id = b.race_id
+            LEFT JOIN race_results_garmin_summary b ON a.id = b.race_id
             WHERE a.race_type = $race_type
             GROUP BY 1,2,3,4,5,6,7
             ORDER BY a.race_date, a.race_distance",
@@ -93,7 +93,7 @@ impl RaceResults {
             "SELECT a.id, a.race_type, a.race_date, a.race_name, a.race_distance, a.race_time,
                     a.race_flag, array_agg(b.summary_id) as race_summary_ids
             FROM race_results a
-            JOIN race_results_garmin_summary b ON a.id = b.race_id
+            LEFT JOIN race_results_garmin_summary b ON a.id = b.race_id
             WHERE a.id = $id
             GROUP BY 1,2,3,4,5,6,7",
             id = id
@@ -116,7 +116,7 @@ impl RaceResults {
             "SELECT a.id, a.race_type, a.race_date, a.race_name, a.race_distance, a.race_time,
                     a.race_flag, array_agg(b.summary_id) as race_summary_ids
             FROM race_results a
-            JOIN race_results_garmin_summary b ON a.id = b.race_id
+            LEFT JOIN race_results_garmin_summary b ON a.id = b.race_id
             WHERE a.race_date = $race_date and a.race_type = $race_type
             GROUP BY 1,2,3,4,5,6,7",
             race_date = race_date,
@@ -165,7 +165,7 @@ impl RaceResults {
             "SELECT a.id, a.race_type, a.race_date, a.race_name, a.race_distance, a.race_time,
                     a.race_flag, array_agg(b.summary_id) as race_summary_ids
             FROM race_results a
-            JOIN race_results_garmin_summary b ON a.id = b.race_id
+            LEFT JOIN race_results_garmin_summary b ON a.id = b.race_id
             WHERE race_distance = $race_distance and race_type = $race_type
             GROUP BY 1,2,3,4,5,6,7",
             race_distance = race_distance,

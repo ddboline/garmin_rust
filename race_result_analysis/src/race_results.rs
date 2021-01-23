@@ -141,9 +141,9 @@ impl RaceResults {
             JOIN race_results_garmin_summary b ON a.id = b.race_id
             GROUP BY 1,2,3,4,5,6,7
             WHERE a.id = (
-                SELECT race_id
-                FROM race_results_garmin_summary
-                WHERE summary_id = $summary_id
+                SELECT b.race_id
+                FROM race_results_garmin_summary b
+                WHERE b.summary_id = $summary_id
             )",
             summary_id = summary_id,
         );

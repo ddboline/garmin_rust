@@ -204,7 +204,7 @@ impl RaceResultAnalysis {
                     } else {
                         format!(
                             r#"<button type="submit"
-                              onclick="send_command('filter={filter},file');"> {date},file </button>
+                              onclick="send_command('filter={filter},file');"> {date} </button>
                             "#, date=date, filter=filter)
                     }
                 }

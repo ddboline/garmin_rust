@@ -195,9 +195,13 @@ impl RaceResultAnalysis {
             let pace = print_h_m_s(result.race_time / distance, false).unwrap_or_else(|_| "".into());
             let date = if let Some(date) = result.race_date {
                 if is_demo {"".into()} else {
-                    let filter = result.race_summary_ids.iter().filter_map(|id| {
-                        self.summary_map.get(id).map(|s| &s.filename)
-                    }).join(",");
+                    let filter = if let Some(race_summary_ids) = &result.race_summary_ids {
+                        race_summary_ids.iter().filter_map(|id| {
+                            self.summary_map.get(id).map(|s| &s.filename)
+                        }).join(",")
+                    } else {
+                        "".into()
+                    };
 
                     if filter.is_empty() {
                         "".into()

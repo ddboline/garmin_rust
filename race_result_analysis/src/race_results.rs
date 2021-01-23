@@ -26,7 +26,7 @@ pub struct RaceResults {
     pub race_distance: i32, // distance in meters
     pub race_time: f64,
     pub race_flag: bool,
-    pub race_summary_ids: Vec<i32>,
+    pub race_summary_ids: Option<Vec<i32>>,
 }
 
 impl Display for RaceResults {
@@ -50,16 +50,17 @@ impl Display for RaceResults {
             self.race_distance,
             print_h_m_s(self.race_time, true).unwrap_or_else(|_| "".into()),
             self.race_flag,
-            if self.race_summary_ids.is_empty() {
-                "".to_string()
-            } else {
-                format!(
-                    "summary_ids: {}",
-                    self.race_summary_ids
-                        .iter()
-                        .map(ToString::to_string)
-                        .join(",")
-                )
+            {
+                let summary_ids = if let Some(race_summary_ids) = &self.race_summary_ids {
+                    race_summary_ids.iter().map(ToString::to_string).join(",")
+                } else {
+                    "".into()
+                };
+                if summary_ids.is_empty() {
+                    "".into()
+                } else {
+                    format!("summary_ids: {}", summary_ids)
+                }
             }
         )
     }
@@ -293,17 +294,19 @@ impl RaceResults {
     }
 
     pub async fn update_race_summary_ids(&self, pool: &PgPool) -> Result<(), Error> {
-        let conn = pool.get().await?;
-        for summary_id in &self.race_summary_ids {
-            let query = postgres_query::query!(
-                "
-                    INSERT INTO race_results_garmin_summary (race_id, summary_id)
-                    VALUES ($race_id, $summary_id)
-                ",
-                race_id = self.id,
-                summary_id = summary_id,
-            );
-            conn.execute(query.sql(), query.parameters()).await?;
+        if let Some(race_summary_ids) = &self.race_summary_ids {
+            let conn = pool.get().await?;
+            for summary_id in race_summary_ids {
+                let query = postgres_query::query!(
+                    "
+                        INSERT INTO race_results_garmin_summary (race_id, summary_id)
+                        VALUES ($race_id, $summary_id)
+                    ",
+                    race_id = self.id,
+                    summary_id = summary_id,
+                );
+                conn.execute(query.sql(), query.parameters()).await?;
+            }
         }
         Ok(())
     }
@@ -348,7 +351,7 @@ impl RaceResults {
                     race_distance,
                     race_time,
                     race_flag: false,
-                    race_summary_ids: Vec::new(),
+                    race_summary_ids: None,
                 })
             })
             .collect();
@@ -380,7 +383,7 @@ impl RaceResults {
                     race_distance,
                     race_time,
                     race_flag: false,
-                    race_summary_ids: Vec::new(),
+                    race_summary_ids: None,
                 })
             })
             .collect();
@@ -418,7 +421,7 @@ impl From<GarminSummary> for RaceResults {
             race_distance: item.total_distance as i32,
             race_time: item.total_duration,
             race_flag: false,
-            race_summary_ids: vec![item.id],
+            race_summary_ids: Some(vec![item.id]),
         }
     }
 }
@@ -455,7 +458,7 @@ mod tests {
             race_distance: 5000,
             race_time: 1563.0,
             race_flag: false,
-            race_summary_ids: Vec::new(),
+            race_summary_ids: None,
         }
     }
 
@@ -580,8 +583,10 @@ mod tests {
         assert!(personal_results.len() >= TEST_RACE_ENTRIES);
 
         for mut result in personal_results {
-            if !result.race_summary_ids.is_empty() {
-                continue;
+            if let Some(race_summary_ids) = &result.race_summary_ids {
+                if !race_summary_ids.is_empty() {
+                    continue;
+                }
             }
             if let Some(race_date) = result.race_date {
                 let constraint = format!(
@@ -599,7 +604,11 @@ mod tests {
                     {
                         if (summary.total_distance as i32 - result.race_distance).abs() < 4000 {
                             println!("set filename: {}", filename);
-                            result.race_summary_ids.push(summary.id);
+                            if let Some(race_summary_ids) = result.race_summary_ids.as_mut() {
+                                race_summary_ids.push(summary.id)
+                            } else {
+                                result.race_summary_ids.replace(vec![summary.id]);
+                            }
                             result.upsert_db(&pool).await?;
                         } else {
                             println!(

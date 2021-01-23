@@ -94,6 +94,7 @@ impl RaceResults {
                     a.race_flag, array_agg(b.summary_id) as race_summary_ids
             FROM race_results a
             JOIN race_results_garmin_summary b ON a.id = b.race_id
+            GROUP BY 1,2,3,4,5,6,7
             WHERE a.id = $id",
             id = id
         );
@@ -116,6 +117,7 @@ impl RaceResults {
                     a.race_flag, array_agg(b.summary_id) as race_summary_ids
             FROM race_results a
             JOIN race_results_garmin_summary b ON a.id = b.race_id
+            GROUP BY 1,2,3,4,5,6,7
             WHERE a.race_date = $race_date and a.race_type = $race_type",
             race_date = race_date,
             race_type = race_type,
@@ -137,6 +139,7 @@ impl RaceResults {
                     a.race_flag, array_agg(b.summary_id) as race_summary_ids
             FROM race_results a
             JOIN race_results_garmin_summary b ON a.id = b.race_id
+            GROUP BY 1,2,3,4,5,6,7
             WHERE a.id = (
                 SELECT race_id
                 FROM race_results_garmin_summary
@@ -163,6 +166,7 @@ impl RaceResults {
                     a.race_flag, array_agg(b.summary_id) as race_summary_ids
             FROM race_results a
             JOIN race_results_garmin_summary b ON a.id = b.race_id
+            GROUP BY 1,2,3,4,5,6,7
             WHERE race_distance = $race_distance and race_type = $race_type",
             race_distance = race_distance,
             race_type = race_type,

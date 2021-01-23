@@ -475,6 +475,7 @@ mod tests {
         let config = GarminConfig::get_config(None)?;
         let pool = PgPool::new(&config.pgurl);
         let result = get_test_race_result();
+        println!("{:?}", result);
         result.insert_into_db(&pool).await?;
 
         let db_result = RaceResults::get_races_by_date(

@@ -94,8 +94,8 @@ impl RaceResults {
                     a.race_flag, array_agg(b.summary_id) as race_summary_ids
             FROM race_results a
             JOIN race_results_garmin_summary b ON a.id = b.race_id
-            GROUP BY 1,2,3,4,5,6,7
-            WHERE a.id = $id",
+            WHERE a.id = $id
+            GROUP BY 1,2,3,4,5,6,7",
             id = id
         );
         let conn = pool.get().await?;
@@ -117,8 +117,8 @@ impl RaceResults {
                     a.race_flag, array_agg(b.summary_id) as race_summary_ids
             FROM race_results a
             JOIN race_results_garmin_summary b ON a.id = b.race_id
-            GROUP BY 1,2,3,4,5,6,7
-            WHERE a.race_date = $race_date and a.race_type = $race_type",
+            WHERE a.race_date = $race_date and a.race_type = $race_type
+            GROUP BY 1,2,3,4,5,6,7",
             race_date = race_date,
             race_type = race_type,
         );
@@ -139,12 +139,12 @@ impl RaceResults {
                     a.race_flag, array_agg(b.summary_id) as race_summary_ids
             FROM race_results a
             JOIN race_results_garmin_summary b ON a.id = b.race_id
-            GROUP BY 1,2,3,4,5,6,7
             WHERE a.id = (
                 SELECT b.race_id
                 FROM race_results_garmin_summary b
                 WHERE b.summary_id = $summary_id
-            )",
+            )
+            GROUP BY 1,2,3,4,5,6,7",
             summary_id = summary_id,
         );
         let conn = pool.get().await?;

@@ -168,7 +168,7 @@ impl RaceResults {
                     a.race_flag, array_agg(b.summary_id) as race_summary_ids
             FROM race_results a
             LEFT JOIN race_results_garmin_summary b ON a.id = b.race_id
-            WHERE race_distance = $race_distance and race_type = $race_type
+            WHERE a.race_distance = $race_distance and a.race_type = $race_type
             GROUP BY 1,2,3,4,5,6,7",
             race_distance = race_distance,
             race_type = race_type,

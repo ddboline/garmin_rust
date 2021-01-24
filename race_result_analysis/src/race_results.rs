@@ -26,7 +26,7 @@ pub struct RaceResults {
     pub race_distance: i32, // distance in meters
     pub race_time: f64,
     pub race_flag: bool,
-    pub race_summary_ids: Option<Vec<i32>>,
+    pub race_summary_ids: Vec<Option<i32>>,
 }
 
 impl Display for RaceResults {
@@ -51,11 +51,12 @@ impl Display for RaceResults {
             print_h_m_s(self.race_time, true).unwrap_or_else(|_| "".into()),
             self.race_flag,
             {
-                let summary_ids = if let Some(race_summary_ids) = &self.race_summary_ids {
-                    race_summary_ids.iter().map(ToString::to_string).join(",")
-                } else {
-                    "".into()
-                };
+                let summary_ids = self
+                    .race_summary_ids
+                    .iter()
+                    .filter_map(|id| id.map(|i| i.to_string()))
+                    .join(",");
+
                 if summary_ids.is_empty() {
                     "".into()
                 } else {
@@ -294,9 +295,15 @@ impl RaceResults {
     }
 
     pub async fn update_race_summary_ids(&self, pool: &PgPool) -> Result<(), Error> {
-        if let Some(race_summary_ids) = &self.race_summary_ids {
+        let summary_ids: SmallVec<[&i32; 2]> = self
+            .race_summary_ids
+            .iter()
+            .filter_map(|id| id.as_ref())
+            .collect();
+
+        if !summary_ids.is_empty() {
             let conn = pool.get().await?;
-            for summary_id in race_summary_ids {
+            for summary_id in summary_ids {
                 let query = postgres_query::query!(
                     "
                         INSERT INTO race_results_garmin_summary (race_id, summary_id)
@@ -351,7 +358,7 @@ impl RaceResults {
                     race_distance,
                     race_time,
                     race_flag: false,
-                    race_summary_ids: None,
+                    race_summary_ids: Vec::new(),
                 })
             })
             .collect();
@@ -383,7 +390,7 @@ impl RaceResults {
                     race_distance,
                     race_time,
                     race_flag: false,
-                    race_summary_ids: None,
+                    race_summary_ids: Vec::new(),
                 })
             })
             .collect();
@@ -421,7 +428,7 @@ impl From<GarminSummary> for RaceResults {
             race_distance: item.total_distance as i32,
             race_time: item.total_duration,
             race_flag: false,
-            race_summary_ids: Some(vec![item.id]),
+            race_summary_ids: vec![Some(item.id)],
         }
     }
 }
@@ -458,7 +465,7 @@ mod tests {
             race_distance: 5000,
             race_time: 1563.0,
             race_flag: false,
-            race_summary_ids: None,
+            race_summary_ids: Vec::new(),
         }
     }
 
@@ -583,10 +590,8 @@ mod tests {
         assert!(personal_results.len() >= TEST_RACE_ENTRIES);
 
         for mut result in personal_results {
-            if let Some(race_summary_ids) = &result.race_summary_ids {
-                if !race_summary_ids.is_empty() {
-                    continue;
-                }
+            if result.race_summary_ids.iter().filter_map(|i| i).count() > 0 {
+                continue;
             }
             if let Some(race_date) = result.race_date {
                 let constraint = format!(
@@ -604,11 +609,7 @@ mod tests {
                     {
                         if (summary.total_distance as i32 - result.race_distance).abs() < 4000 {
                             println!("set filename: {}", filename);
-                            if let Some(race_summary_ids) = result.race_summary_ids.as_mut() {
-                                race_summary_ids.push(summary.id)
-                            } else {
-                                result.race_summary_ids.replace(vec![summary.id]);
-                            }
+                            result.race_summary_ids.push(Some(summary.id));
                             result.upsert_db(&pool).await?;
                         } else {
                             println!(

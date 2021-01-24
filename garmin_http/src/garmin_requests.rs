@@ -1054,10 +1054,9 @@ impl HandleRequest<RaceResultImportRequest> for PgPool {
             {
                 result.race_name = Some(activity.name);
             }
-            result.race_filename = Some(req.filename);
             result.insert_into_db(self).await?;
             result.set_race_id(self).await?;
-            result.fix_summary_id_in_db(self).await?;
+            result.update_race_summary_ids(self).await?;
         }
         Ok(())
     }

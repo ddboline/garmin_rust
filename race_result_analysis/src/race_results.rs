@@ -1,10 +1,14 @@
 use anyhow::Error;
 use chrono::NaiveDate;
+use itertools::Itertools;
 use postgres_query::FromSqlRow;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use stack_string::StackString;
-use std::fmt::{self, Display, Formatter};
+use std::{
+    collections::HashMap,
+    fmt::{self, Display, Formatter},
+};
 
 use garmin_lib::{
     common::{garmin_summary::GarminSummary, pgpool::PgPool},
@@ -22,7 +26,7 @@ pub struct RaceResults {
     pub race_distance: i32, // distance in meters
     pub race_time: f64,
     pub race_flag: bool,
-    pub race_filename: Option<StackString>,
+    pub race_summary_ids: Vec<Option<i32>>,
 }
 
 impl Display for RaceResults {
@@ -46,10 +50,18 @@ impl Display for RaceResults {
             self.race_distance,
             print_h_m_s(self.race_time, true).unwrap_or_else(|_| "".into()),
             self.race_flag,
-            if let Some(filename) = &self.race_filename {
-                format!("\nrace_filename: {}", filename)
-            } else {
-                "".to_string()
+            {
+                let summary_ids = self
+                    .race_summary_ids
+                    .iter()
+                    .filter_map(|id| id.map(|i| i.to_string()))
+                    .join(",");
+
+                if summary_ids.is_empty() {
+                    "".into()
+                } else {
+                    format!("summary_ids: {}", summary_ids)
+                }
             }
         )
     }
@@ -61,9 +73,13 @@ impl RaceResults {
         pool: &PgPool,
     ) -> Result<Vec<Self>, Error> {
         let query = postgres_query::query!(
-            "SELECT * FROM race_results
-            WHERE race_type = $race_type
-            ORDER BY race_distance",
+            "SELECT a.id, a.race_type, a.race_date, a.race_name, a.race_distance, a.race_time,
+                    a.race_flag, array_agg(b.summary_id) as race_summary_ids
+            FROM race_results a
+            LEFT JOIN race_results_garmin_summary b ON a.id = b.race_id
+            WHERE a.race_type = $race_type
+            GROUP BY 1,2,3,4,5,6,7
+            ORDER BY a.race_date, a.race_distance",
             race_type = race_type
         );
         let conn = pool.get().await?;
@@ -75,7 +91,15 @@ impl RaceResults {
     }
 
     pub async fn get_result_by_id(id: i32, pool: &PgPool) -> Result<Option<Self>, Error> {
-        let query = postgres_query::query!("SELECT * FROM race_results WHERE id = $id", id = id);
+        let query = postgres_query::query!(
+            "SELECT a.id, a.race_type, a.race_date, a.race_name, a.race_distance, a.race_time,
+                    a.race_flag, array_agg(b.summary_id) as race_summary_ids
+            FROM race_results a
+            LEFT JOIN race_results_garmin_summary b ON a.id = b.race_id
+            WHERE a.id = $id
+            GROUP BY 1,2,3,4,5,6,7",
+            id = id
+        );
         let conn = pool.get().await?;
         let result = conn
             .query_opt(query.sql(), query.parameters())
@@ -91,7 +115,12 @@ impl RaceResults {
         pool: &PgPool,
     ) -> Result<Vec<Self>, Error> {
         let query = postgres_query::query!(
-            "SELECT * FROM race_results WHERE race_date = $race_date and race_type = $race_type",
+            "SELECT a.id, a.race_type, a.race_date, a.race_name, a.race_distance, a.race_time,
+                    a.race_flag, array_agg(b.summary_id) as race_summary_ids
+            FROM race_results a
+            LEFT JOIN race_results_garmin_summary b ON a.id = b.race_id
+            WHERE a.race_date = $race_date and a.race_type = $race_type
+            GROUP BY 1,2,3,4,5,6,7",
             race_date = race_date,
             race_type = race_type,
         );
@@ -108,9 +137,16 @@ impl RaceResults {
         pool: &PgPool,
     ) -> Result<Option<Self>, Error> {
         let query = postgres_query::query!(
-            "SELECT a.* FROM race_results a
-            JOIN race_results_garmin_summary b ON a.id = b.summary_id
-            WHERE b.summary_id = $summary_id",
+            "SELECT a.id, a.race_type, a.race_date, a.race_name, a.race_distance, a.race_time,
+                    a.race_flag, array_agg(b.summary_id) as race_summary_ids
+            FROM race_results a
+            JOIN race_results_garmin_summary b ON a.id = b.race_id
+            WHERE a.id = (
+                SELECT b.race_id
+                FROM race_results_garmin_summary b
+                WHERE b.summary_id = $summary_id
+            )
+            GROUP BY 1,2,3,4,5,6,7",
             summary_id = summary_id,
         );
         let conn = pool.get().await?;
@@ -128,8 +164,12 @@ impl RaceResults {
         pool: &PgPool,
     ) -> Result<Vec<Self>, Error> {
         let query = postgres_query::query!(
-            "SELECT * FROM race_results WHERE race_distance = $race_distance and race_type = \
-             $race_type",
+            "SELECT a.id, a.race_type, a.race_date, a.race_name, a.race_distance, a.race_time,
+                    a.race_flag, array_agg(b.summary_id) as race_summary_ids
+            FROM race_results a
+            LEFT JOIN race_results_garmin_summary b ON a.id = b.race_id
+            WHERE a.race_distance = $race_distance and a.race_type = $race_type
+            GROUP BY 1,2,3,4,5,6,7",
             race_distance = race_distance,
             race_type = race_type,
         );
@@ -138,6 +178,24 @@ impl RaceResults {
             .await?
             .into_iter()
             .map(|row| Self::from_row(&row).map_err(Into::into))
+            .collect()
+    }
+
+    pub async fn get_summary_map(pool: &PgPool) -> Result<HashMap<i32, GarminSummary>, Error> {
+        let query = "
+            SELECT a.*
+            FROM garmin_summary a
+            JOIN race_results_garmin_summary b ON a.id = b.summary_id
+        ";
+        let conn = pool.get().await?;
+        conn.query(query, &[])
+            .await?
+            .into_iter()
+            .map(|row| {
+                GarminSummary::from_row(&row)
+                    .map_err(Into::into)
+                    .map(|s| (s.id, s))
+            })
             .collect()
     }
 
@@ -188,12 +246,10 @@ impl RaceResults {
         let query = postgres_query::query!(
             "
                 INSERT INTO race_results (
-                    race_type, race_date, race_name, race_distance, race_time, race_flag,
-                    race_filename
+                    race_type, race_date, race_name, race_distance, race_time, race_flag
                 )
                 VALUES (
-                    $race_type, $race_date, $race_name, $race_distance, $race_time, $race_flag,
-                    $race_filename
+                    $race_type, $race_date, $race_name, $race_distance, $race_time, $race_flag
                 )
              ",
             race_type = self.race_type,
@@ -202,7 +258,6 @@ impl RaceResults {
             race_distance = self.race_distance,
             race_time = self.race_time,
             race_flag = self.race_flag,
-            race_filename = self.race_filename,
         );
         let conn = pool.get().await?;
         conn.execute(query.sql(), query.parameters()).await?;
@@ -213,8 +268,7 @@ impl RaceResults {
         let query = postgres_query::query!(
             "UPDATE race_results
             SET race_type=$race_type,race_date=$race_date,race_name=$race_name,
-                race_distance=$race_distance,race_time=$race_time,race_flag=$race_flag,
-                race_filename=$race_filename
+                race_distance=$race_distance,race_time=$race_time,race_flag=$race_flag
             WHERE id=$id",
             id = self.id,
             race_type = self.race_type,
@@ -223,13 +277,11 @@ impl RaceResults {
             race_distance = self.race_distance,
             race_time = self.race_time,
             race_flag = self.race_flag,
-            race_filename = self.race_filename,
         );
         let conn = pool.get().await?;
-        conn.execute(query.sql(), query.parameters())
-            .await
-            .map(|_| ())
-            .map_err(Into::into)
+        conn.execute(query.sql(), query.parameters()).await?;
+        self.update_race_summary_ids(pool).await?;
+        Ok(())
     }
 
     pub async fn upsert_db(&mut self, pool: &PgPool) -> Result<(), Error> {
@@ -238,7 +290,30 @@ impl RaceResults {
         } else {
             self.insert_into_db(pool).await?;
             self.set_race_id(pool).await?;
-            self.fix_summary_id_in_db(pool).await?;
+        }
+        Ok(())
+    }
+
+    pub async fn update_race_summary_ids(&self, pool: &PgPool) -> Result<(), Error> {
+        let summary_ids: SmallVec<[&i32; 2]> = self
+            .race_summary_ids
+            .iter()
+            .filter_map(|id| id.as_ref())
+            .collect();
+
+        if !summary_ids.is_empty() {
+            let conn = pool.get().await?;
+            for summary_id in summary_ids {
+                let query = postgres_query::query!(
+                    "
+                        INSERT INTO race_results_garmin_summary (race_id, summary_id)
+                        VALUES ($race_id, $summary_id)
+                    ",
+                    race_id = self.id,
+                    summary_id = summary_id,
+                );
+                conn.execute(query.sql(), query.parameters()).await?;
+            }
         }
         Ok(())
     }
@@ -250,44 +325,6 @@ impl RaceResults {
             .await
             .map(|_| ())
             .map_err(Into::into)
-    }
-
-    pub async fn fix_summary_id_in_db(&self, pool: &PgPool) -> Result<(), Error> {
-        if self.race_filename.is_some() {
-            let query = postgres_query::query!(
-                "
-                    INSERT INTO race_results_garmin_summary (race_id, summary_id)
-                    SELECT a.id, b.id
-                    FROM race_results a
-                    JOIN garmin_summary b ON b.filename = a.race_filename
-                    LEFT JOIN race_results_garmin_summary c
-                        ON c.race_id = a.race_id AND c.summary_id = b.id
-                    WHERE a.id = $race_id AND c.summary_id IS NULL
-                ",
-                race_id = self.id,
-            );
-            let conn = pool.get().await?;
-            conn.execute(query.sql(), query.parameters()).await?;
-        }
-        Ok(())
-    }
-
-    pub async fn add_summary_id_to_race(
-        &self,
-        summary_id: i32,
-        pool: &PgPool,
-    ) -> Result<(), Error> {
-        let query = postgres_query::query!(
-            "
-                INSERT INTO race_results_garmin_summary (race_id, summary_id)
-                VALUES ($race_id, $summary_id)
-            ",
-            race_id = self.id,
-            summary_id = summary_id,
-        );
-        let conn = pool.get().await?;
-        conn.execute(query.sql(), query.parameters()).await?;
-        Ok(())
     }
 
     pub fn parse_from_race_results_text_file(input: &str) -> Result<Vec<Self>, Error> {
@@ -321,7 +358,7 @@ impl RaceResults {
                     race_distance,
                     race_time,
                     race_flag: false,
-                    race_filename: None,
+                    race_summary_ids: Vec::new(),
                 })
             })
             .collect();
@@ -353,7 +390,7 @@ impl RaceResults {
                     race_distance,
                     race_time,
                     race_flag: false,
-                    race_filename: None,
+                    race_summary_ids: Vec::new(),
                 })
             })
             .collect();
@@ -391,7 +428,7 @@ impl From<GarminSummary> for RaceResults {
             race_distance: item.total_distance as i32,
             race_time: item.total_duration,
             race_flag: false,
-            race_filename: Some(item.filename),
+            race_summary_ids: vec![Some(item.id)],
         }
     }
 }
@@ -428,7 +465,7 @@ mod tests {
             race_distance: 5000,
             race_time: 1563.0,
             race_flag: false,
-            race_filename: None,
+            race_summary_ids: Vec::new(),
         }
     }
 
@@ -448,6 +485,7 @@ mod tests {
         let config = GarminConfig::get_config(None)?;
         let pool = PgPool::new(&config.pgurl);
         let result = get_test_race_result();
+        println!("{:?}", result);
         result.insert_into_db(&pool).await?;
 
         let db_result = RaceResults::get_races_by_date(
@@ -552,7 +590,7 @@ mod tests {
         assert!(personal_results.len() >= TEST_RACE_ENTRIES);
 
         for mut result in personal_results {
-            if result.race_filename.is_some() {
+            if result.race_summary_ids.iter().filter_map(|i| i.as_ref()).count() > 0 {
                 continue;
             }
             if let Some(race_date) = result.race_date {
@@ -571,7 +609,7 @@ mod tests {
                     {
                         if (summary.total_distance as i32 - result.race_distance).abs() < 4000 {
                             println!("set filename: {}", filename);
-                            result.race_filename = Some(filename);
+                            result.race_summary_ids.push(Some(summary.id));
                             result.upsert_db(&pool).await?;
                         } else {
                             println!(
@@ -611,7 +649,7 @@ mod tests {
             let existing =
                 RaceResults::get_race_by_distance(result.race_distance, result.race_type, &pool)
                     .await?;
-            assert!(existing.len() == 0 || existing.len() == 1);
+            assert!(existing.len() == 0 || existing.len() == 1, "{:?}", existing);
             if existing.len() == 1 {
                 result.id = existing[0].id;
                 result.race_flag = true;

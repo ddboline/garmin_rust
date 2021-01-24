@@ -649,7 +649,7 @@ mod tests {
             let existing =
                 RaceResults::get_race_by_distance(result.race_distance, result.race_type, &pool)
                     .await?;
-            assert!(existing.len() == 0 || existing.len() == 1);
+            assert!(existing.len() == 0 || existing.len() == 1, "{:?}", existing);
             if existing.len() == 1 {
                 result.id = existing[0].id;
                 result.race_flag = true;

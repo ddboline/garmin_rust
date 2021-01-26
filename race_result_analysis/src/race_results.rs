@@ -290,6 +290,7 @@ impl RaceResults {
         } else {
             self.insert_into_db(pool).await?;
             self.set_race_id(pool).await?;
+            self.update_race_summary_ids(pool).await?;
         }
         Ok(())
     }

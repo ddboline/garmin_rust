@@ -7,7 +7,9 @@ use log::debug;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use stack_string::StackString;
 use std::{collections::HashSet, sync::Arc};
-use telegram_bot::{types::refs::UserId, Api, CanReplySendMessage, MessageKind, UpdateKind};
+use telegram_bot::{
+    types::refs::UserId, Api, CanReplySendMessage, Message, MessageKind, Update, UpdateKind,
+};
 use tokio::{
     task::spawn,
     time::{sleep, Duration},
@@ -73,48 +75,63 @@ impl TelegramBot {
         while let Some(update) = stream.next().await {
             FAILURE_COUNT.check()?;
             // If the received update contains a new message...
-            if let UpdateKind::Message(message) = update?.kind {
+            self.process_update(|message, s| api.spawn(message.text_reply(s)), update?)
+                .await?;
+        }
+        Ok(())
+    }
+
+    async fn process_update<F>(&self, func: F, update: Update) -> Result<(), Error>
+    where
+        F: Fn(&Message, String),
+    {
+        if let UpdateKind::Message(message) = update.kind {
+            FAILURE_COUNT.check()?;
+            if let MessageKind::Text { ref data, .. } = message.kind {
                 FAILURE_COUNT.check()?;
-                if let MessageKind::Text { ref data, .. } = message.kind {
-                    FAILURE_COUNT.check()?;
-                    // Print received text message to stdout.
-                    debug!("{:?}", message);
-                    if USERIDS.load().contains(&message.from.id) {
-                        FAILURE_COUNT.check()?;
-                        if &data.to_lowercase() == "check" {
-                            if let Some(meas) = LAST_WEIGHT.load() {
-                                api.spawn(
-                                    message.text_reply(format!("latest measurement {}", meas)),
-                                );
-                            } else {
-                                api.spawn(message.text_reply("No measurements".to_string()));
-                            }
-                        } else {
-                            match ScaleMeasurement::from_telegram_text(data) {
-                                Ok(meas) => match self.process_measurement(meas).await {
-                                    Ok(_) => api.spawn(
-                                        message.text_reply(format!("sent to the db {}", meas)),
-                                    ),
-                                    Err(e) => {
-                                        api.spawn(message.text_reply(format!("Send Error {}", e)))
-                                    }
-                                },
-                                Err(e) => {
-                                    api.spawn(message.text_reply(format!("Parse error {}", e)))
-                                }
-                            }
-                        }
-                    } else {
-                        // Answer message with "Hi".
-                        api.spawn(message.text_reply(format!(
-                            "Hi, {}, user_id {}! You just wrote '{}'",
-                            &message.from.first_name, &message.from.id, data
-                        )));
-                    }
-                }
+                // Print received text message to stdout.
+                debug!("{:?}", message);
+
+                func(
+                    &message,
+                    self.process_message_text(data, &message.from.first_name, &message.from.id)
+                        .await?,
+                );
             }
         }
         Ok(())
+    }
+
+    async fn process_message_text(
+        &self,
+        data: &str,
+        first_name: &str,
+        user_id: &UserId,
+    ) -> Result<String, Error> {
+        if USERIDS.load().contains(user_id) {
+            FAILURE_COUNT.check()?;
+            if &data.to_lowercase() == "check" {
+                if let Some(meas) = LAST_WEIGHT.load() {
+                    Ok(format!("latest measurement {}", meas))
+                } else {
+                    Ok("No measurements".into())
+                }
+            } else {
+                match ScaleMeasurement::from_telegram_text(data) {
+                    Ok(meas) => match self.process_measurement(meas).await {
+                        Ok(meas) => Ok(format!("sent to the db {}", meas)),
+                        Err(e) => Ok(format!("Send Error {}", e)),
+                    },
+                    Err(e) => Ok(format!("Parse error {}", e)),
+                }
+            }
+        } else {
+            // Answer message with "Hi".
+            Ok(format!(
+                "Hi, {}, user_id {}! You just wrote '{}'",
+                first_name, user_id, data
+            ))
+        }
     }
 
     async fn initialize_last_weight(&self) -> Result<(), Error> {
@@ -133,7 +150,10 @@ impl TelegramBot {
         Ok(())
     }
 
-    async fn process_measurement(&self, meas: ScaleMeasurement) -> Result<(), Error> {
+    async fn process_measurement(
+        &self,
+        mut meas: ScaleMeasurement,
+    ) -> Result<ScaleMeasurement, Error> {
         if meas.insert_into_db(&self.pool).await.is_ok() {
             debug!("{:?}", meas);
             LAST_WEIGHT.store(Some(meas));
@@ -141,7 +161,7 @@ impl TelegramBot {
         } else {
             FAILURE_COUNT.increment()?;
         }
-        Ok(())
+        Ok(meas)
     }
 
     async fn fill_telegram_user_ids(&self) -> Result<(), Error> {
@@ -174,5 +194,115 @@ impl TelegramBot {
                 Ok(UserId::new(telegram_userid))
             })
             .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Error;
+    use lazy_static::lazy_static;
+    use maplit::hashset;
+    use parking_lot::Mutex;
+    use std::{collections::HashSet, sync::Arc};
+    use telegram_bot::UserId;
+
+    use fitbit_lib::scale_measurement::ScaleMeasurement;
+    use garmin_lib::{
+        common::{garmin_config::GarminConfig, pgpool::PgPool},
+        utils::iso_8601_datetime::convert_datetime_to_str,
+    };
+
+    use crate::telegram_bot::{TelegramBot, LAST_WEIGHT, USERIDS};
+
+    lazy_static! {
+        static ref DB_LOCK: Mutex<()> = Mutex::new(());
+    }
+
+    #[tokio::test]
+    async fn test_process_message_text() -> Result<(), Error> {
+        let _lock = DB_LOCK.lock();
+
+        let message = "Hey, what does this do?";
+        let user: UserId = 8675309.into();
+
+        let config = GarminConfig::get_config(None)?;
+        let pool = PgPool::new(&config.pgurl);
+
+        let bot = TelegramBot::new("8675309", &pool);
+
+        let result = bot.process_message_text(&message, "User", &user).await?;
+
+        assert_eq!(
+            result,
+            "Hi, User, user_id 8675309! You just wrote \'Hey, what does this do?\'".to_string()
+        );
+
+        let telegram_ids: HashSet<UserId> = hashset! { user };
+        USERIDS.store(Arc::new(telegram_ids));
+
+        let result = bot.process_message_text("check", "User", &user).await?;
+
+        assert_eq!(result, "No measurements".to_string());
+
+        let result = bot.process_message_text(&message, "User", &user).await?;
+
+        assert_eq!(
+            result,
+            "Parse error invalid digit found in string".to_string()
+        );
+
+        let msg = "1880=206=596=404=42";
+        let obs = ScaleMeasurement::from_telegram_text(msg)?;
+
+        LAST_WEIGHT.store(Some(obs));
+
+        let exp = format!(
+            "ScaleMeasurement(\nid: -1\ndatetime: {}\nmass: 188 lbs\nfat: 20.6%\nwater: \
+             59.6%\nmuscle: 40.4%\nbone: 4.2%\n)",
+            convert_datetime_to_str(obs.datetime)
+        );
+
+        assert_eq!(obs.to_string(), exp);
+
+        let result = bot.process_message_text("check", "User", &user).await?;
+
+        assert_eq!(result, format!("latest measurement {}", obs));
+
+        let result = bot
+            .process_message_text("1880=206=596=404=42", "User", &user)
+            .await?;
+
+        for line in result.split('\n').filter(|x| x.contains("id: ")) {
+            let id: i32 = line.trim().replace("id: ", "").parse()?;
+            println!("{}", id);
+            let obj = ScaleMeasurement::get_by_id(id, &pool).await?.unwrap();
+            obj.delete_from_db(&pool).await?;
+        }
+
+        assert!(result.starts_with("sent to the db "));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_initialize_last_weight() -> Result<(), Error> {
+        let _lock = DB_LOCK.lock();
+
+        let msg = "1880=206=596=404=42";
+        let mut exp = ScaleMeasurement::from_telegram_text(msg)?;
+
+        let config = GarminConfig::get_config(None)?;
+        let pool = PgPool::new(&config.pgurl);
+        let bot = TelegramBot::new("8675309", &pool);
+
+        exp.insert_into_db(&pool).await?;
+        bot.initialize_last_weight().await?;
+
+        let obs = LAST_WEIGHT.load().unwrap();
+
+        assert_eq!(obs.to_string(), exp.to_string());
+
+        exp.delete_from_db(&pool).await?;
+
+        Ok(())
     }
 }

@@ -319,7 +319,7 @@ impl RaceResults {
         Ok(())
     }
 
-    pub async fn delete_from_db(&self, pool: &PgPool) -> Result<(), Error> {
+    pub async fn delete_from_db(self, pool: &PgPool) -> Result<(), Error> {
         let query = postgres_query::query!("DELETE FROM race_results WHERE id = $id", id = self.id);
         let conn = pool.get().await?;
         conn.execute(query.sql(), query.parameters())

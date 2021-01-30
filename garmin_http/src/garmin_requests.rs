@@ -550,8 +550,8 @@ pub struct ScaleMeasurementUpdateRequest {
 #[async_trait]
 impl HandleRequest<ScaleMeasurementUpdateRequest> for PgPool {
     type Result = Result<(), Error>;
-    async fn handle(&self, msg: ScaleMeasurementUpdateRequest) -> Self::Result {
-        ScaleMeasurement::merge_updates(&msg.measurements, self).await?;
+    async fn handle(&self, mut msg: ScaleMeasurementUpdateRequest) -> Self::Result {
+        ScaleMeasurement::merge_updates(&mut msg.measurements, self).await?;
         Ok(())
     }
 }

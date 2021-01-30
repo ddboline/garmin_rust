@@ -97,7 +97,7 @@ impl FitbitActivity {
         Ok(activity)
     }
 
-    pub async fn delete_from_db(&self, pool: &PgPool) -> Result<(), Error> {
+    pub async fn delete_from_db(self, pool: &PgPool) -> Result<(), Error> {
         let query = postgres_query::query!(
             "DELETE FROM fitbit_activities WHERE log_id=$id",
             id = self.log_id

@@ -164,8 +164,8 @@ impl GarminCliOpts {
                 };
                 match table.as_str() {
                     "scale_measurements" => {
-                        let measurements: Vec<ScaleMeasurement> = serde_json::from_str(&data)?;
-                        ScaleMeasurement::merge_updates(&measurements, &pool).await?;
+                        let mut measurements: Vec<ScaleMeasurement> = serde_json::from_str(&data)?;
+                        ScaleMeasurement::merge_updates(&mut measurements, &pool).await?;
                         stdout()
                             .write_all(
                                 format!("scale_measurements {}\n", measurements.len()).as_bytes(),

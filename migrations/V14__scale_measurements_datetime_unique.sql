@@ -1,0 +1,1 @@
+ALTER TABLE scale_measurements ADD UNIQUE (datetime);

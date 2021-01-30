@@ -299,7 +299,7 @@ impl RaceResults {
         let summary_ids: SmallVec<[&i32; 2]> = self
             .race_summary_ids
             .iter()
-            .filter_map(|id| id.as_ref())
+            .filter_map(Option::as_ref)
             .collect();
 
         if !summary_ids.is_empty() {
@@ -319,7 +319,7 @@ impl RaceResults {
         Ok(())
     }
 
-    pub async fn delete_from_db(&self, pool: &PgPool) -> Result<(), Error> {
+    pub async fn delete_from_db(self, pool: &PgPool) -> Result<(), Error> {
         let query = postgres_query::query!("DELETE FROM race_results WHERE id = $id", id = self.id);
         let conn = pool.get().await?;
         conn.execute(query.sql(), query.parameters())
@@ -591,7 +591,13 @@ mod tests {
         assert!(personal_results.len() >= TEST_RACE_ENTRIES);
 
         for mut result in personal_results {
-            if result.race_summary_ids.iter().filter_map(|i| i.as_ref()).count() > 0 {
+            if result
+                .race_summary_ids
+                .iter()
+                .filter_map(|i| i.as_ref())
+                .count()
+                > 0
+            {
                 continue;
             }
             if let Some(race_date) = result.race_date {

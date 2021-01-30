@@ -3,7 +3,7 @@ use chrono::{DateTime, Local, NaiveDate, Utc};
 use futures::future::try_join_all;
 use log::debug;
 use maplit::hashmap;
-use postgres_query::{FromSqlRow, Parameter};
+use postgres_query::{query, FromSqlRow, Parameter};
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use serde::{self, Deserialize, Serialize};
 use smallvec::SmallVec;
@@ -21,6 +21,7 @@ use garmin_lib::{
 
 #[derive(Debug, Clone, Serialize, Deserialize, Copy, FromSqlRow, PartialEq)]
 pub struct ScaleMeasurement {
+    pub id: i32,
     pub datetime: DateTime<Utc>,
     pub mass: f64,
     pub fat_pct: f64,
@@ -33,8 +34,9 @@ impl fmt::Display for ScaleMeasurement {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "ScaleMeasurement(\ndatetime: {}\nmass: {} lbs\nfat: {}%\nwater: {}%\nmuscle: \
+            "ScaleMeasurement(\nid: {}\ndatetime: {}\nmass: {} lbs\nfat: {}%\nwater: {}%\nmuscle: \
              {}%\nbone: {}%\n)",
+            self.id,
             convert_datetime_to_str(self.datetime),
             self.mass,
             self.fat_pct,
@@ -74,6 +76,7 @@ impl ScaleMeasurement {
         }
 
         Ok(Self {
+            id: -1,
             datetime,
             mass: values[0],
             fat_pct: values[1],
@@ -83,12 +86,51 @@ impl ScaleMeasurement {
         })
     }
 
-    pub async fn insert_into_db(&self, pool: &PgPool) -> Result<(), Error> {
-        let query = postgres_query::query!(
+    pub async fn get_by_id(id: i32, pool: &PgPool) -> Result<Option<Self>, Error> {
+        let query = query!("SELECT * FROM scale_measurements WHERE id = $id", id = id);
+        let conn = pool.get().await?;
+        let result = conn
+            .query_opt(query.sql(), query.parameters())
+            .await?
+            .map(|row| Self::from_row(&row))
+            .transpose()?;
+        Ok(result)
+    }
+
+    pub async fn get_by_datetime(dt: DateTime<Utc>, pool: &PgPool) -> Result<Option<Self>, Error> {
+        let query = query!(
+            "SELECT * FROM scale_measurements WHERE datetime = $dt",
+            dt = dt
+        );
+        let conn = pool.get().await?;
+        let result = conn
+            .query_opt(query.sql(), query.parameters())
+            .await?
+            .map(|row| Self::from_row(&row))
+            .transpose()?;
+        Ok(result)
+    }
+
+    pub async fn delete_from_db(self, pool: &PgPool) -> Result<(), Error> {
+        let query = query!(
+            "DELETE FROM scale_measurements WHERE id = $id",
+            id = self.id
+        );
+        pool.get()
+            .await?
+            .execute(query.sql(), query.parameters())
+            .await?;
+        Ok(())
+    }
+
+    pub async fn insert_into_db(&mut self, pool: &PgPool) -> Result<(), Error> {
+        let query = query!(
             "
-            INSERT INTO scale_measurements (datetime, mass, fat_pct, water_pct, muscle_pct, \
-             bone_pct)
-            VALUES ($datetime,$mass,$fat,$water,$muscle,$bone)",
+                INSERT INTO scale_measurements (
+                    datetime, mass, fat_pct, water_pct, muscle_pct, bone_pct
+                )
+                VALUES ($datetime,$mass,$fat,$water,$muscle,$bone)
+            ",
             datetime = self.datetime,
             mass = self.mass,
             fat = self.fat_pct,
@@ -99,10 +141,30 @@ impl ScaleMeasurement {
 
         let conn = pool.get().await?;
 
-        conn.execute(query.sql(), query.parameters())
-            .await
-            .map(|_| ())
-            .map_err(Into::into)
+        conn.execute(query.sql(), query.parameters()).await?;
+
+        let query = query!(
+            "
+                SELECT id
+                FROM scale_measurements
+                WHERE datetime = $datetime
+                    AND mass = $mass
+                    AND fat_pct = $fat
+                    AND water_pct = $water
+                    AND muscle_pct = $muscle
+                    AND bone_pct = $bone
+            ",
+            datetime = self.datetime,
+            mass = self.mass,
+            fat = self.fat_pct,
+            water = self.water_pct,
+            muscle = self.muscle_pct,
+            bone = self.bone_pct,
+        );
+        let result = conn.query_one(query.sql(), query.parameters()).await?;
+        self.id = result.try_get("id")?;
+
+        Ok(())
     }
 
     pub async fn read_latest_from_db(pool: &PgPool) -> Result<Option<Self>, Error> {
@@ -319,7 +381,7 @@ impl ScaleMeasurement {
 
     pub async fn merge_updates<'a, T>(measurements: T, pool: &PgPool) -> Result<(), Error>
     where
-        T: IntoIterator<Item = &'a Self>,
+        T: IntoIterator<Item = &'a mut Self>,
     {
         let measurement_set: HashSet<_> = ScaleMeasurement::read_from_db(pool, None, None)
             .await?
@@ -357,6 +419,7 @@ mod tests {
     #[test]
     fn test_from_telegram_text() -> Result<(), Error> {
         let mut exp = ScaleMeasurement {
+            id: -1,
             datetime: Utc::now(),
             mass: 188.0,
             fat_pct: 20.6,
@@ -380,27 +443,42 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
-    async fn test_read_scale_measurement_from_db() -> Result<(), Error> {
+    async fn test_write_read_scale_measurement_from_db() -> Result<(), Error> {
+        let first_date: DateTime<Utc> = "2010-01-01T04:00:00-05:00".parse()?;
+        let mut exp = ScaleMeasurement {
+            id: -1,
+            datetime: first_date,
+            mass: 188.0,
+            fat_pct: 20.6,
+            water_pct: 59.6,
+            muscle_pct: 40.4,
+            bone_pct: 4.2,
+        };
+
         let config = GarminConfig::get_config(None)?;
         let pool = PgPool::new(&config.pgurl);
+
+        exp.insert_into_db(&pool).await?;
+
+        let obs = ScaleMeasurement::get_by_id(exp.id, &pool).await?.unwrap();
+
+        assert_eq!(exp, obs);
+
+        let obs = ScaleMeasurement::get_by_datetime(exp.datetime, &pool)
+            .await?
+            .unwrap();
+
+        assert_eq!(exp, obs);
+
         let measurements = ScaleMeasurement::read_from_db(&pool, None, None).await?;
-        assert!(measurements.len() > 700);
+        assert!(measurements.len() > 0);
         let first = measurements[0];
         println!("{:#?}", first);
-        let first_date: DateTime<Utc> = "2016-02-24T04:00:00-05:00".parse()?;
-        assert_eq!(
-            first,
-            ScaleMeasurement {
-                datetime: first_date,
-                mass: 174.8,
-                fat_pct: 18.2,
-                water_pct: 61.5,
-                muscle_pct: 41.8,
-                bone_pct: 4.6,
-            }
-        );
+        assert_eq!(first, exp);
         assert_eq!(first.datetime, first_date);
+
+        exp.delete_from_db(&pool).await?;
+
         Ok(())
     }
 }

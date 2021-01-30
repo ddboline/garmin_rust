@@ -591,7 +591,13 @@ mod tests {
         assert!(personal_results.len() >= TEST_RACE_ENTRIES);
 
         for mut result in personal_results {
-            if result.race_summary_ids.iter().filter_map(|i| i.as_ref()).count() > 0 {
+            if result
+                .race_summary_ids
+                .iter()
+                .filter_map(|i| i.as_ref())
+                .count()
+                > 0
+            {
                 continue;
             }
             if let Some(race_date) = result.race_date {

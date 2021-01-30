@@ -94,7 +94,7 @@ impl TelegramBot {
 
                 func(
                     &message,
-                    self.process_message_text(data, &message.from.first_name, &message.from.id)
+                    self.process_message_text(data, &message.from.first_name, message.from.id)
                         .await?,
                 );
             }
@@ -106,9 +106,9 @@ impl TelegramBot {
         &self,
         data: &str,
         first_name: &str,
-        user_id: &UserId,
+        user_id: UserId,
     ) -> Result<String, Error> {
-        if USERIDS.load().contains(user_id) {
+        if USERIDS.load().contains(&user_id) {
             FAILURE_COUNT.check()?;
             if &data.to_lowercase() == "check" {
                 if let Some(meas) = LAST_WEIGHT.load() {
@@ -232,7 +232,7 @@ mod tests {
 
         let bot = TelegramBot::new("8675309", &pool);
 
-        let result = bot.process_message_text(&message, "User", &user).await?;
+        let result = bot.process_message_text(&message, "User", user).await?;
 
         assert_eq!(
             result,
@@ -242,11 +242,11 @@ mod tests {
         let telegram_ids: HashSet<UserId> = hashset! { user };
         USERIDS.store(Arc::new(telegram_ids));
 
-        let result = bot.process_message_text("check", "User", &user).await?;
+        let result = bot.process_message_text("check", "User", user).await?;
 
         assert_eq!(result, "No measurements".to_string());
 
-        let result = bot.process_message_text(&message, "User", &user).await?;
+        let result = bot.process_message_text(&message, "User", user).await?;
 
         assert_eq!(
             result,
@@ -266,12 +266,12 @@ mod tests {
 
         assert_eq!(obs.to_string(), exp);
 
-        let result = bot.process_message_text("check", "User", &user).await?;
+        let result = bot.process_message_text("check", "User", user).await?;
 
         assert_eq!(result, format!("latest measurement {}", obs));
 
         let result = bot
-            .process_message_text("1880=206=596=404=42", "User", &user)
+            .process_message_text("1880=206=596=404=42", "User", user)
             .await?;
 
         for line in result.split('\n').filter(|x| x.contains("id: ")) {

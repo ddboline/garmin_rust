@@ -299,7 +299,7 @@ impl RaceResults {
         let summary_ids: SmallVec<[&i32; 2]> = self
             .race_summary_ids
             .iter()
-            .filter_map(|id| id.as_ref())
+            .filter_map(Option::as_ref)
             .collect();
 
         if !summary_ids.is_empty() {

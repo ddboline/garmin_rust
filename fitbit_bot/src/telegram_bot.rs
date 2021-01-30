@@ -222,6 +222,8 @@ mod tests {
     async fn test_process_message_text() -> Result<(), Error> {
         let _lock = DB_LOCK.lock();
 
+        LAST_WEIGHT.store(None);
+
         let message = "Hey, what does this do?";
         let user: UserId = 8675309.into();
 

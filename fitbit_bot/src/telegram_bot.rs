@@ -307,4 +307,50 @@ mod tests {
 
         Ok(())
     }
+
+    use rand::{Rng, thread_rng};
+    use rand::distributions::Alphanumeric;
+
+    fn get_random_string(size: usize) -> String {
+        let mut rng = thread_rng();
+        (0..size).map(|_| char::from(rng.sample(Alphanumeric))).collect()
+    }
+
+    #[tokio::test]
+    async fn test_list_of_telegram_user_ids() -> Result<(), Error> {
+        let _lock = DB_LOCK.lock();
+
+        USERIDS.store(Arc::new(HashSet::new()));
+
+        let config = GarminConfig::get_config(None)?;
+        let pool = PgPool::new(&config.pgurl);
+        let bot = TelegramBot::new("8675309", &pool);
+
+        let email = format!("user{}@localhost", get_random_string(32));
+        let userid: UserId = 8675309.into();
+
+        let original_user_ids = bot.list_of_telegram_user_ids().await?;
+
+        assert!(!original_user_ids.contains(&userid));
+
+        let query = postgres_query::query!(
+            "INSERT INTO authorized_users (email, telegram_userid)
+            VALUES ($email, $telegram_userid)",
+            email = email,
+            telegram_userid = 8675309i64,
+        );
+        pool.get().await?.execute(query.sql(), query.parameters()).await?;
+
+        let new_user_ids = bot.list_of_telegram_user_ids().await?;
+
+        assert!(new_user_ids.contains(&userid));
+
+        let query = postgres_query::query!(
+            "DELETE FROM authorized_users WHERE email = $email",
+            email = email
+        );
+        pool.get().await?.execute(query.sql(), query.parameters()).await?;
+
+        Ok(())
+    }
 }

@@ -19,6 +19,10 @@ anyhow = "1.0"
 thiserror = "1.0"
 rayon = "1.5"
 arc-swap = "1.2"
-maplit = "1.0"
 telegram-bot = {git = "https://github.com/ddboline/telegram-bot.git", tag="0.7.3"}
 stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.2.0", features=["postgres_types"] }
+
+[dev-dependencies]
+maplit = "1.0"
+rand = "0.8"
+postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", branch="master"}

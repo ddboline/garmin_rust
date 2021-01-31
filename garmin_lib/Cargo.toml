@@ -45,7 +45,6 @@ maplit = "1.0"
 chrono-tz = "0.5"
 smallvec = "1.6"
 flate2 = "1.0"
-deadqueue = "0.2"
 itertools = "0.10"
 url = "2.2"
 stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.2.0", features=["postgres_types"] }

@@ -203,6 +203,7 @@ mod tests {
     use lazy_static::lazy_static;
     use maplit::hashset;
     use parking_lot::Mutex;
+    use rand::{distributions::Alphanumeric, thread_rng, Rng};
     use std::{collections::HashSet, sync::Arc};
     use telegram_bot::UserId;
 
@@ -308,12 +309,11 @@ mod tests {
         Ok(())
     }
 
-    use rand::{Rng, thread_rng};
-    use rand::distributions::Alphanumeric;
-
     fn get_random_string(size: usize) -> String {
         let mut rng = thread_rng();
-        (0..size).map(|_| char::from(rng.sample(Alphanumeric))).collect()
+        (0..size)
+            .map(|_| char::from(rng.sample(Alphanumeric)))
+            .collect()
     }
 
     #[tokio::test]
@@ -339,7 +339,10 @@ mod tests {
             email = email,
             telegram_userid = 8675309i64,
         );
-        pool.get().await?.execute(query.sql(), query.parameters()).await?;
+        pool.get()
+            .await?
+            .execute(query.sql(), query.parameters())
+            .await?;
 
         let new_user_ids = bot.list_of_telegram_user_ids().await?;
 
@@ -349,7 +352,10 @@ mod tests {
             "DELETE FROM authorized_users WHERE email = $email",
             email = email
         );
-        pool.get().await?.execute(query.sql(), query.parameters()).await?;
+        pool.get()
+            .await?
+            .execute(query.sql(), query.parameters())
+            .await?;
 
         Ok(())
     }

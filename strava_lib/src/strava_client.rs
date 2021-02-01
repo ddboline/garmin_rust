@@ -45,8 +45,6 @@ lazy_static! {
     static ref WEB_CSRF: AtomicCell<Option<WebCsrf>> = AtomicCell::new(None);
 }
 
-const BASE_URL: &str = "https://www.strava.com";
-
 #[derive(Clone, Debug)]
 struct WebCsrf {
     param: StackString,
@@ -120,8 +118,18 @@ impl StravaClient {
     }
 
     pub async fn webauth(&self) -> Result<(), Error> {
-        let login_url: Url = format!("{}/login", BASE_URL).parse()?;
-        let session_url: Url = format!("{}/session", BASE_URL).parse()?;
+        let login_url = self
+            .config
+            .strava_endpoint
+            .as_ref()
+            .unwrap()
+            .join("login")?;
+        let session_url = self
+            .config
+            .strava_endpoint
+            .as_ref()
+            .unwrap()
+            .join("session")?;
         let email = self
             .config
             .strava_email
@@ -164,11 +172,12 @@ impl StravaClient {
         } else {
             self.webauth().await?;
         }
-        let url: Url = format!(
-            "https://www.strava.com/activities/{}/export_original",
-            activity_id
-        )
-        .parse()?;
+        let url = self
+            .config
+            .strava_endpoint
+            .as_ref()
+            .unwrap()
+            .join(&format!("activities/{}/export_original", activity_id))?;
         let resp = self.client.get(url).send().await?.error_for_status()?;
 
         create_dir_all(&self.config.download_directory).await?;
@@ -199,7 +208,12 @@ impl StravaClient {
                 return Err(format_err!("Auth failure"));
             }
         };
-        let url: Url = format!("{}/activities/{}", BASE_URL, activity_id).parse()?;
+        let url = self
+            .config
+            .strava_endpoint
+            .as_ref()
+            .unwrap()
+            .join(&format!("activities/{}", activity_id))?;
         let data = hashmap! {
             "_method" => "delete",
             web_csrf.param.as_str() => web_csrf.token.as_str(),
@@ -258,8 +272,14 @@ impl StravaClient {
     pub async fn get_authorization_url_api(&self) -> Result<Url, Error> {
         let redirect_uri = format!("https://{}/garmin/strava/callback", &self.config.domain);
         let state = Self::get_random_string();
+        let url = self
+            .config
+            .strava_endpoint
+            .as_ref()
+            .unwrap()
+            .join("oauth/authorize")?;
         let url = Url::parse_with_params(
-            "https://www.strava.com/oauth/authorize",
+            url.as_str(),
             &[
                 ("client_id", self.client_id.as_str()),
                 ("redirect_uri", redirect_uri.as_str()),
@@ -284,7 +304,12 @@ impl StravaClient {
             if state != current_state.as_str() {
                 return Err(format_err!("Incorrect state"));
             }
-            let url = "https://www.strava.com/oauth/token";
+            let url = self
+                .config
+                .strava_endpoint
+                .as_ref()
+                .unwrap()
+                .join("oauth/token")?;
             let data = hashmap! {
                 "client_id" => self.client_id.as_str(),
                 "client_secret" => self.client_secret.as_str(),
@@ -316,7 +341,12 @@ impl StravaClient {
         }
 
         if let Some(refresh_token) = self.refresh_token.as_ref() {
-            let url = "https://www.strava.com/oauth/token";
+            let url = self
+                .config
+                .strava_endpoint
+                .as_ref()
+                .unwrap()
+                .join("oauth/token")?;
             let data = hashmap! {
                 "client_id" => self.client_id.as_str(),
                 "client_secret" => self.client_secret.as_str(),
@@ -351,7 +381,12 @@ impl StravaClient {
     }
 
     pub async fn get_strava_athlete(&self) -> Result<StravaAthlete, Error> {
-        let url = Url::parse("https://www.strava.com/api/v3/athlete")?;
+        let url = self
+            .config
+            .strava_endpoint
+            .as_ref()
+            .unwrap()
+            .join("api/v3/athlete")?;
         let headers = self.get_auth_headers()?;
         self.client
             .get(url)
@@ -380,8 +415,14 @@ impl StravaClient {
         }
 
         let headers = self.get_auth_headers()?;
-        let url =
-            Url::parse_with_params("https://www.strava.com/api/v3/athlete/activities", &params)?;
+        let url = self
+            .config
+            .strava_endpoint
+            .as_ref()
+            .unwrap()
+            .join("api/v3/athlete/activities")?;
+
+        let url = Url::parse_with_params(url.as_str(), &params)?;
         self.client
             .get(url)
             .headers(headers)
@@ -449,7 +490,12 @@ impl StravaClient {
         };
 
         let headers = self.get_auth_headers()?;
-        let url = "https://www.strava.com/api/v3/activities";
+        let url = self
+            .config
+            .strava_endpoint
+            .as_ref()
+            .unwrap()
+            .join("api/v3/activities")?;
         let resp: CreateActivityResp = self
             .client
             .post(url)
@@ -519,11 +565,15 @@ impl StravaClient {
             .text("external_id", uuid::Uuid::new_v4().to_string());
 
         let headers = self.get_auth_headers()?;
-        let url = "https://www.strava.com/api/v3/uploads";
-
+        let url = self
+            .config
+            .strava_endpoint
+            .as_ref()
+            .unwrap()
+            .join("api/v3/uploads")?;
         let result: UploadResponse = self
             .client
-            .post(url)
+            .post(url.as_str())
             .multipart(form)
             .headers(headers.clone())
             .send()
@@ -532,11 +582,11 @@ impl StravaClient {
             .json()
             .await?;
 
-        let url = format!("{}/{}", url, result.id);
+        let url = url.join(&result.id.to_string())?;
         for _ in 0..10 {
             let result: UploadResponse = self
                 .client
-                .get(&url)
+                .get(url.as_str())
                 .headers(headers.clone())
                 .send()
                 .await?
@@ -584,9 +634,14 @@ impl StravaClient {
         };
 
         let headers = self.get_auth_headers()?;
-        let url = format!("https://www.strava.com/api/v3/activities/{}", activity_id);
+        let url = self
+            .config
+            .strava_endpoint
+            .as_ref()
+            .unwrap()
+            .join(&format!("api/v3/activities/{}", activity_id))?;
         self.client
-            .put(url.as_str())
+            .put(url)
             .headers(headers)
             .json(&data)
             .send()

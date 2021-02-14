@@ -80,7 +80,7 @@ pub async fn start_app() -> Result<(), Error> {
     spawn({
         let pool = pool.clone();
         let proxy = proxy.clone();
-        async move { update_db(pool, proxy) }
+        async move { update_db(pool, proxy).await }
     });
 
     run_app(&config, &pool, &proxy).await

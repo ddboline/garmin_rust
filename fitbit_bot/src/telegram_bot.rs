@@ -180,7 +180,7 @@ impl TelegramBot {
         let result = get_list_of_telegram_userids(&self.pool)
             .await?
             .into_iter()
-            .map(|telegram_userid| UserId::new(telegram_userid))
+            .map(UserId::new)
             .collect();
         Ok(result)
     }

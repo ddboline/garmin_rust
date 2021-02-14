@@ -142,10 +142,9 @@ impl FitbitClient {
                         .send()
                         .await
                         .map_err(Into::into);
-                } else {
-                    println!("Wait at least {} seconds before retrying", retry_seconds);
-                    return Err(format_err!("{}", resp.text().await?));
                 }
+                println!("Wait at least {} seconds before retrying", retry_seconds);
+                return Err(format_err!("{}", resp.text().await?));
             }
         }
         Ok(resp)

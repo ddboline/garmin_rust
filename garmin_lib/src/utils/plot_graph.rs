@@ -14,9 +14,8 @@ pub fn generate_d3_plot(opts: &PlotOpts) -> Result<StackString, Error> {
         Some(x) => {
             if x.is_empty() {
                 return Err(format_err!(err_str));
-            } else {
-                x
             }
+            x
         }
         None => return Err(format_err!(err_str)),
     };

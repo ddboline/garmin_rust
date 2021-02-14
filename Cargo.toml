@@ -22,14 +22,13 @@ fitbit_bot = {path="fitbit_bot"}
 garmin_connect_lib = {path="garmin_connect_lib"}
 race_result_analysis = {path="race_result_analysis"}
 garmin_reports = {path="garmin_reports"}
-actix-web = "4.0.0-beta.1"
 log = "0.4"
 env_logger = "0.8"
 crossbeam-utils = "0.8"
 structopt = "0.3"
 anyhow = "1.0"
 thiserror = "1.0"
-tokio = {version="1.0", features=["full"]}
+tokio = {version="1.2", features=["full"]}
 dirs = "3.0"
 chrono = "0.4"
 url = "2.2"

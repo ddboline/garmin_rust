@@ -12,12 +12,9 @@ garmin_cli = {path = "../garmin_cli"}
 garmin_connect_lib = {path="../garmin_connect_lib"}
 garmin_reports = {path="../garmin_reports"}
 race_result_analysis = {path="../race_result_analysis"}
-actix-web = "4.0.0-beta.1"
-actix-identity = {git="https://github.com/ddboline/actix-extras", branch="update-dependencies"}
-actix-rt = "2.0.0-beta.2"
-actix-session = {git="https://github.com/ddboline/actix-extras", branch="update-dependencies"}
-actix-multipart = "0.4.0-beta.1"
-tokio = {version="1.0", features=["full"]}
+warp = "0.3"
+http = "0.2"
+tokio = {version="1.2", features=["full"]}
 tokio-stream = "0.1"
 chrono = "0.4"
 futures = "0.3"
@@ -34,5 +31,7 @@ async-trait = "0.1"
 rayon = "1.5"
 handlebars = "3.5"
 itertools = "0.10"
-authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.3.0"}
+cookie = "0.14"
+base64 = "0.13"
+authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", branch="replace_actix_with_warp"}
 stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.2.0", features=["postgres_types"] }

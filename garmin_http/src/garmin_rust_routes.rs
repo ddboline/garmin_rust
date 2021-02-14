@@ -1,25 +1,25 @@
 #![allow(clippy::needless_pass_by_value)]
 
-use actix_multipart::{Field, Multipart};
-use actix_session::Session;
-use actix_web::{
-    http::StatusCode,
-    web::{Data, Json, Query},
-    HttpResponse,
-};
-use anyhow::format_err;
+use http::header::SET_COOKIE;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
-use std::string::ToString;
+use std::{str::FromStr, string::ToString};
 use tempdir::TempDir;
 use tokio::{fs::File, io::AsyncWriteExt};
 use tokio_stream::StreamExt;
+use warp::{
+    multipart::{FormData, Part},
+    Buf, Rejection, Reply,
+};
 
 use fitbit_lib::fitbit_heartrate::FitbitHeartRate;
 use garmin_cli::garmin_cli::{GarminCli, GarminRequest};
 use garmin_lib::{
-    common::garmin_templates::{get_buttons, get_scripts, get_style, HBR},
+    common::{
+        garmin_config::GarminConfig,
+        garmin_templates::{get_buttons, get_scripts, get_style, HBR},
+    },
     utils::iso_8601_datetime::convert_datetime_to_str,
 };
 use garmin_reports::garmin_file_report_html::generate_history_buttons;
@@ -36,7 +36,7 @@ use crate::{
         GarminConnectActivitiesDBRequest, GarminConnectActivitiesDBUpdateRequest,
         GarminConnectActivitiesRequest, GarminConnectHrApiRequest, GarminConnectHrSyncRequest,
         GarminConnectSyncRequest, GarminConnectUserSummaryRequest, GarminHtmlRequest,
-        GarminSyncRequest, GarminUploadRequest, HandleRequest, HeartrateStatisticsSummaryDBRequest,
+        GarminSyncRequest, GarminUploadRequest, HeartrateStatisticsSummaryDBRequest,
         HeartrateStatisticsSummaryDBUpdateRequest, RaceResultFlagRequest, RaceResultImportRequest,
         RaceResultPlotRequest, RaceResultsDBRequest, RaceResultsDBUpdateRequest,
         ScaleMeasurementPlotRequest, ScaleMeasurementRequest, ScaleMeasurementUpdateRequest,
@@ -46,10 +46,33 @@ use crate::{
     },
     garmin_rust_app::AppState,
     logged_user::LoggedUser,
-    CONFIG,
 };
 
-pub type HttpResult = Result<HttpResponse, Error>;
+pub type WarpResult<T> = Result<T, Rejection>;
+pub type HttpResult<T> = Result<T, Error>;
+
+#[derive(Default)]
+pub struct Session {
+    history: Vec<StackString>,
+}
+
+impl FromStr for Session {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let data = base64::decode(s)?;
+        let history_str = String::from_utf8(data)?;
+        let history = history_str.split(',').map(Into::into).collect();
+        Ok(Session { history })
+    }
+}
+
+impl Session {
+    pub fn get_jwt_cookie(&self, domain: &str) -> String {
+        let history_str = self.history.join(",");
+        let token = base64::encode(history_str);
+        format!("jwt={}; HttpOnly; Path=/; Domain={}", token, domain)
+    }
+}
 
 #[derive(Deserialize)]
 pub struct FilterRequest {
@@ -57,6 +80,7 @@ pub struct FilterRequest {
 }
 
 fn proc_pattern_wrapper<T: AsRef<str>>(
+    config: &GarminConfig,
     request: FilterRequest,
     history: &[T],
     is_demo: bool,
@@ -68,7 +92,7 @@ fn proc_pattern_wrapper<T: AsRef<str>>(
 
     let filter_iter = filter.split(',').map(ToString::to_string);
 
-    let req = GarminCli::process_pattern(&CONFIG, filter_iter);
+    let req = GarminCli::process_pattern(&config, filter_iter);
     let history = history.iter().map(|s| s.as_ref().into()).collect();
 
     GarminHtmlRequest {
@@ -81,350 +105,324 @@ fn proc_pattern_wrapper<T: AsRef<str>>(
     }
 }
 
-fn form_http_response(body: String) -> HttpResult {
-    Ok(HttpResponse::build(StatusCode::OK)
-        .content_type("text/html; charset=utf-8")
-        .body(body))
-}
-
-fn to_json<T>(js: T) -> HttpResult
-where
-    T: Serialize,
-{
-    Ok(HttpResponse::Ok().json(js))
-}
-
 pub async fn garmin(
-    query: Query<FilterRequest>,
-    state: Data<AppState>,
-    session: Session,
-) -> HttpResult {
-    let query = query.into_inner();
-    let mut history: Vec<StackString> = session
-        .get("history")
-        .map_err(|e| format_err!("Failed to set history {:?}", e))?
-        .unwrap_or_else(Vec::new);
-    let grec = proc_pattern_wrapper(query, &history, false);
+    query: FilterRequest,
+    _: LoggedUser,
+    state: AppState,
+    session: Option<Session>,
+) -> WarpResult<impl Reply> {
+    let mut session = session.unwrap_or_default();
+    let body = garmin_body(query, &state, &mut session.history, false).await?;
+    let jwt = session.get_jwt_cookie(&state.config.domain);
+    let reply = warp::reply::html(body);
+    let reply = warp::reply::with_header(reply, SET_COOKIE, jwt);
+    Ok(reply)
+}
+
+async fn garmin_body(
+    query: FilterRequest,
+    state: &AppState,
+    history: &mut Vec<StackString>,
+    is_demo: bool,
+) -> HttpResult<String> {
+    let grec = proc_pattern_wrapper(&state.config, query, &history, is_demo);
     if history.len() > 5 {
         history.remove(0);
     }
     history.push(grec.request.filter.as_str().into());
-    session
-        .set("history", history)
-        .map_err(|e| format_err!("Failed to set history {:?}", e))?;
+    let body = grec.handle(&state.db).await?;
 
-    let body = state.db.handle(grec).await?;
-
-    form_http_response(body.into())
+    Ok(body.into())
 }
 
 pub async fn garmin_demo(
-    query: Query<FilterRequest>,
-    state: Data<AppState>,
-    session: Session,
-) -> HttpResult {
-    let query = query.into_inner();
-    let mut history: Vec<StackString> = session
-        .get("history")
-        .map_err(|e| format_err!("Failed to set history {:?}", e))?
-        .unwrap_or_else(Vec::new);
-    let grec = proc_pattern_wrapper(query, &history, true);
-    if history.len() > 5 {
-        history.remove(0);
-    }
-    history.push(grec.request.filter.clone());
-    session
-        .set("history", history)
-        .map_err(|e| format_err!("Failed to set history {:?}", e))?;
-
-    let body = state.db.handle(grec).await?;
-
-    form_http_response(body.into())
-}
-
-async fn save_file(file_path: &str, field: &mut Field) -> Result<(), Error> {
-    let mut file = File::create(file_path).await?;
-
-    while let Some(chunk) = field.next().await {
-        let data = chunk?;
-        file.write_all(&data).await?;
-    }
-    Ok(())
+    query: FilterRequest,
+    state: AppState,
+    session: Option<Session>,
+) -> WarpResult<impl Reply> {
+    let mut session = session.unwrap_or_default();
+    let body = garmin_body(query, &state, &mut session.history, true).await?;
+    let jwt = session.get_jwt_cookie(&state.config.domain);
+    let reply = warp::reply::html(body);
+    let reply = warp::reply::with_header(reply, SET_COOKIE, jwt);
+    Ok(reply)
 }
 
 pub async fn garmin_upload(
-    query: Query<StravaCreateRequest>,
-    mut multipart: Multipart,
+    query: StravaCreateRequest,
+    form: FormData,
     _: LoggedUser,
-    state: Data<AppState>,
+    state: AppState,
+    session: Option<Session>,
+) -> WarpResult<impl Reply> {
+    let session = session.unwrap_or_default();
+    let body = garmin_upload_body(query, form, state, session).await?;
+    Ok(warp::reply::html(body))
+}
+
+async fn garmin_upload_body(
+    query: StravaCreateRequest,
+    mut form: FormData,
+    state: AppState,
     session: Session,
-) -> HttpResult {
+) -> HttpResult<String> {
     let tempdir = TempDir::new("garmin")?;
     let tempdir_str = tempdir.path().to_string_lossy().to_string();
 
     let fname = format!("{}/{}", tempdir_str, query.filename,);
 
-    while let Some(item) = multipart.next().await {
-        let mut field = item?;
-        save_file(&fname, &mut field).await?;
+    while let Some(item) = form.next().await {
+        save_file(&fname, item?).await?;
     }
 
-    let datetimes = state
-        .db
-        .handle(GarminUploadRequest {
-            filename: fname.into(),
-        })
-        .await?;
+    let datetimes = GarminUploadRequest {
+        filename: fname.into(),
+    }
+    .handle(&state.db)
+    .await?;
 
     let query = FilterRequest {
         filter: datetimes
             .get(0)
             .map(|dt| convert_datetime_to_str(*dt).into()),
     };
-    let history: Vec<StackString> = session
-        .get("history")
-        .map_err(|e| format_err!("Failed to set history {:?}", e))?
-        .unwrap_or_else(Vec::new);
 
-    let grec = proc_pattern_wrapper(query, &history, false);
-    let body = state.db.handle(grec).await?;
+    let grec = proc_pattern_wrapper(&state.config, query, &session.history, false);
+    let body = grec.handle(&state.db).await?;
 
-    form_http_response(body.into())
+    Ok(body.into())
 }
 
-pub async fn garmin_connect_sync(_: LoggedUser, state: Data<AppState>) -> HttpResult {
-    let flist = state.db.handle(GarminConnectSyncRequest {}).await?;
-    to_json(flist)
+async fn save_file(file_path: &str, field: Part) -> Result<(), anyhow::Error> {
+    let mut file = File::create(file_path).await?;
+    let mut stream = field.stream();
+
+    while let Some(chunk) = stream.next().await {
+        file.write_all(chunk?.chunk()).await?;
+    }
+    Ok(())
+}
+
+pub async fn garmin_connect_sync(_: LoggedUser, state: AppState) -> WarpResult<impl Reply> {
+    let body = GarminConnectSyncRequest {}
+        .handle(&state.db, &state.connect_proxy)
+        .await?;
+    Ok(warp::reply::json(&body))
 }
 
 pub async fn garmin_connect_hr_sync(
-    query: Query<GarminConnectHrSyncRequest>,
+    query: GarminConnectHrSyncRequest,
     _: LoggedUser,
-    state: Data<AppState>,
-) -> HttpResult {
-    let query = query.into_inner();
-    let heartrates = state.db.handle(query).await?;
-    form_http_response(heartrates.to_table(Some(20)).into())
+    state: AppState,
+) -> WarpResult<impl Reply> {
+    let heartrates = query
+        .handle(&state.db, &state.connect_proxy, &state.config)
+        .await?;
+    let body: String = heartrates.to_table(Some(20)).into();
+    Ok(warp::reply::html(body))
 }
 
 pub async fn garmin_connect_hr_api(
-    query: Query<GarminConnectHrApiRequest>,
+    query: GarminConnectHrApiRequest,
     _: LoggedUser,
-    state: Data<AppState>,
-) -> HttpResult {
-    let query = query.into_inner();
-    let hr_vals = state.db.handle(query).await?;
-    to_json(hr_vals)
+    state: AppState,
+) -> WarpResult<impl Reply> {
+    let hr_vals = query.handle(state.connect_proxy).await?;
+    Ok(warp::reply::json(&hr_vals))
 }
 
-pub async fn garmin_sync(_: LoggedUser, state: Data<AppState>) -> HttpResult {
-    let body = state.db.handle(GarminSyncRequest {}).await?;
+pub async fn garmin_sync(_: LoggedUser, state: AppState) -> WarpResult<impl Reply> {
+    let body = GarminSyncRequest {}.handle(&state.db).await?;
     let body = format!(
         r#"<textarea cols=100 rows=40>{}</textarea>"#,
         body.join("\n")
     );
-    form_http_response(body)
+    Ok(warp::reply::html(body))
 }
 
 pub async fn strava_sync(
-    query: Query<StravaSyncRequest>,
+    query: StravaSyncRequest,
     _: LoggedUser,
-    state: Data<AppState>,
-) -> HttpResult {
-    let query = query.into_inner();
-    let body = state
-        .db
-        .handle(query)
+    state: AppState,
+) -> WarpResult<impl Reply> {
+    let body = query
+        .handle(&state.db, &state.config)
         .await?
         .into_iter()
         .map(|p| p.to_string_lossy().into_owned())
         .join("\n");
     let body = format!(r#"<textarea cols=100 rows=40>{}</textarea>"#, body);
-    form_http_response(body)
+    Ok(warp::reply::html(body))
 }
 
-pub async fn strava_auth(_: LoggedUser, state: Data<AppState>) -> HttpResult {
-    let body = state.db.handle(StravaAuthRequest {}).await?;
-    form_http_response(body.into())
+pub async fn strava_auth(_: LoggedUser, state: AppState) -> WarpResult<impl Reply> {
+    let body: String = StravaAuthRequest {}.handle(&state.config).await?.into();
+    Ok(warp::reply::html(body))
 }
 
-pub async fn strava_refresh(_: LoggedUser, state: Data<AppState>) -> HttpResult {
-    let body = state.db.handle(StravaRefreshRequest {}).await?;
-    form_http_response(body.into())
+pub async fn strava_refresh(_: LoggedUser, state: AppState) -> WarpResult<impl Reply> {
+    let body: String = StravaRefreshRequest {}.handle(&state.config).await?.into();
+    Ok(warp::reply::html(body))
 }
 
 pub async fn strava_callback(
-    query: Query<StravaCallbackRequest>,
+    query: StravaCallbackRequest,
     _: LoggedUser,
-    state: Data<AppState>,
-) -> HttpResult {
-    let query = query.into_inner();
-    let body = state.db.handle(query).await?;
-    form_http_response(body.into())
+    state: AppState,
+) -> WarpResult<impl Reply> {
+    let body: String = query.handle(&state.config).await?.into();
+    Ok(warp::reply::html(body))
 }
 
 pub async fn strava_activities(
-    query: Query<StravaActivitiesRequest>,
+    query: StravaActivitiesRequest,
     _: LoggedUser,
-    state: Data<AppState>,
-) -> HttpResult {
-    let query = query.into_inner();
-    let alist = state.db.handle(query).await?;
-    to_json(alist)
+    state: AppState,
+) -> WarpResult<impl Reply> {
+    let alist = query.handle(&state.config).await?;
+    Ok(warp::reply::json(&alist))
 }
 
 pub async fn strava_activities_db(
-    query: Query<StravaActivitiesRequest>,
-    state: Data<AppState>,
-) -> HttpResult {
-    let query = StravaActivitiesDBRequest(query.into_inner());
-    let alist = state.db.handle(query).await?;
-    to_json(alist)
+    query: StravaActivitiesRequest,
+    _: LoggedUser,
+    state: AppState,
+) -> WarpResult<impl Reply> {
+    let alist = StravaActivitiesDBRequest(query).handle(&state.db).await?;
+    Ok(warp::reply::json(&alist))
 }
 
 pub async fn strava_activities_db_update(
-    payload: Json<StravaActiviesDBUpdateRequest>,
+    payload: StravaActiviesDBUpdateRequest,
     _: LoggedUser,
-    state: Data<AppState>,
-) -> HttpResult {
-    let req = payload.into_inner();
-    let body = state.db.handle(req).await?;
-    form_http_response(body.join("\n"))
+    state: AppState,
+) -> WarpResult<impl Reply> {
+    let body = payload.handle(&state.db).await?;
+    let body = body.join("\n");
+    Ok(warp::reply::html(body))
 }
 
 pub async fn strava_upload(
-    payload: Json<StravaUploadRequest>,
+    payload: StravaUploadRequest,
     _: LoggedUser,
-    state: Data<AppState>,
-) -> HttpResult {
-    let payload = payload.into_inner();
-    let body = state.db.handle(payload).await?;
-    form_http_response(body.into())
+    state: AppState,
+) -> WarpResult<impl Reply> {
+    let body: String = payload.handle(&state.config).await?.into();
+    Ok(warp::reply::html(body))
 }
 
 pub async fn strava_update(
-    payload: Json<StravaUpdateRequest>,
+    payload: StravaUpdateRequest,
     _: LoggedUser,
-    state: Data<AppState>,
-) -> HttpResult {
-    let payload = payload.into_inner();
-    let body = state.db.handle(payload).await?;
-    form_http_response(body.into())
+    state: AppState,
+) -> WarpResult<impl Reply> {
+    let body: String = payload.handle(&state.config).await?.into();
+    Ok(warp::reply::html(body))
 }
 
 pub async fn strava_create(
-    query: Query<StravaCreateRequest>,
+    query: StravaCreateRequest,
     _: LoggedUser,
-    state: Data<AppState>,
-) -> HttpResult {
-    let query = query.into_inner();
-    let activity_id = state.db.handle(query).await?;
-    activity_id.map_or_else(
-        || form_http_response("".into()),
-        |activity_id| form_http_response(activity_id.to_string()),
-    )
+    state: AppState,
+) -> WarpResult<impl Reply> {
+    let activity_id = query.handle(&state.db, &state.config).await?;
+    let body = activity_id.map_or_else(|| "".into(), |activity_id| activity_id.to_string());
+    Ok(warp::reply::html(body))
 }
 
-pub async fn fitbit_auth(_: LoggedUser, state: Data<AppState>) -> HttpResult {
-    let req = FitbitAuthRequest {};
-    let body = state.db.handle(req).await?;
-    form_http_response(body.into())
+pub async fn fitbit_auth(_: LoggedUser, state: AppState) -> WarpResult<impl Reply> {
+    let body: String = FitbitAuthRequest {}.handle(&state.config).await?.into();
+    Ok(warp::reply::html(body))
 }
 
-pub async fn fitbit_refresh(_: LoggedUser, state: Data<AppState>) -> HttpResult {
-    let req = FitbitRefreshRequest {};
-    let body = state.db.handle(req).await?;
-    form_http_response(body.into())
+pub async fn fitbit_refresh(_: LoggedUser, state: AppState) -> WarpResult<impl Reply> {
+    let body: String = FitbitRefreshRequest {}.handle(&state.config).await?.into();
+    Ok(warp::reply::html(body))
 }
 
 pub async fn fitbit_heartrate_api(
-    query: Query<FitbitHeartrateApiRequest>,
+    query: FitbitHeartrateApiRequest,
     _: LoggedUser,
-    state: Data<AppState>,
-) -> HttpResult {
-    let query = query.into_inner();
-    let hlist = state.db.handle(query).await?;
-    to_json(hlist)
+    state: AppState,
+) -> WarpResult<impl Reply> {
+    let hlist = query.handle(&state.config).await?;
+    Ok(warp::reply::json(&hlist))
 }
 
 pub async fn fitbit_heartrate_cache(
-    query: Query<FitbitHeartrateCacheRequest>,
-    state: Data<AppState>,
-) -> HttpResult {
-    let query = query.into_inner();
-    let hlist = state.db.handle(query).await?;
-    to_json(hlist)
+    query: FitbitHeartrateCacheRequest,
+    _: LoggedUser,
+    state: AppState,
+) -> WarpResult<impl Reply> {
+    let hlist = query.handle(&state.config).await?;
+    Ok(warp::reply::json(&hlist))
 }
 
 pub async fn fitbit_heartrate_cache_update(
-    payload: Json<FitbitHeartrateUpdateRequest>,
-    state: Data<AppState>,
-) -> HttpResult {
-    let payload = payload.into_inner();
-    state.db.handle(payload).await?;
-    form_http_response("".into())
+    payload: FitbitHeartrateUpdateRequest,
+    _: LoggedUser,
+    state: AppState,
+) -> WarpResult<impl Reply> {
+    payload.handle(&state.config).await?;
+    Ok(warp::reply::html(""))
 }
 
-pub async fn fitbit_bodyweight(_: LoggedUser, state: Data<AppState>) -> HttpResult {
-    let req = FitbitBodyWeightFatRequest {};
-    let hlist = state.db.handle(req).await?;
-    to_json(hlist)
+pub async fn fitbit_bodyweight(_: LoggedUser, state: AppState) -> WarpResult<impl Reply> {
+    let hlist = FitbitBodyWeightFatRequest {}.handle(&state.config).await?;
+    Ok(warp::reply::json(&hlist))
 }
 
-pub async fn fitbit_bodyweight_sync(_: LoggedUser, state: Data<AppState>) -> HttpResult {
-    let req = FitbitBodyWeightFatUpdateRequest {};
-    let hlist = state.db.handle(req).await?;
-    to_json(hlist)
+pub async fn fitbit_bodyweight_sync(_: LoggedUser, state: AppState) -> WarpResult<impl Reply> {
+    let hlist = FitbitBodyWeightFatUpdateRequest {}
+        .handle(&state.db, &state.config)
+        .await?;
+    Ok(warp::reply::json(&hlist))
 }
 
 pub async fn fitbit_activities(
-    query: Query<FitbitActivitiesRequest>,
+    query: FitbitActivitiesRequest,
     _: LoggedUser,
-    state: Data<AppState>,
-) -> HttpResult {
-    let query = query.into_inner();
-    let hlist = state.db.handle(query).await?;
-    to_json(hlist)
+    state: AppState,
+) -> WarpResult<impl Reply> {
+    let hlist = query.handle(&state.config).await?;
+    Ok(warp::reply::json(&hlist))
 }
 
 pub async fn fitbit_callback(
-    query: Query<FitbitCallbackRequest>,
-    _: LoggedUser,
-    state: Data<AppState>,
-) -> HttpResult {
-    let query = query.into_inner();
-    let body = state.db.handle(query).await?;
-    form_http_response(body.into())
+    query: FitbitCallbackRequest,
+    state: AppState,
+) -> WarpResult<impl Reply> {
+    let body: String = query.handle(&state.config).await?.into();
+    Ok(warp::reply::html(body))
 }
 
 pub async fn fitbit_sync(
-    query: Query<FitbitSyncRequest>,
+    query: FitbitSyncRequest,
     _: LoggedUser,
-    state: Data<AppState>,
-) -> HttpResult {
-    let query = query.into_inner();
-    let heartrates = state.db.handle(query).await?;
+    state: AppState,
+) -> WarpResult<impl Reply> {
+    let heartrates = query.handle(&state.db, &state.config).await?;
     let start = if heartrates.len() > 20 {
         heartrates.len() - 20
     } else {
         0
     };
-    form_http_response(FitbitHeartRate::create_table(&heartrates[start..]).into())
+    let body: String = FitbitHeartRate::create_table(&heartrates[start..]).into();
+    Ok(warp::reply::html(body))
 }
 
-pub async fn heartrate_statistics_plots_impl(
+async fn heartrate_statistics_plots_impl(
     query: FitbitStatisticsPlotRequest,
-    state: Data<AppState>,
+    state: AppState,
     session: Session,
 ) -> Result<StackString, Error> {
-    let history: Vec<StackString> = session
-        .get("history")
-        .map_err(|e| format_err!("Failed to set history {:?}", e))?
-        .unwrap_or_else(Vec::new);
     let is_demo = query.is_demo;
     let buttons = get_buttons(is_demo).join("\n");
-    let mut params = state.db.handle(query).await?;
-    params.insert("HISTORYBUTTONS".into(), generate_history_buttons(&history));
+    let mut params = query.handle(&state.db).await?;
+    params.insert(
+        "HISTORYBUTTONS".into(),
+        generate_history_buttons(&session.history),
+    );
     params.insert("GARMIN_STYLE".into(), get_style(false));
     params.insert("GARMINBUTTONS".into(), buttons.into());
     params.insert("GARMIN_SCRIPTS".into(), get_scripts(is_demo).into());
@@ -432,135 +430,149 @@ pub async fn heartrate_statistics_plots_impl(
 }
 
 pub async fn heartrate_statistics_plots(
-    query: Query<ScaleMeasurementRequest>,
+    query: ScaleMeasurementRequest,
     _: LoggedUser,
-    state: Data<AppState>,
-    session: Session,
-) -> HttpResult {
-    let query: FitbitStatisticsPlotRequest = query.into_inner().into();
+    state: AppState,
+    session: Option<Session>,
+) -> WarpResult<impl Reply> {
+    let query: FitbitStatisticsPlotRequest = query.into();
+    let session = session.unwrap_or_default();
 
-    let body = heartrate_statistics_plots_impl(query, state, session).await?;
-    form_http_response(body.into())
+    let body: String = heartrate_statistics_plots_impl(query, state, session)
+        .await?
+        .into();
+    Ok(warp::reply::html(body))
 }
 
 pub async fn heartrate_statistics_plots_demo(
-    query: Query<ScaleMeasurementRequest>,
-    state: Data<AppState>,
-    session: Session,
-) -> HttpResult {
-    let mut query: FitbitStatisticsPlotRequest = query.into_inner().into();
+    query: ScaleMeasurementRequest,
+    state: AppState,
+    session: Option<Session>,
+) -> WarpResult<impl Reply> {
+    let mut query: FitbitStatisticsPlotRequest = query.into();
     query.is_demo = true;
+    let session = session.unwrap_or_default();
 
-    let body = heartrate_statistics_plots_impl(query, state, session).await?;
-    form_http_response(body.into())
+    let body: String = heartrate_statistics_plots_impl(query, state, session)
+        .await?
+        .into();
+    Ok(warp::reply::html(body))
 }
 
 async fn fitbit_plots_impl(
     query: ScaleMeasurementPlotRequest,
-    state: Data<AppState>,
+    state: AppState,
     session: Session,
-) -> HttpResult {
-    let history: Vec<StackString> = session
-        .get("history")
-        .map_err(|e| format_err!("Failed to set history {:?}", e))?
-        .unwrap_or_else(Vec::new);
+) -> HttpResult<String> {
     let is_demo = query.is_demo;
     let buttons = get_buttons(is_demo).join("\n");
-    let mut params = state.db.handle(query).await?;
-    params.insert("HISTORYBUTTONS".into(), generate_history_buttons(&history));
+    let mut params = query.handle(&state.db).await?;
+    params.insert(
+        "HISTORYBUTTONS".into(),
+        generate_history_buttons(&session.history),
+    );
     params.insert("GARMIN_STYLE".into(), get_style(false));
     params.insert("GARMINBUTTONS".into(), buttons.into());
     params.insert("GARMIN_SCRIPTS".into(), get_scripts(is_demo).into());
     let body = HBR.render("GARMIN_TEMPLATE", &params)?;
-    form_http_response(body)
+    Ok(body)
 }
 
 pub async fn fitbit_plots(
-    query: Query<ScaleMeasurementRequest>,
+    query: ScaleMeasurementRequest,
     _: LoggedUser,
-    state: Data<AppState>,
-    session: Session,
-) -> HttpResult {
-    let query: ScaleMeasurementPlotRequest = query.into_inner().into();
-    fitbit_plots_impl(query, state, session).await
+    state: AppState,
+    session: Option<Session>,
+) -> WarpResult<impl Reply> {
+    let session = session.unwrap_or_default();
+    let query: ScaleMeasurementPlotRequest = query.into();
+    fitbit_plots_impl(query, state, session)
+        .await
+        .map_err(Into::into)
 }
 
 pub async fn fitbit_plots_demo(
-    query: Query<ScaleMeasurementRequest>,
-    state: Data<AppState>,
-    session: Session,
-) -> HttpResult {
-    let mut query: ScaleMeasurementPlotRequest = query.into_inner().into();
+    query: ScaleMeasurementRequest,
+    state: AppState,
+    session: Option<Session>,
+) -> WarpResult<impl Reply> {
+    let session = session.unwrap_or_default();
+    let mut query: ScaleMeasurementPlotRequest = query.into();
     query.is_demo = true;
-    fitbit_plots_impl(query, state, session).await
+    fitbit_plots_impl(query, state, session)
+        .await
+        .map_err(Into::into)
 }
 
 async fn heartrate_plots_impl(
     query: FitbitHeartratePlotRequest,
-    state: Data<AppState>,
+    state: AppState,
     session: Session,
-) -> HttpResult {
-    let history: Vec<StackString> = session
-        .get("history")
-        .map_err(|e| format_err!("Failed to set history {:?}", e))?
-        .unwrap_or_else(Vec::new);
+) -> HttpResult<String> {
     let is_demo = query.is_demo;
     let buttons = get_buttons(is_demo).join("\n");
-    let mut params = state.db.handle(query).await?;
-    params.insert("HISTORYBUTTONS".into(), generate_history_buttons(&history));
+    let mut params = query.handle(&state.db, &state.config).await?;
+    params.insert(
+        "HISTORYBUTTONS".into(),
+        generate_history_buttons(&session.history),
+    );
     params.insert("GARMIN_STYLE".into(), get_style(false));
     params.insert("GARMINBUTTONS".into(), buttons.into());
     params.insert("GARMIN_SCRIPTS".into(), get_scripts(is_demo).into());
     let body = HBR.render("GARMIN_TEMPLATE", &params)?;
-    form_http_response(body)
+    Ok(body)
 }
 
 pub async fn heartrate_plots(
-    query: Query<ScaleMeasurementRequest>,
-    state: Data<AppState>,
-    session: Session,
-) -> HttpResult {
-    let query: FitbitHeartratePlotRequest = query.into_inner().into();
-    heartrate_plots_impl(query, state, session).await
+    query: ScaleMeasurementRequest,
+    state: AppState,
+    session: Option<Session>,
+) -> WarpResult<impl Reply> {
+    let query: FitbitHeartratePlotRequest = query.into();
+    let session = session.unwrap_or_default();
+    heartrate_plots_impl(query, state, session)
+        .await
+        .map_err(Into::into)
 }
 
 pub async fn heartrate_plots_demo(
-    query: Query<ScaleMeasurementRequest>,
-    state: Data<AppState>,
-    session: Session,
-) -> HttpResult {
-    let mut query: FitbitHeartratePlotRequest = query.into_inner().into();
+    query: ScaleMeasurementRequest,
+    state: AppState,
+    session: Option<Session>,
+) -> WarpResult<impl Reply> {
+    let mut query: FitbitHeartratePlotRequest = query.into();
     query.is_demo = true;
-    heartrate_plots_impl(query, state, session).await
+    let session = session.unwrap_or_default();
+    heartrate_plots_impl(query, state, session)
+        .await
+        .map_err(Into::into)
 }
 
 pub async fn fitbit_tcx_sync(
-    query: Query<FitbitTcxSyncRequest>,
+    query: FitbitTcxSyncRequest,
     _: LoggedUser,
-    state: Data<AppState>,
-) -> HttpResult {
-    let query = query.into_inner();
-    let flist = state.db.handle(query).await?;
-    to_json(flist)
+    state: AppState,
+) -> WarpResult<impl Reply> {
+    let flist = query.handle(&state.db, &state.config).await?;
+    Ok(warp::reply::json(&flist))
 }
 
 pub async fn scale_measurement(
-    query: Query<ScaleMeasurementRequest>,
-    state: Data<AppState>,
-) -> HttpResult {
-    let query = query.into_inner();
-    let slist = state.db.handle(query).await?;
-    to_json(slist)
+    query: ScaleMeasurementRequest,
+    _: LoggedUser,
+    state: AppState,
+) -> WarpResult<impl Reply> {
+    let slist = query.handle(&state.db).await?;
+    Ok(warp::reply::json(&slist))
 }
 
 pub async fn scale_measurement_update(
-    data: Json<ScaleMeasurementUpdateRequest>,
+    mut measurements: ScaleMeasurementUpdateRequest,
     _: LoggedUser,
-    state: Data<AppState>,
-) -> HttpResult {
-    let measurements = data.into_inner();
-    state.db.handle(measurements).await?;
-    form_http_response("finished".into())
+    state: AppState,
+) -> WarpResult<impl Reply> {
+    measurements.handle(&state.db).await?;
+    Ok(warp::reply::html("finished"))
 }
 
 #[derive(Serialize)]
@@ -590,134 +602,122 @@ pub struct HrPaceList {
     pub hr_pace: Vec<HrPace>,
 }
 
-pub async fn user(user: LoggedUser) -> HttpResult {
-    to_json(user)
+pub async fn user(user: LoggedUser) -> WarpResult<impl Reply> {
+    Ok(warp::reply::json(&user))
 }
 
 pub async fn add_garmin_correction(
-    payload: Json<AddGarminCorrectionRequest>,
+    payload: AddGarminCorrectionRequest,
     _: LoggedUser,
-    state: Data<AppState>,
-) -> HttpResult {
-    let payload = payload.into_inner();
-    state.db.handle(payload).await?;
-    form_http_response("finised".to_string())
+    state: AppState,
+) -> WarpResult<impl Reply> {
+    payload.handle(&state.db, &state.config).await?;
+    Ok(warp::reply::html("finised"))
 }
 
-pub async fn fitbit_activity_types(_: LoggedUser, state: Data<AppState>) -> HttpResult {
-    let result = state.db.handle(FitbitActivityTypesRequest {}).await?;
-    to_json(result)
+pub async fn fitbit_activity_types(_: LoggedUser, state: AppState) -> WarpResult<impl Reply> {
+    let result = FitbitActivityTypesRequest {}.handle(&state.config).await?;
+    Ok(warp::reply::json(&result))
 }
 
-pub async fn strava_athlete(_: LoggedUser, state: Data<AppState>) -> HttpResult {
-    let result = state.db.handle(StravaAthleteRequest {}).await?;
-    to_json(result)
+pub async fn strava_athlete(_: LoggedUser, state: AppState) -> WarpResult<impl Reply> {
+    let result = StravaAthleteRequest {}.handle(&state.config).await?;
+    Ok(warp::reply::json(&result))
 }
 
-pub async fn fitbit_profile(_: LoggedUser, state: Data<AppState>) -> HttpResult {
-    let result = state.db.handle(FitbitProfileRequest {}).await?;
-    to_json(result)
+pub async fn fitbit_profile(_: LoggedUser, state: AppState) -> WarpResult<impl Reply> {
+    let result = FitbitProfileRequest {}.handle(&state.config).await?;
+    Ok(warp::reply::json(&result))
 }
 
 pub async fn garmin_connect_activities(
-    query: Query<GarminConnectActivitiesRequest>,
+    query: GarminConnectActivitiesRequest,
     _: LoggedUser,
-    state: Data<AppState>,
-) -> HttpResult {
-    let query = query.into_inner();
-    let result = state.db.handle(query).await?;
-    to_json(result)
+    state: AppState,
+) -> WarpResult<impl Reply> {
+    let result = query.handle(&state.connect_proxy).await?;
+    Ok(warp::reply::json(&result))
 }
 
 pub async fn garmin_connect_activities_db(
-    query: Query<StravaActivitiesRequest>,
+    query: StravaActivitiesRequest,
     _: LoggedUser,
-    state: Data<AppState>,
-) -> HttpResult {
-    let query = query.into_inner();
-    let alist = state
-        .db
-        .handle(GarminConnectActivitiesDBRequest(query))
+    state: AppState,
+) -> WarpResult<impl Reply> {
+    let alist = GarminConnectActivitiesDBRequest(query)
+        .handle(&state.db)
         .await?;
-    to_json(alist)
+    Ok(warp::reply::json(&alist))
 }
 
 pub async fn garmin_connect_activities_db_update(
-    payload: Json<GarminConnectActivitiesDBUpdateRequest>,
+    payload: GarminConnectActivitiesDBUpdateRequest,
     _: LoggedUser,
-    state: Data<AppState>,
-) -> HttpResult {
-    let req = payload.into_inner();
-    let body = state.db.handle(req).await?;
-    form_http_response(body.join("\n"))
+    state: AppState,
+) -> WarpResult<impl Reply> {
+    let body = payload.handle(&state.db).await?.join("\n");
+    Ok(warp::reply::html(body))
 }
 
 pub async fn garmin_connect_user_summary(
-    query: Query<GarminConnectUserSummaryRequest>,
+    query: GarminConnectUserSummaryRequest,
     _: LoggedUser,
-    state: Data<AppState>,
-) -> HttpResult {
-    let query = query.into_inner();
-    let js = state.db.handle(query).await?;
-    to_json(js)
+    state: AppState,
+) -> WarpResult<impl Reply> {
+    let js = query.handle(&state.connect_proxy).await?;
+    Ok(warp::reply::json(&js))
 }
 
 pub async fn fitbit_activities_db(
-    query: Query<StravaActivitiesRequest>,
+    query: StravaActivitiesRequest,
     _: LoggedUser,
-    state: Data<AppState>,
-) -> HttpResult {
-    let query = query.into_inner();
-    let alist = state.db.handle(FitbitActivitiesDBRequest(query)).await?;
-    to_json(alist)
+    state: AppState,
+) -> WarpResult<impl Reply> {
+    let alist = FitbitActivitiesDBRequest(query).handle(&state.db).await?;
+    Ok(warp::reply::json(&alist))
 }
 
 pub async fn fitbit_activities_db_update(
-    payload: Json<FitbitActivitiesDBUpdateRequest>,
+    payload: FitbitActivitiesDBUpdateRequest,
     _: LoggedUser,
-    state: Data<AppState>,
-) -> HttpResult {
-    let req = payload.into_inner();
-    let body = state.db.handle(req).await?;
-    form_http_response(body.join("\n"))
+    state: AppState,
+) -> WarpResult<impl Reply> {
+    let body = payload.handle(&state.db).await?.join("\n");
+    Ok(warp::reply::html(body))
 }
 
 pub async fn heartrate_statistics_summary_db(
-    query: Query<StravaActivitiesRequest>,
+    query: StravaActivitiesRequest,
     _: LoggedUser,
-    state: Data<AppState>,
-) -> HttpResult {
-    let query = query.into_inner();
-    let alist = state
-        .db
-        .handle(HeartrateStatisticsSummaryDBRequest(query))
+    state: AppState,
+) -> WarpResult<impl Reply> {
+    let alist = HeartrateStatisticsSummaryDBRequest(query)
+        .handle(&state.db)
         .await?;
-    to_json(alist)
+    Ok(warp::reply::json(&alist))
 }
 
 pub async fn heartrate_statistics_summary_db_update(
-    payload: Json<HeartrateStatisticsSummaryDBUpdateRequest>,
+    payload: HeartrateStatisticsSummaryDBUpdateRequest,
     _: LoggedUser,
-    state: Data<AppState>,
-) -> HttpResult {
-    let req = payload.into_inner();
-    let body = state.db.handle(req).await?;
-    form_http_response(body.join("\n"))
+    state: AppState,
+) -> WarpResult<impl Reply> {
+    let body = payload.handle(&state.db).await?.join("\n");
+    Ok(warp::reply::html(body))
 }
 
-pub async fn race_result_plot_impl(
+async fn race_result_plot_impl(
     req: RaceResultPlotRequest,
-    state: Data<AppState>,
+    state: AppState,
     session: Session,
 ) -> Result<StackString, Error> {
-    let history: Vec<StackString> = session
-        .get("history")
-        .map_err(|e| format_err!("Failed to set history {:?}", e))?
-        .unwrap_or_else(Vec::new);
     let is_demo = req.demo.unwrap_or(true);
     let buttons = get_buttons(is_demo).join("\n");
-    let mut params = state.db.handle(req).await?;
-    params.insert("HISTORYBUTTONS".into(), generate_history_buttons(&history));
+    let mut params = req.handle(&state.db).await?;
+    params.insert(
+        "HISTORYBUTTONS".into(),
+        generate_history_buttons(&session.history),
+    );
     params.insert("GARMIN_STYLE".into(), get_style(false));
     params.insert("GARMINBUTTONS".into(), buttons.into());
     params.insert("GARMIN_SCRIPTS".into(), get_scripts(is_demo).into());
@@ -725,66 +725,60 @@ pub async fn race_result_plot_impl(
 }
 
 pub async fn race_result_plot(
-    query: Query<RaceResultPlotRequest>,
+    mut query: RaceResultPlotRequest,
     _: LoggedUser,
-    state: Data<AppState>,
-    session: Session,
-) -> HttpResult {
-    let mut query = query.into_inner();
+    state: AppState,
+    session: Option<Session>,
+) -> WarpResult<impl Reply> {
     query.demo = Some(false);
-
-    let body = race_result_plot_impl(query, state, session).await?;
-    form_http_response(body.into())
+    let session = session.unwrap_or_default();
+    let body: String = race_result_plot_impl(query, state, session).await?.into();
+    Ok(warp::reply::html(body))
 }
 
 pub async fn race_result_plot_demo(
-    query: Query<RaceResultPlotRequest>,
-    state: Data<AppState>,
-    session: Session,
-) -> HttpResult {
-    let mut query = query.into_inner();
+    mut query: RaceResultPlotRequest,
+    state: AppState,
+    session: Option<Session>,
+) -> WarpResult<impl Reply> {
     query.demo = Some(true);
-
-    let body = race_result_plot_impl(query, state, session).await?;
-    form_http_response(body.into())
+    let session = session.unwrap_or_default();
+    let body: String = race_result_plot_impl(query, state, session).await?.into();
+    Ok(warp::reply::html(body))
 }
 
 pub async fn race_result_flag(
-    query: Query<RaceResultFlagRequest>,
-    state: Data<AppState>,
+    query: RaceResultFlagRequest,
     _: LoggedUser,
-) -> HttpResult {
-    let query = query.into_inner();
-    let result = state.db.handle(query).await?;
-    form_http_response(result.into())
+    state: AppState,
+) -> WarpResult<impl Reply> {
+    let result: String = query.handle(&state.db).await?.into();
+    Ok(warp::reply::html(result))
 }
 
 pub async fn race_result_import(
-    query: Query<RaceResultImportRequest>,
-    state: Data<AppState>,
+    query: RaceResultImportRequest,
     _: LoggedUser,
-) -> HttpResult {
-    let query = query.into_inner();
-    state.db.handle(query).await?;
-    form_http_response("".into())
+    state: AppState,
+) -> WarpResult<impl Reply> {
+    query.handle(&state.db).await?;
+    Ok(warp::reply::html(""))
 }
 
 pub async fn race_results_db(
-    query: Query<RaceResultsDBRequest>,
-    state: Data<AppState>,
+    query: RaceResultsDBRequest,
     _: LoggedUser,
-) -> HttpResult {
-    let query = query.into_inner();
-    let results = state.db.handle(query).await?;
-    to_json(&results)
+    state: AppState,
+) -> WarpResult<impl Reply> {
+    let results = query.handle(&state.db).await?;
+    Ok(warp::reply::json(&results))
 }
 
 pub async fn race_results_db_update(
-    payload: Json<RaceResultsDBUpdateRequest>,
-    state: Data<AppState>,
+    payload: RaceResultsDBUpdateRequest,
     _: LoggedUser,
-) -> HttpResult {
-    let payload = payload.into_inner();
-    state.db.handle(payload).await?;
-    form_http_response("".into())
+    state: AppState,
+) -> WarpResult<impl Reply> {
+    payload.handle(&state.db).await?;
+    Ok(warp::reply::html(""))
 }

@@ -19,6 +19,8 @@ use std::{
 use subprocess::{Exec, Redirection};
 use tokio::time::{sleep, Duration};
 
+use crate::common::pgpool::PgPool;
+
 pub const METERS_PER_MILE: f64 = 1609.344;
 pub const MARATHON_DISTANCE_M: i32 = 42195;
 pub const MARATHON_DISTANCE_MI: f64 = MARATHON_DISTANCE_M as f64 / METERS_PER_MILE;
@@ -243,4 +245,36 @@ pub fn get_i64(value: &Value) -> Option<i64> {
 #[inline]
 pub fn get_degrees_from_semicircles(s: f64) -> f64 {
     s * 180.0 / (2_147_483_648.0)
+}
+
+pub async fn get_authorized_users(pool: &PgPool) -> Result<Vec<StackString>, Error> {
+    let query = "SELECT email FROM authorized_users";
+    pool.get()
+        .await?
+        .query(query, &[])
+        .await?
+        .into_iter()
+        .map(|row| {
+            let email: StackString = row.try_get(0)?;
+            Ok(email)
+        })
+        .collect()
+}
+
+pub async fn get_list_of_telegram_userids(pool: &PgPool) -> Result<Vec<i64>, Error> {
+    let query = "
+    SELECT distinct telegram_userid
+    FROM authorized_users
+    WHERE telegram_userid IS NOT NULL
+    ";
+    pool.get()
+        .await?
+        .query(query, &[])
+        .await?
+        .into_iter()
+        .map(|row| {
+            let telegram_id: i64 = row.try_get("telegram_userid")?;
+            Ok(telegram_id)
+        })
+        .collect()
 }

@@ -192,6 +192,7 @@ mod tests {
     use lazy_static::lazy_static;
     use maplit::hashset;
     use parking_lot::Mutex;
+    use rand::{distributions::Alphanumeric, thread_rng, Rng};
     use std::{collections::HashSet, sync::Arc};
     use telegram_bot::UserId;
 

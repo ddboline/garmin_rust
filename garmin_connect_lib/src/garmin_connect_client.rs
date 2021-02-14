@@ -2,7 +2,6 @@ use anyhow::{format_err, Error};
 use bytes::Bytes;
 use chrono::{DateTime, NaiveDate, Utc};
 use fantoccini::{Client, Locator, Method};
-use lazy_static::lazy_static;
 use log::debug;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
@@ -20,12 +19,6 @@ use garmin_lib::common::{
 };
 
 use super::garmin_connect_hr_data::GarminConnectHrData;
-
-lazy_static! {
-    static ref MODERN_URL: Url = "https://connect.garmin.com/modern"
-        .parse()
-        .expect("Bad URL");
-}
 
 pub struct GarminConnectClient {
     config: GarminConfig,
@@ -108,7 +101,15 @@ impl GarminConnectClient {
             .client
             .as_mut()
             .ok_or_else(|| format_err!("No client"))?;
-        client.goto("https://sso.garmin.com/sso/signin").await?;
+        client
+            .goto(
+                self.config
+                    .garmin_connect_sso_endpoint
+                    .as_ref()
+                    .unwrap()
+                    .as_str(),
+            )
+            .await?;
         let mut form = client.form(Locator::Id("login-form")).await?;
         form.set_by_name("username", &self.config.garmin_connect_email)
             .await?
@@ -116,9 +117,9 @@ impl GarminConnectClient {
             .await?
             .submit()
             .await?;
-
-        client.goto(MODERN_URL.as_str()).await?;
-        let js = Self::raw_get(client, &MODERN_URL).await?;
+        let modern_url = self.config.garmin_connect_api_endpoint.as_ref().unwrap();
+        client.goto(modern_url.as_str()).await?;
+        let js = Self::raw_get(client, &modern_url).await?;
         let text = std::str::from_utf8(&js)?;
         self.last_used = Utc::now();
 
@@ -174,7 +175,11 @@ impl GarminConnectClient {
             .display_name
             .as_ref()
             .ok_or_else(|| format_err!("No display name"))?;
-        let mut url = MODERN_URL
+        let mut url = self
+            .config
+            .garmin_connect_api_endpoint
+            .as_ref()
+            .unwrap()
             .join("/proxy/usersummary-service/usersummary/daily/")?
             .join(display_name)?;
         url.query_pairs_mut()
@@ -197,7 +202,11 @@ impl GarminConnectClient {
             .client
             .as_mut()
             .ok_or_else(|| format_err!("No client"))?;
-        let mut url = MODERN_URL
+        let mut url = self
+            .config
+            .garmin_connect_api_endpoint
+            .as_ref()
+            .unwrap()
             .join("/proxy/wellness-service/wellness/dailyHeartRate/")?
             .join(display_name)?;
         url.query_pairs_mut().append_pair("date", &date.to_string());
@@ -214,7 +223,12 @@ impl GarminConnectClient {
             .client
             .as_mut()
             .ok_or_else(|| format_err!("No client"))?;
-        let url = MODERN_URL.join("/proxy/activitylist-service/activities/search/activities")?;
+        let url = self
+            .config
+            .garmin_connect_api_endpoint
+            .as_ref()
+            .unwrap()
+            .join("/proxy/activitylist-service/activities/search/activities")?;
         let js = Self::raw_get(client, &url).await?;
         self.last_used = Utc::now();
         serde_json::from_slice(&js).map_err(Into::into)
@@ -238,7 +252,11 @@ impl GarminConnectClient {
                 .download_directory
                 .join(activity.activity_id.to_string())
                 .with_extension("zip");
-            let url = MODERN_URL
+            let url = self
+                .config
+                .garmin_connect_api_endpoint
+                .as_ref()
+                .unwrap()
                 .join("/proxy/download-service/files/activity/")?
                 .join(&activity.activity_id.to_string())?;
             let data = Self::raw_get(client, &url).await?;

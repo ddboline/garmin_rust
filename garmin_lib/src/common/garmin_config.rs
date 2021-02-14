@@ -6,7 +6,7 @@ use derive_more::{Deref, Into};
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
 use std::{
-    convert::TryFrom,
+    convert::{TryFrom, TryInto},
     ops::Deref,
     path::{Path, PathBuf},
     sync::Arc,
@@ -54,14 +54,24 @@ pub struct GarminConfigInner {
     pub fitbit_cachedir: PathBuf,
     #[serde(default = "default_gps_bucket")]
     pub fitbit_bucket: StackString,
+    #[serde(default = "default_fitbit_endpoint")]
+    pub fitbit_endpoint: Option<UrlWrapper>,
+    #[serde(default = "default_fitbit_api_endpoint")]
+    pub fitbit_api_endpoint: Option<UrlWrapper>,
     #[serde(default = "default_strava_tokenfile")]
     pub strava_tokenfile: PathBuf,
     pub strava_email: Option<StackString>,
     pub strava_password: Option<StackString>,
+    #[serde(default = "default_strava_endpoint")]
+    pub strava_endpoint: Option<UrlWrapper>,
     #[serde(default = "default_gps_bucket")]
     pub garmin_connect_email: StackString,
     #[serde(default = "default_gps_bucket")]
     pub garmin_connect_password: StackString,
+    #[serde(default = "default_connect_sso_endpoint")]
+    pub garmin_connect_sso_endpoint: Option<UrlWrapper>,
+    #[serde(default = "default_connect_api_endpoint")]
+    pub garmin_connect_api_endpoint: Option<UrlWrapper>,
     pub remote_url: Option<UrlWrapper>,
     pub remote_email: Option<StackString>,
     pub remote_password: Option<StackString>,
@@ -135,6 +145,21 @@ fn default_gps_bucket() -> StackString {
 }
 fn default_download_directory() -> PathBuf {
     default_home_dir().join("Downloads")
+}
+fn default_fitbit_endpoint() -> Option<UrlWrapper> {
+    "https://www.fitbit.com/".try_into().ok()
+}
+fn default_fitbit_api_endpoint() -> Option<UrlWrapper> {
+    "https://api.fitbit.com/".try_into().ok()
+}
+fn default_strava_endpoint() -> Option<UrlWrapper> {
+    "https://www.strava.com/".try_into().ok()
+}
+fn default_connect_sso_endpoint() -> Option<UrlWrapper> {
+    "https://sso.garmin.com/sso/signin".try_into().ok()
+}
+fn default_connect_api_endpoint() -> Option<UrlWrapper> {
+    "https://connect.garmin.com/modern".try_into().ok()
 }
 
 #[derive(Default, Debug, Clone)]
@@ -225,6 +250,13 @@ impl From<UrlWrapper> for String {
 impl TryFrom<String> for UrlWrapper {
     type Error = Error;
     fn try_from(item: String) -> Result<Self, Self::Error> {
+        Self::try_from(item.as_str())
+    }
+}
+
+impl TryFrom<&str> for UrlWrapper {
+    type Error = Error;
+    fn try_from(item: &str) -> Result<Self, Self::Error> {
         let url: Url = item.parse()?;
         Ok(Self(url))
     }

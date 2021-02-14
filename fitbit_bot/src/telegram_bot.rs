@@ -4,7 +4,6 @@ use crossbeam_utils::atomic::AtomicCell;
 use futures::StreamExt;
 use lazy_static::lazy_static;
 use log::debug;
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use stack_string::StackString;
 use std::{collections::HashSet, sync::Arc};
 use telegram_bot::{
@@ -16,7 +15,7 @@ use tokio::{
 };
 
 use fitbit_lib::scale_measurement::ScaleMeasurement;
-use garmin_lib::common::pgpool::PgPool;
+use garmin_lib::{common::pgpool::PgPool, utils::garmin_util::get_list_of_telegram_userids};
 
 use super::failure_count::FailureCount;
 
@@ -178,22 +177,12 @@ impl TelegramBot {
     }
 
     async fn list_of_telegram_user_ids(&self) -> Result<HashSet<UserId>, Error> {
-        let query = "
-        SELECT distinct telegram_userid
-        FROM authorized_users
-        WHERE telegram_userid IS NOT NULL
-    ";
-        self.pool
-            .get()
+        let result = get_list_of_telegram_userids(&self.pool)
             .await?
-            .query(query, &[])
-            .await?
-            .into_par_iter()
-            .map(|row| {
-                let telegram_userid: i64 = row.try_get("telegram_userid")?;
-                Ok(UserId::new(telegram_userid))
-            })
-            .collect()
+            .into_iter()
+            .map(UserId::new)
+            .collect();
+        Ok(result)
     }
 }
 

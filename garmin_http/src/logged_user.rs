@@ -1,22 +1,19 @@
-use actix_identity::Identity;
-use actix_web::{dev::Payload, FromRequest, HttpRequest};
-use anyhow::Error;
 pub use authorized_users::{
     get_random_key, get_secrets, token::Token, AuthorizedUser, AUTHORIZED_USERS, JWT_SECRET,
     KEY_LENGTH, SECRET_KEY, TRIGGER_DB_UPDATE,
 };
-use futures::{
-    executor::block_on,
-    future::{ready, Ready},
-};
 use log::debug;
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
-use std::{env, env::var};
+use std::{
+    convert::{TryFrom, TryInto},
+    env::var,
+    str::FromStr,
+};
 
-use garmin_lib::common::pgpool::PgPool;
+use garmin_lib::{common::pgpool::PgPool, utils::garmin_util::get_authorized_users};
 
-use crate::errors::ServiceError;
+use crate::errors::ServiceError as Error;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
 pub struct LoggedUser {
@@ -35,52 +32,35 @@ impl From<LoggedUser> for AuthorizedUser {
     }
 }
 
-fn _from_request(req: &HttpRequest, pl: &mut Payload) -> Result<LoggedUser, actix_web::Error> {
-    if let Ok(s) = env::var("TESTENV") {
-        if &s == "true" {
-            return Ok(LoggedUser {
-                email: "user@test".into(),
-            });
+impl TryFrom<Token> for LoggedUser {
+    type Error = Error;
+    fn try_from(token: Token) -> Result<Self, Self::Error> {
+        let user = token.try_into()?;
+        if AUTHORIZED_USERS.is_authorized(&user) {
+            Ok(user.into())
+        } else {
+            debug!("NOT AUTHORIZED {:?}", user);
+            Err(Error::Unauthorized)
         }
     }
-    if let Some(identity) = block_on(Identity::from_request(req, pl))?.identity() {
-        if let Some(user) = Token::decode_token(&identity.into()).ok().map(Into::into) {
-            if AUTHORIZED_USERS.is_authorized(&user) {
-                return Ok(user.into());
-            } else {
-                debug!("not authorized {:?}", user);
-            }
-        }
-    }
-    Err(ServiceError::Unauthorized.into())
 }
 
-impl FromRequest for LoggedUser {
-    type Error = actix_web::Error;
-    type Future = Ready<Result<Self, actix_web::Error>>;
-    type Config = ();
-
-    fn from_request(req: &HttpRequest, pl: &mut Payload) -> Self::Future {
-        ready(_from_request(req, pl))
+impl FromStr for LoggedUser {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let token: Token = s.to_string().into();
+        token.try_into()
     }
 }
 
 pub async fn fill_from_db(pool: &PgPool) -> Result<(), Error> {
     debug!("{:?}", *TRIGGER_DB_UPDATE);
     let users = if TRIGGER_DB_UPDATE.check() {
-        let query = "SELECT email FROM authorized_users";
-        let results: Result<Vec<_>, Error> = pool
-            .get()
-            .await?
-            .query(query, &[])
+        get_authorized_users(pool)
             .await?
             .into_iter()
-            .map(|row| {
-                let email: StackString = row.try_get(0)?;
-                Ok(AuthorizedUser { email })
-            })
-            .collect();
-        results?
+            .map(|email| AuthorizedUser { email })
+            .collect()
     } else {
         AUTHORIZED_USERS.get_users()
     };

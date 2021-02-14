@@ -33,5 +33,5 @@ handlebars = "3.5"
 itertools = "0.10"
 cookie = "0.14"
 base64 = "0.13"
-authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", branch="replace_actix_with_warp"}
+authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.4.0"}
 stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.2.0", features=["postgres_types"] }

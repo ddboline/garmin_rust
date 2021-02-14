@@ -298,8 +298,6 @@ mod tests {
         Ok(())
     }
 
-    use rand::{distributions::Alphanumeric, thread_rng, Rng};
-
     fn get_random_string(size: usize) -> String {
         let mut rng = thread_rng();
         (0..size)

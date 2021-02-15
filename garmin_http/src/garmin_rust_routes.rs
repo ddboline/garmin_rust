@@ -61,14 +61,14 @@ impl FromStr for Session {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let data = base64::decode(s)?;
         let history_str = String::from_utf8(data)?;
-        let history = history_str.split(',').map(Into::into).collect();
+        let history = history_str.split(';').map(Into::into).collect();
         Ok(Session { history })
     }
 }
 
 impl Session {
     pub fn get_jwt_cookie(&self, domain: &str) -> String {
-        let history_str = self.history.join(",");
+        let history_str = self.history.join(";");
         let token = base64::encode(history_str);
         format!("session={}; HttpOnly; Path=/; Domain={}", token, domain)
     }

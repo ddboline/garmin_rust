@@ -70,7 +70,7 @@ impl Session {
     pub fn get_jwt_cookie(&self, domain: &str) -> String {
         let history_str = self.history.join(",");
         let token = base64::encode(history_str);
-        format!("jwt={}; HttpOnly; Path=/; Domain={}", token, domain)
+        format!("session={}; HttpOnly; Path=/; Domain={}", token, domain)
     }
 }
 

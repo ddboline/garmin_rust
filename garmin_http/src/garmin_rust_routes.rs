@@ -486,9 +486,9 @@ pub async fn fitbit_plots(
 ) -> WarpResult<impl Reply> {
     let session = session.unwrap_or_default();
     let query: ScaleMeasurementPlotRequest = query.into();
-    fitbit_plots_impl(query, state, session)
-        .await
-        .map_err(Into::into)
+    let body = fitbit_plots_impl(query, state, session)
+        .await?;
+    Ok(warp::reply::html(body))
 }
 
 pub async fn fitbit_plots_demo(
@@ -499,9 +499,9 @@ pub async fn fitbit_plots_demo(
     let session = session.unwrap_or_default();
     let mut query: ScaleMeasurementPlotRequest = query.into();
     query.is_demo = true;
-    fitbit_plots_impl(query, state, session)
-        .await
-        .map_err(Into::into)
+    let body = fitbit_plots_impl(query, state, session)
+        .await?;
+    Ok(warp::reply::html(body))
 }
 
 async fn heartrate_plots_impl(

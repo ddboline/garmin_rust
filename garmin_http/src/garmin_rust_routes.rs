@@ -530,9 +530,9 @@ pub async fn heartrate_plots(
 ) -> WarpResult<impl Reply> {
     let query: FitbitHeartratePlotRequest = query.into();
     let session = session.unwrap_or_default();
-    heartrate_plots_impl(query, state, session)
-        .await
-        .map_err(Into::into)
+    let body = heartrate_plots_impl(query, state, session)
+        .await?;
+    Ok(warp::reply::html(body))
 }
 
 pub async fn heartrate_plots_demo(
@@ -543,9 +543,9 @@ pub async fn heartrate_plots_demo(
     let mut query: FitbitHeartratePlotRequest = query.into();
     query.is_demo = true;
     let session = session.unwrap_or_default();
-    heartrate_plots_impl(query, state, session)
-        .await
-        .map_err(Into::into)
+    body = heartrate_plots_impl(query, state, session)
+        .await?;
+    Ok(warp::reply::html(body))
 }
 
 pub async fn fitbit_tcx_sync(

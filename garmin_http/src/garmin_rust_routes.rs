@@ -543,7 +543,7 @@ pub async fn heartrate_plots_demo(
     let mut query: FitbitHeartratePlotRequest = query.into();
     query.is_demo = true;
     let session = session.unwrap_or_default();
-    body = heartrate_plots_impl(query, state, session)
+    let body = heartrate_plots_impl(query, state, session)
         .await?;
     Ok(warp::reply::html(body))
 }

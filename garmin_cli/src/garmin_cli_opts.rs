@@ -334,9 +334,7 @@ impl GarminCliOpts {
         if let Some(max_datetime) = get_maximum_begin_datetime(&cli.pool).await? {
             let mut session = GarminConnectClient::new(cli.config.clone());
             session.init().await?;
-
             let activities = session.get_activities(max_datetime).await?;
-
             for idx in 0..3 {
                 let date = (Utc::now() - Duration::days(idx)).naive_utc().date();
                 let hr_values = session.get_heartrate(date).await?;
@@ -346,21 +344,18 @@ impl GarminCliOpts {
                     .await??;
                 FitbitHeartRate::calculate_summary_statistics(&cli.config, &cli.pool, date).await?;
             }
-
-            if let Ok(filenames) = session
+            let filenames = session
                 .get_and_merge_activity_files(activities, &cli.pool)
-                .await
-            {
-                if !filenames.is_empty() {
-                    cli.process_filenames(&filenames).await?;
-                    cli.proc_everything().await?;
-                }
-                session.close().await?;
-                return Ok(filenames);
+                .await?;
+            if !filenames.is_empty() {
+                cli.process_filenames(&filenames).await?;
+                cli.proc_everything().await?;
             }
             session.close().await?;
+            Ok(filenames)
+        } else {
+            Ok(Vec::new())
         }
-        Ok(Vec::new())
     }
 
     pub async fn sync_with_strava(cli: &GarminCli) -> Result<Vec<PathBuf>, Error> {

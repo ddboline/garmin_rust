@@ -241,7 +241,7 @@ impl ScaleMeasurement {
 
         let js_str = serde_json::to_string(&mass).unwrap_or_else(|_| "".to_string());
         let params = hashmap! {
-            "EXAMPLETITLE" => r#"<a href="https://www.fitbit.com/weight">Weight</a>"#,
+            "EXAMPLETITLE" => "Weight",
             "XAXIS" => "Date",
             "YAXIS" => "Weight [lbs]",
             "DATA" => &js_str,
@@ -348,7 +348,9 @@ impl ScaleMeasurement {
             r#"
             <table border=1>
             <thead>
-            <th>Date</th><th>Weight</th><th>Fat %</th><th>Water %</th>
+            <th>Date</th>
+            <th><a href="https://www.fitbit.com/weight">Weight</a></th>
+            <th>Fat %</th><th>Water %</th>
             <th>Muscle %</th><th>Bone %</th>
             </thead>
             <tbody>

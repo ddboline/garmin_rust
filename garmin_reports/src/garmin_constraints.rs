@@ -95,7 +95,7 @@ impl GarminConstraints {
     pub fn to_query_string(&self) -> String {
         self.constraints
             .iter()
-            .map(|x| x.to_query_string())
+            .map(GarminConstraint::to_query_string)
             .join(" OR ")
     }
 
@@ -145,9 +145,9 @@ impl GarminConstraints {
                     }
                 }
             }
-        } else if pat.starts_with("q=") {
+        } else if let Some(stripped) = pat.strip_prefix("q=") {
             self.constraints
-                .push(GarminConstraint::Query(pat[2..].into()));
+                .push(GarminConstraint::Query(stripped.into()));
         } else {
             let gps_file = config.gps_dir.join(pat);
             if gps_file.exists() {

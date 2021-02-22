@@ -155,51 +155,49 @@ impl GarminConstraints {
                     .push(GarminConstraint::Filename(pat.into()));
             } else if let Ok(dt) = DateTime::parse_from_rfc3339(&pat.replace("Z", "+00:00")) {
                 self.constraints.push(GarminConstraint::DateTime(dt));
-            } else {
-                if YMD_REG.is_match(pat) {
-                    for cap in YMD_REG.captures_iter(pat) {
-                        let year = cap
-                            .name("year")
-                            .map_or_else(|| "", |s| s.as_str())
-                            .parse()
-                            .expect("Unexpected behvior");
-                        let month = cap
-                            .name("month")
-                            .map_or_else(|| "", |s| s.as_str())
-                            .parse()
-                            .expect("Unexpected behvior");
-                        let day = cap
-                            .name("day")
-                            .map_or_else(|| "", |s| s.as_str())
-                            .parse()
-                            .expect("Unexpected behvior");
-                        self.constraints
-                            .push(GarminConstraint::YearMonthDay { year, month, day });
-                    }
-                } else if YM_REG.is_match(pat) {
-                    for cap in YM_REG.captures_iter(pat) {
-                        let year = cap
-                            .name("year")
-                            .map_or_else(|| "", |s| s.as_str())
-                            .parse()
-                            .expect("Unexpected behvior");
-                        let month = cap
-                            .name("month")
-                            .map_or_else(|| "", |s| s.as_str())
-                            .parse()
-                            .expect("Unexpected behvior");
-                        self.constraints
-                            .push(GarminConstraint::YearMonth { year, month });
-                    }
-                } else if Y_REG.is_match(pat) {
-                    for cap in Y_REG.captures_iter(pat) {
-                        let year = cap
-                            .name("year")
-                            .map_or_else(|| "", |s| s.as_str())
-                            .parse()
-                            .expect("Unexpected behvior");
-                        self.constraints.push(GarminConstraint::Year(year));
-                    }
+            } else if YMD_REG.is_match(pat) {
+                for cap in YMD_REG.captures_iter(pat) {
+                    let year = cap
+                        .name("year")
+                        .map_or_else(|| "", |s| s.as_str())
+                        .parse()
+                        .expect("Unexpected behvior");
+                    let month = cap
+                        .name("month")
+                        .map_or_else(|| "", |s| s.as_str())
+                        .parse()
+                        .expect("Unexpected behvior");
+                    let day = cap
+                        .name("day")
+                        .map_or_else(|| "", |s| s.as_str())
+                        .parse()
+                        .expect("Unexpected behvior");
+                    self.constraints
+                        .push(GarminConstraint::YearMonthDay { year, month, day });
+                }
+            } else if YM_REG.is_match(pat) {
+                for cap in YM_REG.captures_iter(pat) {
+                    let year = cap
+                        .name("year")
+                        .map_or_else(|| "", |s| s.as_str())
+                        .parse()
+                        .expect("Unexpected behvior");
+                    let month = cap
+                        .name("month")
+                        .map_or_else(|| "", |s| s.as_str())
+                        .parse()
+                        .expect("Unexpected behvior");
+                    self.constraints
+                        .push(GarminConstraint::YearMonth { year, month });
+                }
+            } else if Y_REG.is_match(pat) {
+                for cap in Y_REG.captures_iter(pat) {
+                    let year = cap
+                        .name("year")
+                        .map_or_else(|| "", |s| s.as_str())
+                        .parse()
+                        .expect("Unexpected behvior");
+                    self.constraints.push(GarminConstraint::Year(year));
                 }
             }
         }

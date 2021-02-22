@@ -29,6 +29,7 @@ use garmin_lib::{
     },
     utils::sport_types::SportTypes,
 };
+use garmin_reports::garmin_constraints::GarminConstraints;
 use race_result_analysis::{
     race_result_analysis::RaceResultAnalysis, race_results::RaceResults, race_type::RaceType,
 };
@@ -55,7 +56,7 @@ impl GarminHtmlRequest {
         &self,
         pool: &PgPool,
     ) -> Result<Vec<StackString>, Error> {
-        get_list_of_files_from_db(&self.request.constraints.join(" OR "), &pool)
+        get_list_of_files_from_db(&self.request.constraints.to_query_string(), &pool)
             .await
             .map_err(Into::into)
     }
@@ -63,7 +64,7 @@ impl GarminHtmlRequest {
 
 #[derive(Default)]
 pub struct GarminListRequest {
-    pub constraints: Vec<StackString>,
+    pub constraints: GarminConstraints,
 }
 
 impl Into<GarminListRequest> for GarminHtmlRequest {
@@ -79,7 +80,7 @@ impl GarminListRequest {
         &self,
         pool: &PgPool,
     ) -> Result<Vec<StackString>, Error> {
-        get_list_of_files_from_db(&self.constraints.join(" OR "), &pool)
+        get_list_of_files_from_db(&self.constraints.to_query_string(), &pool)
             .await
             .map_err(Into::into)
     }

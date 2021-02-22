@@ -356,7 +356,15 @@ pub async fn get_list_of_files_from_db(
         format!("WHERE {}", constraints)
     };
 
-    let query = format!("SELECT filename FROM garmin_summary {}", constr);
+    let query = format!(
+        "
+            SELECT a.filename
+            FROM garmin_summary a
+            LEFT JOIN strava_activities b ON a.id = b.summary_id
+            {}
+        ",
+        constr
+    );
 
     debug!("{}", query);
 

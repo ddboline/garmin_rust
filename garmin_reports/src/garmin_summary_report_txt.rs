@@ -20,7 +20,10 @@ use garmin_lib::{
     },
 };
 
-use crate::garmin_report_options::{GarminReportAgg, GarminReportOptions};
+use crate::{
+    garmin_constraints::GarminConstraints,
+    garmin_report_options::{GarminReportAgg, GarminReportOptions},
+};
 
 type GarminTextEntry = (StackString, Option<StackString>);
 
@@ -84,10 +87,10 @@ impl GarminReportQuery {
     }
 }
 
-pub async fn create_report_query<T: AsRef<str>>(
+pub async fn create_report_query(
     pool: &PgPool,
     options: &GarminReportOptions,
-    constraints: &[T],
+    constraints: &GarminConstraints,
 ) -> Result<GarminReportQuery, Error> {
     let sport_constr = match options.do_sport {
         Some(x) => format!("sport = '{}'", x.to_string()),
@@ -101,14 +104,11 @@ pub async fn create_report_query<T: AsRef<str>>(
             format!("WHERE {}", sport_constr)
         }
     } else if sport_constr.is_empty() {
-        format!(
-            "WHERE {}",
-            constraints.iter().map(AsRef::as_ref).join(" OR ")
-        )
+        format!("WHERE {}", constraints.to_query_string())
     } else {
         format!(
             "WHERE ({}) AND {}",
-            constraints.iter().map(AsRef::as_ref).join(" OR "),
+            constraints.to_query_string(),
             sport_constr
         )
     };
@@ -347,15 +347,16 @@ async fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<FileSumm
 
     let query = format!(
         "
-        SELECT begin_datetime as datetime,
-                sport,
-                total_calories,
-                total_distance,
-                total_duration,
-                CASE WHEN total_hr_dur > 0.0 THEN total_hr_dur ELSE 0.0 END AS total_hr_dur,
-                CASE WHEN total_hr_dis > 0.0 THEN total_hr_dis ELSE 0.0 END AS total_hr_dis,
-                id as summary_id
-        FROM garmin_summary
+        SELECT a.begin_datetime as datetime,
+                a.sport,
+                a.total_calories,
+                a.total_distance,
+                a.total_duration,
+                CASE WHEN a.total_hr_dur > 0.0 THEN a.total_hr_dur ELSE 0.0 END AS total_hr_dur,
+                CASE WHEN a.total_hr_dis > 0.0 THEN a.total_hr_dis ELSE 0.0 END AS total_hr_dis,
+                a.id as summary_id
+        FROM garmin_summary a
+        LEFT JOIN strava_activities b ON a.id = b.summary_id
         {}
         ORDER BY datetime, sport
     ",
@@ -530,15 +531,16 @@ impl GarminReportTrait for DaySummaryReport {
 async fn day_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<DaySummaryReport>, Error> {
     let query = format!(
         "
-        WITH a AS (
-            SELECT begin_datetime,
-                   sport,
-                   total_calories,
-                   total_distance,
-                   total_duration,
-                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dur ELSE 0.0 END AS total_hr_dur,
-                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dis ELSE 0.0 END AS total_hr_dis
-            FROM garmin_summary
+        WITH c AS (
+            SELECT a.begin_datetime,
+                   a.sport,
+                   a.total_calories,
+                   a.total_distance,
+                   a.total_duration,
+                   CASE WHEN a.total_hr_dur > 0.0 THEN a.total_hr_dur ELSE 0.0 END AS total_hr_dur,
+                   CASE WHEN a.total_hr_dur > 0.0 THEN a.total_hr_dis ELSE 0.0 END AS total_hr_dis
+            FROM garmin_summary a
+            LEFT JOIN strava_activities b ON a.id = b.summary_id
             {}
         )
         SELECT
@@ -551,7 +553,7 @@ async fn day_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<DaySummar
             sum(total_duration) as total_duration,
             sum(total_hr_dur) as total_hr_dur,
             sum(total_hr_dis) as total_hr_dis
-        FROM a
+        FROM c
         GROUP BY sport, date, week, isodow
         ORDER BY sport, date, week, isodow
     ",
@@ -691,15 +693,16 @@ impl GarminReportTrait for WeekSummaryReport {
 async fn week_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<WeekSummaryReport>, Error> {
     let query = format!(
         "
-        WITH a AS (
-            SELECT begin_datetime,
-                   sport,
-                   total_calories,
-                   total_distance,
-                   total_duration,
-                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dur ELSE 0.0 END AS total_hr_dur,
-                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dis ELSE 0.0 END AS total_hr_dis
-            FROM garmin_summary
+        WITH c AS (
+            SELECT a.begin_datetime,
+                   a.sport,
+                   a.total_calories,
+                   a.total_distance,
+                   a.total_duration,
+                   CASE WHEN a.total_hr_dur > 0.0 THEN a.total_hr_dur ELSE 0.0 END AS total_hr_dur,
+                   CASE WHEN a.total_hr_dur > 0.0 THEN a.total_hr_dis ELSE 0.0 END AS total_hr_dis
+            FROM garmin_summary a
+            LEFT JOIN strava_activities b ON a.id = b.summary_id
             {}
         )
         SELECT
@@ -712,7 +715,7 @@ async fn week_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<WeekSumm
             sum(total_hr_dur) as total_hr_dur,
             sum(total_hr_dis) as total_hr_dis,
             count(distinct cast(begin_datetime at time zone 'localtime' as date)) as number_of_days
-        FROM a
+        FROM c
         GROUP BY sport, year, week
         ORDER BY sport, year, week
     ",
@@ -856,15 +859,16 @@ async fn month_summary_report(
 ) -> Result<Vec<MonthSummaryReport>, Error> {
     let query = format!(
         "
-        WITH a AS (
-            SELECT begin_datetime,
-                   sport,
-                   total_calories,
-                   total_distance,
-                   total_duration,
-                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dur ELSE 0.0 END AS total_hr_dur,
-                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dis ELSE 0.0 END AS total_hr_dis
-            FROM garmin_summary
+        WITH c AS (
+            SELECT a.begin_datetime,
+                   a.sport,
+                   a.total_calories,
+                   a.total_distance,
+                   a.total_duration,
+                   CASE WHEN a.total_hr_dur > 0.0 THEN a.total_hr_dur ELSE 0.0 END AS total_hr_dur,
+                   CASE WHEN a.total_hr_dur > 0.0 THEN a.total_hr_dis ELSE 0.0 END AS total_hr_dis
+            FROM garmin_summary a
+            LEFT JOIN strava_activities b ON a.id = b.summary_id
             {}
         )
         SELECT
@@ -877,7 +881,7 @@ async fn month_summary_report(
             sum(total_hr_dur) as total_hr_dur,
             sum(total_hr_dis) as total_hr_dis,
             count(distinct cast(begin_datetime at time zone 'localtime' as date)) as number_of_days
-        FROM a
+        FROM c
         GROUP BY sport, year, month
         ORDER BY sport, year, month
     ",
@@ -1003,15 +1007,16 @@ async fn sport_summary_report(
 ) -> Result<Vec<SportSummaryReport>, Error> {
     let query = format!(
         "
-        WITH a AS (
-            SELECT begin_datetime,
-                   sport,
-                   total_calories,
-                   total_distance,
-                   total_duration,
-                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dur ELSE 0.0 END AS total_hr_dur,
-                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dis ELSE 0.0 END AS total_hr_dis
-            FROM garmin_summary
+        WITH c AS (
+            SELECT a.begin_datetime,
+                   a.sport,
+                   a.total_calories,
+                   a.total_distance,
+                   a.total_duration,
+                   CASE WHEN a.total_hr_dur > 0.0 THEN a.total_hr_dur ELSE 0.0 END AS total_hr_dur,
+                   CASE WHEN a.total_hr_dur > 0.0 THEN a.total_hr_dis ELSE 0.0 END AS total_hr_dis
+            FROM garmin_summary a
+            LEFT JOIN strava_activities b ON a.id = b.summary_id
             {}
         )
         SELECT sport,
@@ -1020,7 +1025,7 @@ async fn sport_summary_report(
                sum(total_duration) as total_duration,
                sum(total_hr_dur) as total_hr_dur,
                sum(total_hr_dis) as total_hr_dis
-        FROM a
+        FROM c
         GROUP BY sport
         ORDER BY sport
         ",
@@ -1159,15 +1164,16 @@ impl GarminReportTrait for YearSummaryReport {
 async fn year_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<YearSummaryReport>, Error> {
     let query = format!(
         "
-        WITH a AS (
-            SELECT begin_datetime,
-                   sport,
-                   total_calories,
-                   total_distance,
-                   total_duration,
-                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dur ELSE 0.0 END AS total_hr_dur,
-                   CASE WHEN total_hr_dur > 0.0 THEN total_hr_dis ELSE 0.0 END AS total_hr_dis
-            FROM garmin_summary
+        WITH c AS (
+            SELECT a.begin_datetime,
+                   a.sport,
+                   a.total_calories,
+                   a.total_distance,
+                   a.total_duration,
+                   CASE WHEN a.total_hr_dur > 0.0 THEN a.total_hr_dur ELSE 0.0 END AS total_hr_dur,
+                   CASE WHEN a.total_hr_dur > 0.0 THEN a.total_hr_dis ELSE 0.0 END AS total_hr_dis
+            FROM garmin_summary a
+            LEFT JOIN strava_activities b ON a.id = b.summary_id
             {}
         )
         SELECT
@@ -1179,7 +1185,7 @@ async fn year_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<YearSumm
             sum(total_hr_dur) as total_hr_dur,
             sum(total_hr_dis) as total_hr_dis,
             count(distinct cast(begin_datetime at time zone 'localtime' as date)) as number_of_days
-        FROM a
+        FROM c
         GROUP BY sport, year
         ORDER BY sport, year
         ",

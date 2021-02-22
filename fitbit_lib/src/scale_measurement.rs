@@ -348,7 +348,9 @@ impl ScaleMeasurement {
             r#"
             <table border=1>
             <thead>
-            <th>Date</th><th>Weight</th><th>Fat %</th><th>Water %</th>
+            <th>Date</th>
+            <th><a href="https://www.fitbit.com/weight" target="_blank">Weight</a></th>
+            <th>Fat %</th><th>Water %</th>
             <th>Muscle %</th><th>Bone %</th>
             </thead>
             <tbody>

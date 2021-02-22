@@ -1,4 +1,4 @@
-use chrono::{DateTime, FixedOffset};
+use chrono::{DateTime, FixedOffset, Utc};
 use derive_more::Deref;
 use itertools::Itertools;
 use lazy_static::lazy_static;
@@ -52,7 +52,9 @@ impl GarminConstraint {
                 format!(
                     "replace({}, '%', 'T') = '{}'",
                     "to_char(a.begin_datetime at time zone 'utc', 'YYYY-MM-DD%HH24:MI:SSZ')",
-                    dt.to_rfc3339()
+                    dt.with_timezone(&Utc)
+                        .format("%Y-%m-%dT%H:%M:%SZ")
+                        .to_string()
                 )
             }
             Self::YearMonthDay { year, month, day } => {
@@ -201,5 +203,25 @@ impl GarminConstraints {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Error;
+    use chrono::DateTime;
+
+    use crate::garmin_constraints::{GarminConstraint, GarminConstraints};
+
+    #[test]
+    fn test_garmin_constraints() -> Result<(), Error> {
+        let dt = DateTime::parse_from_rfc3339("2019-02-09T13:06:13+00:00")?;
+        let cs = GarminConstraint::DateTime(dt);
+        let obs = cs.to_query_string();
+        println!("{}", obs);
+        let exp = "replace(to_char(a.begin_datetime at time zone 'utc', \
+                   'YYYY-MM-DD%HH24:MI:SSZ'), '%', 'T') = '2019-02-09T13:06:13Z'";
+        assert_eq!(obs, exp);
+        Ok(())
     }
 }

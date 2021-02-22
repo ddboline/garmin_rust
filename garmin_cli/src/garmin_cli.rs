@@ -2,10 +2,8 @@ use anyhow::{format_err, Error};
 use chrono::{DateTime, Utc};
 use futures::future::try_join_all;
 use itertools::Itertools;
-use lazy_static::lazy_static;
 use log::debug;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
-use regex::Regex;
 use stack_string::StackString;
 use std::{
     collections::{HashMap, HashSet},
@@ -34,25 +32,14 @@ use garmin_lib::{
         garmin_parse_tcx::GarminParseTcx,
         garmin_parse_txt::GarminParseTxt,
     },
-    utils::{
-        garmin_util::{extract_zip_from_garmin_connect, get_file_list},
-        sport_types::get_sport_type_map,
-    },
+    utils::garmin_util::{extract_zip_from_garmin_connect, get_file_list},
 };
 use garmin_reports::{
-    garmin_file_report_html::file_report_html,
-    garmin_file_report_txt::generate_txt_report,
-    garmin_report_options::{GarminReportAgg, GarminReportOptions},
+    garmin_constraints::GarminConstraints, garmin_file_report_html::file_report_html,
+    garmin_file_report_txt::generate_txt_report, garmin_report_options::GarminReportOptions,
     garmin_summary_report_html::summary_report_html,
     garmin_summary_report_txt::create_report_query,
 };
-
-lazy_static! {
-    static ref YMD_REG: Regex =
-        Regex::new(r"(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})").expect("Bad regex");
-    static ref YM_REG: Regex = Regex::new(r"(?P<year>\d{4})-(?P<month>\d{2})").expect("Bad regex");
-    static ref Y_REG: Regex = Regex::new(r"(?P<year>\d{4})").expect("Bad regex");
-}
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum GarminCliOptions {
@@ -252,121 +239,29 @@ impl GarminCli {
         try_join_all(futures).await
     }
 
-    fn match_patterns(config: &GarminConfig, pat: &str) -> Vec<StackString> {
-        let mut constraints: Vec<StackString> = Vec::new();
-        if pat.contains('w') {
-            let vals: Vec<_> = pat.split('w').collect();
-            if vals.len() >= 2 {
-                if let Ok(year) = vals[0].parse::<i32>() {
-                    if let Ok(week) = vals[1].parse::<i32>() {
-                        constraints.push(
-                            format!(
-                                "(EXTRACT(isoyear from begin_datetime at time zone 'localtime') = \
-                                 {} AND
-                            EXTRACT(week from begin_datetime at time zone 'localtime') = {})",
-                                year, week
-                            )
-                            .into(),
-                        );
-                    }
-                }
-            }
-        } else {
-            let gps_file = config.gps_dir.join(pat);
-            if gps_file.exists() {
-                constraints.push(format!("filename = '{}'", pat).into());
-            } else if DateTime::parse_from_rfc3339(&pat.replace("Z", "+00:00")).is_ok() {
-                constraints.push(
-                    format!(
-                        "replace({}, '%', 'T') = '{}'",
-                        "to_char(begin_datetime at time zone 'utc', 'YYYY-MM-DD%HH24:MI:SSZ')", pat
-                    )
-                    .into(),
-                );
-            } else {
-                let mut datelike_str = Vec::new();
-                if YMD_REG.is_match(pat) {
-                    for cap in YMD_REG.captures_iter(pat) {
-                        let year = cap.name("year").map_or_else(|| "", |s| s.as_str());
-                        let month = cap.name("month").map_or_else(|| "", |s| s.as_str());
-                        let day = cap.name("day").map_or_else(|| "", |s| s.as_str());
-                        datelike_str.push(format!("{}-{}-{}", year, month, day));
-                    }
-                } else if YM_REG.is_match(pat) {
-                    for cap in YM_REG.captures_iter(pat) {
-                        let year = cap.name("year").map_or_else(|| "", |s| s.as_str());
-                        let month = cap.name("month").map_or_else(|| "", |s| s.as_str());
-                        datelike_str.push(format!("{}-{}", year, month));
-                    }
-                } else if Y_REG.is_match(pat) {
-                    for cap in Y_REG.captures_iter(pat) {
-                        let year = cap.name("year").map_or_else(|| "", |s| s.as_str());
-                        datelike_str.push(year.to_string());
-                    }
-                }
-                for dstr in datelike_str {
-                    constraints.push(
-                        format!(
-                            "replace({}, '%', 'T') like '{}%'",
-                            "to_char(begin_datetime at time zone 'localtime', \
-                             'YYYY-MM-DD%HH24:MI:SS')",
-                            dstr
-                        )
-                        .into(),
-                    );
-                }
-            }
-        }
-        constraints
-    }
-
     pub fn process_pattern<T, U>(config: &GarminConfig, patterns: T) -> GarminRequest
     where
         T: IntoIterator<Item = U>,
         U: AsRef<str>,
     {
-        let mut options = GarminReportOptions::new();
+        let mut constraints = GarminConstraints::default();
 
-        let sport_type_map = get_sport_type_map();
-
-        let mut constraints: Vec<StackString> = Vec::new();
-
-        for pattern in patterns {
-            match pattern.as_ref() {
-                "year" => options.agg = Some(GarminReportAgg::Year),
-                "month" => options.agg = Some(GarminReportAgg::Month),
-                "week" => options.agg = Some(GarminReportAgg::Week),
-                "day" => options.agg = Some(GarminReportAgg::Day),
-                "file" => options.agg = Some(GarminReportAgg::File),
-                "sport" => options.do_sport = None,
-                "latest" => constraints
-                    .push("begin_datetime=(select max(begin_datetime) from garmin_summary)".into()),
-                pat => {
-                    if let Some(x) = sport_type_map.get(pat) {
-                        options.do_sport = Some(*x)
-                    } else {
-                        constraints.extend_from_slice(&Self::match_patterns(config, pat));
-                    }
-                }
-            };
-        }
+        let options = constraints.process_pattern(config, patterns);
 
         GarminRequest {
-            options,
             constraints,
+            options,
             ..GarminRequest::default()
         }
     }
 
-    pub async fn run_cli<T: AsRef<str>>(
+    pub async fn run_cli(
         &self,
         options: &GarminReportOptions,
-        constraints: &[T],
+        constraints: &GarminConstraints,
     ) -> Result<(), Error> {
         let pg_conn = self.get_pool();
-        let constraints: Vec<_> = constraints.iter().map(AsRef::as_ref).collect();
-
-        let file_list = get_list_of_files_from_db(&constraints.join(" OR "), &pg_conn).await?;
+        let file_list = get_list_of_files_from_db(&constraints.to_query_string(), &pg_conn).await?;
 
         match file_list.len() {
             0 => (),
@@ -414,7 +309,8 @@ impl GarminCli {
     pub async fn run_html(&self, req: &GarminRequest, is_demo: bool) -> Result<StackString, Error> {
         let pg_conn = self.get_pool();
 
-        let file_list = get_list_of_files_from_db(&req.constraints.join(" OR "), &pg_conn).await?;
+        let file_list =
+            get_list_of_files_from_db(&req.constraints.to_query_string(), &pg_conn).await?;
 
         match file_list.len() {
             0 => Ok("".into()),
@@ -548,5 +444,5 @@ pub struct GarminRequest {
     pub filter: StackString,
     pub history: Vec<StackString>,
     pub options: GarminReportOptions,
-    pub constraints: Vec<StackString>,
+    pub constraints: GarminConstraints,
 }

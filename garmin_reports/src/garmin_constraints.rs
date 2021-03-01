@@ -95,57 +95,49 @@ impl GarminConstraint {
         } else if let Ok(dt) = DateTime::parse_from_rfc3339(&pat.replace("Z", "+00:00")) {
             Self::DateTime(dt)
         } else if WEEK_REG.is_match(pat) {
-            for cap in WEEK_REG.captures_iter(pat) {
-                let year = cap.name("year").map_or_else(|| "", |s| s.as_str()).parse().expect("Unexpected behavior");
-                let week = cap.name("week").map_or_else(|| "", |s| s.as_str()).parse().expect("Unexpected behavior");
-                return Self::IsoWeek{year, week};
-            }
-            panic!("Unexpected result")
+            let cap = WEEK_REG.captures_iter(pat).next().unwrap();
+            let year = cap.name("year").map_or_else(|| "", |s| s.as_str()).parse().expect("Unexpected behavior");
+            let week = cap.name("week").map_or_else(|| "", |s| s.as_str()).parse().expect("Unexpected behavior");
+            Self::IsoWeek{year, week}
         } else if YMD_REG.is_match(pat) {
-            for cap in YMD_REG.captures_iter(pat) {
-                let year = cap
-                    .name("year")
-                    .map_or_else(|| "", |s| s.as_str())
-                    .parse()
-                    .expect("Unexpected behvior");
-                let month = cap
-                    .name("month")
-                    .map_or_else(|| "", |s| s.as_str())
-                    .parse()
-                    .expect("Unexpected behvior");
-                let day = cap
-                    .name("day")
-                    .map_or_else(|| "", |s| s.as_str())
-                    .parse()
-                    .expect("Unexpected behvior");
-                return Self::YearMonthDay { year, month, day };
-            }
-            panic!("Unexpected result")
+            let cap = YMD_REG.captures_iter(pat).next().unwrap();
+            let year = cap
+                .name("year")
+                .map_or_else(|| "", |s| s.as_str())
+                .parse()
+                .expect("Unexpected behvior");
+            let month = cap
+                .name("month")
+                .map_or_else(|| "", |s| s.as_str())
+                .parse()
+                .expect("Unexpected behvior");
+            let day = cap
+                .name("day")
+                .map_or_else(|| "", |s| s.as_str())
+                .parse()
+                .expect("Unexpected behvior");
+            Self::YearMonthDay { year, month, day }
         } else if YM_REG.is_match(pat) {
-            for cap in YM_REG.captures_iter(pat) {
-                let year = cap
-                    .name("year")
-                    .map_or_else(|| "", |s| s.as_str())
-                    .parse()
-                    .expect("Unexpected behvior");
-                let month = cap
-                    .name("month")
-                    .map_or_else(|| "", |s| s.as_str())
-                    .parse()
-                    .expect("Unexpected behvior");
-                return Self::YearMonth { year, month };
-            }
-            panic!("Unexpected result")
+            let cap = YM_REG.captures_iter(pat).next().unwrap();
+            let year = cap
+                .name("year")
+                .map_or_else(|| "", |s| s.as_str())
+                .parse()
+                .expect("Unexpected behvior");
+            let month = cap
+                .name("month")
+                .map_or_else(|| "", |s| s.as_str())
+                .parse()
+                .expect("Unexpected behvior");
+            Self::YearMonth { year, month }
         } else if Y_REG.is_match(pat) {
-            for cap in Y_REG.captures_iter(pat) {
-                let year = cap
-                    .name("year")
-                    .map_or_else(|| "", |s| s.as_str())
-                    .parse()
-                    .expect("Unexpected behvior");
-                return Self::Year(year);
-            }
-            panic!("Unexpected result")
+            let cap = Y_REG.captures_iter(pat).next().unwrap();
+            let year = cap
+                .name("year")
+                .map_or_else(|| "", |s| s.as_str())
+                .parse()
+                .expect("Unexpected behvior");
+            Self::Year(year)
         } else {
             Self::Query(pat.into())
         }

@@ -10,13 +10,14 @@ use garmin_lib::{common::garmin_config::GarminConfig, utils::sport_types::get_sp
 use crate::garmin_report_options::{GarminReportAgg, GarminReportOptions};
 
 lazy_static! {
+    static ref WEEK_REG: Regex = Regex::new(r"(?P<year>\d{4})w(?P<week>\d{1,2})").expect("Bad regex");
     static ref YMD_REG: Regex =
         Regex::new(r"(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})").expect("Bad regex");
     static ref YM_REG: Regex = Regex::new(r"(?P<year>\d{4})-(?P<month>\d{2})").expect("Bad regex");
     static ref Y_REG: Regex = Regex::new(r"(?P<year>\d{4})").expect("Bad regex");
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum GarminConstraint {
     Latest,
     IsoWeek { year: i32, week: u8 },
@@ -86,6 +87,69 @@ impl GarminConstraint {
             }
         }
     }
+
+    fn match_pattern(config: &GarminConfig, pat: &str) -> Self {
+        let gps_file = config.gps_dir.join(pat);
+        if gps_file.exists() {
+            Self::Filename(pat.into())
+        } else if let Ok(dt) = DateTime::parse_from_rfc3339(&pat.replace("Z", "+00:00")) {
+            Self::DateTime(dt)
+        } else if WEEK_REG.is_match(pat) {
+            for cap in WEEK_REG.captures_iter(pat) {
+                let year = cap.name("year").map_or_else(|| "", |s| s.as_str()).parse().expect("Unexpected behavior");
+                let week = cap.name("week").map_or_else(|| "", |s| s.as_str()).parse().expect("Unexpected behavior");
+                return Self::IsoWeek{year, week};
+            }
+            panic!("Unexpected result")
+        } else if YMD_REG.is_match(pat) {
+            for cap in YMD_REG.captures_iter(pat) {
+                let year = cap
+                    .name("year")
+                    .map_or_else(|| "", |s| s.as_str())
+                    .parse()
+                    .expect("Unexpected behvior");
+                let month = cap
+                    .name("month")
+                    .map_or_else(|| "", |s| s.as_str())
+                    .parse()
+                    .expect("Unexpected behvior");
+                let day = cap
+                    .name("day")
+                    .map_or_else(|| "", |s| s.as_str())
+                    .parse()
+                    .expect("Unexpected behvior");
+                return Self::YearMonthDay { year, month, day };
+            }
+            panic!("Unexpected result")
+        } else if YM_REG.is_match(pat) {
+            for cap in YM_REG.captures_iter(pat) {
+                let year = cap
+                    .name("year")
+                    .map_or_else(|| "", |s| s.as_str())
+                    .parse()
+                    .expect("Unexpected behvior");
+                let month = cap
+                    .name("month")
+                    .map_or_else(|| "", |s| s.as_str())
+                    .parse()
+                    .expect("Unexpected behvior");
+                return Self::YearMonth { year, month };
+            }
+            panic!("Unexpected result")
+        } else if Y_REG.is_match(pat) {
+            for cap in Y_REG.captures_iter(pat) {
+                let year = cap
+                    .name("year")
+                    .map_or_else(|| "", |s| s.as_str())
+                    .parse()
+                    .expect("Unexpected behvior");
+                return Self::Year(year);
+            }
+            panic!("Unexpected result")
+        } else {
+            Self::Query(pat.into())
+        }
+    }
 }
 
 #[derive(Default, Debug, Deref)]
@@ -127,82 +191,12 @@ impl GarminConstraints {
                     if let Some(x) = sport_type_map.get(pat) {
                         options.do_sport = Some(*x)
                     } else {
-                        self.match_patterns(config, pat);
+                        self.constraints.push(GarminConstraint::match_pattern(config, pat));
                     }
                 }
             };
         }
-
         options
-    }
-
-    fn match_patterns(&mut self, config: &GarminConfig, pat: &str) {
-        if pat.contains('w') {
-            let vals: Vec<_> = pat.split('w').collect();
-            if vals.len() >= 2 {
-                if let Ok(year) = vals[0].parse::<i32>() {
-                    if let Ok(week) = vals[1].parse::<u8>() {
-                        self.constraints
-                            .push(GarminConstraint::IsoWeek { year, week });
-                    }
-                }
-            }
-        } else if let Some(stripped) = pat.strip_prefix("q=") {
-            self.constraints
-                .push(GarminConstraint::Query(stripped.into()));
-        } else {
-            let gps_file = config.gps_dir.join(pat);
-            if gps_file.exists() {
-                self.constraints
-                    .push(GarminConstraint::Filename(pat.into()));
-            } else if let Ok(dt) = DateTime::parse_from_rfc3339(&pat.replace("Z", "+00:00")) {
-                self.constraints.push(GarminConstraint::DateTime(dt));
-            } else if YMD_REG.is_match(pat) {
-                for cap in YMD_REG.captures_iter(pat) {
-                    let year = cap
-                        .name("year")
-                        .map_or_else(|| "", |s| s.as_str())
-                        .parse()
-                        .expect("Unexpected behvior");
-                    let month = cap
-                        .name("month")
-                        .map_or_else(|| "", |s| s.as_str())
-                        .parse()
-                        .expect("Unexpected behvior");
-                    let day = cap
-                        .name("day")
-                        .map_or_else(|| "", |s| s.as_str())
-                        .parse()
-                        .expect("Unexpected behvior");
-                    self.constraints
-                        .push(GarminConstraint::YearMonthDay { year, month, day });
-                }
-            } else if YM_REG.is_match(pat) {
-                for cap in YM_REG.captures_iter(pat) {
-                    let year = cap
-                        .name("year")
-                        .map_or_else(|| "", |s| s.as_str())
-                        .parse()
-                        .expect("Unexpected behvior");
-                    let month = cap
-                        .name("month")
-                        .map_or_else(|| "", |s| s.as_str())
-                        .parse()
-                        .expect("Unexpected behvior");
-                    self.constraints
-                        .push(GarminConstraint::YearMonth { year, month });
-                }
-            } else if Y_REG.is_match(pat) {
-                for cap in Y_REG.captures_iter(pat) {
-                    let year = cap
-                        .name("year")
-                        .map_or_else(|| "", |s| s.as_str())
-                        .parse()
-                        .expect("Unexpected behvior");
-                    self.constraints.push(GarminConstraint::Year(year));
-                }
-            }
-        }
     }
 }
 
@@ -211,7 +205,9 @@ mod tests {
     use anyhow::Error;
     use chrono::DateTime;
 
-    use crate::garmin_constraints::{GarminConstraint, GarminConstraints};
+    use garmin_lib::common::garmin_config::GarminConfig;
+
+    use crate::garmin_constraints::{GarminConstraint};
 
     #[test]
     fn test_garmin_constraints() -> Result<(), Error> {
@@ -222,6 +218,23 @@ mod tests {
         let exp = "replace(to_char(a.begin_datetime at time zone 'utc', \
                    'YYYY-MM-DD%HH24:MI:SSZ'), '%', 'T') = '2019-02-09T13:06:13Z'";
         assert_eq!(obs, exp);
+        Ok(())
+    }
+
+    #[test]
+    fn test_patterns() -> Result<(), Error> {
+        let config = GarminConfig::get_config(None)?;
+        let result = GarminConstraint::match_pattern(&config, "2014w12");
+        assert_eq!(result, GarminConstraint::IsoWeek{year:2014, week:12});
+        let result = GarminConstraint::match_pattern(&config, "2014w1");
+        assert_eq!(result, GarminConstraint::IsoWeek{year:2014, week:1});
+        let result = GarminConstraint::match_pattern(&config, "2020-12");
+        assert_eq!(result, GarminConstraint::YearMonth{year: 2020, month:12});
+        let result = GarminConstraint::match_pattern(&config, "Manitou");
+        assert_eq!(result, GarminConstraint::Query("Manitou".into()));
+        let result = GarminConstraint::match_pattern(&config, "2001-12-05T01:23:45Z");
+        let expected = "2001-12-05T01:23:45Z".parse()?;
+        assert_eq!(result, GarminConstraint::DateTime(expected));
         Ok(())
     }
 }

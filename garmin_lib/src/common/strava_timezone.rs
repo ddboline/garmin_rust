@@ -9,6 +9,52 @@ use stack_string::StackString;
 use std::{convert::TryFrom, fmt, ops::Deref, str::FromStr};
 use tokio_postgres::types::{FromSql, IsNull, ToSql, Type};
 
+#[derive(Into, Debug, PartialEq, Copy, Clone, Eq, Serialize, Deserialize)]
+#[serde(into = "String", try_from = "&str")]
+pub struct StravaTz(Tz);
+
+impl Deref for StravaTz {
+    type Target = Tz;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl From<StravaTz> for String {
+    fn from(item: StravaTz) -> Self {
+        item.0.name().to_string()
+    }
+}
+
+impl From<StravaTz> for StackString {
+    fn from(item: StravaTz) -> Self {
+        item.0.name().into()
+    }
+}
+
+impl FromStr for StravaTz {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.parse()
+            .map(Self)
+            .map_err(|e| format_err!("{} is not a valid timezone", e))
+    }
+}
+
+impl TryFrom<&str> for StravaTz {
+    type Error = Error;
+    fn try_from(item: &str) -> Result<Self, Self::Error> {
+        item.parse()
+    }
+}
+
+impl TryFrom<StackString> for StravaTz {
+    type Error = Error;
+    fn try_from(item: StackString) -> Result<Self, Self::Error> {
+        item.as_str().parse()
+    }
+}
+
 /// Direction in degrees
 #[derive(Into, Debug, PartialEq, Copy, Clone, Eq, Serialize, Deserialize)]
 #[serde(into = "String", try_from = "&str")]

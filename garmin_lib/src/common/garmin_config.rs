@@ -13,6 +13,8 @@ use std::{
 };
 use url::Url;
 
+use super::strava_timezone::StravaTz;
+
 /// `GarminConfig` holds configuration information which can be set either
 /// through environment variables or the config.env file, see the dotenv crate
 /// for more information about the config file format.
@@ -87,6 +89,7 @@ pub struct GarminConfigInner {
     pub jwt_secret_path: PathBuf,
     #[serde(default = "default_download_directory")]
     pub download_directory: PathBuf,
+    pub default_time_zone: Option<StravaTz>,
 }
 
 fn default_home_dir() -> PathBuf {

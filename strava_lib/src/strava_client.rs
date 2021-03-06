@@ -27,6 +27,7 @@ use tokio::{
     time::sleep,
 };
 use tokio_stream::StreamExt;
+use chrono_tz::Tz;
 
 use garmin_lib::{
     common::{
@@ -473,14 +474,20 @@ impl StravaClient {
             id: i64,
         }
 
+        let start_datetime = activity.start_date;
+
+        let start_time = match self.config.default_time_zone {
+            Some(tz) => {
+                let tz: Tz = tz.into();
+                start_datetime.with_timezone(&tz).format("%Y-%m-%dT%H:%M:%S%z").to_string()
+            },
+            None => start_datetime.with_timezone(&Local).format("%Y-%m-%dT%H:%M:%S%z").to_string(),
+        };
+
         let data = CreateActivityForm {
             name: activity.name.clone(),
             activity_type: activity.activity_type,
-            start_date_local: activity
-                .start_date
-                .with_timezone(&Local)
-                .format("%Y-%m-%dT%H:%M:%S%z")
-                .to_string()
+            start_date_local: start_time
                 .into(),
             elapsed_time: activity.elapsed_time,
             description: "".into(),

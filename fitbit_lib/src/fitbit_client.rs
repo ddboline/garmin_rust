@@ -886,7 +886,7 @@ impl FitbitClient {
 
         let existing_map: Result<HashMap<NaiveDate, _>, Error> = {
             let client = client.clone();
-            let measurements: HashMap<_, _> = client
+            Ok(client
                 .get_fitbit_bodyweightfat()
                 .await?
                 .into_iter()
@@ -894,13 +894,12 @@ impl FitbitClient {
                     let date = entry.datetime.with_timezone(&Local).naive_local().date();
                     (date, entry)
                 })
-                .collect();
-            Ok(measurements)
+                .collect())
         };
 
         let existing_map = existing_map?;
 
-        let new_measurements: Vec<_> = ScaleMeasurement::read_from_db(pool, Some(start_date), None)
+        let measurements: Vec<_> = ScaleMeasurement::read_from_db(pool, Some(start_date), None)
             .await?
             .into_iter()
             .filter(|entry| {
@@ -908,18 +907,16 @@ impl FitbitClient {
                 !existing_map.contains_key(&date)
             })
             .collect();
-        client
-            .update_fitbit_bodyweightfat(&new_measurements)
-            .await?;
+        client.update_fitbit_bodyweightfat(&measurements).await?;
 
-        let new_activities = client.sync_fitbit_activities(start_datetime, pool).await?;
+        let activities = client.sync_fitbit_activities(start_datetime, pool).await?;
         let duplicates = client.remove_duplicate_entries(pool).await?;
 
-        Ok(FitbitBodyWeightFatUpdateOutput::new(
-            new_measurements,
-            new_activities,
+        Ok(FitbitBodyWeightFatUpdateOutput {
+            measurements,
+            activities,
             duplicates,
-        ))
+        })
     }
 
     #[allow(clippy::filter_map)]
@@ -954,20 +951,6 @@ pub struct FitbitBodyWeightFatUpdateOutput {
     pub measurements: Vec<ScaleMeasurement>,
     pub activities: Vec<DateTime<Utc>>,
     pub duplicates: Vec<StackString>,
-}
-
-impl FitbitBodyWeightFatUpdateOutput {
-    pub fn new(
-        measurements: Vec<ScaleMeasurement>,
-        activities: Vec<DateTime<Utc>>,
-        duplicates: Vec<StackString>,
-    ) -> Self {
-        Self {
-            measurements,
-            activities,
-            duplicates,
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

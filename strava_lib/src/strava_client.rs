@@ -1,6 +1,7 @@
 use anyhow::{format_err, Error};
 use base64::{encode_config, URL_SAFE_NO_PAD};
 use chrono::{DateTime, Local, Utc};
+use chrono_tz::Tz;
 use crossbeam_utils::atomic::AtomicCell;
 use futures::future::try_join_all;
 use lazy_static::lazy_static;
@@ -27,7 +28,6 @@ use tokio::{
     time::sleep,
 };
 use tokio_stream::StreamExt;
-use chrono_tz::Tz;
 
 use garmin_lib::{
     common::{
@@ -479,16 +479,21 @@ impl StravaClient {
         let start_time = match self.config.default_time_zone {
             Some(tz) => {
                 let tz: Tz = tz.into();
-                start_datetime.with_timezone(&tz).format("%Y-%m-%dT%H:%M:%S%z").to_string()
-            },
-            None => start_datetime.with_timezone(&Local).format("%Y-%m-%dT%H:%M:%S%z").to_string(),
+                start_datetime
+                    .with_timezone(&tz)
+                    .format("%Y-%m-%dT%H:%M:%S%z")
+                    .to_string()
+            }
+            None => start_datetime
+                .with_timezone(&Local)
+                .format("%Y-%m-%dT%H:%M:%S%z")
+                .to_string(),
         };
 
         let data = CreateActivityForm {
             name: activity.name.clone(),
             activity_type: activity.activity_type,
-            start_date_local: start_time
-                .into(),
+            start_date_local: start_time.into(),
             elapsed_time: activity.elapsed_time,
             description: "".into(),
             distance: activity.distance.map_or(0, |d| d as i64),

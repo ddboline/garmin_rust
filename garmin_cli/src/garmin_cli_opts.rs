@@ -93,6 +93,8 @@ impl GarminCliOpts {
     }
 
     async fn process_opts(self, config: &GarminConfig) -> Result<(), Error> {
+        let pool = PgPool::new(&config.pgurl);
+
         let opts = match self {
             Self::Bootstrap => GarminCliOptions::Bootstrap,
             Self::Proc { filename } => GarminCliOptions::ImportFileNames(filename),
@@ -113,8 +115,6 @@ impl GarminCliOpts {
             }
             Self::Fitbit { all } => {
                 let cli = GarminCli::with_config()?;
-                let config = GarminConfig::get_config(None)?;
-                let pool = PgPool::new(&config.pgurl);
                 let client = FitbitClient::with_auth(config.clone()).await?;
                 let updates = client.sync_everything(&pool).await?;
                 for idx in 0..3 {
@@ -152,8 +152,6 @@ impl GarminCliOpts {
                 return cli.stdout.close().await;
             }
             Self::Import { table, filepath } => {
-                let config = GarminConfig::get_config(None)?;
-                let pool = PgPool::new(&config.pgurl);
                 let data = if let Some(filepath) = filepath {
                     read_to_string(&filepath).await?
                 } else {
@@ -239,8 +237,6 @@ impl GarminCliOpts {
                 return Ok(());
             }
             Self::Export { table, filepath } => {
-                let config = GarminConfig::get_config(None)?;
-                let pool = PgPool::new(&config.pgurl);
                 let mut file: Box<dyn AsyncWrite + Unpin> = if let Some(filepath) = filepath {
                     Box::new(File::create(&filepath).await?)
                 } else {
@@ -291,8 +287,6 @@ impl GarminCliOpts {
                 return Ok(());
             }
             Self::RunMigrations => {
-                let config = GarminConfig::get_config(None)?;
-                let pool = PgPool::new(&config.pgurl);
                 let mut client = pool.get().await?;
                 migrations::runner()
                     .run_async(client.deref_mut().deref_mut())
@@ -303,6 +297,8 @@ impl GarminCliOpts {
 
         let cli = GarminCli {
             opts: Some(opts),
+            pool,
+            config: config.clone(),
             ..GarminCli::with_config()?
         };
 
@@ -349,6 +345,7 @@ impl GarminCliOpts {
                 .await?;
             if !filenames.is_empty() {
                 cli.process_filenames(&filenames).await?;
+                GarminConnectActivity::fix_summary_id_in_db(&cli.pool).await?;
                 cli.proc_everything().await?;
             }
             session.close().await?;
@@ -360,17 +357,17 @@ impl GarminCliOpts {
 
     pub async fn sync_with_strava(cli: &GarminCli) -> Result<Vec<PathBuf>, Error> {
         let config = cli.config.clone();
-        let pool = PgPool::new(&config.pgurl);
         let start_datetime = Some(Utc::now() - Duration::days(15));
         let end_datetime = Some(Utc::now());
 
         let client = StravaClient::with_auth(config).await?;
         let filenames = client
-            .sync_with_client(start_datetime, end_datetime, &pool)
+            .sync_with_client(start_datetime, end_datetime, &cli.pool)
             .await?;
 
         if !filenames.is_empty() {
             cli.process_filenames(&filenames).await?;
+            StravaActivity::fix_summary_id_in_db(&cli.pool).await?;
             cli.proc_everything().await?;
         }
 

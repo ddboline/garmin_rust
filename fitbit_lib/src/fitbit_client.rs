@@ -412,7 +412,7 @@ impl FitbitClient {
         #[derive(Deserialize)]
         struct WeightEntry {
             date: NaiveDate,
-            fat: f64,
+            fat: Option<f64>,
             time: NaiveTime,
             weight: f64,
         }
@@ -438,18 +438,18 @@ impl FitbitClient {
         let result = body_weight
             .weight
             .into_iter()
-            .map(|bw| {
+            .filter_map(|bw| {
                 let datetime = format!("{}T{}{}", bw.date, bw.time, offset);
                 let datetime = DateTime::parse_from_rfc3339(&datetime)
                     .unwrap()
                     .with_timezone(&Utc);
                 let weight = bw.weight;
-                let fat = bw.fat;
-                FitbitBodyWeightFat {
+                let fat = bw.fat?;
+                Some(FitbitBodyWeightFat {
                     datetime,
                     weight,
                     fat,
-                }
+                })
             })
             .collect();
         Ok(result)

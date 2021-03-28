@@ -127,10 +127,10 @@ impl GarminConnectSyncRequest {
         {
             if !filenames.is_empty() {
                 gcli.process_filenames(&filenames).await?;
-                GarminConnectActivity::fix_summary_id_in_db(pool).await?;
                 gcli.sync_everything(false).await?;
                 gcli.proc_everything().await?;
             }
+            GarminConnectActivity::fix_summary_id_in_db(pool).await?;
             Ok(filenames)
         } else {
             Ok(Vec::new())
@@ -203,10 +203,10 @@ impl StravaSyncRequest {
 
         if !filenames.is_empty() {
             gcli.process_filenames(&filenames).await?;
-            StravaActivity::fix_summary_id_in_db(&pool).await?;
             gcli.sync_everything(false).await?;
             gcli.proc_everything().await?;
         }
+        StravaActivity::fix_summary_id_in_db(&pool).await?;
 
         Ok(filenames)
     }

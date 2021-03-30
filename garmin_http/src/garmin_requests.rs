@@ -121,20 +121,16 @@ impl GarminConnectSyncRequest {
 
         let new_activities = session.get_activities(max_timestamp).await?;
 
-        if let Ok(filenames) = session
+        let filenames = session
             .get_and_merge_activity_files(new_activities, pool)
-            .await
-        {
-            if !filenames.is_empty() {
-                gcli.process_filenames(&filenames).await?;
-                gcli.sync_everything(false).await?;
-                gcli.proc_everything().await?;
-            }
-            GarminConnectActivity::fix_summary_id_in_db(pool).await?;
-            Ok(filenames)
-        } else {
-            Ok(Vec::new())
+            .await?;
+        if !filenames.is_empty() {
+            gcli.process_filenames(&filenames).await?;
+            gcli.sync_everything(false).await?;
+            gcli.proc_everything().await?;
         }
+        GarminConnectActivity::fix_summary_id_in_db(pool).await?;
+        Ok(filenames)
     }
 }
 

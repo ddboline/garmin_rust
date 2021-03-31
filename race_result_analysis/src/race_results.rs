@@ -616,6 +616,8 @@ mod tests {
                     {
                         if (summary.total_distance as i32 - result.race_distance).abs() < 4000 {
                             println!("set filename: {}", filename);
+                            println!("{:?}", result);
+                            println!("{:?}", summary);
                             result.race_summary_ids.push(Some(summary.id));
                             result.upsert_db(&pool).await?;
                         } else {

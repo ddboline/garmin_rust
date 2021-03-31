@@ -16,7 +16,7 @@
    31.0686       08 53   2018    1       Caumsett 50k
    31.0686       10 51   2018    1       Febapple 50k
    31.0686       10 14   2017    1       Half-Ass Trail Mixup 50k
-   50.0000       15 25   2017    1       NFEC CA 50 mi
+   50.0000       15 25   2017    1       North Face CA 50 mi
    26.2188       08 53   2017    1       NYC Marathon
    26.2188       10 09   2017    0       Whistlestop Marathon
    31.0686       13 26   2017    0       Tesla Hertz 50k

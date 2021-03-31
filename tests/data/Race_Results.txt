@@ -19,7 +19,7 @@ Race Distance   Race Time       Pace    Date            Race Name
      50 km         4:36:08      08:46   2018-03-04      Caumsett 50k
      50 km         5:37:19      11:08   2018-02-17      Febapple 50k
      50 km         5:17:59      10:10   2017-12-03      Half-Ass Trail Mixup 50k
-     50 mi        12:51:14      15:02   2017-11-18      NFEC CA 50 mi
+     50 mi        12:51:14      15:02   2017-11-18      North Face CA 50 mi
  42.195 km         3:53:16      08:46   2017-11-05      NYC Marathon
  42.195 km         4:26:13      10:03   2017-10-14      Whistlestop Marathon
      50 km         6:57:23      13:24   2017-10-07      Tesla Hertz 50k

@@ -117,7 +117,11 @@ impl GarminConnectClient {
             .await?
             .submit()
             .await?;
-        let modern_url = self.config.garmin_connect_api_endpoint.as_ref().unwrap();
+        let modern_url = self
+            .config
+            .garmin_connect_api_endpoint
+            .as_ref()
+            .ok_or_else(|| format_err!("Bad URL"))?;
         client.goto(modern_url.as_str()).await?;
         let js = Self::raw_get(client, &modern_url).await?;
         let text = std::str::from_utf8(&js)?;

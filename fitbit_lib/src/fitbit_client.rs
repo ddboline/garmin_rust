@@ -367,20 +367,17 @@ impl FitbitClient {
             .json()
             .await?;
         let offset = self.get_offset();
-        let hr_values = dataset
+        dataset
             .intraday
             .dataset
             .into_iter()
             .map(|entry| {
                 let datetime = format!("{}T{}{}", date, entry.time, offset);
-                let datetime = DateTime::parse_from_rfc3339(&datetime)
-                    .unwrap()
-                    .with_timezone(&Utc);
+                let datetime = DateTime::parse_from_rfc3339(&datetime)?.with_timezone(&Utc);
                 let value = entry.value;
-                FitbitHeartRate { datetime, value }
+                Ok(FitbitHeartRate { datetime, value })
             })
-            .collect();
-        Ok(hr_values)
+            .collect()
     }
 
     pub async fn import_fitbit_heartrate(
@@ -441,7 +438,7 @@ impl FitbitClient {
             .filter_map(|bw| {
                 let datetime = format!("{}T{}{}", bw.date, bw.time, offset);
                 let datetime = DateTime::parse_from_rfc3339(&datetime)
-                    .unwrap()
+                    .ok()?
                     .with_timezone(&Utc);
                 let weight = bw.weight;
                 let fat = bw.fat?;
@@ -492,7 +489,7 @@ impl FitbitClient {
                     .config
                     .fitbit_api_endpoint
                     .as_ref()
-                    .unwrap()
+                    .ok_or_else(|| format_err!("Bad URL"))?
                     .join("1/user/-/")?
                     .join("body/log/fat.json")?;
                 let data = hashmap! {

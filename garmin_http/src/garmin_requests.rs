@@ -67,10 +67,10 @@ pub struct GarminListRequest {
     pub constraints: GarminConstraints,
 }
 
-impl Into<GarminListRequest> for GarminHtmlRequest {
-    fn into(self) -> GarminListRequest {
-        GarminListRequest {
-            constraints: self.request.constraints,
+impl From<GarminHtmlRequest> for GarminListRequest {
+    fn from(item: GarminHtmlRequest) -> Self {
+        Self {
+            constraints: item.request.constraints,
         }
     }
 }

@@ -130,7 +130,9 @@ impl StravaTimeZone {
         let mut offset = None;
         let tz_strs: SmallVec<[&str; 2]> = s.split_whitespace().take(2).collect();
         if let Some(tz) = tz_strs.get(0) {
-            assert_eq!(tz.get(1..=3), Some("GMT"));
+            if tz.get(1..=3) != Some("GMT") {
+                return Err(format_err!("Time string isn't GMT: {}", tz));
+            }
             if let Some(hours) = tz.get(4..=6).and_then(|s| s.parse::<i32>().ok()) {
                 if let Some(minutes) = tz.get(8..=9).and_then(|s| s.parse::<i32>().ok()) {
                     offset.replace(FixedOffset::east(hours * 3600 + minutes * 60));

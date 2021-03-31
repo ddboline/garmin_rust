@@ -590,9 +590,7 @@ impl GarminReportTrait for WeekSummaryReport {
 
         debug!("{:?}", self);
 
-        let mut tmp_vec = Vec::new();
-
-        tmp_vec.push((
+        let mut tmp_vec = vec![(
             format!(
                 "{:15} {:7} {:10} {:10} \t",
                 format!("{} week {:02}", self.year, self.week),
@@ -602,7 +600,7 @@ impl GarminReportTrait for WeekSummaryReport {
             )
             .into(),
             None,
-        ));
+        )];
 
         match self.sport.as_str() {
             "running" | "walking" => {
@@ -752,9 +750,7 @@ impl GarminReportTrait for MonthSummaryReport {
 
         debug!("{:?}", self);
 
-        let mut tmp_vec = Vec::new();
-
-        tmp_vec.push((
+        let mut tmp_vec = vec![(
             format!(
                 "{:8} {:10} {:8} \t",
                 format!("{} {}", self.year, MONTH_NAMES[self.month as usize - 1]),
@@ -763,7 +759,7 @@ impl GarminReportTrait for MonthSummaryReport {
             )
             .into(),
             None,
-        ));
+        )];
         tmp_vec.push((
             format!("{:10} \t", format!("{} cal", self.total_calories)).into(),
             None,
@@ -912,21 +908,21 @@ pub struct SportSummaryReport {
 impl GarminReportTrait for SportSummaryReport {
     fn get_text_entry(&self) -> Result<Vec<GarminTextEntry>, Error> {
         debug!("{:?}", self);
-        let mut tmp_vec = Vec::new();
-
-        tmp_vec.push((format!("{:10} \t", self.sport).into(), None));
-        tmp_vec.push((
-            format!(
-                "{:10} \t",
-                format!("{:4.2} mi", self.total_distance / METERS_PER_MILE),
-            )
-            .into(),
-            None,
-        ));
-        tmp_vec.push((
-            format!("{:10} \t", format!("{} cal", self.total_calories)).into(),
-            None,
-        ));
+        let mut tmp_vec = vec![
+            (format!("{:10} \t", self.sport).into(), None),
+            (
+                format!(
+                    "{:10} \t",
+                    format!("{:4.2} mi", self.total_distance / METERS_PER_MILE),
+                )
+                .into(),
+                None,
+            ),
+            (
+                format!("{:10} \t", format!("{} cal", self.total_calories)).into(),
+                None,
+            ),
+        ];
 
         match self.sport.as_str() {
             "running" | "walking" => {
@@ -1060,24 +1056,24 @@ impl GarminReportTrait for YearSummaryReport {
 
         debug!("{:?}", self);
 
-        let mut tmp_vec = Vec::new();
-
-        tmp_vec.push((
-            format!("{:5} {:10} \t", self.year, self.sport,).into(),
-            None,
-        ));
-        tmp_vec.push((
-            format!(
-                "{:10} \t",
-                format!("{:4.2} mi", self.total_distance / METERS_PER_MILE),
-            )
-            .into(),
-            None,
-        ));
-        tmp_vec.push((
-            format!("{:10} \t", format!("{} cal", self.total_calories)).into(),
-            None,
-        ));
+        let mut tmp_vec = vec![
+            (
+                format!("{:5} {:10} \t", self.year, self.sport,).into(),
+                None,
+            ),
+            (
+                format!(
+                    "{:10} \t",
+                    format!("{:4.2} mi", self.total_distance / METERS_PER_MILE),
+                )
+                .into(),
+                None,
+            ),
+            (
+                format!("{:10} \t", format!("{} cal", self.total_calories)).into(),
+                None,
+            ),
+        ];
 
         match self.sport.as_str() {
             "running" | "walking" => {

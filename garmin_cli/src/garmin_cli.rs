@@ -140,11 +140,11 @@ impl GarminCli {
                 .par_iter()
                 .map(|f| {
                     self.stdout.send(format!("Process {:?}", &f));
-                    Ok(GarminSummary::process_single_gps_file(
+                    GarminSummary::process_single_gps_file(
                         &f,
                         &self.get_config().cache_dir,
                         &corr_map,
-                    )?)
+                    )
                 })
                 .collect::<Result<Vec<_>, Error>>()?,
             Some(GarminCliOptions::All) => GarminSummary::process_all_gps_files(

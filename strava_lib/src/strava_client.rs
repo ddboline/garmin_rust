@@ -123,13 +123,13 @@ impl StravaClient {
             .config
             .strava_endpoint
             .as_ref()
-            .unwrap()
+            .ok_or_else(|| format_err!("Bad URL"))?
             .join("login")?;
         let session_url = self
             .config
             .strava_endpoint
             .as_ref()
-            .unwrap()
+            .ok_or_else(|| format_err!("Bad URL"))?
             .join("session")?;
         let email = self
             .config
@@ -213,7 +213,7 @@ impl StravaClient {
             .config
             .strava_endpoint
             .as_ref()
-            .unwrap()
+            .ok_or_else(|| format_err!("Bad URL"))?
             .join(&format!("activities/{}", activity_id))?;
         let data = hashmap! {
             "_method" => "delete",
@@ -277,7 +277,7 @@ impl StravaClient {
             .config
             .strava_endpoint
             .as_ref()
-            .unwrap()
+            .ok_or_else(|| format_err!("Bad URL"))?
             .join("oauth/authorize")?;
         let url = Url::parse_with_params(
             url.as_str(),
@@ -309,7 +309,7 @@ impl StravaClient {
                 .config
                 .strava_endpoint
                 .as_ref()
-                .unwrap()
+                .ok_or_else(|| format_err!("Bad URL"))?
                 .join("oauth/token")?;
             let data = hashmap! {
                 "client_id" => self.client_id.as_str(),
@@ -346,7 +346,7 @@ impl StravaClient {
                 .config
                 .strava_endpoint
                 .as_ref()
-                .unwrap()
+                .ok_or_else(|| format_err!("Bad URL"))?
                 .join("oauth/token")?;
             let data = hashmap! {
                 "client_id" => self.client_id.as_str(),
@@ -386,7 +386,7 @@ impl StravaClient {
             .config
             .strava_endpoint
             .as_ref()
-            .unwrap()
+            .ok_or_else(|| format_err!("Bad URL"))?
             .join("api/v3/athlete")?;
         let headers = self.get_auth_headers()?;
         self.client
@@ -406,8 +406,7 @@ impl StravaClient {
         end_date: Option<DateTime<Utc>>,
         page: usize,
     ) -> Result<Vec<StravaActivity>, Error> {
-        let mut params = Vec::new();
-        params.push(("page", page.to_string()));
+        let mut params = vec![("page", page.to_string())];
         if let Some(start_date) = start_date {
             params.push(("after", start_date.timestamp().to_string()));
         }
@@ -420,7 +419,7 @@ impl StravaClient {
             .config
             .strava_endpoint
             .as_ref()
-            .unwrap()
+            .ok_or_else(|| format_err!("Bad URL"))?
             .join("api/v3/athlete/activities")?;
 
         let url = Url::parse_with_params(url.as_str(), &params)?;
@@ -506,7 +505,7 @@ impl StravaClient {
             .config
             .strava_endpoint
             .as_ref()
-            .unwrap()
+            .ok_or_else(|| format_err!("Bad URL"))?
             .join("api/v3/activities")?;
         let resp: CreateActivityResp = self
             .client
@@ -581,7 +580,7 @@ impl StravaClient {
             .config
             .strava_endpoint
             .as_ref()
-            .unwrap()
+            .ok_or_else(|| format_err!("Bad URL"))?
             .join("api/v3/uploads")?;
         let result: UploadResponse = self
             .client
@@ -650,7 +649,7 @@ impl StravaClient {
             .config
             .strava_endpoint
             .as_ref()
-            .unwrap()
+            .ok_or_else(|| format_err!("Bad URL"))?
             .join(&format!("api/v3/activities/{}", activity_id))?;
         self.client
             .put(url)

@@ -106,7 +106,7 @@ impl GarminConnectClient {
                 self.config
                     .garmin_connect_sso_endpoint
                     .as_ref()
-                    .unwrap()
+                    .ok_or_else(|| format_err!("Bad URL"))?
                     .as_str(),
             )
             .await?;
@@ -179,7 +179,7 @@ impl GarminConnectClient {
             .config
             .garmin_connect_api_endpoint
             .as_ref()
-            .unwrap()
+            .ok_or_else(|| format_err!("Bad URL"))?
             .join("/proxy/usersummary-service/usersummary/daily/")?
             .join(display_name)?;
         url.query_pairs_mut()
@@ -206,7 +206,7 @@ impl GarminConnectClient {
             .config
             .garmin_connect_api_endpoint
             .as_ref()
-            .unwrap()
+            .ok_or_else(|| format_err!("Bad URL"))?
             .join("/proxy/wellness-service/wellness/dailyHeartRate/")?
             .join(display_name)?;
         url.query_pairs_mut().append_pair("date", &date.to_string());
@@ -227,7 +227,7 @@ impl GarminConnectClient {
             .config
             .garmin_connect_api_endpoint
             .as_ref()
-            .unwrap()
+            .ok_or_else(|| format_err!("Bad URL"))?
             .join("/proxy/activitylist-service/activities/search/activities")?;
         let js = Self::raw_get(client, &url).await?;
         self.last_used = Utc::now();
@@ -256,7 +256,7 @@ impl GarminConnectClient {
                 .config
                 .garmin_connect_api_endpoint
                 .as_ref()
-                .unwrap()
+                .ok_or_else(|| format_err!("Bad URL"))?
                 .join("/proxy/download-service/files/activity/")?
                 .join(&activity.activity_id.to_string())?;
             let data = Self::raw_get(client, &url).await?;

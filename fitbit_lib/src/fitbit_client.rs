@@ -161,7 +161,7 @@ impl FitbitClient {
             .config
             .fitbit_api_endpoint
             .as_ref()
-            .unwrap()
+            .ok_or_else(|| format_err!("Bad URL"))?
             .join("1/user/-/")?
             .join("profile.json")?;
         let resp: UserResp = self
@@ -203,7 +203,7 @@ impl FitbitClient {
             .config
             .fitbit_endpoint
             .as_ref()
-            .unwrap()
+            .ok_or_else(|| format_err!("Bad URL"))?
             .join("oauth2/authorize")?;
         let url = Url::parse_with_params(
             fitbit_oauth_authorize.as_str(),
@@ -257,7 +257,7 @@ impl FitbitClient {
             .config
             .fitbit_api_endpoint
             .as_ref()
-            .unwrap()
+            .ok_or_else(|| format_err!("Bad URL"))?
             .join("oauth2/token")?;
         let auth_resp: AccessTokenResponse = self
             .client
@@ -303,7 +303,7 @@ impl FitbitClient {
                 .config
                 .fitbit_api_endpoint
                 .as_ref()
-                .unwrap()
+                .ok_or_else(|| format_err!("Bad URL"))?
                 .join("oauth2/token")?;
             let auth_resp: AccessTokenResponse = self
                 .client
@@ -354,7 +354,7 @@ impl FitbitClient {
             .config
             .fitbit_api_endpoint
             .as_ref()
-            .unwrap()
+            .ok_or_else(|| format_err!("Bad URL"))?
             .join("1/user/-/")?
             .join(&format!("activities/heart/date/{}/1d/1min.json", date))?;
         let dataset: HeartRateResp = self
@@ -423,7 +423,7 @@ impl FitbitClient {
             .config
             .fitbit_api_endpoint
             .as_ref()
-            .unwrap()
+            .ok_or_else(|| format_err!("Bad URL"))?
             .join("1/user/-/")?
             .join(&format!("body/log/weight/date/{}/30d.json", date))?;
         let body_weight: BodyWeight = self
@@ -472,7 +472,7 @@ impl FitbitClient {
                     .config
                     .fitbit_api_endpoint
                     .as_ref()
-                    .unwrap()
+                    .ok_or_else(|| format_err!("Bad URL"))?
                     .join("1/user/-/")?
                     .join("body/log/weight.json")?;
                 let data = hashmap! {
@@ -532,7 +532,7 @@ impl FitbitClient {
             .config
             .fitbit_api_endpoint
             .as_ref()
-            .unwrap()
+            .ok_or_else(|| format_err!("Bad URL"))?
             .join("1/user/-/")?
             .join(&format!(
                 "activities/list.json?afterDate={}&offset={}&limit=20&sort=asc",
@@ -629,7 +629,7 @@ impl FitbitClient {
             .config
             .fitbit_api_endpoint
             .as_ref()
-            .unwrap()
+            .ok_or_else(|| format_err!("Bad URL"))?
             .join("1/activities.json")?;
         let headers = self.get_auth_headers()?;
         let categories: FitbitActivityCategories = self
@@ -861,7 +861,7 @@ impl FitbitClient {
             .config
             .fitbit_api_endpoint
             .as_ref()
-            .unwrap()
+            .ok_or_else(|| format_err!("Bad URL"))?
             .join("1/user/-/")?
             .join(&format!("activities/{}.json", log_id))?;
         let headers = self.get_auth_headers()?;

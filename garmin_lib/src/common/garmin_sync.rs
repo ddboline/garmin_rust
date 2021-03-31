@@ -146,8 +146,7 @@ impl GarminSync {
             .filter_map(|(file, tmod, size)| {
                 let file_name: StackString = file.file_name()?.to_string_lossy().as_ref().into();
                 let mut do_upload = false;
-                if key_set.contains(file_name.as_str()) {
-                    let item = key_set.get(file_name.as_str()).unwrap();
+                if let Some(item) = key_set.get(file_name.as_str()) {
                     if tmod != item.timestamp {
                         if check_md5sum {
                             if let Ok(md5) = get_md5sum(&file) {

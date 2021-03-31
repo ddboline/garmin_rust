@@ -949,9 +949,10 @@ fn get_html_splits(
             })
             .collect();
 
-        let mut retval = Vec::new();
-        retval.push(r#"<table border="1" class="dataframe">"#.to_string());
-        retval.push(r#"<thead><tr style="text-align: center;">"#.to_string());
+        let mut retval = vec![
+            r#"<table border="1" class="dataframe">"#.to_string(),
+            r#"<thead><tr style="text-align: center;">"#.to_string(),
+        ];
         for label in labels {
             retval.push(format!("<th>{}</th>", label));
         }

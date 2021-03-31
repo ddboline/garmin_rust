@@ -10,6 +10,7 @@
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::used_underscore_binding)]
 #![allow(clippy::similar_names)]
+#![allow(clippy::upper_case_acronyms)]
 
 pub mod errors;
 pub mod garmin_requests;

@@ -62,17 +62,11 @@ impl GarminParseTrait for GarminParseGmn {
 
     fn parse_file(&self, filename: &Path) -> Result<ParseOutput, Error> {
         let filename = filename.to_string_lossy().to_string();
-        let command = if let Ok(x) = var("LAMBDA_TASK_ROOT") {
-            format!(
-                "echo \"{}\" `{}/bin/garmin_dump {}` \"{}\"",
-                "<root>", x, filename, "</root>"
-            )
-        } else {
-            format!(
-                "echo \"{}\" `garmin_dump {}` \"{}\"",
-                "<root>", filename, "</root>"
-            )
-        };
+        assert!(Path::new("/usr/bin/garmin_dump").exists());
+        let command = format!(
+            "echo \"{}\" `garmin_dump {}` \"{}\"",
+            "<root>", filename, "</root>"
+        );
 
         let output = Exec::shell(command)
             .stdout(Redirection::Pipe)

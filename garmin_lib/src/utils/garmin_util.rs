@@ -52,7 +52,11 @@ pub fn convert_xml_local_time_to_utc(xml_local_time: &str) -> Result<DateTime<Ut
 }
 
 pub fn get_md5sum(filename: &Path) -> Result<StackString, Error> {
-    assert!(Path::new("/usr/bin/md5sum").exists());
+    if !Path::new("/usr/bin/md5sum").exists() {
+        return Err(format_err!(
+            "md5sum not installed (or not present at /usr/bin/md5sum"
+        ));
+    }
     let command = format!("md5sum {}", filename.to_string_lossy());
 
     let stream = Exec::shell(command).stream_stdout()?;
@@ -164,11 +168,15 @@ pub fn extract_zip_from_garmin_connect(
     filename: &Path,
     ziptmpdir: &Path,
 ) -> Result<PathBuf, Error> {
+    if !Path::new("/usr/bin/unzip").exists() {
+        return Err(format_err!(
+            "md5sum not installed (or not present at /usr/bin/unzip"
+        ));
+    }
     let new_filename = filename
         .file_stem()
         .ok_or_else(|| format_err!("Bad filename {}", filename.to_string_lossy()))?;
     let new_filename = format!("{}_ACTIVITY.fit", new_filename.to_string_lossy());
-    assert!(Path::new("/usr/bin/unzip").exists());
     let command = format!(
         "unzip {} -d {}",
         filename.to_string_lossy(),

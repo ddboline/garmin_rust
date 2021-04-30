@@ -1,7 +1,7 @@
 use anyhow::{format_err, Error};
 use chrono::{DateTime, Utc};
 use roxmltree::{Document, NodeType};
-use std::{collections::HashMap, env::var, path::Path};
+use std::{collections::HashMap, path::Path};
 use subprocess::{Exec, Redirection};
 
 use crate::{

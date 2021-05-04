@@ -55,6 +55,12 @@ impl GarminConnectClient {
                 self.config.webdriver_path
             ));
         }
+        if !self.config.chrome_path.exists() {
+            return Err(format_err!(
+                "CHROME NOT FOUND {:?}",
+                self.config.chrome_path
+            ));
+        }
         if self.trigger_auth {
             let webdriver = Command::new(&self.config.webdriver_path)
                 .args(&[&format!("--port={}", self.config.webdriver_port)])

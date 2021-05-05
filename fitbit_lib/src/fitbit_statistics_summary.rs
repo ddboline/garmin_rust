@@ -271,14 +271,14 @@ impl FitbitStatisticsSummary {
             entries.join("</tr><tr>"),
             if offset >= 10 {
                 format!(
-                    r#"<button type="submit" onclick="scale_measurement_plots({});">Previous</button>"#,
+                    r#"<button type="submit" onclick="heartrate_stat_plot({});">Previous</button>"#,
                     offset - 10
                 )
             } else {
                 "".to_string()
             },
             format!(
-                r#"<button type="submit" onclick="scale_measurement_plots({});">Next</button>"#,
+                r#"<button type="submit" onclick="heartrate_stat_plot({});">Next</button>"#,
                 offset + 10
             ),
         );

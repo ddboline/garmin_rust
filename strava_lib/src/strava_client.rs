@@ -593,7 +593,7 @@ impl StravaClient {
             .json()
             .await?;
 
-        let url = url.join(&result.id.to_string())?;
+        let url = url.join(&format!("activities/{}", result.id))?;
         for _ in 0..10 {
             let result: UploadResponse = self
                 .client

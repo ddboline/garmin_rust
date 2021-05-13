@@ -102,7 +102,7 @@ impl GarminSync {
                 .map_err(Into::into)
         })
         .await;
-        let list_of_keys = results?.into_iter().filter_map(|x| x).collect();
+        let list_of_keys = results?.into_iter().flatten().collect();
         Ok(list_of_keys)
     }
 

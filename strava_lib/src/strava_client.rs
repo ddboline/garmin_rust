@@ -628,7 +628,7 @@ impl StravaClient {
         description: Option<&str>,
         sport: SportTypes,
         start_time: Option<DateTime<Utc>>,
-    ) -> Result<StackString, Error> {
+    ) -> Result<Url, Error> {
         #[derive(Serialize)]
         struct UpdatableActivity {
             id: u64,
@@ -678,7 +678,7 @@ impl StravaClient {
         } else {
             url.parse()?
         };
-        Ok(url.into_string().into())
+        Ok(url)
     }
 
     pub async fn sync_with_client(

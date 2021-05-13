@@ -249,8 +249,8 @@ impl GarminCli {
         let options = constraints.process_pattern(config, patterns);
 
         GarminRequest {
-            constraints,
             options,
+            constraints,
             ..GarminRequest::default()
         }
     }

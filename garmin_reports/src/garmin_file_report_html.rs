@@ -146,9 +146,9 @@ fn extract_report_objects_from_file(gfile: &GarminFile) -> Result<ReportObjects,
         .collect();
 
     let mut report_objs = ReportObjects {
-        heart_rate_speed,
-        speed_values,
         mile_split_vals,
+        speed_values,
+        heart_rate_speed,
         ..ReportObjects::default()
     };
 

@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use stack_string::StackString;
 use std::{collections::HashMap, path::PathBuf};
 use tokio::{fs::remove_file, task::spawn_blocking};
+use url::Url;
 
 use fitbit_lib::{
     fitbit_client::{FitbitBodyWeightFatUpdateOutput, FitbitClient, FitbitUserProfile},
@@ -636,7 +637,7 @@ pub struct StravaUpdateRequest {
 }
 
 impl StravaUpdateRequest {
-    pub async fn handle(&self, config: &GarminConfig) -> Result<StackString, Error> {
+    pub async fn handle(&self, config: &GarminConfig) -> Result<Url, Error> {
         let sport = self.activity_type.parse()?;
 
         let config = config.clone();

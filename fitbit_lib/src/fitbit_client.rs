@@ -850,7 +850,7 @@ impl FitbitClient {
         });
         let updated: Result<Vec<_>, Error> = try_join_all(futures).await;
         FitbitActivity::fix_summary_id_in_db(&pool).await?;
-        Ok(updated?.into_iter().filter_map(|x| x).collect())
+        Ok(updated?.into_iter().flatten().collect())
     }
 
     pub async fn delete_fitbit_activity(&self, log_id: u64) -> Result<(), Error> {

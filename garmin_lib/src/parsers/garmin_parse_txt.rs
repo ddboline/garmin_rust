@@ -231,10 +231,7 @@ impl GarminParseTxt {
         };
 
         let lap_type = match entry_dict.get("type") {
-            Some(val) => match sport_type_map.get(val.as_str()) {
-                Some(_) => Some(val.into()),
-                None => None,
-            },
+            Some(val) => sport_type_map.get(val.as_str()).map(|_| val.into()),
             None => None,
         };
 
@@ -251,16 +248,17 @@ impl GarminParseTxt {
         let lap_dis: f64 = match entry_dict.get("dis") {
             Some(v) => {
                 if v.contains("mi") {
-                    let mut tmpstr = v.to_string();
-                    let at = tmpstr.len() - 2;
-                    let _ = tmpstr.split_off(at);
-                    let dis: f64 = tmpstr.parse()?;
+                    let dis: f64 = v
+                        .split("mi")
+                        .next()
+                        .ok_or_else(|| format_err!("shouldn't be possible"))?
+                        .parse()?;
                     dis * METERS_PER_MILE
                 } else if v.contains('m') {
-                    let mut tmpstr = v.to_string();
-                    let at = tmpstr.len() - 1;
-                    let _ = tmpstr.split_off(at);
-                    tmpstr.parse()?
+                    v.split("m")
+                        .next()
+                        .ok_or_else(|| format_err!("shouldn't be possible"))?
+                        .parse()?
                 } else {
                     v.parse()?
                 }

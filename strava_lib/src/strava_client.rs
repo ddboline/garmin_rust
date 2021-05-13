@@ -5,6 +5,7 @@ use chrono_tz::Tz;
 use crossbeam_utils::atomic::AtomicCell;
 use futures::future::try_join_all;
 use lazy_static::lazy_static;
+use log::warn;
 use maplit::hashmap;
 use rand::{thread_rng, Rng};
 use reqwest::{
@@ -593,7 +594,12 @@ impl StravaClient {
             .json()
             .await?;
 
-        let url = url.join(&format!("activities/{}", result.id))?;
+        let url = self
+            .config
+            .strava_endpoint
+            .as_ref()
+            .ok_or_else(|| format_err!("Bad URL"))?
+            .join(&format!("api/v3/uploads/{}", result.id))?;
         for _ in 0..10 {
             let result: UploadResponse = self
                 .client
@@ -607,6 +613,7 @@ impl StravaClient {
             if result.activity_id.is_some() {
                 break;
             }
+            warn!("Upload status {}", result.status);
             sleep(std::time::Duration::from_secs(2)).await;
         }
 

@@ -255,7 +255,7 @@ impl GarminParseTxt {
                         .parse()?;
                     dis * METERS_PER_MILE
                 } else if v.contains('m') {
-                    v.split("m")
+                    v.split('m')
                         .next()
                         .ok_or_else(|| format_err!("shouldn't be possible"))?
                         .parse()?

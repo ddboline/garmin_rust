@@ -1,6 +1,7 @@
 use anyhow::format_err;
 use chrono::{DateTime, Duration, Local, NaiveDate, NaiveDateTime, NaiveTime, Utc};
 use futures::future::try_join_all;
+use rweb::Schema;
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
 use std::{collections::HashMap, path::PathBuf};
@@ -20,11 +21,13 @@ use garmin_connect_lib::{
 };
 use garmin_lib::{
     common::{
+        datetime_wrapper::DateTimeWrapper,
         fitbit_activity::FitbitActivity,
         garmin_config::GarminConfig,
         garmin_connect_activity::GarminConnectActivity,
         garmin_correction_lap::GarminCorrectionLap,
         garmin_summary::{get_filename_from_datetime, get_list_of_files_from_db, GarminSummary},
+        naivedate_wrapper::NaiveDateWrapper,
         pgpool::PgPool,
         strava_activity::StravaActivity,
     },
@@ -135,9 +138,9 @@ impl GarminConnectSyncRequest {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Schema)]
 pub struct GarminConnectHrSyncRequest {
-    pub date: NaiveDate,
+    pub date: NaiveDateWrapper,
 }
 
 impl GarminConnectHrSyncRequest {
@@ -150,17 +153,17 @@ impl GarminConnectHrSyncRequest {
         let mut session = proxy.lock().await;
         session.init().await?;
 
-        let heartrate_data = session.get_heartrate(self.date).await?;
+        let heartrate_data = session.get_heartrate(self.date.into()).await?;
         FitbitClient::import_garmin_connect_heartrate(config.clone(), &heartrate_data).await?;
         let config = config.clone();
-        FitbitHeartRate::calculate_summary_statistics(&config, pool, self.date).await?;
+        FitbitHeartRate::calculate_summary_statistics(&config, pool, self.date.into()).await?;
         Ok(heartrate_data)
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Schema)]
 pub struct GarminConnectHrApiRequest {
-    pub date: NaiveDate,
+    pub date: NaiveDateWrapper,
 }
 
 impl GarminConnectHrApiRequest {
@@ -168,16 +171,16 @@ impl GarminConnectHrApiRequest {
         let mut session = proxy.lock().await;
         session.init().await?;
 
-        let heartrate_data = session.get_heartrate(self.date).await?;
+        let heartrate_data = session.get_heartrate(self.date.into()).await?;
         let hr_vals = FitbitHeartRate::from_garmin_connect_hr(&heartrate_data);
         Ok(hr_vals)
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Schema)]
 pub struct StravaSyncRequest {
-    pub start_datetime: Option<DateTime<Utc>>,
-    pub end_datetime: Option<DateTime<Utc>>,
+    pub start_datetime: Option<DateTimeWrapper>,
+    pub end_datetime: Option<DateTimeWrapper>,
 }
 
 impl StravaSyncRequest {
@@ -190,8 +193,12 @@ impl StravaSyncRequest {
 
         let start_datetime = self
             .start_datetime
+            .map(Into::into)
             .or_else(|| Some(Utc::now() - Duration::days(15)));
-        let end_datetime = self.end_datetime.or_else(|| Some(Utc::now()));
+        let end_datetime = self
+            .end_datetime
+            .map(Into::into)
+            .or_else(|| Some(Utc::now()));
 
         let client = StravaClient::with_auth(config.clone()).await?;
         let filenames = client
@@ -241,7 +248,7 @@ impl FitbitRefreshRequest {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Schema)]
 pub struct FitbitCallbackRequest {
     code: StackString,
     state: StackString,
@@ -258,37 +265,37 @@ impl FitbitCallbackRequest {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Schema)]
 pub struct FitbitHeartrateApiRequest {
-    date: NaiveDate,
+    date: NaiveDateWrapper,
 }
 
 impl FitbitHeartrateApiRequest {
     pub async fn handle(&self, config: &GarminConfig) -> Result<Vec<FitbitHeartRate>, Error> {
         let client = FitbitClient::with_auth(config.clone()).await?;
         client
-            .get_fitbit_intraday_time_series_heartrate(self.date)
+            .get_fitbit_intraday_time_series_heartrate(self.date.into())
             .await
             .map_err(Into::into)
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Schema)]
 pub struct FitbitHeartrateCacheRequest {
-    date: NaiveDate,
+    date: NaiveDateWrapper,
 }
 
 impl FitbitHeartrateCacheRequest {
     pub async fn handle(self, config: &GarminConfig) -> Result<Vec<FitbitHeartRate>, Error> {
         let config = config.clone();
         spawn_blocking(move || {
-            FitbitHeartRate::read_avro_by_date(&config, self.date).map_err(Into::into)
+            FitbitHeartRate::read_avro_by_date(&config, self.date.into()).map_err(Into::into)
         })
         .await?
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Schema)]
 pub struct FitbitHeartrateUpdateRequest {
     updates: Vec<FitbitHeartRate>,
 }
@@ -325,9 +332,9 @@ impl FitbitBodyWeightFatUpdateRequest {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Schema)]
 pub struct FitbitSyncRequest {
-    date: NaiveDate,
+    date: NaiveDateWrapper,
 }
 
 impl FitbitSyncRequest {
@@ -337,15 +344,16 @@ impl FitbitSyncRequest {
         config: &GarminConfig,
     ) -> Result<Vec<FitbitHeartRate>, Error> {
         let client = FitbitClient::with_auth(config.clone()).await?;
-        let heartrates = client.import_fitbit_heartrate(self.date).await?;
-        FitbitHeartRate::calculate_summary_statistics(&client.config, &pool, self.date).await?;
+        let heartrates = client.import_fitbit_heartrate(self.date.into()).await?;
+        FitbitHeartRate::calculate_summary_statistics(&client.config, &pool, self.date.into())
+            .await?;
         Ok(heartrates)
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Schema)]
 pub struct FitbitTcxSyncRequest {
-    pub start_date: Option<NaiveDate>,
+    pub start_date: Option<NaiveDateWrapper>,
 }
 
 impl FitbitTcxSyncRequest {
@@ -355,9 +363,10 @@ impl FitbitTcxSyncRequest {
         config: &GarminConfig,
     ) -> Result<Vec<PathBuf>, Error> {
         let client = FitbitClient::with_auth(config.clone()).await?;
-        let start_date = self
-            .start_date
-            .unwrap_or_else(|| (Utc::now() - Duration::days(10)).naive_utc().date());
+        let start_date = self.start_date.map_or_else(
+            || (Utc::now() - Duration::days(10)).naive_utc().date(),
+            Into::into,
+        );
         let filenames = client.sync_tcx(start_date).await?;
 
         let gcli = GarminCli::from_pool(pool)?;
@@ -367,11 +376,11 @@ impl FitbitTcxSyncRequest {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Schema)]
 pub struct ScaleMeasurementRequest {
-    pub start_date: Option<NaiveDate>,
-    pub end_date: Option<NaiveDate>,
-    pub button_date: Option<NaiveDate>,
+    pub start_date: Option<NaiveDateWrapper>,
+    pub end_date: Option<NaiveDateWrapper>,
+    pub button_date: Option<NaiveDateWrapper>,
     pub offset: Option<usize>,
 }
 
@@ -380,15 +389,20 @@ impl ScaleMeasurementRequest {
         Self {
             start_date: match self.start_date {
                 Some(d) => Some(d),
-                None => Some((Local::now() - Duration::days(ndays)).naive_utc().date()),
+                None => Some(
+                    (Local::now() - Duration::days(ndays))
+                        .naive_utc()
+                        .date()
+                        .into(),
+                ),
             },
             end_date: match self.end_date {
                 Some(d) => Some(d),
-                None => Some(Local::now().naive_utc().date()),
+                None => Some(Local::now().naive_utc().date().into()),
             },
             button_date: match self.button_date {
                 Some(d) => Some(d),
-                None => Some(Local::now().naive_utc().date()),
+                None => Some(Local::now().naive_utc().date().into()),
             },
             offset: self.offset,
         }
@@ -397,9 +411,13 @@ impl ScaleMeasurementRequest {
 
 impl ScaleMeasurementRequest {
     pub async fn handle(&self, pool: &PgPool) -> Result<Vec<ScaleMeasurement>, Error> {
-        ScaleMeasurement::read_from_db(pool, self.start_date, self.end_date)
-            .await
-            .map_err(Into::into)
+        ScaleMeasurement::read_from_db(
+            pool,
+            self.start_date.map(Into::into),
+            self.end_date.map(Into::into),
+        )
+        .await
+        .map_err(Into::into)
     }
 }
 
@@ -421,8 +439,8 @@ impl From<ScaleMeasurementRequest> for FitbitStatisticsPlotRequest {
 impl FitbitStatisticsPlotRequest {
     pub async fn handle(&self, pool: &PgPool) -> Result<HashMap<StackString, StackString>, Error> {
         let stats = FitbitStatisticsSummary::read_from_db(
-            self.request.start_date,
-            self.request.end_date,
+            self.request.start_date.map(Into::into),
+            self.request.end_date.map(Into::into),
             pool,
         )
         .await?;
@@ -448,9 +466,12 @@ impl From<ScaleMeasurementRequest> for ScaleMeasurementPlotRequest {
 
 impl ScaleMeasurementPlotRequest {
     pub async fn handle(&self, pool: &PgPool) -> Result<HashMap<StackString, StackString>, Error> {
-        let measurements =
-            ScaleMeasurement::read_from_db(pool, self.request.start_date, self.request.end_date)
-                .await?;
+        let measurements = ScaleMeasurement::read_from_db(
+            pool,
+            self.request.start_date.map(Into::into),
+            self.request.end_date.map(Into::into),
+        )
+        .await?;
         ScaleMeasurement::get_scale_measurement_plots(&measurements, self.request.offset)
             .map_err(Into::into)
     }
@@ -467,9 +488,9 @@ impl From<ScaleMeasurementRequest> for FitbitHeartratePlotRequest {
     fn from(item: ScaleMeasurementRequest) -> Self {
         let item = item.add_default(3);
         Self {
-            start_date: item.start_date.expect("this should be impossible"),
-            end_date: item.end_date.expect("this should be impossible"),
-            button_date: item.button_date,
+            start_date: item.start_date.expect("this should be impossible").into(),
+            end_date: item.end_date.expect("this should be impossible").into(),
+            button_date: item.button_date.map(Into::into),
             is_demo: false,
         }
     }
@@ -494,7 +515,7 @@ impl FitbitHeartratePlotRequest {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Schema)]
 pub struct ScaleMeasurementUpdateRequest {
     pub measurements: Vec<ScaleMeasurement>,
 }
@@ -534,7 +555,7 @@ impl StravaRefreshRequest {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Schema)]
 pub struct StravaCallbackRequest {
     pub code: StackString,
     pub state: StackString,
@@ -553,20 +574,26 @@ impl StravaCallbackRequest {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Schema)]
 pub struct StravaActivitiesRequest {
-    pub start_date: Option<NaiveDate>,
-    pub end_date: Option<NaiveDate>,
+    pub start_date: Option<NaiveDateWrapper>,
+    pub end_date: Option<NaiveDateWrapper>,
 }
 
 impl StravaActivitiesRequest {
     pub async fn handle(&self, config: &GarminConfig) -> Result<Vec<StravaActivity>, Error> {
         let client = StravaClient::with_auth(config.clone()).await?;
-        let start_date = self
-            .start_date
-            .map(|s| DateTime::from_utc(NaiveDateTime::new(s, NaiveTime::from_hms(0, 0, 0)), Utc));
+        let start_date = self.start_date.map(|s| {
+            DateTime::from_utc(
+                NaiveDateTime::new(s.into(), NaiveTime::from_hms(0, 0, 0)),
+                Utc,
+            )
+        });
         let end_date = self.end_date.map(|s| {
-            DateTime::from_utc(NaiveDateTime::new(s, NaiveTime::from_hms(23, 59, 59)), Utc)
+            DateTime::from_utc(
+                NaiveDateTime::new(s.into(), NaiveTime::from_hms(23, 59, 59)),
+                Utc,
+            )
         });
         client
             .get_all_strava_activites(start_date, end_date)
@@ -579,13 +606,17 @@ pub struct StravaActivitiesDBRequest(pub StravaActivitiesRequest);
 
 impl StravaActivitiesDBRequest {
     pub async fn handle(&self, pool: &PgPool) -> Result<Vec<StravaActivity>, Error> {
-        StravaActivity::read_from_db(pool, self.0.start_date, self.0.end_date)
-            .await
-            .map_err(Into::into)
+        StravaActivity::read_from_db(
+            pool,
+            self.0.start_date.map(Into::into),
+            self.0.end_date.map(Into::into),
+        )
+        .await
+        .map_err(Into::into)
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Schema)]
 pub struct StravaActiviesDBUpdateRequest {
     pub updates: Vec<StravaActivity>,
 }
@@ -598,7 +629,7 @@ impl StravaActiviesDBUpdateRequest {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Schema)]
 pub struct StravaUploadRequest {
     pub filename: StackString,
     pub title: StackString,
@@ -626,14 +657,14 @@ impl StravaUploadRequest {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Schema)]
 pub struct StravaUpdateRequest {
     pub activity_id: u64,
     pub title: StackString,
     pub activity_type: StackString,
     pub description: Option<StackString>,
     pub is_private: Option<bool>,
-    pub start_time: Option<DateTime<Utc>>,
+    pub start_time: Option<DateTimeWrapper>,
 }
 
 impl StravaUpdateRequest {
@@ -648,14 +679,14 @@ impl StravaUpdateRequest {
                 &self.title,
                 self.description.as_ref().map(StackString::as_str),
                 sport,
-                self.start_time,
+                self.start_time.map(Into::into),
             )
             .await?;
         Ok(body)
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Schema)]
 pub struct StravaCreateRequest {
     pub filename: StackString,
 }
@@ -677,9 +708,9 @@ impl StravaCreateRequest {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Schema)]
 pub struct AddGarminCorrectionRequest {
-    pub start_time: DateTime<Utc>,
+    pub start_time: DateTimeWrapper,
     pub lap_number: i32,
     pub distance: Option<f64>,
     pub duration: Option<f64>,
@@ -689,7 +720,7 @@ pub struct AddGarminCorrectionRequest {
 impl AddGarminCorrectionRequest {
     pub async fn handle(&self, pool: &PgPool, config: &GarminConfig) -> Result<StackString, Error> {
         let mut corr_map = GarminCorrectionLap::read_corrections_from_db(pool).await?;
-        let filename = get_filename_from_datetime(pool, self.start_time)
+        let filename = get_filename_from_datetime(pool, self.start_time.into())
             .await?
             .ok_or_else(|| {
                 format_err!(
@@ -697,12 +728,12 @@ impl AddGarminCorrectionRequest {
                     self.start_time
                 )
             })?;
-        let unique_key = (self.start_time, self.lap_number);
+        let unique_key = (self.start_time.into(), self.lap_number);
 
         let mut new_corr = corr_map.get(&unique_key).map_or_else(
             || {
                 GarminCorrectionLap::new()
-                    .with_start_time(self.start_time)
+                    .with_start_time(self.start_time.into())
                     .with_lap_number(self.lap_number)
             },
             |corr| *corr,
@@ -747,18 +778,19 @@ impl FitbitActivityTypesRequest {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Schema)]
 pub struct FitbitActivitiesRequest {
-    pub start_date: Option<NaiveDate>,
+    pub start_date: Option<NaiveDateWrapper>,
 }
 
 impl FitbitActivitiesRequest {
     pub async fn handle(&self, config: &GarminConfig) -> Result<Vec<FitbitActivity>, Error> {
         let config = config.clone();
         let client = FitbitClient::with_auth(config).await?;
-        let start_date = self
-            .start_date
-            .unwrap_or_else(|| (Utc::now() - Duration::days(14)).naive_local().date());
+        let start_date = self.start_date.map_or_else(
+            || (Utc::now() - Duration::days(14)).naive_local().date(),
+            Into::into,
+        );
         client
             .get_all_activities(start_date)
             .await
@@ -766,16 +798,17 @@ impl FitbitActivitiesRequest {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Schema)]
 pub struct GarminConnectActivitiesRequest {
-    pub start_date: Option<NaiveDate>,
+    pub start_date: Option<NaiveDateWrapper>,
 }
 
 impl GarminConnectActivitiesRequest {
     pub async fn handle(&self, proxy: &ConnectProxy) -> Result<Vec<GarminConnectActivity>, Error> {
-        let start_date = self
-            .start_date
-            .unwrap_or_else(|| (Utc::now() - Duration::days(14)).naive_local().date());
+        let start_date = self.start_date.map_or_else(
+            || (Utc::now() - Duration::days(14)).naive_local().date(),
+            Into::into,
+        );
         let start_datetime = DateTime::from_utc(
             NaiveDateTime::new(start_date, NaiveTime::from_hms(0, 0, 0)),
             Utc,
@@ -810,9 +843,9 @@ impl FitbitProfileRequest {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Schema)]
 pub struct GarminConnectUserSummaryRequest {
-    pub date: Option<NaiveDate>,
+    pub date: Option<NaiveDateWrapper>,
 }
 
 impl GarminConnectUserSummaryRequest {
@@ -825,7 +858,7 @@ impl GarminConnectUserSummaryRequest {
 
         let date = self
             .date
-            .unwrap_or_else(|| Local::now().naive_local().date());
+            .map_or_else(|| Local::now().naive_local().date(), Into::into);
         session.get_user_summary(date).await.map_err(Into::into)
     }
 }
@@ -834,13 +867,17 @@ pub struct GarminConnectActivitiesDBRequest(pub StravaActivitiesRequest);
 
 impl GarminConnectActivitiesDBRequest {
     pub async fn handle(&self, pool: &PgPool) -> Result<Vec<GarminConnectActivity>, Error> {
-        GarminConnectActivity::read_from_db(pool, self.0.start_date, self.0.end_date)
-            .await
-            .map_err(Into::into)
+        GarminConnectActivity::read_from_db(
+            pool,
+            self.0.start_date.map(Into::into),
+            self.0.end_date.map(Into::into),
+        )
+        .await
+        .map_err(Into::into)
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Schema)]
 pub struct GarminConnectActivitiesDBUpdateRequest {
     pub updates: Vec<GarminConnectActivity>,
 }
@@ -857,13 +894,17 @@ pub struct FitbitActivitiesDBRequest(pub StravaActivitiesRequest);
 
 impl FitbitActivitiesDBRequest {
     pub async fn handle(&self, pool: &PgPool) -> Result<Vec<FitbitActivity>, Error> {
-        FitbitActivity::read_from_db(pool, self.0.start_date, self.0.end_date)
-            .await
-            .map_err(Into::into)
+        FitbitActivity::read_from_db(
+            pool,
+            self.0.start_date.map(Into::into),
+            self.0.end_date.map(Into::into),
+        )
+        .await
+        .map_err(Into::into)
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Schema)]
 pub struct FitbitActivitiesDBUpdateRequest {
     pub updates: Vec<FitbitActivity>,
 }
@@ -880,13 +921,17 @@ pub struct HeartrateStatisticsSummaryDBRequest(pub StravaActivitiesRequest);
 
 impl HeartrateStatisticsSummaryDBRequest {
     pub async fn handle(&self, pool: &PgPool) -> Result<Vec<FitbitStatisticsSummary>, Error> {
-        FitbitStatisticsSummary::read_from_db(self.0.start_date, self.0.end_date, pool)
-            .await
-            .map_err(Into::into)
+        FitbitStatisticsSummary::read_from_db(
+            self.0.start_date.map(Into::into),
+            self.0.end_date.map(Into::into),
+            pool,
+        )
+        .await
+        .map_err(Into::into)
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Schema)]
 pub struct HeartrateStatisticsSummaryDBUpdateRequest {
     pub updates: Vec<FitbitStatisticsSummary>,
 }
@@ -907,7 +952,7 @@ impl HeartrateStatisticsSummaryDBUpdateRequest {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Schema)]
 pub struct RaceResultPlotRequest {
     pub race_type: RaceType,
     pub demo: Option<bool>,
@@ -921,7 +966,7 @@ impl RaceResultPlotRequest {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Schema)]
 pub struct RaceResultFlagRequest {
     pub id: i32,
 }
@@ -938,7 +983,7 @@ impl RaceResultFlagRequest {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Schema)]
 pub struct RaceResultImportRequest {
     pub filename: StackString,
 }
@@ -961,7 +1006,7 @@ impl RaceResultImportRequest {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Schema)]
 pub struct RaceResultsDBRequest {
     pub race_type: Option<RaceType>,
 }
@@ -975,7 +1020,7 @@ impl RaceResultsDBRequest {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Schema)]
 pub struct RaceResultsDBUpdateRequest {
     pub updates: Vec<RaceResults>,
 }

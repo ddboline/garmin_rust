@@ -26,6 +26,7 @@ use tokio::{
 
 use garmin_connect_lib::garmin_connect_hr_data::GarminConnectHrData;
 use garmin_lib::common::{
+    datetime_wrapper::DateTimeWrapper,
     fitbit_activity::FitbitActivity,
     garmin_config::GarminConfig,
     garmin_summary::{get_list_of_activities_from_db, GarminSummary},
@@ -373,7 +374,9 @@ impl FitbitClient {
             .into_iter()
             .map(|entry| {
                 let datetime = format!("{}T{}{}", date, entry.time, offset);
-                let datetime = DateTime::parse_from_rfc3339(&datetime)?.with_timezone(&Utc);
+                let datetime = DateTime::parse_from_rfc3339(&datetime)?
+                    .with_timezone(&Utc)
+                    .into();
                 let value = entry.value;
                 Ok(FitbitHeartRate { datetime, value })
             })
@@ -564,7 +567,7 @@ impl FitbitClient {
     pub async fn get_tcx_urls(
         &self,
         start_date: NaiveDate,
-    ) -> Result<Vec<(DateTime<Utc>, StackString)>, Error> {
+    ) -> Result<Vec<(DateTimeWrapper, StackString)>, Error> {
         let activities = self.get_activities(start_date, None).await?;
 
         activities

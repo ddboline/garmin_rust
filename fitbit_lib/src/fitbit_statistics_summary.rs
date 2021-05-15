@@ -1,17 +1,21 @@
 use anyhow::Error;
-use chrono::{DateTime, Duration, NaiveDate, Utc};
+use chrono::{Duration, NaiveDate, Utc};
 use maplit::hashmap;
 use postgres_query::FromSqlRow;
+use rweb::Schema;
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
 use statistical::{mean, median, standard_deviation};
 use std::collections::HashMap;
 
-use garmin_lib::common::{garmin_templates::HBR, pgpool::PgPool};
+use garmin_lib::common::{
+    datetime_wrapper::DateTimeWrapper, garmin_templates::HBR, naivedate_wrapper::NaiveDateWrapper,
+    pgpool::PgPool,
+};
 
-#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, FromSqlRow)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, FromSqlRow, Schema)]
 pub struct FitbitStatisticsSummary {
-    pub date: NaiveDate,
+    pub date: NaiveDateWrapper,
     pub min_heartrate: f64,
     pub max_heartrate: f64,
     pub mean_heartrate: f64,
@@ -21,14 +25,15 @@ pub struct FitbitStatisticsSummary {
 }
 
 impl FitbitStatisticsSummary {
-    pub fn from_heartrate_values(heartrate_values: &[(DateTime<Utc>, i32)]) -> Option<Self> {
+    pub fn from_heartrate_values(heartrate_values: &[(DateTimeWrapper, i32)]) -> Option<Self> {
         if heartrate_values.len() < 2 {
             return None;
         }
         let date = heartrate_values[heartrate_values.len() / 2]
             .0
             .naive_local()
-            .date();
+            .date()
+            .into();
         let min_heartrate = f64::from(heartrate_values.iter().map(|(_, v)| *v).min()?);
         let max_heartrate = f64::from(heartrate_values.iter().map(|(_, v)| *v).max()?);
         let values: Vec<_> = heartrate_values
@@ -92,7 +97,7 @@ impl FitbitStatisticsSummary {
     }
 
     pub async fn upsert_entry(&self, pool: &PgPool) -> Result<(), Error> {
-        if Self::read_entry(self.date, pool).await?.is_some() {
+        if Self::read_entry(self.date.into(), pool).await?.is_some() {
             self.update_entry(pool).await
         } else {
             self.insert_entry(pool).await

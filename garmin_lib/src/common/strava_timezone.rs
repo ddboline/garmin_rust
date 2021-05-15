@@ -3,6 +3,7 @@ use bytes::BytesMut;
 use chrono::offset::FixedOffset;
 use chrono_tz::Tz;
 use derive_more::Into;
+use rweb::openapi::{self, Entity, Schema};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use stack_string::StackString;
@@ -190,6 +191,17 @@ impl ToSql for StravaTimeZone {
         out: &mut BytesMut,
     ) -> Result<IsNull, Box<dyn std::error::Error + Sync + Send>> {
         self.to_string().to_sql_checked(ty, out)
+    }
+}
+
+impl Entity for StravaTimeZone {
+    #[inline]
+    fn describe() -> Schema {
+        Schema {
+            schema_type: Some(openapi::Type::String),
+            format: "timezone".into(),
+            ..Schema::default()
+        }
     }
 }
 

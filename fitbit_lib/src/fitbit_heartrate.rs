@@ -22,18 +22,18 @@ use std::{
 use garmin_connect_lib::garmin_connect_hr_data::GarminConnectHrData;
 use garmin_lib::{
     common::{
-        garmin_config::GarminConfig, garmin_file::GarminFile,
+        datetime_wrapper::DateTimeWrapper, garmin_config::GarminConfig, garmin_file::GarminFile,
         garmin_summary::get_list_of_files_from_db, garmin_templates::HBR, pgpool::PgPool,
     },
-    utils::{garmin_util::get_f64, iso_8601_datetime},
+    utils::{garmin_util::get_f64, iso_8601_datetime_wrapper},
 };
 
 use crate::fitbit_statistics_summary::FitbitStatisticsSummary;
 
-#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, rweb::Schema)]
 pub struct FitbitHeartRate {
-    #[serde(with = "iso_8601_datetime")]
-    pub datetime: DateTime<Utc>,
+    #[serde(with = "iso_8601_datetime_wrapper")]
+    pub datetime: DateTimeWrapper,
     pub value: i32,
 }
 
@@ -104,7 +104,7 @@ impl FitbitHeartRate {
 
     pub fn from_json_heartrate_entry(entry: JsonHeartRateEntry) -> Self {
         Self {
-            datetime: entry.datetime,
+            datetime: entry.datetime.into(),
             value: entry.value.bpm,
         }
     }
@@ -115,7 +115,7 @@ impl FitbitHeartRate {
         pool: &PgPool,
         start_date: NaiveDate,
         end_date: NaiveDate,
-    ) -> Result<Vec<(DateTime<Utc>, i32)>, Error> {
+    ) -> Result<Vec<(DateTimeWrapper, i32)>, Error> {
         let ndays = (end_date - start_date).num_days();
 
         let days: Vec<_> = (0..=ndays)
@@ -172,7 +172,7 @@ impl FitbitHeartRate {
                 let points: Vec<_> = GarminFile::read_avro(&avro_file)?
                     .points
                     .into_par_iter()
-                    .filter_map(|p| p.heart_rate.map(|h| (p.time, h as i32)))
+                    .filter_map(|p| p.heart_rate.map(|h| (p.time.into(), h as i32)))
                     .collect();
                 Ok(points)
             })
@@ -429,7 +429,8 @@ impl FitbitHeartRate {
                     .iter()
                     .filter_map(|(timestamp, hr_val_opt)| {
                         hr_val_opt.map(|value| {
-                            let datetime = (*timestamp).into();
+                            let datetime: DateTime<Utc> = (*timestamp).into();
+                            let datetime = datetime.into();
                             Self { datetime, value }
                         })
                     })
@@ -480,7 +481,7 @@ pub fn import_garmin_heartrate_file(filename: &Path) -> Result<(), Error> {
     let mut timestamp = None;
     let mut heartrates = Vec::new();
     let mut f = File::open(&filename)?;
-    let records = fitparser::from_reader(&mut f)?;
+    let records = fitparser::from_reader(&mut f).map_err(|e| format_err!("{:?}", e))?;
     for record in records {
         match record.kind() {
             MesgNum::StressLevel => {
@@ -499,6 +500,7 @@ pub fn import_garmin_heartrate_file(filename: &Path) -> Result<(), Error> {
                         if let Some(datetime) = timestamp {
                             if let Some(heartrate) = get_f64(field.value()) {
                                 let value = heartrate as i32;
+                                let datetime = datetime.into();
                                 println!("heartrate {}", value);
                                 heartrates.push(FitbitHeartRate { datetime, value })
                             }

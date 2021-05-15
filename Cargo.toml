@@ -1,6 +1,6 @@
 [package]
 name = "garmin_rust"
-version = "0.11.17"
+version = "0.11.18"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -35,11 +35,11 @@ url = "2.2"
 maplit = "1.0"
 serde = {version="1.0", features=["derive"]}
 reqwest = {version="0.11", features=["cookies", "json", "rustls-tls", "stream"], default_features=false}
-stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.1.10", features=["postgres_types"] }
+stack-string = { version="0.2", features=["postgres_types", "rweb-openapi"] }
 
 [dev-dependencies]
 approx = "0.4"
-stdout-channel = { git = "https://github.com/ddboline/stdout-channel-rs.git", tag="0.3.0" }
+stdout-channel = "0.4"
 
 [workspace]
 members = [

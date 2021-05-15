@@ -28,7 +28,10 @@ impl From<AuthorizedUser> for LoggedUser {
 
 impl From<LoggedUser> for AuthorizedUser {
     fn from(user: LoggedUser) -> Self {
-        Self { email: user.email }
+        Self {
+            email: user.email,
+            session: None,
+        }
     }
 }
 
@@ -59,16 +62,13 @@ pub async fn fill_from_db(pool: &PgPool) -> Result<(), Error> {
         get_authorized_users(pool)
             .await?
             .into_iter()
-            .map(|email| AuthorizedUser { email })
+            .map(|email| email)
             .collect()
     } else {
         AUTHORIZED_USERS.get_users()
     };
     if let Ok("true") = var("TESTENV").as_ref().map(String::as_str) {
-        let user = AuthorizedUser {
-            email: "user@test".into(),
-        };
-        AUTHORIZED_USERS.merge_users(&[user])?;
+        AUTHORIZED_USERS.merge_users(&["user@test".into()])?;
     }
     AUTHORIZED_USERS.merge_users(&users)?;
     debug!("{:?}", *AUTHORIZED_USERS);

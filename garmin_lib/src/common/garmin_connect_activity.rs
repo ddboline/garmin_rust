@@ -4,13 +4,14 @@ use futures::future::try_join_all;
 use log::debug;
 use postgres_query::{FromSqlRow, Parameter};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use rweb::Schema;
 use serde::{Deserialize, Deserializer, Serialize};
 use stack_string::StackString;
 use std::{collections::HashMap, fs::File, path::Path};
 
-use super::{garmin_config::GarminConfig, pgpool::PgPool};
+use super::{datetime_wrapper::DateTimeWrapper, garmin_config::GarminConfig, pgpool::PgPool};
 
-#[derive(Serialize, Deserialize, Debug, FromSqlRow)]
+#[derive(Serialize, Deserialize, Debug, FromSqlRow, Schema)]
 pub struct GarminConnectActivity {
     #[serde(rename = "activityId")]
     pub activity_id: i64,
@@ -18,7 +19,7 @@ pub struct GarminConnectActivity {
     pub activity_name: Option<StackString>,
     pub description: Option<StackString>,
     #[serde(rename = "startTimeGMT", deserialize_with = "deserialize_start_time")]
-    pub start_time_gmt: DateTime<Utc>,
+    pub start_time_gmt: DateTimeWrapper,
     pub distance: Option<f64>,
     pub duration: f64,
     #[serde(rename = "elapsedDuration")]
@@ -247,7 +248,7 @@ pub async fn import_garmin_connect_activity_json_file(filename: &Path) -> Result
     Ok(())
 }
 
-pub fn deserialize_start_time<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
+pub fn deserialize_start_time<'de, D>(deserializer: D) -> Result<DateTimeWrapper, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -256,7 +257,7 @@ where
         Ok(dt)
     } else {
         NaiveDateTime::parse_from_str(&s, "%Y-%m-%d %H:%M:%S")
-            .map(|datetime| DateTime::from_utc(datetime, Utc))
+            .map(|datetime| DateTime::from_utc(datetime, Utc).into())
             .map_err(serde::de::Error::custom)
     }
 }

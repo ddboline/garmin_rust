@@ -1,7 +1,8 @@
 use anyhow::{format_err, Error};
 use bytes::Bytes;
 use chrono::{DateTime, NaiveDate, Utc};
-use fantoccini::{Client, Locator, Method};
+use fantoccini::{Client, ClientBuilder, Locator};
+use http::Method;
 use log::debug;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
@@ -80,11 +81,10 @@ impl GarminConnectClient {
             caps.insert("goog:chromeOptions".to_string(), opts.clone());
 
             self.client.replace(
-                Client::with_capabilities(
-                    &format!("http://localhost:{}", self.config.webdriver_port),
-                    caps,
-                )
-                .await?,
+                ClientBuilder::rustls()
+                    .capabilities(caps)
+                    .connect(&format!("http://localhost:{}", self.config.webdriver_port))
+                    .await?,
             );
             self.last_used = Utc::now();
             self.trigger_auth = false;

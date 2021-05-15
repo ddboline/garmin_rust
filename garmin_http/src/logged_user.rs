@@ -59,11 +59,7 @@ impl FromStr for LoggedUser {
 pub async fn fill_from_db(pool: &PgPool) -> Result<(), Error> {
     debug!("{:?}", *TRIGGER_DB_UPDATE);
     let users = if TRIGGER_DB_UPDATE.check() {
-        get_authorized_users(pool)
-            .await?
-            .into_iter()
-            .map(|email| email)
-            .collect()
+        get_authorized_users(pool).await?
     } else {
         AUTHORIZED_USERS.get_users()
     };

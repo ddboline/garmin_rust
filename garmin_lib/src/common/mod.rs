@@ -1,3 +1,4 @@
+pub mod datetime_wrapper;
 pub mod fitbit_activity;
 pub mod garmin_config;
 pub mod garmin_connect_activity;
@@ -8,6 +9,7 @@ pub mod garmin_point;
 pub mod garmin_summary;
 pub mod garmin_sync;
 pub mod garmin_templates;
+pub mod naivedate_wrapper;
 pub mod pgpool;
 pub mod strava_activity;
 pub mod strava_timezone;

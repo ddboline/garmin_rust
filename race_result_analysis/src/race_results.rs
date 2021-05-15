@@ -2,6 +2,7 @@ use anyhow::Error;
 use chrono::NaiveDate;
 use itertools::Itertools;
 use postgres_query::FromSqlRow;
+use rweb::Schema;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use stack_string::StackString;
@@ -11,17 +12,17 @@ use std::{
 };
 
 use garmin_lib::{
-    common::{garmin_summary::GarminSummary, pgpool::PgPool},
+    common::{garmin_summary::GarminSummary, naivedate_wrapper::NaiveDateWrapper, pgpool::PgPool},
     utils::garmin_util::{print_h_m_s, METERS_PER_MILE},
 };
 
 use crate::race_type::RaceType;
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromSqlRow, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromSqlRow, PartialEq, Schema)]
 pub struct RaceResults {
     pub id: i32,
     pub race_type: RaceType,
-    pub race_date: Option<NaiveDate>,
+    pub race_date: Option<NaiveDateWrapper>,
     pub race_name: Option<StackString>,
     pub race_distance: i32, // distance in meters
     pub race_time: f64,
@@ -424,7 +425,7 @@ impl From<GarminSummary> for RaceResults {
         Self {
             id: -1,
             race_type: RaceType::Personal,
-            race_date: Some(item.begin_datetime.naive_local().date()),
+            race_date: Some(item.begin_datetime.naive_local().date().into()),
             race_name: None,
             race_distance: item.total_distance as i32,
             race_time: item.total_duration,
@@ -461,7 +462,7 @@ mod tests {
         RaceResults {
             id: 0,
             race_type: RaceType::Personal,
-            race_date: Some(NaiveDate::from_ymd(2020, 1, 27)),
+            race_date: Some(NaiveDate::from_ymd(2020, 1, 27).into()),
             race_name: Some("A Test Race".into()),
             race_distance: 5000,
             race_time: 1563.0,

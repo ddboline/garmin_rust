@@ -11,6 +11,7 @@
 #![allow(clippy::used_underscore_binding)]
 #![allow(clippy::similar_names)]
 #![allow(clippy::upper_case_acronyms)]
+#![allow(clippy::default_trait_access)]
 
 pub mod errors;
 pub mod garmin_requests;

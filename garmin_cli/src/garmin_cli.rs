@@ -58,7 +58,7 @@ pub struct GarminCli {
     pub pool: PgPool,
     pub corr: GarminCorrectionMap,
     pub parser: GarminParse,
-    pub stdout: StdoutChannel,
+    pub stdout: StdoutChannel<StackString>,
 }
 
 impl GarminCli {
@@ -375,7 +375,7 @@ impl GarminCli {
 
     fn process_filenames_sync(
         filenames: Vec<PathBuf>,
-        stdout: &StdoutChannel,
+        stdout: &StdoutChannel<StackString>,
         config: &GarminConfig,
     ) -> Result<Vec<DateTime<Utc>>, Error> {
         let tempdir = TempDir::new("garmin_zip")?;

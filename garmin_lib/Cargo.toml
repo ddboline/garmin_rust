@@ -1,6 +1,6 @@
 [package]
 name = "garmin_lib"
-version = "0.11.17"
+version = "0.11.18"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -27,7 +27,7 @@ dotenv = "0.15"
 lazy_static = "1.4"
 roxmltree = "0.14"
 parking_lot = "0.11"
-avro-rs = {version = "0.12", features = ["snappy"]}
+avro-rs = {version = "0.13", features = ["snappy"]}
 regex = "1.4"
 postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", branch="master"}
 bytes = "1.0"
@@ -39,7 +39,7 @@ derive_more = "0.99"
 smartstring = "0.2"
 rustls-native-certs = {version="0.5", default_features=false}
 envy = "0.4"
-fitparser = "0.3"
+fitparser = "0.4"
 handlebars = "3.5"
 maplit = "1.0"
 chrono-tz = "0.5"
@@ -47,4 +47,5 @@ smallvec = "1.6"
 flate2 = "1.0"
 itertools = "0.10"
 url = "2.2"
-stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.2.0", features=["postgres_types"] }
+rweb = {version="0.12", features=["openapi"]}
+stack-string = { version="0.2.2", features=["postgres_types", "rweb-openapi"] }

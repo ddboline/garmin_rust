@@ -5,6 +5,7 @@ use log::debug;
 use maplit::hashmap;
 use postgres_query::{query, FromSqlRow, Parameter};
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use rweb::Schema;
 use serde::{self, Deserialize, Serialize};
 use smallvec::SmallVec;
 use stack_string::StackString;
@@ -15,14 +16,14 @@ use std::{
 };
 
 use garmin_lib::{
-    common::{garmin_templates::HBR, pgpool::PgPool},
+    common::{datetime_wrapper::DateTimeWrapper, garmin_templates::HBR, pgpool::PgPool},
     utils::iso_8601_datetime::convert_datetime_to_str,
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize, Copy, FromSqlRow, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Copy, FromSqlRow, PartialEq, Schema)]
 pub struct ScaleMeasurement {
     pub id: i32,
-    pub datetime: DateTime<Utc>,
+    pub datetime: DateTimeWrapper,
     pub mass: f64,
     pub fat_pct: f64,
     pub water_pct: f64,
@@ -37,7 +38,7 @@ impl fmt::Display for ScaleMeasurement {
             "ScaleMeasurement(\nid: {}\ndatetime: {}\nmass: {} lbs\nfat: {}%\nwater: {}%\nmuscle: \
              {}%\nbone: {}%\n)",
             self.id,
-            convert_datetime_to_str(self.datetime),
+            convert_datetime_to_str(self.datetime.into()),
             self.mass,
             self.fat_pct,
             self.water_pct,
@@ -49,7 +50,7 @@ impl fmt::Display for ScaleMeasurement {
 
 impl ScaleMeasurement {
     pub fn from_telegram_text(msg: &str) -> Result<Self, Error> {
-        let datetime = Utc::now();
+        let datetime = Utc::now().into();
         let sep = if msg.contains(',') {
             ','
         } else if msg.contains(':') {
@@ -422,7 +423,7 @@ mod tests {
     fn test_from_telegram_text() -> Result<(), Error> {
         let mut exp = ScaleMeasurement {
             id: -1,
-            datetime: Utc::now(),
+            datetime: Utc::now().into(),
             mass: 188.0,
             fat_pct: 20.6,
             water_pct: 59.6,
@@ -449,7 +450,7 @@ mod tests {
         let first_date: DateTime<Utc> = "2010-01-01T04:00:00-05:00".parse()?;
         let mut exp = ScaleMeasurement {
             id: -1,
-            datetime: first_date,
+            datetime: first_date.into(),
             mass: 188.0,
             fat_pct: 20.6,
             water_pct: 59.6,
@@ -466,7 +467,7 @@ mod tests {
 
         assert_eq!(exp, obs);
 
-        let obs = ScaleMeasurement::get_by_datetime(exp.datetime, &pool)
+        let obs = ScaleMeasurement::get_by_datetime(exp.datetime.into(), &pool)
             .await?
             .unwrap();
 
@@ -477,7 +478,7 @@ mod tests {
         let first = measurements[0];
         println!("{:#?}", first);
         assert_eq!(first, exp);
-        assert_eq!(first.datetime, first_date);
+        assert_eq!(first.datetime, first_date.into());
 
         exp.delete_from_db(&pool).await?;
 

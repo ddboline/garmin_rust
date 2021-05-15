@@ -450,7 +450,7 @@ fn get_garmin_template_vec<T: AsRef<str>>(
                     "#,
                     strava_activity.id,
                     gfile.sport.to_strava_activity(),
-                    convert_datetime_to_str(strava_activity.start_date),
+                    convert_datetime_to_str(strava_activity.start_date.into()),
                 )
             },
         )
@@ -571,7 +571,7 @@ where
                     "#,
                     strava_activity.id,
                     gfile.sport.to_strava_activity(),
-                    convert_datetime_to_str(strava_activity.start_date),
+                    convert_datetime_to_str(strava_activity.start_date.into()),
                 )
             },
         )

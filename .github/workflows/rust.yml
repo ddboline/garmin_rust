@@ -42,8 +42,8 @@ jobs:
     - name: Run tests / create coverage report
       run: |
         cargo test --verbose --all
-        cargo install cargo-tarpaulin && \
-        cargo tarpaulin --verbose --all-features --workspace --out Xml
+        cargo install cargo-tarpaulin --version 0.18.0-alpha3 && \
+        cargo tarpaulin --verbose --all-features --workspace --out Xml --avoid-cfg-tarpaulin
       env:
         PGURL: postgresql://postgres:2UtcMAAvNuBHPqK9@localhost:5432/garmin_summary
 

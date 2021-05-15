@@ -62,7 +62,7 @@ impl GarminParseTrait for GarminParseFit {
 
     fn parse_file(&self, filename: &Path) -> Result<ParseOutput, Error> {
         let mut f = File::open(filename)?;
-        let records = fitparser::from_reader(&mut f)?;
+        let records = fitparser::from_reader(&mut f).map_err(|e| format_err!("{:?}", e))?;
 
         let mut lap_list = Vec::new();
         let mut point_list = Vec::new();

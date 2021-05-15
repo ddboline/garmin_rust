@@ -106,7 +106,7 @@ impl RaceResultAnalysis {
                 result.race_name.clone().unwrap_or_else(|| "".into()),
                 result
                     .race_date
-                    .unwrap_or_else(|| Utc::now().naive_local().date()),
+                    .map_or_else(|| Utc::now().naive_local().date(), Into::into),
                 print_h_m_s(result.race_time, true).unwrap_or_else(|_| "".into()),
             )
         }

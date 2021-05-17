@@ -2,6 +2,7 @@
 
 use http::header::SET_COOKIE;
 use itertools::Itertools;
+use reqwest::{header::HeaderValue, Client};
 use rweb::{
     get,
     multipart::{FormData, Part},
@@ -22,6 +23,7 @@ use garmin_lib::{
         garmin_templates::{get_buttons, get_scripts, get_style, HBR},
     },
     utils::iso_8601_datetime::convert_datetime_to_str,
+    utils::uuid_wrapper::UuidWrapper,
 };
 use garmin_reports::garmin_file_report_html::generate_history_buttons;
 
@@ -52,7 +54,7 @@ use crate::{
 pub type WarpResult<T> = Result<T, Rejection>;
 pub type HttpResult<T> = Result<T, Error>;
 
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct Session {
     history: Vec<StackString>,
 }
@@ -72,6 +74,44 @@ impl Session {
         let history_str = self.history.join(";");
         let token = base64::encode(history_str);
         format!("session={}; HttpOnly; Path=/; Domain={}", token, domain)
+    }
+
+    pub async fn pull(
+        client: &Client,
+        config: &GarminConfig,
+        session_id: Option<UuidWrapper>,
+    ) -> Result<Self, anyhow::Error> {
+        if let Some(session_id) = session_id {
+            let url = format!("https://{}/api/session", config.domain);
+            let session: Option<Self> = client
+                .get(url)
+                .header("session", HeaderValue::from_str(&session_id.to_string())?)
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+                .await?;
+            Ok(session.unwrap_or_else(Self::default))
+        } else {
+            Ok(Self::default())
+        }
+    }
+
+    pub async fn push(
+        &self,
+        client: &Client,
+        config: &GarminConfig,
+        session_id: UuidWrapper,
+    ) -> Result<(), anyhow::Error> {
+        let url = format!("https://{}/api/session", config.domain);
+        client
+            .post(url)
+            .header("session", HeaderValue::from_str(&session_id.to_string())?)
+            .json(&self)
+            .send()
+            .await?
+            .error_for_status()?;
+        Ok(())
     }
 }
 
@@ -113,17 +153,20 @@ fn optional_session() -> impl Filter<Extract = (Option<Session>,), Error = Infal
 #[get("/garmin/index.html")]
 pub async fn garmin(
     query: Query<FilterRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[cookie = "jwt"] user: LoggedUser,
     #[data] state: AppState,
-    #[filter = "optional_session"] session: Option<Session>,
 ) -> WarpResult<impl Reply> {
     let query = query.into_inner();
-    let mut session = session.unwrap_or_default();
+
+    let mut session = Session::pull(&state.client, &state.config, user.session).await.map_err(Into::<Error>::into)?;
+
     let body = garmin_body(query, &state, &mut session.history, false).await?;
-    let jwt = session.get_jwt_cookie(&state.config.domain);
-    let reply = rweb::reply::html(body);
-    let reply = rweb::reply::with_header(reply, SET_COOKIE, jwt);
-    Ok(reply)
+
+    if let Some(session_id) = user.session {
+        session.push(&state.client, &state.config, session_id).await.map_err(Into::<Error>::into)?;
+    }
+
+    Ok(rweb::reply::html(body))
 }
 
 async fn garmin_body(
@@ -160,11 +203,10 @@ pub async fn garmin_demo(
 pub async fn garmin_upload(
     query: Query<StravaCreateRequest>,
     #[filter = "rweb::multipart::form"] form: FormData,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[cookie = "jwt"] user: LoggedUser,
     #[data] state: AppState,
-    #[filter = "optional_session"] session: Option<Session>,
 ) -> WarpResult<impl Reply> {
-    let session = session.unwrap_or_default();
+    let session = Session::pull(&state.client, &state.config, user.session).await.map_err(Into::<Error>::into)?;
     let body = garmin_upload_body(query.into_inner(), form, state, session).await?;
     Ok(rweb::reply::html(body))
 }
@@ -493,13 +535,11 @@ async fn heartrate_statistics_plots_impl(
 #[get("/garmin/fitbit/heartrate_statistics_plots")]
 pub async fn heartrate_statistics_plots(
     query: Query<ScaleMeasurementRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[cookie = "jwt"] user: LoggedUser,
     #[data] state: AppState,
-    #[filter = "optional_session"] session: Option<Session>,
 ) -> WarpResult<impl Reply> {
     let query: FitbitStatisticsPlotRequest = query.into_inner().into();
-    let session = session.unwrap_or_default();
-
+    let session = Session::pull(&state.client, &state.config, user.session).await.map_err(Into::<Error>::into)?;
     let body: String = heartrate_statistics_plots_impl(query, state, session)
         .await?
         .into();
@@ -544,11 +584,10 @@ async fn fitbit_plots_impl(
 #[get("/garmin/fitbit/plots")]
 pub async fn fitbit_plots(
     query: Query<ScaleMeasurementRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[cookie = "jwt"] user: LoggedUser,
     #[data] state: AppState,
-    #[filter = "optional_session"] session: Option<Session>,
 ) -> WarpResult<impl Reply> {
-    let session = session.unwrap_or_default();
+    let session = Session::pull(&state.client, &state.config, user.session).await.map_err(Into::<Error>::into)?;
     let query: ScaleMeasurementPlotRequest = query.into_inner().into();
     let body = fitbit_plots_impl(query, state, session).await?;
     Ok(rweb::reply::html(body))
@@ -589,11 +628,11 @@ async fn heartrate_plots_impl(
 #[get("/garmin/fitbit/heartrate_plots")]
 pub async fn heartrate_plots(
     query: Query<ScaleMeasurementRequest>,
+    #[cookie = "jwt"] user: LoggedUser,
     #[data] state: AppState,
-    #[filter = "optional_session"] session: Option<Session>,
 ) -> WarpResult<impl Reply> {
     let query: FitbitHeartratePlotRequest = query.into_inner().into();
-    let session = session.unwrap_or_default();
+    let session = Session::pull(&state.client, &state.config, user.session).await.map_err(Into::<Error>::into)?;
     let body = heartrate_plots_impl(query, state, session).await?;
     Ok(rweb::reply::html(body))
 }
@@ -820,13 +859,12 @@ async fn race_result_plot_impl(
 #[get("/garmin/race_result_plot")]
 pub async fn race_result_plot(
     query: Query<RaceResultPlotRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[cookie = "jwt"] user: LoggedUser,
     #[data] state: AppState,
-    #[filter = "optional_session"] session: Option<Session>,
 ) -> WarpResult<impl Reply> {
     let mut query = query.into_inner();
     query.demo = Some(false);
-    let session = session.unwrap_or_default();
+    let session = Session::pull(&state.client, &state.config, user.session).await.map_err(Into::<Error>::into)?;
     let body: String = race_result_plot_impl(query, state, session).await?.into();
     Ok(rweb::reply::html(body))
 }

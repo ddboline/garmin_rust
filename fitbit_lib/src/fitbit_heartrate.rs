@@ -22,10 +22,10 @@ use std::{
 use garmin_connect_lib::garmin_connect_hr_data::GarminConnectHrData;
 use garmin_lib::{
     common::{
-        datetime_wrapper::DateTimeWrapper, garmin_config::GarminConfig, garmin_file::GarminFile,
+        garmin_config::GarminConfig, garmin_file::GarminFile,
         garmin_summary::get_list_of_files_from_db, garmin_templates::HBR, pgpool::PgPool,
     },
-    utils::{garmin_util::get_f64, iso_8601_datetime_wrapper},
+    utils::{datetime_wrapper::DateTimeWrapper, garmin_util::get_f64, iso_8601_datetime_wrapper},
 };
 
 use crate::fitbit_statistics_summary::FitbitStatisticsSummary;

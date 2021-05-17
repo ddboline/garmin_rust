@@ -21,17 +21,16 @@ use garmin_connect_lib::{
 };
 use garmin_lib::{
     common::{
-        datetime_wrapper::DateTimeWrapper,
         fitbit_activity::FitbitActivity,
         garmin_config::GarminConfig,
         garmin_connect_activity::GarminConnectActivity,
         garmin_correction_lap::GarminCorrectionLap,
         garmin_summary::{get_filename_from_datetime, get_list_of_files_from_db, GarminSummary},
-        naivedate_wrapper::NaiveDateWrapper,
         pgpool::PgPool,
         strava_activity::StravaActivity,
     },
     utils::sport_types::SportTypes,
+    utils::{datetime_wrapper::DateTimeWrapper, naivedate_wrapper::NaiveDateWrapper},
 };
 use garmin_reports::garmin_constraints::GarminConstraints;
 use race_result_analysis::{

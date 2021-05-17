@@ -11,6 +11,7 @@ use std::{
     str::FromStr,
 };
 
+use garmin_lib::utils::uuid_wrapper::UuidWrapper;
 use garmin_lib::{common::pgpool::PgPool, utils::garmin_util::get_authorized_users};
 
 use crate::errors::ServiceError as Error;
@@ -18,11 +19,15 @@ use crate::errors::ServiceError as Error;
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
 pub struct LoggedUser {
     pub email: StackString,
+    pub session: Option<UuidWrapper>,
 }
 
 impl From<AuthorizedUser> for LoggedUser {
     fn from(user: AuthorizedUser) -> Self {
-        Self { email: user.email }
+        Self {
+            email: user.email,
+            session: user.session.map(Into::into),
+        }
     }
 }
 

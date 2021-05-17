@@ -10,7 +10,10 @@ use stack_string::StackString;
 use std::collections::HashMap;
 
 use crate::{
-    common::{garmin_summary::GarminSummary, pgpool::PgPool, strava_timezone::StravaTimeZone},
+    common::{
+        garmin_summary::GarminSummary, pgpool::PgPool,
+        strava_timezone::StravaTimeZone,
+    },
     utils::{
         datetime_wrapper::DateTimeWrapper,
         iso_8601_datetime_wrapper,

@@ -9,7 +9,8 @@ use serde::{Deserialize, Deserializer, Serialize};
 use stack_string::StackString;
 use std::{collections::HashMap, fs::File, path::Path};
 
-use super::{datetime_wrapper::DateTimeWrapper, garmin_config::GarminConfig, pgpool::PgPool};
+use super::{garmin_config::GarminConfig, pgpool::PgPool};
+use crate::utils::datetime_wrapper::DateTimeWrapper;
 
 #[derive(Serialize, Deserialize, Debug, FromSqlRow, Schema)]
 pub struct GarminConnectActivity {

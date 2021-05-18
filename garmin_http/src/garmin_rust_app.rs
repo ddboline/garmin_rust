@@ -2,6 +2,7 @@
 
 use anyhow::Error;
 use chrono::Utc;
+use reqwest::{Client, ClientBuilder};
 use rweb::Filter;
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 use tokio::{sync::Mutex, task::spawn, time::interval};
@@ -42,6 +43,7 @@ pub struct AppState {
     pub config: GarminConfig,
     pub db: PgPool,
     pub connect_proxy: ConnectProxy,
+    pub client: Arc<Client>,
 }
 
 pub async fn close_connect_proxy(proxy: &ConnectProxy) -> Result<(), Error> {
@@ -91,6 +93,7 @@ async fn run_app(config: &GarminConfig, pool: &PgPool, proxy: &ConnectProxy) -> 
         config: config.clone(),
         db: pool.clone(),
         connect_proxy: proxy.clone(),
+        client: Arc::new(ClientBuilder::new().build()?),
     };
 
     let index_path = garmin(app.clone()).boxed();

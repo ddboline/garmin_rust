@@ -159,7 +159,7 @@ fn default_strava_endpoint() -> Option<UrlWrapper> {
     "https://www.strava.com/".try_into().ok()
 }
 fn default_connect_sso_endpoint() -> Option<UrlWrapper> {
-    "https://sso.garmin.com/sso/signin".try_into().ok()
+    "https://connect.garmin.com/signin".try_into().ok()
 }
 fn default_connect_api_endpoint() -> Option<UrlWrapper> {
     "https://connect.garmin.com/modern".try_into().ok()

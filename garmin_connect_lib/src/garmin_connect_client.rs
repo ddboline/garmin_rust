@@ -74,18 +74,20 @@ impl GarminConnectClient {
 
             let mut caps = serde_json::map::Map::new();
             let opts = serde_json::json!({
-                "args": ["--headless", "--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage"],
+                // "args": ["--headless", "--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage"],
                 "binary":
                     &self.config.chrome_path.to_string_lossy()
             });
             caps.insert("goog:chromeOptions".to_string(), opts.clone());
+            caps.insert("pageLoadStrategy".to_string(), "eager".into());
+            caps.insert("unhandledPromptBehavior".to_string(), "accept".into());
+            let mut client = ClientBuilder::rustls()
+            .capabilities(caps)
+            .connect(&format!("http://localhost:{}", self.config.webdriver_port))
+            .await?;
+            client.set_ua("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36").await?;
 
-            self.client.replace(
-                ClientBuilder::rustls()
-                    .capabilities(caps)
-                    .connect(&format!("http://localhost:{}", self.config.webdriver_port))
-                    .await?,
-            );
+            self.client.replace(client);
             self.last_used = Utc::now();
             self.trigger_auth = false;
         }
@@ -107,6 +109,7 @@ impl GarminConnectClient {
             .client
             .as_mut()
             .ok_or_else(|| format_err!("No client"))?;
+
         client
             .goto(
                 self.config
@@ -116,19 +119,30 @@ impl GarminConnectClient {
                     .as_str(),
             )
             .await?;
+
+        client.wait_for_find(Locator::Id("gauth-widget-frame-gauth-widget")).await?;
+
+        client.find(Locator::Id("gauth-widget-frame-gauth-widget")).await?.enter_frame().await?;
+
         let mut form = client.form(Locator::Id("login-form")).await?;
         form.set_by_name("username", &self.config.garmin_connect_email)
             .await?
             .set_by_name("password", &self.config.garmin_connect_password)
-            .await?
-            .submit()
             .await?;
+            sleep(std::time::Duration::from_secs(1)).await;
+        client.find(Locator::XPath("//*[@name=\"rememberme\"]")).await?.click().await?;
+        client.find(Locator::Id("login-btn-signin")).await?.click().await?;
+
         let modern_url = self
             .config
             .garmin_connect_api_endpoint
             .as_ref()
             .ok_or_else(|| format_err!("Bad URL"))?;
+
         client.goto(modern_url.as_str()).await?;
+
+        client.wait_for_find(Locator::XPath("//*[@class=\"main-header\"]")).await?;
+
         let js = Self::raw_get(client, &modern_url).await?;
         let text = std::str::from_utf8(&js)?;
         self.last_used = Utc::now();
@@ -170,7 +184,7 @@ impl GarminConnectClient {
                 return Ok(val.display_name);
             }
         }
-        Err(format_err!("NO DISPLAY NAME"))
+        Err(format_err!("NO DISPLAY NAME {}", text))
     }
 
     pub async fn get_user_summary(

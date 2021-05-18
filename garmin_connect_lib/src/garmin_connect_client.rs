@@ -74,7 +74,11 @@ impl GarminConnectClient {
 
             let mut caps = serde_json::map::Map::new();
             let opts = serde_json::json!({
-                // "args": ["--headless", "--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage"],
+                "args": [
+                    "--disable-gpu",
+                    "--no-sandbox",
+                    "--disable-dev-shm-usage"
+                ],
                 "binary":
                     &self.config.chrome_path.to_string_lossy()
             });

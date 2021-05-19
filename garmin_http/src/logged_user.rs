@@ -11,8 +11,10 @@ use std::{
     str::FromStr,
 };
 
-use garmin_lib::utils::uuid_wrapper::UuidWrapper;
-use garmin_lib::{common::pgpool::PgPool, utils::garmin_util::get_authorized_users};
+use garmin_lib::{
+    common::pgpool::PgPool,
+    utils::{garmin_util::get_authorized_users, uuid_wrapper::UuidWrapper},
+};
 
 use crate::errors::ServiceError as Error;
 

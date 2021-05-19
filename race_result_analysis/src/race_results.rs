@@ -13,8 +13,10 @@ use std::{
 
 use garmin_lib::{
     common::{garmin_summary::GarminSummary, pgpool::PgPool},
-    utils::garmin_util::{print_h_m_s, METERS_PER_MILE},
-    utils::naivedate_wrapper::NaiveDateWrapper,
+    utils::{
+        garmin_util::{print_h_m_s, METERS_PER_MILE},
+        naivedate_wrapper::NaiveDateWrapper,
+    },
 };
 
 use crate::race_type::RaceType;

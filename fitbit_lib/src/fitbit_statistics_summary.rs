@@ -8,8 +8,10 @@ use stack_string::StackString;
 use statistical::{mean, median, standard_deviation};
 use std::collections::HashMap;
 
-use garmin_lib::common::{garmin_templates::HBR, pgpool::PgPool};
-use garmin_lib::utils::{datetime_wrapper::DateTimeWrapper, naivedate_wrapper::NaiveDateWrapper};
+use garmin_lib::{
+    common::{garmin_templates::HBR, pgpool::PgPool},
+    utils::{datetime_wrapper::DateTimeWrapper, naivedate_wrapper::NaiveDateWrapper},
+};
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, FromSqlRow, Schema)]
 pub struct FitbitStatisticsSummary {

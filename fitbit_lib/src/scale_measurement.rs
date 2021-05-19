@@ -17,8 +17,7 @@ use std::{
 
 use garmin_lib::{
     common::{garmin_templates::HBR, pgpool::PgPool},
-    utils::datetime_wrapper::DateTimeWrapper,
-    utils::iso_8601_datetime::convert_datetime_to_str,
+    utils::{datetime_wrapper::DateTimeWrapper, iso_8601_datetime::convert_datetime_to_str},
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, Copy, FromSqlRow, PartialEq, Schema)]

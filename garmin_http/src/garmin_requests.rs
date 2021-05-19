@@ -29,8 +29,10 @@ use garmin_lib::{
         pgpool::PgPool,
         strava_activity::StravaActivity,
     },
-    utils::sport_types::SportTypes,
-    utils::{datetime_wrapper::DateTimeWrapper, naivedate_wrapper::NaiveDateWrapper},
+    utils::{
+        datetime_wrapper::DateTimeWrapper, naivedate_wrapper::NaiveDateWrapper,
+        sport_types::SportTypes,
+    },
 };
 use garmin_reports::garmin_constraints::GarminConstraints;
 use race_result_analysis::{
@@ -122,7 +124,7 @@ impl GarminConnectSyncRequest {
         let mut session = proxy.lock().await;
         session.init().await?;
 
-        let new_activities = session.get_activities(max_timestamp).await?;
+        let new_activities = session.get_activities(Some(max_timestamp)).await?;
 
         let filenames = session
             .get_and_merge_activity_files(new_activities, pool)
@@ -816,7 +818,7 @@ impl GarminConnectActivitiesRequest {
         session.init().await?;
 
         session
-            .get_activities(start_datetime)
+            .get_activities(Some(start_datetime))
             .await
             .map_err(Into::into)
     }

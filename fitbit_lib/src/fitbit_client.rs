@@ -25,13 +25,15 @@ use tokio::{
 };
 
 use garmin_connect_lib::garmin_connect_hr_data::GarminConnectHrData;
-use garmin_lib::common::{
-    fitbit_activity::FitbitActivity,
-    garmin_config::GarminConfig,
-    garmin_summary::{get_list_of_activities_from_db, GarminSummary},
-    pgpool::PgPool,
+use garmin_lib::{
+    common::{
+        fitbit_activity::FitbitActivity,
+        garmin_config::GarminConfig,
+        garmin_summary::{get_list_of_activities_from_db, GarminSummary},
+        pgpool::PgPool,
+    },
+    utils::datetime_wrapper::DateTimeWrapper,
 };
-use garmin_lib::utils::datetime_wrapper::DateTimeWrapper;
 
 use crate::{
     fitbit_heartrate::{FitbitBodyWeightFat, FitbitHeartRate},

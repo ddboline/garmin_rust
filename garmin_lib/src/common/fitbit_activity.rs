@@ -9,8 +9,7 @@ use serde::{Deserialize, Serialize};
 use stack_string::StackString;
 use std::collections::HashMap;
 
-use crate::common::pgpool::PgPool;
-use crate::utils::datetime_wrapper::DateTimeWrapper;
+use crate::{common::pgpool::PgPool, utils::datetime_wrapper::DateTimeWrapper};
 
 #[derive(Serialize, Deserialize, Clone, Debug, FromSqlRow, Schema)]
 pub struct FitbitActivity {

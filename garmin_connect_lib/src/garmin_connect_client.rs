@@ -86,10 +86,15 @@ impl GarminConnectClient {
             caps.insert("pageLoadStrategy".to_string(), "eager".into());
             caps.insert("unhandledPromptBehavior".to_string(), "accept".into());
             let mut client = ClientBuilder::rustls()
-            .capabilities(caps)
-            .connect(&format!("http://localhost:{}", self.config.webdriver_port))
-            .await?;
-            client.set_ua("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36").await?;
+                .capabilities(caps)
+                .connect(&format!("http://localhost:{}", self.config.webdriver_port))
+                .await?;
+            client
+                .set_ua(
+                    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) \
+                     Chrome/90.0.4430.212 Safari/537.36",
+                )
+                .await?;
 
             self.client.replace(client);
             self.last_used = Utc::now();
@@ -124,18 +129,32 @@ impl GarminConnectClient {
             )
             .await?;
 
-        client.wait_for_find(Locator::Id("gauth-widget-frame-gauth-widget")).await?;
+        client
+            .wait_for_find(Locator::Id("gauth-widget-frame-gauth-widget"))
+            .await?;
 
-        client.find(Locator::Id("gauth-widget-frame-gauth-widget")).await?.enter_frame().await?;
+        client
+            .find(Locator::Id("gauth-widget-frame-gauth-widget"))
+            .await?
+            .enter_frame()
+            .await?;
 
         let mut form = client.form(Locator::Id("login-form")).await?;
         form.set_by_name("username", &self.config.garmin_connect_email)
             .await?
             .set_by_name("password", &self.config.garmin_connect_password)
             .await?;
-            sleep(std::time::Duration::from_secs(1)).await;
-        client.find(Locator::XPath("//*[@name=\"rememberme\"]")).await?.click().await?;
-        client.find(Locator::Id("login-btn-signin")).await?.click().await?;
+        sleep(std::time::Duration::from_secs(1)).await;
+        client
+            .find(Locator::XPath("//*[@name=\"rememberme\"]"))
+            .await?
+            .click()
+            .await?;
+        client
+            .find(Locator::Id("login-btn-signin"))
+            .await?
+            .click()
+            .await?;
 
         let modern_url = self
             .config
@@ -145,7 +164,9 @@ impl GarminConnectClient {
 
         client.goto(modern_url.as_str()).await?;
 
-        client.wait_for_find(Locator::XPath("//*[@class=\"main-header\"]")).await?;
+        client
+            .wait_for_find(Locator::XPath("//*[@class=\"main-header\"]"))
+            .await?;
 
         let js = Self::raw_get(client, &modern_url).await?;
         let text = std::str::from_utf8(&js)?;
@@ -245,18 +266,22 @@ impl GarminConnectClient {
 
     pub async fn get_activities(
         &mut self,
-        _: DateTime<Utc>,
+        start_datetime: Option<DateTime<Utc>>,
     ) -> Result<Vec<GarminConnectActivity>, Error> {
         let client = self
             .client
             .as_mut()
             .ok_or_else(|| format_err!("No client"))?;
-        let url = self
+        let mut url = self
             .config
             .garmin_connect_api_endpoint
             .as_ref()
             .ok_or_else(|| format_err!("Bad URL"))?
             .join("/proxy/activitylist-service/activities/search/activities")?;
+        if let Some(start_datetime) = start_datetime {
+            url.query_pairs_mut()
+                .append_pair("startDate", &start_datetime.naive_utc().date().to_string());
+        }
         let js = Self::raw_get(client, &url).await?;
         self.last_used = Utc::now();
         serde_json::from_slice(&js).map_err(Into::into)
@@ -359,12 +384,12 @@ mod tests {
         assert_eq!(user_summary.user_profile_id, 1377808);
 
         let max_timestamp = Utc::now() - Duration::days(14);
-        let result = match session.get_activities(max_timestamp).await {
+        let result = match session.get_activities(Some(max_timestamp)).await {
             Ok(r) => r,
             Err(_) => {
                 println!("try reauth");
                 session.authorize().await?;
-                session.get_activities(max_timestamp).await?
+                session.get_activities(Some(max_timestamp)).await?
             }
         };
         assert!(result.len() > 0);
@@ -380,7 +405,7 @@ mod tests {
 
         let max_timestamp = Utc::now() - Duration::days(30);
         let new_activities: Vec<_> = session
-            .get_activities(max_timestamp)
+            .get_activities(Some(max_timestamp))
             .await?
             .into_iter()
             .filter(|activity| !activities.contains_key(&activity.activity_id))

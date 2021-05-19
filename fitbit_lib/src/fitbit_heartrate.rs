@@ -310,17 +310,18 @@ impl FitbitHeartRate {
                             date = date
                         )
                     },
-                    if is_demo {
-                        "".to_string()
-                    } else {
-                        format!(
-                            r#"
-                        <button type="submit" id="ID"
-                         onclick="connect_hr_sync('{date}');">Sync Garmin {date}</button>
-                        "#,
-                            date = date
-                        )
-                    },
+                    ""
+                    // if is_demo {
+                    //     "".to_string()
+                    // } else {
+                    //     format!(
+                    //         r#"
+                    //     <button type="submit" id="ID"
+                    //      onclick="connect_hr_sync('{date}');">Sync Garmin {date}</button>
+                    //     "#,
+                    //         date = date
+                    //     )
+                    // },
                 )
             })
             .collect();

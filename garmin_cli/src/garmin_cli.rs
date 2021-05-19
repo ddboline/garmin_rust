@@ -1,5 +1,5 @@
 use anyhow::{format_err, Error};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use futures::future::try_join_all;
 use itertools::Itertools;
 use log::debug;
@@ -48,7 +48,10 @@ pub enum GarminCliOptions {
     Bootstrap,
     FileNames(Vec<PathBuf>),
     ImportFileNames(Vec<PathBuf>),
-    Connect,
+    Connect {
+        start_date: Option<NaiveDate>,
+        end_date: Option<NaiveDate>,
+    },
 }
 
 #[derive(Debug, Default)]

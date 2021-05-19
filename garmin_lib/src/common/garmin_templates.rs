@@ -46,8 +46,9 @@ pub fn get_buttons(demo: bool) -> Vec<&'static str> {
     if !demo {
         buttons.extend_from_slice(&[
             r#"<button type="submit" onclick="garmin_sync();">sync with S3</button>"#,
-            r#"<button type="submit" onclick="garmin_connect_sync();">sync with Garmin Connect</button>"#,
-            r#"<button type="submit" onclick="garminConnectUserSummary();">Connect User Summary</button>"#,
+            // r#"<button type="submit" onclick="garmin_connect_sync();">sync with Garmin
+            // Connect</button>"#, r#"<button type="submit"
+            // onclick="garminConnectUserSummary();">Connect User Summary</button>"#,
             r#"<button type="submit" onclick="fitbit_tcx_sync();">sync with Fitbit TCX</button>"#,
             r#"<button type="submit" onclick="stravaAuth();">read auth Strava</button>"#,
             r#"<button type="submit" onclick="fitbitAuth();">Fitbit Auth</button>"#,
@@ -57,7 +58,8 @@ pub fn get_buttons(demo: bool) -> Vec<&'static str> {
             r#"<button type="submit" onclick="strava_sync();">sync with Strava</button>"#,
             r#"<button type="submit" onclick="fitbitProfile();">Fitbit Profile</button>"#,
             r#"<button type="submit" onclick="fitbitSync();">Fitbit Sync</button>"#,
-            r#"<br>"#,]);
+            r#"<br>"#,
+        ]);
     }
     buttons.extend_from_slice(&[
         r#"<button type="submit" onclick="scale_measurement_plots(0);">Scale Plots</button>"#,

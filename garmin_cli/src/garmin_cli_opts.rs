@@ -1,5 +1,5 @@
-use anyhow::Error;
-use chrono::{Duration, Utc};
+use anyhow::{format_err, Error};
+use chrono::{Duration, NaiveDate, Utc};
 use futures::future::try_join_all;
 use itertools::Itertools;
 use refinery::embed_migrations;
@@ -43,7 +43,12 @@ pub enum GarminCliOpts {
         patterns: Vec<StackString>,
     },
     #[structopt(alias = "cnt")]
-    Connect,
+    Connect {
+        #[structopt(short, long)]
+        start_date: Option<NaiveDate>,
+        #[structopt(short, long)]
+        end_date: Option<NaiveDate>,
+    },
     Sync {
         #[structopt(short, long)]
         md5sum: bool,
@@ -52,6 +57,10 @@ pub enum GarminCliOpts {
     Fitbit {
         #[structopt(short, long)]
         all: bool,
+        #[structopt(short, long)]
+        start_date: Option<NaiveDate>,
+        #[structopt(short, long)]
+        end_date: Option<NaiveDate>,
     },
     Strava,
     Import {
@@ -83,8 +92,19 @@ impl GarminCliOpts {
         let opts = Self::from_args();
 
         if opts == Self::SyncAll {
-            Self::Connect.process_opts(&config).await?;
-            Self::Fitbit { all: false }.process_opts(&config).await?;
+            Self::Connect {
+                start_date: None,
+                end_date: None,
+            }
+            .process_opts(&config)
+            .await?;
+            Self::Fitbit {
+                all: false,
+                start_date: None,
+                end_date: None,
+            }
+            .process_opts(&config)
+            .await?;
             Self::Strava.process_opts(&config).await?;
             Self::Sync { md5sum: false }.process_opts(&config).await
         } else {
@@ -108,20 +128,42 @@ impl GarminCliOpts {
                 cli.run_cli(&req.options, &req.constraints).await?;
                 return cli.stdout.close().await;
             }
-            Self::Connect => GarminCliOptions::Connect,
+            Self::Connect {
+                start_date,
+                end_date,
+            } => {
+                if start_date > end_date {
+                    return Err(format_err!("Invalid date range"));
+                }
+                GarminCliOptions::Connect {
+                    start_date,
+                    end_date,
+                }
+            }
             Self::Sync { md5sum } => GarminCliOptions::Sync(md5sum),
             Self::SyncAll => {
                 return Ok(());
             }
-            Self::Fitbit { all } => {
+            Self::Fitbit {
+                all,
+                start_date,
+                end_date,
+            } => {
+                if start_date > end_date {
+                    return Err(format_err!("Invalid date range"));
+                }
                 let cli = GarminCli::with_config()?;
                 let client = FitbitClient::with_auth(config.clone()).await?;
                 let updates = client.sync_everything(&pool).await?;
-                for idx in 0..3 {
-                    let date = (Utc::now() - Duration::days(idx)).naive_utc().date();
+                let start_date = start_date
+                    .unwrap_or_else(|| (Utc::now() - Duration::days(3)).naive_utc().date());
+                let end_date = end_date.unwrap_or_else(|| Utc::now().naive_utc().date());
+                let mut date = start_date;
+                while date <= end_date {
                     client.import_fitbit_heartrate(date).await?;
                     FitbitHeartRate::calculate_summary_statistics(&client.config, &pool, date)
                         .await?;
+                    date += Duration::days(1);
                 }
                 cli.stdout.send(format!("{:?}", updates));
 
@@ -307,8 +349,12 @@ impl GarminCliOpts {
     }
 
     pub async fn garmin_proc(cli: &GarminCli) -> Result<(), Error> {
-        if let Some(GarminCliOptions::Connect) = cli.get_opts() {
-            Self::sync_with_garmin_connect(&cli).await?;
+        if let Some(GarminCliOptions::Connect {
+            start_date,
+            end_date,
+        }) = cli.get_opts()
+        {
+            Self::sync_with_garmin_connect(&cli, *start_date, *end_date).await?;
         }
 
         if let Some(GarminCliOptions::ImportFileNames(filenames)) = cli.get_opts() {
@@ -326,19 +372,27 @@ impl GarminCliOpts {
         Ok(())
     }
 
-    pub async fn sync_with_garmin_connect(cli: &GarminCli) -> Result<Vec<PathBuf>, Error> {
+    pub async fn sync_with_garmin_connect(
+        cli: &GarminCli,
+        start_date: Option<NaiveDate>,
+        end_date: Option<NaiveDate>,
+    ) -> Result<Vec<PathBuf>, Error> {
         if let Some(max_datetime) = get_maximum_begin_datetime(&cli.pool).await? {
             let mut session = GarminConnectClient::new(cli.config.clone());
             session.init().await?;
-            let activities = session.get_activities(max_datetime).await?;
-            for idx in 0..3 {
-                let date = (Utc::now() - Duration::days(idx)).naive_utc().date();
+            let activities = session.get_activities(Some(max_datetime)).await?;
+            let start_date =
+                start_date.unwrap_or_else(|| (Utc::now() - Duration::days(3)).naive_utc().date());
+            let end_date = end_date.unwrap_or_else(|| Utc::now().naive_utc().date());
+            let mut date = start_date;
+            while date <= end_date {
                 let hr_values = session.get_heartrate(date).await?;
                 let hr_values = FitbitHeartRate::from_garmin_connect_hr(&hr_values);
                 let config = cli.config.clone();
                 spawn_blocking(move || FitbitHeartRate::merge_slice_to_avro(&config, &hr_values))
                     .await??;
                 FitbitHeartRate::calculate_summary_statistics(&cli.config, &cli.pool, date).await?;
+                date += Duration::days(1);
             }
             let filenames = session
                 .get_and_merge_activity_files(activities, &cli.pool)

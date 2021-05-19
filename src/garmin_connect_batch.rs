@@ -90,7 +90,9 @@ async fn main() -> Result<(), Error> {
         }
     }
 
-    let connect_activities = connect.get_activities(Utc::now()).await?;
+    let connect_activities = connect
+        .get_activities(Some(Utc::now() - Duration::days(14)))
+        .await?;
     let url = remote_url.join("/garmin/garmin_connect_activities_db")?;
     let db_activities: Vec<GarminConnectActivity> = client
         .get(url)

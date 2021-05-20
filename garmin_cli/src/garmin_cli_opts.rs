@@ -399,8 +399,8 @@ impl GarminCliOpts {
                 .await?;
             if !filenames.is_empty() {
                 cli.process_filenames(&filenames).await?;
-                GarminConnectActivity::fix_summary_id_in_db(&cli.pool).await?;
                 cli.proc_everything().await?;
+                GarminConnectActivity::fix_summary_id_in_db(&cli.pool).await?;
             }
             session.close().await?;
             Ok(filenames)

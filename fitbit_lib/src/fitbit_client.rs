@@ -854,7 +854,6 @@ impl FitbitClient {
             }
         });
         let updated: Result<Vec<_>, Error> = try_join_all(futures).await;
-        FitbitActivity::fix_summary_id_in_db(&pool).await?;
         Ok(updated?.into_iter().flatten().collect())
     }
 
@@ -913,6 +912,7 @@ impl FitbitClient {
 
         let activities = client.sync_fitbit_activities(start_datetime, pool).await?;
         let duplicates = client.remove_duplicate_entries(pool).await?;
+        FitbitActivity::fix_summary_id_in_db(&pool).await?;
 
         Ok(FitbitBodyWeightFatUpdateOutput {
             measurements,

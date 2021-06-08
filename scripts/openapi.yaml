@@ -1,0 +1,2276 @@
+---
+openapi: 3.0.1
+info:
+  title: Fitness Activity WebApp
+  description: Web Frontend for Fitness Activities
+  version: 0.11.23
+paths:
+  /garmin/index.html:
+    get:
+      parameters:
+        - name: filter
+          in: query
+          schema:
+            nullable: true
+            type: string
+      responses:
+        "200":
+          description: Main Page
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/demo.html:
+    get:
+      parameters:
+        - name: filter
+          in: query
+          schema:
+            nullable: true
+            type: string
+      responses:
+        "200":
+          description: Main Page
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/upload_file:
+    post:
+      parameters:
+        - name: filename
+          in: query
+          schema:
+            type: string
+      responses:
+        "201":
+          description: Upload Response
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/add_garmin_correction:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                start_time:
+                  format: datetime
+                  type: string
+                lap_number:
+                  type: integer
+                distance:
+                  nullable: true
+                  type: number
+                duration:
+                  nullable: true
+                  type: number
+                sport:
+                  nullable: true
+                  type: string
+                  enum:
+                    - Running
+                    - Biking
+                    - Walking
+                    - Hiking
+                    - Ultimate
+                    - Elliptical
+                    - Stairs
+                    - Lifting
+                    - Swimming
+                    - Other
+                    - Snowshoeing
+                    - Skiing
+                    - None
+              type: object
+              required:
+                - start_time
+                - lap_number
+        required: true
+      responses:
+        "201":
+          description: Logged in User
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/garmin_connect_sync:
+    get:
+      responses:
+        "200":
+          description: Connect Sync
+          content:
+            application/json:
+              schema:
+                items:
+                  type: string
+                type: array
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/garmin_connect_activities:
+    get:
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+      responses:
+        "200":
+          description: Garmin Connect Activities
+          content:
+            application/json:
+              schema:
+                items:
+                  properties:
+                    activityId:
+                      type: integer
+                    activityName:
+                      nullable: true
+                      type: string
+                    description:
+                      nullable: true
+                      type: string
+                    start_time_gmt:
+                      format: datetime
+                      type: string
+                    distance:
+                      nullable: true
+                      type: number
+                    duration:
+                      type: number
+                    elapsedDuration:
+                      nullable: true
+                      type: number
+                    movingDuration:
+                      nullable: true
+                      type: number
+                    steps:
+                      nullable: true
+                      type: integer
+                    calories:
+                      nullable: true
+                      type: number
+                    averageHR:
+                      nullable: true
+                      type: number
+                    maxHR:
+                      nullable: true
+                      type: number
+                  type: object
+                  required:
+                    - activityId
+                    - start_time_gmt
+                    - duration
+                type: array
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/garmin_connect_activities_db:
+    get:
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+        - name: end_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+      responses:
+        "200":
+          description: Garmin Connect Activities
+          content:
+            application/json:
+              schema:
+                items:
+                  properties:
+                    activityId:
+                      type: integer
+                    activityName:
+                      nullable: true
+                      type: string
+                    description:
+                      nullable: true
+                      type: string
+                    start_time_gmt:
+                      format: datetime
+                      type: string
+                    distance:
+                      nullable: true
+                      type: number
+                    duration:
+                      type: number
+                    elapsedDuration:
+                      nullable: true
+                      type: number
+                    movingDuration:
+                      nullable: true
+                      type: number
+                    steps:
+                      nullable: true
+                      type: integer
+                    calories:
+                      nullable: true
+                      type: number
+                    averageHR:
+                      nullable: true
+                      type: number
+                    maxHR:
+                      nullable: true
+                      type: number
+                  type: object
+                  required:
+                    - activityId
+                    - start_time_gmt
+                    - duration
+                type: array
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                updates:
+                  items:
+                    properties:
+                      activityId:
+                        type: integer
+                      activityName:
+                        nullable: true
+                        type: string
+                      description:
+                        nullable: true
+                        type: string
+                      start_time_gmt:
+                        format: datetime
+                        type: string
+                      distance:
+                        nullable: true
+                        type: number
+                      duration:
+                        type: number
+                      elapsedDuration:
+                        nullable: true
+                        type: number
+                      movingDuration:
+                        nullable: true
+                        type: number
+                      steps:
+                        nullable: true
+                        type: integer
+                      calories:
+                        nullable: true
+                        type: number
+                      averageHR:
+                        nullable: true
+                        type: number
+                      maxHR:
+                        nullable: true
+                        type: number
+                    type: object
+                    required:
+                      - activityId
+                      - start_time_gmt
+                      - duration
+                  type: array
+              type: object
+              required:
+                - updates
+        required: true
+      responses:
+        "201":
+          description: Garmin Connect Activities
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/garmin_connect_hr_sync:
+    get:
+      parameters:
+        - name: date
+          in: query
+          schema:
+            format: naivedate
+            type: string
+      responses:
+        "200":
+          description: Connect Sync
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/garmin_connect_hr_api:
+    get:
+      parameters:
+        - name: date
+          in: query
+          schema:
+            format: naivedate
+            type: string
+      responses:
+        "200":
+          description: Connect Heartrate
+          content:
+            application/json:
+              schema:
+                items:
+                  properties:
+                    datetime:
+                      format: datetime
+                      type: string
+                    value:
+                      type: integer
+                  type: object
+                  required:
+                    - datetime
+                    - value
+                type: array
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/garmin_connect_user_summary:
+    get:
+      parameters:
+        - name: date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+      responses:
+        "200":
+          description: Garmin Connect User Summary
+          content:
+            application/json:
+              schema:
+                properties:
+                  userProfileId:
+                    type: integer
+                  totalKilocalories:
+                    nullable: true
+                    type: number
+                  activeKilocalories:
+                    nullable: true
+                    type: number
+                  bmrKilocalories:
+                    nullable: true
+                    type: number
+                  totalSteps:
+                    nullable: true
+                    type: integer
+                  totalDistanceMeters:
+                    nullable: true
+                    type: integer
+                  userDailySummaryId:
+                    nullable: true
+                    type: integer
+                  calendarDate:
+                    format: naivedate
+                    type: string
+                type: object
+                required:
+                  - userProfileId
+                  - calendarDate
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/garmin_sync:
+    get:
+      responses:
+        "200":
+          description: Garmin Sync
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/strava_sync:
+    get:
+      parameters:
+        - name: start_datetime
+          in: query
+          schema:
+            format: datetime
+            nullable: true
+            type: string
+        - name: end_datetime
+          in: query
+          schema:
+            format: datetime
+            nullable: true
+            type: string
+      responses:
+        "200":
+          description: Strava Sync
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/fitbit/auth:
+    get:
+      responses:
+        "200":
+          description: Fitbit Auth
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/fitbit/refresh_auth:
+    get:
+      responses:
+        "200":
+          description: Fitbit Refresh Auth
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/fitbit/callback:
+    get:
+      parameters:
+        - name: code
+          in: query
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Fitbit Callback
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/fitbit/heartrate_api:
+    get:
+      parameters:
+        - name: date
+          in: query
+          schema:
+            format: naivedate
+            type: string
+      responses:
+        "200":
+          description: Fitbit Heartrate
+          content:
+            application/json:
+              schema:
+                items:
+                  properties:
+                    datetime:
+                      format: datetime
+                      type: string
+                    value:
+                      type: integer
+                  type: object
+                  required:
+                    - datetime
+                    - value
+                type: array
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/fitbit/heartrate_cache:
+    get:
+      parameters:
+        - name: date
+          in: query
+          schema:
+            format: naivedate
+            type: string
+      responses:
+        "200":
+          description: Fitbit Heartrate
+          content:
+            application/json:
+              schema:
+                items:
+                  properties:
+                    datetime:
+                      format: datetime
+                      type: string
+                    value:
+                      type: integer
+                  type: object
+                  required:
+                    - datetime
+                    - value
+                type: array
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                updates:
+                  items:
+                    properties:
+                      datetime:
+                        format: datetime
+                        type: string
+                      value:
+                        type: integer
+                    type: object
+                    required:
+                      - datetime
+                      - value
+                  type: array
+              type: object
+              required:
+                - updates
+        required: true
+      responses:
+        "201":
+          description: Fitbit Heartrate Update
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/fitbit/sync:
+    get:
+      parameters:
+        - name: date
+          in: query
+          schema:
+            format: naivedate
+            type: string
+      responses:
+        "200":
+          description: Fitbit Sync
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/fitbit/bodyweight:
+    get:
+      responses:
+        "200":
+          description: Fitbit Body Weight
+          content:
+            application/json:
+              schema:
+                items:
+                  properties:
+                    datetime:
+                      format: datetime
+                      type: string
+                    weight:
+                      type: number
+                    fat:
+                      type: number
+                  type: object
+                  required:
+                    - datetime
+                    - weight
+                    - fat
+                type: array
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/fitbit/bodyweight_sync:
+    get:
+      responses:
+        "200":
+          description: Fitbit Body Weight Sync
+          content:
+            application/json:
+              schema:
+                properties:
+                  measurements:
+                    items:
+                      properties:
+                        id:
+                          type: integer
+                        datetime:
+                          format: datetime
+                          type: string
+                        mass:
+                          type: number
+                        fat_pct:
+                          type: number
+                        water_pct:
+                          type: number
+                        muscle_pct:
+                          type: number
+                        bone_pct:
+                          type: number
+                      type: object
+                      required:
+                        - id
+                        - datetime
+                        - mass
+                        - fat_pct
+                        - water_pct
+                        - muscle_pct
+                        - bone_pct
+                    type: array
+                  activities:
+                    items:
+                      format: datetime
+                      type: string
+                    type: array
+                  duplicates:
+                    items:
+                      type: string
+                    type: array
+                type: object
+                required:
+                  - measurements
+                  - activities
+                  - duplicates
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/fitbit/plots:
+    get:
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+        - name: end_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+        - name: button_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+        - name: offset
+          in: query
+          schema:
+            nullable: true
+            type: integer
+      responses:
+        "200":
+          description: Scale Measurement Plots
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/fitbit/plots_demo:
+    get:
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+        - name: end_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+        - name: button_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+        - name: offset
+          in: query
+          schema:
+            nullable: true
+            type: integer
+      responses:
+        "200":
+          description: Scale Measurement Plots
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/fitbit/heartrate_statistics_plots:
+    get:
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+        - name: end_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+        - name: button_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+        - name: offset
+          in: query
+          schema:
+            nullable: true
+            type: integer
+      responses:
+        "200":
+          description: Fitbit Heartrate Statistics Plots
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/fitbit/heartrate_statistics_plots_demo:
+    get:
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+        - name: end_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+        - name: button_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+        - name: offset
+          in: query
+          schema:
+            nullable: true
+            type: integer
+      responses:
+        "200":
+          description: Fitbit Heartrate Statistics Plots
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/fitbit/heartrate_plots:
+    get:
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+        - name: end_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+        - name: button_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+        - name: offset
+          in: query
+          schema:
+            nullable: true
+            type: integer
+      responses:
+        "200":
+          description: Fitbit Heartrate Plots
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/fitbit/heartrate_plots_demo:
+    get:
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+        - name: end_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+        - name: button_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+        - name: offset
+          in: query
+          schema:
+            nullable: true
+            type: integer
+      responses:
+        "200":
+          description: Fitbit Heartrate Plots
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/fitbit/fitbit_tcx_sync:
+    get:
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+      responses:
+        "200":
+          description: Fitbit Tcx Sync
+          content:
+            application/json:
+              schema:
+                items:
+                  type: string
+                type: array
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/fitbit/fitbit_activity_types:
+    get:
+      responses:
+        "200":
+          description: Fitbit Activity Types
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/fitbit/fitbit_activities:
+    get:
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+      responses:
+        "200":
+          description: Fitbit Activities
+          content:
+            application/json:
+              schema:
+                items:
+                  properties:
+                    logType:
+                      type: string
+                    startTime:
+                      format: datetime
+                      type: string
+                    tcxLink:
+                      nullable: true
+                      type: string
+                    activityTypeId:
+                      nullable: true
+                      type: integer
+                    activityName:
+                      nullable: true
+                      type: string
+                    duration:
+                      type: integer
+                    distance:
+                      nullable: true
+                      type: number
+                    distanceUnit:
+                      nullable: true
+                      type: string
+                    steps:
+                      nullable: true
+                      type: integer
+                    logId:
+                      type: integer
+                  type: object
+                  required:
+                    - logType
+                    - startTime
+                    - duration
+                    - logId
+                type: array
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/fitbit/fitbit_activities_db:
+    get:
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+        - name: end_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+      responses:
+        "200":
+          description: Fitbit Activities
+          content:
+            application/json:
+              schema:
+                items:
+                  properties:
+                    logType:
+                      type: string
+                    startTime:
+                      format: datetime
+                      type: string
+                    tcxLink:
+                      nullable: true
+                      type: string
+                    activityTypeId:
+                      nullable: true
+                      type: integer
+                    activityName:
+                      nullable: true
+                      type: string
+                    duration:
+                      type: integer
+                    distance:
+                      nullable: true
+                      type: number
+                    distanceUnit:
+                      nullable: true
+                      type: string
+                    steps:
+                      nullable: true
+                      type: integer
+                    logId:
+                      type: integer
+                  type: object
+                  required:
+                    - logType
+                    - startTime
+                    - duration
+                    - logId
+                type: array
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                updates:
+                  items:
+                    properties:
+                      logType:
+                        type: string
+                      startTime:
+                        format: datetime
+                        type: string
+                      tcxLink:
+                        nullable: true
+                        type: string
+                      activityTypeId:
+                        nullable: true
+                        type: integer
+                      activityName:
+                        nullable: true
+                        type: string
+                      duration:
+                        type: integer
+                      distance:
+                        nullable: true
+                        type: number
+                      distanceUnit:
+                        nullable: true
+                        type: string
+                      steps:
+                        nullable: true
+                        type: integer
+                      logId:
+                        type: integer
+                    type: object
+                    required:
+                      - logType
+                      - startTime
+                      - duration
+                      - logId
+                  type: array
+              type: object
+              required:
+                - updates
+        required: true
+      responses:
+        "201":
+          description: Fitbit Activities Update
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/fitbit/heartrate_statistics_summary_db:
+    get:
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+        - name: end_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+      responses:
+        "200":
+          description: Heartrate Statistics
+          content:
+            application/json:
+              schema:
+                items:
+                  properties:
+                    date:
+                      format: naivedate
+                      type: string
+                    min_heartrate:
+                      type: number
+                    max_heartrate:
+                      type: number
+                    mean_heartrate:
+                      type: number
+                    median_heartrate:
+                      type: number
+                    stdev_heartrate:
+                      type: number
+                    number_of_entries:
+                      type: integer
+                  type: object
+                  required:
+                    - date
+                    - min_heartrate
+                    - max_heartrate
+                    - mean_heartrate
+                    - median_heartrate
+                    - stdev_heartrate
+                    - number_of_entries
+                type: array
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                updates:
+                  items:
+                    properties:
+                      date:
+                        format: naivedate
+                        type: string
+                      min_heartrate:
+                        type: number
+                      max_heartrate:
+                        type: number
+                      mean_heartrate:
+                        type: number
+                      median_heartrate:
+                        type: number
+                      stdev_heartrate:
+                        type: number
+                      number_of_entries:
+                        type: integer
+                    type: object
+                    required:
+                      - date
+                      - min_heartrate
+                      - max_heartrate
+                      - mean_heartrate
+                      - median_heartrate
+                      - stdev_heartrate
+                      - number_of_entries
+                  type: array
+              type: object
+              required:
+                - updates
+        required: true
+      responses:
+        "201":
+          description: Heartrate Statistics Update
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/fitbit/profile:
+    get:
+      responses:
+        "200":
+          description: Fitbit Profile
+          content:
+            application/json:
+              schema:
+                properties:
+                  averageDailySteps:
+                    type: integer
+                  country:
+                    type: string
+                  dateOfBirth:
+                    type: string
+                  displayName:
+                    type: string
+                  distanceUnit:
+                    type: string
+                  encodedId:
+                    type: string
+                  firstName:
+                    type: string
+                  lastName:
+                    type: string
+                  fullName:
+                    type: string
+                  gender:
+                    type: string
+                  height:
+                    type: number
+                  heightUnit:
+                    type: string
+                  timezone:
+                    type: string
+                  offsetFromUTCMillis:
+                    type: integer
+                  strideLengthRunning:
+                    type: number
+                  strideLengthWalking:
+                    type: number
+                  weight:
+                    type: number
+                  weightUnit:
+                    type: string
+                type: object
+                required:
+                  - averageDailySteps
+                  - country
+                  - dateOfBirth
+                  - displayName
+                  - distanceUnit
+                  - encodedId
+                  - firstName
+                  - lastName
+                  - fullName
+                  - gender
+                  - height
+                  - heightUnit
+                  - timezone
+                  - offsetFromUTCMillis
+                  - strideLengthRunning
+                  - strideLengthWalking
+                  - weight
+                  - weightUnit
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/scale_measurements:
+    get:
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+        - name: end_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+        - name: button_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+        - name: offset
+          in: query
+          schema:
+            nullable: true
+            type: integer
+      responses:
+        "200":
+          description: Scale Measurements
+          content:
+            application/json:
+              schema:
+                items:
+                  properties:
+                    id:
+                      type: integer
+                    datetime:
+                      format: datetime
+                      type: string
+                    mass:
+                      type: number
+                    fat_pct:
+                      type: number
+                    water_pct:
+                      type: number
+                    muscle_pct:
+                      type: number
+                    bone_pct:
+                      type: number
+                  type: object
+                  required:
+                    - id
+                    - datetime
+                    - mass
+                    - fat_pct
+                    - water_pct
+                    - muscle_pct
+                    - bone_pct
+                type: array
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                measurements:
+                  items:
+                    properties:
+                      id:
+                        type: integer
+                      datetime:
+                        format: datetime
+                        type: string
+                      mass:
+                        type: number
+                      fat_pct:
+                        type: number
+                      water_pct:
+                        type: number
+                      muscle_pct:
+                        type: number
+                      bone_pct:
+                        type: number
+                    type: object
+                    required:
+                      - id
+                      - datetime
+                      - mass
+                      - fat_pct
+                      - water_pct
+                      - muscle_pct
+                      - bone_pct
+                  type: array
+              type: object
+              required:
+                - measurements
+        required: true
+      responses:
+        "201":
+          description: Scale Measurements Update
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/strava/auth:
+    get:
+      responses:
+        "200":
+          description: Strava Auth
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/strava/refresh_auth:
+    get:
+      responses:
+        "200":
+          description: Strava Refresh Auth
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/strava/callback:
+    get:
+      parameters:
+        - name: code
+          in: query
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Strava Callback
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/strava/activities:
+    get:
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+        - name: end_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+      responses:
+        "200":
+          description: Strava Activities
+          content:
+            application/json:
+              schema:
+                items:
+                  properties:
+                    name:
+                      type: string
+                    start_date:
+                      format: datetime
+                      type: string
+                    id:
+                      type: integer
+                    distance:
+                      nullable: true
+                      type: number
+                    moving_time:
+                      nullable: true
+                      type: integer
+                    elapsed_time:
+                      type: integer
+                    total_elevation_gain:
+                      nullable: true
+                      type: number
+                    elev_high:
+                      nullable: true
+                      type: number
+                    elev_low:
+                      nullable: true
+                      type: number
+                    activity_type:
+                      type: string
+                      enum:
+                        - Running
+                        - Biking
+                        - Walking
+                        - Hiking
+                        - Ultimate
+                        - Elliptical
+                        - Stairs
+                        - Lifting
+                        - Swimming
+                        - Other
+                        - Snowshoeing
+                        - Skiing
+                        - None
+                    timezone:
+                      format: timezone
+                      type: string
+                  type: object
+                  required:
+                    - name
+                    - start_date
+                    - id
+                    - elapsed_time
+                    - activity_type
+                    - timezone
+                type: array
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/strava/athlete:
+    get:
+      responses:
+        "200":
+          description: Strava Athlete
+          content:
+            application/json:
+              schema:
+                properties:
+                  id:
+                    type: integer
+                  username:
+                    type: string
+                  firstname:
+                    type: string
+                  lastname:
+                    type: string
+                  city:
+                    type: string
+                  state:
+                    type: string
+                  sex:
+                    type: string
+                type: object
+                required:
+                  - id
+                  - username
+                  - firstname
+                  - lastname
+                  - city
+                  - state
+                  - sex
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/strava/activities_db:
+    get:
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+        - name: end_date
+          in: query
+          schema:
+            format: naivedate
+            nullable: true
+            type: string
+      responses:
+        "200":
+          description: Strava Activities
+          content:
+            application/json:
+              schema:
+                items:
+                  properties:
+                    name:
+                      type: string
+                    start_date:
+                      format: datetime
+                      type: string
+                    id:
+                      type: integer
+                    distance:
+                      nullable: true
+                      type: number
+                    moving_time:
+                      nullable: true
+                      type: integer
+                    elapsed_time:
+                      type: integer
+                    total_elevation_gain:
+                      nullable: true
+                      type: number
+                    elev_high:
+                      nullable: true
+                      type: number
+                    elev_low:
+                      nullable: true
+                      type: number
+                    activity_type:
+                      type: string
+                      enum:
+                        - Running
+                        - Biking
+                        - Walking
+                        - Hiking
+                        - Ultimate
+                        - Elliptical
+                        - Stairs
+                        - Lifting
+                        - Swimming
+                        - Other
+                        - Snowshoeing
+                        - Skiing
+                        - None
+                    timezone:
+                      format: timezone
+                      type: string
+                  type: object
+                  required:
+                    - name
+                    - start_date
+                    - id
+                    - elapsed_time
+                    - activity_type
+                    - timezone
+                type: array
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                updates:
+                  items:
+                    properties:
+                      name:
+                        type: string
+                      start_date:
+                        format: datetime
+                        type: string
+                      id:
+                        type: integer
+                      distance:
+                        nullable: true
+                        type: number
+                      moving_time:
+                        nullable: true
+                        type: integer
+                      elapsed_time:
+                        type: integer
+                      total_elevation_gain:
+                        nullable: true
+                        type: number
+                      elev_high:
+                        nullable: true
+                        type: number
+                      elev_low:
+                        nullable: true
+                        type: number
+                      activity_type:
+                        type: string
+                        enum:
+                          - Running
+                          - Biking
+                          - Walking
+                          - Hiking
+                          - Ultimate
+                          - Elliptical
+                          - Stairs
+                          - Lifting
+                          - Swimming
+                          - Other
+                          - Snowshoeing
+                          - Skiing
+                          - None
+                      timezone:
+                        format: timezone
+                        type: string
+                    type: object
+                    required:
+                      - name
+                      - start_date
+                      - id
+                      - elapsed_time
+                      - activity_type
+                      - timezone
+                  type: array
+              type: object
+              required:
+                - updates
+        required: true
+      responses:
+        "201":
+          description: Strava Activities Update
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/strava/upload:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                filename:
+                  type: string
+                title:
+                  type: string
+                activity_type:
+                  type: string
+                description:
+                  nullable: true
+                  type: string
+                is_private:
+                  nullable: true
+                  type: boolean
+              type: object
+              required:
+                - filename
+                - title
+                - activity_type
+        required: true
+      responses:
+        "201":
+          description: Strava Upload
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/strava/update:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                activity_id:
+                  type: integer
+                title:
+                  type: string
+                activity_type:
+                  type: string
+                description:
+                  nullable: true
+                  type: string
+                is_private:
+                  nullable: true
+                  type: boolean
+                start_time:
+                  format: datetime
+                  nullable: true
+                  type: string
+              type: object
+              required:
+                - activity_id
+                - title
+                - activity_type
+        required: true
+      responses:
+        "201":
+          description: Strava Update
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/strava/create:
+    post:
+      parameters:
+        - name: filename
+          in: query
+          schema:
+            type: string
+      responses:
+        "201":
+          description: Strava Create
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/user:
+    get:
+      responses:
+        "200":
+          description: Logged in User
+          content:
+            application/json:
+              schema:
+                properties:
+                  email:
+                    type: string
+                  session:
+                    format: datetime
+                    nullable: true
+                    type: string
+                type: object
+                required:
+                  - email
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/race_result_plot:
+    get:
+      parameters:
+        - name: race_type
+          in: query
+          schema:
+            type: string
+            enum:
+              - Personal
+              - WorldRecordMen
+              - WorldRecordWomen
+        - name: demo
+          in: query
+          schema:
+            nullable: true
+            type: boolean
+      responses:
+        "200":
+          description: Race Result Plot
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/race_result_flag:
+    get:
+      parameters:
+        - name: id
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Race Result Plot
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/race_result_import:
+    get:
+      parameters:
+        - name: filename
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Race Result Import
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/race_result_plot_demo:
+    get:
+      parameters:
+        - name: race_type
+          in: query
+          schema:
+            type: string
+            enum:
+              - Personal
+              - WorldRecordMen
+              - WorldRecordWomen
+        - name: demo
+          in: query
+          schema:
+            nullable: true
+            type: boolean
+      responses:
+        "200":
+          description: Race Result Plot
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+  /garmin/race_results_db:
+    get:
+      parameters:
+        - name: race_type
+          in: query
+          schema:
+            nullable: true
+            type: string
+            enum:
+              - Personal
+              - WorldRecordMen
+              - WorldRecordWomen
+      responses:
+        "200":
+          description: Race Results
+          content:
+            application/json:
+              schema:
+                items:
+                  properties:
+                    id:
+                      type: integer
+                    race_type:
+                      type: string
+                      enum:
+                        - Personal
+                        - WorldRecordMen
+                        - WorldRecordWomen
+                    race_date:
+                      format: naivedate
+                      nullable: true
+                      type: string
+                    race_name:
+                      nullable: true
+                      type: string
+                    race_distance:
+                      type: integer
+                    race_time:
+                      type: number
+                    race_flag:
+                      type: boolean
+                    race_summary_ids:
+                      items:
+                        nullable: true
+                        type: integer
+                      type: array
+                  type: object
+                  required:
+                    - id
+                    - race_type
+                    - race_distance
+                    - race_time
+                    - race_flag
+                    - race_summary_ids
+                type: array
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                updates:
+                  items:
+                    properties:
+                      id:
+                        type: integer
+                      race_type:
+                        type: string
+                        enum:
+                          - Personal
+                          - WorldRecordMen
+                          - WorldRecordWomen
+                      race_date:
+                        format: naivedate
+                        nullable: true
+                        type: string
+                      race_name:
+                        nullable: true
+                        type: string
+                      race_distance:
+                        type: integer
+                      race_time:
+                        type: number
+                      race_flag:
+                        type: boolean
+                      race_summary_ids:
+                        items:
+                          nullable: true
+                          type: integer
+                        type: array
+                    type: object
+                    required:
+                      - id
+                      - race_type
+                      - race_distance
+                      - race_time
+                      - race_flag
+                      - race_summary_ids
+                  type: array
+              type: object
+              required:
+                - updates
+        required: true
+      responses:
+        "201":
+          description: Race Results Update
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "405":
+          description: Method not allowed
+        "500":
+          description: Internal Server Error

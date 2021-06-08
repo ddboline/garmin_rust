@@ -14,10 +14,11 @@ use tokio::{
     process::{Child, Command},
     time::sleep,
 };
+use rweb::Schema;
 
-use garmin_lib::common::{
+use garmin_lib::{common::{
     garmin_config::GarminConfig, garmin_connect_activity::GarminConnectActivity, pgpool::PgPool,
-};
+}, utils::naivedate_wrapper::NaiveDateWrapper};
 
 use super::garmin_connect_hr_data::GarminConnectHrData;
 
@@ -330,7 +331,7 @@ impl GarminConnectClient {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Schema)]
 pub struct GarminConnectUserDailySummary {
     #[serde(rename = "userProfileId")]
     pub user_profile_id: u64,
@@ -347,7 +348,7 @@ pub struct GarminConnectUserDailySummary {
     #[serde(rename = "userDailySummaryId")]
     pub user_daily_summary_id: Option<u64>,
     #[serde(rename = "calendarDate")]
-    pub calendar_date: NaiveDate,
+    pub calendar_date: NaiveDateWrapper,
 }
 
 #[cfg(test)]

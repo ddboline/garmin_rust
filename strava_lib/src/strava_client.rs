@@ -29,6 +29,7 @@ use tokio::{
     time::sleep,
 };
 use tokio_stream::StreamExt;
+use rweb::Schema;
 
 use garmin_lib::{
     common::{
@@ -728,7 +729,7 @@ impl StravaClient {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Schema)]
 pub struct StravaAthlete {
     pub id: u64,
     pub username: StackString,

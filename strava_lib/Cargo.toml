@@ -28,4 +28,5 @@ select = "0.5"
 smallvec = "1.6"
 chrono-tz = "0.5"
 crossbeam-utils = "0.8"
+rweb = {version="0.12", features=["openapi"]}
 stack-string = { version="0.2", features=["postgres_types", "rweb-openapi"] }

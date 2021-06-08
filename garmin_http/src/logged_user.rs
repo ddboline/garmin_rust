@@ -10,6 +10,7 @@ use std::{
     env::var,
     str::FromStr,
 };
+use rweb::Schema;
 
 use garmin_lib::{
     common::pgpool::PgPool,
@@ -18,7 +19,7 @@ use garmin_lib::{
 
 use crate::errors::ServiceError as Error;
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Schema)]
 pub struct LoggedUser {
     pub email: StackString,
     pub session: Option<UuidWrapper>,

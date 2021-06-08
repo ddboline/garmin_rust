@@ -23,6 +23,7 @@ use tokio::{
     task::spawn_blocking,
     time::{sleep, Duration},
 };
+use rweb::Schema;
 
 use garmin_connect_lib::garmin_connect_hr_data::GarminConnectHrData;
 use garmin_lib::{
@@ -444,7 +445,7 @@ impl FitbitClient {
                 let datetime = format!("{}T{}{}", bw.date, bw.time, offset);
                 let datetime = DateTime::parse_from_rfc3339(&datetime)
                     .ok()?
-                    .with_timezone(&Utc);
+                    .with_timezone(&Utc).into();
                 let weight = bw.weight;
                 let fat = bw.fat?;
                 Some(FitbitBodyWeightFat {
@@ -602,7 +603,7 @@ impl FitbitClient {
             .map_err(Into::into)
     }
 
-    pub async fn get_fitbit_activity_types(&self) -> Result<HashMap<u64, StackString>, Error> {
+    pub async fn get_fitbit_activity_types(&self) -> Result<HashMap<String, StackString>, Error> {
         #[derive(Deserialize)]
         struct FitbitActivityType {
             name: StackString,
@@ -643,24 +644,24 @@ impl FitbitClient {
             .error_for_status()?
             .json()
             .await?;
-        let mut id_map: HashMap<u64, StackString> = HashMap::new();
+        let mut id_map: HashMap<String, StackString> = HashMap::new();
         for category in &categories.categories {
-            id_map.insert(category.id, category.name.clone());
+            id_map.insert(category.id.to_string(), category.name.clone());
             for activity in &category.activities {
                 let name = format!("{}/{}", category.name, activity.name).into();
-                id_map.insert(activity.id, name);
+                id_map.insert(activity.id.to_string(), name);
             }
             if let Some(sub_categories) = category.sub_categories.as_ref() {
                 for sub_category in sub_categories.iter() {
                     let name = format!("{}/{}", category.name, sub_category.name).into();
-                    id_map.insert(sub_category.id, name);
+                    id_map.insert(sub_category.id.to_string(), name);
                     for sub_activity in &sub_category.activities {
                         let name = format!(
                             "{}/{}/{}",
                             category.name, sub_category.name, sub_activity.name
                         )
                         .into();
-                        id_map.insert(sub_activity.id, name);
+                        id_map.insert(sub_activity.id.to_string(), name);
                     }
                 }
             }
@@ -910,7 +911,7 @@ impl FitbitClient {
             .collect();
         client.update_fitbit_bodyweightfat(&measurements).await?;
 
-        let activities = client.sync_fitbit_activities(start_datetime, pool).await?;
+        let activities = client.sync_fitbit_activities(start_datetime, pool).await?.into_iter().map(Into::into).collect();
         let duplicates = client.remove_duplicate_entries(pool).await?;
         FitbitActivity::fix_summary_id_in_db(&pool).await?;
 
@@ -948,10 +949,10 @@ impl FitbitClient {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Schema)]
 pub struct FitbitBodyWeightFatUpdateOutput {
     pub measurements: Vec<ScaleMeasurement>,
-    pub activities: Vec<DateTime<Utc>>,
+    pub activities: Vec<DateTimeWrapper>,
     pub duplicates: Vec<StackString>,
 }
 
@@ -991,7 +992,7 @@ impl ActivityLoggingEntry {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Schema)]
 pub struct FitbitUserProfile {
     #[serde(rename = "averageDailySteps")]
     pub average_daily_steps: u64,

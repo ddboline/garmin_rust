@@ -18,6 +18,7 @@ use std::{
     fs::File,
     path::Path,
 };
+use rweb::Schema;
 
 use garmin_connect_lib::garmin_connect_hr_data::GarminConnectHrData;
 use garmin_lib::{
@@ -518,9 +519,9 @@ pub fn import_garmin_heartrate_file(filename: &Path) -> Result<(), Error> {
     Ok(())
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Schema)]
 pub struct FitbitBodyWeightFat {
-    pub datetime: DateTime<Utc>,
+    pub datetime: DateTimeWrapper,
     pub weight: f64,
     pub fat: f64,
 }

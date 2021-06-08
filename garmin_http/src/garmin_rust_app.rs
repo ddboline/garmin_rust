@@ -3,7 +3,8 @@
 use anyhow::Error;
 use chrono::Utc;
 use reqwest::{Client, ClientBuilder};
-use rweb::Filter;
+use rweb::{Filter, filters::BoxedFilter, Reply, http::header::CONTENT_TYPE};
+use rweb::openapi::{self, Info};
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 use tokio::{sync::Mutex, task::spawn, time::interval};
 
@@ -88,14 +89,7 @@ pub async fn start_app() -> Result<(), Error> {
     run_app(&config, &pool, &proxy).await
 }
 
-async fn run_app(config: &GarminConfig, pool: &PgPool, proxy: &ConnectProxy) -> Result<(), Error> {
-    let app = AppState {
-        config: config.clone(),
-        db: pool.clone(),
-        connect_proxy: proxy.clone(),
-        client: Arc::new(ClientBuilder::new().build()?),
-    };
-
+fn get_garmin_path(app: &AppState) -> BoxedFilter<(impl Reply,)> {
     let index_path = garmin(app.clone()).boxed();
     let garmin_demo_path = garmin_demo(app.clone()).boxed();
     let garmin_upload_path = garmin_upload(app.clone()).boxed();
@@ -200,7 +194,7 @@ async fn run_app(config: &GarminConfig, pool: &PgPool, proxy: &ConnectProxy) -> 
     let race_results_db_post = race_results_db_update(app.clone());
     let race_results_db_path = race_results_db_get.or(race_results_db_post).boxed();
 
-    let garmin_path = index_path
+    index_path
         .or(garmin_demo_path)
         .or(garmin_upload_path)
         .or(add_garmin_correction_path)
@@ -221,9 +215,45 @@ async fn run_app(config: &GarminConfig, pool: &PgPool, proxy: &ConnectProxy) -> 
         .or(race_result_import_path)
         .or(race_result_plot_demo_path)
         .or(race_results_db_path)
-        .boxed();
+        .boxed()
+}
 
-    let routes = garmin_path.recover(error_response);
+async fn run_app(config: &GarminConfig, pool: &PgPool, proxy: &ConnectProxy) -> Result<(), Error> {
+    let app = AppState {
+        config: config.clone(),
+        db: pool.clone(),
+        connect_proxy: proxy.clone(),
+        client: Arc::new(ClientBuilder::new().build()?),
+    };
+
+    let (spec, garmin_path) = openapi::spec()
+        .info(Info {
+            title: "Fitness Activity WebApp".into(),
+            description: "Web Frontend for Fitness Activities".into(),
+            version: env!("CARGO_PKG_VERSION").into(),
+            ..Info::default()
+        })
+        .build(|| get_garmin_path(&app));
+    let spec = Arc::new(spec);
+    let spec_json_path = rweb::path!("garmin" / "openapi" / "json")
+        .and(rweb::path::end())
+        .map({
+            let spec = spec.clone();
+            move || rweb::reply::json(spec.as_ref())
+        });
+
+    let spec_yaml = serde_yaml::to_string(spec.as_ref())?;
+    let spec_yaml_path = rweb::path!("garmin" / "openapi" / "yaml")
+        .and(rweb::path::end())
+        .map(move || {
+            let reply = rweb::reply::html(spec_yaml.clone());
+            rweb::reply::with_header(reply, CONTENT_TYPE, "text/yaml")
+        });
+
+    let routes = garmin_path
+        .or(spec_json_path)
+        .or(spec_yaml_path)
+        .recover(error_response);
     let addr: SocketAddr = format!("127.0.0.1:{}", config.port).parse()?;
     rweb::serve(routes).bind(addr).await;
     Ok(())

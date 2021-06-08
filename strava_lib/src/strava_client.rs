@@ -13,6 +13,7 @@ use reqwest::{
     multipart::{Form, Part},
     Client, Url,
 };
+use rweb::Schema;
 use select::{document::Document, predicate::Attr};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
@@ -29,7 +30,6 @@ use tokio::{
     time::sleep,
 };
 use tokio_stream::StreamExt;
-use rweb::Schema;
 
 use garmin_lib::{
     common::{

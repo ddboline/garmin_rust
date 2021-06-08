@@ -11,6 +11,7 @@ use rayon::{
     iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelExtend, ParallelIterator},
     slice::ParallelSliceMut,
 };
+use rweb::Schema;
 use serde::{self, Deserialize, Deserializer, Serialize};
 use stack_string::StackString;
 use std::{
@@ -18,7 +19,6 @@ use std::{
     fs::File,
     path::Path,
 };
-use rweb::Schema;
 
 use garmin_connect_lib::garmin_connect_hr_data::GarminConnectHrData;
 use garmin_lib::{

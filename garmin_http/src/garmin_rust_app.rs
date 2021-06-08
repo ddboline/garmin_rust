@@ -3,8 +3,12 @@
 use anyhow::Error;
 use chrono::Utc;
 use reqwest::{Client, ClientBuilder};
-use rweb::{Filter, filters::BoxedFilter, Reply, http::header::CONTENT_TYPE};
-use rweb::openapi::{self, Info};
+use rweb::{
+    filters::BoxedFilter,
+    http::header::CONTENT_TYPE,
+    openapi::{self, Info},
+    Filter, Reply,
+};
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 use tokio::{sync::Mutex, task::spawn, time::interval};
 

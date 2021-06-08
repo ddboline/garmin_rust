@@ -3,6 +3,7 @@ pub use authorized_users::{
     KEY_LENGTH, SECRET_KEY, TRIGGER_DB_UPDATE,
 };
 use log::debug;
+use rweb::Schema;
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
 use std::{
@@ -10,7 +11,6 @@ use std::{
     env::var,
     str::FromStr,
 };
-use rweb::Schema;
 
 use garmin_lib::{
     common::pgpool::PgPool,

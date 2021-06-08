@@ -5,6 +5,7 @@ use fantoccini::{Client, ClientBuilder, Locator};
 use http::Method;
 use log::debug;
 use reqwest::Url;
+use rweb::Schema;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use stack_string::StackString;
@@ -14,11 +15,13 @@ use tokio::{
     process::{Child, Command},
     time::sleep,
 };
-use rweb::Schema;
 
-use garmin_lib::{common::{
-    garmin_config::GarminConfig, garmin_connect_activity::GarminConnectActivity, pgpool::PgPool,
-}, utils::naivedate_wrapper::NaiveDateWrapper};
+use garmin_lib::{
+    common::{
+        garmin_config::GarminConfig, garmin_connect_activity::GarminConnectActivity, pgpool::PgPool,
+    },
+    utils::naivedate_wrapper::NaiveDateWrapper,
+};
 
 use super::garmin_connect_hr_data::GarminConnectHrData;
 

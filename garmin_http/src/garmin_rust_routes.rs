@@ -9,23 +9,34 @@ use rweb::{
     multipart::{FormData, Part},
     post, Buf, Filter, Json, Query, Rejection, Schema,
 };
+use rweb_helper::{
+    html_response::HtmlResponse as HtmlBase, json_response::JsonResponse as JsonBase, RwebResponse,
+};
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
+use std::{collections::HashMap, convert::Infallible, str::FromStr, string::ToString};
 use strava_lib::strava_client::StravaAthlete;
-use std::{convert::Infallible, str::FromStr, string::ToString};
 use tempdir::TempDir;
 use tokio::{fs::File, io::AsyncWriteExt};
 use tokio_stream::StreamExt;
-use rweb_helper::{
-    RwebResponse,
-    html_response::HtmlResponse as HtmlBase,
-    json_response::JsonResponse as JsonBase,
-};
-use std::collections::HashMap;
 
-use fitbit_lib::{fitbit_client::{FitbitBodyWeightFatUpdateOutput, FitbitUserProfile}, fitbit_heartrate::{FitbitHeartRate, FitbitBodyWeightFat}, fitbit_statistics_summary::FitbitStatisticsSummary, scale_measurement::ScaleMeasurement};
+use fitbit_lib::{
+    fitbit_client::{FitbitBodyWeightFatUpdateOutput, FitbitUserProfile},
+    fitbit_heartrate::{FitbitBodyWeightFat, FitbitHeartRate},
+    fitbit_statistics_summary::FitbitStatisticsSummary,
+    scale_measurement::ScaleMeasurement,
+};
 use garmin_cli::garmin_cli::{GarminCli, GarminRequest};
-use garmin_lib::{common::{fitbit_activity::FitbitActivity, garmin_config::GarminConfig, garmin_connect_activity::GarminConnectActivity, garmin_templates::{get_buttons, get_scripts, get_style, HBR}, strava_activity::StravaActivity}, utils::{iso_8601_datetime::convert_datetime_to_str, uuid_wrapper::UuidWrapper}};
+use garmin_lib::{
+    common::{
+        fitbit_activity::FitbitActivity,
+        garmin_config::GarminConfig,
+        garmin_connect_activity::GarminConnectActivity,
+        garmin_templates::{get_buttons, get_scripts, get_style, HBR},
+        strava_activity::StravaActivity,
+    },
+    utils::{iso_8601_datetime::convert_datetime_to_str, uuid_wrapper::UuidWrapper},
+};
 use garmin_reports::garmin_file_report_html::generate_history_buttons;
 
 use crate::{
@@ -152,7 +163,7 @@ fn optional_session() -> impl Filter<Extract = (Option<Session>,), Error = Infal
 }
 
 #[derive(RwebResponse)]
-#[response(description="Main Page", content="html")]
+#[response(description = "Main Page", content = "html")]
 struct IndexResponse(HtmlBase<String, Error>);
 
 #[get("/garmin/index.html")]
@@ -208,7 +219,7 @@ pub async fn garmin_demo(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Upload Response", content="html", status="CREATED")]
+#[response(description = "Upload Response", content = "html", status = "CREATED")]
 struct UploadResponse(HtmlBase<String, Error>);
 
 #[post("/garmin/upload_file")]
@@ -269,7 +280,7 @@ async fn save_file(file_path: &str, field: Part) -> Result<(), anyhow::Error> {
 }
 
 #[derive(RwebResponse)]
-#[response(description="Connect Sync")]
+#[response(description = "Connect Sync")]
 struct ConnectSyncResponse(JsonBase<Vec<String>, Error>);
 
 #[get("/garmin/garmin_connect_sync")]
@@ -279,12 +290,15 @@ pub async fn garmin_connect_sync(
 ) -> WarpResult<ConnectSyncResponse> {
     let body = GarminConnectSyncRequest {}
         .handle(&state.db, &state.connect_proxy)
-        .await?.into_iter().map(|x| x.to_string_lossy().into()).collect();
+        .await?
+        .into_iter()
+        .map(|x| x.to_string_lossy().into())
+        .collect();
     Ok(JsonBase::new(body).into())
 }
 
 #[derive(RwebResponse)]
-#[response(description="Connect Sync", content="html")]
+#[response(description = "Connect Sync", content = "html")]
 struct ConnectHrSyncResponse(HtmlBase<String, Error>);
 
 #[get("/garmin/garmin_connect_hr_sync")]
@@ -302,7 +316,7 @@ pub async fn garmin_connect_hr_sync(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Connect Heartrate")]
+#[response(description = "Connect Heartrate")]
 struct ConnectHrApiResponse(JsonBase<Vec<FitbitHeartRate>, Error>);
 
 #[get("/garmin/garmin_connect_hr_api")]
@@ -316,7 +330,7 @@ pub async fn garmin_connect_hr_api(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Garmin Sync", content="html")]
+#[response(description = "Garmin Sync", content = "html")]
 struct GarminSyncResponse(HtmlBase<String, Error>);
 
 #[get("/garmin/garmin_sync")]
@@ -333,7 +347,7 @@ pub async fn garmin_sync(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Strava Sync", content="html")]
+#[response(description = "Strava Sync", content = "html")]
 struct StravaSyncResponse(HtmlBase<String, Error>);
 
 #[get("/garmin/strava_sync")]
@@ -354,7 +368,7 @@ pub async fn strava_sync(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Strava Auth", content="html")]
+#[response(description = "Strava Auth", content = "html")]
 struct StravaAuthResponse(HtmlBase<String, Error>);
 
 #[get("/garmin/strava/auth")]
@@ -367,7 +381,7 @@ pub async fn strava_auth(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Strava Refresh Auth", content="html")]
+#[response(description = "Strava Refresh Auth", content = "html")]
 struct StravaRefreshResponse(HtmlBase<String, Error>);
 
 #[get("/garmin/strava/refresh_auth")]
@@ -380,7 +394,7 @@ pub async fn strava_refresh(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Strava Callback", content="html")]
+#[response(description = "Strava Callback", content = "html")]
 struct StravaCallbackResponse(HtmlBase<String, Error>);
 
 #[get("/garmin/strava/callback")]
@@ -394,7 +408,7 @@ pub async fn strava_callback(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Strava Activities")]
+#[response(description = "Strava Activities")]
 struct StravaActivitiesResponse(JsonBase<Vec<StravaActivity>, Error>);
 
 #[get("/garmin/strava/activities")]
@@ -420,7 +434,11 @@ pub async fn strava_activities_db(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Strava Activities Update", status="CREATED", content="html")]
+#[response(
+    description = "Strava Activities Update",
+    status = "CREATED",
+    content = "html"
+)]
 struct StravaActivitiesUpdateResponse(HtmlBase<String, Error>);
 
 #[post("/garmin/strava/activities_db")]
@@ -435,7 +453,7 @@ pub async fn strava_activities_db_update(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Strava Upload", status="CREATED", content="html")]
+#[response(description = "Strava Upload", status = "CREATED", content = "html")]
 struct StravaUploadResponse(HtmlBase<String, Error>);
 
 #[post("/garmin/strava/upload")]
@@ -449,7 +467,7 @@ pub async fn strava_upload(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Strava Update", status="CREATED", content="html")]
+#[response(description = "Strava Update", status = "CREATED", content = "html")]
 struct StravaUpdateResponse(HtmlBase<String, Error>);
 
 #[post("/garmin/strava/update")]
@@ -463,7 +481,7 @@ pub async fn strava_update(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Strava Create", status="CREATED", content="html")]
+#[response(description = "Strava Create", status = "CREATED", content = "html")]
 struct StravaCreateResponse(HtmlBase<String, Error>);
 
 #[post("/garmin/strava/create")]
@@ -478,7 +496,7 @@ pub async fn strava_create(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Fitbit Auth", content="html")]
+#[response(description = "Fitbit Auth", content = "html")]
 struct FitbitAuthResponse(HtmlBase<String, Error>);
 
 #[get("/garmin/fitbit/auth")]
@@ -491,7 +509,7 @@ pub async fn fitbit_auth(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Fitbit Refresh Auth", content="html")]
+#[response(description = "Fitbit Refresh Auth", content = "html")]
 struct FitbitRefreshResponse(HtmlBase<String, Error>);
 
 #[get("/garmin/fitbit/refresh_auth")]
@@ -504,7 +522,7 @@ pub async fn fitbit_refresh(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Fitbit Heartrate")]
+#[response(description = "Fitbit Heartrate")]
 struct FitbitHeartRateResponse(JsonBase<Vec<FitbitHeartRate>, Error>);
 
 #[get("/garmin/fitbit/heartrate_api")]
@@ -528,7 +546,11 @@ pub async fn fitbit_heartrate_cache(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Fitbit Heartrate Update", content="html", status="CREATED")]
+#[response(
+    description = "Fitbit Heartrate Update",
+    content = "html",
+    status = "CREATED"
+)]
 struct FitbitHeartrateUpdateResponse(HtmlBase<&'static str, Error>);
 
 #[post("/garmin/fitbit/heartrate_cache")]
@@ -542,7 +564,7 @@ pub async fn fitbit_heartrate_cache_update(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Fitbit Body Weight")]
+#[response(description = "Fitbit Body Weight")]
 struct FitbitBodyWeightFatResponse(JsonBase<Vec<FitbitBodyWeightFat>, Error>);
 
 #[get("/garmin/fitbit/bodyweight")]
@@ -555,7 +577,7 @@ pub async fn fitbit_bodyweight(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Fitbit Body Weight Sync")]
+#[response(description = "Fitbit Body Weight Sync")]
 struct FitbitBodyWeightFatUpdateResponse(JsonBase<FitbitBodyWeightFatUpdateOutput, Error>);
 
 #[get("/garmin/fitbit/bodyweight_sync")]
@@ -570,7 +592,7 @@ pub async fn fitbit_bodyweight_sync(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Fitbit Activities")]
+#[response(description = "Fitbit Activities")]
 struct FitbitActivitiesResponse(JsonBase<Vec<FitbitActivity>, Error>);
 
 #[get("/garmin/fitbit/fitbit_activities")]
@@ -584,7 +606,7 @@ pub async fn fitbit_activities(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Fitbit Callback", content="html")]
+#[response(description = "Fitbit Callback", content = "html")]
 struct FitbitCallbackResponse(HtmlBase<String, Error>);
 
 #[get("/garmin/fitbit/callback")]
@@ -597,7 +619,7 @@ pub async fn fitbit_callback(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Fitbit Sync", content="html")]
+#[response(description = "Fitbit Sync", content = "html")]
 struct FitbitSyncResponse(HtmlBase<String, Error>);
 
 #[get("/garmin/fitbit/sync")]
@@ -635,7 +657,7 @@ async fn heartrate_statistics_plots_impl(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Fitbit Heartrate Statistics Plots", content="html")]
+#[response(description = "Fitbit Heartrate Statistics Plots", content = "html")]
 struct FitbitStatisticsPlotResponse(HtmlBase<String, Error>);
 
 #[get("/garmin/fitbit/heartrate_statistics_plots")]
@@ -690,7 +712,7 @@ async fn fitbit_plots_impl(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Scale Measurement Plots", content="html")]
+#[response(description = "Scale Measurement Plots", content = "html")]
 struct ScaleMeasurementResponse(HtmlBase<String, Error>);
 
 #[get("/garmin/fitbit/plots")]
@@ -740,7 +762,7 @@ async fn heartrate_plots_impl(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Fitbit Heartrate Plots", content="html")]
+#[response(description = "Fitbit Heartrate Plots", content = "html")]
 struct FitbitHeartratePlotResponse(HtmlBase<String, Error>);
 
 #[get("/garmin/fitbit/heartrate_plots")]
@@ -771,7 +793,7 @@ pub async fn heartrate_plots_demo(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Fitbit Tcx Sync")]
+#[response(description = "Fitbit Tcx Sync")]
 struct FitbitTcxSyncResponse(JsonBase<Vec<String>, Error>);
 
 #[get("/garmin/fitbit/fitbit_tcx_sync")]
@@ -780,12 +802,18 @@ pub async fn fitbit_tcx_sync(
     #[cookie = "jwt"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<FitbitTcxSyncResponse> {
-    let flist = query.into_inner().handle(&state.db, &state.config).await?.into_iter().map(|x| x.to_string_lossy().into()).collect();
+    let flist = query
+        .into_inner()
+        .handle(&state.db, &state.config)
+        .await?
+        .into_iter()
+        .map(|x| x.to_string_lossy().into())
+        .collect();
     Ok(JsonBase::new(flist).into())
 }
 
 #[derive(RwebResponse)]
-#[response(description="Scale Measurements")]
+#[response(description = "Scale Measurements")]
 struct ScaleMeasurementsResponse(JsonBase<Vec<ScaleMeasurement>, Error>);
 
 #[get("/garmin/scale_measurements")]
@@ -799,7 +827,11 @@ pub async fn scale_measurement(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Scale Measurements Update", content="html", status="CREATED")]
+#[response(
+    description = "Scale Measurements Update",
+    content = "html",
+    status = "CREATED"
+)]
 struct ScaleMeasurementsUpdateResponse(HtmlBase<&'static str, Error>);
 
 #[post("/garmin/scale_measurements")]
@@ -840,7 +872,7 @@ pub struct HrPaceList {
 }
 
 #[derive(RwebResponse)]
-#[response(description="Logged in User")]
+#[response(description = "Logged in User")]
 struct UserResponse(JsonBase<LoggedUser, Error>);
 
 #[get("/garmin/user")]
@@ -849,7 +881,7 @@ pub async fn user(#[cookie = "jwt"] user: LoggedUser) -> WarpResult<UserResponse
 }
 
 #[derive(RwebResponse)]
-#[response(description="Logged in User", content="html", status="CREATED")]
+#[response(description = "Logged in User", content = "html", status = "CREATED")]
 struct AddGarminCorrectionResponse(HtmlBase<&'static str, Error>);
 
 #[post("/garmin/add_garmin_correction")]
@@ -866,7 +898,7 @@ pub async fn add_garmin_correction(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Fitbit Activity Types")]
+#[response(description = "Fitbit Activity Types")]
 struct FitbitActivityTypesResponse(JsonBase<HashMap<String, StackString>, Error>);
 
 #[get("/garmin/fitbit/fitbit_activity_types")]
@@ -879,7 +911,7 @@ pub async fn fitbit_activity_types(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Strava Athlete")]
+#[response(description = "Strava Athlete")]
 struct StravaAthleteResponse(JsonBase<StravaAthlete, Error>);
 
 #[get("/garmin/strava/athlete")]
@@ -892,7 +924,7 @@ pub async fn strava_athlete(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Fitbit Profile")]
+#[response(description = "Fitbit Profile")]
 struct FitbitProfileResponse(JsonBase<FitbitUserProfile, Error>);
 
 #[get("/garmin/fitbit/profile")]
@@ -905,7 +937,7 @@ pub async fn fitbit_profile(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Garmin Connect Activities")]
+#[response(description = "Garmin Connect Activities")]
 struct GarminConnectActivitiesResponse(JsonBase<Vec<GarminConnectActivity>, Error>);
 
 #[get("/garmin/garmin_connect_activities")]
@@ -931,7 +963,11 @@ pub async fn garmin_connect_activities_db(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Garmin Connect Activities", content="html", status="CREATED")]
+#[response(
+    description = "Garmin Connect Activities",
+    content = "html",
+    status = "CREATED"
+)]
 struct GarminConnectActivitiesUpdateResponse(HtmlBase<String, Error>);
 
 #[post("/garmin/garmin_connect_activities_db")]
@@ -945,7 +981,7 @@ pub async fn garmin_connect_activities_db_update(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Garmin Connect User Summary")]
+#[response(description = "Garmin Connect User Summary")]
 struct GarminConnectUserSummaryResponse(JsonBase<GarminConnectUserDailySummary, Error>);
 
 #[get("/garmin/garmin_connect_user_summary")]
@@ -959,7 +995,7 @@ pub async fn garmin_connect_user_summary(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Fitbit Activities")]
+#[response(description = "Fitbit Activities")]
 struct FitbitActivitiesDBResponse(JsonBase<Vec<FitbitActivity>, Error>);
 
 #[get("/garmin/fitbit/fitbit_activities_db")]
@@ -975,7 +1011,11 @@ pub async fn fitbit_activities_db(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Fitbit Activities Update", content="html", status="CREATED")]
+#[response(
+    description = "Fitbit Activities Update",
+    content = "html",
+    status = "CREATED"
+)]
 struct FitbitActivitiesDBUpdateResponse(HtmlBase<String, Error>);
 
 #[post("/garmin/fitbit/fitbit_activities_db")]
@@ -989,7 +1029,7 @@ pub async fn fitbit_activities_db_update(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Heartrate Statistics")]
+#[response(description = "Heartrate Statistics")]
 struct HeartrateStatisticsResponse(JsonBase<Vec<FitbitStatisticsSummary>, Error>);
 
 #[get("/garmin/fitbit/heartrate_statistics_summary_db")]
@@ -1005,7 +1045,11 @@ pub async fn heartrate_statistics_summary_db(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Heartrate Statistics Update", content="html", status="CREATED")]
+#[response(
+    description = "Heartrate Statistics Update",
+    content = "html",
+    status = "CREATED"
+)]
 struct HeartrateStatisticsUpdateResponse(HtmlBase<String, Error>);
 
 #[post("/garmin/fitbit/heartrate_statistics_summary_db")]
@@ -1037,7 +1081,7 @@ async fn race_result_plot_impl(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Race Result Plot", content="html")]
+#[response(description = "Race Result Plot", content = "html")]
 struct RaceResultPlotResponse(HtmlBase<String, Error>);
 
 #[get("/garmin/race_result_plot")]
@@ -1069,7 +1113,7 @@ pub async fn race_result_plot_demo(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Race Result Plot", content="html")]
+#[response(description = "Race Result Plot", content = "html")]
 struct RaceResultFlagResponse(HtmlBase<String, Error>);
 
 #[get("/garmin/race_result_flag")]
@@ -1083,7 +1127,7 @@ pub async fn race_result_flag(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Race Result Import", content="html")]
+#[response(description = "Race Result Import", content = "html")]
 struct RaceResultImportResponse(HtmlBase<&'static str, Error>);
 
 #[get("/garmin/race_result_import")]
@@ -1097,7 +1141,7 @@ pub async fn race_result_import(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Race Results")]
+#[response(description = "Race Results")]
 struct RaceResultsResponse(JsonBase<Vec<RaceResults>, Error>);
 
 #[get("/garmin/race_results_db")]
@@ -1111,7 +1155,11 @@ pub async fn race_results_db(
 }
 
 #[derive(RwebResponse)]
-#[response(description="Race Results Update", status="CREATED", content="html")]
+#[response(
+    description = "Race Results Update",
+    status = "CREATED",
+    content = "html"
+)]
 struct RaceResultsUpdateResponse(HtmlBase<&'static str, Error>);
 
 #[post("/garmin/race_results_db")]

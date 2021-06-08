@@ -772,7 +772,10 @@ impl AddGarminCorrectionRequest {
 pub struct FitbitActivityTypesRequest {}
 
 impl FitbitActivityTypesRequest {
-    pub async fn handle(&self, config: &GarminConfig) -> Result<HashMap<String, StackString>, Error> {
+    pub async fn handle(
+        &self,
+        config: &GarminConfig,
+    ) -> Result<HashMap<String, StackString>, Error> {
         let config = config.clone();
         let client = FitbitClient::with_auth(config).await?;
         client.get_fitbit_activity_types().await.map_err(Into::into)

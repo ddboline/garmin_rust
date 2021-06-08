@@ -9,6 +9,7 @@ use log::debug;
 use maplit::hashmap;
 use rand::{thread_rng, Rng};
 use reqwest::{header::HeaderMap, Client, Response, Url};
+use rweb::Schema;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use stack_string::StackString;
@@ -23,7 +24,6 @@ use tokio::{
     task::spawn_blocking,
     time::{sleep, Duration},
 };
-use rweb::Schema;
 
 use garmin_connect_lib::garmin_connect_hr_data::GarminConnectHrData;
 use garmin_lib::{
@@ -445,7 +445,8 @@ impl FitbitClient {
                 let datetime = format!("{}T{}{}", bw.date, bw.time, offset);
                 let datetime = DateTime::parse_from_rfc3339(&datetime)
                     .ok()?
-                    .with_timezone(&Utc).into();
+                    .with_timezone(&Utc)
+                    .into();
                 let weight = bw.weight;
                 let fat = bw.fat?;
                 Some(FitbitBodyWeightFat {
@@ -911,7 +912,12 @@ impl FitbitClient {
             .collect();
         client.update_fitbit_bodyweightfat(&measurements).await?;
 
-        let activities = client.sync_fitbit_activities(start_datetime, pool).await?.into_iter().map(Into::into).collect();
+        let activities = client
+            .sync_fitbit_activities(start_datetime, pool)
+            .await?
+            .into_iter()
+            .map(Into::into)
+            .collect();
         let duplicates = client.remove_duplicate_entries(pool).await?;
         FitbitActivity::fix_summary_id_in_db(&pool).await?;
 

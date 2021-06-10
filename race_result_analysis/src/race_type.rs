@@ -12,8 +12,11 @@ use tokio_postgres::types::{FromSql, IsNull, ToSql, Type};
 #[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize, Schema)]
 #[serde(into = "String", try_from = "String")]
 pub enum RaceType {
+    #[serde(rename="personal")]
     Personal,
+    #[serde(rename="world_record_men")]
     WorldRecordMen,
+    #[serde(rename="world_record_women")]
     WorldRecordWomen,
 }
 

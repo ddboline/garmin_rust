@@ -192,6 +192,7 @@ mod tests {
     use lazy_static::lazy_static;
     use maplit::hashset;
     use parking_lot::Mutex;
+    use postgres_query::query;
     use rand::{distributions::Alphanumeric, thread_rng, Rng};
     use std::{collections::HashSet, sync::Arc};
     use telegram_bot::UserId;
@@ -322,30 +323,24 @@ mod tests {
 
         assert!(!original_user_ids.contains(&userid));
 
-        let query = postgres_query::query!(
+        let query = query!(
             "INSERT INTO authorized_users (email, telegram_userid)
             VALUES ($email, $telegram_userid)",
             email = email,
             telegram_userid = 8675309i64,
         );
-        pool.get()
-            .await?
-            .execute(query.sql(), query.parameters())
-            .await?;
+        let conn = pool.get().await?;
+        query.execute(&conn).await?;
 
         let new_user_ids = bot.list_of_telegram_user_ids().await?;
 
         assert!(new_user_ids.contains(&userid));
 
-        let query = postgres_query::query!(
+        let query = query!(
             "DELETE FROM authorized_users WHERE email = $email",
             email = email
         );
-        pool.get()
-            .await?
-            .execute(query.sql(), query.parameters())
-            .await?;
-
+        query.execute(&conn).await?;
         Ok(())
     }
 }

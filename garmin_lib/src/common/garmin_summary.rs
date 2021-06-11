@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use futures::future::try_join_all;
 use itertools::Itertools;
 use log::debug;
-use postgres_query::FromSqlRow;
+use postgres_query::{query, FromSqlRow};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
@@ -157,7 +157,7 @@ impl GarminSummary {
     }
 
     pub async fn get_by_filename(pool: &PgPool, filename: &str) -> Result<Option<Self>, Error> {
-        let query = postgres_query::query!(
+        let query = query!(
             "
             SELECT id,
                    filename,
@@ -172,18 +172,12 @@ impl GarminSummary {
             FROM garmin_summary WHERE filename = $filename",
             filename = filename,
         );
-        let result = pool
-            .get()
-            .await?
-            .query_opt(query.sql(), query.parameters())
-            .await?
-            .map(|row| Self::from_row(&row))
-            .transpose()?;
-        Ok(result)
+        let conn = pool.get().await?;
+        query.fetch_opt(&conn).await.map_err(Into::into)
     }
 
     pub async fn get_by_id(pool: &PgPool, id: i32) -> Result<Option<Self>, Error> {
-        let query = postgres_query::query!(
+        let query = query!(
             "
             SELECT id,
                    filename,
@@ -198,14 +192,8 @@ impl GarminSummary {
             FROM garmin_summary WHERE id = $id",
             id = id,
         );
-        let result = pool
-            .get()
-            .await?
-            .query_opt(query.sql(), query.parameters())
-            .await?
-            .map(|row| Self::from_row(&row))
-            .transpose()?;
-        Ok(result)
+        let conn = pool.get().await?;
+        query.fetch_opt(&conn).await.map_err(Into::into)
     }
 
     pub async fn write_summary_to_postgres(

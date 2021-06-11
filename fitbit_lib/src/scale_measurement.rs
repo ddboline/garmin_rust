@@ -3,8 +3,8 @@ use chrono::{DateTime, Local, NaiveDate, Utc};
 use futures::future::try_join_all;
 use log::debug;
 use maplit::hashmap;
-use postgres_query::{query, FromSqlRow, Parameter};
-use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use postgres_query::{query, query_dyn, FromSqlRow, Parameter};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use rweb::Schema;
 use serde::{self, Deserialize, Serialize};
 use smallvec::SmallVec;
@@ -210,13 +210,9 @@ impl ScaleMeasurement {
         );
         let query_bindings: Vec<_> = bindings.iter().map(|(k, v)| (*k, v as Parameter)).collect();
         debug!("query:\n{}", query);
-        let query = postgres_query::query_dyn!(&query, ..query_bindings)?;
+        let query = query_dyn!(&query, ..query_bindings)?;
         let conn = pool.get().await?;
-        conn.query(query.sql(), query.parameters())
-            .await?
-            .par_iter()
-            .map(|r| Self::from_row(r).map_err(Into::into))
-            .collect()
+        query.fetch(&conn).await.map_err(Into::into)
     }
 
     pub fn get_scale_measurement_plots(

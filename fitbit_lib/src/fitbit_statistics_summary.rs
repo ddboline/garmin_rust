@@ -1,7 +1,7 @@
 use anyhow::Error;
 use chrono::{Duration, NaiveDate, Utc};
 use maplit::hashmap;
-use postgres_query::FromSqlRow;
+use postgres_query::{query, FromSqlRow};
 use rweb::Schema;
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
@@ -55,19 +55,14 @@ impl FitbitStatisticsSummary {
     }
 
     pub async fn read_entry(date: NaiveDate, pool: &PgPool) -> Result<Option<Self>, Error> {
-        let query = postgres_query::query!(
+        let query = query!(
             r#"
             SELECT * FROM heartrate_statistics_summary WHERE date = $date
         "#,
             date = date
         );
         let conn = pool.get().await?;
-        if let Some(row) = conn.query_opt(query.sql(), query.parameters()).await? {
-            let val = Self::from_row(&row)?;
-            Ok(Some(val))
-        } else {
-            Ok(None)
-        }
+        query.fetch_opt(&conn).await.map_err(Into::into)
     }
 
     pub async fn read_from_db(
@@ -79,7 +74,7 @@ impl FitbitStatisticsSummary {
             start_date.unwrap_or_else(|| (Utc::now() - Duration::days(365)).naive_local().date());
         let end_date = end_date.unwrap_or_else(|| Utc::now().naive_local().date());
 
-        let query = postgres_query::query!(
+        let query = query!(
             r#"
             SELECT * FROM heartrate_statistics_summary
             WHERE date >= $start_date AND date <= $end_date
@@ -89,11 +84,7 @@ impl FitbitStatisticsSummary {
             end_date = end_date
         );
         let conn = pool.get().await?;
-        conn.query(query.sql(), query.parameters())
-            .await?
-            .into_iter()
-            .map(|row| Self::from_row(&row).map_err(Into::into))
-            .collect()
+        query.fetch(&conn).await.map_err(Into::into)
     }
 
     pub async fn upsert_entry(&self, pool: &PgPool) -> Result<(), Error> {
@@ -105,7 +96,7 @@ impl FitbitStatisticsSummary {
     }
 
     pub async fn update_entry(&self, pool: &PgPool) -> Result<(), Error> {
-        let query = postgres_query::query!(
+        let query = query!(
             r#"
                 UPDATE heartrate_statistics_summary
                 SET min_heartrate=$min_heartrate,max_heartrate=$max_heartrate,
@@ -122,14 +113,11 @@ impl FitbitStatisticsSummary {
             number_of_entries = self.number_of_entries,
         );
         let conn = pool.get().await?;
-        conn.execute(query.sql(), query.parameters())
-            .await
-            .map(|_| ())
-            .map_err(Into::into)
+        query.execute(&conn).await.map(|_| ()).map_err(Into::into)
     }
 
     pub async fn insert_entry(&self, pool: &PgPool) -> Result<(), Error> {
-        let query = postgres_query::query!(
+        let query = query!(
             r#"
                 INSERT INTO heartrate_statistics_summary
                 (date, min_heartrate, max_heartrate, mean_heartrate, median_heartrate,
@@ -147,10 +135,7 @@ impl FitbitStatisticsSummary {
             number_of_entries = self.number_of_entries,
         );
         let conn = pool.get().await?;
-        conn.execute(query.sql(), query.parameters())
-            .await
-            .map(|_| ())
-            .map_err(Into::into)
+        query.execute(&conn).await.map(|_| ()).map_err(Into::into)
     }
 
     pub fn get_fitbit_statistics_plots(

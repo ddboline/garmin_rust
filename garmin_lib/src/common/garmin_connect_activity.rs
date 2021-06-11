@@ -2,8 +2,7 @@ use anyhow::Error;
 use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
 use futures::future::try_join_all;
 use log::debug;
-use postgres_query::{FromSqlRow, Parameter};
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use postgres_query::{query, query_dyn, FromSqlRow, Parameter};
 use rweb::Schema;
 use serde::{Deserialize, Deserializer, Serialize};
 use stack_string::StackString;
@@ -63,51 +62,37 @@ impl GarminConnectActivity {
         );
         let query_bindings: Vec<_> = bindings.iter().map(|(k, v)| (*k, v as Parameter)).collect();
         debug!("query:\n{}", query);
-        let query = postgres_query::query_dyn!(&query, ..query_bindings)?;
+        let query = query_dyn!(&query, ..query_bindings)?;
         let conn = pool.get().await?;
-        conn.query(query.sql(), query.parameters())
-            .await?
-            .par_iter()
-            .map(|r| Self::from_row(r).map_err(Into::into))
-            .collect()
+        query.fetch(&conn).await.map_err(Into::into)
     }
 
     pub async fn get_by_begin_datetime(
         pool: &PgPool,
         begin_datetime: DateTime<Utc>,
     ) -> Result<Option<Self>, Error> {
-        let query = postgres_query::query!(
+        let query = query!(
             "SELECT * FROM garmin_connect_activities WHERE start_time_gmt=$start_date",
             start_date = begin_datetime,
         );
         let conn = pool.get().await?;
-        let activity: Option<GarminConnectActivity> = conn
-            .query_opt(query.sql(), query.parameters())
-            .await?
-            .map(|row| GarminConnectActivity::from_row(&row))
-            .transpose()?;
-        Ok(activity)
+        query.fetch_opt(&conn).await.map_err(Into::into)
     }
 
     pub async fn get_from_summary_id(
         pool: &PgPool,
         summary_id: i32,
     ) -> Result<Option<Self>, Error> {
-        let query = postgres_query::query!(
+        let query = query!(
             "SELECT * FROM garmin_connect_activities WHERE summary_id = $summary_id",
             summary_id = summary_id,
         );
         let conn = pool.get().await?;
-        let activity: Option<GarminConnectActivity> = conn
-            .query_opt(query.sql(), query.parameters())
-            .await?
-            .map(|row| GarminConnectActivity::from_row(&row))
-            .transpose()?;
-        Ok(activity)
+        query.fetch_opt(&conn).await.map_err(Into::into)
     }
 
     pub async fn insert_into_db(&self, pool: &PgPool) -> Result<(), Error> {
-        let query = postgres_query::query!(
+        let query = query!(
             "
                 INSERT INTO garmin_connect_activities (
                     activity_id,activity_name,description,start_time_gmt,distance,duration,
@@ -130,17 +115,12 @@ impl GarminConnectActivity {
             average_hr = self.average_hr,
             max_hr = self.max_hr,
         );
-
         let conn = pool.get().await?;
-
-        conn.execute(query.sql(), query.parameters())
-            .await
-            .map(|_| ())
-            .map_err(Into::into)
+        query.execute(&conn).await.map(|_| ()).map_err(Into::into)
     }
 
     pub async fn update_db(&self, pool: &PgPool) -> Result<(), Error> {
-        let query = postgres_query::query!(
+        let query = query!(
             "
                 UPDATE garmin_connect_activities SET
                     activity_name=$activity_name,description=$description,
@@ -163,7 +143,7 @@ impl GarminConnectActivity {
             max_hr = self.max_hr,
         );
         let conn = pool.get().await?;
-        conn.execute(query.sql(), query.parameters()).await?;
+        query.execute(&conn).await?;
         Ok(())
     }
 
@@ -201,7 +181,6 @@ impl GarminConnectActivity {
         });
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
         output.extend_from_slice(&results?);
-
         Ok(output)
     }
 
@@ -245,7 +224,6 @@ pub async fn import_garmin_connect_activity_json_file(filename: &Path) -> Result
 
     let activities = serde_json::from_reader(File::open(&filename)?)?;
     GarminConnectActivity::merge_new_activities(activities, &pool).await?;
-
     Ok(())
 }
 

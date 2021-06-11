@@ -1,6 +1,6 @@
 [package]
 name = "garmin_lib"
-version = "0.11.25"
+version = "0.11.26"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -29,7 +29,7 @@ roxmltree = "0.14"
 parking_lot = "0.11"
 avro-rs = {version = "0.13", features = ["snappy"]}
 regex = "1.4"
-postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", branch="master"}
+postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.3-2", features=["deadpool"]}
 bytes = "1.0"
 anyhow = "1.0"
 thiserror = "1.0"

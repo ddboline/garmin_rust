@@ -2,8 +2,7 @@ use anyhow::Error;
 use chrono::{DateTime, NaiveDate, Utc};
 use futures::future::try_join_all;
 use log::debug;
-use postgres_query::{FromSqlRow, Parameter};
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use postgres_query::{query, query_dyn, FromSqlRow, Parameter};
 use rweb::Schema;
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
@@ -81,51 +80,37 @@ impl StravaActivity {
         );
         let query_bindings: Vec<_> = bindings.iter().map(|(k, v)| (*k, v as Parameter)).collect();
         debug!("query:\n{}", query);
-        let query = postgres_query::query_dyn!(&query, ..query_bindings)?;
+        let query = query_dyn!(&query, ..query_bindings)?;
         let conn = pool.get().await?;
-        conn.query(query.sql(), query.parameters())
-            .await?
-            .par_iter()
-            .map(|r| Self::from_row(r).map_err(Into::into))
-            .collect()
+        query.fetch(&conn).await.map_err(Into::into)
     }
 
     pub async fn get_by_begin_datetime(
         pool: &PgPool,
         begin_datetime: DateTime<Utc>,
     ) -> Result<Option<Self>, Error> {
-        let query = postgres_query::query!(
+        let query = query!(
             "SELECT * FROM strava_activities WHERE start_date=$start_date",
             start_date = begin_datetime,
         );
         let conn = pool.get().await?;
-        let activity: Option<StravaActivity> = conn
-            .query_opt(query.sql(), query.parameters())
-            .await?
-            .map(|row| StravaActivity::from_row(&row))
-            .transpose()?;
-        Ok(activity)
+        query.fetch_opt(&conn).await.map_err(Into::into)
     }
 
     pub async fn get_from_summary_id(
         pool: &PgPool,
         summary_id: i32,
     ) -> Result<Option<Self>, Error> {
-        let query = postgres_query::query!(
+        let query = query!(
             "SELECT * FROM strava_activities WHERE summary_id=$summary_id",
             summary_id = summary_id,
         );
         let conn = pool.get().await?;
-        let activity: Option<StravaActivity> = conn
-            .query_opt(query.sql(), query.parameters())
-            .await?
-            .map(|row| StravaActivity::from_row(&row))
-            .transpose()?;
-        Ok(activity)
+        query.fetch_opt(&conn).await.map_err(Into::into)
     }
 
     pub async fn insert_into_db(&self, pool: &PgPool) -> Result<(), Error> {
-        let query = postgres_query::query!(
+        let query = query!(
             "
                 INSERT INTO strava_activities (
                     id,name,start_date,distance,moving_time,elapsed_time,
@@ -147,17 +132,12 @@ impl StravaActivity {
             activity_type = self.activity_type,
             timezone = self.timezone,
         );
-
         let conn = pool.get().await?;
-
-        conn.execute(query.sql(), query.parameters())
-            .await
-            .map(|_| ())
-            .map_err(Into::into)
+        query.execute(&conn).await.map(|_| ()).map_err(Into::into)
     }
 
     pub async fn update_db(&self, pool: &PgPool) -> Result<(), Error> {
-        let query = postgres_query::query!(
+        let query = query!(
             "
                 UPDATE strava_activities SET
                     name=$name,start_date=$start_date,distance=$distance,moving_time=$moving_time,
@@ -179,7 +159,7 @@ impl StravaActivity {
             timezone = self.timezone,
         );
         let conn = pool.get().await?;
-        conn.execute(query.sql(), query.parameters()).await?;
+        query.execute(&conn).await?;
         Ok(())
     }
 

@@ -1,7 +1,7 @@
 use anyhow::Error;
 use chrono::NaiveDate;
 use itertools::Itertools;
-use postgres_query::FromSqlRow;
+use postgres_query::{query, FromSqlRow};
 use rweb::Schema;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
@@ -76,7 +76,7 @@ impl RaceResults {
         race_type: RaceType,
         pool: &PgPool,
     ) -> Result<Vec<Self>, Error> {
-        let query = postgres_query::query!(
+        let query = query!(
             "SELECT a.id, a.race_type, a.race_date, a.race_name, a.race_distance, a.race_time,
                     a.race_flag, array_agg(b.summary_id) as race_summary_ids
             FROM race_results a
@@ -87,15 +87,11 @@ impl RaceResults {
             race_type = race_type
         );
         let conn = pool.get().await?;
-        conn.query(query.sql(), query.parameters())
-            .await?
-            .into_iter()
-            .map(|row| Self::from_row(&row).map_err(Into::into))
-            .collect()
+        query.fetch(&conn).await.map_err(Into::into)
     }
 
     pub async fn get_result_by_id(id: i32, pool: &PgPool) -> Result<Option<Self>, Error> {
-        let query = postgres_query::query!(
+        let query = query!(
             "SELECT a.id, a.race_type, a.race_date, a.race_name, a.race_distance, a.race_time,
                     a.race_flag, array_agg(b.summary_id) as race_summary_ids
             FROM race_results a
@@ -105,12 +101,7 @@ impl RaceResults {
             id = id
         );
         let conn = pool.get().await?;
-        let result = conn
-            .query_opt(query.sql(), query.parameters())
-            .await?
-            .map(|row| Self::from_row(&row))
-            .transpose()?;
-        Ok(result)
+        query.fetch_opt(&conn).await.map_err(Into::into)
     }
 
     pub async fn get_races_by_date(
@@ -118,7 +109,7 @@ impl RaceResults {
         race_type: RaceType,
         pool: &PgPool,
     ) -> Result<Vec<Self>, Error> {
-        let query = postgres_query::query!(
+        let query = query!(
             "SELECT a.id, a.race_type, a.race_date, a.race_name, a.race_distance, a.race_time,
                     a.race_flag, array_agg(b.summary_id) as race_summary_ids
             FROM race_results a
@@ -129,18 +120,14 @@ impl RaceResults {
             race_type = race_type,
         );
         let conn = pool.get().await?;
-        conn.query(query.sql(), query.parameters())
-            .await?
-            .into_iter()
-            .map(|row| Self::from_row(&row).map_err(Into::into))
-            .collect()
+        query.fetch(&conn).await.map_err(Into::into)
     }
 
     pub async fn get_race_by_summary_id(
         summary_id: i32,
         pool: &PgPool,
     ) -> Result<Option<Self>, Error> {
-        let query = postgres_query::query!(
+        let query = query!(
             "SELECT a.id, a.race_type, a.race_date, a.race_name, a.race_distance, a.race_time,
                     a.race_flag, array_agg(b.summary_id) as race_summary_ids
             FROM race_results a
@@ -154,12 +141,7 @@ impl RaceResults {
             summary_id = summary_id,
         );
         let conn = pool.get().await?;
-        let result = conn
-            .query_opt(query.sql(), query.parameters())
-            .await?
-            .map(|row| Self::from_row(&row))
-            .transpose()?;
-        Ok(result)
+        query.fetch_opt(&conn).await.map_err(Into::into)
     }
 
     pub async fn get_race_by_distance(
@@ -167,7 +149,7 @@ impl RaceResults {
         race_type: RaceType,
         pool: &PgPool,
     ) -> Result<Vec<Self>, Error> {
-        let query = postgres_query::query!(
+        let query = query!(
             "SELECT a.id, a.race_type, a.race_date, a.race_name, a.race_distance, a.race_time,
                     a.race_flag, array_agg(b.summary_id) as race_summary_ids
             FROM race_results a
@@ -178,11 +160,7 @@ impl RaceResults {
             race_type = race_type,
         );
         let conn = pool.get().await?;
-        conn.query(query.sql(), query.parameters())
-            .await?
-            .into_iter()
-            .map(|row| Self::from_row(&row).map_err(Into::into))
-            .collect()
+        query.fetch(&conn).await.map_err(Into::into)
     }
 
     pub async fn get_summary_map(pool: &PgPool) -> Result<HashMap<i32, GarminSummary>, Error> {
@@ -207,7 +185,7 @@ impl RaceResults {
         let conn = pool.get().await?;
         let query = match self.race_type {
             RaceType::WorldRecordMen | RaceType::WorldRecordWomen => {
-                postgres_query::query!(
+                query!(
                     "
                         SELECT id
                         FROM race_results
@@ -218,7 +196,7 @@ impl RaceResults {
                 )
             }
             RaceType::Personal => {
-                postgres_query::query!(
+                query!(
                     "
                         SELECT id
                         FROM race_results
@@ -232,11 +210,8 @@ impl RaceResults {
                 )
             }
         };
-        let result = conn.query_opt(query.sql(), query.parameters()).await?;
-        result
-            .map(|row| row.try_get(0))
-            .transpose()
-            .map_err(Into::into)
+        let id: Option<(i32,)> = query.fetch_opt(&conn).await?;
+        Ok(id.map(|(id,)| id))
     }
 
     pub async fn set_race_id(&mut self, pool: &PgPool) -> Result<(), Error> {
@@ -247,7 +222,7 @@ impl RaceResults {
     }
 
     pub async fn insert_into_db(&self, pool: &PgPool) -> Result<(), Error> {
-        let query = postgres_query::query!(
+        let query = query!(
             "
                 INSERT INTO race_results (
                     race_type, race_date, race_name, race_distance, race_time, race_flag
@@ -264,12 +239,12 @@ impl RaceResults {
             race_flag = self.race_flag,
         );
         let conn = pool.get().await?;
-        conn.execute(query.sql(), query.parameters()).await?;
+        query.execute(&conn).await?;
         Ok(())
     }
 
     pub async fn update_db(&self, pool: &PgPool) -> Result<(), Error> {
-        let query = postgres_query::query!(
+        let query = query!(
             "UPDATE race_results
             SET race_type=$race_type,race_date=$race_date,race_name=$race_name,
                 race_distance=$race_distance,race_time=$race_time,race_flag=$race_flag
@@ -283,7 +258,7 @@ impl RaceResults {
             race_flag = self.race_flag,
         );
         let conn = pool.get().await?;
-        conn.execute(query.sql(), query.parameters()).await?;
+        query.execute(&conn).await?;
         self.update_race_summary_ids(pool).await?;
         Ok(())
     }
@@ -309,7 +284,7 @@ impl RaceResults {
         if !summary_ids.is_empty() {
             let conn = pool.get().await?;
             for summary_id in summary_ids {
-                let query = postgres_query::query!(
+                let query = query!(
                     "
                         INSERT INTO race_results_garmin_summary (race_id, summary_id)
                         VALUES ($race_id, $summary_id)
@@ -317,19 +292,16 @@ impl RaceResults {
                     race_id = self.id,
                     summary_id = summary_id,
                 );
-                conn.execute(query.sql(), query.parameters()).await?;
+                query.execute(&conn).await?;
             }
         }
         Ok(())
     }
 
     pub async fn delete_from_db(self, pool: &PgPool) -> Result<(), Error> {
-        let query = postgres_query::query!("DELETE FROM race_results WHERE id = $id", id = self.id);
+        let query = query!("DELETE FROM race_results WHERE id = $id", id = self.id);
         let conn = pool.get().await?;
-        conn.execute(query.sql(), query.parameters())
-            .await
-            .map(|_| ())
-            .map_err(Into::into)
+        query.execute(&conn).await.map(|_| ()).map_err(Into::into)
     }
 
     pub fn parse_from_race_results_text_file(input: &str) -> Result<Vec<Self>, Error> {

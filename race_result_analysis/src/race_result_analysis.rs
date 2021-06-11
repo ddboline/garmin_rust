@@ -3,7 +3,7 @@ use chrono::{NaiveDate, Utc};
 use itertools::Itertools;
 use maplit::hashmap;
 use ndarray::{array, Array1};
-use postgres_query::FromSqlRow;
+use postgres_query::{query, FromSqlRow};
 use rusfun::{curve_fit::Minimizer, func1d::Func1D};
 use stack_string::StackString;
 use std::collections::HashMap;
@@ -318,7 +318,7 @@ impl RaceResultAggregated {
         race_type: RaceType,
         pool: &PgPool,
     ) -> Result<Vec<Self>, Error> {
-        let query = postgres_query::query!(
+        let query = query!(
             "
             SELECT
                 race_distance,
@@ -334,13 +334,8 @@ impl RaceResultAggregated {
         ",
             race_type = race_type
         );
-        pool.get()
-            .await?
-            .query(query.sql(), query.parameters())
-            .await?
-            .into_iter()
-            .map(|row| Self::from_row(&row).map_err(Into::into))
-            .collect()
+        let conn = pool.get().await?;
+        query.fetch(&conn).await.map_err(Into::into)
     }
 }
 

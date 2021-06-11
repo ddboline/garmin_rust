@@ -2,8 +2,7 @@ use anyhow::Error;
 use chrono::NaiveDate;
 use futures::future::try_join_all;
 use log::debug;
-use postgres_query::{FromSqlRow, Parameter};
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use postgres_query::{query, query_dyn, FromSqlRow, Parameter};
 use rweb::Schema;
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
@@ -60,56 +59,41 @@ impl FitbitActivity {
         );
         let query_bindings: Vec<_> = bindings.iter().map(|(k, v)| (*k, v as Parameter)).collect();
         debug!("query:\n{}", query);
-        let query = postgres_query::query_dyn!(&query, ..query_bindings)?;
+        let query = query_dyn!(&query, ..query_bindings)?;
         let conn = pool.get().await?;
-        conn.query(query.sql(), query.parameters())
-            .await?
-            .par_iter()
-            .map(|r| Self::from_row(r).map_err(Into::into))
-            .collect()
+        query.fetch(&conn).await.map_err(Into::into)
     }
 
     pub async fn get_by_id(pool: &PgPool, id: i64) -> Result<Option<Self>, Error> {
-        let query =
-            postgres_query::query!("SELECT * FROM fitbit_activities WHERE log_id=$id", id = id);
+        let query = query!("SELECT * FROM fitbit_activities WHERE log_id=$id", id = id);
         let conn = pool.get().await?;
-        let activity = conn
-            .query_opt(query.sql(), query.parameters())
-            .await?
-            .map(|row| Self::from_row(&row))
-            .transpose()?;
-        Ok(activity)
+        query.fetch_opt(&conn).await.map_err(Into::into)
     }
 
     pub async fn get_from_summary_id(
         pool: &PgPool,
         summary_id: i32,
     ) -> Result<Option<Self>, Error> {
-        let query = postgres_query::query!(
+        let query = query!(
             "SELECT * FROM fitbit_activities WHERE summary_id = $summary_id",
             summary_id = summary_id,
         );
         let conn = pool.get().await?;
-        let activity: Option<FitbitActivity> = conn
-            .query_opt(query.sql(), query.parameters())
-            .await?
-            .map(|row| FitbitActivity::from_row(&row))
-            .transpose()?;
-        Ok(activity)
+        query.fetch_opt(&conn).await.map_err(Into::into)
     }
 
     pub async fn delete_from_db(self, pool: &PgPool) -> Result<(), Error> {
-        let query = postgres_query::query!(
+        let query = query!(
             "DELETE FROM fitbit_activities WHERE log_id=$id",
             id = self.log_id
         );
         let conn = pool.get().await?;
-        conn.execute(query.sql(), query.parameters()).await?;
+        query.execute(&conn).await?;
         Ok(())
     }
 
     pub async fn insert_into_db(&self, pool: &PgPool) -> Result<(), Error> {
-        let query = postgres_query::query!(
+        let query = query!(
             "
                 INSERT INTO fitbit_activities (
                     log_id,log_type,start_time,tcx_link,activity_type_id,activity_name,duration,
@@ -131,17 +115,12 @@ impl FitbitActivity {
             distance_unit = self.distance_unit,
             steps = self.steps,
         );
-
         let conn = pool.get().await?;
-
-        conn.execute(query.sql(), query.parameters())
-            .await
-            .map(|_| ())
-            .map_err(Into::into)
+        query.execute(&conn).await.map(|_| ()).map_err(Into::into)
     }
 
     pub async fn update_db(&self, pool: &PgPool) -> Result<(), Error> {
-        let query = postgres_query::query!(
+        let query = query!(
             "
                 UPDATE fitbit_activities SET
                     log_type=$log_type,start_time=$start_time,tcx_link=$tcx_link,
@@ -162,7 +141,7 @@ impl FitbitActivity {
             steps = self.steps,
         );
         let conn = pool.get().await?;
-        conn.execute(query.sql(), query.parameters()).await?;
+        query.execute(&conn).await?;
         Ok(())
     }
 

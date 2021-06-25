@@ -268,7 +268,7 @@
             document.getElementById("garminconnectoutput").innerHTML = "done";
             document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
         }
-        xmlhttp.open("GET", url, true);
+        xmlhttp.open("POST", url, true);
         xmlhttp.send(null);
         document.getElementById("garminconnectoutput").innerHTML = "processing";
     }

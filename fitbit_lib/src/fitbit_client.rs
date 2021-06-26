@@ -16,7 +16,6 @@ use stack_string::StackString;
 use std::{
     collections::{HashMap, HashSet},
     path::PathBuf,
-    sync::Arc,
 };
 use tokio::{
     fs::File,
@@ -881,28 +880,21 @@ impl FitbitClient {
         &self,
         pool: &PgPool,
     ) -> Result<FitbitBodyWeightFatUpdateOutput, Error> {
-        let client = Arc::new(self.clone());
-
-        let offset = client.get_offset();
+        let offset = self.get_offset();
         let start_datetime = Utc::now() - chrono::Duration::days(30);
         let start_date: NaiveDate = start_datetime.with_timezone(&offset).naive_local().date();
 
-        let existing_map: Result<HashMap<NaiveDate, _>, Error> = {
-            let client = client.clone();
-            Ok(client
-                .get_fitbit_bodyweightfat()
-                .await?
-                .into_iter()
-                .map(|entry| {
-                    let date = entry.datetime.with_timezone(&Local).naive_local().date();
-                    (date, entry)
-                })
-                .collect())
-        };
+        let existing_map: HashMap<_, _> = self
+            .get_fitbit_bodyweightfat()
+            .await?
+            .into_iter()
+            .map(|entry| {
+                let date = entry.datetime.with_timezone(&Local).naive_local().date();
+                (date, entry)
+            })
+            .collect();
 
-        let existing_map = existing_map?;
-
-        let measurements: Vec<_> = ScaleMeasurement::read_from_db(pool, Some(start_date), None)
+        let measurements = ScaleMeasurement::read_from_db(pool, Some(start_date), None)
             .await?
             .into_iter()
             .filter(|entry| {
@@ -910,16 +902,21 @@ impl FitbitClient {
                 !existing_map.contains_key(&date)
             })
             .collect();
-        client.update_fitbit_bodyweightfat(&measurements).await?;
+        self.update_fitbit_bodyweightfat(&measurements).await?;
 
-        let activities = client
+        let activities: Vec<_> = self
             .sync_fitbit_activities(start_datetime, pool)
             .await?
             .into_iter()
             .map(Into::into)
             .collect();
-        let duplicates = client.remove_duplicate_entries(pool).await?;
+        let duplicates = self.remove_duplicate_entries(pool).await?;
         FitbitActivity::fix_summary_id_in_db(&pool).await?;
+        if !activities.is_empty() {
+            self.sync_fitbit_activities(start_datetime, pool).await?;
+            self.remove_duplicate_entries(pool).await?;
+            FitbitActivity::fix_summary_id_in_db(&pool).await?;
+        }
 
         Ok(FitbitBodyWeightFatUpdateOutput {
             measurements,

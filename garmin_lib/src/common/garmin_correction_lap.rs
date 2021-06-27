@@ -87,7 +87,7 @@ impl GarminCorrectionLap {
     }
 
     pub fn get_corr_list(corr_map: &GarminCorrectionMap) -> Vec<Self> {
-        corr_map.values().cloned().collect()
+        corr_map.values().copied().collect()
     }
 
     pub fn corr_map_from_buffer(buffer: &[u8]) -> Result<GarminCorrectionMap, Error> {

@@ -4,7 +4,7 @@ use futures::future::try_join_all;
 use itertools::Itertools;
 use refinery::embed_migrations;
 use stack_string::StackString;
-use std::{ops::DerefMut, path::PathBuf};
+use std::path::PathBuf;
 use structopt::StructOpt;
 use tokio::{
     fs::{read_to_string, File},
@@ -330,9 +330,7 @@ impl GarminCliOpts {
             }
             Self::RunMigrations => {
                 let mut client = pool.get().await?;
-                migrations::runner()
-                    .run_async(client.deref_mut().deref_mut())
-                    .await?;
+                migrations::runner().run_async(&mut **client).await?;
                 return Ok(());
             }
         };

@@ -33,7 +33,7 @@ impl GarminParseTrait for GarminParse {
         match filename.extension().and_then(OsStr::to_str) {
             Some("txt") => GarminParseTxt::new().with_file(filename, corr_map),
             Some("fit") => GarminParseFit::new().with_file(filename, corr_map),
-            Some("tcx") | Some("TCX") => GarminParseTcx::new().with_file(filename, corr_map),
+            Some("tcx" | "TCX") => GarminParseTcx::new().with_file(filename, corr_map),
             Some("gmn") => GarminParseGmn::new().with_file(filename, corr_map),
             Some("gz") => {
                 if filename.to_string_lossy().ends_with("tcx.gz") {

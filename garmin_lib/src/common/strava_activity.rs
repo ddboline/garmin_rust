@@ -163,7 +163,7 @@ impl StravaActivity {
         Ok(())
     }
 
-    #[allow(clippy::filter_map)]
+    #[allow(clippy::manual_filter_map)]
     pub async fn upsert_activities(
         activities: &[Self],
         pool: &PgPool,

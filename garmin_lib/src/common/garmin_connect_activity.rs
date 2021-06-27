@@ -194,7 +194,7 @@ impl GarminConnectActivity {
             .map(|activity| (activity.activity_id, activity))
             .collect();
 
-        #[allow(clippy::filter_map)]
+        #[allow(clippy::manual_filter_map)]
         let futures = new_activities
             .into_iter()
             .filter(|activity| !activities.contains_key(&activity.activity_id))

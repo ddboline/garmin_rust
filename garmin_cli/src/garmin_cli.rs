@@ -388,7 +388,7 @@ impl GarminCli {
             .into_par_iter()
             .map(|filename| match filename.extension().map(OsStr::to_str) {
                 Some(Some("zip")) => extract_zip_from_garmin_connect(&filename, ziptmpdir),
-                Some(Some("fit")) | Some(Some("tcx")) | Some(Some("txt")) => Ok(filename),
+                Some(Some("fit" | "tcx" | "txt")) => Ok(filename),
                 _ => Self::transform_file_name(&filename),
             })
             .collect();

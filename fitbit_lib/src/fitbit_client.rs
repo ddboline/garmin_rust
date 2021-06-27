@@ -750,7 +750,7 @@ impl FitbitClient {
         try_join_all(futures).await
     }
 
-    #[allow(clippy::filter_map)]
+    #[allow(clippy::manual_filter_map)]
     pub async fn sync_fitbit_activities(
         &self,
         begin_datetime: DateTime<Utc>,
@@ -925,7 +925,7 @@ impl FitbitClient {
         })
     }
 
-    #[allow(clippy::filter_map)]
+    #[allow(clippy::manual_filter_map)]
     pub async fn sync_tcx(&self, start_date: NaiveDate) -> Result<Vec<PathBuf>, Error> {
         let futures = self
             .get_tcx_urls(start_date)

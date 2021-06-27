@@ -710,7 +710,7 @@ impl StravaClient {
             .map(|(d, _)| d)
             .collect();
 
-        #[allow(clippy::filter_map)]
+        #[allow(clippy::manual_filter_map)]
         let futures = new_activities
             .into_iter()
             .filter_map(|activity| {

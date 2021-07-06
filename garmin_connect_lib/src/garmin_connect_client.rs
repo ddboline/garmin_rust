@@ -425,6 +425,8 @@ mod tests {
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
         results?;
         assert_eq!(new_activities.len(), 0);
+
+        session.close().await?;
         Ok(())
     }
 }

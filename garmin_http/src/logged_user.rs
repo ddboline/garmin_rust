@@ -22,14 +22,14 @@ use crate::errors::ServiceError as Error;
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Schema)]
 pub struct LoggedUser {
     pub email: StackString,
-    pub session: Option<UuidWrapper>,
+    pub session: UuidWrapper,
 }
 
 impl From<AuthorizedUser> for LoggedUser {
     fn from(user: AuthorizedUser) -> Self {
         Self {
             email: user.email,
-            session: user.session.map(Into::into),
+            session: user.session.into(),
         }
     }
 }
@@ -38,7 +38,7 @@ impl From<LoggedUser> for AuthorizedUser {
     fn from(user: LoggedUser) -> Self {
         Self {
             email: user.email,
-            session: None,
+            ..AuthorizedUser::default()
         }
     }
 }

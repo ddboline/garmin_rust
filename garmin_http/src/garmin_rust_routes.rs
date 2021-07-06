@@ -91,22 +91,18 @@ impl Session {
     pub async fn pull(
         client: &Client,
         config: &GarminConfig,
-        session_id: Option<UuidWrapper>,
+        session_id: UuidWrapper,
     ) -> Result<Self, anyhow::Error> {
-        if let Some(session_id) = session_id {
-            let url = format!("https://{}/api/session", config.domain);
-            let session: Option<Self> = client
-                .get(url)
-                .header("session", HeaderValue::from_str(&session_id.to_string())?)
-                .send()
-                .await?
-                .error_for_status()?
-                .json()
-                .await?;
-            Ok(session.unwrap_or_else(Self::default))
-        } else {
-            Ok(Self::default())
-        }
+        let url = format!("https://{}/api/session", config.domain);
+        let session: Option<Self> = client
+            .get(url)
+            .header("session", HeaderValue::from_str(&session_id.to_string())?)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+        Ok(session.unwrap_or_else(Self::default))
     }
 
     pub async fn push(
@@ -180,12 +176,10 @@ pub async fn garmin(
 
     let body = garmin_body(query, &state, &mut session.history, false).await?;
 
-    if let Some(session_id) = user.session {
-        session
-            .push(&state.client, &state.config, session_id)
-            .await
-            .map_err(Into::<Error>::into)?;
-    }
+    session
+        .push(&state.client, &state.config, user.session)
+        .await
+        .map_err(Into::<Error>::into)?;
 
     Ok(HtmlBase::new(body).into())
 }

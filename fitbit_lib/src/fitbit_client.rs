@@ -9,7 +9,6 @@ use log::debug;
 use maplit::hashmap;
 use rand::{thread_rng, Rng};
 use reqwest::{header::HeaderMap, Client, Response, Url};
-use rweb::Schema;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use stack_string::StackString;
@@ -25,14 +24,11 @@ use tokio::{
 };
 
 use garmin_connect_lib::garmin_connect_hr_data::GarminConnectHrData;
-use garmin_lib::{
-    common::{
-        fitbit_activity::FitbitActivity,
-        garmin_config::GarminConfig,
-        garmin_summary::{get_list_of_activities_from_db, GarminSummary},
-        pgpool::PgPool,
-    },
-    utils::datetime_wrapper::DateTimeWrapper,
+use garmin_lib::common::{
+    fitbit_activity::FitbitActivity,
+    garmin_config::GarminConfig,
+    garmin_summary::{get_list_of_activities_from_db, GarminSummary},
+    pgpool::PgPool,
 };
 
 use crate::{
@@ -376,9 +372,7 @@ impl FitbitClient {
             .into_iter()
             .map(|entry| {
                 let datetime = format!("{}T{}{}", date, entry.time, offset);
-                let datetime = DateTime::parse_from_rfc3339(&datetime)?
-                    .with_timezone(&Utc)
-                    .into();
+                let datetime = DateTime::parse_from_rfc3339(&datetime)?.with_timezone(&Utc);
                 let value = entry.value;
                 Ok(FitbitHeartRate { datetime, value })
             })
@@ -444,8 +438,7 @@ impl FitbitClient {
                 let datetime = format!("{}T{}{}", bw.date, bw.time, offset);
                 let datetime = DateTime::parse_from_rfc3339(&datetime)
                     .ok()?
-                    .with_timezone(&Utc)
-                    .into();
+                    .with_timezone(&Utc);
                 let weight = bw.weight;
                 let fat = bw.fat?;
                 Some(FitbitBodyWeightFat {
@@ -570,7 +563,7 @@ impl FitbitClient {
     pub async fn get_tcx_urls(
         &self,
         start_date: NaiveDate,
-    ) -> Result<Vec<(DateTimeWrapper, StackString)>, Error> {
+    ) -> Result<Vec<(DateTime<Utc>, StackString)>, Error> {
         let activities = self.get_activities(start_date, None).await?;
 
         activities
@@ -952,10 +945,10 @@ impl FitbitClient {
     }
 }
 
-#[derive(Debug, Serialize, Schema)]
+#[derive(Debug, Serialize)]
 pub struct FitbitBodyWeightFatUpdateOutput {
     pub measurements: Vec<ScaleMeasurement>,
-    pub activities: Vec<DateTimeWrapper>,
+    pub activities: Vec<DateTime<Utc>>,
     pub duplicates: Vec<StackString>,
 }
 
@@ -995,7 +988,7 @@ impl ActivityLoggingEntry {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Schema)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct FitbitUserProfile {
     #[serde(rename = "averageDailySteps")]
     pub average_daily_steps: u64,

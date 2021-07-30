@@ -12,12 +12,9 @@ use std::{
     str::FromStr,
 };
 
-use garmin_lib::{
-    common::pgpool::PgPool,
-    utils::{garmin_util::get_authorized_users, uuid_wrapper::UuidWrapper},
-};
+use garmin_lib::{common::pgpool::PgPool, utils::garmin_util::get_authorized_users};
 
-use crate::errors::ServiceError as Error;
+use crate::{errors::ServiceError as Error, uuid_wrapper::UuidWrapper};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Schema)]
 pub struct LoggedUser {

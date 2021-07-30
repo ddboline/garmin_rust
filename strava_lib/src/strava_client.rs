@@ -13,7 +13,6 @@ use reqwest::{
     multipart::{Form, Part},
     Client, Url,
 };
-use rweb::Schema;
 use select::{document::Document, predicate::Attr};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
@@ -729,7 +728,7 @@ impl StravaClient {
     }
 }
 
-#[derive(Serialize, Deserialize, Schema)]
+#[derive(Serialize, Deserialize)]
 pub struct StravaAthlete {
     pub id: u64,
     pub username: StackString,

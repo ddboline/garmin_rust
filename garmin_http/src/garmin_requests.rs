@@ -19,20 +19,14 @@ use garmin_connect_lib::{
     garmin_connect_client::GarminConnectUserDailySummary,
     garmin_connect_hr_data::GarminConnectHrData,
 };
-use garmin_lib::{
-    common::{
-        fitbit_activity::FitbitActivity,
-        garmin_config::GarminConfig,
-        garmin_connect_activity::GarminConnectActivity,
-        garmin_correction_lap::GarminCorrectionLap,
-        garmin_summary::{get_filename_from_datetime, get_list_of_files_from_db, GarminSummary},
-        pgpool::PgPool,
-        strava_activity::StravaActivity,
-    },
-    utils::{
-        datetime_wrapper::DateTimeWrapper, naivedate_wrapper::NaiveDateWrapper,
-        sport_types::SportTypes,
-    },
+use garmin_lib::common::{
+    fitbit_activity::FitbitActivity,
+    garmin_config::GarminConfig,
+    garmin_connect_activity::GarminConnectActivity,
+    garmin_correction_lap::GarminCorrectionLap,
+    garmin_summary::{get_filename_from_datetime, get_list_of_files_from_db, GarminSummary},
+    pgpool::PgPool,
+    strava_activity::StravaActivity,
 };
 use garmin_reports::garmin_constraints::GarminConstraints;
 use race_result_analysis::{
@@ -40,7 +34,13 @@ use race_result_analysis::{
 };
 use strava_lib::strava_client::{StravaAthlete, StravaClient};
 
-use crate::{errors::ServiceError as Error, garmin_rust_app::ConnectProxy};
+use crate::{
+    datetime_wrapper::DateTimeWrapper, errors::ServiceError as Error,
+    garmin_rust_app::ConnectProxy, naivedate_wrapper::NaiveDateWrapper,
+    sport_types_wrapper::SportTypesWrapper, FitbitActivityWrapper, FitbitHeartRateWrapper,
+    FitbitStatisticsSummaryWrapper, GarminConnectActivityWrapper, RaceResultsWrapper,
+    RaceTypeWrapper, ScaleMeasurementWrapper, StravaActivityWrapper,
+};
 
 pub struct GarminHtmlRequest {
     pub request: GarminRequest,
@@ -298,14 +298,15 @@ impl FitbitHeartrateCacheRequest {
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct FitbitHeartrateUpdateRequest {
-    updates: Vec<FitbitHeartRate>,
+    updates: Vec<FitbitHeartRateWrapper>,
 }
 
 impl FitbitHeartrateUpdateRequest {
     pub async fn handle(self, config: &GarminConfig) -> Result<(), Error> {
         let config = config.clone();
+        let updates: Vec<_> = self.updates.into_iter().map(Into::into).collect();
         spawn_blocking(move || {
-            FitbitHeartRate::merge_slice_to_avro(&config, &self.updates).map_err(Into::into)
+            FitbitHeartRate::merge_slice_to_avro(&config, &updates).map_err(Into::into)
         })
         .await?
     }
@@ -518,12 +519,13 @@ impl FitbitHeartratePlotRequest {
 
 #[derive(Debug, Serialize, Deserialize, Schema)]
 pub struct ScaleMeasurementUpdateRequest {
-    pub measurements: Vec<ScaleMeasurement>,
+    pub measurements: Vec<ScaleMeasurementWrapper>,
 }
 
 impl ScaleMeasurementUpdateRequest {
-    pub async fn handle(&mut self, pool: &PgPool) -> Result<(), Error> {
-        ScaleMeasurement::merge_updates(&mut self.measurements, pool).await?;
+    pub async fn handle(self, pool: &PgPool) -> Result<(), Error> {
+        let mut measurements: Vec<_> = self.measurements.into_iter().map(Into::into).collect();
+        ScaleMeasurement::merge_updates(&mut measurements, pool).await?;
         Ok(())
     }
 }
@@ -619,12 +621,13 @@ impl StravaActivitiesDBRequest {
 
 #[derive(Debug, Serialize, Deserialize, Schema)]
 pub struct StravaActiviesDBUpdateRequest {
-    pub updates: Vec<StravaActivity>,
+    pub updates: Vec<StravaActivityWrapper>,
 }
 
 impl StravaActiviesDBUpdateRequest {
-    pub async fn handle(&self, pool: &PgPool) -> Result<Vec<StackString>, Error> {
-        let output = StravaActivity::upsert_activities(&self.updates, pool).await?;
+    pub async fn handle(self, pool: &PgPool) -> Result<Vec<StackString>, Error> {
+        let updates: Vec<_> = self.updates.into_iter().map(Into::into).collect();
+        let output = StravaActivity::upsert_activities(&updates, pool).await?;
         StravaActivity::fix_summary_id_in_db(pool).await?;
         Ok(output)
     }
@@ -715,11 +718,11 @@ pub struct AddGarminCorrectionRequest {
     pub lap_number: i32,
     pub distance: Option<f64>,
     pub duration: Option<f64>,
-    pub sport: Option<SportTypes>,
+    pub sport: Option<SportTypesWrapper>,
 }
 
 impl AddGarminCorrectionRequest {
-    pub async fn handle(&self, pool: &PgPool, config: &GarminConfig) -> Result<StackString, Error> {
+    pub async fn handle(self, pool: &PgPool, config: &GarminConfig) -> Result<StackString, Error> {
         let mut corr_map = GarminCorrectionLap::read_corrections_from_db(pool).await?;
         let filename = get_filename_from_datetime(pool, self.start_time.into())
             .await?
@@ -747,7 +750,7 @@ impl AddGarminCorrectionRequest {
             new_corr.duration = self.duration;
         }
         if self.sport.is_some() {
-            new_corr.sport = self.sport;
+            new_corr.sport = self.sport.map(Into::into);
         }
 
         corr_map.insert(unique_key, new_corr);
@@ -883,12 +886,13 @@ impl GarminConnectActivitiesDBRequest {
 
 #[derive(Debug, Serialize, Deserialize, Schema)]
 pub struct GarminConnectActivitiesDBUpdateRequest {
-    pub updates: Vec<GarminConnectActivity>,
+    pub updates: Vec<GarminConnectActivityWrapper>,
 }
 
 impl GarminConnectActivitiesDBUpdateRequest {
-    pub async fn handle(&self, pool: &PgPool) -> Result<Vec<StackString>, Error> {
-        let output = GarminConnectActivity::upsert_activities(&self.updates, pool).await?;
+    pub async fn handle(self, pool: &PgPool) -> Result<Vec<StackString>, Error> {
+        let updates: Vec<_> = self.updates.into_iter().map(Into::into).collect();
+        let output = GarminConnectActivity::upsert_activities(&updates, pool).await?;
         GarminConnectActivity::fix_summary_id_in_db(pool).await?;
         Ok(output)
     }
@@ -910,12 +914,13 @@ impl FitbitActivitiesDBRequest {
 
 #[derive(Debug, Serialize, Deserialize, Schema)]
 pub struct FitbitActivitiesDBUpdateRequest {
-    pub updates: Vec<FitbitActivity>,
+    pub updates: Vec<FitbitActivityWrapper>,
 }
 
 impl FitbitActivitiesDBUpdateRequest {
-    pub async fn handle(&self, pool: &PgPool) -> Result<Vec<StackString>, Error> {
-        let output = FitbitActivity::upsert_activities(&self.updates, pool).await?;
+    pub async fn handle(self, pool: &PgPool) -> Result<Vec<StackString>, Error> {
+        let updates: Vec<_> = self.updates.into_iter().map(Into::into).collect();
+        let output = FitbitActivity::upsert_activities(&updates, pool).await?;
         FitbitActivity::fix_summary_id_in_db(pool).await?;
         Ok(output)
     }
@@ -937,13 +942,14 @@ impl HeartrateStatisticsSummaryDBRequest {
 
 #[derive(Debug, Serialize, Deserialize, Schema)]
 pub struct HeartrateStatisticsSummaryDBUpdateRequest {
-    pub updates: Vec<FitbitStatisticsSummary>,
+    pub updates: Vec<FitbitStatisticsSummaryWrapper>,
 }
 
 impl HeartrateStatisticsSummaryDBUpdateRequest {
     pub async fn handle(self, pool: &PgPool) -> Result<Vec<StackString>, Error> {
         let futures = self.updates.into_iter().map(|entry| {
             let pool = pool.clone();
+            let entry: FitbitStatisticsSummary = entry.into();
             async move {
                 entry.upsert_entry(&pool).await?;
                 Ok(entry.date)
@@ -958,13 +964,13 @@ impl HeartrateStatisticsSummaryDBUpdateRequest {
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct RaceResultPlotRequest {
-    pub race_type: RaceType,
+    pub race_type: RaceTypeWrapper,
     pub demo: Option<bool>,
 }
 
 impl RaceResultPlotRequest {
-    pub async fn handle(&self, pool: &PgPool) -> Result<HashMap<StackString, StackString>, Error> {
-        let model = RaceResultAnalysis::run_analysis(self.race_type, pool).await?;
+    pub async fn handle(self, pool: &PgPool) -> Result<HashMap<StackString, StackString>, Error> {
+        let model = RaceResultAnalysis::run_analysis(self.race_type.into(), pool).await?;
         let demo = self.demo.unwrap_or(true);
         model.create_plot(demo).map_err(Into::into)
     }
@@ -1012,12 +1018,12 @@ impl RaceResultImportRequest {
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct RaceResultsDBRequest {
-    pub race_type: Option<RaceType>,
+    pub race_type: Option<RaceTypeWrapper>,
 }
 
 impl RaceResultsDBRequest {
     pub async fn handle(&self, pool: &PgPool) -> Result<Vec<RaceResults>, Error> {
-        let race_type = self.race_type.unwrap_or(RaceType::Personal);
+        let race_type = self.race_type.map_or(RaceType::Personal, Into::into);
         RaceResults::get_results_by_type(race_type, pool)
             .await
             .map_err(Into::into)
@@ -1026,13 +1032,14 @@ impl RaceResultsDBRequest {
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct RaceResultsDBUpdateRequest {
-    pub updates: Vec<RaceResults>,
+    pub updates: Vec<RaceResultsWrapper>,
 }
 
 impl RaceResultsDBUpdateRequest {
     pub async fn handle(self, pool: &PgPool) -> Result<(), Error> {
-        let futures = self.updates.into_iter().map(|mut result| {
+        let futures = self.updates.into_iter().map(|result| {
             let pool = pool.clone();
+            let mut result: RaceResults = result.into();
             async move { result.upsert_db(&pool).await.map_err(Into::into) }
         });
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;

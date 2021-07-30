@@ -23,7 +23,7 @@ avro-rs = {version = "0.13", features = ["snappy"]}
 postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.3-2", features=["deadpool"]}
 anyhow = "1.0"
 thiserror = "1.0"
-tokio = {version="1.0", features=["full"]}
+tokio = {version="1.9", features=["full"]}
 futures = "0.3"
 reqwest = {version="0.11", features=["cookies", "json", "rustls-tls", "stream"], default_features=false}
 rand = "0.8"
@@ -34,8 +34,7 @@ statistical = "1.0"
 fitparser = {git = "https://github.com/ddboline/fitparse-rs.git", branch="handle_case_of_zero_header_crc"}
 smallvec = "1.6"
 crossbeam-utils = "0.8"
-rweb = {version="0.12", features=["openapi"]}
-stack-string = { version="0.2", features=["postgres_types", "rweb-openapi"] }
+stack-string = { version="0.2", features=["postgres_types"] }
 
 [dev-dependencies]
 tempfile = "3.1"

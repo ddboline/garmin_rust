@@ -2,7 +2,6 @@ use anyhow::Error;
 use chrono::NaiveDate;
 use itertools::Itertools;
 use postgres_query::{query, FromSqlRow};
-use rweb::Schema;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use stack_string::StackString;
@@ -13,19 +12,16 @@ use std::{
 
 use garmin_lib::{
     common::{garmin_summary::GarminSummary, pgpool::PgPool},
-    utils::{
-        garmin_util::{print_h_m_s, METERS_PER_MILE},
-        naivedate_wrapper::NaiveDateWrapper,
-    },
+    utils::garmin_util::{print_h_m_s, METERS_PER_MILE},
 };
 
 use crate::race_type::RaceType;
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromSqlRow, PartialEq, Schema)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromSqlRow, PartialEq)]
 pub struct RaceResults {
     pub id: i32,
     pub race_type: RaceType,
-    pub race_date: Option<NaiveDateWrapper>,
+    pub race_date: Option<NaiveDate>,
     pub race_name: Option<StackString>,
     pub race_distance: i32, // distance in meters
     pub race_time: f64,

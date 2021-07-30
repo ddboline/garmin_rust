@@ -1,21 +1,20 @@
 use anyhow::Error;
-use chrono::NaiveDate;
+use chrono::{DateTime, NaiveDate, Utc};
 use futures::future::try_join_all;
 use log::debug;
 use postgres_query::{query, query_dyn, FromSqlRow, Parameter};
-use rweb::Schema;
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
 use std::collections::HashMap;
 
-use crate::{common::pgpool::PgPool, utils::datetime_wrapper::DateTimeWrapper};
+use crate::common::pgpool::PgPool;
 
-#[derive(Serialize, Deserialize, Clone, Debug, FromSqlRow, Schema)]
+#[derive(Serialize, Deserialize, Clone, Debug, FromSqlRow)]
 pub struct FitbitActivity {
     #[serde(rename = "logType")]
     pub log_type: StackString,
     #[serde(rename = "startTime")]
-    pub start_time: DateTimeWrapper,
+    pub start_time: DateTime<Utc>,
     #[serde(rename = "tcxLink")]
     pub tcx_link: Option<StackString>,
     #[serde(rename = "activityTypeId")]

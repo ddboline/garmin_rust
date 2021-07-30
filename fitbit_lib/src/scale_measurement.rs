@@ -5,7 +5,6 @@ use log::debug;
 use maplit::hashmap;
 use postgres_query::{query, query_dyn, FromSqlRow, Parameter};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use rweb::Schema;
 use serde::{self, Deserialize, Serialize};
 use smallvec::SmallVec;
 use stack_string::StackString;
@@ -17,13 +16,13 @@ use std::{
 
 use garmin_lib::{
     common::{garmin_templates::HBR, pgpool::PgPool},
-    utils::{datetime_wrapper::DateTimeWrapper, iso_8601_datetime::convert_datetime_to_str},
+    utils::iso_8601_datetime::convert_datetime_to_str,
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize, Copy, FromSqlRow, PartialEq, Schema)]
+#[derive(Debug, Clone, Serialize, Deserialize, Copy, FromSqlRow, PartialEq)]
 pub struct ScaleMeasurement {
     pub id: i32,
-    pub datetime: DateTimeWrapper,
+    pub datetime: DateTime<Utc>,
     pub mass: f64,
     pub fat_pct: f64,
     pub water_pct: f64,
@@ -38,7 +37,7 @@ impl fmt::Display for ScaleMeasurement {
             "ScaleMeasurement(\nid: {}\ndatetime: {}\nmass: {} lbs\nfat: {}%\nwater: {}%\nmuscle: \
              {}%\nbone: {}%\n)",
             self.id,
-            convert_datetime_to_str(self.datetime.into()),
+            convert_datetime_to_str(self.datetime),
             self.mass,
             self.fat_pct,
             self.water_pct,
@@ -474,7 +473,7 @@ mod tests {
         let first = measurements[0];
         println!("{:#?}", first);
         assert_eq!(first, exp);
-        assert_eq!(first.datetime, first_date.into());
+        assert_eq!(first.datetime, first_date);
 
         exp.delete_from_db(&pool).await?;
 

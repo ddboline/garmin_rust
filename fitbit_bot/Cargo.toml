@@ -10,7 +10,7 @@ edition = "2018"
 fitbit_lib = {path="../fitbit_lib"}
 garmin_lib = {path="../garmin_lib"}
 futures = "0.3"
-tokio = {version="1.0", features=["full"]}
+tokio = {version="1.9", features=["full"]}
 crossbeam-utils = "0.8"
 lazy_static = "1.4"
 parking_lot = "0.11"
@@ -20,7 +20,7 @@ thiserror = "1.0"
 rayon = "1.5"
 arc-swap = "1.2"
 telegram-bot = {git = "https://github.com/ddboline/telegram-bot.git", tag="0.9.0-2"}
-stack-string = { version="0.2", features=["postgres_types", "rweb-openapi"] }
+stack-string = { version="0.2", features=["postgres_types"] }
 
 [dev-dependencies]
 maplit = "1.0"

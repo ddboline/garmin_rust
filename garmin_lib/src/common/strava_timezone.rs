@@ -3,7 +3,6 @@ use bytes::BytesMut;
 use chrono::offset::FixedOffset;
 use chrono_tz::Tz;
 use derive_more::Into;
-use rweb::openapi::{self, Entity, Schema};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use stack_string::StackString;
@@ -56,7 +55,6 @@ impl TryFrom<StackString> for StravaTz {
     }
 }
 
-/// Direction in degrees
 #[derive(Into, Debug, PartialEq, Copy, Clone, Eq, Serialize, Deserialize)]
 #[serde(into = "String", try_from = "&str")]
 pub struct StravaTimeZone(FixedOffset, Tz);
@@ -191,17 +189,6 @@ impl ToSql for StravaTimeZone {
         out: &mut BytesMut,
     ) -> Result<IsNull, Box<dyn std::error::Error + Sync + Send>> {
         self.to_string().to_sql_checked(ty, out)
-    }
-}
-
-impl Entity for StravaTimeZone {
-    #[inline]
-    fn describe() -> Schema {
-        Schema {
-            schema_type: Some(openapi::Type::String),
-            format: "timezone".into(),
-            ..Schema::default()
-        }
     }
 }
 

@@ -1,6 +1,5 @@
 use anyhow::{format_err, Error};
 use bytes::BytesMut;
-use rweb::Schema;
 use serde::{Deserialize, Serialize};
 use std::{
     convert::TryFrom,
@@ -9,7 +8,7 @@ use std::{
 };
 use tokio_postgres::types::{FromSql, IsNull, ToSql, Type};
 
-#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize, Schema)]
+#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(into = "String", try_from = "String")]
 pub enum RaceType {
     #[serde(rename = "personal")]

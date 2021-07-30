@@ -1,21 +1,17 @@
 use anyhow::Error;
-use chrono::{Duration, NaiveDate, Utc};
+use chrono::{DateTime, Duration, NaiveDate, Utc};
 use maplit::hashmap;
 use postgres_query::{query, FromSqlRow};
-use rweb::Schema;
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
 use statistical::{mean, median, standard_deviation};
 use std::collections::HashMap;
 
-use garmin_lib::{
-    common::{garmin_templates::HBR, pgpool::PgPool},
-    utils::{datetime_wrapper::DateTimeWrapper, naivedate_wrapper::NaiveDateWrapper},
-};
+use garmin_lib::common::{garmin_templates::HBR, pgpool::PgPool};
 
-#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, FromSqlRow, Schema)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, FromSqlRow)]
 pub struct FitbitStatisticsSummary {
-    pub date: NaiveDateWrapper,
+    pub date: NaiveDate,
     pub min_heartrate: f64,
     pub max_heartrate: f64,
     pub mean_heartrate: f64,
@@ -25,7 +21,7 @@ pub struct FitbitStatisticsSummary {
 }
 
 impl FitbitStatisticsSummary {
-    pub fn from_heartrate_values(heartrate_values: &[(DateTimeWrapper, i32)]) -> Option<Self> {
+    pub fn from_heartrate_values(heartrate_values: &[(DateTime<Utc>, i32)]) -> Option<Self> {
         if heartrate_values.len() < 2 {
             return None;
         }

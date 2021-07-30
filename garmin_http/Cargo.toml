@@ -1,6 +1,6 @@
 [package]
 name = "garmin_http"
-version = "0.11.30"
+version = "0.11.31"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -37,6 +37,6 @@ url = "2.2"
 indexmap = "1.6"
 serde_yaml = "0.8"
 rweb_helper = { git = "https://github.com/ddboline/rweb_helper.git", tag="0.2.2" }
-authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.5.9"}
+authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.5.13"}
 stack-string = { version="0.2", features=["postgres_types", "rweb-openapi"] }
 reqwest = {version="0.11", features=["cookies", "json", "rustls-tls", "stream"], default_features=false}

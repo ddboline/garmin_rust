@@ -62,7 +62,6 @@ impl Entity for StravaTimeZoneWrapper {
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, rweb::Schema)]
 pub struct FitbitHeartRateWrapper {
-    #[serde(with = "iso_8601_datetime_wrapper")]
     pub datetime: DateTimeWrapper,
     pub value: i32,
 }
@@ -88,7 +87,6 @@ impl From<FitbitHeartRateWrapper> for FitbitHeartRate {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, rweb::Schema)]
 pub struct StravaActivityWrapper {
     pub name: StackString,
-    #[serde(with = "iso_8601_datetime_wrapper")]
     pub start_date: DateTimeWrapper,
     pub id: i64,
     pub distance: Option<f64>,
@@ -97,7 +95,6 @@ pub struct StravaActivityWrapper {
     pub total_elevation_gain: Option<f64>,
     pub elev_high: Option<f64>,
     pub elev_low: Option<f64>,
-    #[serde(rename = "type", with = "sport_types_wrapper")]
     pub activity_type: SportTypesWrapper,
     pub timezone: StravaTimeZoneWrapper,
 }
@@ -203,16 +200,6 @@ pub struct FitbitBodyWeightFatUpdateOutputWrapper {
 
 impl From<FitbitBodyWeightFatUpdateOutput> for FitbitBodyWeightFatUpdateOutputWrapper {
     fn from(item: FitbitBodyWeightFatUpdateOutput) -> Self {
-        Self {
-            measurements: item.measurements.into_iter().map(Into::into).collect(),
-            activities: item.activities.into_iter().map(Into::into).collect(),
-            duplicates: item.duplicates,
-        }
-    }
-}
-
-impl From<FitbitBodyWeightFatUpdateOutputWrapper> for FitbitBodyWeightFatUpdateOutput {
-    fn from(item: FitbitBodyWeightFatUpdateOutputWrapper) -> Self {
         Self {
             measurements: item.measurements.into_iter().map(Into::into).collect(),
             activities: item.activities.into_iter().map(Into::into).collect(),

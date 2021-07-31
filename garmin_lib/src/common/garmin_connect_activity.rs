@@ -11,24 +11,24 @@ use super::{garmin_config::GarminConfig, pgpool::PgPool};
 
 #[derive(Serialize, Deserialize, Debug, FromSqlRow)]
 pub struct GarminConnectActivity {
-    #[serde(rename = "activityId")]
+    #[serde(alias = "activityId")]
     pub activity_id: i64,
-    #[serde(rename = "activityName")]
+    #[serde(alias = "activityName")]
     pub activity_name: Option<StackString>,
     pub description: Option<StackString>,
-    #[serde(rename = "startTimeGMT", deserialize_with = "deserialize_start_time")]
+    #[serde(alias = "startTimeGMT", deserialize_with = "deserialize_start_time")]
     pub start_time_gmt: DateTime<Utc>,
     pub distance: Option<f64>,
     pub duration: f64,
-    #[serde(rename = "elapsedDuration")]
+    #[serde(alias = "elapsedDuration")]
     pub elapsed_duration: Option<f64>,
-    #[serde(rename = "movingDuration")]
+    #[serde(alias = "movingDuration")]
     pub moving_duration: Option<f64>,
     pub steps: Option<i64>,
     pub calories: Option<f64>,
-    #[serde(rename = "averageHR")]
+    #[serde(alias = "averageHR")]
     pub average_hr: Option<f64>,
-    #[serde(rename = "maxHR")]
+    #[serde(alias = "maxHR")]
     pub max_hr: Option<f64>,
 }
 

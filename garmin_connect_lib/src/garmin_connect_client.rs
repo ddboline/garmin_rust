@@ -332,21 +332,21 @@ impl GarminConnectClient {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GarminConnectUserDailySummary {
-    #[serde(rename = "userProfileId")]
+    #[serde(alias = "userProfileId")]
     pub user_profile_id: u64,
-    #[serde(rename = "totalKilocalories")]
+    #[serde(alias = "totalKilocalories")]
     pub total_kilocalories: Option<f64>,
-    #[serde(rename = "activeKilocalories")]
+    #[serde(alias = "activeKilocalories")]
     pub active_kilocalories: Option<f64>,
-    #[serde(rename = "bmrKilocalories")]
+    #[serde(alias = "bmrKilocalories")]
     pub bmr_kilocalories: Option<f64>,
-    #[serde(rename = "totalSteps")]
+    #[serde(alias = "totalSteps")]
     pub total_steps: Option<u64>,
-    #[serde(rename = "totalDistanceMeters")]
+    #[serde(alias = "totalDistanceMeters")]
     pub total_distance_meters: Option<u64>,
-    #[serde(rename = "userDailySummaryId")]
+    #[serde(alias = "userDailySummaryId")]
     pub user_daily_summary_id: Option<u64>,
-    #[serde(rename = "calendarDate")]
+    #[serde(alias = "calendarDate")]
     pub calendar_date: NaiveDate,
 }
 

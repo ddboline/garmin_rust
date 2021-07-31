@@ -87,6 +87,7 @@ impl From<FitbitHeartRateWrapper> for FitbitHeartRate {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, rweb::Schema)]
 pub struct StravaActivityWrapper {
     pub name: StackString,
+    #[serde(with = "iso_8601_datetime_wrapper")]
     pub start_date: DateTimeWrapper,
     pub id: i64,
     pub distance: Option<f64>,

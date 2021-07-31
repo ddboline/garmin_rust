@@ -984,36 +984,36 @@ impl ActivityLoggingEntry {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct FitbitUserProfile {
-    #[serde(rename = "averageDailySteps")]
+    #[serde(alias = "averageDailySteps")]
     pub average_daily_steps: u64,
     pub country: StackString,
-    #[serde(rename = "dateOfBirth")]
+    #[serde(alias = "dateOfBirth")]
     pub date_of_birth: StackString,
-    #[serde(rename = "displayName")]
+    #[serde(alias = "displayName")]
     pub display_name: StackString,
-    #[serde(rename = "distanceUnit")]
+    #[serde(alias = "distanceUnit")]
     pub distance_unit: StackString,
-    #[serde(rename = "encodedId")]
+    #[serde(alias = "encodedId")]
     pub encoded_id: StackString,
-    #[serde(rename = "firstName")]
+    #[serde(alias = "firstName")]
     pub first_name: StackString,
-    #[serde(rename = "lastName")]
+    #[serde(alias = "lastName")]
     pub last_name: StackString,
-    #[serde(rename = "fullName")]
+    #[serde(alias = "fullName")]
     pub full_name: StackString,
     pub gender: StackString,
     pub height: f64,
-    #[serde(rename = "heightUnit")]
+    #[serde(alias = "heightUnit")]
     pub height_unit: StackString,
     pub timezone: StackString,
-    #[serde(rename = "offsetFromUTCMillis")]
+    #[serde(alias = "offsetFromUTCMillis")]
     pub offset_from_utc_millis: i64,
-    #[serde(rename = "strideLengthRunning")]
+    #[serde(alias = "strideLengthRunning")]
     pub stride_length_running: f64,
-    #[serde(rename = "strideLengthWalking")]
+    #[serde(alias = "strideLengthWalking")]
     pub stride_length_walking: f64,
     pub weight: f64,
-    #[serde(rename = "weightUnit")]
+    #[serde(alias = "weightUnit")]
     pub weight_unit: StackString,
 }
 

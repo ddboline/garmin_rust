@@ -11,22 +11,22 @@ use crate::common::pgpool::PgPool;
 
 #[derive(Serialize, Deserialize, Clone, Debug, FromSqlRow)]
 pub struct FitbitActivity {
-    #[serde(rename = "logType")]
+    #[serde(alias = "logType")]
     pub log_type: StackString,
-    #[serde(rename = "startTime")]
+    #[serde(alias = "startTime")]
     pub start_time: DateTime<Utc>,
-    #[serde(rename = "tcxLink")]
+    #[serde(alias = "tcxLink")]
     pub tcx_link: Option<StackString>,
-    #[serde(rename = "activityTypeId")]
+    #[serde(alias = "activityTypeId")]
     pub activity_type_id: Option<i64>,
-    #[serde(rename = "activityName")]
+    #[serde(alias = "activityName")]
     pub activity_name: Option<StackString>,
     pub duration: i64,
     pub distance: Option<f64>,
-    #[serde(rename = "distanceUnit")]
+    #[serde(alias = "distanceUnit")]
     pub distance_unit: Option<StackString>,
     pub steps: Option<i64>,
-    #[serde(rename = "logId")]
+    #[serde(alias = "logId")]
     pub log_id: i64,
 }
 

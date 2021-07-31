@@ -765,7 +765,7 @@ impl AddGarminCorrectionRequest {
         remove_file(cache_path).await?;
         remove_file(summary_path).await?;
 
-        let gcli = GarminCli::from_pool(&pool)?;
+        let gcli = GarminCli::from_pool(pool)?;
         gcli.proc_everything().await?;
 
         Ok("".into())

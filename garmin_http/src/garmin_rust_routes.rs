@@ -907,6 +907,7 @@ pub struct HrPaceList {
 #[response(description = "Logged in User")]
 struct UserResponse(JsonBase<LoggedUser, Error>);
 
+#[allow(clippy::unused_async)]
 #[get("/garmin/user")]
 pub async fn user(#[cookie = "jwt"] user: LoggedUser) -> WarpResult<UserResponse> {
     Ok(JsonBase::new(user).into())

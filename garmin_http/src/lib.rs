@@ -96,6 +96,7 @@ pub struct StravaActivityWrapper {
     pub total_elevation_gain: Option<f64>,
     pub elev_high: Option<f64>,
     pub elev_low: Option<f64>,
+    #[serde(with = "sport_types_wrapper")]
     pub activity_type: SportTypesWrapper,
     pub timezone: StravaTimeZoneWrapper,
 }

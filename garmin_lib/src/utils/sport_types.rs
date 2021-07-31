@@ -1,7 +1,6 @@
 use anyhow::{format_err, Error};
 use bytes::BytesMut;
 use lazy_static::lazy_static;
-use rweb::Schema;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use stack_string::StackString;
 use std::{collections::HashMap, convert::TryFrom, fmt, str::FromStr};
@@ -11,7 +10,7 @@ lazy_static! {
     static ref SPORT_TYPE_MAP: HashMap<StackString, SportTypes> = init_sport_type_map();
 }
 
-#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq, Serialize, Deserialize, Schema)]
+#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(into = "StackString", try_from = "StackString")]
 pub enum SportTypes {
     Running,

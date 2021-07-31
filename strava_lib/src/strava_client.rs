@@ -13,7 +13,6 @@ use reqwest::{
     multipart::{Form, Part},
     Client, Url,
 };
-use rweb::Schema;
 use select::{document::Document, predicate::Attr};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
@@ -692,8 +691,8 @@ impl StravaClient {
             .get_all_strava_activites(start_datetime, end_datetime)
             .await?;
 
-        StravaActivity::upsert_activities(&new_activities, &pool).await?;
-        StravaActivity::fix_summary_id_in_db(&pool).await?;
+        StravaActivity::upsert_activities(&new_activities, pool).await?;
+        StravaActivity::fix_summary_id_in_db(pool).await?;
 
         let mut constraints: SmallVec<[String; 2]> = SmallVec::new();
         if let Some(start_datetime) = start_datetime {
@@ -704,7 +703,7 @@ impl StravaClient {
         }
         let constraints = constraints.join(" AND ");
 
-        let old_activities: HashSet<_> = get_list_of_activities_from_db(&constraints, &pool)
+        let old_activities: HashSet<_> = get_list_of_activities_from_db(&constraints, pool)
             .await?
             .into_iter()
             .map(|(d, _)| d)
@@ -729,7 +728,7 @@ impl StravaClient {
     }
 }
 
-#[derive(Serialize, Deserialize, Schema)]
+#[derive(Serialize, Deserialize)]
 pub struct StravaAthlete {
     pub id: u64,
     pub username: StackString,

@@ -17,7 +17,7 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<StackString>, Error
     let sport_type = gfile.sport;
 
     for lap in &gfile.laps {
-        return_vec.push(print_lap_string(&lap, sport_type)?)
+        return_vec.push(print_lap_string(lap, sport_type)?);
     }
 
     let mut min_mile = 0.0;
@@ -57,9 +57,9 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<StackString>, Error
     };
     return_vec.push(tmp_str.join(" ").into());
     return_vec.push("".into());
-    return_vec.push(print_splits(&gfile, METERS_PER_MILE, "mi")?);
+    return_vec.push(print_splits(gfile, METERS_PER_MILE, "mi")?);
     return_vec.push("".into());
-    return_vec.push(print_splits(&gfile, 5000.0, "km")?);
+    return_vec.push(print_splits(gfile, 5000.0, "km")?);
 
     let avg_hr: f64 = gfile
         .points
@@ -265,8 +265,8 @@ pub fn get_splits(
         }
 
         if let Some(hr) = point.heart_rate {
-            avg_hrt_rate += hr * (cur_point_time - last_point_time)
-        };
+            avg_hrt_rate += hr * (cur_point_time - last_point_time);
+        }
 
         let nmiles = (cur_point_me / split_distance_in_meters) as i32
             - (last_point_me / split_distance_in_meters) as i32;

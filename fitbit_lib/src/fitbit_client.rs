@@ -9,7 +9,6 @@ use log::debug;
 use maplit::hashmap;
 use rand::{thread_rng, Rng};
 use reqwest::{header::HeaderMap, Client, Response, Url};
-use rweb::Schema;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use stack_string::StackString;
@@ -25,14 +24,11 @@ use tokio::{
 };
 
 use garmin_connect_lib::garmin_connect_hr_data::GarminConnectHrData;
-use garmin_lib::{
-    common::{
-        fitbit_activity::FitbitActivity,
-        garmin_config::GarminConfig,
-        garmin_summary::{get_list_of_activities_from_db, GarminSummary},
-        pgpool::PgPool,
-    },
-    utils::datetime_wrapper::DateTimeWrapper,
+use garmin_lib::common::{
+    fitbit_activity::FitbitActivity,
+    garmin_config::GarminConfig,
+    garmin_summary::{get_list_of_activities_from_db, GarminSummary},
+    pgpool::PgPool,
 };
 
 use crate::{
@@ -376,9 +372,7 @@ impl FitbitClient {
             .into_iter()
             .map(|entry| {
                 let datetime = format!("{}T{}{}", date, entry.time, offset);
-                let datetime = DateTime::parse_from_rfc3339(&datetime)?
-                    .with_timezone(&Utc)
-                    .into();
+                let datetime = DateTime::parse_from_rfc3339(&datetime)?.with_timezone(&Utc);
                 let value = entry.value;
                 Ok(FitbitHeartRate { datetime, value })
             })
@@ -444,8 +438,7 @@ impl FitbitClient {
                 let datetime = format!("{}T{}{}", bw.date, bw.time, offset);
                 let datetime = DateTime::parse_from_rfc3339(&datetime)
                     .ok()?
-                    .with_timezone(&Utc)
-                    .into();
+                    .with_timezone(&Utc);
                 let weight = bw.weight;
                 let fat = bw.fat?;
                 Some(FitbitBodyWeightFat {
@@ -570,7 +563,7 @@ impl FitbitClient {
     pub async fn get_tcx_urls(
         &self,
         start_date: NaiveDate,
-    ) -> Result<Vec<(DateTimeWrapper, StackString)>, Error> {
+    ) -> Result<Vec<(DateTime<Utc>, StackString)>, Error> {
         let activities = self.get_activities(start_date, None).await?;
 
         activities
@@ -705,7 +698,8 @@ impl FitbitClient {
     }
 
     pub async fn remove_duplicate_entries(&self, pool: &PgPool) -> Result<Vec<StackString>, Error> {
-        let existing_activities: Vec<_> = FitbitActivity::read_from_db(&pool, None, None)
+        let mut last_entry = None;
+        let futures = FitbitActivity::read_from_db(pool, None, None)
             .await?
             .into_iter()
             .map(|activity| {
@@ -715,11 +709,6 @@ impl FitbitClient {
                 )
             })
             .sorted_by(|x, y| x.0.cmp(&y.0))
-            .collect();
-
-        let mut last_entry = None;
-        let dupes: Vec<_> = existing_activities
-            .into_iter()
             .filter_map(|(k, v)| {
                 let mut keep = false;
                 if let Some(k_) = last_entry.take() {
@@ -734,19 +723,17 @@ impl FitbitClient {
                     None
                 }
             })
-            .collect();
-
-        let futures = dupes.into_iter().map(|log_id| async move {
-            if self.delete_fitbit_activity(log_id as u64).await.is_err() {
-                debug!("Failed to delete fitbit activity {}", log_id);
-            }
-            if let Some(activity) = FitbitActivity::get_by_id(&pool, log_id).await? {
-                activity.delete_from_db(&pool).await?;
-                Ok(format!("fully deleted {}", log_id).into())
-            } else {
-                Ok(format!("not fully deleted {}", log_id).into())
-            }
-        });
+            .map(|log_id| async move {
+                if self.delete_fitbit_activity(log_id as u64).await.is_err() {
+                    debug!("Failed to delete fitbit activity {}", log_id);
+                }
+                if let Some(activity) = FitbitActivity::get_by_id(pool, log_id).await? {
+                    activity.delete_from_db(pool).await?;
+                    Ok(format!("fully deleted {}", log_id).into())
+                } else {
+                    Ok(format!("not fully deleted {}", log_id).into())
+                }
+            });
         try_join_all(futures).await
     }
 
@@ -809,7 +796,7 @@ impl FitbitClient {
 
         // Get existing activities
         let existing_activities: HashMap<_, _> =
-            FitbitActivity::read_from_db(&pool, Some(date), None)
+            FitbitActivity::read_from_db(pool, Some(date), None)
                 .await?
                 .into_iter()
                 .map(|activity| (activity.log_id, activity))
@@ -830,7 +817,7 @@ impl FitbitClient {
 
         let old_activities = get_list_of_activities_from_db(
             &format!("begin_datetime >= '{}'", begin_datetime),
-            &pool,
+            pool,
         )
         .await?
         .into_iter()
@@ -911,11 +898,11 @@ impl FitbitClient {
             .map(Into::into)
             .collect();
         let duplicates = self.remove_duplicate_entries(pool).await?;
-        FitbitActivity::fix_summary_id_in_db(&pool).await?;
+        FitbitActivity::fix_summary_id_in_db(pool).await?;
         if !activities.is_empty() {
             self.sync_fitbit_activities(start_datetime, pool).await?;
             self.remove_duplicate_entries(pool).await?;
-            FitbitActivity::fix_summary_id_in_db(&pool).await?;
+            FitbitActivity::fix_summary_id_in_db(pool).await?;
         }
 
         Ok(FitbitBodyWeightFatUpdateOutput {
@@ -952,10 +939,10 @@ impl FitbitClient {
     }
 }
 
-#[derive(Debug, Serialize, Schema)]
+#[derive(Debug, Serialize)]
 pub struct FitbitBodyWeightFatUpdateOutput {
     pub measurements: Vec<ScaleMeasurement>,
-    pub activities: Vec<DateTimeWrapper>,
+    pub activities: Vec<DateTime<Utc>>,
     pub duplicates: Vec<StackString>,
 }
 
@@ -995,7 +982,7 @@ impl ActivityLoggingEntry {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Schema)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct FitbitUserProfile {
     #[serde(rename = "averageDailySteps")]
     pub average_daily_steps: u64,

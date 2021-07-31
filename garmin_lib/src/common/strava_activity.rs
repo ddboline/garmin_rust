@@ -3,7 +3,6 @@ use chrono::{DateTime, NaiveDate, Utc};
 use futures::future::try_join_all;
 use log::debug;
 use postgres_query::{query, query_dyn, FromSqlRow, Parameter};
-use rweb::Schema;
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
 use std::collections::HashMap;
@@ -11,17 +10,16 @@ use std::collections::HashMap;
 use crate::{
     common::{garmin_summary::GarminSummary, pgpool::PgPool, strava_timezone::StravaTimeZone},
     utils::{
-        datetime_wrapper::DateTimeWrapper,
-        iso_8601_datetime_wrapper,
+        iso_8601_datetime,
         sport_types::{self, SportTypes},
     },
 };
 
-#[derive(Serialize, Deserialize, FromSqlRow, Debug, Clone, PartialEq, Schema)]
+#[derive(Serialize, Deserialize, FromSqlRow, Debug, Clone, PartialEq)]
 pub struct StravaActivity {
     pub name: StackString,
-    #[serde(with = "iso_8601_datetime_wrapper")]
-    pub start_date: DateTimeWrapper,
+    #[serde(with = "iso_8601_datetime")]
+    pub start_date: DateTime<Utc>,
     pub id: i64,
     pub distance: Option<f64>,
     pub moving_time: Option<i64>,
@@ -38,7 +36,7 @@ impl Default for StravaActivity {
     fn default() -> Self {
         Self {
             name: "".into(),
-            start_date: Utc::now().into(),
+            start_date: Utc::now(),
             id: -1,
             distance: None,
             moving_time: None,
@@ -229,7 +227,7 @@ impl From<GarminSummary> for StravaActivity {
     fn from(item: GarminSummary) -> Self {
         Self {
             name: item.filename,
-            start_date: item.begin_datetime.into(),
+            start_date: item.begin_datetime,
             distance: Some(item.total_distance),
             elapsed_time: item.total_duration as i64,
             activity_type: item.sport,

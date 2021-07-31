@@ -1,21 +1,17 @@
 use anyhow::Error;
-use chrono::{Duration, NaiveDate, Utc};
+use chrono::{DateTime, Duration, NaiveDate, Utc};
 use maplit::hashmap;
 use postgres_query::{query, FromSqlRow};
-use rweb::Schema;
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
 use statistical::{mean, median, standard_deviation};
 use std::collections::HashMap;
 
-use garmin_lib::{
-    common::{garmin_templates::HBR, pgpool::PgPool},
-    utils::{datetime_wrapper::DateTimeWrapper, naivedate_wrapper::NaiveDateWrapper},
-};
+use garmin_lib::common::{garmin_templates::HBR, pgpool::PgPool};
 
-#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, FromSqlRow, Schema)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, FromSqlRow)]
 pub struct FitbitStatisticsSummary {
-    pub date: NaiveDateWrapper,
+    pub date: NaiveDate,
     pub min_heartrate: f64,
     pub max_heartrate: f64,
     pub mean_heartrate: f64,
@@ -25,15 +21,14 @@ pub struct FitbitStatisticsSummary {
 }
 
 impl FitbitStatisticsSummary {
-    pub fn from_heartrate_values(heartrate_values: &[(DateTimeWrapper, i32)]) -> Option<Self> {
+    pub fn from_heartrate_values(heartrate_values: &[(DateTime<Utc>, i32)]) -> Option<Self> {
         if heartrate_values.len() < 2 {
             return None;
         }
         let date = heartrate_values[heartrate_values.len() / 2]
             .0
             .naive_local()
-            .date()
-            .into();
+            .date();
         let min_heartrate = f64::from(heartrate_values.iter().map(|(_, v)| *v).min()?);
         let max_heartrate = f64::from(heartrate_values.iter().map(|(_, v)| *v).max()?);
         let values: Vec<_> = heartrate_values
@@ -88,7 +83,7 @@ impl FitbitStatisticsSummary {
     }
 
     pub async fn upsert_entry(&self, pool: &PgPool) -> Result<(), Error> {
-        if Self::read_entry(self.date.into(), pool).await?.is_some() {
+        if Self::read_entry(self.date, pool).await?.is_some() {
             self.update_entry(pool).await
         } else {
             self.insert_entry(pool).await

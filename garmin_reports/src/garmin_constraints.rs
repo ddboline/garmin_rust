@@ -190,7 +190,7 @@ impl GarminConstraints {
                 "latest" => self.constraints.push(GarminConstraint::default()),
                 pat => {
                     if let Some(x) = sport_type_map.get(pat) {
-                        options.do_sport = Some(*x)
+                        options.do_sport = Some(*x);
                     } else {
                         self.constraints
                             .push(GarminConstraint::match_pattern(config, pat));

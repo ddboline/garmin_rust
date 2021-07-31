@@ -78,7 +78,7 @@ impl GarminLap {
                 match d.tag_name().name() {
                     "max_speed" => new_lap.lap_max_speed = d.text().and_then(|x| x.parse().ok()),
                     "calories" => {
-                        new_lap.lap_calories = d.text().and_then(|x| x.parse().ok()).unwrap_or(0)
+                        new_lap.lap_calories = d.text().and_then(|x| x.parse().ok()).unwrap_or(0);
                     }
                     "intensity" => new_lap.lap_intensity = d.text().map(Into::into),
                     _ => (),
@@ -95,7 +95,7 @@ impl GarminLap {
                         Some(convert_datetime_to_str(new_lap.lap_start).into());
                 }
                 "duration" => {
-                    new_lap.lap_duration = convert_time_string(entry.value()).unwrap_or(0.0)
+                    new_lap.lap_duration = convert_time_string(entry.value()).unwrap_or(0.0);
                 }
                 "distance" => new_lap.lap_distance = entry.value().parse().unwrap_or(0.0),
                 "trigger" => new_lap.lap_trigger = Some(entry.value().into()),
@@ -112,15 +112,15 @@ impl GarminLap {
             if d.node_type() == NodeType::Element {
                 match d.tag_name().name() {
                     "TotalTimeSeconds" => {
-                        new_lap.lap_duration = d.text().and_then(|x| x.parse().ok()).unwrap_or(0.0)
+                        new_lap.lap_duration = d.text().and_then(|x| x.parse().ok()).unwrap_or(0.0);
                     }
                     "DistanceMeters" => {
-                        new_lap.lap_distance = d.text().and_then(|x| x.parse().ok()).unwrap_or(0.0)
+                        new_lap.lap_distance = d.text().and_then(|x| x.parse().ok()).unwrap_or(0.0);
                     }
                     "MaximumSpeed" => new_lap.lap_max_speed = d.text().and_then(|x| x.parse().ok()),
                     "TriggerMethod" => new_lap.lap_trigger = d.text().map(Into::into),
                     "Calories" => {
-                        new_lap.lap_calories = d.text().and_then(|x| x.parse().ok()).unwrap_or(0)
+                        new_lap.lap_calories = d.text().and_then(|x| x.parse().ok()).unwrap_or(0);
                     }
                     "Intensity" => new_lap.lap_intensity = d.text().map(Into::into),
                     "AverageHeartRateBpm" => {

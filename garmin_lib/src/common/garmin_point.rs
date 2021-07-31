@@ -96,12 +96,12 @@ impl GarminPoint {
                     "Time" => {
                         new_point.time = convert_xml_local_time_to_utc(
                             d.text().ok_or_else(|| format_err!("Malformed time"))?,
-                        )?
+                        )?;
                     }
                     "AltitudeMeters" => new_point.altitude = d.text().and_then(|x| x.parse().ok()),
                     "LatitudeDegrees" => new_point.latitude = d.text().and_then(|x| x.parse().ok()),
                     "LongitudeDegrees" => {
-                        new_point.longitude = d.text().and_then(|x| x.parse().ok())
+                        new_point.longitude = d.text().and_then(|x| x.parse().ok());
                     }
                     "DistanceMeters" => new_point.distance = d.text().and_then(|x| x.parse().ok()),
                     "HeartRateBpm" => {

@@ -144,16 +144,16 @@ impl GarminCli {
                 .map(|f| {
                     self.stdout.send(format!("Process {:?}", &f));
                     GarminSummary::process_single_gps_file(
-                        &f,
+                        f,
                         &self.get_config().cache_dir,
-                        &corr_map,
+                        corr_map,
                     )
                 })
                 .collect::<Result<Vec<_>, Error>>()?,
             Some(GarminCliOptions::All) => GarminSummary::process_all_gps_files(
                 &self.get_config().gps_dir,
                 &self.get_config().cache_dir,
-                &corr_map,
+                corr_map,
             )?,
             _ => {
                 let cacheset: HashSet<StackString> = get_file_list(&self.get_config().cache_dir)
@@ -190,7 +190,7 @@ impl GarminCli {
                         GarminSummary::process_single_gps_file(
                             &f,
                             &self.get_config().cache_dir,
-                            &corr_map,
+                            corr_map,
                         )
                     })
                     .collect::<Result<Vec<_>, Error>>()?
@@ -237,7 +237,7 @@ impl GarminCli {
             .into_iter()
             .map(|(title, local_dir, s3_bucket, check_md5)| {
                 debug!("{}", title);
-                gsync.sync_dir(title, &local_dir, &s3_bucket, check_md5)
+                gsync.sync_dir(title, local_dir, s3_bucket, check_md5)
             });
         try_join_all(futures).await
     }
@@ -297,7 +297,7 @@ impl GarminCli {
             }
             _ => {
                 debug!("{:?}", options);
-                let txt_result = create_report_query(&pg_conn, &options, &constraints)
+                let txt_result = create_report_query(&pg_conn, options, constraints)
                     .await?
                     .get_text_entries()?
                     .into_iter()
@@ -434,10 +434,13 @@ impl GarminCli {
     {
         let config = self.get_config().clone();
         let stdout = self.stdout.clone();
+
+        #[allow(clippy::needless_collect)]
         let filenames: Vec<_> = filenames
             .into_iter()
             .map(|s| s.as_ref().to_path_buf())
             .collect();
+
         spawn_blocking(move || Self::process_filenames_sync(filenames, &stdout, &config)).await?
     }
 }

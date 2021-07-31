@@ -5,7 +5,6 @@ use fantoccini::{Client, ClientBuilder, Locator};
 use http::Method;
 use log::debug;
 use reqwest::Url;
-use rweb::Schema;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use stack_string::StackString;
@@ -16,11 +15,8 @@ use tokio::{
     time::sleep,
 };
 
-use garmin_lib::{
-    common::{
-        garmin_config::GarminConfig, garmin_connect_activity::GarminConnectActivity, pgpool::PgPool,
-    },
-    utils::naivedate_wrapper::NaiveDateWrapper,
+use garmin_lib::common::{
+    garmin_config::GarminConfig, garmin_connect_activity::GarminConnectActivity, pgpool::PgPool,
 };
 
 use super::garmin_connect_hr_data::GarminConnectHrData;
@@ -172,7 +168,7 @@ impl GarminConnectClient {
             .wait_for_find(Locator::XPath("//*[@class=\"main-header\"]"))
             .await?;
 
-        let js = Self::raw_get(client, &modern_url).await?;
+        let js = Self::raw_get(client, modern_url).await?;
         let text = std::str::from_utf8(&js)?;
         self.last_used = Utc::now();
 
@@ -334,7 +330,7 @@ impl GarminConnectClient {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Schema)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct GarminConnectUserDailySummary {
     #[serde(rename = "userProfileId")]
     pub user_profile_id: u64,
@@ -351,7 +347,7 @@ pub struct GarminConnectUserDailySummary {
     #[serde(rename = "userDailySummaryId")]
     pub user_daily_summary_id: Option<u64>,
     #[serde(rename = "calendarDate")]
-    pub calendar_date: NaiveDateWrapper,
+    pub calendar_date: NaiveDate,
 }
 
 #[cfg(test)]

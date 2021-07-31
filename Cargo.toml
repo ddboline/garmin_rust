@@ -1,6 +1,6 @@
 [package]
 name = "garmin_rust"
-version = "0.11.31"
+version = "0.11.32"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -28,14 +28,14 @@ crossbeam-utils = "0.8"
 structopt = "0.3"
 anyhow = "1.0"
 thiserror = "1.0"
-tokio = {version="1.6", features=["full"]}
+tokio = {version="1.9", features=["full"]}
 dirs = "3.0"
 chrono = "0.4"
 url = "2.2"
 maplit = "1.0"
 serde = {version="1.0", features=["derive"]}
 reqwest = {version="0.11", features=["cookies", "json", "rustls-tls", "stream"], default_features=false}
-stack-string = { version="0.2", features=["postgres_types", "rweb-openapi"] }
+stack-string = { version="0.2", features=["postgres_types"] }
 
 [dev-dependencies]
 approx = "0.5"

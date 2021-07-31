@@ -50,6 +50,7 @@ struct ErrorMessage {
     message: String,
 }
 
+#[allow(clippy::unused_async)]
 pub async fn error_response(err: Rejection) -> Result<Box<dyn Reply>, Infallible> {
     let code: StatusCode;
     let message: &str;

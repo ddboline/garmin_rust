@@ -501,7 +501,7 @@ pub fn import_garmin_heartrate_file(filename: &Path) -> Result<(), Error> {
                             if let Some(heartrate) = get_f64(field.value()) {
                                 let value = heartrate as i32;
                                 println!("heartrate {}", value);
-                                heartrates.push(FitbitHeartRate { datetime, value })
+                                heartrates.push(FitbitHeartRate { datetime, value });
                             }
                         }
                     }

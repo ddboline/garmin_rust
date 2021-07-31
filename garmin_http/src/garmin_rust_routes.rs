@@ -135,7 +135,7 @@ fn proc_pattern_wrapper<T: AsRef<str>>(
 
     let filter_iter = filter.split(',').map(ToString::to_string);
 
-    let req = GarminCli::process_pattern(&config, filter_iter);
+    let req = GarminCli::process_pattern(config, filter_iter);
     let history = history.iter().map(|s| s.as_ref().into()).collect();
 
     GarminHtmlRequest {
@@ -184,7 +184,7 @@ async fn garmin_body(
     history: &mut Vec<StackString>,
     is_demo: bool,
 ) -> HttpResult<String> {
-    let grec = proc_pattern_wrapper(&state.config, query, &history, is_demo);
+    let grec = proc_pattern_wrapper(&state.config, query, history, is_demo);
     if history.len() > 5 {
         history.remove(0);
     }

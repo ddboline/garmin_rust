@@ -120,9 +120,9 @@ impl GarminCliOpts {
             Self::Proc { filename } => GarminCliOptions::ImportFileNames(filename),
             Self::Report { patterns } => {
                 let req = if patterns.is_empty() {
-                    GarminCli::process_pattern(&config, &["year".to_string()])
+                    GarminCli::process_pattern(config, &["year".to_string()])
                 } else {
-                    GarminCli::process_pattern(&config, &patterns)
+                    GarminCli::process_pattern(config, &patterns)
                 };
                 let cli = GarminCli::with_config()?;
                 cli.run_cli(&req.options, &req.constraints).await?;
@@ -352,7 +352,7 @@ impl GarminCliOpts {
             end_date,
         }) = cli.get_opts()
         {
-            Self::sync_with_garmin_connect(&cli, *start_date, *end_date).await?;
+            Self::sync_with_garmin_connect(cli, *start_date, *end_date).await?;
         }
 
         if let Some(GarminCliOptions::ImportFileNames(filenames)) = cli.get_opts() {

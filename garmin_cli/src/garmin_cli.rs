@@ -434,10 +434,13 @@ impl GarminCli {
     {
         let config = self.get_config().clone();
         let stdout = self.stdout.clone();
+
+        #[allow(clippy::needless_collect)]
         let filenames: Vec<_> = filenames
             .into_iter()
             .map(|s| s.as_ref().to_path_buf())
             .collect();
+
         spawn_blocking(move || Self::process_filenames_sync(filenames, &stdout, &config)).await?
     }
 }

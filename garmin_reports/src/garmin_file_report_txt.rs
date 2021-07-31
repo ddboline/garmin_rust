@@ -17,7 +17,7 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<StackString>, Error
     let sport_type = gfile.sport;
 
     for lap in &gfile.laps {
-        return_vec.push(print_lap_string(lap, sport_type)?)
+        return_vec.push(print_lap_string(lap, sport_type)?);
     }
 
     let mut min_mile = 0.0;

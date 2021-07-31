@@ -117,7 +117,7 @@ pub async fn file_report_html<T: AsRef<str>>(
 }
 
 fn extract_report_objects_from_file(gfile: &GarminFile) -> Result<ReportObjects, Error> {
-    let speed_values = get_splits(&gfile, 400., "lap", true)?;
+    let speed_values = get_splits(gfile, 400., "lap", true)?;
     let heart_rate_speed = speed_values
         .iter()
         .map(|v| {
@@ -136,7 +136,7 @@ fn extract_report_objects_from_file(gfile: &GarminFile) -> Result<ReportObjects,
         })
         .collect();
 
-    let mile_split_vals = get_splits(&gfile, METERS_PER_MILE, "mi", false)?
+    let mile_split_vals = get_splits(gfile, METERS_PER_MILE, "mi", false)?
         .into_iter()
         .map(|v| {
             let d = v.split_distance;

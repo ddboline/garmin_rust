@@ -817,7 +817,7 @@ impl FitbitClient {
 
         let old_activities = get_list_of_activities_from_db(
             &format!("begin_datetime >= '{}'", begin_datetime),
-            &pool,
+            pool,
         )
         .await?
         .into_iter()

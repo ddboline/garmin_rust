@@ -49,7 +49,7 @@ pub struct GarminHtmlRequest {
 
 impl GarminHtmlRequest {
     pub async fn handle(&self, pool: &PgPool) -> Result<StackString, Error> {
-        let body = GarminCli::from_pool(&pool)?
+        let body = GarminCli::from_pool(pool)?
             .run_html(&self.request, self.is_demo)
             .await?;
         Ok(body)
@@ -61,7 +61,7 @@ impl GarminHtmlRequest {
         &self,
         pool: &PgPool,
     ) -> Result<Vec<StackString>, Error> {
-        get_list_of_files_from_db(&self.request.constraints.to_query_string(), &pool)
+        get_list_of_files_from_db(&self.request.constraints.to_query_string(), pool)
             .await
             .map_err(Into::into)
     }
@@ -85,7 +85,7 @@ impl GarminListRequest {
         &self,
         pool: &PgPool,
     ) -> Result<Vec<StackString>, Error> {
-        get_list_of_files_from_db(&self.constraints.to_query_string(), &pool)
+        get_list_of_files_from_db(&self.constraints.to_query_string(), pool)
             .await
             .map_err(Into::into)
     }
@@ -104,7 +104,7 @@ pub struct GarminUploadRequest {
 
 impl GarminUploadRequest {
     pub async fn handle(self, pool: &PgPool) -> Result<Vec<DateTime<Utc>>, Error> {
-        let gcli = GarminCli::from_pool(&pool)?;
+        let gcli = GarminCli::from_pool(pool)?;
         let filenames = vec![self.filename];
         let datetimes = gcli.process_filenames(&filenames).await?;
         gcli.sync_everything(false).await?;
@@ -190,7 +190,7 @@ impl StravaSyncRequest {
         pool: &PgPool,
         config: &GarminConfig,
     ) -> Result<Vec<PathBuf>, Error> {
-        let gcli = GarminCli::from_pool(&pool)?;
+        let gcli = GarminCli::from_pool(pool)?;
 
         let start_datetime = self
             .start_datetime
@@ -211,7 +211,7 @@ impl StravaSyncRequest {
             gcli.sync_everything(false).await?;
             gcli.proc_everything().await?;
         }
-        StravaActivity::fix_summary_id_in_db(&pool).await?;
+        StravaActivity::fix_summary_id_in_db(pool).await?;
 
         Ok(filenames)
     }
@@ -347,7 +347,7 @@ impl FitbitSyncRequest {
     ) -> Result<Vec<FitbitHeartRate>, Error> {
         let client = FitbitClient::with_auth(config.clone()).await?;
         let heartrates = client.import_fitbit_heartrate(self.date.into()).await?;
-        FitbitHeartRate::calculate_summary_statistics(&client.config, &pool, self.date.into())
+        FitbitHeartRate::calculate_summary_statistics(&client.config, pool, self.date.into())
             .await?;
         Ok(heartrates)
     }

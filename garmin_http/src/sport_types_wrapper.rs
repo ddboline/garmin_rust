@@ -65,7 +65,7 @@ pub fn serialize<S>(sport: &SportTypesWrapper, serializer: S) -> Result<S::Ok, S
 where
     S: Serializer,
 {
-    let sport: SportTypes = sport.clone().into();
+    let sport: SportTypes = (*sport).into();
     serializer.serialize_str(&sport.to_strava_activity())
 }
 

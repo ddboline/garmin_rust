@@ -36,7 +36,7 @@ impl Default for StravaActivity {
     fn default() -> Self {
         Self {
             name: "".into(),
-            start_date: Utc::now().into(),
+            start_date: Utc::now(),
             id: -1,
             distance: None,
             moving_time: None,
@@ -227,7 +227,7 @@ impl From<GarminSummary> for StravaActivity {
     fn from(item: GarminSummary) -> Self {
         Self {
             name: item.filename,
-            start_date: item.begin_datetime.into(),
+            start_date: item.begin_datetime,
             distance: Some(item.total_distance),
             elapsed_time: item.total_duration as i64,
             activity_type: item.sport,

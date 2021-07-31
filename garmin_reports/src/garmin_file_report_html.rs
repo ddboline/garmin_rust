@@ -99,17 +99,17 @@ pub async fn file_report_html<T: AsRef<str>>(
     pool: &PgPool,
     is_demo: bool,
 ) -> Result<StackString, Error> {
-    let report_objs = extract_report_objects_from_file(&gfile)?;
+    let report_objs = extract_report_objects_from_file(gfile)?;
     let plot_opts = get_plot_opts(&report_objs);
     let graphs = get_graphs(&plot_opts);
 
     get_html_string(
         config,
-        &gfile,
+        gfile,
         &report_objs,
         &graphs,
         gfile.sport,
-        &history,
+        history,
         pool,
         is_demo,
     )
@@ -313,7 +313,7 @@ fn get_plot_opts(report_objs: &ReportObjects) -> Vec<PlotOpts> {
 fn get_graphs(plot_opts: &[PlotOpts]) -> Vec<StackString> {
     plot_opts
         .par_iter()
-        .filter_map(|options| match generate_d3_plot(&options) {
+        .filter_map(|options| match generate_d3_plot(options) {
             Ok(s) => Some(s),
             Err(e) => {
                 debug!("{}", e);
@@ -410,7 +410,7 @@ fn get_garmin_template_vec<T: AsRef<str>>(
         format!(
             "{}\n",
             get_file_html(
-                &gfile,
+                gfile,
                 strava_activity,
                 fitbit_activity,
                 connect_activity,
@@ -419,9 +419,9 @@ fn get_garmin_template_vec<T: AsRef<str>>(
         ),
         format!(
             "<br><br>{}\n",
-            get_html_splits(&gfile, METERS_PER_MILE, "mi")?
+            get_html_splits(gfile, METERS_PER_MILE, "mi")?
         ),
-        format!("<br><br>{}\n", get_html_splits(&gfile, 5000.0, "km")?),
+        format!("<br><br>{}\n", get_html_splits(gfile, 5000.0, "km")?),
     ];
     let sport_title_link = format!(
         "Garmin Event {} on {}",
@@ -450,7 +450,7 @@ fn get_garmin_template_vec<T: AsRef<str>>(
                     "#,
                     strava_activity.id,
                     gfile.sport.to_strava_activity(),
-                    convert_datetime_to_str(strava_activity.start_date.into()),
+                    convert_datetime_to_str(strava_activity.start_date),
                 )
             },
         )
@@ -571,7 +571,7 @@ where
                     "#,
                     strava_activity.id,
                     gfile.sport.to_strava_activity(),
-                    convert_datetime_to_str(strava_activity.start_date.into()),
+                    convert_datetime_to_str(strava_activity.start_date),
                 )
             },
         )
@@ -603,14 +603,14 @@ where
     let insert_table_here = format!(
         "{}\n<br><br>{}\n<br><br>{}\n",
         get_file_html(
-            &gfile,
+            gfile,
             strava_activity,
             fitbit_activity,
             connect_activity,
             race_result
         ),
-        get_html_splits(&gfile, METERS_PER_MILE, "mi")?,
-        get_html_splits(&gfile, 5000.0, "km")?
+        get_html_splits(gfile, METERS_PER_MILE, "mi")?,
+        get_html_splits(gfile, 5000.0, "km")?
     );
     let map_segment = report_objs
         .lat_vals
@@ -777,7 +777,7 @@ fn get_file_html(
     retval.push("<tbody>".to_string());
     for lap in &gfile.laps {
         retval.push(r#"<tr style="text-align: center;">"#.to_string());
-        for lap_html in get_lap_html(&lap, &sport) {
+        for lap_html in get_lap_html(lap, &sport) {
             retval.push(lap_html.into());
         }
         retval.push("</tr>".to_string());

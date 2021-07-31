@@ -168,7 +168,7 @@ impl GarminConnectClient {
             .wait_for_find(Locator::XPath("//*[@class=\"main-header\"]"))
             .await?;
 
-        let js = Self::raw_get(client, &modern_url).await?;
+        let js = Self::raw_get(client, modern_url).await?;
         let text = std::str::from_utf8(&js)?;
         self.last_used = Utc::now();
 

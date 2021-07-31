@@ -698,7 +698,8 @@ impl FitbitClient {
     }
 
     pub async fn remove_duplicate_entries(&self, pool: &PgPool) -> Result<Vec<StackString>, Error> {
-        let existing_activities: Vec<_> = FitbitActivity::read_from_db(&pool, None, None)
+        let mut last_entry = None;
+        let futures = FitbitActivity::read_from_db(pool, None, None)
             .await?
             .into_iter()
             .map(|activity| {
@@ -708,11 +709,6 @@ impl FitbitClient {
                 )
             })
             .sorted_by(|x, y| x.0.cmp(&y.0))
-            .collect();
-
-        let mut last_entry = None;
-        let dupes: Vec<_> = existing_activities
-            .into_iter()
             .filter_map(|(k, v)| {
                 let mut keep = false;
                 if let Some(k_) = last_entry.take() {
@@ -727,19 +723,17 @@ impl FitbitClient {
                     None
                 }
             })
-            .collect();
-
-        let futures = dupes.into_iter().map(|log_id| async move {
-            if self.delete_fitbit_activity(log_id as u64).await.is_err() {
-                debug!("Failed to delete fitbit activity {}", log_id);
-            }
-            if let Some(activity) = FitbitActivity::get_by_id(&pool, log_id).await? {
-                activity.delete_from_db(&pool).await?;
-                Ok(format!("fully deleted {}", log_id).into())
-            } else {
-                Ok(format!("not fully deleted {}", log_id).into())
-            }
-        });
+            .map(|log_id| async move {
+                if self.delete_fitbit_activity(log_id as u64).await.is_err() {
+                    debug!("Failed to delete fitbit activity {}", log_id);
+                }
+                if let Some(activity) = FitbitActivity::get_by_id(pool, log_id).await? {
+                    activity.delete_from_db(pool).await?;
+                    Ok(format!("fully deleted {}", log_id).into())
+                } else {
+                    Ok(format!("not fully deleted {}", log_id).into())
+                }
+            });
         try_join_all(futures).await
     }
 
@@ -802,7 +796,7 @@ impl FitbitClient {
 
         // Get existing activities
         let existing_activities: HashMap<_, _> =
-            FitbitActivity::read_from_db(&pool, Some(date), None)
+            FitbitActivity::read_from_db(pool, Some(date), None)
                 .await?
                 .into_iter()
                 .map(|activity| (activity.log_id, activity))
@@ -904,11 +898,11 @@ impl FitbitClient {
             .map(Into::into)
             .collect();
         let duplicates = self.remove_duplicate_entries(pool).await?;
-        FitbitActivity::fix_summary_id_in_db(&pool).await?;
+        FitbitActivity::fix_summary_id_in_db(pool).await?;
         if !activities.is_empty() {
             self.sync_fitbit_activities(start_datetime, pool).await?;
             self.remove_duplicate_entries(pool).await?;
-            FitbitActivity::fix_summary_id_in_db(&pool).await?;
+            FitbitActivity::fix_summary_id_in_db(pool).await?;
         }
 
         Ok(FitbitBodyWeightFatUpdateOutput {

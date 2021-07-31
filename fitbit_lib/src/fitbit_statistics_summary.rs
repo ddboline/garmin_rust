@@ -28,8 +28,7 @@ impl FitbitStatisticsSummary {
         let date = heartrate_values[heartrate_values.len() / 2]
             .0
             .naive_local()
-            .date()
-            .into();
+            .date();
         let min_heartrate = f64::from(heartrate_values.iter().map(|(_, v)| *v).min()?);
         let max_heartrate = f64::from(heartrate_values.iter().map(|(_, v)| *v).max()?);
         let values: Vec<_> = heartrate_values
@@ -84,7 +83,7 @@ impl FitbitStatisticsSummary {
     }
 
     pub async fn upsert_entry(&self, pool: &PgPool) -> Result<(), Error> {
-        if Self::read_entry(self.date.into(), pool).await?.is_some() {
+        if Self::read_entry(self.date, pool).await?.is_some() {
             self.update_entry(pool).await
         } else {
             self.insert_entry(pool).await

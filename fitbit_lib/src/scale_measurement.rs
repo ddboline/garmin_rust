@@ -49,7 +49,7 @@ impl fmt::Display for ScaleMeasurement {
 
 impl ScaleMeasurement {
     pub fn from_telegram_text(msg: &str) -> Result<Self, Error> {
-        let datetime = Utc::now().into();
+        let datetime = Utc::now();
         let sep = if msg.contains(',') {
             ','
         } else if msg.contains(':') {

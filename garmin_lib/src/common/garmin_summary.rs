@@ -63,10 +63,10 @@ impl GarminSummary {
         let cache_file = cache_dir.join(&format!("{}.avro", filename));
 
         debug!("Get md5sum {} ", filename);
-        let md5sum = get_md5sum(&filepath)?;
+        let md5sum = get_md5sum(filepath)?;
 
         debug!("{} Found md5sum {} ", filename, md5sum);
-        let gfile = GarminParse::new().with_file(&filepath, &corr_map)?;
+        let gfile = GarminParse::new().with_file(filepath, corr_map)?;
 
         match gfile.laps.get(0) {
             Some(l) if l.lap_start == sentinel_datetime() => {
@@ -87,7 +87,7 @@ impl GarminSummary {
     ) -> Result<Vec<Self>, Error> {
         let path = Path::new(gps_dir);
 
-        get_file_list(&path)
+        get_file_list(path)
             .into_par_iter()
             .map(|input_file| {
                 debug!("Process {:?}", &input_file);
@@ -97,7 +97,7 @@ impl GarminSummary {
                     .to_string_lossy();
                 let cache_file = cache_dir.join(&format!("{}.avro", filename));
                 let md5sum = get_md5sum(&input_file)?;
-                let gfile = GarminParse::new().with_file(&input_file, &corr_map)?;
+                let gfile = GarminParse::new().with_file(&input_file, corr_map)?;
                 match gfile.laps.get(0) {
                     Some(l) if l.lap_start == sentinel_datetime() => {
                         return Err(format_err!(

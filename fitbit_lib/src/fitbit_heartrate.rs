@@ -104,7 +104,7 @@ impl FitbitHeartRate {
 
     pub fn from_json_heartrate_entry(entry: JsonHeartRateEntry) -> Self {
         Self {
-            datetime: entry.datetime.into(),
+            datetime: entry.datetime,
             value: entry.value.bpm,
         }
     }
@@ -172,7 +172,7 @@ impl FitbitHeartRate {
                 let points: Vec<_> = GarminFile::read_avro(&avro_file)?
                     .points
                     .into_par_iter()
-                    .filter_map(|p| p.heart_rate.map(|h| (p.time.into(), h as i32)))
+                    .filter_map(|p| p.heart_rate.map(|h| (p.time, h as i32)))
                     .collect();
                 Ok(points)
             })
@@ -430,8 +430,7 @@ impl FitbitHeartRate {
                     .iter()
                     .filter_map(|(timestamp, hr_val_opt)| {
                         hr_val_opt.map(|value| {
-                            let datetime: DateTime<Utc> = (*timestamp).into();
-                            let datetime = datetime.into();
+                            let datetime = (*timestamp).into();
                             Self { datetime, value }
                         })
                     })
@@ -501,7 +500,6 @@ pub fn import_garmin_heartrate_file(filename: &Path) -> Result<(), Error> {
                         if let Some(datetime) = timestamp {
                             if let Some(heartrate) = get_f64(field.value()) {
                                 let value = heartrate as i32;
-                                let datetime = datetime.into();
                                 println!("heartrate {}", value);
                                 heartrates.push(FitbitHeartRate { datetime, value })
                             }

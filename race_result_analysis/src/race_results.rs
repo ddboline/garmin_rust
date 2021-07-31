@@ -396,7 +396,7 @@ impl From<GarminSummary> for RaceResults {
         Self {
             id: -1,
             race_type: RaceType::Personal,
-            race_date: Some(item.begin_datetime.naive_local().date().into()),
+            race_date: Some(item.begin_datetime.naive_local().date()),
             race_name: None,
             race_distance: item.total_distance as i32,
             race_time: item.total_duration,

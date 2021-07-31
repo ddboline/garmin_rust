@@ -46,7 +46,7 @@ impl Hash for KeyItem {
     where
         H: Hasher,
     {
-        self.key.hash(state)
+        self.key.hash(state);
     }
 }
 
@@ -183,7 +183,7 @@ impl GarminSync {
             .map(|(_, filename)| filename.clone())
             .collect();
         for (file, filename) in uploaded {
-            self.upload_file(&file, &s3_bucket, &filename).await?;
+            self.upload_file(&file, s3_bucket, &filename).await?;
         }
         debug!("uploaded {:?}", uploaded_files);
 
@@ -239,7 +239,7 @@ impl GarminSync {
             .map(|(file_name, _)| file_name.clone())
             .collect();
         for (file_name, key) in downloaded {
-            self.download_file(&file_name, &s3_bucket, &key).await?;
+            self.download_file(&file_name, s3_bucket, &key).await?;
         }
         debug!("downloaded {:?}", downloaded_files);
 

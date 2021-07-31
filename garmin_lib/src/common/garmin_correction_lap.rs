@@ -91,7 +91,7 @@ impl GarminCorrectionLap {
     }
 
     pub fn corr_map_from_buffer(buffer: &[u8]) -> Result<GarminCorrectionMap, Error> {
-        let jsval = parse(&str::from_utf8(&buffer)?)?;
+        let jsval = parse(str::from_utf8(buffer)?)?;
 
         let corr_map = match &jsval {
             JsonValue::Object(_) => jsval

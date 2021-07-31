@@ -118,23 +118,23 @@ pub async fn create_report_query(
     let result_vec = if let Some(agg) = &options.agg {
         match agg {
             GarminReportAgg::Year => {
-                GarminReportQuery::Year(year_summary_report(&pool, &constr).await?)
+                GarminReportQuery::Year(year_summary_report(pool, &constr).await?)
             }
             GarminReportAgg::Month => {
-                GarminReportQuery::Month(month_summary_report(&pool, &constr).await?)
+                GarminReportQuery::Month(month_summary_report(pool, &constr).await?)
             }
             GarminReportAgg::Week => {
-                GarminReportQuery::Week(week_summary_report(&pool, &constr).await?)
+                GarminReportQuery::Week(week_summary_report(pool, &constr).await?)
             }
             GarminReportAgg::Day => {
-                GarminReportQuery::Day(day_summary_report(&pool, &constr).await?)
+                GarminReportQuery::Day(day_summary_report(pool, &constr).await?)
             }
             GarminReportAgg::File => {
-                GarminReportQuery::File(file_summary_report(&pool, &constr).await?)
+                GarminReportQuery::File(file_summary_report(pool, &constr).await?)
             }
         }
     } else if options.do_sport.is_none() {
-        GarminReportQuery::Sport(sport_summary_report(&pool, &constr).await?)
+        GarminReportQuery::Sport(sport_summary_report(pool, &constr).await?)
     } else {
         GarminReportQuery::Empty
     };
@@ -794,7 +794,7 @@ impl GarminReportTrait for MonthSummaryReport {
                     )
                     .into(),
                     None,
-                ))
+                ));
             }
             "biking" => {
                 tmp_vec.push((

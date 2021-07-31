@@ -691,8 +691,8 @@ impl StravaClient {
             .get_all_strava_activites(start_datetime, end_datetime)
             .await?;
 
-        StravaActivity::upsert_activities(&new_activities, &pool).await?;
-        StravaActivity::fix_summary_id_in_db(&pool).await?;
+        StravaActivity::upsert_activities(&new_activities, pool).await?;
+        StravaActivity::fix_summary_id_in_db(pool).await?;
 
         let mut constraints: SmallVec<[String; 2]> = SmallVec::new();
         if let Some(start_datetime) = start_datetime {
@@ -703,7 +703,7 @@ impl StravaClient {
         }
         let constraints = constraints.join(" AND ");
 
-        let old_activities: HashSet<_> = get_list_of_activities_from_db(&constraints, &pool)
+        let old_activities: HashSet<_> = get_list_of_activities_from_db(&constraints, pool)
             .await?
             .into_iter()
             .map(|(d, _)| d)

@@ -1,9 +1,13 @@
+use anyhow::Error;
 use rweb::Schema;
 use serde::{de::Deserializer, ser::Serializer, Deserialize, Serialize};
+use stack_string::StackString;
+use std::{convert::TryFrom, fmt, str::FromStr};
 
 use garmin_lib::utils::sport_types::SportTypes;
 
 #[derive(Serialize, Debug, Clone, Copy, Hash, Eq, PartialEq, Schema, Deserialize)]
+#[serde(into = "StackString", try_from = "StackString")]
 pub enum SportTypesWrapper {
     Running,
     Biking,
@@ -78,4 +82,31 @@ where
     SportTypes::from_strava_activity(&s)
         .map_err(serde::de::Error::custom)
         .map(Into::into)
+}
+
+impl fmt::Display for SportTypesWrapper {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let s: SportTypes = (*self).into();
+        write!(f, "{}", s.to_str())
+    }
+}
+
+impl From<SportTypesWrapper> for StackString {
+    fn from(item: SportTypesWrapper) -> StackString {
+        item.to_string().into()
+    }
+}
+
+impl TryFrom<&str> for SportTypesWrapper {
+    type Error = Error;
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        SportTypes::from_str(s).map(Into::into)
+    }
+}
+
+impl TryFrom<StackString> for SportTypesWrapper {
+    type Error = Error;
+    fn try_from(s: StackString) -> Result<Self, Self::Error> {
+        SportTypes::from_str(s.as_str()).map(Into::into)
+    }
 }

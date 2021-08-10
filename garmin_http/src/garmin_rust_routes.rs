@@ -1,6 +1,7 @@
 #![allow(clippy::needless_pass_by_value)]
 
 use itertools::Itertools;
+use log::info;
 use reqwest::{header::HeaderValue, Client};
 use rweb::{
     get,
@@ -775,6 +776,7 @@ async fn heartrate_plots_impl(
 ) -> HttpResult<String> {
     let is_demo = query.is_demo;
     let buttons = get_buttons(is_demo).join("\n");
+    info!("buttons {}", buttons);
     let mut params = query.handle(&state.db, &state.config).await?;
     params.insert(
         "HISTORYBUTTONS".into(),
@@ -923,10 +925,7 @@ pub async fn add_garmin_correction(
     #[cookie = "jwt"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<AddGarminCorrectionResponse> {
-    payload
-        .into_inner()
-        .handle(&state.db, &state.config)
-        .await?;
+    payload.into_inner().handle(&state.db).await?;
     Ok(HtmlBase::new("finised").into())
 }
 

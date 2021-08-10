@@ -2,6 +2,10 @@ use anyhow::Error;
 use chrono::DateTime;
 use futures::stream::{StreamExt, TryStreamExt};
 use log::debug;
+use rand::{
+    distributions::{Alphanumeric, DistString},
+    thread_rng,
+};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use rusoto_core::Region;
 use rusoto_s3::{GetObjectRequest, Object as S3Object, PutObjectRequest, S3Client};
@@ -262,23 +266,33 @@ impl GarminSync {
         s3_bucket: &str,
         s3_key: &str,
     ) -> Result<StackString, Error> {
-        exponential_retry(|| async move {
-            let etag = self
-                .s3_client
-                .download_to_file(
-                    GetObjectRequest {
-                        bucket: s3_bucket.to_string(),
-                        key: s3_key.to_string(),
-                        ..GetObjectRequest::default()
-                    },
-                    local_file,
-                )
-                .await?
-                .e_tag
-                .unwrap_or_else(|| "".to_string());
-            Ok(etag.into())
+        let tmp_path = {
+            let mut rng = thread_rng();
+            let rand_str = Alphanumeric.sample_string(&mut rng, 8);
+            local_file.with_file_name(format!(".tmp_{}", rand_str))
+        };
+        let etag: Result<StackString, Error> = exponential_retry(|| {
+            let tmp_path = tmp_path.clone();
+            async move {
+                let etag = self
+                    .s3_client
+                    .download_to_file(
+                        GetObjectRequest {
+                            bucket: s3_bucket.to_string(),
+                            key: s3_key.to_string(),
+                            ..GetObjectRequest::default()
+                        },
+                        &tmp_path,
+                    )
+                    .await?
+                    .e_tag
+                    .unwrap_or_else(|| "".to_string());
+                Ok(etag.into())
+            }
         })
-        .await
+        .await;
+        fs::rename(tmp_path, local_file)?;
+        etag
     }
 
     pub async fn upload_file(

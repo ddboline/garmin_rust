@@ -1,11 +1,10 @@
-use anyhow::format_err;
 use chrono::{DateTime, Duration, Local, NaiveDate, NaiveDateTime, NaiveTime, Utc};
 use futures::future::try_join_all;
 use rweb::Schema;
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
 use std::{collections::HashMap, path::PathBuf};
-use tokio::{fs::remove_file, task::spawn_blocking};
+use tokio::task::spawn_blocking;
 use url::Url;
 
 use fitbit_lib::{
@@ -24,7 +23,7 @@ use garmin_lib::common::{
     garmin_config::GarminConfig,
     garmin_connect_activity::GarminConnectActivity,
     garmin_correction_lap::GarminCorrectionLap,
-    garmin_summary::{get_filename_from_datetime, get_list_of_files_from_db, GarminSummary},
+    garmin_summary::{get_list_of_files_from_db, GarminSummary},
     pgpool::PgPool,
     strava_activity::StravaActivity,
 };
@@ -722,16 +721,8 @@ pub struct AddGarminCorrectionRequest {
 }
 
 impl AddGarminCorrectionRequest {
-    pub async fn handle(self, pool: &PgPool, config: &GarminConfig) -> Result<StackString, Error> {
+    pub async fn handle(self, pool: &PgPool) -> Result<StackString, Error> {
         let mut corr_map = GarminCorrectionLap::read_corrections_from_db(pool).await?;
-        let filename = get_filename_from_datetime(pool, self.start_time.into())
-            .await?
-            .ok_or_else(|| {
-                format_err!(
-                    "start_time {} doesn't match any existing file",
-                    self.start_time
-                )
-            })?;
         let unique_key = (self.start_time.into(), self.lap_number);
 
         let mut new_corr = corr_map.get(&unique_key).map_or_else(
@@ -757,13 +748,6 @@ impl AddGarminCorrectionRequest {
 
         GarminCorrectionLap::dump_corrections_to_db(&corr_map, pool).await?;
         GarminCorrectionLap::fix_corrections_in_db(pool).await?;
-
-        let cache_path = config.cache_dir.join(&format!("{}.avro", filename));
-        let summary_path = config
-            .summary_cache
-            .join(&format!("{}.summary.avro", filename));
-        remove_file(cache_path).await?;
-        remove_file(summary_path).await?;
 
         let gcli = GarminCli::from_pool(pool)?;
         gcli.proc_everything().await?;

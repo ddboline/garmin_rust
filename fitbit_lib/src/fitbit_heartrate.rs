@@ -5,7 +5,7 @@ use fitparser::{profile::field_types::MesgNum, Value};
 use futures::future::try_join_all;
 use glob::glob;
 use itertools::Itertools;
-use log::debug;
+use log::{debug, info};
 use maplit::hashmap;
 use rayon::{
     iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelExtend, ParallelIterator},
@@ -15,7 +15,7 @@ use serde::{self, Deserialize, Deserializer, Serialize};
 use stack_string::StackString;
 use std::{
     collections::{HashMap, HashSet},
-    fs::File,
+    fs::{rename, File},
     path::Path,
 };
 
@@ -135,6 +135,7 @@ impl FitbitHeartRate {
                 }
             })
             .collect();
+        info!("fitbit_files {:?}", fitbit_files);
         let futures = days.iter().map(|date| async move {
             let constraint = format!("date(begin_datetime at time zone 'utc') = '{}'", date);
             let files: Vec<_> = get_list_of_files_from_db(&constraint, pool)
@@ -149,6 +150,7 @@ impl FitbitHeartRate {
                     }
                 })
                 .collect();
+            info!("files {} {}", date, files.len());
             Ok(files)
         });
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
@@ -157,10 +159,12 @@ impl FitbitHeartRate {
         let results: Result<Vec<_>, Error> = fitbit_files
             .into_par_iter()
             .map(|input_path| {
+                info!("read file {:?}", input_path);
                 let values: Vec<_> = Self::read_avro(&input_path)?
                     .into_par_iter()
                     .map(|h| (h.datetime, h.value))
                     .collect();
+                info!("values {:?} {}", input_path, values.len());
                 Ok(values)
             })
             .collect();
@@ -180,6 +184,7 @@ impl FitbitHeartRate {
         heartrate_values.par_extend(results?.into_par_iter().flatten());
         heartrate_values.par_sort();
         heartrate_values.dedup();
+        info!("heartrate_values {}", heartrate_values.len());
         Ok(heartrate_values)
     }
 
@@ -243,7 +248,10 @@ impl FitbitHeartRate {
         is_demo: bool,
     ) -> Result<HashMap<StackString, StackString>, Error> {
         let button_date = button_date.unwrap_or_else(|| Local::today().naive_local());
-
+        info!(
+            "get_heartrate_plot {} {} {:?}",
+            start_date, end_date, button_date
+        );
         let mut final_values: Vec<_> =
             Self::get_heartrate_values(config, pool, start_date, end_date)
                 .await?
@@ -273,6 +281,7 @@ impl FitbitHeartRate {
                     })
                 })
                 .collect();
+        info!("final_value {}", final_values.len());
         final_values.par_sort();
         let js_str = serde_json::to_string(&final_values)?;
 
@@ -311,17 +320,6 @@ impl FitbitHeartRate {
                         )
                     },
                     ""
-                    // if is_demo {
-                    //     "".to_string()
-                    // } else {
-                    //     format!(
-                    //         r#"
-                    //     <button type="submit" id="ID"
-                    //      onclick="connect_hr_sync('{date}');">Sync Garmin {date}</button>
-                    //     "#,
-                    //         date = date
-                    //     )
-                    // },
                 )
             })
             .collect();
@@ -360,13 +358,27 @@ impl FitbitHeartRate {
     }
 
     pub fn dump_to_avro<T: AsRef<Path>>(values: &[Self], output_filename: T) -> Result<(), Error> {
+        use rand::{
+            distributions::{Alphanumeric, DistString},
+            thread_rng,
+        };
         let schema = Schema::parse_str(FITBITHEARTRATE_SCHEMA)?;
 
-        let output_file = File::create(output_filename)?;
+        let tmp_path = {
+            let mut rng = thread_rng();
+            let rand_str = Alphanumeric.sample_string(&mut rng, 8);
+            output_filename
+                .as_ref()
+                .with_file_name(format!(".tmp_{}", rand_str))
+        };
+
+        let output_file = File::create(&tmp_path)?;
 
         let mut writer = Writer::with_codec(&schema, output_file, Codec::Snappy);
         writer.append_ser(values)?;
         writer.flush()?;
+
+        rename(&tmp_path, output_filename)?;
         Ok(())
     }
 

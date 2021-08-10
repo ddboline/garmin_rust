@@ -35,10 +35,6 @@ pub struct GarminConfigInner {
     pub cache_dir: PathBuf,
     #[serde(default = "default_port")]
     pub port: u32,
-    #[serde(default = "default_summary_cache")]
-    pub summary_cache: PathBuf,
-    #[serde(default = "default_gps_bucket")]
-    pub summary_bucket: StackString,
     #[serde(default = "default_n_db_workers")]
     pub n_db_workers: usize,
     #[serde(default = "default_secret_key")]
@@ -122,9 +118,6 @@ fn default_gps_dir() -> PathBuf {
 fn default_cache_dir() -> PathBuf {
     cache_dir().join("cache")
 }
-fn default_summary_cache() -> PathBuf {
-    cache_dir().join("summary_cache")
-}
 fn default_fitbit_cachedir() -> PathBuf {
     cache_dir().join("fitbit_cache")
 }
@@ -177,7 +170,6 @@ impl GarminConfigInner {
             gps_dir: default_gps_dir(),
             cache_dir: default_cache_dir(),
             port: default_port(),
-            summary_cache: default_summary_cache(),
             n_db_workers: default_n_db_workers(),
             secret_key: default_secret_key(),
             domain: default_domain(),
@@ -224,8 +216,6 @@ impl GarminConfig {
             Err(format_err!("No GPS_BUCKET specified"))
         } else if &conf.cache_bucket == "" {
             Err(format_err!("No CACHE_BUCKET specified"))
-        } else if &conf.summary_bucket == "" {
-            Err(format_err!("No SUMMARY_BUCKET specified"))
         } else {
             Ok(Self(Arc::new(conf)))
         }

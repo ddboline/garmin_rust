@@ -16,10 +16,11 @@ use std::{
     collections::{HashMap, HashSet},
     fs,
     hash::{Hash, Hasher},
-    path::Path,
+    path::{Path, PathBuf},
     time::SystemTime,
 };
 use sts_profile_auth::get_client_sts;
+use tokio::task::spawn_blocking;
 
 use crate::utils::garmin_util::{exponential_retry, get_md5sum};
 
@@ -191,53 +192,12 @@ impl GarminSync {
         }
         debug!("uploaded {:?}", uploaded_files);
 
-        let downloaded: Result<Vec<_>, Error> = key_list
-            .into_par_iter()
-            .filter_map(|item| {
-                let res = || {
-                    let mut do_download = false;
-
-                    if file_set.contains_key(&item.key) {
-                        let (tmod_, size_) = file_set[&item.key];
-                        if item.timestamp > tmod_ {
-                            if check_md5sum {
-                                let file_name = local_dir.join(item.key.as_str());
-                                let md5_ = get_md5sum(&file_name)?;
-                                if md5_.as_str() != item.etag.as_str() {
-                                    debug!(
-                                        "download md5 {} {} {} {} {} ",
-                                        item.key, md5_, item.etag, item.timestamp, tmod_
-                                    );
-                                    let file_name = local_dir.join(item.key.as_str());
-                                    fs::remove_file(&file_name)?;
-                                    do_download = true;
-                                }
-                            } else if item.size > size_ {
-                                let file_name = local_dir.join(item.key.as_str());
-                                debug!(
-                                    "download size {} {} {} {} {}",
-                                    item.key, size_, item.size, item.timestamp, tmod_
-                                );
-                                fs::remove_file(&file_name)?;
-                                do_download = true;
-                            }
-                        }
-                    } else {
-                        do_download = true;
-                    };
-
-                    if do_download {
-                        let file_name = local_dir.join(item.key.as_str());
-                        debug!("download {} {}", s3_bucket, item.key);
-                        Ok(Some((file_name, item.key)))
-                    } else {
-                        Ok(None)
-                    }
-                };
-                res().transpose()
-            })
-            .collect();
-        let downloaded = downloaded?;
+        let downloaded = spawn_blocking({
+            let local_dir = local_dir.to_path_buf();
+            let s3_bucket: StackString = s3_bucket.into();
+            move || get_downloaded(key_list, check_md5sum, &file_set, &local_dir, &s3_bucket)
+        })
+        .await??;
         let downloaded_files: Vec<_> = downloaded
             .iter()
             .map(|(file_name, _)| file_name.clone())
@@ -291,7 +251,7 @@ impl GarminSync {
             }
         })
         .await;
-        fs::rename(tmp_path, local_file)?;
+        tokio::fs::rename(tmp_path, local_file).await?;
         etag
     }
 
@@ -326,4 +286,59 @@ impl GarminSync {
         })
         .await
     }
+}
+
+fn get_downloaded(
+    key_list: Vec<KeyItem>,
+    check_md5sum: bool,
+    file_set: &HashMap<StackString, (i64, u64)>,
+    local_dir: &Path,
+    s3_bucket: &str,
+) -> Result<Vec<(PathBuf, StackString)>, Error> {
+    key_list
+        .into_par_iter()
+        .filter_map(|item| {
+            let res = || {
+                let mut do_download = false;
+
+                if file_set.contains_key(&item.key) {
+                    let (tmod_, size_) = file_set[&item.key];
+                    if item.timestamp > tmod_ {
+                        if check_md5sum {
+                            let file_name = local_dir.join(item.key.as_str());
+                            let md5_ = get_md5sum(&file_name)?;
+                            if md5_.as_str() != item.etag.as_str() {
+                                debug!(
+                                    "download md5 {} {} {} {} {} ",
+                                    item.key, md5_, item.etag, item.timestamp, tmod_
+                                );
+                                let file_name = local_dir.join(item.key.as_str());
+                                fs::remove_file(&file_name)?;
+                                do_download = true;
+                            }
+                        } else if item.size > size_ {
+                            let file_name = local_dir.join(item.key.as_str());
+                            debug!(
+                                "download size {} {} {} {} {}",
+                                item.key, size_, item.size, item.timestamp, tmod_
+                            );
+                            fs::remove_file(&file_name)?;
+                            do_download = true;
+                        }
+                    }
+                } else {
+                    do_download = true;
+                };
+
+                if do_download {
+                    let file_name = local_dir.join(item.key.as_str());
+                    debug!("download {} {}", s3_bucket, item.key);
+                    Ok(Some((file_name, item.key)))
+                } else {
+                    Ok(None)
+                }
+            };
+            res().transpose()
+        })
+        .collect()
 }

@@ -152,10 +152,10 @@ impl GarminConnectHrSyncRequest {
         let mut session = proxy.lock().await;
         session.init().await?;
 
-        let heartrate_data = session.get_heartrate(self.date.into()).await?;
+        let heartrate_data = session.get_heartrate(self.date).await?;
         FitbitClient::import_garmin_connect_heartrate(config.clone(), &heartrate_data).await?;
         let config = config.clone();
-        FitbitHeartRate::calculate_summary_statistics(&config, pool, self.date.into()).await?;
+        FitbitHeartRate::calculate_summary_statistics(&config, pool, self.date).await?;
         Ok(heartrate_data)
     }
 }
@@ -170,7 +170,7 @@ impl GarminConnectHrApiRequest {
         let mut session = proxy.lock().await;
         session.init().await?;
 
-        let heartrate_data = session.get_heartrate(self.date.into()).await?;
+        let heartrate_data = session.get_heartrate(self.date).await?;
         let hr_vals = FitbitHeartRate::from_garmin_connect_hr(&heartrate_data);
         Ok(hr_vals)
     }
@@ -275,7 +275,7 @@ impl FitbitHeartrateApiRequest {
     pub async fn handle(&self, config: &GarminConfig) -> Result<Vec<FitbitHeartRate>, Error> {
         let client = FitbitClient::with_auth(config.clone()).await?;
         client
-            .get_fitbit_intraday_time_series_heartrate(self.date.into())
+            .get_fitbit_intraday_time_series_heartrate(self.date)
             .await
             .map_err(Into::into)
     }
@@ -290,7 +290,7 @@ impl FitbitHeartrateCacheRequest {
     pub async fn handle(self, config: &GarminConfig) -> Result<Vec<FitbitHeartRate>, Error> {
         let config = config.clone();
         spawn_blocking(move || {
-            FitbitHeartRate::read_avro_by_date(&config, self.date.into()).map_err(Into::into)
+            FitbitHeartRate::read_avro_by_date(&config, self.date).map_err(Into::into)
         })
         .await?
     }
@@ -346,9 +346,8 @@ impl FitbitSyncRequest {
         config: &GarminConfig,
     ) -> Result<Vec<FitbitHeartRate>, Error> {
         let client = FitbitClient::with_auth(config.clone()).await?;
-        let heartrates = client.import_fitbit_heartrate(self.date.into()).await?;
-        FitbitHeartRate::calculate_summary_statistics(&client.config, pool, self.date.into())
-            .await?;
+        let heartrates = client.import_fitbit_heartrate(self.date).await?;
+        FitbitHeartRate::calculate_summary_statistics(&client.config, pool, self.date).await?;
         Ok(heartrates)
     }
 }
@@ -395,20 +394,15 @@ impl ScaleMeasurementRequest {
         Self {
             start_date: match self.start_date {
                 Some(d) => Some(d),
-                None => Some(
-                    (Local::now() - Duration::days(ndays))
-                        .naive_utc()
-                        .date()
-                        .into(),
-                ),
+                None => Some((Local::now() - Duration::days(ndays)).naive_utc().date()),
             },
             end_date: match self.end_date {
                 Some(d) => Some(d),
-                None => Some(Local::now().naive_utc().date().into()),
+                None => Some(Local::now().naive_utc().date()),
             },
             button_date: match self.button_date {
                 Some(d) => Some(d),
-                None => Some(Local::now().naive_utc().date().into()),
+                None => Some(Local::now().naive_utc().date()),
             },
             offset: self.offset,
         }
@@ -494,9 +488,9 @@ impl From<ScaleMeasurementRequest> for FitbitHeartratePlotRequest {
     fn from(item: ScaleMeasurementRequest) -> Self {
         let item = item.add_default(3);
         Self {
-            start_date: item.start_date.expect("this should be impossible").into(),
-            end_date: item.end_date.expect("this should be impossible").into(),
-            button_date: item.button_date.map(Into::into),
+            start_date: item.start_date.expect("this should be impossible"),
+            end_date: item.end_date.expect("this should be impossible"),
+            button_date: item.button_date,
             is_demo: false,
         }
     }
@@ -594,17 +588,11 @@ pub struct StravaActivitiesRequest {
 impl StravaActivitiesRequest {
     pub async fn handle(&self, config: &GarminConfig) -> Result<Vec<StravaActivity>, Error> {
         let client = StravaClient::with_auth(config.clone()).await?;
-        let start_date = self.start_date.map(|s| {
-            DateTime::from_utc(
-                NaiveDateTime::new(s.into(), NaiveTime::from_hms(0, 0, 0)),
-                Utc,
-            )
-        });
+        let start_date = self
+            .start_date
+            .map(|s| DateTime::from_utc(NaiveDateTime::new(s, NaiveTime::from_hms(0, 0, 0)), Utc));
         let end_date = self.end_date.map(|s| {
-            DateTime::from_utc(
-                NaiveDateTime::new(s.into(), NaiveTime::from_hms(23, 59, 59)),
-                Utc,
-            )
+            DateTime::from_utc(NaiveDateTime::new(s, NaiveTime::from_hms(23, 59, 59)), Utc)
         });
         client
             .get_all_strava_activites(start_date, end_date)
@@ -748,12 +736,12 @@ pub struct AddGarminCorrectionRequest {
 impl AddGarminCorrectionRequest {
     pub async fn handle(self, pool: &PgPool) -> Result<StackString, Error> {
         let mut corr_map = GarminCorrectionLap::read_corrections_from_db(pool).await?;
-        let unique_key = (self.start_time.into(), self.lap_number);
+        let unique_key = (self.start_time, self.lap_number);
 
         let mut new_corr = corr_map.get(&unique_key).map_or_else(
             || {
                 GarminCorrectionLap::new()
-                    .with_start_time(self.start_time.into())
+                    .with_start_time(self.start_time)
                     .with_lap_number(self.lap_number)
             },
             |corr| *corr,

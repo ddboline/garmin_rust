@@ -12,6 +12,7 @@
 #![allow(clippy::similar_names)]
 #![allow(clippy::upper_case_acronyms)]
 #![allow(clippy::default_trait_access)]
+#![allow(clippy::unused_async)]
 
 pub mod errors;
 pub mod garmin_requests;
@@ -73,7 +74,7 @@ pub struct FitbitHeartRateWrapper {
 impl From<FitbitHeartRate> for FitbitHeartRateWrapper {
     fn from(item: FitbitHeartRate) -> Self {
         Self {
-            datetime: item.datetime.into(),
+            datetime: item.datetime,
             value: item.value,
         }
     }
@@ -82,7 +83,7 @@ impl From<FitbitHeartRate> for FitbitHeartRateWrapper {
 impl From<FitbitHeartRateWrapper> for FitbitHeartRate {
     fn from(item: FitbitHeartRateWrapper) -> Self {
         Self {
-            datetime: item.datetime.into(),
+            datetime: item.datetime,
             value: item.value,
         }
     }
@@ -120,7 +121,7 @@ impl From<StravaActivity> for StravaActivityWrapper {
     fn from(item: StravaActivity) -> Self {
         Self {
             name: item.name,
-            start_date: item.start_date.into(),
+            start_date: item.start_date,
             id: item.id,
             distance: item.distance,
             moving_time: item.moving_time,
@@ -138,7 +139,7 @@ impl From<StravaActivityWrapper> for StravaActivity {
     fn from(item: StravaActivityWrapper) -> Self {
         Self {
             name: item.name,
-            start_date: item.start_date.into(),
+            start_date: item.start_date,
             id: item.id,
             distance: item.distance,
             moving_time: item.moving_time,
@@ -165,7 +166,7 @@ pub struct FitbitBodyWeightFatWrapper {
 impl From<FitbitBodyWeightFat> for FitbitBodyWeightFatWrapper {
     fn from(item: FitbitBodyWeightFat) -> Self {
         Self {
-            datetime: item.datetime.into(),
+            datetime: item.datetime,
             weight: item.weight,
             fat: item.fat,
         }
@@ -194,7 +195,7 @@ impl From<ScaleMeasurement> for ScaleMeasurementWrapper {
     fn from(item: ScaleMeasurement) -> Self {
         Self {
             id: item.id,
-            datetime: item.datetime.into(),
+            datetime: item.datetime,
             mass: item.mass,
             fat_pct: item.fat_pct,
             water_pct: item.water_pct,
@@ -208,7 +209,7 @@ impl From<ScaleMeasurementWrapper> for ScaleMeasurement {
     fn from(item: ScaleMeasurementWrapper) -> Self {
         Self {
             id: item.id,
-            datetime: item.datetime.into(),
+            datetime: item.datetime,
             mass: item.mass,
             fat_pct: item.fat_pct,
             water_pct: item.water_pct,
@@ -266,7 +267,7 @@ impl From<FitbitActivity> for FitbitActivityWrapper {
     fn from(item: FitbitActivity) -> Self {
         Self {
             log_type: item.log_type,
-            start_time: item.start_time.into(),
+            start_time: item.start_time,
             tcx_link: item.tcx_link,
             activity_type_id: item.activity_type_id,
             activity_name: item.activity_name,
@@ -283,7 +284,7 @@ impl From<FitbitActivityWrapper> for FitbitActivity {
     fn from(item: FitbitActivityWrapper) -> Self {
         Self {
             log_type: item.log_type,
-            start_time: item.start_time.into(),
+            start_time: item.start_time,
             tcx_link: item.tcx_link,
             activity_type_id: item.activity_type_id,
             activity_name: item.activity_name,
@@ -427,7 +428,7 @@ impl From<GarminConnectActivity> for GarminConnectActivityWrapper {
             activity_id: item.activity_id,
             activity_name: item.activity_name,
             description: item.description,
-            start_time_gmt: item.start_time_gmt.into(),
+            start_time_gmt: item.start_time_gmt,
             distance: item.distance,
             duration: item.duration,
             elapsed_duration: item.elapsed_duration,
@@ -446,7 +447,7 @@ impl From<GarminConnectActivityWrapper> for GarminConnectActivity {
             activity_id: item.activity_id,
             activity_name: item.activity_name,
             description: item.description,
-            start_time_gmt: item.start_time_gmt.into(),
+            start_time_gmt: item.start_time_gmt,
             distance: item.distance,
             duration: item.duration,
             elapsed_duration: item.elapsed_duration,
@@ -489,7 +490,7 @@ impl From<GarminConnectUserDailySummary> for GarminConnectUserDailySummaryWrappe
             total_steps: item.total_steps,
             total_distance_meters: item.total_distance_meters,
             user_daily_summary_id: item.user_daily_summary_id,
-            calendar_date: item.calendar_date.into(),
+            calendar_date: item.calendar_date,
         }
     }
 }
@@ -515,7 +516,7 @@ pub struct FitbitStatisticsSummaryWrapper {
 impl From<FitbitStatisticsSummary> for FitbitStatisticsSummaryWrapper {
     fn from(item: FitbitStatisticsSummary) -> Self {
         Self {
-            date: item.date.into(),
+            date: item.date,
             min_heartrate: item.min_heartrate,
             max_heartrate: item.max_heartrate,
             mean_heartrate: item.mean_heartrate,
@@ -529,7 +530,7 @@ impl From<FitbitStatisticsSummary> for FitbitStatisticsSummaryWrapper {
 impl From<FitbitStatisticsSummaryWrapper> for FitbitStatisticsSummary {
     fn from(item: FitbitStatisticsSummaryWrapper) -> Self {
         Self {
-            date: item.date.into(),
+            date: item.date,
             min_heartrate: item.min_heartrate,
             max_heartrate: item.max_heartrate,
             mean_heartrate: item.mean_heartrate,

@@ -13,22 +13,19 @@
 #![allow(clippy::upper_case_acronyms)]
 #![allow(clippy::default_trait_access)]
 
-pub mod datetime_wrapper;
 pub mod errors;
 pub mod garmin_requests;
 pub mod garmin_rust_app;
 pub mod garmin_rust_routes;
-pub mod iso_8601_datetime_wrapper;
 pub mod logged_user;
-pub mod naivedate_wrapper;
 pub mod sport_types_wrapper;
-pub mod uuid_wrapper;
 
+use chrono::{DateTime, NaiveDate, Utc};
 use derive_more::{From, Into};
-use naivedate_wrapper::NaiveDateWrapper;
-use rweb::openapi::{self, Entity, Schema};
+use rweb::openapi::{self, ComponentDescriptor, ComponentOrInlineSchema, Entity, Schema};
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
+use std::borrow::Cow;
 
 use fitbit_lib::{
     fitbit_client::{FitbitBodyWeightFatUpdateOutput, FitbitUserProfile},
@@ -37,32 +34,39 @@ use fitbit_lib::{
     scale_measurement::ScaleMeasurement,
 };
 use garmin_connect_lib::garmin_connect_client::GarminConnectUserDailySummary;
-use garmin_lib::common::{
-    fitbit_activity::FitbitActivity, garmin_connect_activity::GarminConnectActivity,
-    strava_activity::StravaActivity, strava_timezone::StravaTimeZone,
+use garmin_lib::{
+    common::{
+        fitbit_activity::FitbitActivity, garmin_connect_activity::GarminConnectActivity,
+        strava_activity::StravaActivity, strava_timezone::StravaTimeZone,
+    },
+    utils::iso_8601_datetime,
 };
 use race_result_analysis::{race_results::RaceResults, race_type::RaceType};
 use strava_lib::strava_client::StravaAthlete;
 
-use crate::{datetime_wrapper::DateTimeWrapper, sport_types_wrapper::SportTypesWrapper};
+use crate::sport_types_wrapper::SportTypesWrapper;
 
 #[derive(Into, From, Debug, PartialEq, Copy, Clone, Eq, Serialize, Deserialize)]
 pub struct StravaTimeZoneWrapper(StravaTimeZone);
 
 impl Entity for StravaTimeZoneWrapper {
-    #[inline]
-    fn describe() -> Schema {
-        Schema {
+    fn type_name() -> Cow<'static, str> {
+        "timezone".into()
+    }
+    fn describe(_: &mut ComponentDescriptor) -> ComponentOrInlineSchema {
+        ComponentOrInlineSchema::Inline(Schema {
             schema_type: Some(openapi::Type::String),
             format: "timezone".into(),
             ..Schema::default()
-        }
+        })
     }
 }
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, rweb::Schema)]
 pub struct FitbitHeartRateWrapper {
-    pub datetime: DateTimeWrapper,
+    #[schema(description = "DateTime")]
+    pub datetime: DateTime<Utc>,
+    #[schema(description = "Heartrate Value (bpm)")]
     pub value: i32,
 }
 
@@ -86,18 +90,29 @@ impl From<FitbitHeartRateWrapper> for FitbitHeartRate {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, rweb::Schema)]
 pub struct StravaActivityWrapper {
+    #[schema(description = "Activity Name")]
     pub name: StackString,
-    #[serde(with = "iso_8601_datetime_wrapper")]
-    pub start_date: DateTimeWrapper,
+    #[serde(with = "iso_8601_datetime")]
+    #[schema(description = "Start Date")]
+    pub start_date: DateTime<Utc>,
+    #[schema(description = "Activity ID")]
     pub id: i64,
+    #[schema(description = "Distance (m)")]
     pub distance: Option<f64>,
+    #[schema(description = "Moving Time (s)")]
     pub moving_time: Option<i64>,
+    #[schema(description = "Elapsed Time (s)")]
     pub elapsed_time: i64,
+    #[schema(description = "Total Elevation Gain (m)")]
     pub total_elevation_gain: Option<f64>,
+    #[schema(description = "Maximum Elevation")]
     pub elev_high: Option<f64>,
+    #[schema(description = "Minimum Elevation")]
     pub elev_low: Option<f64>,
     #[serde(with = "sport_types_wrapper")]
+    #[schema(description = "Activity Type")]
     pub activity_type: SportTypesWrapper,
+    #[schema(description = "Time Zone")]
     pub timezone: StravaTimeZoneWrapper,
 }
 
@@ -139,8 +154,11 @@ impl From<StravaActivityWrapper> for StravaActivity {
 
 #[derive(Serialize, Deserialize, Debug, rweb::Schema)]
 pub struct FitbitBodyWeightFatWrapper {
-    pub datetime: DateTimeWrapper,
+    #[schema(description = "DateTime")]
+    pub datetime: DateTime<Utc>,
+    #[schema(description = "Weight (lbs)")]
     pub weight: f64,
+    #[schema(description = "Fat %")]
     pub fat: f64,
 }
 
@@ -156,12 +174,19 @@ impl From<FitbitBodyWeightFat> for FitbitBodyWeightFatWrapper {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Copy, PartialEq, rweb::Schema)]
 pub struct ScaleMeasurementWrapper {
+    #[schema(description = "Scale Measurement ID")]
     pub id: i32,
-    pub datetime: DateTimeWrapper,
+    #[schema(description = "DateTime")]
+    pub datetime: DateTime<Utc>,
+    #[schema(description = "Mass (lbs)")]
     pub mass: f64,
+    #[schema(description = "Fat %")]
     pub fat_pct: f64,
+    #[schema(description = "Water %")]
     pub water_pct: f64,
+    #[schema(description = "Muscle %")]
     pub muscle_pct: f64,
+    #[schema(description = "Bone %")]
     pub bone_pct: f64,
 }
 
@@ -195,8 +220,11 @@ impl From<ScaleMeasurementWrapper> for ScaleMeasurement {
 
 #[derive(Debug, Serialize, rweb::Schema)]
 pub struct FitbitBodyWeightFatUpdateOutputWrapper {
+    #[schema(description = "Measurements")]
     pub measurements: Vec<ScaleMeasurementWrapper>,
-    pub activities: Vec<DateTimeWrapper>,
+    #[schema(description = "Activity DateTimes")]
+    pub activities: Vec<DateTime<Utc>>,
+    #[schema(description = "Duplicate Messages")]
     pub duplicates: Vec<StackString>,
 }
 
@@ -212,15 +240,25 @@ impl From<FitbitBodyWeightFatUpdateOutput> for FitbitBodyWeightFatUpdateOutputWr
 
 #[derive(Serialize, Deserialize, Clone, Debug, rweb::Schema)]
 pub struct FitbitActivityWrapper {
+    #[schema(description = "Log Type")]
     pub log_type: StackString,
-    pub start_time: DateTimeWrapper,
+    #[schema(description = "Start Datetime")]
+    pub start_time: DateTime<Utc>,
+    #[schema(description = "TCX Link")]
     pub tcx_link: Option<StackString>,
+    #[schema(description = "Activity Type ID")]
     pub activity_type_id: Option<i64>,
+    #[schema(description = "Activity Name")]
     pub activity_name: Option<StackString>,
+    #[schema(description = "Duration (ms)")]
     pub duration: i64,
+    #[schema(description = "Distance (mi)")]
     pub distance: Option<f64>,
+    #[schema(description = "Distance Unit")]
     pub distance_unit: Option<StackString>,
+    #[schema(description = "Number of Steps")]
     pub steps: Option<i64>,
+    #[schema(description = "Log ID")]
     pub log_id: i64,
 }
 
@@ -260,12 +298,19 @@ impl From<FitbitActivityWrapper> for FitbitActivity {
 
 #[derive(Serialize, Deserialize, rweb::Schema)]
 pub struct StravaAthleteWrapper {
+    #[schema(description = "Athlete ID")]
     pub id: u64,
+    #[schema(description = "Username")]
     pub username: StackString,
+    #[schema(description = "First Name")]
     pub firstname: StackString,
+    #[schema(description = "Last Name")]
     pub lastname: StackString,
+    #[schema(description = "City")]
     pub city: StackString,
+    #[schema(description = "State")]
     pub state: StackString,
+    #[schema(description = "Sex")]
     pub sex: StackString,
 }
 
@@ -285,23 +330,41 @@ impl From<StravaAthlete> for StravaAthleteWrapper {
 
 #[derive(Serialize, Deserialize, Debug, rweb::Schema)]
 pub struct FitbitUserProfileWrapper {
+    #[schema(description = "Average Daily Steps")]
     pub average_daily_steps: u64,
+    #[schema(description = "Country")]
     pub country: StackString,
+    #[schema(description = "Date of Birth")]
     pub date_of_birth: StackString,
+    #[schema(description = "Display Name")]
     pub display_name: StackString,
+    #[schema(description = "Distance Unit")]
     pub distance_unit: StackString,
+    #[schema(description = "Encoded ID")]
     pub encoded_id: StackString,
+    #[schema(description = "First Name")]
     pub first_name: StackString,
+    #[schema(description = "Last Name")]
     pub last_name: StackString,
+    #[schema(description = "Full Name")]
     pub full_name: StackString,
+    #[schema(description = "Gender")]
     pub gender: StackString,
+    #[schema(description = "Height (in)")]
     pub height: f64,
+    #[schema(description = "Height Units")]
     pub height_unit: StackString,
+    #[schema(description = "Time Zone")]
     pub timezone: StackString,
+    #[schema(description = "Offset From UTC in ms")]
     pub offset_from_utc_millis: i64,
+    #[schema(description = "Stride Length Running (in)")]
     pub stride_length_running: f64,
+    #[schema(description = "Stride Length Walking (in)")]
     pub stride_length_walking: f64,
+    #[schema(description = "Weight (lbs)")]
     pub weight: f64,
+    #[schema(description = "Weight Units")]
     pub weight_unit: StackString,
 }
 
@@ -332,17 +395,29 @@ impl From<FitbitUserProfile> for FitbitUserProfileWrapper {
 
 #[derive(Serialize, Deserialize, Debug, rweb::Schema)]
 pub struct GarminConnectActivityWrapper {
+    #[schema(description = "Activity ID")]
     pub activity_id: i64,
+    #[schema(description = "Activity Name")]
     pub activity_name: Option<StackString>,
+    #[schema(description = "Description")]
     pub description: Option<StackString>,
-    pub start_time_gmt: DateTimeWrapper,
+    #[schema(description = "Start Time UTC")]
+    pub start_time_gmt: DateTime<Utc>,
+    #[schema(description = "Distance (m)")]
     pub distance: Option<f64>,
+    #[schema(description = "Duration (s)")]
     pub duration: f64,
+    #[schema(description = "Elapsed Duration (s)")]
     pub elapsed_duration: Option<f64>,
+    #[schema(description = "Moving Duration (s)")]
     pub moving_duration: Option<f64>,
+    #[schema(description = "Number of Steps")]
     pub steps: Option<i64>,
+    #[schema(description = "Calories (kCal)")]
     pub calories: Option<f64>,
+    #[schema(description = "Average Heartrate")]
     pub average_hr: Option<f64>,
+    #[schema(description = "Max Heartrate")]
     pub max_hr: Option<f64>,
 }
 
@@ -386,14 +461,22 @@ impl From<GarminConnectActivityWrapper> for GarminConnectActivity {
 
 #[derive(Serialize, Deserialize, Debug, rweb::Schema)]
 pub struct GarminConnectUserDailySummaryWrapper {
+    #[schema(description = "User Profile ID")]
     pub user_profile_id: u64,
+    #[schema(description = "Total Calories (kCal)")]
     pub total_kilocalories: Option<f64>,
+    #[schema(description = "Active Calories (kCal)")]
     pub active_kilocalories: Option<f64>,
+    #[schema(description = "BMR Calories (kCal)")]
     pub bmr_kilocalories: Option<f64>,
+    #[schema(description = "Total Number of Steps")]
     pub total_steps: Option<u64>,
+    #[schema(description = "Total Distance (m)")]
     pub total_distance_meters: Option<u64>,
+    #[schema(description = "User Daily Summary ID")]
     pub user_daily_summary_id: Option<u64>,
-    pub calendar_date: NaiveDateWrapper,
+    #[schema(description = "Calendar Date")]
+    pub calendar_date: NaiveDate,
 }
 
 impl From<GarminConnectUserDailySummary> for GarminConnectUserDailySummaryWrapper {
@@ -413,12 +496,19 @@ impl From<GarminConnectUserDailySummary> for GarminConnectUserDailySummaryWrappe
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, rweb::Schema)]
 pub struct FitbitStatisticsSummaryWrapper {
-    pub date: NaiveDateWrapper,
+    #[schema(description = "Date")]
+    pub date: NaiveDate,
+    #[schema(description = "Minimum Heartrate")]
     pub min_heartrate: f64,
+    #[schema(description = "Maximum Heartrate")]
     pub max_heartrate: f64,
+    #[schema(description = "Mean Heartrate")]
     pub mean_heartrate: f64,
+    #[schema(description = "Median Heartrate")]
     pub median_heartrate: f64,
+    #[schema(description = "Heartrate Standard Deviation")]
     pub stdev_heartrate: f64,
+    #[schema(description = "Number of Entries")]
     pub number_of_entries: i32,
 }
 
@@ -482,13 +572,21 @@ impl From<RaceTypeWrapper> for RaceType {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, rweb::Schema)]
 pub struct RaceResultsWrapper {
+    #[schema(description = "Race Result ID")]
     pub id: i32,
+    #[schema(description = "Race Type")]
     pub race_type: RaceTypeWrapper,
-    pub race_date: Option<NaiveDateWrapper>,
+    #[schema(description = "Race Date")]
+    pub race_date: Option<NaiveDate>,
+    #[schema(description = "Race Name")]
     pub race_name: Option<StackString>,
+    #[schema(description = "Race Distance (m)")]
     pub race_distance: i32, // distance in meters
+    #[schema(description = "Race Duration (s)")]
     pub race_time: f64,
+    #[schema(description = "Race Flag")]
     pub race_flag: bool,
+    #[schema(description = "Race Summary IDs")]
     pub race_summary_ids: Vec<Option<i32>>,
 }
 

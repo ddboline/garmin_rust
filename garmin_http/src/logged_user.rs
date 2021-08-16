@@ -11,22 +11,25 @@ use std::{
     env::var,
     str::FromStr,
 };
+use uuid::Uuid;
 
 use garmin_lib::{common::pgpool::PgPool, utils::garmin_util::get_authorized_users};
 
-use crate::{errors::ServiceError as Error, uuid_wrapper::UuidWrapper};
+use crate::errors::ServiceError as Error;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Schema)]
 pub struct LoggedUser {
+    #[schema(description = "Email Address")]
     pub email: StackString,
-    pub session: UuidWrapper,
+    #[schema(description = "Session UUID")]
+    pub session: Uuid,
 }
 
 impl From<AuthorizedUser> for LoggedUser {
     fn from(user: AuthorizedUser) -> Self {
         Self {
             email: user.email,
-            session: user.session.into(),
+            session: user.session,
         }
     }
 }

@@ -1,6 +1,6 @@
 [package]
 name = "garmin_connect_lib"
-version = "0.11.36"
+version = "0.11.37"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -26,5 +26,4 @@ bytes = "1.0"
 smallvec = "1.6"
 itertools = "0.10"
 http = "0.2"
-rweb = {version="0.12", features=["openapi"]}
-stack-string = { version="0.2", features=["postgres_types", "rweb-openapi"] }
+stack-string = { version="0.3", features=["postgres_types"] }

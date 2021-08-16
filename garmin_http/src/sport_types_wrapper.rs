@@ -9,18 +9,31 @@ use garmin_lib::utils::sport_types::SportTypes;
 #[derive(Serialize, Debug, Clone, Copy, Hash, Eq, PartialEq, Schema, Deserialize)]
 #[serde(into = "StackString", try_from = "StackString")]
 pub enum SportTypesWrapper {
+    #[serde(rename = "running")]
     Running,
+    #[serde(rename = "biking")]
     Biking,
+    #[serde(rename = "walking")]
     Walking,
+    #[serde(rename = "hiking")]
     Hiking,
+    #[serde(rename = "ultimate")]
     Ultimate,
+    #[serde(rename = "elliptical")]
     Elliptical,
+    #[serde(rename = "stairs")]
     Stairs,
+    #[serde(rename = "lifting")]
     Lifting,
+    #[serde(rename = "swimming")]
     Swimming,
+    #[serde(rename = "other")]
     Other,
+    #[serde(rename = "snowshoeing")]
     Snowshoeing,
+    #[serde(rename = "skiing")]
     Skiing,
+    #[serde(rename = "none")]
     None,
 }
 

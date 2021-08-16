@@ -34,8 +34,7 @@ use race_result_analysis::{
 use strava_lib::strava_client::{StravaAthlete, StravaClient};
 
 use crate::{
-    datetime_wrapper::DateTimeWrapper, errors::ServiceError as Error,
-    garmin_rust_app::ConnectProxy, naivedate_wrapper::NaiveDateWrapper,
+    errors::ServiceError as Error, garmin_rust_app::ConnectProxy,
     sport_types_wrapper::SportTypesWrapper, FitbitActivityWrapper, FitbitHeartRateWrapper,
     FitbitStatisticsSummaryWrapper, GarminConnectActivityWrapper, RaceResultsWrapper,
     RaceTypeWrapper, ScaleMeasurementWrapper, StravaActivityWrapper,
@@ -140,7 +139,7 @@ impl GarminConnectSyncRequest {
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct GarminConnectHrSyncRequest {
-    pub date: NaiveDateWrapper,
+    pub date: NaiveDate,
 }
 
 impl GarminConnectHrSyncRequest {
@@ -163,7 +162,7 @@ impl GarminConnectHrSyncRequest {
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct GarminConnectHrApiRequest {
-    pub date: NaiveDateWrapper,
+    pub date: NaiveDate,
 }
 
 impl GarminConnectHrApiRequest {
@@ -179,8 +178,8 @@ impl GarminConnectHrApiRequest {
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct StravaSyncRequest {
-    pub start_datetime: Option<DateTimeWrapper>,
-    pub end_datetime: Option<DateTimeWrapper>,
+    pub start_datetime: Option<DateTime<Utc>>,
+    pub end_datetime: Option<DateTime<Utc>>,
 }
 
 impl StravaSyncRequest {
@@ -250,7 +249,9 @@ impl FitbitRefreshRequest {
 
 #[derive(Deserialize, Schema)]
 pub struct FitbitCallbackRequest {
+    #[schema(description = "Authorization Code")]
     code: StackString,
+    #[schema(description = "CSRF State")]
     state: StackString,
 }
 
@@ -267,7 +268,7 @@ impl FitbitCallbackRequest {
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct FitbitHeartrateApiRequest {
-    date: NaiveDateWrapper,
+    date: NaiveDate,
 }
 
 impl FitbitHeartrateApiRequest {
@@ -282,7 +283,7 @@ impl FitbitHeartrateApiRequest {
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct FitbitHeartrateCacheRequest {
-    date: NaiveDateWrapper,
+    date: NaiveDate,
 }
 
 impl FitbitHeartrateCacheRequest {
@@ -335,7 +336,7 @@ impl FitbitBodyWeightFatUpdateRequest {
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct FitbitSyncRequest {
-    date: NaiveDateWrapper,
+    date: NaiveDate,
 }
 
 impl FitbitSyncRequest {
@@ -354,7 +355,7 @@ impl FitbitSyncRequest {
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct FitbitTcxSyncRequest {
-    pub start_date: Option<NaiveDateWrapper>,
+    pub start_date: Option<NaiveDate>,
 }
 
 impl FitbitTcxSyncRequest {
@@ -379,9 +380,13 @@ impl FitbitTcxSyncRequest {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Schema)]
 pub struct ScaleMeasurementRequest {
-    pub start_date: Option<NaiveDateWrapper>,
-    pub end_date: Option<NaiveDateWrapper>,
-    pub button_date: Option<NaiveDateWrapper>,
+    #[schema(description = "Start Date")]
+    pub start_date: Option<NaiveDate>,
+    #[schema(description = "End Date")]
+    pub end_date: Option<NaiveDate>,
+    #[schema(description = "Button Date")]
+    pub button_date: Option<NaiveDate>,
+    #[schema(description = "Offset")]
     pub offset: Option<usize>,
 }
 
@@ -559,7 +564,9 @@ impl StravaRefreshRequest {
 
 #[derive(Debug, Serialize, Deserialize, Schema)]
 pub struct StravaCallbackRequest {
+    #[schema(description = "Authorization Code")]
     pub code: StackString,
+    #[schema(description = "CSRF State")]
     pub state: StackString,
 }
 
@@ -578,8 +585,10 @@ impl StravaCallbackRequest {
 
 #[derive(Debug, Serialize, Deserialize, Schema)]
 pub struct StravaActivitiesRequest {
-    pub start_date: Option<NaiveDateWrapper>,
-    pub end_date: Option<NaiveDateWrapper>,
+    #[schema(description = "Start Date")]
+    pub start_date: Option<NaiveDate>,
+    #[schema(description = "End Date")]
+    pub end_date: Option<NaiveDate>,
 }
 
 impl StravaActivitiesRequest {
@@ -634,10 +643,15 @@ impl StravaActiviesDBUpdateRequest {
 
 #[derive(Debug, Serialize, Deserialize, Schema)]
 pub struct StravaUploadRequest {
+    #[schema(description = "File Name")]
     pub filename: StackString,
+    #[schema(description = "Title")]
     pub title: StackString,
+    #[schema(description = "Activity Type")]
     pub activity_type: StackString,
+    #[schema(description = "Description")]
     pub description: Option<StackString>,
+    #[schema(description = "Privacy Flag")]
     pub is_private: Option<bool>,
 }
 
@@ -662,12 +676,18 @@ impl StravaUploadRequest {
 
 #[derive(Debug, Serialize, Deserialize, Schema)]
 pub struct StravaUpdateRequest {
+    #[schema(description = "Strava Activity ID")]
     pub activity_id: u64,
+    #[schema(description = "Title")]
     pub title: StackString,
+    #[schema(description = "Activity Type")]
     pub activity_type: StackString,
+    #[schema(description = "Description")]
     pub description: Option<StackString>,
+    #[schema(description = "Privacy Flag")]
     pub is_private: Option<bool>,
-    pub start_time: Option<DateTimeWrapper>,
+    #[schema(description = "Start DateTime")]
+    pub start_time: Option<DateTime<Utc>>,
 }
 
 impl StravaUpdateRequest {
@@ -713,10 +733,15 @@ impl StravaCreateRequest {
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct AddGarminCorrectionRequest {
-    pub start_time: DateTimeWrapper,
+    #[schema(description = "Start DateTime")]
+    pub start_time: DateTime<Utc>,
+    #[schema(description = "Lap Number")]
     pub lap_number: i32,
+    #[schema(description = "Distance (m)")]
     pub distance: Option<f64>,
+    #[schema(description = "Duration (s)")]
     pub duration: Option<f64>,
+    #[schema(description = "Sport")]
     pub sport: Option<SportTypesWrapper>,
 }
 
@@ -771,7 +796,7 @@ impl FitbitActivityTypesRequest {
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct FitbitActivitiesRequest {
-    pub start_date: Option<NaiveDateWrapper>,
+    pub start_date: Option<NaiveDate>,
 }
 
 impl FitbitActivitiesRequest {
@@ -791,7 +816,7 @@ impl FitbitActivitiesRequest {
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct GarminConnectActivitiesRequest {
-    pub start_date: Option<NaiveDateWrapper>,
+    pub start_date: Option<NaiveDate>,
 }
 
 impl GarminConnectActivitiesRequest {
@@ -836,7 +861,7 @@ impl FitbitProfileRequest {
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct GarminConnectUserSummaryRequest {
-    pub date: Option<NaiveDateWrapper>,
+    pub date: Option<NaiveDate>,
 }
 
 impl GarminConnectUserSummaryRequest {
@@ -948,7 +973,9 @@ impl HeartrateStatisticsSummaryDBUpdateRequest {
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct RaceResultPlotRequest {
+    #[schema(description = "Race Type")]
     pub race_type: RaceTypeWrapper,
+    #[schema(description = "Demo Flag")]
     pub demo: Option<bool>,
 }
 
@@ -1002,6 +1029,7 @@ impl RaceResultImportRequest {
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct RaceResultsDBRequest {
+    #[schema(description = "Race Type")]
     pub race_type: Option<RaceTypeWrapper>,
 }
 

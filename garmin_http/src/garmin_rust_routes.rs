@@ -17,6 +17,7 @@ use std::{collections::HashMap, convert::Infallible, str::FromStr, string::ToStr
 use tempdir::TempDir;
 use tokio::{fs::File, io::AsyncWriteExt};
 use tokio_stream::StreamExt;
+use uuid::Uuid;
 
 use fitbit_lib::fitbit_heartrate::FitbitHeartRate;
 use garmin_cli::garmin_cli::{GarminCli, GarminRequest};
@@ -51,7 +52,6 @@ use crate::{
     },
     garmin_rust_app::AppState,
     logged_user::LoggedUser,
-    uuid_wrapper::UuidWrapper,
     FitbitActivityWrapper, FitbitBodyWeightFatUpdateOutputWrapper, FitbitBodyWeightFatWrapper,
     FitbitHeartRateWrapper, FitbitStatisticsSummaryWrapper, FitbitUserProfileWrapper,
     GarminConnectActivityWrapper, GarminConnectUserDailySummaryWrapper, RaceResultsWrapper,
@@ -86,7 +86,7 @@ impl Session {
     pub async fn pull(
         client: &Client,
         config: &GarminConfig,
-        session_id: UuidWrapper,
+        session_id: Uuid,
     ) -> Result<Self, anyhow::Error> {
         let url = format!("https://{}/api/session", config.domain);
         let session: Option<Self> = client
@@ -104,7 +104,7 @@ impl Session {
         &self,
         client: &Client,
         config: &GarminConfig,
-        session_id: UuidWrapper,
+        session_id: Uuid,
     ) -> Result<(), anyhow::Error> {
         let url = format!("https://{}/api/session", config.domain);
         client

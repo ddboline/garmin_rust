@@ -3,13 +3,14 @@ openapi: 3.0.1
 info:
   title: Fitness Activity WebApp
   description: Web Frontend for Fitness Activities
-  version: 0.11.23
+  version: 0.11.37
 paths:
   /garmin/index.html:
     get:
       parameters:
         - name: filter
           in: query
+          required: false
           schema:
             nullable: true
             type: string
@@ -33,6 +34,7 @@ paths:
       parameters:
         - name: filter
           in: query
+          required: false
           schema:
             nullable: true
             type: string
@@ -56,6 +58,7 @@ paths:
       parameters:
         - name: filename
           in: query
+          required: true
           schema:
             type: string
       responses:
@@ -81,33 +84,38 @@ paths:
             schema:
               properties:
                 start_time:
-                  format: datetime
+                  description: Start DateTime
+                  format: date-time
                   type: string
                 lap_number:
+                  description: Lap Number
                   type: integer
                 distance:
+                  description: Distance (m)
                   nullable: true
                   type: number
                 duration:
+                  description: Duration (s)
                   nullable: true
                   type: number
                 sport:
+                  description: Sport
                   nullable: true
                   type: string
                   enum:
-                    - Running
-                    - Biking
-                    - Walking
-                    - Hiking
-                    - Ultimate
-                    - Elliptical
-                    - Stairs
-                    - Lifting
-                    - Swimming
-                    - Other
-                    - Snowshoeing
-                    - Skiing
-                    - None
+                    - running
+                    - biking
+                    - walking
+                    - hiking
+                    - ultimate
+                    - elliptical
+                    - stairs
+                    - lifting
+                    - swimming
+                    - other
+                    - snowshoeing
+                    - skiing
+                    - none
               type: object
               required:
                 - start_time
@@ -152,8 +160,9 @@ paths:
       parameters:
         - name: start_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            format: date
             nullable: true
             type: string
       responses:
@@ -164,43 +173,55 @@ paths:
               schema:
                 items:
                   properties:
-                    activityId:
+                    activity_id:
+                      description: Activity ID
                       type: integer
-                    activityName:
+                    activity_name:
+                      description: Activity Name
                       nullable: true
                       type: string
                     description:
+                      description: Description
                       nullable: true
                       type: string
                     start_time_gmt:
-                      format: datetime
+                      description: Start Time UTC
+                      format: date-time
                       type: string
                     distance:
+                      description: Distance (m)
                       nullable: true
                       type: number
                     duration:
+                      description: Duration (s)
                       type: number
-                    elapsedDuration:
+                    elapsed_duration:
+                      description: Elapsed Duration (s)
                       nullable: true
                       type: number
-                    movingDuration:
+                    moving_duration:
+                      description: Moving Duration (s)
                       nullable: true
                       type: number
                     steps:
+                      description: Number of Steps
                       nullable: true
                       type: integer
                     calories:
+                      description: Calories (kCal)
                       nullable: true
                       type: number
-                    averageHR:
+                    average_hr:
+                      description: Average Heartrate
                       nullable: true
                       type: number
-                    maxHR:
+                    max_hr:
+                      description: Max Heartrate
                       nullable: true
                       type: number
                   type: object
                   required:
-                    - activityId
+                    - activity_id
                     - start_time_gmt
                     - duration
                 type: array
@@ -217,14 +238,18 @@ paths:
       parameters:
         - name: start_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            description: Start Date
+            format: date
             nullable: true
             type: string
         - name: end_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            description: End Date
+            format: date
             nullable: true
             type: string
       responses:
@@ -235,43 +260,55 @@ paths:
               schema:
                 items:
                   properties:
-                    activityId:
+                    activity_id:
+                      description: Activity ID
                       type: integer
-                    activityName:
+                    activity_name:
+                      description: Activity Name
                       nullable: true
                       type: string
                     description:
+                      description: Description
                       nullable: true
                       type: string
                     start_time_gmt:
-                      format: datetime
+                      description: Start Time UTC
+                      format: date-time
                       type: string
                     distance:
+                      description: Distance (m)
                       nullable: true
                       type: number
                     duration:
+                      description: Duration (s)
                       type: number
-                    elapsedDuration:
+                    elapsed_duration:
+                      description: Elapsed Duration (s)
                       nullable: true
                       type: number
-                    movingDuration:
+                    moving_duration:
+                      description: Moving Duration (s)
                       nullable: true
                       type: number
                     steps:
+                      description: Number of Steps
                       nullable: true
                       type: integer
                     calories:
+                      description: Calories (kCal)
                       nullable: true
                       type: number
-                    averageHR:
+                    average_hr:
+                      description: Average Heartrate
                       nullable: true
                       type: number
-                    maxHR:
+                    max_hr:
+                      description: Max Heartrate
                       nullable: true
                       type: number
                   type: object
                   required:
-                    - activityId
+                    - activity_id
                     - start_time_gmt
                     - duration
                 type: array
@@ -292,43 +329,55 @@ paths:
                 updates:
                   items:
                     properties:
-                      activityId:
+                      activity_id:
+                        description: Activity ID
                         type: integer
-                      activityName:
+                      activity_name:
+                        description: Activity Name
                         nullable: true
                         type: string
                       description:
+                        description: Description
                         nullable: true
                         type: string
                       start_time_gmt:
-                        format: datetime
+                        description: Start Time UTC
+                        format: date-time
                         type: string
                       distance:
+                        description: Distance (m)
                         nullable: true
                         type: number
                       duration:
+                        description: Duration (s)
                         type: number
-                      elapsedDuration:
+                      elapsed_duration:
+                        description: Elapsed Duration (s)
                         nullable: true
                         type: number
-                      movingDuration:
+                      moving_duration:
+                        description: Moving Duration (s)
                         nullable: true
                         type: number
                       steps:
+                        description: Number of Steps
                         nullable: true
                         type: integer
                       calories:
+                        description: Calories (kCal)
                         nullable: true
                         type: number
-                      averageHR:
+                      average_hr:
+                        description: Average Heartrate
                         nullable: true
                         type: number
-                      maxHR:
+                      max_hr:
+                        description: Max Heartrate
                         nullable: true
                         type: number
                     type: object
                     required:
-                      - activityId
+                      - activity_id
                       - start_time_gmt
                       - duration
                   type: array
@@ -356,8 +405,9 @@ paths:
       parameters:
         - name: date
           in: query
+          required: true
           schema:
-            format: naivedate
+            format: date
             type: string
       responses:
         "200":
@@ -379,8 +429,9 @@ paths:
       parameters:
         - name: date
           in: query
+          required: true
           schema:
-            format: naivedate
+            format: date
             type: string
       responses:
         "200":
@@ -391,9 +442,11 @@ paths:
                 items:
                   properties:
                     datetime:
-                      format: datetime
+                      description: DateTime
+                      format: date-time
                       type: string
                     value:
+                      description: Heartrate Value (bpm)
                       type: integer
                   type: object
                   required:
@@ -413,8 +466,9 @@ paths:
       parameters:
         - name: date
           in: query
+          required: false
           schema:
-            format: naivedate
+            format: date
             nullable: true
             type: string
       responses:
@@ -424,33 +478,45 @@ paths:
             application/json:
               schema:
                 properties:
-                  userProfileId:
+                  user_profile_id:
+                    description: User Profile ID
                     type: integer
-                  totalKilocalories:
+                    minimum: 0
+                  total_kilocalories:
+                    description: Total Calories (kCal)
                     nullable: true
                     type: number
-                  activeKilocalories:
+                  active_kilocalories:
+                    description: Active Calories (kCal)
                     nullable: true
                     type: number
-                  bmrKilocalories:
+                  bmr_kilocalories:
+                    description: BMR Calories (kCal)
                     nullable: true
                     type: number
-                  totalSteps:
+                  total_steps:
+                    description: Total Number of Steps
                     nullable: true
                     type: integer
-                  totalDistanceMeters:
+                    minimum: 0
+                  total_distance_meters:
+                    description: Total Distance (m)
                     nullable: true
                     type: integer
-                  userDailySummaryId:
+                    minimum: 0
+                  user_daily_summary_id:
+                    description: User Daily Summary ID
                     nullable: true
                     type: integer
-                  calendarDate:
-                    format: naivedate
+                    minimum: 0
+                  calendar_date:
+                    description: Calendar Date
+                    format: date
                     type: string
                 type: object
                 required:
-                  - userProfileId
-                  - calendarDate
+                  - user_profile_id
+                  - calendar_date
         "400":
           description: Bad Request
         "404":
@@ -481,14 +547,16 @@ paths:
       parameters:
         - name: start_datetime
           in: query
+          required: false
           schema:
-            format: datetime
+            format: date-time
             nullable: true
             type: string
         - name: end_datetime
           in: query
+          required: false
           schema:
-            format: datetime
+            format: date-time
             nullable: true
             type: string
       responses:
@@ -545,11 +613,15 @@ paths:
       parameters:
         - name: code
           in: query
+          required: true
           schema:
+            description: Authorization Code
             type: string
         - name: state
           in: query
+          required: true
           schema:
+            description: CSRF State
             type: string
       responses:
         "200":
@@ -571,8 +643,9 @@ paths:
       parameters:
         - name: date
           in: query
+          required: true
           schema:
-            format: naivedate
+            format: date
             type: string
       responses:
         "200":
@@ -583,9 +656,11 @@ paths:
                 items:
                   properties:
                     datetime:
-                      format: datetime
+                      description: DateTime
+                      format: date-time
                       type: string
                     value:
+                      description: Heartrate Value (bpm)
                       type: integer
                   type: object
                   required:
@@ -605,8 +680,9 @@ paths:
       parameters:
         - name: date
           in: query
+          required: true
           schema:
-            format: naivedate
+            format: date
             type: string
       responses:
         "200":
@@ -617,9 +693,11 @@ paths:
                 items:
                   properties:
                     datetime:
-                      format: datetime
+                      description: DateTime
+                      format: date-time
                       type: string
                     value:
+                      description: Heartrate Value (bpm)
                       type: integer
                   type: object
                   required:
@@ -644,9 +722,11 @@ paths:
                   items:
                     properties:
                       datetime:
-                        format: datetime
+                        description: DateTime
+                        format: date-time
                         type: string
                       value:
+                        description: Heartrate Value (bpm)
                         type: integer
                     type: object
                     required:
@@ -677,8 +757,9 @@ paths:
       parameters:
         - name: date
           in: query
+          required: true
           schema:
-            format: naivedate
+            format: date
             type: string
       responses:
         "200":
@@ -706,11 +787,14 @@ paths:
                 items:
                   properties:
                     datetime:
-                      format: datetime
+                      description: DateTime
+                      format: date-time
                       type: string
                     weight:
+                      description: Weight (lbs)
                       type: number
                     fat:
+                      description: Fat %
                       type: number
                   type: object
                   required:
@@ -736,22 +820,30 @@ paths:
               schema:
                 properties:
                   measurements:
+                    description: Measurements
                     items:
                       properties:
                         id:
+                          description: Scale Measurement ID
                           type: integer
                         datetime:
-                          format: datetime
+                          description: DateTime
+                          format: date-time
                           type: string
                         mass:
+                          description: Mass (lbs)
                           type: number
                         fat_pct:
+                          description: Fat %
                           type: number
                         water_pct:
+                          description: Water %
                           type: number
                         muscle_pct:
+                          description: Muscle %
                           type: number
                         bone_pct:
+                          description: Bone %
                           type: number
                       type: object
                       required:
@@ -764,11 +856,13 @@ paths:
                         - bone_pct
                     type: array
                   activities:
+                    description: Activity DateTimes
                     items:
-                      format: datetime
+                      format: date-time
                       type: string
                     type: array
                   duplicates:
+                    description: Duplicate Messages
                     items:
                       type: string
                     type: array
@@ -790,27 +884,36 @@ paths:
       parameters:
         - name: start_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            description: Start Date
+            format: date
             nullable: true
             type: string
         - name: end_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            description: End Date
+            format: date
             nullable: true
             type: string
         - name: button_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            description: Button Date
+            format: date
             nullable: true
             type: string
         - name: offset
           in: query
+          required: false
           schema:
+            description: Offset
             nullable: true
             type: integer
+            minimum: 0
       responses:
         "200":
           description: Scale Measurement Plots
@@ -831,27 +934,36 @@ paths:
       parameters:
         - name: start_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            description: Start Date
+            format: date
             nullable: true
             type: string
         - name: end_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            description: End Date
+            format: date
             nullable: true
             type: string
         - name: button_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            description: Button Date
+            format: date
             nullable: true
             type: string
         - name: offset
           in: query
+          required: false
           schema:
+            description: Offset
             nullable: true
             type: integer
+            minimum: 0
       responses:
         "200":
           description: Scale Measurement Plots
@@ -872,27 +984,36 @@ paths:
       parameters:
         - name: start_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            description: Start Date
+            format: date
             nullable: true
             type: string
         - name: end_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            description: End Date
+            format: date
             nullable: true
             type: string
         - name: button_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            description: Button Date
+            format: date
             nullable: true
             type: string
         - name: offset
           in: query
+          required: false
           schema:
+            description: Offset
             nullable: true
             type: integer
+            minimum: 0
       responses:
         "200":
           description: Fitbit Heartrate Statistics Plots
@@ -913,27 +1034,36 @@ paths:
       parameters:
         - name: start_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            description: Start Date
+            format: date
             nullable: true
             type: string
         - name: end_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            description: End Date
+            format: date
             nullable: true
             type: string
         - name: button_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            description: Button Date
+            format: date
             nullable: true
             type: string
         - name: offset
           in: query
+          required: false
           schema:
+            description: Offset
             nullable: true
             type: integer
+            minimum: 0
       responses:
         "200":
           description: Fitbit Heartrate Statistics Plots
@@ -954,27 +1084,36 @@ paths:
       parameters:
         - name: start_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            description: Start Date
+            format: date
             nullable: true
             type: string
         - name: end_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            description: End Date
+            format: date
             nullable: true
             type: string
         - name: button_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            description: Button Date
+            format: date
             nullable: true
             type: string
         - name: offset
           in: query
+          required: false
           schema:
+            description: Offset
             nullable: true
             type: integer
+            minimum: 0
       responses:
         "200":
           description: Fitbit Heartrate Plots
@@ -995,27 +1134,36 @@ paths:
       parameters:
         - name: start_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            description: Start Date
+            format: date
             nullable: true
             type: string
         - name: end_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            description: End Date
+            format: date
             nullable: true
             type: string
         - name: button_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            description: Button Date
+            format: date
             nullable: true
             type: string
         - name: offset
           in: query
+          required: false
           schema:
+            description: Offset
             nullable: true
             type: integer
+            minimum: 0
       responses:
         "200":
           description: Fitbit Heartrate Plots
@@ -1036,8 +1184,9 @@ paths:
       parameters:
         - name: start_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            format: date
             nullable: true
             type: string
       responses:
@@ -1081,8 +1230,9 @@ paths:
       parameters:
         - name: start_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            format: date
             nullable: true
             type: string
       responses:
@@ -1093,39 +1243,49 @@ paths:
               schema:
                 items:
                   properties:
-                    logType:
+                    log_type:
+                      description: Log Type
                       type: string
-                    startTime:
-                      format: datetime
+                    start_time:
+                      description: Start Datetime
+                      format: date-time
                       type: string
-                    tcxLink:
+                    tcx_link:
+                      description: TCX Link
                       nullable: true
                       type: string
-                    activityTypeId:
+                    activity_type_id:
+                      description: Activity Type ID
                       nullable: true
                       type: integer
-                    activityName:
+                    activity_name:
+                      description: Activity Name
                       nullable: true
                       type: string
                     duration:
+                      description: Duration (ms)
                       type: integer
                     distance:
+                      description: Distance (mi)
                       nullable: true
                       type: number
-                    distanceUnit:
+                    distance_unit:
+                      description: Distance Unit
                       nullable: true
                       type: string
                     steps:
+                      description: Number of Steps
                       nullable: true
                       type: integer
-                    logId:
+                    log_id:
+                      description: Log ID
                       type: integer
                   type: object
                   required:
-                    - logType
-                    - startTime
+                    - log_type
+                    - start_time
                     - duration
-                    - logId
+                    - log_id
                 type: array
         "400":
           description: Bad Request
@@ -1140,14 +1300,18 @@ paths:
       parameters:
         - name: start_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            description: Start Date
+            format: date
             nullable: true
             type: string
         - name: end_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            description: End Date
+            format: date
             nullable: true
             type: string
       responses:
@@ -1158,39 +1322,49 @@ paths:
               schema:
                 items:
                   properties:
-                    logType:
+                    log_type:
+                      description: Log Type
                       type: string
-                    startTime:
-                      format: datetime
+                    start_time:
+                      description: Start Datetime
+                      format: date-time
                       type: string
-                    tcxLink:
+                    tcx_link:
+                      description: TCX Link
                       nullable: true
                       type: string
-                    activityTypeId:
+                    activity_type_id:
+                      description: Activity Type ID
                       nullable: true
                       type: integer
-                    activityName:
+                    activity_name:
+                      description: Activity Name
                       nullable: true
                       type: string
                     duration:
+                      description: Duration (ms)
                       type: integer
                     distance:
+                      description: Distance (mi)
                       nullable: true
                       type: number
-                    distanceUnit:
+                    distance_unit:
+                      description: Distance Unit
                       nullable: true
                       type: string
                     steps:
+                      description: Number of Steps
                       nullable: true
                       type: integer
-                    logId:
+                    log_id:
+                      description: Log ID
                       type: integer
                   type: object
                   required:
-                    - logType
-                    - startTime
+                    - log_type
+                    - start_time
                     - duration
-                    - logId
+                    - log_id
                 type: array
         "400":
           description: Bad Request
@@ -1209,39 +1383,49 @@ paths:
                 updates:
                   items:
                     properties:
-                      logType:
+                      log_type:
+                        description: Log Type
                         type: string
-                      startTime:
-                        format: datetime
+                      start_time:
+                        description: Start Datetime
+                        format: date-time
                         type: string
-                      tcxLink:
+                      tcx_link:
+                        description: TCX Link
                         nullable: true
                         type: string
-                      activityTypeId:
+                      activity_type_id:
+                        description: Activity Type ID
                         nullable: true
                         type: integer
-                      activityName:
+                      activity_name:
+                        description: Activity Name
                         nullable: true
                         type: string
                       duration:
+                        description: Duration (ms)
                         type: integer
                       distance:
+                        description: Distance (mi)
                         nullable: true
                         type: number
-                      distanceUnit:
+                      distance_unit:
+                        description: Distance Unit
                         nullable: true
                         type: string
                       steps:
+                        description: Number of Steps
                         nullable: true
                         type: integer
-                      logId:
+                      log_id:
+                        description: Log ID
                         type: integer
                     type: object
                     required:
-                      - logType
-                      - startTime
+                      - log_type
+                      - start_time
                       - duration
-                      - logId
+                      - log_id
                   type: array
               type: object
               required:
@@ -1267,14 +1451,18 @@ paths:
       parameters:
         - name: start_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            description: Start Date
+            format: date
             nullable: true
             type: string
         - name: end_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            description: End Date
+            format: date
             nullable: true
             type: string
       responses:
@@ -1286,19 +1474,26 @@ paths:
                 items:
                   properties:
                     date:
-                      format: naivedate
+                      description: Date
+                      format: date
                       type: string
                     min_heartrate:
+                      description: Minimum Heartrate
                       type: number
                     max_heartrate:
+                      description: Maximum Heartrate
                       type: number
                     mean_heartrate:
+                      description: Mean Heartrate
                       type: number
                     median_heartrate:
+                      description: Median Heartrate
                       type: number
                     stdev_heartrate:
+                      description: Heartrate Standard Deviation
                       type: number
                     number_of_entries:
+                      description: Number of Entries
                       type: integer
                   type: object
                   required:
@@ -1328,19 +1523,26 @@ paths:
                   items:
                     properties:
                       date:
-                        format: naivedate
+                        description: Date
+                        format: date
                         type: string
                       min_heartrate:
+                        description: Minimum Heartrate
                         type: number
                       max_heartrate:
+                        description: Maximum Heartrate
                         type: number
                       mean_heartrate:
+                        description: Mean Heartrate
                         type: number
                       median_heartrate:
+                        description: Median Heartrate
                         type: number
                       stdev_heartrate:
+                        description: Heartrate Standard Deviation
                         type: number
                       number_of_entries:
+                        description: Number of Entries
                         type: integer
                     type: object
                     required:
@@ -1380,62 +1582,81 @@ paths:
             application/json:
               schema:
                 properties:
-                  averageDailySteps:
+                  average_daily_steps:
+                    description: Average Daily Steps
                     type: integer
+                    minimum: 0
                   country:
+                    description: Country
                     type: string
-                  dateOfBirth:
+                  date_of_birth:
+                    description: Date of Birth
                     type: string
-                  displayName:
+                  display_name:
+                    description: Display Name
                     type: string
-                  distanceUnit:
+                  distance_unit:
+                    description: Distance Unit
                     type: string
-                  encodedId:
+                  encoded_id:
+                    description: Encoded ID
                     type: string
-                  firstName:
+                  first_name:
+                    description: First Name
                     type: string
-                  lastName:
+                  last_name:
+                    description: Last Name
                     type: string
-                  fullName:
+                  full_name:
+                    description: Full Name
                     type: string
                   gender:
+                    description: Gender
                     type: string
                   height:
+                    description: Height (in)
                     type: number
-                  heightUnit:
+                  height_unit:
+                    description: Height Units
                     type: string
                   timezone:
+                    description: Time Zone
                     type: string
-                  offsetFromUTCMillis:
+                  offset_from_utc_millis:
+                    description: Offset From UTC in ms
                     type: integer
-                  strideLengthRunning:
+                  stride_length_running:
+                    description: Stride Length Running (in)
                     type: number
-                  strideLengthWalking:
+                  stride_length_walking:
+                    description: Stride Length Walking (in)
                     type: number
                   weight:
+                    description: Weight (lbs)
                     type: number
-                  weightUnit:
+                  weight_unit:
+                    description: Weight Units
                     type: string
                 type: object
                 required:
-                  - averageDailySteps
+                  - average_daily_steps
                   - country
-                  - dateOfBirth
-                  - displayName
-                  - distanceUnit
-                  - encodedId
-                  - firstName
-                  - lastName
-                  - fullName
+                  - date_of_birth
+                  - display_name
+                  - distance_unit
+                  - encoded_id
+                  - first_name
+                  - last_name
+                  - full_name
                   - gender
                   - height
-                  - heightUnit
+                  - height_unit
                   - timezone
-                  - offsetFromUTCMillis
-                  - strideLengthRunning
-                  - strideLengthWalking
+                  - offset_from_utc_millis
+                  - stride_length_running
+                  - stride_length_walking
                   - weight
-                  - weightUnit
+                  - weight_unit
         "400":
           description: Bad Request
         "404":
@@ -1449,27 +1670,36 @@ paths:
       parameters:
         - name: start_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            description: Start Date
+            format: date
             nullable: true
             type: string
         - name: end_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            description: End Date
+            format: date
             nullable: true
             type: string
         - name: button_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            description: Button Date
+            format: date
             nullable: true
             type: string
         - name: offset
           in: query
+          required: false
           schema:
+            description: Offset
             nullable: true
             type: integer
+            minimum: 0
       responses:
         "200":
           description: Scale Measurements
@@ -1479,19 +1709,26 @@ paths:
                 items:
                   properties:
                     id:
+                      description: Scale Measurement ID
                       type: integer
                     datetime:
-                      format: datetime
+                      description: DateTime
+                      format: date-time
                       type: string
                     mass:
+                      description: Mass (lbs)
                       type: number
                     fat_pct:
+                      description: Fat %
                       type: number
                     water_pct:
+                      description: Water %
                       type: number
                     muscle_pct:
+                      description: Muscle %
                       type: number
                     bone_pct:
+                      description: Bone %
                       type: number
                   type: object
                   required:
@@ -1521,19 +1758,26 @@ paths:
                   items:
                     properties:
                       id:
+                        description: Scale Measurement ID
                         type: integer
                       datetime:
-                        format: datetime
+                        description: DateTime
+                        format: date-time
                         type: string
                       mass:
+                        description: Mass (lbs)
                         type: number
                       fat_pct:
+                        description: Fat %
                         type: number
                       water_pct:
+                        description: Water %
                         type: number
                       muscle_pct:
+                        description: Muscle %
                         type: number
                       bone_pct:
+                        description: Bone %
                         type: number
                     type: object
                     required:
@@ -1603,11 +1847,15 @@ paths:
       parameters:
         - name: code
           in: query
+          required: true
           schema:
+            description: Authorization Code
             type: string
         - name: state
           in: query
+          required: true
           schema:
+            description: CSRF State
             type: string
       responses:
         "200":
@@ -1629,14 +1877,18 @@ paths:
       parameters:
         - name: start_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            description: Start Date
+            format: date
             nullable: true
             type: string
         - name: end_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            description: End Date
+            format: date
             nullable: true
             type: string
       responses:
@@ -1648,46 +1900,57 @@ paths:
                 items:
                   properties:
                     name:
+                      description: Activity Name
                       type: string
                     start_date:
-                      format: datetime
+                      description: Start Date
+                      format: date-time
                       type: string
                     id:
+                      description: Activity ID
                       type: integer
                     distance:
+                      description: Distance (m)
                       nullable: true
                       type: number
                     moving_time:
+                      description: Moving Time (s)
                       nullable: true
                       type: integer
                     elapsed_time:
+                      description: Elapsed Time (s)
                       type: integer
                     total_elevation_gain:
+                      description: Total Elevation Gain (m)
                       nullable: true
                       type: number
                     elev_high:
+                      description: Maximum Elevation
                       nullable: true
                       type: number
                     elev_low:
+                      description: Minimum Elevation
                       nullable: true
                       type: number
                     activity_type:
+                      description: Activity Type
                       type: string
                       enum:
-                        - Running
-                        - Biking
-                        - Walking
-                        - Hiking
-                        - Ultimate
-                        - Elliptical
-                        - Stairs
-                        - Lifting
-                        - Swimming
-                        - Other
-                        - Snowshoeing
-                        - Skiing
-                        - None
+                        - running
+                        - biking
+                        - walking
+                        - hiking
+                        - ultimate
+                        - elliptical
+                        - stairs
+                        - lifting
+                        - swimming
+                        - other
+                        - snowshoeing
+                        - skiing
+                        - none
                     timezone:
+                      description: Time Zone
                       format: timezone
                       type: string
                   type: object
@@ -1717,18 +1980,26 @@ paths:
               schema:
                 properties:
                   id:
+                    description: Athlete ID
                     type: integer
+                    minimum: 0
                   username:
+                    description: Username
                     type: string
                   firstname:
+                    description: First Name
                     type: string
                   lastname:
+                    description: Last Name
                     type: string
                   city:
+                    description: City
                     type: string
                   state:
+                    description: State
                     type: string
                   sex:
+                    description: Sex
                     type: string
                 type: object
                 required:
@@ -1752,14 +2023,18 @@ paths:
       parameters:
         - name: start_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            description: Start Date
+            format: date
             nullable: true
             type: string
         - name: end_date
           in: query
+          required: false
           schema:
-            format: naivedate
+            description: End Date
+            format: date
             nullable: true
             type: string
       responses:
@@ -1771,46 +2046,57 @@ paths:
                 items:
                   properties:
                     name:
+                      description: Activity Name
                       type: string
                     start_date:
-                      format: datetime
+                      description: Start Date
+                      format: date-time
                       type: string
                     id:
+                      description: Activity ID
                       type: integer
                     distance:
+                      description: Distance (m)
                       nullable: true
                       type: number
                     moving_time:
+                      description: Moving Time (s)
                       nullable: true
                       type: integer
                     elapsed_time:
+                      description: Elapsed Time (s)
                       type: integer
                     total_elevation_gain:
+                      description: Total Elevation Gain (m)
                       nullable: true
                       type: number
                     elev_high:
+                      description: Maximum Elevation
                       nullable: true
                       type: number
                     elev_low:
+                      description: Minimum Elevation
                       nullable: true
                       type: number
                     activity_type:
+                      description: Activity Type
                       type: string
                       enum:
-                        - Running
-                        - Biking
-                        - Walking
-                        - Hiking
-                        - Ultimate
-                        - Elliptical
-                        - Stairs
-                        - Lifting
-                        - Swimming
-                        - Other
-                        - Snowshoeing
-                        - Skiing
-                        - None
+                        - running
+                        - biking
+                        - walking
+                        - hiking
+                        - ultimate
+                        - elliptical
+                        - stairs
+                        - lifting
+                        - swimming
+                        - other
+                        - snowshoeing
+                        - skiing
+                        - none
                     timezone:
+                      description: Time Zone
                       format: timezone
                       type: string
                   type: object
@@ -1840,46 +2126,57 @@ paths:
                   items:
                     properties:
                       name:
+                        description: Activity Name
                         type: string
                       start_date:
-                        format: datetime
+                        description: Start Date
+                        format: date-time
                         type: string
                       id:
+                        description: Activity ID
                         type: integer
                       distance:
+                        description: Distance (m)
                         nullable: true
                         type: number
                       moving_time:
+                        description: Moving Time (s)
                         nullable: true
                         type: integer
                       elapsed_time:
+                        description: Elapsed Time (s)
                         type: integer
                       total_elevation_gain:
+                        description: Total Elevation Gain (m)
                         nullable: true
                         type: number
                       elev_high:
+                        description: Maximum Elevation
                         nullable: true
                         type: number
                       elev_low:
+                        description: Minimum Elevation
                         nullable: true
                         type: number
                       activity_type:
+                        description: Activity Type
                         type: string
                         enum:
-                          - Running
-                          - Biking
-                          - Walking
-                          - Hiking
-                          - Ultimate
-                          - Elliptical
-                          - Stairs
-                          - Lifting
-                          - Swimming
-                          - Other
-                          - Snowshoeing
-                          - Skiing
-                          - None
+                          - running
+                          - biking
+                          - walking
+                          - hiking
+                          - ultimate
+                          - elliptical
+                          - stairs
+                          - lifting
+                          - swimming
+                          - other
+                          - snowshoeing
+                          - skiing
+                          - none
                       timezone:
+                        description: Time Zone
                         format: timezone
                         type: string
                     type: object
@@ -1918,15 +2215,20 @@ paths:
             schema:
               properties:
                 filename:
+                  description: File Name
                   type: string
                 title:
+                  description: Title
                   type: string
                 activity_type:
+                  description: Activity Type
                   type: string
                 description:
+                  description: Description
                   nullable: true
                   type: string
                 is_private:
+                  description: Privacy Flag
                   nullable: true
                   type: boolean
               type: object
@@ -1958,19 +2260,26 @@ paths:
             schema:
               properties:
                 activity_id:
+                  description: Strava Activity ID
                   type: integer
+                  minimum: 0
                 title:
+                  description: Title
                   type: string
                 activity_type:
+                  description: Activity Type
                   type: string
                 description:
+                  description: Description
                   nullable: true
                   type: string
                 is_private:
+                  description: Privacy Flag
                   nullable: true
                   type: boolean
                 start_time:
-                  format: datetime
+                  description: Start DateTime
+                  format: date-time
                   nullable: true
                   type: string
               type: object
@@ -1999,6 +2308,7 @@ paths:
       parameters:
         - name: filename
           in: query
+          required: true
           schema:
             type: string
       responses:
@@ -2026,14 +2336,16 @@ paths:
               schema:
                 properties:
                   email:
+                    description: Email Address
                     type: string
                   session:
-                    format: datetime
-                    nullable: true
+                    description: Session UUID
+                    format: uuid
                     type: string
                 type: object
                 required:
                   - email
+                  - session
         "400":
           description: Bad Request
         "404":
@@ -2047,15 +2359,19 @@ paths:
       parameters:
         - name: race_type
           in: query
+          required: true
           schema:
+            description: Race Type
             type: string
             enum:
-              - Personal
-              - WorldRecordMen
-              - WorldRecordWomen
+              - personal
+              - world_record_men
+              - world_record_women
         - name: demo
           in: query
+          required: false
           schema:
+            description: Demo Flag
             nullable: true
             type: boolean
       responses:
@@ -2078,6 +2394,7 @@ paths:
       parameters:
         - name: id
           in: query
+          required: true
           schema:
             type: integer
       responses:
@@ -2100,6 +2417,7 @@ paths:
       parameters:
         - name: filename
           in: query
+          required: true
           schema:
             type: string
       responses:
@@ -2122,15 +2440,19 @@ paths:
       parameters:
         - name: race_type
           in: query
+          required: true
           schema:
+            description: Race Type
             type: string
             enum:
-              - Personal
-              - WorldRecordMen
-              - WorldRecordWomen
+              - personal
+              - world_record_men
+              - world_record_women
         - name: demo
           in: query
+          required: false
           schema:
+            description: Demo Flag
             nullable: true
             type: boolean
       responses:
@@ -2153,13 +2475,15 @@ paths:
       parameters:
         - name: race_type
           in: query
+          required: false
           schema:
+            description: Race Type
             nullable: true
             type: string
             enum:
-              - Personal
-              - WorldRecordMen
-              - WorldRecordWomen
+              - personal
+              - world_record_men
+              - world_record_women
       responses:
         "200":
           description: Race Results
@@ -2169,27 +2493,35 @@ paths:
                 items:
                   properties:
                     id:
+                      description: Race Result ID
                       type: integer
                     race_type:
+                      description: Race Type
                       type: string
                       enum:
-                        - Personal
-                        - WorldRecordMen
-                        - WorldRecordWomen
+                        - personal
+                        - world_record_men
+                        - world_record_women
                     race_date:
-                      format: naivedate
+                      description: Race Date
+                      format: date
                       nullable: true
                       type: string
                     race_name:
+                      description: Race Name
                       nullable: true
                       type: string
                     race_distance:
+                      description: Race Distance (m)
                       type: integer
                     race_time:
+                      description: Race Duration (s)
                       type: number
                     race_flag:
+                      description: Race Flag
                       type: boolean
                     race_summary_ids:
+                      description: Race Summary IDs
                       items:
                         nullable: true
                         type: integer
@@ -2221,27 +2553,35 @@ paths:
                   items:
                     properties:
                       id:
+                        description: Race Result ID
                         type: integer
                       race_type:
+                        description: Race Type
                         type: string
                         enum:
-                          - Personal
-                          - WorldRecordMen
-                          - WorldRecordWomen
+                          - personal
+                          - world_record_men
+                          - world_record_women
                       race_date:
-                        format: naivedate
+                        description: Race Date
+                        format: date
                         nullable: true
                         type: string
                       race_name:
+                        description: Race Name
                         nullable: true
                         type: string
                       race_distance:
+                        description: Race Distance (m)
                         type: integer
                       race_time:
+                        description: Race Duration (s)
                         type: number
                       race_flag:
+                        description: Race Flag
                         type: boolean
                       race_summary_ids:
+                        description: Race Summary IDs
                         items:
                           nullable: true
                           type: integer
@@ -2274,3 +2614,4 @@ paths:
           description: Method not allowed
         "500":
           description: Internal Server Error
+components: {}

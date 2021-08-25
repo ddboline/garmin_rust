@@ -213,7 +213,6 @@ struct UploadResponse(HtmlBase<String, Error>);
 
 #[post("/garmin/upload_file")]
 pub async fn garmin_upload(
-    query: Query<StravaCreateRequest>,
     #[filter = "rweb::multipart::form"] form: FormData,
     #[cookie = "jwt"] user: LoggedUser,
     #[data] state: AppState,
@@ -221,23 +220,30 @@ pub async fn garmin_upload(
     let session = Session::pull(&state.client, &state.config, user.session)
         .await
         .map_err(Into::<Error>::into)?;
-    let body = garmin_upload_body(query.into_inner(), form, state, session).await?;
+    let body = garmin_upload_body(form, state, session).await?;
     Ok(HtmlBase::new(body).into())
 }
 
 async fn garmin_upload_body(
-    query: StravaCreateRequest,
     mut form: FormData,
     state: AppState,
     session: Session,
 ) -> HttpResult<String> {
     let tempdir = TempDir::new("garmin")?;
     let tempdir_str = tempdir.path().to_string_lossy().to_string();
-
-    let fname = format!("{}/{}", tempdir_str, query.filename,);
+    let mut fname = String::new();
 
     while let Some(item) = form.next().await {
-        save_file(&fname, item?).await?;
+        let item = item?;
+        let filename = item.filename().unwrap_or("");
+        if filename.is_empty() {
+            return Err(Error::BadRequest("Empty Filename".into()));
+        }
+        fname = format!("{}/{}", tempdir_str, filename,);
+        let file_size = save_file(&fname, item).await?;
+        if file_size == 0 {
+            return Err(Error::BadRequest("Empty File".into()));
+        }
     }
 
     let datetimes = GarminUploadRequest {
@@ -258,14 +264,15 @@ async fn garmin_upload_body(
     Ok(body.into())
 }
 
-async fn save_file(file_path: &str, field: Part) -> Result<(), anyhow::Error> {
+async fn save_file(file_path: &str, field: Part) -> Result<u64, anyhow::Error> {
     let mut file = File::create(file_path).await?;
     let mut stream = field.stream();
 
     while let Some(chunk) = stream.next().await {
         file.write_all(chunk?.chunk()).await?;
     }
-    Ok(())
+    let file_size = file.metadata().await?.len();
+    Ok(file_size)
 }
 
 #[derive(RwebResponse)]

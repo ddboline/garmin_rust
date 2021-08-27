@@ -275,6 +275,7 @@ impl RaceResults {
             .race_summary_ids
             .iter()
             .filter_map(Option::as_ref)
+            .take(2)
             .collect();
 
         if !summary_ids.is_empty() {

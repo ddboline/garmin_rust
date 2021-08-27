@@ -69,6 +69,7 @@ impl ScaleMeasurement {
                 }
                 Ok(f64::from(y) / 10.)
             })
+            .take(5)
             .collect::<Result<SmallVec<[f64; 5]>, Error>>()?;
 
         if values.len() < 5 {

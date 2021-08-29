@@ -3,7 +3,7 @@ openapi: 3.0.1
 info:
   title: Fitness Activity WebApp
   description: Web Frontend for Fitness Activities
-  version: 0.11.37
+  version: 0.11.38
 paths:
   /garmin/index.html:
     get:
@@ -55,12 +55,6 @@ paths:
           description: Internal Server Error
   /garmin/upload_file:
     post:
-      parameters:
-        - name: filename
-          in: query
-          required: true
-          schema:
-            type: string
       responses:
         "201":
           description: Upload Response

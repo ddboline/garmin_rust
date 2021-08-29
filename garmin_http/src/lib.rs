@@ -23,10 +23,12 @@ pub mod sport_types_wrapper;
 
 use chrono::{DateTime, NaiveDate, Utc};
 use derive_more::{From, Into};
-use rweb::openapi::{self, ComponentDescriptor, ComponentOrInlineSchema, Entity, Schema};
+use rweb::openapi::{self, ComponentDescriptor, ComponentOrInlineSchema, Entity};
+use rweb::Schema;
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
 use std::borrow::Cow;
+use rweb_helper::derive_rweb_schema;
 
 use fitbit_lib::{
     fitbit_client::{FitbitBodyWeightFatUpdateOutput, FitbitUserProfile},
@@ -40,7 +42,6 @@ use garmin_lib::{
         fitbit_activity::FitbitActivity, garmin_connect_activity::GarminConnectActivity,
         strava_activity::StravaActivity, strava_timezone::StravaTimeZone,
     },
-    utils::iso_8601_datetime,
 };
 use race_result_analysis::{race_results::RaceResults, race_type::RaceType};
 use strava_lib::strava_client::StravaAthlete;
@@ -55,6 +56,7 @@ impl Entity for StravaTimeZoneWrapper {
         "timezone".into()
     }
     fn describe(_: &mut ComponentDescriptor) -> ComponentOrInlineSchema {
+        use rweb::openapi::Schema;
         ComponentOrInlineSchema::Inline(Schema {
             schema_type: Some(openapi::Type::String),
             format: "timezone".into(),
@@ -63,486 +65,298 @@ impl Entity for StravaTimeZoneWrapper {
     }
 }
 
-#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, rweb::Schema)]
-pub struct FitbitHeartRateWrapper {
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, Into, From)]
+pub struct FitbitHeartRateWrapper(FitbitHeartRate);
+
+derive_rweb_schema!(FitbitHeartRateWrapper, _FitbitHeartRateWrapper);
+
+#[allow(dead_code)]
+#[derive(Schema)]
+struct _FitbitHeartRateWrapper {
     #[schema(description = "DateTime")]
-    pub datetime: DateTime<Utc>,
+    datetime: DateTime<Utc>,
     #[schema(description = "Heartrate Value (bpm)")]
-    pub value: i32,
+    value: i32,
 }
 
-impl From<FitbitHeartRate> for FitbitHeartRateWrapper {
-    fn from(item: FitbitHeartRate) -> Self {
-        Self {
-            datetime: item.datetime,
-            value: item.value,
-        }
-    }
-}
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Into, From)]
+pub struct StravaActivityWrapper(StravaActivity);
 
-impl From<FitbitHeartRateWrapper> for FitbitHeartRate {
-    fn from(item: FitbitHeartRateWrapper) -> Self {
-        Self {
-            datetime: item.datetime,
-            value: item.value,
-        }
-    }
-}
+derive_rweb_schema!(StravaActivityWrapper, _StravaActivityWrapper);
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, rweb::Schema)]
-pub struct StravaActivityWrapper {
+#[allow(dead_code)]
+#[derive(Schema)]
+struct _StravaActivityWrapper {
     #[schema(description = "Activity Name")]
-    pub name: StackString,
-    #[serde(with = "iso_8601_datetime")]
+    name: StackString,
     #[schema(description = "Start Date")]
-    pub start_date: DateTime<Utc>,
+    start_date: DateTime<Utc>,
     #[schema(description = "Activity ID")]
-    pub id: i64,
+    id: i64,
     #[schema(description = "Distance (m)")]
-    pub distance: Option<f64>,
+    distance: Option<f64>,
     #[schema(description = "Moving Time (s)")]
-    pub moving_time: Option<i64>,
+    moving_time: Option<i64>,
     #[schema(description = "Elapsed Time (s)")]
-    pub elapsed_time: i64,
+    elapsed_time: i64,
     #[schema(description = "Total Elevation Gain (m)")]
-    pub total_elevation_gain: Option<f64>,
+    total_elevation_gain: Option<f64>,
     #[schema(description = "Maximum Elevation")]
-    pub elev_high: Option<f64>,
+    elev_high: Option<f64>,
     #[schema(description = "Minimum Elevation")]
-    pub elev_low: Option<f64>,
-    #[serde(with = "sport_types_wrapper")]
+    elev_low: Option<f64>,
     #[schema(description = "Activity Type")]
-    pub activity_type: SportTypesWrapper,
+    activity_type: SportTypesWrapper,
     #[schema(description = "Time Zone")]
-    pub timezone: StravaTimeZoneWrapper,
+    timezone: StravaTimeZoneWrapper,
 }
 
-impl From<StravaActivity> for StravaActivityWrapper {
-    fn from(item: StravaActivity) -> Self {
-        Self {
-            name: item.name,
-            start_date: item.start_date,
-            id: item.id,
-            distance: item.distance,
-            moving_time: item.moving_time,
-            elapsed_time: item.elapsed_time,
-            total_elevation_gain: item.total_elevation_gain,
-            elev_high: item.elev_high,
-            elev_low: item.elev_low,
-            activity_type: item.activity_type.into(),
-            timezone: item.timezone.into(),
-        }
-    }
-}
+#[derive(Serialize, Deserialize, Debug, Into, From)]
+pub struct FitbitBodyWeightFatWrapper(FitbitBodyWeightFat);
 
-impl From<StravaActivityWrapper> for StravaActivity {
-    fn from(item: StravaActivityWrapper) -> Self {
-        Self {
-            name: item.name,
-            start_date: item.start_date,
-            id: item.id,
-            distance: item.distance,
-            moving_time: item.moving_time,
-            elapsed_time: item.elapsed_time,
-            total_elevation_gain: item.total_elevation_gain,
-            elev_high: item.elev_high,
-            elev_low: item.elev_low,
-            activity_type: item.activity_type.into(),
-            timezone: item.timezone.into(),
-        }
-    }
-}
+derive_rweb_schema!(FitbitBodyWeightFatWrapper, _FitbitBodyWeightFatWrapper);
 
-#[derive(Serialize, Deserialize, Debug, rweb::Schema)]
-pub struct FitbitBodyWeightFatWrapper {
+#[allow(dead_code)]
+#[derive(Schema)]
+struct _FitbitBodyWeightFatWrapper {
     #[schema(description = "DateTime")]
-    pub datetime: DateTime<Utc>,
+    datetime: DateTime<Utc>,
     #[schema(description = "Weight (lbs)")]
-    pub weight: f64,
+    weight: f64,
     #[schema(description = "Fat %")]
-    pub fat: f64,
+    fat: f64,
 }
 
-impl From<FitbitBodyWeightFat> for FitbitBodyWeightFatWrapper {
-    fn from(item: FitbitBodyWeightFat) -> Self {
-        Self {
-            datetime: item.datetime,
-            weight: item.weight,
-            fat: item.fat,
-        }
-    }
-}
+#[derive(Debug, Clone, Serialize, Deserialize, Copy, PartialEq, Into, From)]
+pub struct ScaleMeasurementWrapper(ScaleMeasurement);
 
-#[derive(Debug, Clone, Serialize, Deserialize, Copy, PartialEq, rweb::Schema)]
-pub struct ScaleMeasurementWrapper {
+derive_rweb_schema!(ScaleMeasurementWrapper, _ScaleMeasurementWrapper);
+
+#[allow(dead_code)]
+#[derive(Schema)]
+struct _ScaleMeasurementWrapper {
     #[schema(description = "Scale Measurement ID")]
-    pub id: i32,
+    id: i32,
     #[schema(description = "DateTime")]
-    pub datetime: DateTime<Utc>,
+    datetime: DateTime<Utc>,
     #[schema(description = "Mass (lbs)")]
-    pub mass: f64,
+    mass: f64,
     #[schema(description = "Fat %")]
-    pub fat_pct: f64,
+    fat_pct: f64,
     #[schema(description = "Water %")]
-    pub water_pct: f64,
+    water_pct: f64,
     #[schema(description = "Muscle %")]
-    pub muscle_pct: f64,
+    muscle_pct: f64,
     #[schema(description = "Bone %")]
-    pub bone_pct: f64,
+    bone_pct: f64,
 }
 
-impl From<ScaleMeasurement> for ScaleMeasurementWrapper {
-    fn from(item: ScaleMeasurement) -> Self {
-        Self {
-            id: item.id,
-            datetime: item.datetime,
-            mass: item.mass,
-            fat_pct: item.fat_pct,
-            water_pct: item.water_pct,
-            muscle_pct: item.muscle_pct,
-            bone_pct: item.bone_pct,
-        }
-    }
-}
+#[derive(Debug, Serialize, Into, From)]
+pub struct FitbitBodyWeightFatUpdateOutputWrapper(FitbitBodyWeightFatUpdateOutput);
 
-impl From<ScaleMeasurementWrapper> for ScaleMeasurement {
-    fn from(item: ScaleMeasurementWrapper) -> Self {
-        Self {
-            id: item.id,
-            datetime: item.datetime,
-            mass: item.mass,
-            fat_pct: item.fat_pct,
-            water_pct: item.water_pct,
-            muscle_pct: item.muscle_pct,
-            bone_pct: item.bone_pct,
-        }
-    }
-}
+derive_rweb_schema!(FitbitBodyWeightFatUpdateOutputWrapper, _FitbitBodyWeightFatUpdateOutputWrapper);
 
-#[derive(Debug, Serialize, rweb::Schema)]
-pub struct FitbitBodyWeightFatUpdateOutputWrapper {
+#[derive(Debug, Serialize, Schema)]
+struct _FitbitBodyWeightFatUpdateOutputWrapper {
     #[schema(description = "Measurements")]
-    pub measurements: Vec<ScaleMeasurementWrapper>,
+    measurements: Vec<ScaleMeasurementWrapper>,
     #[schema(description = "Activity DateTimes")]
-    pub activities: Vec<DateTime<Utc>>,
+    activities: Vec<DateTime<Utc>>,
     #[schema(description = "Duplicate Messages")]
-    pub duplicates: Vec<StackString>,
+    duplicates: Vec<StackString>,
 }
 
-impl From<FitbitBodyWeightFatUpdateOutput> for FitbitBodyWeightFatUpdateOutputWrapper {
-    fn from(item: FitbitBodyWeightFatUpdateOutput) -> Self {
-        Self {
-            measurements: item.measurements.into_iter().map(Into::into).collect(),
-            activities: item.activities.into_iter().map(Into::into).collect(),
-            duplicates: item.duplicates,
-        }
-    }
-}
+#[derive(Serialize, Deserialize, Clone, Debug, Into, From)]
+pub struct FitbitActivityWrapper(FitbitActivity);
 
-#[derive(Serialize, Deserialize, Clone, Debug, rweb::Schema)]
-pub struct FitbitActivityWrapper {
+derive_rweb_schema!(FitbitActivityWrapper, _FitbitActivityWrapper);
+
+#[derive(Serialize, Deserialize, Clone, Debug, Schema)]
+struct _FitbitActivityWrapper {
     #[schema(description = "Log Type")]
-    pub log_type: StackString,
+    log_type: StackString,
     #[schema(description = "Start Datetime")]
-    pub start_time: DateTime<Utc>,
+    start_time: DateTime<Utc>,
     #[schema(description = "TCX Link")]
-    pub tcx_link: Option<StackString>,
+    tcx_link: Option<StackString>,
     #[schema(description = "Activity Type ID")]
-    pub activity_type_id: Option<i64>,
+    activity_type_id: Option<i64>,
     #[schema(description = "Activity Name")]
-    pub activity_name: Option<StackString>,
+    activity_name: Option<StackString>,
     #[schema(description = "Duration (ms)")]
-    pub duration: i64,
+    duration: i64,
     #[schema(description = "Distance (mi)")]
-    pub distance: Option<f64>,
+    distance: Option<f64>,
     #[schema(description = "Distance Unit")]
-    pub distance_unit: Option<StackString>,
+    distance_unit: Option<StackString>,
     #[schema(description = "Number of Steps")]
-    pub steps: Option<i64>,
+    steps: Option<i64>,
     #[schema(description = "Log ID")]
-    pub log_id: i64,
+    log_id: i64,
 }
 
-impl From<FitbitActivity> for FitbitActivityWrapper {
-    fn from(item: FitbitActivity) -> Self {
-        Self {
-            log_type: item.log_type,
-            start_time: item.start_time,
-            tcx_link: item.tcx_link,
-            activity_type_id: item.activity_type_id,
-            activity_name: item.activity_name,
-            duration: item.duration,
-            distance: item.distance,
-            distance_unit: item.distance_unit,
-            steps: item.steps,
-            log_id: item.log_id,
-        }
-    }
-}
+#[derive(Serialize, Deserialize, Into, From)]
+pub struct StravaAthleteWrapper(StravaAthlete);
 
-impl From<FitbitActivityWrapper> for FitbitActivity {
-    fn from(item: FitbitActivityWrapper) -> Self {
-        Self {
-            log_type: item.log_type,
-            start_time: item.start_time,
-            tcx_link: item.tcx_link,
-            activity_type_id: item.activity_type_id,
-            activity_name: item.activity_name,
-            duration: item.duration,
-            distance: item.distance,
-            distance_unit: item.distance_unit,
-            steps: item.steps,
-            log_id: item.log_id,
-        }
-    }
-}
+derive_rweb_schema!(StravaAthleteWrapper, _StravaAthleteWrapper);
 
-#[derive(Serialize, Deserialize, rweb::Schema)]
-pub struct StravaAthleteWrapper {
+#[allow(dead_code)]
+#[derive(Schema)]
+struct _StravaAthleteWrapper {
     #[schema(description = "Athlete ID")]
-    pub id: u64,
+    id: u64,
     #[schema(description = "Username")]
-    pub username: StackString,
+    username: StackString,
     #[schema(description = "First Name")]
-    pub firstname: StackString,
+    firstname: StackString,
     #[schema(description = "Last Name")]
-    pub lastname: StackString,
+    lastname: StackString,
     #[schema(description = "City")]
-    pub city: StackString,
+    city: StackString,
     #[schema(description = "State")]
-    pub state: StackString,
+    state: StackString,
     #[schema(description = "Sex")]
-    pub sex: StackString,
+    sex: StackString,
 }
 
-impl From<StravaAthlete> for StravaAthleteWrapper {
-    fn from(item: StravaAthlete) -> Self {
-        Self {
-            id: item.id,
-            username: item.username,
-            firstname: item.firstname,
-            lastname: item.lastname,
-            city: item.city,
-            state: item.state,
-            sex: item.sex,
-        }
-    }
-}
+#[derive(Serialize, Deserialize, Debug, Into, From)]
+pub struct FitbitUserProfileWrapper(FitbitUserProfile);
 
-#[derive(Serialize, Deserialize, Debug, rweb::Schema)]
-pub struct FitbitUserProfileWrapper {
+derive_rweb_schema!(FitbitUserProfileWrapper, _FitbitUserProfileWrapper);
+
+#[allow(dead_code)]
+#[derive(Schema)]
+struct _FitbitUserProfileWrapper {
     #[schema(description = "Average Daily Steps")]
-    pub average_daily_steps: u64,
+    average_daily_steps: u64,
     #[schema(description = "Country")]
-    pub country: StackString,
+    country: StackString,
     #[schema(description = "Date of Birth")]
-    pub date_of_birth: StackString,
+    date_of_birth: StackString,
     #[schema(description = "Display Name")]
-    pub display_name: StackString,
+    display_name: StackString,
     #[schema(description = "Distance Unit")]
-    pub distance_unit: StackString,
+    distance_unit: StackString,
     #[schema(description = "Encoded ID")]
-    pub encoded_id: StackString,
+    encoded_id: StackString,
     #[schema(description = "First Name")]
-    pub first_name: StackString,
+    first_name: StackString,
     #[schema(description = "Last Name")]
-    pub last_name: StackString,
+    last_name: StackString,
     #[schema(description = "Full Name")]
-    pub full_name: StackString,
+    full_name: StackString,
     #[schema(description = "Gender")]
-    pub gender: StackString,
+    gender: StackString,
     #[schema(description = "Height (in)")]
-    pub height: f64,
+    height: f64,
     #[schema(description = "Height Units")]
-    pub height_unit: StackString,
+    height_unit: StackString,
     #[schema(description = "Time Zone")]
-    pub timezone: StackString,
+    timezone: StackString,
     #[schema(description = "Offset From UTC in ms")]
-    pub offset_from_utc_millis: i64,
+    offset_from_utc_millis: i64,
     #[schema(description = "Stride Length Running (in)")]
-    pub stride_length_running: f64,
+    stride_length_running: f64,
     #[schema(description = "Stride Length Walking (in)")]
-    pub stride_length_walking: f64,
+    stride_length_walking: f64,
     #[schema(description = "Weight (lbs)")]
-    pub weight: f64,
+    weight: f64,
     #[schema(description = "Weight Units")]
-    pub weight_unit: StackString,
+    weight_unit: StackString,
 }
 
-impl From<FitbitUserProfile> for FitbitUserProfileWrapper {
-    fn from(item: FitbitUserProfile) -> Self {
-        Self {
-            average_daily_steps: item.average_daily_steps,
-            country: item.country,
-            date_of_birth: item.date_of_birth,
-            display_name: item.display_name,
-            distance_unit: item.distance_unit,
-            encoded_id: item.encoded_id,
-            first_name: item.first_name,
-            last_name: item.last_name,
-            full_name: item.full_name,
-            gender: item.gender,
-            height: item.height,
-            height_unit: item.height_unit,
-            timezone: item.timezone,
-            offset_from_utc_millis: item.offset_from_utc_millis,
-            stride_length_running: item.stride_length_running,
-            stride_length_walking: item.stride_length_walking,
-            weight: item.weight,
-            weight_unit: item.weight_unit,
-        }
-    }
-}
+#[derive(Serialize, Deserialize, Debug, Into, From)]
+pub struct GarminConnectActivityWrapper(GarminConnectActivity);
 
-#[derive(Serialize, Deserialize, Debug, rweb::Schema)]
-pub struct GarminConnectActivityWrapper {
+derive_rweb_schema!(GarminConnectActivityWrapper, _GarminConnectActivityWrapper);
+
+#[allow(dead_code)]
+#[derive(Schema)]
+struct _GarminConnectActivityWrapper {
     #[schema(description = "Activity ID")]
-    pub activity_id: i64,
+    activity_id: i64,
     #[schema(description = "Activity Name")]
-    pub activity_name: Option<StackString>,
+    activity_name: Option<StackString>,
     #[schema(description = "Description")]
-    pub description: Option<StackString>,
+    description: Option<StackString>,
     #[schema(description = "Start Time UTC")]
-    pub start_time_gmt: DateTime<Utc>,
+    start_time_gmt: DateTime<Utc>,
     #[schema(description = "Distance (m)")]
-    pub distance: Option<f64>,
+    distance: Option<f64>,
     #[schema(description = "Duration (s)")]
-    pub duration: f64,
+    duration: f64,
     #[schema(description = "Elapsed Duration (s)")]
-    pub elapsed_duration: Option<f64>,
+    elapsed_duration: Option<f64>,
     #[schema(description = "Moving Duration (s)")]
-    pub moving_duration: Option<f64>,
+    moving_duration: Option<f64>,
     #[schema(description = "Number of Steps")]
-    pub steps: Option<i64>,
+    steps: Option<i64>,
     #[schema(description = "Calories (kCal)")]
-    pub calories: Option<f64>,
+    calories: Option<f64>,
     #[schema(description = "Average Heartrate")]
-    pub average_hr: Option<f64>,
+    average_hr: Option<f64>,
     #[schema(description = "Max Heartrate")]
-    pub max_hr: Option<f64>,
+    max_hr: Option<f64>,
 }
 
-impl From<GarminConnectActivity> for GarminConnectActivityWrapper {
-    fn from(item: GarminConnectActivity) -> Self {
-        Self {
-            activity_id: item.activity_id,
-            activity_name: item.activity_name,
-            description: item.description,
-            start_time_gmt: item.start_time_gmt,
-            distance: item.distance,
-            duration: item.duration,
-            elapsed_duration: item.elapsed_duration,
-            moving_duration: item.moving_duration,
-            steps: item.steps,
-            calories: item.calories,
-            average_hr: item.average_hr,
-            max_hr: item.max_hr,
-        }
-    }
-}
+#[derive(Serialize, Deserialize, Debug, Into, From)]
+pub struct GarminConnectUserDailySummaryWrapper(GarminConnectUserDailySummary);
 
-impl From<GarminConnectActivityWrapper> for GarminConnectActivity {
-    fn from(item: GarminConnectActivityWrapper) -> Self {
-        Self {
-            activity_id: item.activity_id,
-            activity_name: item.activity_name,
-            description: item.description,
-            start_time_gmt: item.start_time_gmt,
-            distance: item.distance,
-            duration: item.duration,
-            elapsed_duration: item.elapsed_duration,
-            moving_duration: item.moving_duration,
-            steps: item.steps,
-            calories: item.calories,
-            average_hr: item.average_hr,
-            max_hr: item.max_hr,
-        }
-    }
-}
+derive_rweb_schema!(GarminConnectUserDailySummaryWrapper, _GarminConnectUserDailySummaryWrapper);
 
-#[derive(Serialize, Deserialize, Debug, rweb::Schema)]
-pub struct GarminConnectUserDailySummaryWrapper {
+#[allow(dead_code)]
+#[derive(Schema)]
+struct _GarminConnectUserDailySummaryWrapper {
     #[schema(description = "User Profile ID")]
-    pub user_profile_id: u64,
+    user_profile_id: u64,
     #[schema(description = "Total Calories (kCal)")]
-    pub total_kilocalories: Option<f64>,
+    total_kilocalories: Option<f64>,
     #[schema(description = "Active Calories (kCal)")]
-    pub active_kilocalories: Option<f64>,
+    active_kilocalories: Option<f64>,
     #[schema(description = "BMR Calories (kCal)")]
-    pub bmr_kilocalories: Option<f64>,
+    bmr_kilocalories: Option<f64>,
     #[schema(description = "Total Number of Steps")]
-    pub total_steps: Option<u64>,
+    total_steps: Option<u64>,
     #[schema(description = "Total Distance (m)")]
-    pub total_distance_meters: Option<u64>,
+    total_distance_meters: Option<u64>,
     #[schema(description = "User Daily Summary ID")]
-    pub user_daily_summary_id: Option<u64>,
+    user_daily_summary_id: Option<u64>,
     #[schema(description = "Calendar Date")]
-    pub calendar_date: NaiveDate,
+    calendar_date: NaiveDate,
 }
 
-impl From<GarminConnectUserDailySummary> for GarminConnectUserDailySummaryWrapper {
-    fn from(item: GarminConnectUserDailySummary) -> Self {
-        Self {
-            user_profile_id: item.user_profile_id,
-            total_kilocalories: item.total_kilocalories,
-            active_kilocalories: item.active_kilocalories,
-            bmr_kilocalories: item.bmr_kilocalories,
-            total_steps: item.total_steps,
-            total_distance_meters: item.total_distance_meters,
-            user_daily_summary_id: item.user_daily_summary_id,
-            calendar_date: item.calendar_date,
-        }
-    }
-}
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, Into, From)]
+pub struct FitbitStatisticsSummaryWrapper(FitbitStatisticsSummary);
 
-#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, rweb::Schema)]
-pub struct FitbitStatisticsSummaryWrapper {
+derive_rweb_schema!(FitbitStatisticsSummaryWrapper, _FitbitStatisticsSummaryWrapper);
+
+#[allow(dead_code)]
+#[derive(Schema)]
+struct _FitbitStatisticsSummaryWrapper {
     #[schema(description = "Date")]
-    pub date: NaiveDate,
+    date: NaiveDate,
     #[schema(description = "Minimum Heartrate")]
-    pub min_heartrate: f64,
+    min_heartrate: f64,
     #[schema(description = "Maximum Heartrate")]
-    pub max_heartrate: f64,
+    max_heartrate: f64,
     #[schema(description = "Mean Heartrate")]
-    pub mean_heartrate: f64,
+    mean_heartrate: f64,
     #[schema(description = "Median Heartrate")]
-    pub median_heartrate: f64,
+    median_heartrate: f64,
     #[schema(description = "Heartrate Standard Deviation")]
-    pub stdev_heartrate: f64,
+    stdev_heartrate: f64,
     #[schema(description = "Number of Entries")]
-    pub number_of_entries: i32,
+    number_of_entries: i32,
 }
 
-impl From<FitbitStatisticsSummary> for FitbitStatisticsSummaryWrapper {
-    fn from(item: FitbitStatisticsSummary) -> Self {
-        Self {
-            date: item.date,
-            min_heartrate: item.min_heartrate,
-            max_heartrate: item.max_heartrate,
-            mean_heartrate: item.mean_heartrate,
-            median_heartrate: item.median_heartrate,
-            stdev_heartrate: item.stdev_heartrate,
-            number_of_entries: item.number_of_entries,
-        }
-    }
-}
+#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize, Into, From)]
+pub struct RaceTypeWrapper(RaceType);
 
-impl From<FitbitStatisticsSummaryWrapper> for FitbitStatisticsSummary {
-    fn from(item: FitbitStatisticsSummaryWrapper) -> Self {
-        Self {
-            date: item.date,
-            min_heartrate: item.min_heartrate,
-            max_heartrate: item.max_heartrate,
-            mean_heartrate: item.mean_heartrate,
-            median_heartrate: item.median_heartrate,
-            stdev_heartrate: item.stdev_heartrate,
-            number_of_entries: item.number_of_entries,
-        }
-    }
-}
+derive_rweb_schema!(RaceTypeWrapper, _RaceTypeWrapper);
 
-#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize, rweb::Schema)]
-pub enum RaceTypeWrapper {
+#[allow(dead_code)]
+#[derive(Serialize, Schema)]
+enum _RaceTypeWrapper {
     #[serde(rename = "personal")]
     Personal,
     #[serde(rename = "world_record_men")]
@@ -551,72 +365,28 @@ pub enum RaceTypeWrapper {
     WorldRecordWomen,
 }
 
-impl From<RaceType> for RaceTypeWrapper {
-    fn from(item: RaceType) -> Self {
-        match item {
-            RaceType::Personal => Self::Personal,
-            RaceType::WorldRecordMen => Self::WorldRecordMen,
-            RaceType::WorldRecordWomen => Self::WorldRecordWomen,
-        }
-    }
-}
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Into, From)]
+pub struct RaceResultsWrapper(RaceResults);
 
-impl From<RaceTypeWrapper> for RaceType {
-    fn from(item: RaceTypeWrapper) -> Self {
-        match item {
-            RaceTypeWrapper::Personal => Self::Personal,
-            RaceTypeWrapper::WorldRecordMen => Self::WorldRecordMen,
-            RaceTypeWrapper::WorldRecordWomen => Self::WorldRecordWomen,
-        }
-    }
-}
+derive_rweb_schema!(RaceResultsWrapper, _RaceResultsWrapper);
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, rweb::Schema)]
-pub struct RaceResultsWrapper {
+#[allow(dead_code)]
+#[derive(Schema)]
+struct _RaceResultsWrapper {
     #[schema(description = "Race Result ID")]
-    pub id: i32,
+    id: i32,
     #[schema(description = "Race Type")]
-    pub race_type: RaceTypeWrapper,
+    race_type: RaceTypeWrapper,
     #[schema(description = "Race Date")]
-    pub race_date: Option<NaiveDate>,
+    race_date: Option<NaiveDate>,
     #[schema(description = "Race Name")]
-    pub race_name: Option<StackString>,
+    race_name: Option<StackString>,
     #[schema(description = "Race Distance (m)")]
-    pub race_distance: i32, // distance in meters
+    race_distance: i32, // distance in meters
     #[schema(description = "Race Duration (s)")]
-    pub race_time: f64,
+    race_time: f64,
     #[schema(description = "Race Flag")]
-    pub race_flag: bool,
+    race_flag: bool,
     #[schema(description = "Race Summary IDs")]
-    pub race_summary_ids: Vec<Option<i32>>,
-}
-
-impl From<RaceResults> for RaceResultsWrapper {
-    fn from(item: RaceResults) -> Self {
-        Self {
-            id: item.id,
-            race_type: item.race_type.into(),
-            race_date: item.race_date.map(Into::into),
-            race_name: item.race_name,
-            race_distance: item.race_distance,
-            race_time: item.race_time,
-            race_flag: item.race_flag,
-            race_summary_ids: item.race_summary_ids,
-        }
-    }
-}
-
-impl From<RaceResultsWrapper> for RaceResults {
-    fn from(item: RaceResultsWrapper) -> Self {
-        Self {
-            id: item.id,
-            race_type: item.race_type.into(),
-            race_date: item.race_date.map(Into::into),
-            race_name: item.race_name,
-            race_distance: item.race_distance,
-            race_time: item.race_time,
-            race_flag: item.race_flag,
-            race_summary_ids: item.race_summary_ids,
-        }
-    }
+    race_summary_ids: Vec<Option<i32>>,
 }

@@ -23,12 +23,14 @@ pub mod sport_types_wrapper;
 
 use chrono::{DateTime, NaiveDate, Utc};
 use derive_more::{From, Into};
-use rweb::openapi::{self, ComponentDescriptor, ComponentOrInlineSchema, Entity};
-use rweb::Schema;
+use rweb::{
+    openapi::{self, ComponentDescriptor, ComponentOrInlineSchema, Entity},
+    Schema,
+};
+use rweb_helper::derive_rweb_schema;
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
 use std::borrow::Cow;
-use rweb_helper::derive_rweb_schema;
 
 use fitbit_lib::{
     fitbit_client::{FitbitBodyWeightFatUpdateOutput, FitbitUserProfile},
@@ -37,11 +39,9 @@ use fitbit_lib::{
     scale_measurement::ScaleMeasurement,
 };
 use garmin_connect_lib::garmin_connect_client::GarminConnectUserDailySummary;
-use garmin_lib::{
-    common::{
-        fitbit_activity::FitbitActivity, garmin_connect_activity::GarminConnectActivity,
-        strava_activity::StravaActivity, strava_timezone::StravaTimeZone,
-    },
+use garmin_lib::common::{
+    fitbit_activity::FitbitActivity, garmin_connect_activity::GarminConnectActivity,
+    strava_activity::StravaActivity, strava_timezone::StravaTimeZone,
 };
 use race_result_analysis::{race_results::RaceResults, race_type::RaceType};
 use strava_lib::strava_client::StravaAthlete;
@@ -154,7 +154,10 @@ struct _ScaleMeasurementWrapper {
 #[derive(Debug, Serialize, Into, From)]
 pub struct FitbitBodyWeightFatUpdateOutputWrapper(FitbitBodyWeightFatUpdateOutput);
 
-derive_rweb_schema!(FitbitBodyWeightFatUpdateOutputWrapper, _FitbitBodyWeightFatUpdateOutputWrapper);
+derive_rweb_schema!(
+    FitbitBodyWeightFatUpdateOutputWrapper,
+    _FitbitBodyWeightFatUpdateOutputWrapper
+);
 
 #[derive(Debug, Serialize, Schema)]
 struct _FitbitBodyWeightFatUpdateOutputWrapper {
@@ -302,7 +305,10 @@ struct _GarminConnectActivityWrapper {
 #[derive(Serialize, Deserialize, Debug, Into, From)]
 pub struct GarminConnectUserDailySummaryWrapper(GarminConnectUserDailySummary);
 
-derive_rweb_schema!(GarminConnectUserDailySummaryWrapper, _GarminConnectUserDailySummaryWrapper);
+derive_rweb_schema!(
+    GarminConnectUserDailySummaryWrapper,
+    _GarminConnectUserDailySummaryWrapper
+);
 
 #[allow(dead_code)]
 #[derive(Schema)]
@@ -328,7 +334,10 @@ struct _GarminConnectUserDailySummaryWrapper {
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, Into, From)]
 pub struct FitbitStatisticsSummaryWrapper(FitbitStatisticsSummary);
 
-derive_rweb_schema!(FitbitStatisticsSummaryWrapper, _FitbitStatisticsSummaryWrapper);
+derive_rweb_schema!(
+    FitbitStatisticsSummaryWrapper,
+    _FitbitStatisticsSummaryWrapper
+);
 
 #[allow(dead_code)]
 #[derive(Schema)]

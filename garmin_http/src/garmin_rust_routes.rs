@@ -1,7 +1,7 @@
 #![allow(clippy::needless_pass_by_value)]
 
 use itertools::Itertools;
-use log::info;
+use log::{debug, info};
 use reqwest::{header::HeaderValue, Client};
 use rweb::{
     get,
@@ -61,7 +61,7 @@ use crate::{
 pub type WarpResult<T> = Result<T, Rejection>;
 pub type HttpResult<T> = Result<T, Error>;
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Default, Serialize, Deserialize, Debug)]
 pub struct Session {
     history: Vec<StackString>,
 }
@@ -88,8 +88,12 @@ impl Session {
         config: &GarminConfig,
         session_id: Uuid,
     ) -> Result<Self, anyhow::Error> {
+        #[derive(Deserialize, Debug)]
+        struct SessionResponse {
+            history: Option<Vec<StackString>>,
+        }
         let url = format!("https://{}/api/session", config.domain);
-        let session: Option<Self> = client
+        let session: SessionResponse = client
             .get(url)
             .header("session", HeaderValue::from_str(&session_id.to_string())?)
             .send()
@@ -97,7 +101,10 @@ impl Session {
             .error_for_status()?
             .json()
             .await?;
-        Ok(session.unwrap_or_else(Self::default))
+        debug!("Got session {:?}", session);
+        Ok(Self {
+            history: session.history.unwrap_or_else(Vec::new),
+        })
     }
 
     pub async fn push(

@@ -93,7 +93,7 @@ impl Session {
             history: Option<Vec<StackString>>,
         }
         let url = format!("https://{}/api/session", config.domain);
-        let session: SessionResponse = client
+        let session: Option<SessionResponse> = client
             .get(url)
             .header("session", HeaderValue::from_str(&session_id.to_string())?)
             .send()
@@ -102,9 +102,12 @@ impl Session {
             .json()
             .await?;
         debug!("Got session {:?}", session);
-        Ok(Self {
-            history: session.history.unwrap_or_else(Vec::new),
-        })
+        match session {
+            Some(session) => Ok(Self {
+                history: session.history.unwrap_or_else(Vec::new),
+            }),
+            None => Ok(Self::default()),
+        }
     }
 
     pub async fn push(

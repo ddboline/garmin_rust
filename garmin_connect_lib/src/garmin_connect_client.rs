@@ -130,7 +130,8 @@ impl GarminConnectClient {
             .await?;
 
         client
-            .wait_for_find(Locator::Id("gauth-widget-frame-gauth-widget"))
+            .wait()
+            .for_element(Locator::Id("gauth-widget-frame-gauth-widget"))
             .await?;
 
         client
@@ -165,7 +166,8 @@ impl GarminConnectClient {
         client.goto(modern_url.as_str()).await?;
 
         client
-            .wait_for_find(Locator::XPath("//*[@class=\"main-header\"]"))
+            .wait()
+            .for_element(Locator::XPath("//*[@class=\"main-header\"]"))
             .await?;
 
         let js = Self::raw_get(client, modern_url).await?;

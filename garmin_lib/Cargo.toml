@@ -40,7 +40,7 @@ smartstring = "0.2"
 rustls-native-certs = {version="0.5", default_features=false}
 envy = "0.4"
 # fitparser = {git = "https://github.com/stadelmanma/fitparse-rs.git", branch="master"}
-fitparser = {git = "https://github.com/ddboline/fitparse-rs.git", branch="add_handle_zero_crc_header"}
+fitparser = {git = "https://github.com/ddboline/fitparse-rs.git", branch="master"}
 handlebars = "4.0"
 maplit = "1.0"
 chrono-tz = "0.5"

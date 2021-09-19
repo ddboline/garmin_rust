@@ -1,8 +1,7 @@
 use anyhow::{format_err, Error};
 use chrono::{DateTime, Utc};
-use fitparser::{de::DecodeOption, profile::field_types::MesgNum, Value};
+use fitparser::{profile::field_types::MesgNum, Value};
 use log::debug;
-use maplit::hashset;
 use std::{collections::HashMap, fs::File, path::Path};
 
 use crate::{
@@ -63,16 +62,7 @@ impl GarminParseTrait for GarminParseFit {
 
     fn parse_file(&self, filename: &Path) -> Result<ParseOutput, Error> {
         let mut f = File::open(filename)?;
-        let records = fitparser::from_reader(&mut f)
-            .or_else(|_| {
-                debug!("Crc Validation failed, skipping");
-                let mut f = File::open(filename)?;
-                let opts = hashset! {
-                    DecodeOption::HandleZeroCrcHeader,
-                };
-                fitparser::de::from_reader_with_options(&mut f, &opts)
-            })
-            .map_err(|e| format_err!("{:?}", e))?;
+        let records = fitparser::from_reader(&mut f).map_err(|e| format_err!("{:?}", e))?;
 
         let mut lap_list = Vec::new();
         let mut point_list = Vec::new();

@@ -33,7 +33,7 @@ postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag =
 bytes = "1.0"
 anyhow = "1.0"
 thiserror = "1.0"
-dirs = "3.0"
+dirs = "4.0"
 tokio = {version="1.10", features=["full"]}
 derive_more = "0.99"
 smartstring = "0.2"
@@ -43,7 +43,7 @@ envy = "0.4"
 fitparser = {git = "https://github.com/ddboline/fitparse-rs.git", branch="master"}
 handlebars = "4.0"
 maplit = "1.0"
-chrono-tz = "0.5"
+chrono-tz = "0.6"
 smallvec = "1.6"
 flate2 = "1.0"
 itertools = "0.10"

@@ -1,6 +1,6 @@
 [package]
 name = "garmin_http"
-version = "0.11.41"
+version = "0.11.42"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -31,7 +31,7 @@ async-trait = "0.1"
 rayon = "1.5"
 handlebars = "4.0"
 itertools = "0.10"
-cookie = "0.15"
+cookie = {version="0.16.0-rc.1", features=["percent-encode"]}
 base64 = "0.13"
 url = "2.2"
 indexmap = "1.6"

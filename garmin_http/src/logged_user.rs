@@ -3,7 +3,7 @@ pub use authorized_users::{
     KEY_LENGTH, SECRET_KEY, TRIGGER_DB_UPDATE,
 };
 use log::debug;
-use rweb::Schema;
+use rweb::{filters::cookie::cookie, Filter, Rejection, Schema};
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
 use std::{
@@ -25,6 +25,26 @@ pub struct LoggedUser {
     pub session: Uuid,
 }
 
+impl LoggedUser {
+    pub fn verify_session_id(&self, session_id: Uuid) -> Result<(), Error> {
+        if self.session == session_id {
+            Ok(())
+        } else {
+            Err(Error::Unauthorized)
+        }
+    }
+
+    pub fn filter() -> impl Filter<Extract = (Self,), Error = Rejection> + Copy {
+        cookie("session-id")
+            .and(cookie("jwt"))
+            .and_then(|id: Uuid, user: Self| async move {
+                user.verify_session_id(id)
+                    .map(|_| user)
+                    .map_err(rweb::reject::custom)
+            })
+    }
+}
+
 impl From<AuthorizedUser> for LoggedUser {
     fn from(user: AuthorizedUser) -> Self {
         Self {
@@ -38,7 +58,7 @@ impl From<LoggedUser> for AuthorizedUser {
     fn from(user: LoggedUser) -> Self {
         Self {
             email: user.email,
-            ..AuthorizedUser::default()
+            session: user.session,
         }
     }
 }

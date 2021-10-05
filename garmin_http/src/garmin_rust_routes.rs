@@ -18,6 +18,7 @@ use tempdir::TempDir;
 use tokio::{fs::File, io::AsyncWriteExt};
 use tokio_stream::StreamExt;
 use uuid::Uuid;
+use cookie::Cookie;
 
 use fitbit_lib::fitbit_heartrate::FitbitHeartRate;
 use garmin_cli::garmin_cli::{GarminCli, GarminRequest};
@@ -77,10 +78,14 @@ impl FromStr for Session {
 }
 
 impl Session {
-    pub fn get_jwt_cookie(&self, domain: &str) -> String {
+    pub fn get_jwt_cookie(&self, domain: &str) -> Cookie<'static> {
         let history_str = self.history.join(";");
         let token = base64::encode(history_str);
-        format!("session={}; HttpOnly; Path=/; Domain={}", token, domain)
+        Cookie::build("session", token)
+            .http_only(true)
+            .path("/")
+            .domain(domain.to_string())
+            .finish()
     }
 
     pub async fn pull(
@@ -170,7 +175,7 @@ struct IndexResponse(HtmlBase<String, Error>);
 #[get("/garmin/index.html")]
 pub async fn garmin(
     query: Query<FilterRequest>,
-    #[cookie = "jwt"] user: LoggedUser,
+    #[filter = "LoggedUser::filter"] user: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<IndexResponse> {
     let query = query.into_inner();
@@ -214,7 +219,7 @@ pub async fn garmin_demo(
     let mut session = session.unwrap_or_default();
     let body = garmin_body(query.into_inner(), &state, &mut session.history, true).await?;
     let jwt = session.get_jwt_cookie(&state.config.domain);
-    Ok(HtmlBase::new(body).with_cookie(&jwt).into())
+    Ok(HtmlBase::new(body).with_cookie(&jwt.encoded().to_string()).into())
 }
 
 #[derive(RwebResponse)]
@@ -224,7 +229,7 @@ struct UploadResponse(HtmlBase<String, Error>);
 #[post("/garmin/upload_file")]
 pub async fn garmin_upload(
     #[filter = "rweb::multipart::form"] form: FormData,
-    #[cookie = "jwt"] user: LoggedUser,
+    #[filter = "LoggedUser::filter"] user: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<UploadResponse> {
     let session = Session::pull(&state.client, &state.config, user.session)
@@ -291,7 +296,7 @@ struct ConnectSyncResponse(JsonBase<Vec<String>, Error>);
 
 #[get("/garmin/garmin_connect_sync")]
 pub async fn garmin_connect_sync(
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<ConnectSyncResponse> {
     let body = GarminConnectSyncRequest {}
@@ -310,7 +315,7 @@ struct ConnectHrSyncResponse(HtmlBase<String, Error>);
 #[get("/garmin/garmin_connect_hr_sync")]
 pub async fn garmin_connect_hr_sync(
     query: Query<GarminConnectHrSyncRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<ConnectHrSyncResponse> {
     let heartrates = query
@@ -328,7 +333,7 @@ struct ConnectHrApiResponse(JsonBase<Vec<FitbitHeartRateWrapper>, Error>);
 #[get("/garmin/garmin_connect_hr_api")]
 pub async fn garmin_connect_hr_api(
     query: Query<GarminConnectHrApiRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<ConnectHrApiResponse> {
     let hr_vals = query
@@ -347,7 +352,7 @@ struct GarminSyncResponse(HtmlBase<String, Error>);
 
 #[get("/garmin/garmin_sync")]
 pub async fn garmin_sync(
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<GarminSyncResponse> {
     let body = GarminSyncRequest {}.handle(&state.db).await?;
@@ -365,7 +370,7 @@ struct StravaSyncResponse(HtmlBase<String, Error>);
 #[get("/garmin/strava_sync")]
 pub async fn strava_sync(
     query: Query<StravaSyncRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<StravaSyncResponse> {
     let body = query
@@ -385,7 +390,7 @@ struct StravaAuthResponse(HtmlBase<String, Error>);
 
 #[get("/garmin/strava/auth")]
 pub async fn strava_auth(
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<StravaAuthResponse> {
     let body: String = StravaAuthRequest {}.handle(&state.config).await?.into();
@@ -398,7 +403,7 @@ struct StravaRefreshResponse(HtmlBase<String, Error>);
 
 #[get("/garmin/strava/refresh_auth")]
 pub async fn strava_refresh(
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<StravaRefreshResponse> {
     let body: String = StravaRefreshRequest {}.handle(&state.config).await?.into();
@@ -412,7 +417,7 @@ struct StravaCallbackResponse(HtmlBase<String, Error>);
 #[get("/garmin/strava/callback")]
 pub async fn strava_callback(
     query: Query<StravaCallbackRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<StravaCallbackResponse> {
     let body: String = query.into_inner().handle(&state.config).await?.into();
@@ -426,7 +431,7 @@ struct StravaActivitiesResponse(JsonBase<Vec<StravaActivityWrapper>, Error>);
 #[get("/garmin/strava/activities")]
 pub async fn strava_activities(
     query: Query<StravaActivitiesRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<StravaActivitiesResponse> {
     let alist = query
@@ -442,7 +447,7 @@ pub async fn strava_activities(
 #[get("/garmin/strava/activities_db")]
 pub async fn strava_activities_db(
     query: Query<StravaActivitiesRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<StravaActivitiesResponse> {
     let alist = StravaActivitiesDBRequest(query.into_inner())
@@ -465,7 +470,7 @@ struct StravaActivitiesUpdateResponse(HtmlBase<String, Error>);
 #[post("/garmin/strava/activities_db")]
 pub async fn strava_activities_db_update(
     payload: Json<StravaActiviesDBUpdateRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<StravaActivitiesUpdateResponse> {
     let body = payload.into_inner().handle(&state.db).await?;
@@ -480,7 +485,7 @@ struct StravaUploadResponse(HtmlBase<String, Error>);
 #[post("/garmin/strava/upload")]
 pub async fn strava_upload(
     payload: Json<StravaUploadRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<StravaUploadResponse> {
     let body: String = payload.into_inner().handle(&state.config).await?.into();
@@ -494,7 +499,7 @@ struct StravaUpdateResponse(HtmlBase<String, Error>);
 #[post("/garmin/strava/update")]
 pub async fn strava_update(
     payload: Json<StravaUpdateRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<StravaUpdateResponse> {
     let body: String = payload.into_inner().handle(&state.config).await?.into();
@@ -508,7 +513,7 @@ struct StravaCreateResponse(HtmlBase<String, Error>);
 #[post("/garmin/strava/create")]
 pub async fn strava_create(
     query: Query<StravaCreateRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<StravaCreateResponse> {
     let activity_id = query.into_inner().handle(&state.db, &state.config).await?;
@@ -522,7 +527,7 @@ struct FitbitAuthResponse(HtmlBase<String, Error>);
 
 #[get("/garmin/fitbit/auth")]
 pub async fn fitbit_auth(
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<FitbitAuthResponse> {
     let body: String = FitbitAuthRequest {}.handle(&state.config).await?.into();
@@ -535,7 +540,7 @@ struct FitbitRefreshResponse(HtmlBase<String, Error>);
 
 #[get("/garmin/fitbit/refresh_auth")]
 pub async fn fitbit_refresh(
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<FitbitRefreshResponse> {
     let body: String = FitbitRefreshRequest {}.handle(&state.config).await?.into();
@@ -549,7 +554,7 @@ struct FitbitHeartRateResponse(JsonBase<Vec<FitbitHeartRateWrapper>, Error>);
 #[get("/garmin/fitbit/heartrate_api")]
 pub async fn fitbit_heartrate_api(
     query: Query<FitbitHeartrateApiRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<FitbitHeartRateResponse> {
     let hlist = query
@@ -565,7 +570,7 @@ pub async fn fitbit_heartrate_api(
 #[get("/garmin/fitbit/heartrate_cache")]
 pub async fn fitbit_heartrate_cache(
     query: Query<FitbitHeartrateCacheRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<FitbitHeartRateResponse> {
     let hlist = query
@@ -589,7 +594,7 @@ struct FitbitHeartrateUpdateResponse(HtmlBase<&'static str, Error>);
 #[post("/garmin/fitbit/heartrate_cache")]
 pub async fn fitbit_heartrate_cache_update(
     payload: Json<FitbitHeartrateUpdateRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<FitbitHeartrateUpdateResponse> {
     payload.into_inner().handle(&state.config).await?;
@@ -602,7 +607,7 @@ struct FitbitBodyWeightFatResponse(JsonBase<Vec<FitbitBodyWeightFatWrapper>, Err
 
 #[get("/garmin/fitbit/bodyweight")]
 pub async fn fitbit_bodyweight(
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<FitbitBodyWeightFatResponse> {
     let hlist = FitbitBodyWeightFatRequest {}
@@ -620,7 +625,7 @@ struct FitbitBodyWeightFatUpdateResponse(JsonBase<FitbitBodyWeightFatUpdateOutpu
 
 #[get("/garmin/fitbit/bodyweight_sync")]
 pub async fn fitbit_bodyweight_sync(
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<FitbitBodyWeightFatUpdateResponse> {
     let hlist = FitbitBodyWeightFatUpdateRequest {}
@@ -636,7 +641,7 @@ struct FitbitActivitiesResponse(JsonBase<Vec<FitbitActivityWrapper>, Error>);
 #[get("/garmin/fitbit/fitbit_activities")]
 pub async fn fitbit_activities(
     query: Query<FitbitActivitiesRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<FitbitActivitiesResponse> {
     let hlist = query
@@ -669,7 +674,7 @@ struct FitbitSyncResponse(HtmlBase<String, Error>);
 #[get("/garmin/fitbit/sync")]
 pub async fn fitbit_sync(
     query: Query<FitbitSyncRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<FitbitSyncResponse> {
     let heartrates = query.into_inner().handle(&state.db, &state.config).await?;
@@ -707,7 +712,7 @@ struct FitbitStatisticsPlotResponse(HtmlBase<String, Error>);
 #[get("/garmin/fitbit/heartrate_statistics_plots")]
 pub async fn heartrate_statistics_plots(
     query: Query<ScaleMeasurementRequest>,
-    #[cookie = "jwt"] user: LoggedUser,
+    #[filter = "LoggedUser::filter"] user: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<FitbitStatisticsPlotResponse> {
     let query: FitbitStatisticsPlotRequest = query.into_inner().into();
@@ -762,7 +767,7 @@ struct ScaleMeasurementResponse(HtmlBase<String, Error>);
 #[get("/garmin/fitbit/plots")]
 pub async fn fitbit_plots(
     query: Query<ScaleMeasurementRequest>,
-    #[cookie = "jwt"] user: LoggedUser,
+    #[filter = "LoggedUser::filter"] user: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<ScaleMeasurementResponse> {
     let session = Session::pull(&state.client, &state.config, user.session)
@@ -813,7 +818,7 @@ struct FitbitHeartratePlotResponse(HtmlBase<String, Error>);
 #[get("/garmin/fitbit/heartrate_plots")]
 pub async fn heartrate_plots(
     query: Query<ScaleMeasurementRequest>,
-    #[cookie = "jwt"] user: LoggedUser,
+    #[filter = "LoggedUser::filter"] user: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<FitbitHeartratePlotResponse> {
     let query: FitbitHeartratePlotRequest = query.into_inner().into();
@@ -844,7 +849,7 @@ struct FitbitTcxSyncResponse(JsonBase<Vec<String>, Error>);
 #[get("/garmin/fitbit/fitbit_tcx_sync")]
 pub async fn fitbit_tcx_sync(
     query: Query<FitbitTcxSyncRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<FitbitTcxSyncResponse> {
     let flist = query
@@ -864,7 +869,7 @@ struct ScaleMeasurementsResponse(JsonBase<Vec<ScaleMeasurementWrapper>, Error>);
 #[get("/garmin/scale_measurements")]
 pub async fn scale_measurement(
     query: Query<ScaleMeasurementRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<ScaleMeasurementsResponse> {
     let slist = query
@@ -888,7 +893,7 @@ struct ScaleMeasurementsUpdateResponse(HtmlBase<&'static str, Error>);
 #[post("/garmin/scale_measurements")]
 pub async fn scale_measurement_update(
     measurements: Json<ScaleMeasurementUpdateRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<ScaleMeasurementsUpdateResponse> {
     measurements.into_inner().handle(&state.db).await?;
@@ -928,7 +933,7 @@ struct UserResponse(JsonBase<LoggedUser, Error>);
 
 #[allow(clippy::unused_async)]
 #[get("/garmin/user")]
-pub async fn user(#[cookie = "jwt"] user: LoggedUser) -> WarpResult<UserResponse> {
+pub async fn user(#[filter = "LoggedUser::filter"] user: LoggedUser) -> WarpResult<UserResponse> {
     Ok(JsonBase::new(user).into())
 }
 
@@ -939,7 +944,7 @@ struct AddGarminCorrectionResponse(HtmlBase<&'static str, Error>);
 #[post("/garmin/add_garmin_correction")]
 pub async fn add_garmin_correction(
     payload: Json<AddGarminCorrectionRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<AddGarminCorrectionResponse> {
     payload.into_inner().handle(&state.db).await?;
@@ -952,7 +957,7 @@ struct FitbitActivityTypesResponse(JsonBase<HashMap<String, StackString>, Error>
 
 #[get("/garmin/fitbit/fitbit_activity_types")]
 pub async fn fitbit_activity_types(
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<FitbitActivityTypesResponse> {
     let result = FitbitActivityTypesRequest {}.handle(&state.config).await?;
@@ -965,7 +970,7 @@ struct StravaAthleteResponse(JsonBase<StravaAthleteWrapper, Error>);
 
 #[get("/garmin/strava/athlete")]
 pub async fn strava_athlete(
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<StravaAthleteResponse> {
     let result = StravaAthleteRequest {}.handle(&state.config).await?;
@@ -978,7 +983,7 @@ struct FitbitProfileResponse(JsonBase<FitbitUserProfileWrapper, Error>);
 
 #[get("/garmin/fitbit/profile")]
 pub async fn fitbit_profile(
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<FitbitProfileResponse> {
     let result = FitbitProfileRequest {}.handle(&state.config).await?;
@@ -992,7 +997,7 @@ struct GarminConnectActivitiesResponse(JsonBase<Vec<GarminConnectActivityWrapper
 #[get("/garmin/garmin_connect_activities")]
 pub async fn garmin_connect_activities(
     query: Query<GarminConnectActivitiesRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<GarminConnectActivitiesResponse> {
     let result = query
@@ -1008,7 +1013,7 @@ pub async fn garmin_connect_activities(
 #[get("/garmin/garmin_connect_activities_db")]
 pub async fn garmin_connect_activities_db(
     query: Query<StravaActivitiesRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<GarminConnectActivitiesResponse> {
     let alist = GarminConnectActivitiesDBRequest(query.into_inner())
@@ -1031,7 +1036,7 @@ struct GarminConnectActivitiesUpdateResponse(HtmlBase<String, Error>);
 #[post("/garmin/garmin_connect_activities_db")]
 pub async fn garmin_connect_activities_db_update(
     payload: Json<GarminConnectActivitiesDBUpdateRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<GarminConnectActivitiesUpdateResponse> {
     let body = payload.into_inner().handle(&state.db).await?.join("\n");
@@ -1045,7 +1050,7 @@ struct GarminConnectUserSummaryResponse(JsonBase<GarminConnectUserDailySummaryWr
 #[get("/garmin/garmin_connect_user_summary")]
 pub async fn garmin_connect_user_summary(
     query: Query<GarminConnectUserSummaryRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<GarminConnectUserSummaryResponse> {
     let js = query.into_inner().handle(&state.connect_proxy).await?;
@@ -1059,7 +1064,7 @@ struct FitbitActivitiesDBResponse(JsonBase<Vec<FitbitActivityWrapper>, Error>);
 #[get("/garmin/fitbit/fitbit_activities_db")]
 pub async fn fitbit_activities_db(
     query: Query<StravaActivitiesRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<FitbitActivitiesDBResponse> {
     let alist = FitbitActivitiesDBRequest(query.into_inner())
@@ -1082,7 +1087,7 @@ struct FitbitActivitiesDBUpdateResponse(HtmlBase<String, Error>);
 #[post("/garmin/fitbit/fitbit_activities_db")]
 pub async fn fitbit_activities_db_update(
     payload: Json<FitbitActivitiesDBUpdateRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<FitbitActivitiesDBUpdateResponse> {
     let body = payload.into_inner().handle(&state.db).await?.join("\n");
@@ -1096,7 +1101,7 @@ struct HeartrateStatisticsResponse(JsonBase<Vec<FitbitStatisticsSummaryWrapper>,
 #[get("/garmin/fitbit/heartrate_statistics_summary_db")]
 pub async fn heartrate_statistics_summary_db(
     query: Query<StravaActivitiesRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<HeartrateStatisticsResponse> {
     let alist = HeartrateStatisticsSummaryDBRequest(query.into_inner())
@@ -1119,7 +1124,7 @@ struct HeartrateStatisticsUpdateResponse(HtmlBase<String, Error>);
 #[post("/garmin/fitbit/heartrate_statistics_summary_db")]
 pub async fn heartrate_statistics_summary_db_update(
     payload: Json<HeartrateStatisticsSummaryDBUpdateRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<HeartrateStatisticsUpdateResponse> {
     let body = payload.into_inner().handle(&state.db).await?.join("\n");
@@ -1151,7 +1156,7 @@ struct RaceResultPlotResponse(HtmlBase<String, Error>);
 #[get("/garmin/race_result_plot")]
 pub async fn race_result_plot(
     query: Query<RaceResultPlotRequest>,
-    #[cookie = "jwt"] user: LoggedUser,
+    #[filter = "LoggedUser::filter"] user: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<RaceResultPlotResponse> {
     let mut query = query.into_inner();
@@ -1183,7 +1188,7 @@ struct RaceResultFlagResponse(HtmlBase<String, Error>);
 #[get("/garmin/race_result_flag")]
 pub async fn race_result_flag(
     query: Query<RaceResultFlagRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<RaceResultFlagResponse> {
     let result: String = query.into_inner().handle(&state.db).await?.into();
@@ -1197,7 +1202,7 @@ struct RaceResultImportResponse(HtmlBase<&'static str, Error>);
 #[get("/garmin/race_result_import")]
 pub async fn race_result_import(
     query: Query<RaceResultImportRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<RaceResultImportResponse> {
     query.into_inner().handle(&state.db).await?;
@@ -1211,7 +1216,7 @@ struct RaceResultsResponse(JsonBase<Vec<RaceResultsWrapper>, Error>);
 #[get("/garmin/race_results_db")]
 pub async fn race_results_db(
     query: Query<RaceResultsDBRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<RaceResultsResponse> {
     let results = query
@@ -1235,7 +1240,7 @@ struct RaceResultsUpdateResponse(HtmlBase<&'static str, Error>);
 #[post("/garmin/race_results_db")]
 pub async fn race_results_db_update(
     payload: Json<RaceResultsDBUpdateRequest>,
-    #[cookie = "jwt"] _: LoggedUser,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<RaceResultsUpdateResponse> {
     payload.into_inner().handle(&state.db).await?;

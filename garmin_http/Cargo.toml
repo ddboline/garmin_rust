@@ -12,7 +12,7 @@ garmin_cli = {path = "../garmin_cli"}
 garmin_connect_lib = {path="../garmin_connect_lib"}
 garmin_reports = {path="../garmin_reports"}
 race_result_analysis = {path="../race_result_analysis"}
-rweb = {version="0.14", features=["openapi", "chrono", "uuid"]}
+rweb = {version="0.14", features=["openapi", "chrono", "uuid"], default-features=false}
 http = "0.2"
 tokio = {version="1.10", features=["full"]}
 tokio-stream = "0.1"

@@ -23,6 +23,8 @@ pub struct LoggedUser {
     pub email: StackString,
     #[schema(description = "Session UUID")]
     pub session: Uuid,
+    #[schema(description = "Secret Key")]
+    pub secret_key: StackString,
 }
 
 impl LoggedUser {
@@ -50,15 +52,7 @@ impl From<AuthorizedUser> for LoggedUser {
         Self {
             email: user.email,
             session: user.session,
-        }
-    }
-}
-
-impl From<LoggedUser> for AuthorizedUser {
-    fn from(user: LoggedUser) -> Self {
-        Self {
-            email: user.email,
-            session: user.session,
+            secret_key: user.secret_key,
         }
     }
 }

@@ -17,7 +17,6 @@ use std::{collections::HashMap, convert::Infallible, str::FromStr, string::ToStr
 use tempdir::TempDir;
 use tokio::{fs::File, io::AsyncWriteExt};
 use tokio_stream::StreamExt;
-use uuid::Uuid;
 use cookie::Cookie;
 
 use fitbit_lib::fitbit_heartrate::FitbitHeartRate;
@@ -91,16 +90,19 @@ impl Session {
     pub async fn pull(
         client: &Client,
         config: &GarminConfig,
-        session_id: Uuid,
+        user: &LoggedUser,
     ) -> Result<Self, anyhow::Error> {
         #[derive(Deserialize, Debug)]
         struct SessionResponse {
             history: Option<Vec<StackString>>,
         }
         let url = format!("https://{}/api/session", config.domain);
+        let value = HeaderValue::from_str(&user.session.to_string())?;
+        let key = HeaderValue::from_str(&user.secret_key)?;
         let session: Option<SessionResponse> = client
             .get(url)
-            .header("session", HeaderValue::from_str(&session_id.to_string())?)
+            .header("session", value)
+            .header("secret-key", key)
             .send()
             .await?
             .error_for_status()?
@@ -119,12 +121,15 @@ impl Session {
         &self,
         client: &Client,
         config: &GarminConfig,
-        session_id: Uuid,
+        user: &LoggedUser,
     ) -> Result<(), anyhow::Error> {
         let url = format!("https://{}/api/session", config.domain);
+        let value = HeaderValue::from_str(&user.session.to_string())?;
+        let key = HeaderValue::from_str(&user.secret_key)?;
         client
             .post(url)
-            .header("session", HeaderValue::from_str(&session_id.to_string())?)
+            .header("session", value)
+            .header("secret-key", key)
             .json(&self)
             .send()
             .await?
@@ -180,14 +185,14 @@ pub async fn garmin(
 ) -> WarpResult<IndexResponse> {
     let query = query.into_inner();
 
-    let mut session = Session::pull(&state.client, &state.config, user.session)
+    let mut session = Session::pull(&state.client, &state.config, &user)
         .await
         .map_err(Into::<Error>::into)?;
 
     let body = garmin_body(query, &state, &mut session.history, false).await?;
 
     session
-        .push(&state.client, &state.config, user.session)
+        .push(&state.client, &state.config, &user)
         .await
         .map_err(Into::<Error>::into)?;
 
@@ -232,7 +237,7 @@ pub async fn garmin_upload(
     #[filter = "LoggedUser::filter"] user: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<UploadResponse> {
-    let session = Session::pull(&state.client, &state.config, user.session)
+    let session = Session::pull(&state.client, &state.config, &user)
         .await
         .map_err(Into::<Error>::into)?;
     let body = garmin_upload_body(form, state, session).await?;
@@ -716,7 +721,7 @@ pub async fn heartrate_statistics_plots(
     #[data] state: AppState,
 ) -> WarpResult<FitbitStatisticsPlotResponse> {
     let query: FitbitStatisticsPlotRequest = query.into_inner().into();
-    let session = Session::pull(&state.client, &state.config, user.session)
+    let session = Session::pull(&state.client, &state.config, &user)
         .await
         .map_err(Into::<Error>::into)?;
     let body: String = heartrate_statistics_plots_impl(query, state, session)
@@ -770,7 +775,7 @@ pub async fn fitbit_plots(
     #[filter = "LoggedUser::filter"] user: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<ScaleMeasurementResponse> {
-    let session = Session::pull(&state.client, &state.config, user.session)
+    let session = Session::pull(&state.client, &state.config, &user)
         .await
         .map_err(Into::<Error>::into)?;
     let query: ScaleMeasurementPlotRequest = query.into_inner().into();
@@ -822,7 +827,7 @@ pub async fn heartrate_plots(
     #[data] state: AppState,
 ) -> WarpResult<FitbitHeartratePlotResponse> {
     let query: FitbitHeartratePlotRequest = query.into_inner().into();
-    let session = Session::pull(&state.client, &state.config, user.session)
+    let session = Session::pull(&state.client, &state.config, &user)
         .await
         .map_err(Into::<Error>::into)?;
     let body = heartrate_plots_impl(query, state, session).await?;
@@ -1161,7 +1166,7 @@ pub async fn race_result_plot(
 ) -> WarpResult<RaceResultPlotResponse> {
     let mut query = query.into_inner();
     query.demo = Some(false);
-    let session = Session::pull(&state.client, &state.config, user.session)
+    let session = Session::pull(&state.client, &state.config, &user)
         .await
         .map_err(Into::<Error>::into)?;
     let body: String = race_result_plot_impl(query, state, session).await?.into();

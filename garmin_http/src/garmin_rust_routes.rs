@@ -1,5 +1,6 @@
 #![allow(clippy::needless_pass_by_value)]
 
+use cookie::Cookie;
 use itertools::Itertools;
 use log::{debug, info};
 use reqwest::{header::HeaderValue, Client};
@@ -17,7 +18,6 @@ use std::{collections::HashMap, convert::Infallible, str::FromStr, string::ToStr
 use tempdir::TempDir;
 use tokio::{fs::File, io::AsyncWriteExt};
 use tokio_stream::StreamExt;
-use cookie::Cookie;
 
 use fitbit_lib::fitbit_heartrate::FitbitHeartRate;
 use garmin_cli::garmin_cli::{GarminCli, GarminRequest};
@@ -224,7 +224,9 @@ pub async fn garmin_demo(
     let mut session = session.unwrap_or_default();
     let body = garmin_body(query.into_inner(), &state, &mut session.history, true).await?;
     let jwt = session.get_jwt_cookie(&state.config.domain);
-    Ok(HtmlBase::new(body).with_cookie(&jwt.encoded().to_string()).into())
+    Ok(HtmlBase::new(body)
+        .with_cookie(&jwt.encoded().to_string())
+        .into())
 }
 
 #[derive(RwebResponse)]

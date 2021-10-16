@@ -96,7 +96,7 @@ impl Session {
         struct SessionResponse {
             history: Option<Vec<StackString>>,
         }
-        let url = format!("https://{}/api/session", config.domain);
+        let url = format!("https://{}/api/session/garmin", config.domain);
         let value = HeaderValue::from_str(&user.session.to_string())?;
         let key = HeaderValue::from_str(&user.secret_key)?;
         let session: Option<SessionResponse> = client
@@ -123,7 +123,7 @@ impl Session {
         config: &GarminConfig,
         user: &LoggedUser,
     ) -> Result<(), anyhow::Error> {
-        let url = format!("https://{}/api/session", config.domain);
+        let url = format!("https://{}/api/session/garmin", config.domain);
         let value = HeaderValue::from_str(&user.session.to_string())?;
         let key = HeaderValue::from_str(&user.secret_key)?;
         client

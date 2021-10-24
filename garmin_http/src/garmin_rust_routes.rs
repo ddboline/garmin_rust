@@ -1,9 +1,7 @@
 #![allow(clippy::needless_pass_by_value)]
 
-use cookie::Cookie;
 use itertools::Itertools;
-use log::{debug, info};
-use reqwest::{header::HeaderValue, Client};
+use log::info;
 use rweb::{
     get,
     multipart::{FormData, Part},
@@ -14,7 +12,7 @@ use rweb_helper::{
 };
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
-use std::{collections::HashMap, convert::Infallible, str::FromStr, string::ToString};
+use std::{collections::HashMap, convert::Infallible, string::ToString};
 use tempdir::TempDir;
 use tokio::{fs::File, io::AsyncWriteExt};
 use tokio_stream::StreamExt;
@@ -51,92 +49,15 @@ use crate::{
         StravaRefreshRequest, StravaSyncRequest, StravaUpdateRequest, StravaUploadRequest,
     },
     garmin_rust_app::AppState,
-    logged_user::LoggedUser,
+    logged_user::{LoggedUser, Session},
     FitbitActivityWrapper, FitbitBodyWeightFatUpdateOutputWrapper, FitbitBodyWeightFatWrapper,
-    FitbitHeartRateWrapper, FitbitStatisticsSummaryWrapper, FitbitUserProfileWrapper,
-    GarminConnectActivityWrapper, GarminConnectUserDailySummaryWrapper, RaceResultsWrapper,
-    ScaleMeasurementWrapper, StravaActivityWrapper, StravaAthleteWrapper,
+    FitbitHeartRateWrapper, FitbitStatisticsSummaryWrapper, GarminConnectActivityWrapper,
+    GarminConnectUserDailySummaryWrapper, RaceResultsWrapper, ScaleMeasurementWrapper,
+    StravaActivityWrapper,
 };
 
 pub type WarpResult<T> = Result<T, Rejection>;
 pub type HttpResult<T> = Result<T, Error>;
-
-#[derive(Default, Serialize, Deserialize, Debug)]
-pub struct Session {
-    history: Vec<StackString>,
-}
-
-impl FromStr for Session {
-    type Err = Error;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let data = base64::decode(s)?;
-        let history_str = String::from_utf8(data)?;
-        let history = history_str.split(';').map(Into::into).collect();
-        Ok(Session { history })
-    }
-}
-
-impl Session {
-    pub fn get_jwt_cookie(&self, domain: &str) -> Cookie<'static> {
-        let history_str = self.history.join(";");
-        let token = base64::encode(history_str);
-        Cookie::build("session", token)
-            .http_only(true)
-            .path("/")
-            .domain(domain.to_string())
-            .finish()
-    }
-
-    pub async fn pull(
-        client: &Client,
-        config: &GarminConfig,
-        user: &LoggedUser,
-    ) -> Result<Self, anyhow::Error> {
-        #[derive(Deserialize, Debug)]
-        struct SessionResponse {
-            history: Option<Vec<StackString>>,
-        }
-        let url = format!("https://{}/api/session/garmin", config.domain);
-        let value = HeaderValue::from_str(&user.session.to_string())?;
-        let key = HeaderValue::from_str(&user.secret_key)?;
-        let session: Option<SessionResponse> = client
-            .get(url)
-            .header("session", value)
-            .header("secret-key", key)
-            .send()
-            .await?
-            .error_for_status()?
-            .json()
-            .await?;
-        debug!("Got session {:?}", session);
-        match session {
-            Some(session) => Ok(Self {
-                history: session.history.unwrap_or_else(Vec::new),
-            }),
-            None => Ok(Self::default()),
-        }
-    }
-
-    pub async fn push(
-        &self,
-        client: &Client,
-        config: &GarminConfig,
-        user: &LoggedUser,
-    ) -> Result<(), anyhow::Error> {
-        let url = format!("https://{}/api/session/garmin", config.domain);
-        let value = HeaderValue::from_str(&user.session.to_string())?;
-        let key = HeaderValue::from_str(&user.secret_key)?;
-        client
-            .post(url)
-            .header("session", value)
-            .header("secret-key", key)
-            .json(&self)
-            .send()
-            .await?
-            .error_for_status()?;
-        Ok(())
-    }
-}
 
 #[derive(Deserialize, Schema)]
 pub struct FilterRequest {
@@ -185,14 +106,14 @@ pub async fn garmin(
 ) -> WarpResult<IndexResponse> {
     let query = query.into_inner();
 
-    let mut session = Session::pull(&state.client, &state.config, &user)
+    let mut session = user
+        .get_session(&state.client, &state.config)
         .await
         .map_err(Into::<Error>::into)?;
 
     let body = garmin_body(query, &state, &mut session.history, false).await?;
 
-    session
-        .push(&state.client, &state.config, &user)
+    user.set_session(&state.client, &state.config, &session)
         .await
         .map_err(Into::<Error>::into)?;
 
@@ -239,7 +160,8 @@ pub async fn garmin_upload(
     #[filter = "LoggedUser::filter"] user: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<UploadResponse> {
-    let session = Session::pull(&state.client, &state.config, &user)
+    let session = user
+        .get_session(&state.client, &state.config)
         .await
         .map_err(Into::<Error>::into)?;
     let body = garmin_upload_body(form, state, session).await?;
@@ -723,7 +645,8 @@ pub async fn heartrate_statistics_plots(
     #[data] state: AppState,
 ) -> WarpResult<FitbitStatisticsPlotResponse> {
     let query: FitbitStatisticsPlotRequest = query.into_inner().into();
-    let session = Session::pull(&state.client, &state.config, &user)
+    let session = user
+        .get_session(&state.client, &state.config)
         .await
         .map_err(Into::<Error>::into)?;
     let body: String = heartrate_statistics_plots_impl(query, state, session)
@@ -777,7 +700,8 @@ pub async fn fitbit_plots(
     #[filter = "LoggedUser::filter"] user: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<ScaleMeasurementResponse> {
-    let session = Session::pull(&state.client, &state.config, &user)
+    let session = user
+        .get_session(&state.client, &state.config)
         .await
         .map_err(Into::<Error>::into)?;
     let query: ScaleMeasurementPlotRequest = query.into_inner().into();
@@ -829,7 +753,8 @@ pub async fn heartrate_plots(
     #[data] state: AppState,
 ) -> WarpResult<FitbitHeartratePlotResponse> {
     let query: FitbitHeartratePlotRequest = query.into_inner().into();
-    let session = Session::pull(&state.client, &state.config, &user)
+    let session = user
+        .get_session(&state.client, &state.config)
         .await
         .map_err(Into::<Error>::into)?;
     let body = heartrate_plots_impl(query, state, session).await?;
@@ -973,7 +898,7 @@ pub async fn fitbit_activity_types(
 
 #[derive(RwebResponse)]
 #[response(description = "Strava Athlete")]
-struct StravaAthleteResponse(JsonBase<StravaAthleteWrapper, Error>);
+struct StravaAthleteResponse(HtmlBase<String, Error>);
 
 #[get("/garmin/strava/athlete")]
 pub async fn strava_athlete(
@@ -981,12 +906,34 @@ pub async fn strava_athlete(
     #[data] state: AppState,
 ) -> WarpResult<StravaAthleteResponse> {
     let result = StravaAthleteRequest {}.handle(&state.config).await?;
-    Ok(JsonBase::new(result.into()).into())
+    let body = format!(
+        r#"
+            <table border=1>
+            <tbody>
+            <tr><td>id</td><td>{id}</td></tr>
+            <tr><td>username</td><td>{username}</td></tr>
+            <tr><td>firstname</td><td>{firstname}</td></tr>
+            <tr><td>lastname</td><td>{lastname}</td></tr>
+            <tr><td>city</td><td>{city}</td></tr>
+            <tr><td>state</td><td>{state}</td></tr>
+            <tr><td>sex</td><td>{sex}</td></tr>
+            </tbody>
+            </table>
+        "#,
+        id = result.id,
+        username = result.username,
+        firstname = result.firstname,
+        lastname = result.lastname,
+        city = result.city,
+        state = result.state,
+        sex = result.sex,
+    );
+    Ok(HtmlBase::new(body).into())
 }
 
 #[derive(RwebResponse)]
 #[response(description = "Fitbit Profile")]
-struct FitbitProfileResponse(JsonBase<FitbitUserProfileWrapper, Error>);
+struct FitbitProfileResponse(HtmlBase<String, Error>);
 
 #[get("/garmin/fitbit/profile")]
 pub async fn fitbit_profile(
@@ -994,7 +941,51 @@ pub async fn fitbit_profile(
     #[data] state: AppState,
 ) -> WarpResult<FitbitProfileResponse> {
     let result = FitbitProfileRequest {}.handle(&state.config).await?;
-    Ok(JsonBase::new(result.into()).into())
+    let body = format!(
+        r#"
+            <table border=1>
+            <tbody>
+            <tr><td>Encoded ID</td><td>{encoded_id}</td></tr>
+            <tr><td>First Name</td><td>{first_name}</td></tr>
+            <tr><td>Last Name</td><td>{last_name}</td></tr>
+            <tr><td>Full Name</td><td>{full_name}</td></tr>
+            <tr><td>Avg Daily Steps</td><td>{average_daily_steps}</td></tr>
+            <tr><td>Country</td><td>{country}</td></tr>
+            <tr><td>DOB</td><td>{date_of_birth}</td></tr>
+            <tr><td>Display Name</td><td>{display_name}</td></tr>
+            <tr><td>Distance Unit</td><td>{distance_unit}</td></tr>
+            <tr><td>Gender</td><td>{gender}</td></tr>
+            <tr><td>Height</td><td>{height:0.2}</td></tr>
+            <tr><td>Height Unit</td><td>{height_unit}</td></tr>
+            <tr><td>Timezone</td><td>{timezone}</td></tr>
+            <tr><td>Offset</td><td>{offset_from_utc_millis}</td></tr>
+            <tr><td>Stride Length Running</td><td>{stride_length_running:0.2}</td></tr>
+            <tr><td>Stride Length Walking</td><td>{stride_length_walking:0.2}</td></tr>
+            <tr><td>Weight</td><td>{weight}</td></tr>
+            <tr><td>Weight Unit</td><td>{weight_unit}</td></tr>
+            </tbody>
+            </table>
+        "#,
+        average_daily_steps = result.average_daily_steps,
+        country = result.country,
+        date_of_birth = result.date_of_birth,
+        display_name = result.display_name,
+        distance_unit = result.distance_unit,
+        encoded_id = result.encoded_id,
+        first_name = result.first_name,
+        last_name = result.last_name,
+        full_name = result.full_name,
+        gender = result.gender,
+        height = result.height,
+        height_unit = result.height_unit,
+        timezone = result.timezone,
+        offset_from_utc_millis = result.offset_from_utc_millis,
+        stride_length_running = result.stride_length_running,
+        stride_length_walking = result.stride_length_walking,
+        weight = result.weight,
+        weight_unit = result.weight_unit,
+    );
+    Ok(HtmlBase::new(body).into())
 }
 
 #[derive(RwebResponse)]
@@ -1168,7 +1159,8 @@ pub async fn race_result_plot(
 ) -> WarpResult<RaceResultPlotResponse> {
     let mut query = query.into_inner();
     query.demo = Some(false);
-    let session = Session::pull(&state.client, &state.config, &user)
+    let session = user
+        .get_session(&state.client, &state.config)
         .await
         .map_err(Into::<Error>::into)?;
     let body: String = race_result_plot_impl(query, state, session).await?.into();

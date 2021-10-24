@@ -2,7 +2,9 @@ pub use authorized_users::{
     get_random_key, get_secrets, token::Token, AuthorizedUser, AUTHORIZED_USERS, JWT_SECRET,
     KEY_LENGTH, SECRET_KEY, TRIGGER_DB_UPDATE,
 };
+use cookie::Cookie;
 use log::debug;
+use reqwest::{header::HeaderValue, Client};
 use rweb::{filters::cookie::cookie, Filter, Rejection, Schema};
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
@@ -13,7 +15,10 @@ use std::{
 };
 use uuid::Uuid;
 
-use garmin_lib::{common::pgpool::PgPool, utils::garmin_util::get_authorized_users};
+use garmin_lib::{
+    common::{garmin_config::GarminConfig, pgpool::PgPool},
+    utils::garmin_util::get_authorized_users,
+};
 
 use crate::errors::ServiceError as Error;
 
@@ -45,6 +50,56 @@ impl LoggedUser {
                     .map_err(rweb::reject::custom)
             })
     }
+
+    pub async fn get_session(
+        &self,
+        client: &Client,
+        config: &GarminConfig,
+    ) -> Result<Session, anyhow::Error> {
+        #[derive(Deserialize, Debug)]
+        struct SessionResponse {
+            history: Option<Vec<StackString>>,
+        }
+        let url = format!("https://{}/api/session/garmin", config.domain);
+        let value = HeaderValue::from_str(&self.session.to_string())?;
+        let key = HeaderValue::from_str(&self.secret_key)?;
+        let session: Option<SessionResponse> = client
+            .get(url)
+            .header("session", value)
+            .header("secret-key", key)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+        debug!("Got session {:?}", session);
+        match session {
+            Some(session) => Ok(Session {
+                history: session.history.unwrap_or_else(Vec::new),
+            }),
+            None => Ok(Session::default()),
+        }
+    }
+
+    pub async fn set_session(
+        &self,
+        client: &Client,
+        config: &GarminConfig,
+        session: &Session,
+    ) -> Result<(), anyhow::Error> {
+        let url = format!("https://{}/api/session/garmin", config.domain);
+        let value = HeaderValue::from_str(&self.session.to_string())?;
+        let key = HeaderValue::from_str(&self.secret_key)?;
+        client
+            .post(url)
+            .header("session", value)
+            .header("secret-key", key)
+            .json(session)
+            .send()
+            .await?
+            .error_for_status()?;
+        Ok(())
+    }
 }
 
 impl From<AuthorizedUser> for LoggedUser {
@@ -75,6 +130,33 @@ impl FromStr for LoggedUser {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let token: Token = s.to_string().into();
         token.try_into()
+    }
+}
+
+#[derive(Default, Serialize, Deserialize, Debug)]
+pub struct Session {
+    pub history: Vec<StackString>,
+}
+
+impl FromStr for Session {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let data = base64::decode(s)?;
+        let history_str = String::from_utf8(data)?;
+        let history = history_str.split(';').map(Into::into).collect();
+        Ok(Session { history })
+    }
+}
+
+impl Session {
+    pub fn get_jwt_cookie(&self, domain: &str) -> Cookie<'static> {
+        let history_str = self.history.join(";");
+        let token = base64::encode(history_str);
+        Cookie::build("session", token)
+            .http_only(true)
+            .path("/")
+            .domain(domain.to_string())
+            .finish()
     }
 }
 

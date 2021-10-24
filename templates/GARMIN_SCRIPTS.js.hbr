@@ -107,7 +107,7 @@
         xmlhttp.open("GET", url, true);
         xmlhttp.onload = function nothing() {
             document.getElementById("garminconnectoutput").innerHTML = "done";
-            document.getElementById("garmin_text_box").innerHTML = JSON.stringify(JSON.parse(xmlhttp.responseText),null,2);
+            document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
         }
         xmlhttp.send(null);
         document.getElementById("garminconnectoutput").innerHTML = "syncing";
@@ -139,7 +139,7 @@
         xmlhttp.open("GET", url, true);
         xmlhttp.onload = function nothing() {
             document.getElementById("garminconnectoutput").innerHTML = "done";
-            document.getElementById("garmin_text_box").innerHTML = JSON.stringify(JSON.parse(xmlhttp.responseText),null,2);
+            document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
         }
         xmlhttp.send(null);
         document.getElementById("garminconnectoutput").innerHTML = "syncing";

@@ -33,7 +33,7 @@ use stack_string::StackString;
 use std::borrow::Cow;
 
 use fitbit_lib::{
-    fitbit_client::{FitbitBodyWeightFatUpdateOutput, FitbitUserProfile},
+    fitbit_client::FitbitBodyWeightFatUpdateOutput,
     fitbit_heartrate::{FitbitBodyWeightFat, FitbitHeartRate},
     fitbit_statistics_summary::FitbitStatisticsSummary,
     scale_measurement::ScaleMeasurement,
@@ -44,7 +44,6 @@ use garmin_lib::common::{
     strava_activity::StravaActivity, strava_timezone::StravaTimeZone,
 };
 use race_result_analysis::{race_results::RaceResults, race_type::RaceType};
-use strava_lib::strava_client::StravaAthlete;
 
 use crate::sport_types_wrapper::SportTypesWrapper;
 
@@ -196,76 +195,6 @@ struct _FitbitActivityWrapper {
     steps: Option<i64>,
     #[schema(description = "Log ID")]
     log_id: i64,
-}
-
-#[derive(Serialize, Deserialize, Into, From)]
-pub struct StravaAthleteWrapper(StravaAthlete);
-
-derive_rweb_schema!(StravaAthleteWrapper, _StravaAthleteWrapper);
-
-#[allow(dead_code)]
-#[derive(Schema)]
-struct _StravaAthleteWrapper {
-    #[schema(description = "Athlete ID")]
-    id: u64,
-    #[schema(description = "Username")]
-    username: StackString,
-    #[schema(description = "First Name")]
-    firstname: StackString,
-    #[schema(description = "Last Name")]
-    lastname: StackString,
-    #[schema(description = "City")]
-    city: StackString,
-    #[schema(description = "State")]
-    state: StackString,
-    #[schema(description = "Sex")]
-    sex: StackString,
-}
-
-#[derive(Serialize, Deserialize, Debug, Into, From)]
-pub struct FitbitUserProfileWrapper(FitbitUserProfile);
-
-derive_rweb_schema!(FitbitUserProfileWrapper, _FitbitUserProfileWrapper);
-
-#[allow(dead_code)]
-#[derive(Schema)]
-struct _FitbitUserProfileWrapper {
-    #[schema(description = "Average Daily Steps")]
-    average_daily_steps: u64,
-    #[schema(description = "Country")]
-    country: StackString,
-    #[schema(description = "Date of Birth")]
-    date_of_birth: StackString,
-    #[schema(description = "Display Name")]
-    display_name: StackString,
-    #[schema(description = "Distance Unit")]
-    distance_unit: StackString,
-    #[schema(description = "Encoded ID")]
-    encoded_id: StackString,
-    #[schema(description = "First Name")]
-    first_name: StackString,
-    #[schema(description = "Last Name")]
-    last_name: StackString,
-    #[schema(description = "Full Name")]
-    full_name: StackString,
-    #[schema(description = "Gender")]
-    gender: StackString,
-    #[schema(description = "Height (in)")]
-    height: f64,
-    #[schema(description = "Height Units")]
-    height_unit: StackString,
-    #[schema(description = "Time Zone")]
-    timezone: StackString,
-    #[schema(description = "Offset From UTC in ms")]
-    offset_from_utc_millis: i64,
-    #[schema(description = "Stride Length Running (in)")]
-    stride_length_running: f64,
-    #[schema(description = "Stride Length Walking (in)")]
-    stride_length_walking: f64,
-    #[schema(description = "Weight (lbs)")]
-    weight: f64,
-    #[schema(description = "Weight Units")]
-    weight_unit: StackString,
 }
 
 #[derive(Serialize, Deserialize, Debug, Into, From)]

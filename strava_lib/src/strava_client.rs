@@ -287,7 +287,7 @@ impl StravaClient {
                 ("redirect_uri", redirect_uri.as_str()),
                 ("response_type", "code"),
                 ("approval_prompt", "auto"),
-                ("scope", "activity:read_all,activity:write"),
+                ("scope", "activity:read_all,activity:write,profile:read_all"),
                 ("state", state.as_str()),
             ],
         )?;
@@ -728,15 +728,47 @@ impl StravaClient {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct StravaAthlete {
     pub id: u64,
+    pub resource_state: i64,
     pub username: StackString,
     pub firstname: StackString,
     pub lastname: StackString,
     pub city: StackString,
     pub state: StackString,
     pub sex: StackString,
+    pub weight: f64,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub follower_count: Option<u64>,
+    pub friend_count: Option<u64>,
+    pub measurement_preference: Option<StackString>,
+    pub ftp: Option<u64>,
+    pub clubs: Option<Vec<StravaClub>>,
+    pub shoes: Option<Vec<StravaGear>>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct StravaClub {
+    pub id: u64,
+    pub name: StackString,
+    pub sport_type: StackString,
+    pub city: StackString,
+    pub state: StackString,
+    pub country: StackString,
+    pub private: bool,
+    pub member_count: u64,
+    pub url: StackString,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct StravaGear {
+    pub id: StackString,
+    pub resource_state: i64,
+    pub primary: bool,
+    pub name: StackString,
+    pub distance: f64,
 }
 
 #[cfg(test)]

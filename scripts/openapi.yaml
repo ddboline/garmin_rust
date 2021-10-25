@@ -3,7 +3,7 @@ openapi: 3.0.1
 info:
   title: Fitness Activity WebApp
   description: Web Frontend for Fitness Activities
-  version: 0.11.38
+  version: 0.11.45
 paths:
   /garmin/index.html:
     get:
@@ -1573,84 +1573,9 @@ paths:
         "200":
           description: Fitbit Profile
           content:
-            application/json:
+            text/plain:
               schema:
-                properties:
-                  average_daily_steps:
-                    description: Average Daily Steps
-                    type: integer
-                    minimum: 0
-                  country:
-                    description: Country
-                    type: string
-                  date_of_birth:
-                    description: Date of Birth
-                    type: string
-                  display_name:
-                    description: Display Name
-                    type: string
-                  distance_unit:
-                    description: Distance Unit
-                    type: string
-                  encoded_id:
-                    description: Encoded ID
-                    type: string
-                  first_name:
-                    description: First Name
-                    type: string
-                  last_name:
-                    description: Last Name
-                    type: string
-                  full_name:
-                    description: Full Name
-                    type: string
-                  gender:
-                    description: Gender
-                    type: string
-                  height:
-                    description: Height (in)
-                    type: number
-                  height_unit:
-                    description: Height Units
-                    type: string
-                  timezone:
-                    description: Time Zone
-                    type: string
-                  offset_from_utc_millis:
-                    description: Offset From UTC in ms
-                    type: integer
-                  stride_length_running:
-                    description: Stride Length Running (in)
-                    type: number
-                  stride_length_walking:
-                    description: Stride Length Walking (in)
-                    type: number
-                  weight:
-                    description: Weight (lbs)
-                    type: number
-                  weight_unit:
-                    description: Weight Units
-                    type: string
-                type: object
-                required:
-                  - average_daily_steps
-                  - country
-                  - date_of_birth
-                  - display_name
-                  - distance_unit
-                  - encoded_id
-                  - first_name
-                  - last_name
-                  - full_name
-                  - gender
-                  - height
-                  - height_unit
-                  - timezone
-                  - offset_from_utc_millis
-                  - stride_length_running
-                  - stride_length_walking
-                  - weight
-                  - weight_unit
+                type: string
         "400":
           description: Bad Request
         "404":
@@ -1970,40 +1895,9 @@ paths:
         "200":
           description: Strava Athlete
           content:
-            application/json:
+            text/plain:
               schema:
-                properties:
-                  id:
-                    description: Athlete ID
-                    type: integer
-                    minimum: 0
-                  username:
-                    description: Username
-                    type: string
-                  firstname:
-                    description: First Name
-                    type: string
-                  lastname:
-                    description: Last Name
-                    type: string
-                  city:
-                    description: City
-                    type: string
-                  state:
-                    description: State
-                    type: string
-                  sex:
-                    description: Sex
-                    type: string
-                type: object
-                required:
-                  - id
-                  - username
-                  - firstname
-                  - lastname
-                  - city
-                  - state
-                  - sex
+                type: string
         "400":
           description: Bad Request
         "404":
@@ -2336,10 +2230,14 @@ paths:
                     description: Session UUID
                     format: uuid
                     type: string
+                  secret_key:
+                    description: Secret Key
+                    type: string
                 type: object
                 required:
                   - email
                   - session
+                  - secret_key
         "400":
           description: Bad Request
         "404":

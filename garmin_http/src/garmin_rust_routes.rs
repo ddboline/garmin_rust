@@ -24,7 +24,7 @@ use garmin_lib::{
         garmin_config::GarminConfig,
         garmin_templates::{get_buttons, get_scripts, get_style, HBR},
     },
-    utils::iso_8601_datetime::convert_datetime_to_str,
+    utils::{garmin_util::METERS_PER_MILE, iso_8601_datetime::convert_datetime_to_str},
 };
 use garmin_reports::garmin_file_report_html::generate_history_buttons;
 
@@ -906,19 +906,119 @@ pub async fn strava_athlete(
     #[data] state: AppState,
 ) -> WarpResult<StravaAthleteResponse> {
     let result = StravaAthleteRequest {}.handle(&state.config).await?;
+    let clubs = if let Some(clubs) = &result.clubs {
+        let lines = clubs
+            .iter()
+            .map(|c| {
+                format!(
+                    r#"
+                    <tr>
+                    <td>{id}</td>
+                    <td>{name}</td>
+                    <td>{sport_type}</td>
+                    <td>{city}</td>
+                    <td>{state}</td>
+                    <td>{country}</td>
+                    <td>{private}</td>
+                    <td>{member_count}</td>
+                    <td>{url}</td>
+                    </tr>
+                "#,
+                    id = c.id,
+                    name = c.name,
+                    sport_type = c.sport_type,
+                    city = c.city,
+                    state = c.state,
+                    country = c.country,
+                    private = c.private,
+                    member_count = c.member_count,
+                    url = c.url,
+                )
+            })
+            .join("\n");
+        format!(
+            r#"
+                <br>Clubs<br>
+                <table border=1>
+                <thead>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Sport Type</th>
+                <th>City</th>
+                <th>State</th>
+                <th>Country</th>
+                <th>Private</th>
+                <th>Member Count</th>
+                <th>Url</th>
+                </thead>
+                <tbody>
+                {}
+                </tbody>
+                </table>
+            "#,
+            lines
+        )
+    } else {
+        "".into()
+    };
+    let shoes = if let Some(shoes) = &result.shoes {
+        let lines = shoes
+            .iter()
+            .map(|s| {
+                format!(
+                    r#"
+                    <tr>
+                    <td>{id}</td>
+                    <td>{resource_state}</td>
+                    <td>{primary}</td>
+                    <td>{name}</td>
+                    <td>{distance:0.2}</td>
+                "#,
+                    id = s.id,
+                    resource_state = s.resource_state,
+                    primary = s.primary,
+                    name = s.name,
+                    distance = s.distance / METERS_PER_MILE,
+                )
+            })
+            .join("\n");
+        format!(
+            r#"
+                <br>Shoes<br>
+                <table border=1>
+                <thead>
+                <th>ID</th>
+                <th>Resource State</th>
+                <th>Primary</th>
+                <th>Name</th>
+                <th>Distance (mi)</th>
+                </thead>
+                <tbody>{}</tbody>
+                </table>
+            "#,
+            lines
+        )
+    } else {
+        "".into()
+    };
     let body = format!(
         r#"
             <table border=1>
             <tbody>
-            <tr><td>id</td><td>{id}</td></tr>
-            <tr><td>username</td><td>{username}</td></tr>
-            <tr><td>firstname</td><td>{firstname}</td></tr>
-            <tr><td>lastname</td><td>{lastname}</td></tr>
-            <tr><td>city</td><td>{city}</td></tr>
-            <tr><td>state</td><td>{state}</td></tr>
-            <tr><td>sex</td><td>{sex}</td></tr>
+            <tr><td>ID</td><td>{id}</td></tr>
+            <tr><td>Username</td><td>{username}</td></tr>
+            <tr><td>First Name</td><td>{firstname}</td></tr>
+            <tr><td>Last Name</td><td>{lastname}</td></tr>
+            <tr><td>City</td><td>{city}</td></tr>
+            <tr><td>State</td><td>{state}</td></tr>
+            <tr><td>Sex</td><td>{sex}</td></tr>
+            <tr><td>Weight</td><td>{weight}</td></tr>
+            <tr><td>Created At</td><td>{created_at}</td></tr>
+            <tr><td>Updated At</td><td>{updated_at}</td></tr>
+            {follower_count}{friend_count}{measurement_preference}
             </tbody>
             </table>
+            {clubs}{shoes}
         "#,
         id = result.id,
         username = result.username,
@@ -927,6 +1027,33 @@ pub async fn strava_athlete(
         city = result.city,
         state = result.state,
         sex = result.sex,
+        weight = result.weight,
+        created_at = result.created_at,
+        updated_at = result.updated_at,
+        follower_count = if let Some(follower_count) = result.follower_count {
+            format!(
+                "<tr><td>Follower Count</td><td>{}</td></tr>",
+                follower_count
+            )
+        } else {
+            String::new()
+        },
+        friend_count = if let Some(friend_count) = result.friend_count {
+            format!("<tr><td>Friend Count</td><td>{}</td></tr>", friend_count)
+        } else {
+            String::new()
+        },
+        measurement_preference = if let Some(measurement_preference) = result.measurement_preference
+        {
+            format!(
+                "<tr><td>Measurement Preference</td><td>{}</td></tr>",
+                measurement_preference
+            )
+        } else {
+            String::new()
+        },
+        clubs = clubs,
+        shoes = shoes,
     );
     Ok(HtmlBase::new(body).into())
 }

@@ -1,6 +1,6 @@
 [package]
 name = "fitbit_bot"
-version = "0.11.46"
+version = "0.11.47"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -19,10 +19,10 @@ anyhow = "1.0"
 thiserror = "1.0"
 rayon = "1.5"
 arc-swap = "1.2"
-telegram-bot = {git = "https://github.com/ddboline/telegram-bot.git", tag="0.9.0-2"}
-stack-string = { version="0.3", features=["postgres_types"] }
+telegram-bot = {git = "https://github.com/ddboline/telegram-bot.git", tag="0.9.0-2", default_features=false, features=["rustls"]}
+stack-string = { version="0.4", features=["postgres_types"] }
 
 [dev-dependencies]
 maplit = "1.0"
 rand = "0.8"
-postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.3-2", features=["deadpool"]}
+postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.4", features=["deadpool"]}

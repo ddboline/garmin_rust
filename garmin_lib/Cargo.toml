@@ -1,6 +1,6 @@
 [package]
 name = "garmin_lib"
-version = "0.11.46"
+version = "0.11.47"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -21,15 +21,15 @@ s3-ext = "0.3"
 sts_profile_auth = "0.6"
 num-traits = "0.2"
 rand = "0.8"
-deadpool = "0.8"
-deadpool-postgres = "0.9"
+deadpool = "0.9"
+deadpool-postgres = "0.10"
 dotenv = "0.15"
 lazy_static = "1.4"
 roxmltree = "0.14"
 parking_lot = "0.11"
 avro-rs = {version = "0.13", features = ["snappy"]}
 regex = "1.4"
-postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.3-2", features=["deadpool"]}
+postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.4", features=["deadpool"]}
 bytes = "1.0"
 anyhow = "1.0"
 thiserror = "1.0"
@@ -37,7 +37,7 @@ dirs = "4.0"
 tokio = {version="1.10", features=["full"]}
 derive_more = "0.99"
 smartstring = "0.2"
-rustls-native-certs = {version="0.5", default_features=false}
+rustls-native-certs = {version="0.6", default_features=false}
 envy = "0.4"
 # fitparser = {git = "https://github.com/stadelmanma/fitparse-rs.git", branch="master"}
 fitparser = {git = "https://github.com/ddboline/fitparse-rs.git", branch="master"}
@@ -49,4 +49,4 @@ flate2 = "1.0"
 itertools = "0.10"
 url = "2.2"
 uuid = "0.8"
-stack-string = { version="0.3", features=["postgres_types"] }
+stack-string = { version="0.4", features=["postgres_types"] }

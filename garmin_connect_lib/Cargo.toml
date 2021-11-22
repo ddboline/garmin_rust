@@ -1,6 +1,6 @@
 [package]
 name = "garmin_connect_lib"
-version = "0.11.46"
+version = "0.11.47"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -18,7 +18,7 @@ reqwest = {version="0.11", features=["cookies", "json", "rustls-tls", "stream"],
 serde = {version="1.0", features=["derive"]}
 serde_json = "1.0"
 tokio = {version="1.9", features=["full"]}
-fantoccini = {version="0.17", features=["rustls-tls"]}
+fantoccini = {version="0.17", features=["rustls-tls"], default_features=false}
 url = "2.2"
 hyper = "0.14"
 derive_more = "0.99"
@@ -26,4 +26,4 @@ bytes = "1.0"
 smallvec = "1.6"
 itertools = "0.10"
 http = "0.2"
-stack-string = { version="0.3", features=["postgres_types"] }
+stack-string = { version="0.4", features=["postgres_types"] }

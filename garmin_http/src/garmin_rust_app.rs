@@ -260,7 +260,7 @@ async fn run_app(config: &GarminConfig, pool: &PgPool, proxy: &ConnectProxy) -> 
         .or(spec_json_path)
         .or(spec_yaml_path)
         .recover(error_response);
-    let addr: SocketAddr = format!("127.0.0.1:{}", config.port).parse()?;
+    let addr: SocketAddr = format!("{}:{}", config.host, config.port).parse()?;
     rweb::serve(routes).bind(addr).await;
     Ok(())
 }

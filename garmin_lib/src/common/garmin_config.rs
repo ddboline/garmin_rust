@@ -33,6 +33,8 @@ pub struct GarminConfigInner {
     pub gps_dir: PathBuf,
     #[serde(default = "default_cache_dir")]
     pub cache_dir: PathBuf,
+    #[serde(default = "default_host")]
+    pub host: StackString,
     #[serde(default = "default_port")]
     pub port: u32,
     #[serde(default = "default_n_db_workers")]
@@ -90,6 +92,9 @@ pub struct GarminConfigInner {
 
 fn default_home_dir() -> PathBuf {
     dirs::home_dir().expect("No home directory")
+}
+fn default_host() -> StackString {
+    "0.0.0.0".into()
 }
 fn default_port() -> u32 {
     8000

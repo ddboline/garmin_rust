@@ -1,6 +1,6 @@
 [package]
 name = "strava_lib"
-version = "0.11.46"
+version = "0.11.47"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -21,11 +21,11 @@ maplit = "1.0"
 serde = {version="1.0", features=["derive"]}
 serde_json = "1.0"
 uuid = "0.8"
-postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.3-2", features=["deadpool"]}
+postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.4", features=["deadpool"]}
 rayon = "1.5"
 futures = "0.3"
 select = "0.5"
 smallvec = "1.6"
 chrono-tz = "0.6"
 crossbeam-utils = "0.8"
-stack-string = { version="0.3", features=["postgres_types"] }
+stack-string = { version="0.4", features=["postgres_types"] }

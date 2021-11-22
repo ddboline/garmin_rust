@@ -1,27 +1,21 @@
-use anyhow::{format_err, Error};
+use anyhow::{Error, format_err};
 use deadpool_postgres::{Client, Config, Pool};
-use stack_string::StackString;
-use std::fmt;
+use std::{fmt, sync::Arc};
 use tokio_postgres::{Config as PgConfig, NoTls};
 
-/// Wrapper around `r2d2::Pool`, two pools are considered equal if they have the
-/// same connection string The only way to use `PgPool` is through the get
-/// method, which returns a `PooledConnection` object
+pub use tokio_postgres::Transaction as PgTransaction;
+
+use stack_string::StackString;
+
 #[derive(Clone, Default)]
 pub struct PgPool {
-    pgurl: StackString,
+    pgurl: Arc<StackString>,
     pool: Option<Pool>,
 }
 
 impl fmt::Debug for PgPool {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "PgPool {}", self.pgurl)
-    }
-}
-
-impl PartialEq for PgPool {
-    fn eq(&self, other: &Self) -> bool {
-        self.pgurl == other.pgurl
+        write!(f, "PgPool {}", &self.pgurl)
     }
 }
 
@@ -48,21 +42,14 @@ impl PgPool {
         }
 
         Self {
-            pgurl: pgurl.into(),
-            pool: Some(
-                config
-                    .create_pool(NoTls)
-                    .unwrap_or_else(|_| panic!("Failed to create pool {}", pgurl)),
-            ),
+            pgurl: Arc::new(pgurl.into()),
+            pool: Some(config
+                .create_pool(None, NoTls)
+                .unwrap_or_else(|_| panic!("Failed to create pool {}", pgurl))),
         }
     }
 
     pub async fn get(&self) -> Result<Client, Error> {
-        self.pool
-            .as_ref()
-            .ok_or_else(|| format_err!("No Pool Exists"))?
-            .get()
-            .await
-            .map_err(Into::into)
+        self.pool.as_ref().ok_or_else(|| format_err!("No Pool Exists"))?.get().await.map_err(Into::into)
     }
 }

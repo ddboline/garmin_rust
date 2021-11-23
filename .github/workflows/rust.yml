@@ -60,4 +60,4 @@ jobs:
 
     - name: Outdated dependencies
       run: |
-        cargo outdated -d2
+        cargo update && cargo outdated -d2

@@ -43,4 +43,4 @@ STOPSIGNAL SIGTERM
 
 EXPOSE 3042
 
-CMD ["/usr/bin/aws-app-http"]
+CMD ["/usr/bin/garmin-rust-http"]

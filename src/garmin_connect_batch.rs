@@ -66,7 +66,7 @@ async fn main() -> Result<(), Error> {
         .error_for_status()?
         .json()
         .await?;
-    println!("Logged in {:?}", user);
+    println!("Logged in {}", user.email);
 
     let mut connect = GarminConnectClient::new(config.clone());
     connect.init().await?;

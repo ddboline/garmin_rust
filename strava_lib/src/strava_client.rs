@@ -531,9 +531,6 @@ impl StravaClient {
         #[derive(Deserialize, Debug)]
         struct UploadResponse {
             id: u64,
-            id_str: StackString,
-            external_id: Option<StackString>,
-            error: Option<StackString>,
             status: StackString,
             activity_id: Option<u64>,
         }

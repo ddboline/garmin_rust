@@ -17,7 +17,6 @@ use garmin_connect_lib::garmin_connect_client::GarminConnectClient;
 use garmin_lib::common::{
     garmin_config::GarminConfig, garmin_connect_activity::GarminConnectActivity,
 };
-use log::debug;
 use maplit::hashmap;
 use reqwest::{
     multipart::{Form, Part},
@@ -67,7 +66,7 @@ async fn main() -> Result<(), Error> {
         .error_for_status()?
         .json()
         .await?;
-    debug!("Logged in {:?}", user);
+    println!("Logged in {:?}", user);
 
     let mut connect = GarminConnectClient::new(config.clone());
     connect.init().await?;

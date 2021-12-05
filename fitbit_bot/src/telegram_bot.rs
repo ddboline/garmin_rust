@@ -35,7 +35,7 @@ pub struct TelegramBot {
 }
 
 impl TelegramBot {
-    pub fn new(telegram_bot_token: &str, pool: &PgPool) -> Self {
+    pub fn new(telegram_bot_token: impl Into<StackString>, pool: &PgPool) -> Self {
         Self {
             telegram_bot_token: telegram_bot_token.into(),
             pool: pool.clone(),
@@ -80,10 +80,11 @@ impl TelegramBot {
         Ok(())
     }
 
-    async fn process_update<F>(&self, func: F, update: Update) -> Result<(), Error>
-    where
-        F: Fn(&Message, String),
-    {
+    async fn process_update(
+        &self,
+        func: impl Fn(&Message, String),
+        update: Update,
+    ) -> Result<(), Error> {
         if let UpdateKind::Message(message) = update.kind {
             FAILURE_COUNT.check()?;
             if let MessageKind::Text { ref data, .. } = message.kind {

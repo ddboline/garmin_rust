@@ -357,7 +357,7 @@ impl FitbitHeartRate {
         Ok(params)
     }
 
-    pub fn dump_to_avro<T: AsRef<Path>>(values: &[Self], output_filename: T) -> Result<(), Error> {
+    pub fn dump_to_avro(values: &[Self], output_filename: impl AsRef<Path>) -> Result<(), Error> {
         use rand::{
             distributions::{Alphanumeric, DistString},
             thread_rng,
@@ -395,7 +395,7 @@ impl FitbitHeartRate {
         }
     }
 
-    pub fn read_avro(input_filename: &Path) -> Result<Vec<Self>, Error> {
+    pub fn read_avro(input_filename: impl AsRef<Path>) -> Result<Vec<Self>, Error> {
         let input_file = File::open(input_filename)?;
         Reader::new(input_file)?
             .next()

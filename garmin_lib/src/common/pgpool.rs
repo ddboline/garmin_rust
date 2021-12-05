@@ -1,4 +1,4 @@
-use anyhow::{Error, format_err};
+use anyhow::{format_err, Error};
 use deadpool_postgres::{Client, Config, Pool};
 use std::{fmt, sync::Arc};
 use tokio_postgres::{Config as PgConfig, NoTls};
@@ -43,13 +43,20 @@ impl PgPool {
 
         Self {
             pgurl: Arc::new(pgurl.into()),
-            pool: Some(config
-                .create_pool(None, NoTls)
-                .unwrap_or_else(|_| panic!("Failed to create pool {}", pgurl))),
+            pool: Some(
+                config
+                    .create_pool(None, NoTls)
+                    .unwrap_or_else(|_| panic!("Failed to create pool {}", pgurl)),
+            ),
         }
     }
 
     pub async fn get(&self) -> Result<Client, Error> {
-        self.pool.as_ref().ok_or_else(|| format_err!("No Pool Exists"))?.get().await.map_err(Into::into)
+        self.pool
+            .as_ref()
+            .ok_or_else(|| format_err!("No Pool Exists"))?
+            .get()
+            .await
+            .map_err(Into::into)
     }
 }

@@ -452,10 +452,10 @@ impl FitbitClient {
     }
 
     #[allow(clippy::similar_names)]
-    pub async fn update_fitbit_bodyweightfat<'a, T>(&self, updates: T) -> Result<(), Error>
-    where
-        T: IntoIterator<Item = &'a ScaleMeasurement>,
-    {
+    pub async fn update_fitbit_bodyweightfat<'a>(
+        &self,
+        updates: impl IntoIterator<Item = &'a ScaleMeasurement>,
+    ) -> Result<(), Error> {
         let headers = self.get_auth_headers()?;
         let offset = self.get_offset();
         let futures = updates.into_iter().map(|update| {

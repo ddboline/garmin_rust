@@ -17,7 +17,7 @@ log = "0.4"
 rusoto_core = {version = "0.47", default_features = false, features=["rustls"]}
 rusoto_s3 = {version = "0.47", default_features = false, features=["rustls"]}
 futures = "0.3"
-s3-ext = "0.3"
+s3-ext = "0.4"
 sts_profile_auth = "0.6"
 num-traits = "0.2"
 rand = "0.8"
@@ -40,7 +40,7 @@ smartstring = "0.2"
 rustls-native-certs = {version="0.6", default_features=false}
 envy = "0.4"
 # fitparser = {git = "https://github.com/stadelmanma/fitparse-rs.git", branch="master"}
-fitparser = {git = "https://github.com/ddboline/fitparse-rs.git", branch="master"}
+fitparser = "0.4.3"
 handlebars = "4.0"
 maplit = "1.0"
 chrono-tz = "0.6"

@@ -32,7 +32,8 @@ maplit = "1.0"
 bytes = "1.0"
 statistical = "1.0"
 # fitparser = {git = "https://github.com/stadelmanma/fitparse-rs.git", branch="master"}
-fitparser = {git = "https://github.com/ddboline/fitparse-rs.git", branch="master"}
+# fitparser = {git = "https://github.com/ddboline/fitparse-rs.git", branch="master"}
+fitparser = "0.4.3"
 smallvec = "1.6"
 crossbeam-utils = "0.8"
 stack-string = { version="0.4", features=["postgres_types"] }

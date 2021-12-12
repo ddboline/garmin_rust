@@ -421,11 +421,10 @@ impl GarminCli {
             .collect()
     }
 
-    pub async fn process_filenames<T, U>(&self, filenames: T) -> Result<Vec<DateTime<Utc>>, Error>
-    where
-        T: IntoIterator<Item = U>,
-        U: AsRef<Path>,
-    {
+    pub async fn process_filenames(
+        &self,
+        filenames: impl IntoIterator<Item = impl AsRef<Path>>,
+    ) -> Result<Vec<DateTime<Utc>>, Error> {
         let config = self.get_config().clone();
         let stdout = self.stdout.clone();
 

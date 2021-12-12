@@ -20,7 +20,7 @@ use garmin_connect_lib::garmin_connect_client::GarminConnectClient;
 use garmin_lib::common::{
     fitbit_activity::FitbitActivity, garmin_config::GarminConfig,
     garmin_connect_activity::GarminConnectActivity, garmin_summary::get_maximum_begin_datetime,
-    pgpool::PgPool, strava_activity::StravaActivity,
+    garmin_sync::GarminSync, pgpool::PgPool, strava_activity::StravaActivity,
 };
 use race_result_analysis::{race_results::RaceResults, race_type::RaceType};
 use strava_lib::strava_client::StravaClient;
@@ -364,6 +364,12 @@ impl GarminCliOpts {
         let results = match cli.get_opts() {
             Some(GarminCliOptions::Bootstrap) => cli.run_bootstrap().await,
             Some(GarminCliOptions::Sync(check_md5)) => cli.sync_everything(*check_md5).await,
+            Some(GarminCliOptions::Connect {..}) => {
+                let mut buf = Vec::new();
+                buf.extend_from_slice(&cli.proc_everything().await?);
+                buf.extend_from_slice(&cli.sync_everything(false).await?);
+                Ok(buf)
+            }
             _ => cli.proc_everything().await,
         }?;
         cli.stdout.send(results.join("\n"));

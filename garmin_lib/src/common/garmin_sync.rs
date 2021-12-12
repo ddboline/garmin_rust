@@ -28,6 +28,7 @@ pub fn get_s3_client() -> S3Client {
     get_client_sts!(S3Client, Region::UsEast1).expect("Failed to obtain client")
 }
 
+#[derive(Clone)]
 pub struct GarminSync {
     s3_client: S3Client,
 }

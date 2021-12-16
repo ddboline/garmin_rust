@@ -328,3 +328,43 @@ struct _RaceResultsWrapper {
     #[schema(description = "Race Summary IDs")]
     race_summary_ids: Vec<Option<i32>>,
 }
+
+#[cfg(test)]
+mod test {
+    use rweb_helper::derive_rweb_test;
+
+    use crate::{
+        FitbitActivityWrapper, FitbitBodyWeightFatUpdateOutputWrapper, FitbitBodyWeightFatWrapper,
+        FitbitHeartRateWrapper, FitbitStatisticsSummaryWrapper, GarminConnectActivityWrapper,
+        GarminConnectUserDailySummaryWrapper, RaceResultsWrapper, RaceTypeWrapper,
+        ScaleMeasurementWrapper, StravaActivityWrapper, _FitbitActivityWrapper,
+        _FitbitBodyWeightFatUpdateOutputWrapper, _FitbitBodyWeightFatWrapper,
+        _FitbitHeartRateWrapper, _FitbitStatisticsSummaryWrapper, _GarminConnectActivityWrapper,
+        _GarminConnectUserDailySummaryWrapper, _RaceResultsWrapper, _RaceTypeWrapper,
+        _ScaleMeasurementWrapper, _StravaActivityWrapper,
+    };
+
+    #[test]
+    fn test_types() {
+        derive_rweb_test!(FitbitHeartRateWrapper, _FitbitHeartRateWrapper);
+        derive_rweb_test!(StravaActivityWrapper, _StravaActivityWrapper);
+        derive_rweb_test!(FitbitBodyWeightFatWrapper, _FitbitBodyWeightFatWrapper);
+        derive_rweb_test!(ScaleMeasurementWrapper, _ScaleMeasurementWrapper);
+        derive_rweb_test!(
+            FitbitBodyWeightFatUpdateOutputWrapper,
+            _FitbitBodyWeightFatUpdateOutputWrapper
+        );
+        derive_rweb_test!(FitbitActivityWrapper, _FitbitActivityWrapper);
+        derive_rweb_test!(GarminConnectActivityWrapper, _GarminConnectActivityWrapper);
+        derive_rweb_test!(
+            GarminConnectUserDailySummaryWrapper,
+            _GarminConnectUserDailySummaryWrapper
+        );
+        derive_rweb_test!(
+            FitbitStatisticsSummaryWrapper,
+            _FitbitStatisticsSummaryWrapper
+        );
+        derive_rweb_test!(RaceTypeWrapper, _RaceTypeWrapper);
+        derive_rweb_test!(RaceResultsWrapper, _RaceResultsWrapper);
+    }
+}

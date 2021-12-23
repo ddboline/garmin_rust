@@ -199,8 +199,7 @@ impl GarminConnectClient {
     pub fn extract_display_name(text: &str) -> Result<StackString, Error> {
         if let Some(line) = text
             .split('\n')
-            .filter(|x| x.contains("window.VIEWER_SOCIAL_PROFILE"))
-            .next()
+            .find(|x| x.contains("window.VIEWER_SOCIAL_PROFILE"))
         {
             #[derive(Deserialize)]
             struct SocialProfile {

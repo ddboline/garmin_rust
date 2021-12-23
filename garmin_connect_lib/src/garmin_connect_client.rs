@@ -6,7 +6,6 @@ use http::Method;
 use log::debug;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
-use smallvec::SmallVec;
 use stack_string::StackString;
 use std::{path::PathBuf, process::Stdio};
 use tokio::{
@@ -198,18 +197,19 @@ impl GarminConnectClient {
     }
 
     pub fn extract_display_name(text: &str) -> Result<StackString, Error> {
-        for entry in text.split('\n').filter(|x| x.contains("JSON.parse")) {
-            let entry = entry.replace(r#"\""#, r#"""#).replace(r#"");"#, "");
-            let entries: SmallVec<[&str; 2]> = entry.split(r#" = JSON.parse(""#).take(2).collect();
-            if entries[0].contains("VIEWER_SOCIAL_PROFILE") {
-                #[derive(Deserialize)]
-                struct SocialProfile {
-                    #[serde(rename = "displayName")]
-                    display_name: StackString,
-                }
-                let val: SocialProfile = serde_json::from_str(entries[1])?;
-                return Ok(val.display_name);
+        for line in text
+            .split('\n')
+            .filter(|x| x.contains("window.VIEWER_SOCIAL_PROFILE"))
+        {
+            let entry = line.split(" = ").skip(1).next().unwrap();
+            let entry = entry.trim_matches(';');
+            #[derive(Deserialize)]
+            struct SocialProfile {
+                #[serde(rename = "displayName")]
+                display_name: StackString,
             }
+            let val: SocialProfile = serde_json::from_str(entry)?;
+            return Ok(val.display_name);
         }
         Err(format_err!("NO DISPLAY NAME {}", text))
     }

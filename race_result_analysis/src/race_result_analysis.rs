@@ -227,7 +227,7 @@ impl RaceResultAnalysis {
                 time = time,
                 pace = pace,
                 date = date,
-                name = result.race_name.as_ref().map_or("", |s| s.as_str()),
+                name = result.race_name.as_ref().map_or("", StackString::as_str),
                 flag = flag,
             )
         }).join("</tr><tr>");

@@ -197,21 +197,27 @@ impl GarminConnectClient {
     }
 
     pub fn extract_display_name(text: &str) -> Result<StackString, Error> {
-        for line in text
+        if let Some(line) = text
             .split('\n')
             .filter(|x| x.contains("window.VIEWER_SOCIAL_PROFILE"))
+            .next()
         {
-            let entry = line.split(" = ").skip(1).next().unwrap();
-            let entry = entry.trim_matches(';');
             #[derive(Deserialize)]
             struct SocialProfile {
                 #[serde(rename = "displayName")]
                 display_name: StackString,
             }
+
+            let entry = line
+                .split(" = ")
+                .nth(1)
+                .ok_or_else(|| format_err!("Unexpected format"))?
+                .trim_matches(';');
             let val: SocialProfile = serde_json::from_str(entry)?;
-            return Ok(val.display_name);
+            Ok(val.display_name)
+        } else {
+            Err(format_err!("NO DISPLAY NAME {}", text))
         }
-        Err(format_err!("NO DISPLAY NAME {}", text))
     }
 
     pub async fn get_user_summary(

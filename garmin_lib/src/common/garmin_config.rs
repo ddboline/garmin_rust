@@ -200,7 +200,7 @@ impl GarminConfig {
         let config_dir = dirs::config_dir().ok_or_else(|| format_err!("No CONFIG directory"))?;
         let default_fname = config_dir.join("garmin_rust").join("config.env");
 
-        let env_file = match fname.map(|x| Path::new(x)) {
+        let env_file = match fname.map(Path::new) {
             Some(fname) if fname.exists() => fname,
             _ => &default_fname,
         };

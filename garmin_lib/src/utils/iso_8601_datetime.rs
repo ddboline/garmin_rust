@@ -1,13 +1,14 @@
 use anyhow::Error;
 use chrono::{DateTime, TimeZone, Utc};
 use serde::{de, Deserialize, Deserializer, Serializer};
+use stack_string::StackString;
 
 pub fn sentinel_datetime() -> DateTime<Utc> {
     Utc.ymd(0, 1, 1).and_hms(0, 0, 0)
 }
 
-pub fn convert_datetime_to_str(datetime: DateTime<Utc>) -> String {
-    datetime.format("%Y-%m-%dT%H:%M:%SZ").to_string()
+pub fn convert_datetime_to_str(datetime: DateTime<Utc>) -> StackString {
+    StackString::from_display(datetime.format("%Y-%m-%dT%H:%M:%SZ")).unwrap()
 }
 
 pub fn convert_str_to_datetime(s: &str) -> Result<DateTime<Utc>, Error> {

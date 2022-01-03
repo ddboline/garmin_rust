@@ -4,7 +4,8 @@ use fitparser::{FitDataField, Value};
 use itertools::Itertools;
 use roxmltree::{Node, NodeType};
 use serde::{Deserialize, Serialize};
-use std::fmt;
+use stack_string::StackString;
+use std::{fmt, fmt::Write};
 
 use crate::utils::{
     garmin_util::{
@@ -208,25 +209,29 @@ impl fmt::Display for GarminPoint {
             "avg_speed_value_permi",
         ];
         let vals = vec![
-            self.time.to_string(),
-            self.latitude.unwrap_or(-1.0).to_string(),
-            self.longitude.unwrap_or(-1.0).to_string(),
-            self.altitude.unwrap_or(-1.0).to_string(),
-            self.distance.unwrap_or(-1.0).to_string(),
-            self.heart_rate.unwrap_or(-1.0).to_string(),
-            self.duration_from_last.to_string(),
-            self.duration_from_begin.to_string(),
-            self.speed_mps.to_string(),
-            self.speed_permi.to_string(),
-            self.speed_mph.to_string(),
-            self.avg_speed_value_permi.to_string(),
+            StackString::from_display(self.time).unwrap(),
+            StackString::from_display(self.latitude.unwrap_or(-1.0)).unwrap(),
+            StackString::from_display(self.longitude.unwrap_or(-1.0)).unwrap(),
+            StackString::from_display(self.altitude.unwrap_or(-1.0)).unwrap(),
+            StackString::from_display(self.distance.unwrap_or(-1.0)).unwrap(),
+            StackString::from_display(self.heart_rate.unwrap_or(-1.0)).unwrap(),
+            StackString::from_display(self.duration_from_last).unwrap(),
+            StackString::from_display(self.duration_from_begin).unwrap(),
+            StackString::from_display(self.speed_mps).unwrap(),
+            StackString::from_display(self.speed_permi).unwrap(),
+            StackString::from_display(self.speed_mph).unwrap(),
+            StackString::from_display(self.avg_speed_value_permi).unwrap(),
         ];
         write!(
             f,
             "GarminPoint<{}>",
             keys.iter()
                 .zip(vals.iter())
-                .map(|(k, v)| format!("{}={}", k, v))
+                .map(|(k, v)| {
+                    let mut s = StackString::new();
+                    write!(s, "{}={}", k, v).unwrap();
+                    s
+                })
                 .join(",")
         )
     }

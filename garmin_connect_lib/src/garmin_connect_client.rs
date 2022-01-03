@@ -238,8 +238,8 @@ impl GarminConnectClient {
             .ok_or_else(|| format_err!("Bad URL"))?
             .join("/proxy/usersummary-service/usersummary/daily/")?
             .join(display_name)?;
-        url.query_pairs_mut()
-            .append_pair("calendarDate", &date.to_string());
+        let date_str = StackString::from_display(date)?;
+        url.query_pairs_mut().append_pair("calendarDate", &date_str);
         let js = Self::raw_get(client, &url).await?;
         let user_summary: GarminConnectUserDailySummary = serde_json::from_slice(&js)?;
         self.last_used = Utc::now();
@@ -265,7 +265,8 @@ impl GarminConnectClient {
             .ok_or_else(|| format_err!("Bad URL"))?
             .join("/proxy/wellness-service/wellness/dailyHeartRate/")?
             .join(display_name)?;
-        url.query_pairs_mut().append_pair("date", &date.to_string());
+        let date_str = StackString::from_display(date)?;
+        url.query_pairs_mut().append_pair("date", &date_str);
         let js = Self::raw_get(client, &url).await?;
         self.last_used = Utc::now();
         serde_json::from_slice(&js).map_err(Into::into)
@@ -286,8 +287,9 @@ impl GarminConnectClient {
             .ok_or_else(|| format_err!("Bad URL"))?
             .join("/proxy/activitylist-service/activities/search/activities")?;
         if let Some(start_datetime) = start_datetime {
+            let datetime_str = StackString::from_display(start_datetime.naive_utc().date())?;
             url.query_pairs_mut()
-                .append_pair("startDate", &start_datetime.naive_utc().date().to_string());
+                .append_pair("startDate", &datetime_str);
         }
         let js = Self::raw_get(client, &url).await?;
         self.last_used = Utc::now();
@@ -307,10 +309,11 @@ impl GarminConnectClient {
         fs::create_dir_all(&self.config.download_directory).await?;
 
         for activity in activities {
+            let id_str = StackString::from_display(activity.activity_id)?;
             let fname = self
                 .config
                 .download_directory
-                .join(activity.activity_id.to_string())
+                .join(&id_str)
                 .with_extension("zip");
             let url = self
                 .config
@@ -318,7 +321,7 @@ impl GarminConnectClient {
                 .as_ref()
                 .ok_or_else(|| format_err!("Bad URL"))?
                 .join("/proxy/download-service/files/activity/")?
-                .join(&activity.activity_id.to_string())?;
+                .join(&id_str)?;
             let data = Self::raw_get(client, &url).await?;
             self.last_used = Utc::now();
             fs::write(&fname, &data).await?;

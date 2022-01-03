@@ -1,6 +1,6 @@
 [package]
 name = "fitbit_bot"
-version = "0.11.52"
+version = "0.11.53"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 

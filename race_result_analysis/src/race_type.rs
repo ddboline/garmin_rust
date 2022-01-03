@@ -1,6 +1,7 @@
 use anyhow::{format_err, Error};
 use bytes::BytesMut;
 use serde::{Deserialize, Serialize};
+use stack_string::StackString;
 use std::{
     convert::TryFrom,
     fmt::{self, Display, Formatter},
@@ -19,9 +20,25 @@ pub enum RaceType {
     WorldRecordWomen,
 }
 
+impl RaceType {
+    pub fn to_str(self) -> &'static str {
+        match self {
+            Self::Personal => "personal",
+            Self::WorldRecordMen => "world_record_men",
+            Self::WorldRecordWomen => "world_record_women",
+        }
+    }
+}
+
 impl From<RaceType> for String {
     fn from(item: RaceType) -> String {
         item.to_string()
+    }
+}
+
+impl From<RaceType> for StackString {
+    fn from(item: RaceType) -> Self {
+        StackString::from_display(item).unwrap()
     }
 }
 
@@ -41,12 +58,7 @@ impl TryFrom<String> for RaceType {
 
 impl Display for RaceType {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let s = match self {
-            Self::Personal => "personal",
-            Self::WorldRecordMen => "world_record_men",
-            Self::WorldRecordWomen => "world_record_women",
-        };
-        write!(f, "{}", s)
+        f.write_str(self.to_str())
     }
 }
 
@@ -85,7 +97,8 @@ impl ToSql for RaceType {
     where
         Self: Sized,
     {
-        self.to_string().to_sql(ty, out)
+        let s = StackString::from_display(self)?;
+        s.to_sql(ty, out)
     }
 
     fn accepts(ty: &Type) -> bool
@@ -100,6 +113,7 @@ impl ToSql for RaceType {
         ty: &Type,
         out: &mut BytesMut,
     ) -> Result<IsNull, Box<dyn std::error::Error + Sync + Send>> {
-        self.to_string().to_sql_checked(ty, out)
+        let s = StackString::from_display(self)?;
+        s.to_sql_checked(ty, out)
     }
 }

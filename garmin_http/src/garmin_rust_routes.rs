@@ -12,7 +12,7 @@ use rweb_helper::{
 };
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
-use std::{collections::HashMap, convert::Infallible, string::ToString};
+use std::{convert::Infallible, string::ToString};
 use tempdir::TempDir;
 use tokio::{fs::File, io::AsyncWriteExt};
 use tokio_stream::StreamExt;
@@ -50,10 +50,10 @@ use crate::{
     },
     garmin_rust_app::AppState,
     logged_user::{LoggedUser, Session},
-    FitbitActivityWrapper, FitbitBodyWeightFatUpdateOutputWrapper, FitbitBodyWeightFatWrapper,
-    FitbitHeartRateWrapper, FitbitStatisticsSummaryWrapper, GarminConnectActivityWrapper,
-    GarminConnectUserDailySummaryWrapper, RaceResultsWrapper, ScaleMeasurementWrapper,
-    StravaActivityWrapper,
+    FitbitActivityTypesWrapper, FitbitActivityWrapper, FitbitBodyWeightFatUpdateOutputWrapper,
+    FitbitBodyWeightFatWrapper, FitbitHeartRateWrapper, FitbitStatisticsSummaryWrapper,
+    GarminConnectActivityWrapper, GarminConnectUserDailySummaryWrapper, RaceResultsWrapper,
+    ScaleMeasurementWrapper, StravaActivityWrapper,
 };
 
 pub type WarpResult<T> = Result<T, Rejection>;
@@ -75,7 +75,7 @@ fn proc_pattern_wrapper<T: AsRef<str>>(
         .as_ref()
         .map_or_else(|| "sport", StackString::as_str);
 
-    let filter_iter = filter.split(',').map(ToString::to_string);
+    let filter_iter = filter.split(',');
 
     let req = GarminCli::process_pattern(config, filter_iter);
     let history = history.iter().map(|s| s.as_ref().into()).collect();
@@ -145,9 +145,8 @@ pub async fn garmin_demo(
     let mut session = session.unwrap_or_default();
     let body = garmin_body(query.into_inner(), &state, &mut session.history, true).await?;
     let jwt = session.get_jwt_cookie(&state.config.domain);
-    Ok(HtmlBase::new(body)
-        .with_cookie(&jwt.encoded().to_string())
-        .into())
+    let jwt_str = StackString::from_display(jwt.encoded()).map_err(Into::<Error>::into)?;
+    Ok(HtmlBase::new(body).with_cookie(&jwt_str).into())
 }
 
 #[derive(RwebResponse)]
@@ -174,7 +173,7 @@ async fn garmin_upload_body(
     session: Session,
 ) -> HttpResult<String> {
     let tempdir = TempDir::new("garmin")?;
-    let tempdir_str = tempdir.path().to_string_lossy().to_string();
+    let tempdir_str = tempdir.path().to_string_lossy();
     let mut fname = String::new();
 
     while let Some(item) = form.next().await {
@@ -232,7 +231,7 @@ pub async fn garmin_connect_sync(
         .handle(&state.db, &state.connect_proxy)
         .await?
         .into_iter()
-        .map(|x| x.to_string_lossy().into())
+        .map(|x| x.to_string_lossy().into_owned())
         .collect();
     Ok(JsonBase::new(body).into())
 }
@@ -437,7 +436,7 @@ pub async fn strava_update(
 
 #[derive(RwebResponse)]
 #[response(description = "Strava Create", status = "CREATED", content = "html")]
-struct StravaCreateResponse(HtmlBase<String, Error>);
+struct StravaCreateResponse(HtmlBase<StackString, Error>);
 
 #[post("/garmin/strava/create")]
 pub async fn strava_create(
@@ -446,7 +445,10 @@ pub async fn strava_create(
     #[data] state: AppState,
 ) -> WarpResult<StravaCreateResponse> {
     let activity_id = query.into_inner().handle(&state.db, &state.config).await?;
-    let body = activity_id.map_or_else(|| "".into(), |activity_id| activity_id.to_string());
+    let body = activity_id.map_or_else(
+        || "".into(),
+        |activity_id| StackString::from_display(activity_id).unwrap(),
+    );
     Ok(HtmlBase::new(body).into())
 }
 
@@ -885,7 +887,7 @@ pub async fn add_garmin_correction(
 
 #[derive(RwebResponse)]
 #[response(description = "Fitbit Activity Types")]
-struct FitbitActivityTypesResponse(JsonBase<HashMap<String, StackString>, Error>);
+struct FitbitActivityTypesResponse(JsonBase<FitbitActivityTypesWrapper, Error>);
 
 #[get("/garmin/fitbit/fitbit_activity_types")]
 pub async fn fitbit_activity_types(
@@ -893,7 +895,7 @@ pub async fn fitbit_activity_types(
     #[data] state: AppState,
 ) -> WarpResult<FitbitActivityTypesResponse> {
     let result = FitbitActivityTypesRequest {}.handle(&state.config).await?;
-    Ok(JsonBase::new(result).into())
+    Ok(JsonBase::new(result.into()).into())
 }
 
 #[derive(RwebResponse)]

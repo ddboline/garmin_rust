@@ -7,7 +7,7 @@ use postgres_query::{query, FromSqlRow};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
-use std::{collections::HashMap, fmt, path::Path, sync::Arc};
+use std::{collections::HashMap, fmt, fmt::Write, path::Path, sync::Arc};
 
 use crate::{
     parsers::garmin_parse::{GarminParse, GarminParseTrait},
@@ -238,12 +238,13 @@ impl GarminSummary {
             let insert_query = insert_query.clone();
             async move {
                 let conn = pool.get().await?;
+                let sport_str = StackString::from_display(gsum.sport)?;
                 conn.execute(
                     insert_query.as_str(),
                     &[
                         &gsum.filename,
                         &gsum.begin_datetime,
-                        &gsum.sport.to_string(),
+                        &sport_str,
                         &gsum.total_calories,
                         &gsum.total_distance,
                         &gsum.total_duration,
@@ -313,22 +314,26 @@ impl fmt::Display for GarminSummary {
             "md5sum",
         ];
         let vals = vec![
-            self.filename.to_string(),
+            self.filename.clone(),
             convert_datetime_to_str(self.begin_datetime),
-            self.sport.to_string(),
-            self.total_calories.to_string(),
-            self.total_distance.to_string(),
-            self.total_duration.to_string(),
-            self.total_hr_dur.to_string(),
-            self.total_hr_dis.to_string(),
-            self.md5sum.to_string(),
+            StackString::from_display(self.sport).unwrap(),
+            StackString::from_display(self.total_calories).unwrap(),
+            StackString::from_display(self.total_distance).unwrap(),
+            StackString::from_display(self.total_duration).unwrap(),
+            StackString::from_display(self.total_hr_dur).unwrap(),
+            StackString::from_display(self.total_hr_dis).unwrap(),
+            self.md5sum.clone(),
         ];
         write!(
             f,
             "GarminSummaryTable<{}>",
             keys.iter()
                 .zip(vals.iter())
-                .map(|(k, v)| format!("{}={}", k, v))
+                .map(|(k, v)| {
+                    let mut s = StackString::new();
+                    write!(s, "{}={}", k, v).unwrap();
+                    s
+                })
                 .join(",")
         )
     }

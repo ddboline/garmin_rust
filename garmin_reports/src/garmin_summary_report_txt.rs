@@ -5,6 +5,7 @@ use itertools::Itertools;
 use log::debug;
 use postgres_query::FromSqlRow;
 use stack_string::StackString;
+use std::fmt::Write;
 use url::Url;
 
 use garmin_lib::{
@@ -48,7 +49,7 @@ pub trait GarminReportTrait {
         .into())
     }
     fn generate_url_string(&self) -> StackString {
-        "year,running".to_string().into()
+        "year,running".into()
     }
 }
 
@@ -92,26 +93,26 @@ pub async fn create_report_query(
     options: &GarminReportOptions,
     constraints: &GarminConstraints,
 ) -> Result<GarminReportQuery, Error> {
-    let sport_constr = match options.do_sport {
-        Some(x) => format!("sport = '{}'", x.to_string()),
-        None => "".to_string(),
-    };
+    let mut sport_constr = StackString::new();
+    if let Some(x) = options.do_sport {
+        write!(sport_constr, "sport = '{}'", x)?;
+    }
 
-    let constr = if constraints.is_empty() {
-        if sport_constr.is_empty() {
-            "".to_string()
-        } else {
-            format!("WHERE {}", sport_constr)
+    let mut constr = StackString::new();
+    if constraints.is_empty() {
+        if !sport_constr.is_empty() {
+            write!(constr, "WHERE {}", sport_constr)?;
         }
     } else if sport_constr.is_empty() {
-        format!("WHERE {}", constraints.to_query_string())
+        write!(constr, "WHERE {}", constraints.to_query_string())?;
     } else {
-        format!(
+        write!(
+            constr,
             "WHERE ({}) AND {}",
             constraints.to_query_string(),
             sport_constr
-        )
-    };
+        )?;
+    }
 
     debug!("{}", constr);
 
@@ -207,8 +208,8 @@ impl GarminReportTrait for FileSummaryReport {
                             self.sport,
                             format!("{:.2} mi", self.total_distance / METERS_PER_MILE),
                             format!("{} cal", self.total_calories),
-                            "".to_string(),
-                            "".to_string(),
+                            "",
+                            "",
                             print_h_m_s(self.total_duration, true)?
                         )
                         .into(),
@@ -229,7 +230,7 @@ impl GarminReportTrait for FileSummaryReport {
                             "{:.2} mph",
                             (self.total_distance / METERS_PER_MILE) / (self.total_duration / 3600.)
                         ),
-                        "".to_string(),
+                        "",
                         print_h_m_s(self.total_duration, true)?
                     )
                     .into(),
@@ -245,8 +246,8 @@ impl GarminReportTrait for FileSummaryReport {
                         self.sport,
                         format!("{:.2} mi", self.total_distance / METERS_PER_MILE),
                         format!("{} cal", self.total_calories),
-                        "".to_string(),
-                        "".to_string(),
+                        "",
+                        "",
                         print_h_m_s(self.total_duration, true)?
                     )
                     .into(),
@@ -286,24 +287,32 @@ impl GarminReportTrait for FileSummaryReport {
                 format!("{} / {}", self.total_fitbit_steps, self.total_connect_steps),
             )
             .into();
-            let fitbit_str = if let Some(u) = fitbit_url {
-                format!(
+            let mut fitbit_str = StackString::new();
+            if let Some(u) = fitbit_url {
+                write!(
+                    fitbit_str,
                     r#"<a href="{}" target="_blank">{}</a>"#,
                     u, self.total_fitbit_steps
-                )
+                )?;
             } else {
-                self.total_fitbit_steps.to_string()
-            };
-            let connect_str = if let Some(u) = connect_url {
-                format!(
+                write!(fitbit_str, "{}", self.total_fitbit_steps)?;
+            }
+            let mut connect_str = StackString::new();
+            if let Some(u) = connect_url {
+                write!(
+                    connect_str,
                     r#"<a href="{}" target="_blank">{}</a>"#,
                     u, self.total_connect_steps
-                )
+                )?;
             } else {
-                self.total_connect_steps.to_string()
-            };
-            let html_str =
-                format!(" {:>16} steps", format!("{} / {}", fitbit_str, connect_str),).into();
+                write!(connect_str, "{}", self.total_connect_steps)?;
+            }
+            let mut html_str = StackString::new();
+            write!(
+                html_str,
+                " {:>16} steps",
+                format!("{} / {}", fitbit_str, connect_str),
+            )?;
             tmp_vec.push((text, Some(html_str)));
         } else {
             tmp_vec.push(("".into(), None));
@@ -466,8 +475,8 @@ impl GarminReportTrait for DaySummaryReport {
                             self.sport,
                             format!("{:.2} mi", self.total_distance / METERS_PER_MILE),
                             format!("{} cal", self.total_calories),
-                            "".to_string(),
-                            "".to_string(),
+                            "",
+                            "",
                             print_h_m_s(self.total_duration, true)?
                         )
                         .into(),
@@ -487,7 +496,7 @@ impl GarminReportTrait for DaySummaryReport {
                             "{:.2} mph",
                             (self.total_distance / METERS_PER_MILE) / (self.total_duration / 3600.)
                         ),
-                        "".to_string(),
+                        "",
                         print_h_m_s(self.total_duration, true)?
                     )
                     .into(),
@@ -502,8 +511,8 @@ impl GarminReportTrait for DaySummaryReport {
                         self.sport,
                         format!("{:.2} mi", self.total_distance / METERS_PER_MILE),
                         format!("{} cal", self.total_calories),
-                        "".to_string(),
-                        "".to_string(),
+                        "",
+                        "",
                         print_h_m_s(self.total_duration, true)?
                     )
                     .into(),

@@ -130,9 +130,7 @@ impl GarminFile {
     pub fn get_standardized_name(&self, suffix: &str) -> StackString {
         format!(
             "{}.{}",
-            self.begin_datetime
-                .format("%Y-%m-%d_%H-%M-%S_1_1")
-                .to_string(),
+            self.begin_datetime.format("%Y-%m-%d_%H-%M-%S_1_1"),
             suffix
         )
         .into()

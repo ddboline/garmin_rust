@@ -184,10 +184,11 @@ impl StravaClient {
 
         create_dir_all(&self.config.download_directory).await?;
 
+        let id_str = StackString::from_display(activity_id)?;
         let fname = self
             .config
             .download_directory
-            .join(activity_id.to_string())
+            .join(id_str)
             .with_extension("fit");
 
         let mut f = File::create(&fname).await?;
@@ -407,12 +408,15 @@ impl StravaClient {
         end_date: Option<DateTime<Utc>>,
         page: usize,
     ) -> Result<Vec<StravaActivity>, Error> {
-        let mut params = vec![("page", page.to_string())];
+        let page_str = StackString::from_display(page)?;
+        let mut params = vec![("page", page_str)];
         if let Some(start_date) = start_date {
-            params.push(("after", start_date.timestamp().to_string()));
+            let date_str = StackString::from_display(start_date.timestamp())?;
+            params.push(("after", date_str));
         }
         if let Some(end_date) = end_date {
-            params.push(("before", end_date.timestamp().to_string()));
+            let date_str = StackString::from_display(end_date.timestamp())?;
+            params.push(("before", date_str));
         }
 
         let headers = self.get_auth_headers()?;
@@ -479,15 +483,17 @@ impl StravaClient {
         let start_time = match self.config.default_time_zone {
             Some(tz) => {
                 let tz: Tz = tz.into();
-                start_datetime
-                    .with_timezone(&tz)
-                    .format("%Y-%m-%dT%H:%M:%S%z")
-                    .to_string()
+                StackString::from_display(
+                    start_datetime
+                        .with_timezone(&tz)
+                        .format("%Y-%m-%dT%H:%M:%S%z"),
+                )?
             }
-            None => start_datetime
-                .with_timezone(&Local)
-                .format("%Y-%m-%dT%H:%M:%S%z")
-                .to_string(),
+            None => StackString::from_display(
+                start_datetime
+                    .with_timezone(&Local)
+                    .format("%Y-%m-%dT%H:%M:%S%z"),
+            )?,
         };
 
         let data = CreateActivityForm {
@@ -541,15 +547,15 @@ impl StravaClient {
             .extension()
             .ok_or_else(|| format_err!("No extension"))?
             .to_string_lossy()
-            .to_string();
+            .into_owned();
 
         let filename = if &ext == "gz" {
-            filepath.canonicalize()?.to_string_lossy().to_string()
+            filepath.canonicalize()?.to_string_lossy().into_owned()
         } else {
             let tfile = Builder::new().suffix(&format!(".{}.gz", ext)).tempfile()?;
             let infname = filepath.canonicalize()?;
             let outfpath = tfile.path().to_path_buf();
-            let outfname = outfpath.to_string_lossy().to_string();
+            let outfname = outfpath.to_string_lossy().into_owned();
             spawn_blocking(move || gzip_file(&infname, &outfpath)).await??;
             _tempfile = Some(tfile);
             outfname

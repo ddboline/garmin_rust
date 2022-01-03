@@ -150,7 +150,8 @@ impl FitbitStatisticsSummary {
         let min_heartrate: Vec<_> = stats
             .iter()
             .map(|stat| {
-                let key = stat.date.format("%Y-%m-%dT00:00:00Z").to_string();
+                let key =
+                    StackString::from_display(stat.date.format("%Y-%m-%dT00:00:00Z")).unwrap();
                 (key, stat.min_heartrate)
             })
             .collect();
@@ -170,7 +171,8 @@ impl FitbitStatisticsSummary {
         let max_heartrate: Vec<_> = stats
             .iter()
             .map(|stat| {
-                let key = stat.date.format("%Y-%m-%dT00:00:00Z").to_string();
+                let key =
+                    StackString::from_display(stat.date.format("%Y-%m-%dT00:00:00Z")).unwrap();
                 (key, stat.max_heartrate)
             })
             .collect();
@@ -189,7 +191,8 @@ impl FitbitStatisticsSummary {
         let mean_heartrate: Vec<_> = stats
             .iter()
             .map(|stat| {
-                let key = stat.date.format("%Y-%m-%dT00:00:00Z").to_string();
+                let key =
+                    StackString::from_display(stat.date.format("%Y-%m-%dT00:00:00Z")).unwrap();
                 (key, stat.mean_heartrate)
             })
             .collect();
@@ -208,7 +211,8 @@ impl FitbitStatisticsSummary {
         let median_heartrate: Vec<_> = stats
             .iter()
             .map(|stat| {
-                let key = stat.date.format("%Y-%m-%dT00:00:00Z").to_string();
+                let key =
+                    StackString::from_display(stat.date.format("%Y-%m-%dT00:00:00Z")).unwrap();
                 (key, stat.median_heartrate)
             })
             .collect();

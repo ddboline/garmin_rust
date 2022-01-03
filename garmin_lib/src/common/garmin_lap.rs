@@ -4,7 +4,7 @@ use fitparser::{FitDataField, Value};
 use roxmltree::{Node, NodeType};
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
-use std::fmt;
+use std::{fmt, fmt::Write};
 
 use crate::utils::{
     garmin_util::{convert_time_string, convert_xml_local_time_to_utc, get_f64, get_i64},
@@ -273,7 +273,11 @@ impl fmt::Display for GarminLap {
             "GarminLap<{}>",
             keys.iter()
                 .zip(vals.iter())
-                .map(|(k, v)| format!("{}={}", k, v))
+                .map(|(k, v)| {
+                    let mut s = StackString::new();
+                    write!(s, "{}={}", k, v).unwrap();
+                    s
+                })
                 .collect::<Vec<_>>()
                 .join(",")
         )

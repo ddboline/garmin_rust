@@ -100,13 +100,14 @@ where
 impl fmt::Display for SportTypesWrapper {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let s: SportTypes = (*self).into();
-        write!(f, "{}", s.to_str())
+        f.write_str(s.to_str())
     }
 }
 
 impl From<SportTypesWrapper> for StackString {
     fn from(item: SportTypesWrapper) -> StackString {
-        item.to_string().into()
+        let s: SportTypes = item.into();
+        s.to_str().into()
     }
 }
 

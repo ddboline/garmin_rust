@@ -463,7 +463,10 @@ impl FitbitClient {
             async move {
                 let datetime = update.datetime.with_timezone(&offset);
                 let date = datetime.date().naive_local();
-                let time = datetime.naive_local().format("%H:%M:%S").to_string();
+                let date_str = StackString::from_display(date)?;
+                let time_str =
+                    StackString::from_display(datetime.naive_local().format("%H:%M:%S"))?;
+                let weight_str = StackString::from_display(update.mass)?;
                 let url = self
                     .config
                     .fitbit_api_endpoint
@@ -472,9 +475,9 @@ impl FitbitClient {
                     .join("1/user/-/")?
                     .join("body/log/weight.json")?;
                 let data = hashmap! {
-                    "weight" => update.mass.to_string(),
-                    "date" => date.to_string(),
-                    "time" => time.to_string(),
+                    "weight" => &weight_str,
+                    "date" => &date_str,
+                    "time" => &time_str,
                 };
                 self.client
                     .post(url)
@@ -491,10 +494,11 @@ impl FitbitClient {
                     .ok_or_else(|| format_err!("Bad URL"))?
                     .join("1/user/-/")?
                     .join("body/log/fat.json")?;
+                let fat_pct_str = StackString::from_display(update.fat_pct)?;
                 let data = hashmap! {
-                    "fat" => update.fat_pct.to_string(),
-                    "date" => date.to_string(),
-                    "time" => time.to_string(),
+                    "fat" => &fat_pct_str,
+                    "date" => &date_str,
+                    "time" => &time_str,
                 };
                 self.client
                     .post(url)
@@ -596,7 +600,9 @@ impl FitbitClient {
             .map_err(Into::into)
     }
 
-    pub async fn get_fitbit_activity_types(&self) -> Result<HashMap<String, StackString>, Error> {
+    pub async fn get_fitbit_activity_types(
+        &self,
+    ) -> Result<HashMap<StackString, StackString>, Error> {
         #[derive(Deserialize)]
         struct FitbitActivityType {
             name: StackString,
@@ -637,24 +643,28 @@ impl FitbitClient {
             .error_for_status()?
             .json()
             .await?;
-        let mut id_map: HashMap<String, StackString> = HashMap::new();
+        let mut id_map: HashMap<StackString, StackString> = HashMap::new();
         for category in &categories.categories {
-            id_map.insert(category.id.to_string(), category.name.clone());
+            let id_str = StackString::from_display(category.id)?;
+            id_map.insert(id_str, category.name.clone());
             for activity in &category.activities {
                 let name = format!("{}/{}", category.name, activity.name).into();
-                id_map.insert(activity.id.to_string(), name);
+                let id_str = StackString::from_display(activity.id)?;
+                id_map.insert(id_str, name);
             }
             if let Some(sub_categories) = category.sub_categories.as_ref() {
                 for sub_category in sub_categories.iter() {
                     let name = format!("{}/{}", category.name, sub_category.name).into();
-                    id_map.insert(sub_category.id.to_string(), name);
+                    let id_str = StackString::from_display(sub_category.id)?;
+                    id_map.insert(id_str, name);
                     for sub_activity in &sub_category.activities {
                         let name = format!(
                             "{}/{}/{}",
                             category.name, sub_category.name, sub_activity.name
                         )
                         .into();
-                        id_map.insert(sub_activity.id.to_string(), name);
+                        let id_str = StackString::from_display(sub_activity.id)?;
+                        id_map.insert(id_str, name);
                     }
                 }
             }
@@ -703,10 +713,10 @@ impl FitbitClient {
             .await?
             .into_iter()
             .map(|activity| {
-                (
-                    activity.start_time.format("%Y-%m-%dT%H:%M").to_string(),
-                    activity,
-                )
+                let start_time_str =
+                    StackString::from_display(activity.start_time.format("%Y-%m-%dT%H:%M"))
+                        .unwrap();
+                (start_time_str, activity)
             })
             .sorted_by(|x, y| x.0.cmp(&y.0))
             .filter_map(|(k, v)| {
@@ -786,10 +796,10 @@ impl FitbitClient {
                 if activities_to_delete.contains(&activity.log_id) {
                     None
                 } else {
-                    Some((
-                        activity.start_time.format("%Y-%m-%dT%H:%M").to_string(),
-                        activity,
-                    ))
+                    let start_time_str =
+                        StackString::from_display(activity.start_time.format("%Y-%m-%dT%H:%M"))
+                            .unwrap();
+                    Some((start_time_str, activity))
                 }
             })
             .collect();
@@ -822,7 +832,7 @@ impl FitbitClient {
         .await?
         .into_iter()
         .filter(|(d, _)| {
-            let key = d.format("%Y-%m-%dT%H:%M").to_string();
+            let key = StackString::from_display(d.format("%Y-%m-%dT%H:%M")).unwrap();
             !new_activities.contains_key(&key)
         });
 
@@ -922,7 +932,10 @@ impl FitbitClient {
                 let fname = self
                     .config
                     .gps_dir
-                    .join(start_time.format("%Y-%m-%d_%H-%M-%S_1_1").to_string())
+                    .join({
+                        StackString::from_display(start_time.format("%Y-%m-%d_%H-%M-%S_1_1"))
+                            .unwrap()
+                    })
                     .with_extension("tcx");
                 if fname.exists() {
                     None
@@ -962,14 +975,12 @@ struct ActivityLoggingEntry {
 
 impl ActivityLoggingEntry {
     fn from_summary(item: &GarminSummary, offset: FixedOffset) -> Option<Self> {
+        let start_time_str =
+            StackString::from_display(item.begin_datetime.with_timezone(&offset).format("%H:%M"))
+                .unwrap();
         item.sport.to_fitbit_activity_id().map(|activity_id| Self {
             activity_id: Some(activity_id),
-            start_time: item
-                .begin_datetime
-                .with_timezone(&offset)
-                .format("%H:%M")
-                .to_string()
-                .into(),
+            start_time: start_time_str,
             duration_millis: (item.total_duration * 1000.0) as u64,
             date: item
                 .begin_datetime

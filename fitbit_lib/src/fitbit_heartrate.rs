@@ -124,10 +124,8 @@ impl FitbitHeartRate {
         let fitbit_files: Vec<_> = days
             .par_iter()
             .filter_map(|date| {
-                let input_filename = config
-                    .fitbit_cachedir
-                    .join(date.to_string())
-                    .with_extension("avro");
+                let date_str = StackString::from_display(date).unwrap();
+                let input_filename = config.fitbit_cachedir.join(date_str).with_extension("avro");
                 if input_filename.exists() {
                     Some(input_filename)
                 } else {
@@ -275,9 +273,10 @@ impl FitbitHeartRate {
                     );
                     begin_datetime.map(|begin_datetime| {
                         let average_heartrate = heartrate_sum / entries;
-                        let begin_datetime =
-                            begin_datetime.format("%Y-%m-%dT%H:%M:%S%z").to_string();
-                        (begin_datetime, average_heartrate)
+                        let begin_datetime_str =
+                            StackString::from_display(begin_datetime.format("%Y-%m-%dT%H:%M:%S%z"))
+                                .unwrap();
+                        (begin_datetime_str, average_heartrate)
                     })
                 })
                 .collect();
@@ -383,10 +382,8 @@ impl FitbitHeartRate {
     }
 
     pub fn read_avro_by_date(config: &GarminConfig, date: NaiveDate) -> Result<Vec<Self>, Error> {
-        let input_filename = config
-            .fitbit_cachedir
-            .join(date.to_string())
-            .with_extension("avro");
+        let date_str = StackString::from_display(date)?;
+        let input_filename = config.fitbit_cachedir.join(date_str).with_extension("avro");
         debug!("avro {:?}", input_filename);
         if input_filename.exists() {
             Self::read_avro(&input_filename)
@@ -424,10 +421,8 @@ impl FitbitHeartRate {
                 .collect();
             merged_values.par_sort_by_key(|entry| entry.datetime.timestamp());
             merged_values.dedup();
-            let input_filename = config
-                .fitbit_cachedir
-                .join(date.to_string())
-                .with_extension("avro");
+            let date_str = StackString::from_display(date)?;
+            let input_filename = config.fitbit_cachedir.join(date_str).with_extension("avro");
             Self::dump_to_avro(&merged_values, &input_filename)?;
         }
         Ok(())

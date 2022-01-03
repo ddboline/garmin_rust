@@ -54,9 +54,7 @@ impl GarminConstraint {
                 format!(
                     "replace({}, '%', 'T') = '{}'",
                     "to_char(a.begin_datetime at time zone 'utc', 'YYYY-MM-DD%HH24:MI:SSZ')",
-                    dt.with_timezone(&Utc)
-                        .format("%Y-%m-%dT%H:%M:%SZ")
-                        .to_string()
+                    dt.with_timezone(&Utc).format("%Y-%m-%dT%H:%M:%SZ")
                 )
             }
             Self::YearMonthDay { year, month, day } => {

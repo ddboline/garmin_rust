@@ -6,7 +6,7 @@ use ndarray::{array, Array1};
 use postgres_query::{query, FromSqlRow};
 use rusfun::{curve_fit::Minimizer, func1d::Func1D};
 use stack_string::StackString;
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Write};
 
 use garmin_lib::{
     common::{garmin_summary::GarminSummary, garmin_templates::HBR, pgpool::PgPool},
@@ -211,14 +211,15 @@ impl RaceResultAnalysis {
                     }
                 }
             } else {"".into()};
-            let flag = if is_demo {
-                result.race_flag.to_string()
+            let mut flag = StackString::new();
+            if is_demo {
+                write!(flag, "{}", result.race_flag).unwrap();
             } else {
-                format!(
+                write!(flag,
                     r#"<button type="button" id="race_flag_{id}" onclick="flipRaceResultFlag({id});">{flag}</button>"#,
                     flag=result.race_flag, id=result.id
-                )
-            };
+                ).unwrap();
+            }
             format!(
                 r#"<td align="right">{distance:0.1}</td><td>{time}</td><td align="center">{pace}</td><td>{date}</td>
                  <td>{name}</td>
@@ -270,8 +271,8 @@ impl RaceResultAnalysis {
             RaceType::WorldRecordMen => "Men's World Record",
             RaceType::WorldRecordWomen => "Women's World Record",
         };
-        let ymin = ymin.to_string();
-        let ymax = ymax.to_string();
+        let ymin = StackString::from_display(ymin)?;
+        let ymax = StackString::from_display(ymax)?;
 
         let params = hashmap! {
             "XAXIS" => "Distance",

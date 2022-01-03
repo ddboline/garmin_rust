@@ -258,7 +258,7 @@ impl GarminCorrectionLap {
         for corr in corr_list_map.values() {
             let sport: Option<StackString> = corr.sport.and_then(|s| match s {
                 SportTypes::None => None,
-                s => Some(s.to_string().into()),
+                s => StackString::from_display(s).ok(),
             });
 
             if conn

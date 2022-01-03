@@ -5,7 +5,7 @@ use log::debug;
 use maplit::hashmap;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use stack_string::StackString;
-use std::collections::HashSet;
+use std::{collections::HashSet, fmt::Write};
 
 use garmin_lib::{
     common::{
@@ -423,9 +423,10 @@ fn get_garmin_template_vec<T: AsRef<str>>(
         ),
         format!("<br><br>{}\n", get_html_splits(gfile, 5000.0, "km")?),
     ];
+    let sport_str: StackString = sport.into();
     let sport_title_link = format!(
         "Garmin Event {} on {}",
-        titlecase(&sport.to_string()),
+        titlecase(&sport_str),
         gfile.begin_datetime
     );
     let sport_title_link = match strava_activity {
@@ -461,7 +462,7 @@ fn get_garmin_template_vec<T: AsRef<str>>(
     let insert_text_here = insert_text_here.join("\n");
     let sport_title_date = format!(
         "Garmin Event {} on {}",
-        titlecase(&sport.to_string()),
+        titlecase(&sport_str),
         gfile.begin_datetime
     );
     let filename = config.gps_dir.join(gfile.filename.as_str());
@@ -540,10 +541,10 @@ where
         (11, 0.20),
         (10, 0.4),
     ];
-
+    let sport_str: StackString = sport.into();
     let sport_title_date = format!(
         "Garmin Event {} on {}",
-        titlecase(&sport.to_string()),
+        titlecase(&sport_str),
         gfile.begin_datetime
     );
     let sport_title_link = match strava_activity {
@@ -553,7 +554,7 @@ where
         ),
         None => format!(
             "Garmin Event {} on {}",
-            titlecase(&sport.to_string()),
+            titlecase(&sport_str),
             gfile.begin_datetime
         ),
     };
@@ -593,10 +594,10 @@ where
             },
         )
     };
-    let mut zoom_value = "".to_string();
+    let mut zoom_value = StackString::new();
     for (zoom, thresh) in &latlon_thresholds {
         if (latlon_min < *thresh) | (*zoom == 10) {
-            zoom_value = zoom.to_string();
+            write!(zoom_value, "{}", zoom)?;
             break;
         }
     }
@@ -618,12 +619,12 @@ where
         .zip(report_objs.lon_vals.iter())
         .map(|(latv, lonv)| format!("new google.maps.LatLng({},{}),", latv, lonv))
         .join("\n");
-    let minlat = minlat.to_string();
-    let maxlat = maxlat.to_string();
-    let minlon = minlon.to_string();
-    let maxlon = maxlon.to_string();
-    let central_lat = central_lat.to_string();
-    let central_lon = central_lon.to_string();
+    let minlat = StackString::from_display(minlat)?;
+    let maxlat = StackString::from_display(maxlat)?;
+    let minlon = StackString::from_display(minlon)?;
+    let maxlon = StackString::from_display(maxlon)?;
+    let central_lat = StackString::from_display(central_lat)?;
+    let central_lon = StackString::from_display(central_lon)?;
     let insert_other_images_here = graphs.iter().map(AsRef::as_ref).join("\n");
     let history_buttons = generate_history_buttons(history);
     let filename = config.gps_dir.join(gfile.filename.as_str());
@@ -665,7 +666,7 @@ where
 }
 
 fn get_sport_selector(current_sport: SportTypes) -> StackString {
-    let current_sport = current_sport.to_string().into();
+    let current_sport: StackString = current_sport.into();
     let mut sport_types: Vec<_> = get_sport_type_map()
         .keys()
         .filter_map(|s| {
@@ -702,7 +703,7 @@ fn get_file_html(
 ) -> StackString {
     let mut retval = Vec::new();
 
-    let sport = gfile.sport.to_string();
+    let sport: StackString = gfile.sport.into();
 
     retval.push(r#"<table border="1" class="dataframe">"#.to_string());
     retval.push(
@@ -798,14 +799,7 @@ fn get_file_html(
 
     let (mut labels, mut values) = match sport.as_str() {
         "running" => (
-            vec![
-                "".to_string(),
-                "Distance".to_string(),
-                "Calories".to_string(),
-                "Time".to_string(),
-                "Pace / mi".to_string(),
-                "Pace / km".to_string(),
-            ],
+            vec!["", "Distance", "Calories", "Time", "Pace / mi", "Pace / km"],
             vec![
                 "total".to_string(),
                 format!("{:.2} mi", gfile.total_distance / METERS_PER_MILE),
@@ -822,13 +816,7 @@ fn get_file_html(
             ],
         ),
         _ => (
-            vec![
-                "total".to_string(),
-                "Distance".to_string(),
-                "Calories".to_string(),
-                "Time".to_string(),
-                "Pace mph".to_string(),
-            ],
+            vec!["total", "Distance", "Calories", "Time", "Pace mph"],
             vec![
                 "".to_string(),
                 format!("{:.2} mi", gfile.total_distance / METERS_PER_MILE),
@@ -845,7 +833,7 @@ fn get_file_html(
         & (gfile.total_hr_dis > 0.0)
         & (gfile.total_hr_dur > gfile.total_hr_dis)
     {
-        labels.push("Heart Rate".to_string());
+        labels.push("Heart Rate");
         values.push(format!(
             "{} bpm",
             (gfile.total_hr_dur / gfile.total_hr_dis) as i32

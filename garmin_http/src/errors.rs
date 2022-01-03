@@ -12,7 +12,12 @@ use rweb::{
     Error as WarpError, Rejection, Reply,
 };
 use serde::Serialize;
-use std::{borrow::Cow, convert::Infallible, fmt::Debug, string::FromUtf8Error};
+use std::{
+    borrow::Cow,
+    convert::Infallible,
+    fmt::{Debug, Error as FmtError},
+    string::FromUtf8Error,
+};
 use thiserror::Error;
 use tokio::task::JoinError;
 
@@ -42,14 +47,16 @@ pub enum ServiceError {
     FromUtf8Error(#[from] FromUtf8Error),
     #[error("WarpError {0}")]
     WarpError(#[from] WarpError),
+    #[error("FmtError {0}")]
+    FmtError(#[from] FmtError),
 }
 
 impl Reject for ServiceError {}
 
 #[derive(Serialize)]
-struct ErrorMessage {
+struct ErrorMessage<'a> {
     code: u16,
-    message: String,
+    message: &'a str,
 }
 
 #[allow(clippy::unused_async)]
@@ -97,7 +104,7 @@ pub async fn error_response(err: Rejection) -> Result<Box<dyn Reply>, Infallible
 
     let reply = rweb::reply::json(&ErrorMessage {
         code: code.as_u16(),
-        message: message.to_string(),
+        message,
     });
     let reply = rweb::reply::with_status(reply, code);
 

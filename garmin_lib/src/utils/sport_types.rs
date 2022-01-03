@@ -36,13 +36,13 @@ impl Default for SportTypes {
 
 impl fmt::Display for SportTypes {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.to_str())
+        f.write_str(self.to_str())
     }
 }
 
 impl From<SportTypes> for StackString {
     fn from(item: SportTypes) -> StackString {
-        item.to_string().into()
+        StackString::from_display(item).unwrap()
     }
 }
 
@@ -213,7 +213,7 @@ pub fn get_sport_type_map() -> &'static HashMap<StackString, SportTypes> {
 }
 
 pub fn convert_sport_name(sport: &str) -> Option<StackString> {
-    sport.parse().ok().map(|s: SportTypes| s.to_string().into())
+    sport.parse().ok().map(|s: SportTypes| s.into())
 }
 
 pub fn convert_sport_name_to_activity_type(sport: &str) -> Option<StackString> {
@@ -243,7 +243,8 @@ impl ToSql for SportTypes {
     where
         Self: Sized,
     {
-        self.to_string().to_sql(ty, out)
+        let s = StackString::from_display(self).unwrap();
+        s.to_sql(ty, out)
     }
 
     fn accepts(ty: &Type) -> bool
@@ -258,6 +259,7 @@ impl ToSql for SportTypes {
         ty: &Type,
         out: &mut BytesMut,
     ) -> Result<IsNull, Box<dyn std::error::Error + Sync + Send>> {
-        self.to_string().to_sql_checked(ty, out)
+        let s = StackString::from_display(self).unwrap();
+        s.to_sql_checked(ty, out)
     }
 }

@@ -30,7 +30,7 @@ use rweb::{
 use rweb_helper::derive_rweb_schema;
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::HashMap};
 
 use fitbit_lib::{
     fitbit_client::FitbitBodyWeightFatUpdateOutput,
@@ -328,6 +328,15 @@ struct _RaceResultsWrapper {
     #[schema(description = "Race Summary IDs")]
     race_summary_ids: Vec<Option<i32>>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Into, From)]
+pub struct FitbitActivityTypesWrapper(HashMap<StackString, StackString>);
+
+derive_rweb_schema!(FitbitActivityTypesWrapper, _FitbitActivityTypesWrapper);
+
+#[allow(dead_code)]
+#[derive(Schema)]
+struct _FitbitActivityTypesWrapper(HashMap<String, StackString>);
 
 #[cfg(test)]
 mod test {

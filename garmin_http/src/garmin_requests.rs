@@ -775,7 +775,7 @@ impl FitbitActivityTypesRequest {
     pub async fn handle(
         &self,
         config: &GarminConfig,
-    ) -> Result<HashMap<String, StackString>, Error> {
+    ) -> Result<HashMap<StackString, StackString>, Error> {
         let config = config.clone();
         let client = FitbitClient::with_auth(config).await?;
         client.get_fitbit_activity_types().await.map_err(Into::into)
@@ -949,12 +949,13 @@ impl HeartrateStatisticsSummaryDBUpdateRequest {
             let entry: FitbitStatisticsSummary = entry.into();
             async move {
                 entry.upsert_entry(&pool).await?;
-                Ok(entry.date)
+                let date_str = StackString::from_display(entry.date)?;
+                Ok(date_str)
             }
         });
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
         let mut output = vec!["update:".into()];
-        output.extend(results?.into_iter().map(|d| d.to_string().into()));
+        output.extend_from_slice(&results?);
         Ok(output)
     }
 }
@@ -984,8 +985,9 @@ impl RaceResultFlagRequest {
     pub async fn handle(&self, pool: &PgPool) -> Result<StackString, Error> {
         if let Some(mut result) = RaceResults::get_result_by_id(self.id, pool).await? {
             result.race_flag = !result.race_flag;
+            let flag_str = StackString::from_display(result.race_flag)?;
             result.update_db(pool).await?;
-            Ok(result.race_flag.to_string().into())
+            Ok(flag_str)
         } else {
             Ok("".into())
         }

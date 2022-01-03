@@ -78,8 +78,8 @@ pub fn generate_d3_plot(opts: &PlotOpts) -> Result<StackString, Error> {
             .map(|((xb, yb), c)| (*xb as f64 * xstep + xmin, *yb as f64 * ystep + ymin, c))
             .collect();
 
-        let xstep = xstep.to_string();
-        let ystep = ystep.to_string();
+        let xstep = StackString::from_display(xstep)?;
+        let ystep = StackString::from_display(ystep)?;
         let data = serde_json::to_string(&data).unwrap_or_else(|_| "".to_string());
 
         let params = hashmap! {

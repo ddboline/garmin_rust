@@ -2,6 +2,7 @@ use anyhow::Error;
 use itertools::Itertools;
 use log::debug;
 use stack_string::StackString;
+use std::fmt::Write;
 
 use garmin_lib::{
     common::{garmin_file::GarminFile, garmin_lap::GarminLap},
@@ -160,7 +161,7 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<StackString>, Error
 }
 
 fn print_lap_string(glap: &GarminLap, sport: SportTypes) -> Result<StackString, Error> {
-    let sport_str = sport.to_string();
+    let sport_str: StackString = sport.into();
 
     let mut outstr = vec![format!(
         "{} lap {} {:.2} mi {} {} calories {:.2} min",
@@ -170,23 +171,26 @@ fn print_lap_string(glap: &GarminLap, sport: SportTypes) -> Result<StackString, 
         print_h_m_s(glap.lap_duration, true)?,
         glap.lap_calories,
         glap.lap_duration / 60.
-    )];
+    )
+    .into()];
 
     if (sport == SportTypes::Running) & (glap.lap_distance > 0.0) {
-        outstr.push(
-            print_h_m_s(
-                glap.lap_duration / (glap.lap_distance / METERS_PER_MILE),
-                false,
-            )?
-            .into(),
-        );
-        outstr.push("/ mi ".to_string());
-        outstr.push(print_h_m_s(glap.lap_duration / (glap.lap_distance / 1000.), false)?.into());
-        outstr.push("/ km".to_string());
+        outstr.push(print_h_m_s(
+            glap.lap_duration / (glap.lap_distance / METERS_PER_MILE),
+            false,
+        )?);
+        outstr.push("/ mi ".into());
+        outstr.push(print_h_m_s(
+            glap.lap_duration / (glap.lap_distance / 1000.),
+            false,
+        )?);
+        outstr.push("/ km".into());
     };
     if let Some(x) = glap.lap_avg_hr {
         if x > 0.0 {
-            outstr.push(format!("{} bpm", x));
+            let mut s = StackString::new();
+            write!(s, "{} bpm", x)?;
+            outstr.push(s);
         }
     }
 

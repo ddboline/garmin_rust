@@ -98,7 +98,7 @@ impl From<StravaTimeZone> for String {
 
 impl From<StravaTimeZone> for StackString {
     fn from(item: StravaTimeZone) -> Self {
-        item.to_string().into()
+        StackString::from_display(item).unwrap()
     }
 }
 
@@ -173,7 +173,8 @@ impl ToSql for StravaTimeZone {
     where
         Self: Sized,
     {
-        self.to_string().to_sql(ty, out)
+        let s = StackString::from_display(self).unwrap();
+        s.to_sql(ty, out)
     }
 
     fn accepts(ty: &Type) -> bool
@@ -188,7 +189,8 @@ impl ToSql for StravaTimeZone {
         ty: &Type,
         out: &mut BytesMut,
     ) -> Result<IsNull, Box<dyn std::error::Error + Sync + Send>> {
-        self.to_string().to_sql_checked(ty, out)
+        let s = StackString::from_display(self).unwrap();
+        s.to_sql_checked(ty, out)
     }
 }
 

@@ -40,11 +40,11 @@ impl FitbitActivity {
         let mut conditions = Vec::new();
         let mut bindings = Vec::new();
         if let Some(d) = start_date {
-            conditions.push("date(start_time) >= $start_date".to_string());
+            conditions.push("date(start_time) >= $start_date");
             bindings.push(("start_date", d));
         }
         if let Some(d) = end_date {
-            conditions.push("date(start_time) <= $end_date".to_string());
+            conditions.push("date(start_time) <= $end_date");
             bindings.push(("end_date", d));
         }
         let query = format!(
@@ -163,7 +163,8 @@ impl FitbitActivity {
             let pool = pool.clone();
             async move {
                 activity.update_db(&pool).await?;
-                Ok(activity.log_id.to_string().into())
+                let activity_str = StackString::from_display(activity.log_id)?;
+                Ok(activity_str)
             }
         });
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
@@ -173,7 +174,8 @@ impl FitbitActivity {
             let pool = pool.clone();
             async move {
                 activity.insert_into_db(&pool).await?;
-                Ok(activity.log_id.to_string().into())
+                let activity_str = StackString::from_display(activity.log_id)?;
+                Ok(activity_str)
             }
         });
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;

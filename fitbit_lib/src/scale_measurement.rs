@@ -192,11 +192,11 @@ impl ScaleMeasurement {
         let mut conditions = Vec::new();
         let mut bindings = Vec::new();
         if let Some(d) = start_date {
-            conditions.push("date(datetime) >= $start_date".to_string());
+            conditions.push("date(datetime) >= $start_date");
             bindings.push(("start_date", d));
         }
         if let Some(d) = end_date {
-            conditions.push("date(datetime) <= $end_date".to_string());
+            conditions.push("date(datetime) <= $end_date");
             bindings.push(("end_date", d));
         }
         let query = format!(
@@ -231,7 +231,8 @@ impl ScaleMeasurement {
         let mass: Vec<_> = measurements
             .iter()
             .map(|meas| {
-                let key = meas.datetime.format("%Y-%m-%dT%H:%M:%S%z").to_string();
+                let key =
+                    StackString::from_display(meas.datetime.format("%Y-%m-%dT%H:%M:%S%z")).unwrap();
                 (key, meas.mass)
             })
             .collect();
@@ -251,7 +252,8 @@ impl ScaleMeasurement {
         let fat: Vec<_> = measurements
             .iter()
             .map(|meas| {
-                let key = meas.datetime.format("%Y-%m-%dT%H:%M:%S%z").to_string();
+                let key =
+                    StackString::from_display(meas.datetime.format("%Y-%m-%dT%H:%M:%S%z")).unwrap();
                 (key, meas.fat_pct)
             })
             .collect();
@@ -271,7 +273,8 @@ impl ScaleMeasurement {
         let water: Vec<_> = measurements
             .iter()
             .map(|meas| {
-                let key = meas.datetime.format("%Y-%m-%dT%H:%M:%S%z").to_string();
+                let key =
+                    StackString::from_display(meas.datetime.format("%Y-%m-%dT%H:%M:%S%z")).unwrap();
                 (key, meas.water_pct)
             })
             .collect();
@@ -291,7 +294,8 @@ impl ScaleMeasurement {
         let muscle: Vec<_> = measurements
             .iter()
             .map(|meas| {
-                let key = meas.datetime.format("%Y-%m-%dT%H:%M:%S%z").to_string();
+                let key =
+                    StackString::from_display(meas.datetime.format("%Y-%m-%dT%H:%M:%S%z")).unwrap();
                 (key, meas.muscle_pct)
             })
             .collect();
@@ -311,7 +315,8 @@ impl ScaleMeasurement {
         let bone: Vec<_> = measurements
             .iter()
             .map(|meas| {
-                let key = meas.datetime.format("%Y-%m-%dT%H:%M:%S%z").to_string();
+                let key =
+                    StackString::from_display(meas.datetime.format("%Y-%m-%dT%H:%M:%S%z")).unwrap();
                 (key, meas.bone_pct)
             })
             .collect();

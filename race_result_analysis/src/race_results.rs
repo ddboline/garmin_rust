@@ -7,7 +7,7 @@ use smallvec::SmallVec;
 use stack_string::StackString;
 use std::{
     collections::HashMap,
-    fmt::{self, Display, Formatter},
+    fmt::{self, Display, Formatter, Write},
 };
 
 use garmin_lib::{
@@ -31,22 +31,22 @@ pub struct RaceResults {
 
 impl Display for RaceResults {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let mut race_date_str = StackString::new();
+        if let Some(date) = self.race_date {
+            write!(race_date_str, "\nrace_date: {}", date)?;
+        }
+        let mut race_name_str = StackString::new();
+        if let Some(name) = &self.race_name {
+            write!(race_name_str, "\nrace_name: {}", name)?;
+        }
         write!(
             f,
             "RaceResults(\nid: {}\nrace_type: {}{}{}\nrace_distance: {} km\nrace_time: \
              {}\nrace_flag: {}{}\n)",
             self.id,
             self.race_type,
-            if let Some(date) = self.race_date {
-                format!("\nrace_date: {}", date)
-            } else {
-                "".to_string()
-            },
-            if let Some(name) = &self.race_name {
-                format!("\nrace_name: {}", name)
-            } else {
-                "".to_string()
-            },
+            race_date_str,
+            race_name_str,
             self.race_distance,
             print_h_m_s(self.race_time, true).unwrap_or_else(|_| "".into()),
             self.race_flag,
@@ -54,14 +54,14 @@ impl Display for RaceResults {
                 let summary_ids = self
                     .race_summary_ids
                     .iter()
-                    .filter_map(|id| id.map(|i| i.to_string()))
+                    .filter_map(|id| id.map(|i| StackString::from_display(i).unwrap()))
                     .join(",");
 
-                if summary_ids.is_empty() {
-                    "".into()
-                } else {
-                    format!("summary_ids: {}", summary_ids)
+                let mut id_str = StackString::new();
+                if !summary_ids.is_empty() {
+                    write!(id_str, "summary_ids: {}", summary_ids)?;
                 }
+                id_str
             }
         )
     }

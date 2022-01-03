@@ -61,7 +61,8 @@ impl LoggedUser {
             history: Option<Vec<StackString>>,
         }
         let url = format!("https://{}/api/session/garmin", config.domain);
-        let value = HeaderValue::from_str(&self.session.to_string())?;
+        let session_str = StackString::from_display(self.session)?;
+        let value = HeaderValue::from_str(&session_str)?;
         let key = HeaderValue::from_str(&self.secret_key)?;
         let session: Option<SessionResponse> = client
             .get(url)
@@ -88,7 +89,8 @@ impl LoggedUser {
         session: &Session,
     ) -> Result<(), anyhow::Error> {
         let url = format!("https://{}/api/session/garmin", config.domain);
-        let value = HeaderValue::from_str(&self.session.to_string())?;
+        let session_str = StackString::from_display(self.session)?;
+        let value = HeaderValue::from_str(&session_str)?;
         let key = HeaderValue::from_str(&self.secret_key)?;
         client
             .post(url)

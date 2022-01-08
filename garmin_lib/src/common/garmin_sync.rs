@@ -10,10 +10,11 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use rusoto_core::Region;
 use rusoto_s3::{GetObjectRequest, Object as S3Object, PutObjectRequest, S3Client};
 use s3_ext::S3Ext;
-use stack_string::StackString;
+use stack_string::{format_sstr, StackString};
 use std::{
     borrow::Borrow,
     collections::{HashMap, HashSet},
+    fmt::Write,
     fs,
     hash::{Hash, Hasher},
     path::{Path, PathBuf},
@@ -208,7 +209,7 @@ impl GarminSync {
         }
         debug!("downloaded {:?}", downloaded_files);
 
-        let msg = format!(
+        let msg = format_sstr!(
             "{} {} s3_bucketnkeys {} uploaded {} downloaded {}",
             title,
             s3_bucket,
@@ -230,7 +231,7 @@ impl GarminSync {
         let tmp_path = {
             let mut rng = thread_rng();
             let rand_str = Alphanumeric.sample_string(&mut rng, 8);
-            local_file.with_file_name(format!(".tmp_{}", rand_str))
+            local_file.with_file_name(format_sstr!(".tmp_{}", rand_str))
         };
         let etag: Result<StackString, Error> = exponential_retry(|| {
             let tmp_path = tmp_path.clone();

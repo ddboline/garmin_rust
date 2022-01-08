@@ -8,7 +8,7 @@ pub fn sentinel_datetime() -> DateTime<Utc> {
 }
 
 pub fn convert_datetime_to_str(datetime: DateTime<Utc>) -> StackString {
-    StackString::from_display(datetime.format("%Y-%m-%dT%H:%M:%SZ")).unwrap()
+    StackString::from_display(datetime.format("%Y-%m-%dT%H:%M:%SZ"))
 }
 
 pub fn convert_str_to_datetime(s: &str) -> Result<DateTime<Utc>, Error> {

@@ -5,7 +5,7 @@ use maplit::hashmap;
 use ndarray::{array, Array1};
 use postgres_query::{query, FromSqlRow};
 use rusfun::{curve_fit::Minimizer, func1d::Func1D};
-use stack_string::StackString;
+use stack_string::{format_sstr, StackString};
 use std::{collections::HashMap, fmt::Write};
 
 use garmin_lib::{
@@ -166,7 +166,7 @@ impl RaceResultAnalysis {
             .iter()
             .zip(y_proj.iter())
             .map(|(x, y)| {
-                format!(
+                format_sstr!(
                     r#"
                     <td>{:.02}</td><td>{}</td><td>{}</td>"#,
                     x,
@@ -175,7 +175,7 @@ impl RaceResultAnalysis {
                 )
             })
             .join("</tr><tr>");
-        let entries = format!(
+        let entries = format_sstr!(
             r#"
             <table border=1>
             <thead>
@@ -204,23 +204,22 @@ impl RaceResultAnalysis {
                     if filter.is_empty() {
                         "".into()
                     } else {
-                        format!(
+                        format_sstr!(
                             r#"<button type="submit"
                               onclick="send_command('filter={filter},file');"> {date} </button>
                             "#, date=date, filter=filter)
                     }
                 }
             } else {"".into()};
-            let mut flag = StackString::new();
-            if is_demo {
-                write!(flag, "{}", result.race_flag).unwrap();
+            let flag = if is_demo {
+                format_sstr!("{}", result.race_flag)
             } else {
-                write!(flag,
+                format_sstr!(
                     r#"<button type="button" id="race_flag_{id}" onclick="flipRaceResultFlag({id});">{flag}</button>"#,
                     flag=result.race_flag, id=result.id
-                ).unwrap();
-            }
-            format!(
+                )
+            };
+            format_sstr!(
                 r#"<td align="right">{distance:0.1}</td><td>{time}</td><td align="center">{pace}</td><td>{date}</td>
                  <td>{name}</td>
                  <td>{flag}</td>"#,
@@ -232,12 +231,13 @@ impl RaceResultAnalysis {
                 flag = flag,
             )
         }).join("</tr><tr>");
-        let entries = format!(
+        let entries = format_sstr!(
             r#"{}<br><table border="1"><thead>
             <th>Distance (mi)</th><th>Time</th><th>Pace (min/mi)</th><th>Date</th><th>Name</th><th>Flag</th>
             </thead>
             <tr>{}</tr></table>"#,
-            entries, race_results
+            entries,
+            race_results
         );
 
         let x_vals: Vec<f64> = x_vals.map(|x| x * METERS_PER_MILE).to_vec();
@@ -271,8 +271,8 @@ impl RaceResultAnalysis {
             RaceType::WorldRecordMen => "Men's World Record",
             RaceType::WorldRecordWomen => "Women's World Record",
         };
-        let ymin = StackString::from_display(ymin)?;
-        let ymax = StackString::from_display(ymax)?;
+        let ymin = StackString::from_display(ymin);
+        let ymax = StackString::from_display(ymax);
 
         let params = hashmap! {
             "XAXIS" => "Distance",

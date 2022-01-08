@@ -1,7 +1,8 @@
 use chrono::{DateTime, Utc};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use stack_string::StackString;
+use stack_string::{format_sstr, StackString};
+use std::fmt::Write;
 
 use super::garmin_connect_timestamp::GarminConnectTimestamp;
 
@@ -21,7 +22,7 @@ impl GarminConnectHrData {
                 .filter_map(|(timestamp, heartrate)| {
                     let datetime: DateTime<Utc> = (*timestamp).into();
                     heartrate.map(|heartrate| {
-                        format!(
+                        format_sstr!(
                             "<tr><td>{datetime}</td><td>{heartrate}</td></tr>",
                             datetime = datetime,
                             heartrate = heartrate
@@ -29,12 +30,11 @@ impl GarminConnectHrData {
                     })
                 })
                 .join("\n");
-            format!(
+            format_sstr!(
                 "<table border=1><thead><th>Datetime</th><th>Heart \
                  Rate</th></thead><tbody>{}</tbody></table>",
                 rows
             )
-            .into()
         } else {
             "".into()
         }

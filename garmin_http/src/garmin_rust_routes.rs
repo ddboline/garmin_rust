@@ -11,8 +11,8 @@ use rweb_helper::{
     html_response::HtmlResponse as HtmlBase, json_response::JsonResponse as JsonBase, RwebResponse,
 };
 use serde::{Deserialize, Serialize};
-use stack_string::StackString;
-use std::{convert::Infallible, string::ToString};
+use stack_string::{format_sstr, StackString};
+use std::{convert::Infallible, fmt::Write, string::ToString};
 use tempdir::TempDir;
 use tokio::{fs::File, io::AsyncWriteExt};
 use tokio_stream::StreamExt;
@@ -145,7 +145,7 @@ pub async fn garmin_demo(
     let mut session = session.unwrap_or_default();
     let body = garmin_body(query.into_inner(), &state, &mut session.history, true).await?;
     let jwt = session.get_jwt_cookie(&state.config.domain);
-    let jwt_str = StackString::from_display(jwt.encoded()).map_err(Into::<Error>::into)?;
+    let jwt_str = StackString::from_display(jwt.encoded());
     Ok(HtmlBase::new(body).with_cookie(&jwt_str).into())
 }
 
@@ -174,7 +174,7 @@ async fn garmin_upload_body(
 ) -> HttpResult<String> {
     let tempdir = TempDir::new("garmin")?;
     let tempdir_str = tempdir.path().to_string_lossy();
-    let mut fname = String::new();
+    let mut fname = StackString::new();
 
     while let Some(item) = form.next().await {
         let item = item?;
@@ -182,15 +182,15 @@ async fn garmin_upload_body(
         if filename.is_empty() {
             return Err(Error::BadRequest("Empty Filename".into()));
         }
-        fname = format!("{}/{}", tempdir_str, filename,);
-        let file_size = save_file(&fname, item).await?;
+        fname = format_sstr!("{}/{}", tempdir_str, filename,);
+        let file_size = save_file(fname.as_str(), item).await?;
         if file_size == 0 {
             return Err(Error::BadRequest("Empty File".into()));
         }
     }
 
     let datetimes = GarminUploadRequest {
-        filename: fname.into(),
+        filename: fname.as_str().into(),
     }
     .handle(&state.db)
     .await?;
@@ -276,7 +276,7 @@ pub async fn garmin_connect_hr_api(
 
 #[derive(RwebResponse)]
 #[response(description = "Garmin Sync", content = "html")]
-struct GarminSyncResponse(HtmlBase<String, Error>);
+struct GarminSyncResponse(HtmlBase<StackString, Error>);
 
 #[get("/garmin/garmin_sync")]
 pub async fn garmin_sync(
@@ -284,7 +284,7 @@ pub async fn garmin_sync(
     #[data] state: AppState,
 ) -> WarpResult<GarminSyncResponse> {
     let body = GarminSyncRequest {}.handle(&state.db).await?;
-    let body = format!(
+    let body = format_sstr!(
         r#"<textarea cols=100 rows=40>{}</textarea>"#,
         body.join("\n")
     );
@@ -293,7 +293,7 @@ pub async fn garmin_sync(
 
 #[derive(RwebResponse)]
 #[response(description = "Strava Sync", content = "html")]
-struct StravaSyncResponse(HtmlBase<String, Error>);
+struct StravaSyncResponse(HtmlBase<StackString, Error>);
 
 #[get("/garmin/strava_sync")]
 pub async fn strava_sync(
@@ -308,7 +308,7 @@ pub async fn strava_sync(
         .into_iter()
         .map(|p| p.to_string_lossy().into_owned())
         .join("\n");
-    let body = format!(r#"<textarea cols=100 rows=40>{}</textarea>"#, body);
+    let body = format_sstr!(r#"<textarea cols=100 rows=40>{}</textarea>"#, body);
     Ok(HtmlBase::new(body).into())
 }
 
@@ -447,7 +447,7 @@ pub async fn strava_create(
     let activity_id = query.into_inner().handle(&state.db, &state.config).await?;
     let body = activity_id.map_or_else(
         || "".into(),
-        |activity_id| StackString::from_display(activity_id).unwrap(),
+        |activity_id| StackString::from_display(activity_id),
     );
     Ok(HtmlBase::new(body).into())
 }
@@ -900,7 +900,7 @@ pub async fn fitbit_activity_types(
 
 #[derive(RwebResponse)]
 #[response(description = "Strava Athlete")]
-struct StravaAthleteResponse(HtmlBase<String, Error>);
+struct StravaAthleteResponse(HtmlBase<StackString, Error>);
 
 #[get("/garmin/strava/athlete")]
 pub async fn strava_athlete(
@@ -912,7 +912,7 @@ pub async fn strava_athlete(
         let lines = clubs
             .iter()
             .map(|c| {
-                format!(
+                format_sstr!(
                     r#"
                     <tr>
                     <td>{id}</td>
@@ -938,7 +938,7 @@ pub async fn strava_athlete(
                 )
             })
             .join("\n");
-        format!(
+        format_sstr!(
             r#"
                 <br>Clubs<br>
                 <table border=1>
@@ -967,7 +967,7 @@ pub async fn strava_athlete(
         let lines = shoes
             .iter()
             .map(|s| {
-                format!(
+                format_sstr!(
                     r#"
                     <tr>
                     <td>{id}</td>
@@ -984,7 +984,7 @@ pub async fn strava_athlete(
                 )
             })
             .join("\n");
-        format!(
+        format_sstr!(
             r#"
                 <br>Shoes<br>
                 <table border=1>
@@ -1003,7 +1003,7 @@ pub async fn strava_athlete(
     } else {
         "".into()
     };
-    let body = format!(
+    let body = format_sstr!(
         r#"
             <table border=1>
             <tbody>
@@ -1033,26 +1033,26 @@ pub async fn strava_athlete(
         created_at = result.created_at,
         updated_at = result.updated_at,
         follower_count = if let Some(follower_count) = result.follower_count {
-            format!(
+            format_sstr!(
                 "<tr><td>Follower Count</td><td>{}</td></tr>",
                 follower_count
             )
         } else {
-            String::new()
+            StackString::new()
         },
         friend_count = if let Some(friend_count) = result.friend_count {
-            format!("<tr><td>Friend Count</td><td>{}</td></tr>", friend_count)
+            format_sstr!("<tr><td>Friend Count</td><td>{}</td></tr>", friend_count)
         } else {
-            String::new()
+            StackString::new()
         },
         measurement_preference = if let Some(measurement_preference) = result.measurement_preference
         {
-            format!(
+            format_sstr!(
                 "<tr><td>Measurement Preference</td><td>{}</td></tr>",
                 measurement_preference
             )
         } else {
-            String::new()
+            StackString::new()
         },
         clubs = clubs,
         shoes = shoes,
@@ -1062,7 +1062,7 @@ pub async fn strava_athlete(
 
 #[derive(RwebResponse)]
 #[response(description = "Fitbit Profile")]
-struct FitbitProfileResponse(HtmlBase<String, Error>);
+struct FitbitProfileResponse(HtmlBase<StackString, Error>);
 
 #[get("/garmin/fitbit/profile")]
 pub async fn fitbit_profile(
@@ -1070,7 +1070,7 @@ pub async fn fitbit_profile(
     #[data] state: AppState,
 ) -> WarpResult<FitbitProfileResponse> {
     let result = FitbitProfileRequest {}.handle(&state.config).await?;
-    let body = format!(
+    let body = format_sstr!(
         r#"
             <table border=1>
             <tbody>

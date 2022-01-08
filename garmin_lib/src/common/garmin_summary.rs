@@ -6,7 +6,7 @@ use log::debug;
 use postgres_query::{query, FromSqlRow};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
-use stack_string::StackString;
+use stack_string::{format_sstr, StackString};
 use std::{collections::HashMap, fmt, fmt::Write, path::Path, sync::Arc};
 
 use crate::{
@@ -60,7 +60,7 @@ impl GarminSummary {
             .file_name()
             .ok_or_else(|| format_err!("Failed to split filename {:?}", filepath))?
             .to_string_lossy();
-        let cache_file = cache_dir.join(&format!("{}.avro", filename));
+        let cache_file = cache_dir.join(&format_sstr!("{}.avro", filename));
 
         debug!("Get md5sum {} ", filename);
         let md5sum = get_md5sum(filepath)?;
@@ -95,7 +95,7 @@ impl GarminSummary {
                     .file_name()
                     .ok_or_else(|| format_err!("Failed to split input_file {:?}", input_file))?
                     .to_string_lossy();
-                let cache_file = cache_dir.join(&format!("{}.avro", filename));
+                let cache_file = cache_dir.join(&format_sstr!("{}.avro", filename));
                 let md5sum = get_md5sum(&input_file)?;
                 let gfile = GarminParse::new().with_file(&input_file, corr_map)?;
                 match gfile.laps.get(0) {
@@ -126,12 +126,12 @@ impl GarminSummary {
         pattern: &str,
     ) -> Result<Vec<Self>, Error> {
         let where_str = if pattern.is_empty() {
-            "".to_string()
+            "".into()
         } else {
-            format!("WHERE filename like '%{}%'", pattern)
+            format_sstr!("WHERE filename like '%{}%'", pattern)
         };
 
-        let query = format!(
+        let query = format_sstr!(
             "
             SELECT id,
                    filename,
@@ -202,9 +202,9 @@ impl GarminSummary {
     ) -> Result<(), Error> {
         let rand_str = generate_random_string(8);
 
-        let temp_table_name = format!("garmin_summary_{}", rand_str);
+        let temp_table_name = format_sstr!("garmin_summary_{}", rand_str);
 
-        let create_table_query = format!(
+        let create_table_query = format_sstr!(
             "CREATE TABLE {} (
                 filename text NOT NULL PRIMARY KEY,
                 begin_datetime TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -222,7 +222,7 @@ impl GarminSummary {
 
         conn.execute(create_table_query.as_str(), &[]).await?;
 
-        let insert_query = Arc::new(format!(
+        let insert_query = Arc::new(format_sstr!(
             "
             INSERT INTO {} (
                 filename, begin_datetime, sport, total_calories, total_distance, total_duration,
@@ -238,7 +238,7 @@ impl GarminSummary {
             let insert_query = insert_query.clone();
             async move {
                 let conn = pool.get().await?;
-                let sport_str = StackString::from_display(gsum.sport)?;
+                let sport_str = StackString::from_display(gsum.sport);
                 conn.execute(
                     insert_query.as_str(),
                     &[
@@ -260,7 +260,7 @@ impl GarminSummary {
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
         results?;
 
-        let insert_query = format!(
+        let insert_query = format_sstr!(
             "
             INSERT INTO garmin_summary (
                 filename, begin_datetime, sport, total_calories, total_distance, total_duration,
@@ -274,7 +274,7 @@ impl GarminSummary {
             temp_table_name
         );
 
-        let update_query = format!(
+        let update_query = format_sstr!(
             "
             UPDATE garmin_summary a
             SET (
@@ -289,7 +289,7 @@ impl GarminSummary {
             temp_table_name
         );
 
-        let drop_table_query = format!("DROP TABLE {}", temp_table_name);
+        let drop_table_query = format_sstr!("DROP TABLE {}", temp_table_name);
 
         conn.execute(insert_query.as_str(), &[]).await?;
         conn.execute(update_query.as_str(), &[]).await?;
@@ -316,12 +316,12 @@ impl fmt::Display for GarminSummary {
         let vals = vec![
             self.filename.clone(),
             convert_datetime_to_str(self.begin_datetime),
-            StackString::from_display(self.sport).unwrap(),
-            StackString::from_display(self.total_calories).unwrap(),
-            StackString::from_display(self.total_distance).unwrap(),
-            StackString::from_display(self.total_duration).unwrap(),
-            StackString::from_display(self.total_hr_dur).unwrap(),
-            StackString::from_display(self.total_hr_dis).unwrap(),
+            StackString::from_display(self.sport),
+            StackString::from_display(self.total_calories),
+            StackString::from_display(self.total_distance),
+            StackString::from_display(self.total_duration),
+            StackString::from_display(self.total_hr_dur),
+            StackString::from_display(self.total_hr_dis),
             self.md5sum.clone(),
         ];
         write!(
@@ -329,11 +329,7 @@ impl fmt::Display for GarminSummary {
             "GarminSummaryTable<{}>",
             keys.iter()
                 .zip(vals.iter())
-                .map(|(k, v)| {
-                    let mut s = StackString::new();
-                    write!(s, "{}={}", k, v).unwrap();
-                    s
-                })
+                .map(|(k, v)| { format_sstr!("{}={}", k, v) })
                 .join(",")
         )
     }
@@ -344,12 +340,12 @@ pub async fn get_list_of_files_from_db(
     pool: &PgPool,
 ) -> Result<Vec<StackString>, Error> {
     let constr = if constraints.is_empty() {
-        "".to_string()
+        "".into()
     } else {
-        format!("WHERE {}", constraints)
+        format_sstr!("WHERE {}", constraints)
     };
 
-    let query = format!(
+    let query = format_sstr!(
         "
             SELECT a.filename
             FROM garmin_summary a
@@ -395,12 +391,12 @@ pub async fn get_list_of_activities_from_db(
     pool: &PgPool,
 ) -> Result<Vec<(DateTime<Utc>, StackString)>, Error> {
     let constr = if constraints.is_empty() {
-        "".to_string()
+        "".into()
     } else {
-        format!("WHERE {}", constraints)
+        format_sstr!("WHERE {}", constraints)
     };
 
-    let query = format!(
+    let query = format_sstr!(
         "SELECT begin_datetime, filename FROM garmin_summary {}",
         constr
     );

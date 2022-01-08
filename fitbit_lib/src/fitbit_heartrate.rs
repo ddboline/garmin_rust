@@ -12,9 +12,10 @@ use rayon::{
     slice::ParallelSliceMut,
 };
 use serde::{self, Deserialize, Deserializer, Serialize};
-use stack_string::StackString;
+use stack_string::{format_sstr, StackString};
 use std::{
     collections::{HashMap, HashSet},
+    fmt::Write,
     fs::{rename, File},
     path::Path,
 };
@@ -87,14 +88,14 @@ impl FitbitHeartRate {
         let rows = heartrate_values
             .iter()
             .map(|entry| {
-                format!(
+                format_sstr!(
                     "<tr><td>{datetime}</td><td>{heartrate}</td></tr>",
                     datetime = entry.datetime,
                     heartrate = entry.value
                 )
             })
             .join("\n");
-        format!(
+        format_sstr!(
             "<table border=1><thead><th>Datetime</th><th>Heart \
              Rate</th></thead><tbody>{}</tbody></table>",
             rows
@@ -124,7 +125,7 @@ impl FitbitHeartRate {
         let fitbit_files: Vec<_> = days
             .par_iter()
             .filter_map(|date| {
-                let date_str = StackString::from_display(date).unwrap();
+                let date_str = StackString::from_display(date);
                 let input_filename = config.fitbit_cachedir.join(date_str).with_extension("avro");
                 if input_filename.exists() {
                     Some(input_filename)
@@ -135,12 +136,12 @@ impl FitbitHeartRate {
             .collect();
         info!("fitbit_files {:?}", fitbit_files);
         let futures = days.iter().map(|date| async move {
-            let constraint = format!("date(begin_datetime at time zone 'utc') = '{}'", date);
+            let constraint = format_sstr!("date(begin_datetime at time zone 'utc') = '{}'", date);
             let files: Vec<_> = get_list_of_files_from_db(&constraint, pool)
                 .await?
                 .into_par_iter()
                 .filter_map(|filename| {
-                    let avro_file = config.cache_dir.join(&format!("{}.avro", filename));
+                    let avro_file = config.cache_dir.join(&format_sstr!("{}.avro", filename));
                     if avro_file.exists() {
                         Some(avro_file)
                     } else {
@@ -206,7 +207,7 @@ impl FitbitHeartRate {
         config: &GarminConfig,
         pool: &PgPool,
     ) -> Result<(), Error> {
-        let dates: Result<Vec<_>, Error> = glob(&format!(
+        let dates: Result<Vec<_>, Error> = glob(&format_sstr!(
             "{}/*.avro",
             config.fitbit_cachedir.to_string_lossy()
         ))?
@@ -274,8 +275,7 @@ impl FitbitHeartRate {
                     begin_datetime.map(|begin_datetime| {
                         let average_heartrate = heartrate_sum / entries;
                         let begin_datetime_str =
-                            StackString::from_display(begin_datetime.format("%Y-%m-%dT%H:%M:%S%z"))
-                                .unwrap();
+                            StackString::from_display(begin_datetime.format("%Y-%m-%dT%H:%M:%S%z"));
                         (begin_datetime_str, average_heartrate)
                     })
                 })
@@ -298,9 +298,9 @@ impl FitbitHeartRate {
         let mut buttons: Vec<_> = (0..5)
             .map(|i| {
                 let date = button_date - Duration::days(i);
-                format!(
+                format_sstr!(
                     "{}{}{}<br>",
-                    format!(
+                    format_sstr!(
                         r#"
                         <button type="submit" id="ID"
                          onclick="heartrate_plot_button('{date}','{date}', '{button_date}');"">Plot {date}</button>"#,
@@ -308,9 +308,9 @@ impl FitbitHeartRate {
                         button_date=button_date,
                     ),
                     if is_demo {
-                        "".to_string()
+                        "".into()
                     } else {
-                        format!(
+                        format_sstr!(
                             r#"
                         <button type="submit" id="ID"
                          onclick="heartrate_sync('{date}');">Sync {date}</button>
@@ -326,7 +326,7 @@ impl FitbitHeartRate {
         let next_date = button_date - Duration::days(5);
         if prev_date <= Local::now().naive_local().date() {
             buttons.push(
-                format!(r#"
+                format_sstr!(r#"
                         <button type="submit"
                         onclick="heartrate_plot_button('{start_date}', '{end_date}', '{button_date}');">
                         Prev</button>
@@ -337,7 +337,7 @@ impl FitbitHeartRate {
                 )
             );
         }
-        buttons.push(format!(
+        buttons.push(format_sstr!(
             r#"
                     <button type="submit"
                     onclick="heartrate_plot_button('{start_date}', '{end_date}', '{button_date}');">
@@ -368,7 +368,7 @@ impl FitbitHeartRate {
             let rand_str = Alphanumeric.sample_string(&mut rng, 8);
             output_filename
                 .as_ref()
-                .with_file_name(format!(".tmp_{}", rand_str))
+                .with_file_name(format_sstr!(".tmp_{}", rand_str))
         };
 
         let output_file = File::create(&tmp_path)?;
@@ -382,7 +382,7 @@ impl FitbitHeartRate {
     }
 
     pub fn read_avro_by_date(config: &GarminConfig, date: NaiveDate) -> Result<Vec<Self>, Error> {
-        let date_str = StackString::from_display(date)?;
+        let date_str = StackString::from_display(date);
         let input_filename = config.fitbit_cachedir.join(date_str).with_extension("avro");
         debug!("avro {:?}", input_filename);
         if input_filename.exists() {
@@ -421,7 +421,7 @@ impl FitbitHeartRate {
                 .collect();
             merged_values.par_sort_by_key(|entry| entry.datetime.timestamp());
             merged_values.dedup();
-            let date_str = StackString::from_display(date)?;
+            let date_str = StackString::from_display(date);
             let input_filename = config.fitbit_cachedir.join(date_str).with_extension("avro");
             Self::dump_to_avro(&merged_values, &input_filename)?;
         }
@@ -458,7 +458,7 @@ pub fn process_fitbit_json_file(fname: &Path) -> Result<Vec<FitbitHeartRate>, Er
 
 pub fn import_fitbit_json_files(directory: &str) -> Result<(), Error> {
     let config = GarminConfig::get_config(None)?;
-    let filenames: Vec<_> = glob(&format!("{}/heart_rate-*.json", directory))?.collect();
+    let filenames: Vec<_> = glob(&format_sstr!("{}/heart_rate-*.json", directory))?.collect();
     filenames
         .into_par_iter()
         .map(|fname| {

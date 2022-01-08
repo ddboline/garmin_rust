@@ -4,7 +4,7 @@ use itertools::Itertools;
 use postgres_query::{query, FromSqlRow};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
-use stack_string::StackString;
+use stack_string::{format_sstr, StackString};
 use std::{
     collections::HashMap,
     fmt::{self, Display, Formatter, Write},
@@ -31,14 +31,16 @@ pub struct RaceResults {
 
 impl Display for RaceResults {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let mut race_date_str = StackString::new();
-        if let Some(date) = self.race_date {
-            write!(race_date_str, "\nrace_date: {}", date)?;
-        }
-        let mut race_name_str = StackString::new();
-        if let Some(name) = &self.race_name {
-            write!(race_name_str, "\nrace_name: {}", name)?;
-        }
+        let race_date_str = if let Some(date) = self.race_date {
+            format_sstr!("\nrace_date: {}", date)
+        } else {
+            StackString::new()
+        };
+        let race_name_str = if let Some(name) = &self.race_name {
+            format_sstr!("\nrace_name: {}", name)
+        } else {
+            StackString::new()
+        };
         write!(
             f,
             "RaceResults(\nid: {}\nrace_type: {}{}{}\nrace_distance: {} km\nrace_time: \
@@ -54,14 +56,14 @@ impl Display for RaceResults {
                 let summary_ids = self
                     .race_summary_ids
                     .iter()
-                    .filter_map(|id| id.map(|i| StackString::from_display(i).unwrap()))
+                    .filter_map(|id| id.map(|i| StackString::from_display(i)))
                     .join(",");
 
-                let mut id_str = StackString::new();
                 if !summary_ids.is_empty() {
-                    write!(id_str, "summary_ids: {}", summary_ids)?;
+                    format_sstr!("summary_ids: {}", summary_ids)
+                } else {
+                    StackString::new()
                 }
-                id_str
             }
         )
     }
@@ -413,7 +415,8 @@ mod tests {
     use chrono::{Datelike, NaiveDate, Utc};
     use lazy_static::lazy_static;
     use parking_lot::Mutex;
-    use std::collections::HashMap;
+    use stack_string::format_sstr;
+    use std::{collections::HashMap, fmt::Write};
 
     use garmin_lib::common::{
         garmin_config::GarminConfig,
@@ -574,7 +577,7 @@ mod tests {
                 continue;
             }
             if let Some(race_date) = result.race_date {
-                let constraint = format!(
+                let constraint = format_sstr!(
                     "replace({}, '%', 'T') like '{}%'",
                     "to_char(begin_datetime at time zone 'localtime', 'YYYY-MM-DD%HH24:MI:SS')",
                     race_date,

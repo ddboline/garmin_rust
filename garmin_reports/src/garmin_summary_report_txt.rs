@@ -4,7 +4,7 @@ use futures::future::try_join_all;
 use itertools::Itertools;
 use log::debug;
 use postgres_query::FromSqlRow;
-use stack_string::StackString;
+use stack_string::{format_sstr, StackString};
 use std::fmt::Write;
 use url::Url;
 
@@ -37,7 +37,7 @@ pub trait GarminReportTrait {
             .map(|(s, u)| u.map_or(s, |u| u))
             .join("</td><td>");
         let cmd = self.generate_url_string();
-        Ok(format!(
+        Ok(format_sstr!(
             "<tr><td>{}{}{}{}{}{}</td></tr>",
             r#"<button type="submit" onclick="send_command('filter="#,
             cmd,
@@ -93,25 +93,25 @@ pub async fn create_report_query(
     options: &GarminReportOptions,
     constraints: &GarminConstraints,
 ) -> Result<GarminReportQuery, Error> {
-    let mut sport_constr = StackString::new();
-    if let Some(x) = options.do_sport {
-        write!(sport_constr, "sport = '{}'", x)?;
-    }
+    let sport_constr = if let Some(x) = options.do_sport {
+        format_sstr!("sport = '{}'", x)
+    } else {
+        StackString::new()
+    };
 
     let mut constr = StackString::new();
     if constraints.is_empty() {
         if !sport_constr.is_empty() {
-            write!(constr, "WHERE {}", sport_constr)?;
+            constr = format_sstr!("WHERE {}", sport_constr);
         }
     } else if sport_constr.is_empty() {
-        write!(constr, "WHERE {}", constraints.to_query_string())?;
+        constr = format_sstr!("WHERE {}", constraints.to_query_string());
     } else {
-        write!(
-            constr,
+        constr = format_sstr!(
             "WHERE ({}) AND {}",
             constraints.to_query_string(),
             sport_constr
-        )?;
+        );
     }
 
     debug!("{}", constr);
@@ -173,23 +173,29 @@ impl GarminReportTrait for FileSummaryReport {
 
         match self.sport.as_str() {
             "running" | "walking" => {
-                tmp_vec.push((format!("{:17}", format!("{:10}", datetime),).into(), None));
-                tmp_vec.push((format!("{:02} {:3}", self.week, weekdayname).into(), None));
+                tmp_vec.push((
+                    format_sstr!("{:17}", format_sstr!("{:10}", datetime),).into(),
+                    None,
+                ));
+                tmp_vec.push((
+                    format_sstr!("{:02} {:3}", self.week, weekdayname).into(),
+                    None,
+                ));
                 if self.total_distance > 0.0 {
                     tmp_vec.push((
-                        format!(
+                        format_sstr!(
                             "{:10} {:10} {:10} {:10} {:10} {:10}",
                             self.sport,
-                            format!("{:.2} mi", self.total_distance / METERS_PER_MILE),
-                            format!("{} cal", self.total_calories),
-                            format!(
+                            format_sstr!("{:.2} mi", self.total_distance / METERS_PER_MILE),
+                            format_sstr!("{} cal", self.total_calories),
+                            format_sstr!(
                                 "{} / mi",
                                 print_h_m_s(
                                     self.total_duration / (self.total_distance / METERS_PER_MILE),
                                     false
                                 )?
                             ),
-                            format!(
+                            format_sstr!(
                                 "{} / km",
                                 print_h_m_s(
                                     self.total_duration / (self.total_distance / 1000.),
@@ -203,11 +209,11 @@ impl GarminReportTrait for FileSummaryReport {
                     ));
                 } else {
                     tmp_vec.push((
-                        format!(
+                        format_sstr!(
                             "{:10} {:10} {:10} {:10} {:10} {:10}",
                             self.sport,
-                            format!("{:.2} mi", self.total_distance / METERS_PER_MILE),
-                            format!("{} cal", self.total_calories),
+                            format_sstr!("{:.2} mi", self.total_distance / METERS_PER_MILE),
+                            format_sstr!("{} cal", self.total_calories),
                             "",
                             "",
                             print_h_m_s(self.total_duration, true)?
@@ -218,15 +224,21 @@ impl GarminReportTrait for FileSummaryReport {
                 }
             }
             "biking" => {
-                tmp_vec.push((format!("{:17}", format!("{:10}", datetime),).into(), None));
-                tmp_vec.push((format!("{:02} {:3}", self.week, weekdayname).into(), None));
                 tmp_vec.push((
-                    format!(
+                    format_sstr!("{:17}", format_sstr!("{:10}", datetime),).into(),
+                    None,
+                ));
+                tmp_vec.push((
+                    format_sstr!("{:02} {:3}", self.week, weekdayname).into(),
+                    None,
+                ));
+                tmp_vec.push((
+                    format_sstr!(
                         "{:10} {:10} {:10} {:10} {:10} {:10}",
                         self.sport,
-                        format!("{:.2} mi", self.total_distance / METERS_PER_MILE),
-                        format!("{} cal", self.total_calories),
-                        format!(
+                        format_sstr!("{:.2} mi", self.total_distance / METERS_PER_MILE),
+                        format_sstr!("{} cal", self.total_calories),
+                        format_sstr!(
                             "{:.2} mph",
                             (self.total_distance / METERS_PER_MILE) / (self.total_duration / 3600.)
                         ),
@@ -238,14 +250,20 @@ impl GarminReportTrait for FileSummaryReport {
                 ));
             }
             _ => {
-                tmp_vec.push((format!("{:17}", format!("{:10}", datetime),).into(), None));
-                tmp_vec.push((format!("{:02} {:3}", self.week, weekdayname).into(), None));
                 tmp_vec.push((
-                    format!(
+                    format_sstr!("{:17}", format_sstr!("{:10}", datetime),).into(),
+                    None,
+                ));
+                tmp_vec.push((
+                    format_sstr!("{:02} {:3}", self.week, weekdayname).into(),
+                    None,
+                ));
+                tmp_vec.push((
+                    format_sstr!(
                         "{:10} {:10} {:10} {:10} {:10} {:10}",
                         self.sport,
-                        format!("{:.2} mi", self.total_distance / METERS_PER_MILE),
-                        format!("{} cal", self.total_calories),
+                        format_sstr!("{:.2} mi", self.total_distance / METERS_PER_MILE),
+                        format_sstr!("{} cal", self.total_calories),
                         "",
                         "",
                         print_h_m_s(self.total_duration, true)?
@@ -257,9 +275,9 @@ impl GarminReportTrait for FileSummaryReport {
         };
         if self.total_hr_dur > self.total_hr_dis {
             tmp_vec.push((
-                format!(
+                format_sstr!(
                     "\t {:7}",
-                    format!("{} bpm", (self.total_hr_dur / self.total_hr_dis) as i32)
+                    format_sstr!("{} bpm", (self.total_hr_dur / self.total_hr_dis) as i32)
                 )
                 .into(),
                 None,
@@ -269,67 +287,65 @@ impl GarminReportTrait for FileSummaryReport {
         }
         if self.total_fitbit_steps > 0 || self.total_connect_steps > 0 {
             let fitbit_url: Option<Url> = if let Some(id) = self.fitbit_id {
-                format!("https://www.fitbit.com/activities/exercise/{}", id)
+                format_sstr!("https://www.fitbit.com/activities/exercise/{}", id)
                     .parse()
                     .ok()
             } else {
                 None
             };
             let connect_url: Option<Url> = if let Some(id) = self.connect_id {
-                format!("https://connect.garmin.com/modern/activity/{}", id)
+                format_sstr!("https://connect.garmin.com/modern/activity/{}", id)
                     .parse()
                     .ok()
             } else {
                 None
             };
-            let text = format!(
+            let text = format_sstr!(
                 " {:>16} steps",
-                format!("{} / {}", self.total_fitbit_steps, self.total_connect_steps),
+                format_sstr!("{} / {}", self.total_fitbit_steps, self.total_connect_steps),
             )
             .into();
-            let mut fitbit_str = StackString::new();
-            if let Some(u) = fitbit_url {
-                write!(
-                    fitbit_str,
+            let fitbit_str = if let Some(u) = fitbit_url {
+                format_sstr!(
                     r#"<a href="{}" target="_blank">{}</a>"#,
-                    u, self.total_fitbit_steps
-                )?;
+                    u,
+                    self.total_fitbit_steps
+                )
             } else {
-                write!(fitbit_str, "{}", self.total_fitbit_steps)?;
-            }
-            let mut connect_str = StackString::new();
-            if let Some(u) = connect_url {
-                write!(
-                    connect_str,
+                format_sstr!("{}", self.total_fitbit_steps)
+            };
+            let connect_str = if let Some(u) = connect_url {
+                format_sstr!(
                     r#"<a href="{}" target="_blank">{}</a>"#,
-                    u, self.total_connect_steps
-                )?;
+                    u,
+                    self.total_connect_steps
+                )
             } else {
-                write!(connect_str, "{}", self.total_connect_steps)?;
-            }
-            let mut html_str = StackString::new();
-            write!(
-                html_str,
+                format_sstr!("{}", self.total_connect_steps)
+            };
+            let html_str = format_sstr!(
                 " {:>16} steps",
-                format!("{} / {}", fitbit_str, connect_str),
-            )?;
+                format_sstr!("{} / {}", fitbit_str, connect_str),
+            );
             tmp_vec.push((text, Some(html_str)));
         } else {
             tmp_vec.push(("".into(), None));
         }
         if let Some(strava_title) = &self.strava_title {
             if let Some(strava_id) = &self.strava_id {
-                let url: Option<Url> = format!("https://www.strava.com/activities/{}", strava_id)
-                    .parse()
-                    .ok();
+                let url: Option<Url> =
+                    format_sstr!("https://www.strava.com/activities/{}", strava_id)
+                        .parse()
+                        .ok();
                 tmp_vec.push((
-                    format!(" {}", strava_title).into(),
+                    format_sstr!(" {}", strava_title).into(),
                     url.map(|u| {
-                        format!(r#"<a href="{}" target="_blank">{}</a>"#, u, strava_title).into()
+                        format_sstr!(r#"<a href="{}" target="_blank">{}</a>"#, u, strava_title)
+                            .into()
                     }),
                 ));
             } else {
-                tmp_vec.push((format!(" {}", strava_title).into(), None));
+                tmp_vec.push((format_sstr!(" {}", strava_title).into(), None));
             }
         } else {
             tmp_vec.push(("".into(), None));
@@ -354,7 +370,7 @@ async fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<FileSumm
         summary_id: i32,
     }
 
-    let query = format!(
+    let query = format_sstr!(
         "
         SELECT a.begin_datetime as datetime,
                 a.sport,
@@ -442,20 +458,20 @@ impl GarminReportTrait for DaySummaryReport {
             "running" | "walking" => {
                 if self.total_distance > 0.0 {
                     tmp_vec.push((
-                        format!(
+                        format_sstr!(
                             "{:17} {:10} {:10} {:10} {:10} {:10} {:10}",
-                            format!("{:10} {:02} {:3}", self.date, self.week, weekdayname),
+                            format_sstr!("{:10} {:02} {:3}", self.date, self.week, weekdayname),
                             self.sport,
-                            format!("{:.2} mi", self.total_distance / METERS_PER_MILE),
-                            format!("{} cal", self.total_calories),
-                            format!(
+                            format_sstr!("{:.2} mi", self.total_distance / METERS_PER_MILE),
+                            format_sstr!("{} cal", self.total_calories),
+                            format_sstr!(
                                 "{} / mi",
                                 print_h_m_s(
                                     self.total_duration / (self.total_distance / METERS_PER_MILE),
                                     false
                                 )?
                             ),
-                            format!(
+                            format_sstr!(
                                 "{} / km",
                                 print_h_m_s(
                                     self.total_duration / (self.total_distance / 1000.),
@@ -469,12 +485,12 @@ impl GarminReportTrait for DaySummaryReport {
                     ));
                 } else {
                     tmp_vec.push((
-                        format!(
+                        format_sstr!(
                             "{:17} {:10} {:10} {:10} {:10} {:10} {:10}",
-                            format!("{:10} {:02} {:3}", self.date, self.week, weekdayname),
+                            format_sstr!("{:10} {:02} {:3}", self.date, self.week, weekdayname),
                             self.sport,
-                            format!("{:.2} mi", self.total_distance / METERS_PER_MILE),
-                            format!("{} cal", self.total_calories),
+                            format_sstr!("{:.2} mi", self.total_distance / METERS_PER_MILE),
+                            format_sstr!("{} cal", self.total_calories),
                             "",
                             "",
                             print_h_m_s(self.total_duration, true)?
@@ -486,13 +502,13 @@ impl GarminReportTrait for DaySummaryReport {
             }
             "biking" => {
                 tmp_vec.push((
-                    format!(
+                    format_sstr!(
                         "{:17} {:10} {:10} {:10} {:10} {:10} {:10}",
-                        format!("{:10} {:02} {:3}", self.date, self.week, weekdayname),
+                        format_sstr!("{:10} {:02} {:3}", self.date, self.week, weekdayname),
                         self.sport,
-                        format!("{:.2} mi", self.total_distance / METERS_PER_MILE),
-                        format!("{} cal", self.total_calories),
-                        format!(
+                        format_sstr!("{:.2} mi", self.total_distance / METERS_PER_MILE),
+                        format_sstr!("{} cal", self.total_calories),
+                        format_sstr!(
                             "{:.2} mph",
                             (self.total_distance / METERS_PER_MILE) / (self.total_duration / 3600.)
                         ),
@@ -505,12 +521,12 @@ impl GarminReportTrait for DaySummaryReport {
             }
             _ => {
                 tmp_vec.push((
-                    format!(
+                    format_sstr!(
                         "{:17} {:10} {:10} {:10} {:10} {:10} {:10}",
-                        format!("{:10} {:02} {:3}", self.date, self.week, weekdayname),
+                        format_sstr!("{:10} {:02} {:3}", self.date, self.week, weekdayname),
                         self.sport,
-                        format!("{:.2} mi", self.total_distance / METERS_PER_MILE),
-                        format!("{} cal", self.total_calories),
+                        format_sstr!("{:.2} mi", self.total_distance / METERS_PER_MILE),
+                        format_sstr!("{} cal", self.total_calories),
                         "",
                         "",
                         print_h_m_s(self.total_duration, true)?
@@ -522,9 +538,9 @@ impl GarminReportTrait for DaySummaryReport {
         };
         if self.total_hr_dur > self.total_hr_dis {
             tmp_vec.push((
-                format!(
+                format_sstr!(
                     "\t {:7}",
-                    format!("{} bpm", (self.total_hr_dur / self.total_hr_dis) as i32)
+                    format_sstr!("{} bpm", (self.total_hr_dur / self.total_hr_dis) as i32)
                 )
                 .into(),
                 None,
@@ -533,12 +549,12 @@ impl GarminReportTrait for DaySummaryReport {
         Ok(tmp_vec)
     }
     fn generate_url_string(&self) -> StackString {
-        format!("{},file,{}", self.sport, self.date).into()
+        format_sstr!("{},file,{}", self.sport, self.date).into()
     }
 }
 
 async fn day_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<DaySummaryReport>, Error> {
-    let query = format!(
+    let query = format_sstr!(
         "
         WITH c AS (
             SELECT a.begin_datetime,
@@ -600,12 +616,12 @@ impl GarminReportTrait for WeekSummaryReport {
         debug!("{:?}", self);
 
         let mut tmp_vec = vec![(
-            format!(
+            format_sstr!(
                 "{:15} {:7} {:10} {:10} \t",
-                format!("{} week {:02}", self.year, self.week),
+                format_sstr!("{} week {:02}", self.year, self.week),
                 self.sport,
-                format!("{:4.2} mi", self.total_distance / METERS_PER_MILE),
-                format!("{} cal", self.total_calories)
+                format_sstr!("{:4.2} mi", self.total_distance / METERS_PER_MILE),
+                format_sstr!("{} cal", self.total_calories)
             )
             .into(),
             None,
@@ -615,9 +631,9 @@ impl GarminReportTrait for WeekSummaryReport {
             "running" | "walking" => {
                 if self.total_distance > 0.0 {
                     tmp_vec.push((
-                        format!(
+                        format_sstr!(
                             " {:10} \t",
-                            format!(
+                            format_sstr!(
                                 "{} / mi",
                                 print_h_m_s(
                                     self.total_duration / (self.total_distance / METERS_PER_MILE),
@@ -629,9 +645,9 @@ impl GarminReportTrait for WeekSummaryReport {
                         None,
                     ));
                     tmp_vec.push((
-                        format!(
+                        format_sstr!(
                             " {:10} \t",
-                            format!(
+                            format_sstr!(
                                 "{} / km",
                                 print_h_m_s(
                                     self.total_duration / (self.total_distance / 1000.),
@@ -643,15 +659,15 @@ impl GarminReportTrait for WeekSummaryReport {
                         None,
                     ));
                 } else {
-                    tmp_vec.push((format!(" {:10} \t", "").into(), None));
-                    tmp_vec.push((format!(" {:10} \t", "").into(), None));
+                    tmp_vec.push((format_sstr!(" {:10} \t", "").into(), None));
+                    tmp_vec.push((format_sstr!(" {:10} \t", "").into(), None));
                 }
             }
             "biking" => {
                 tmp_vec.push((
-                    format!(
+                    format_sstr!(
                         " {:10} \t",
-                        format!(
+                        format_sstr!(
                             "{:.2} mph",
                             (self.total_distance / METERS_PER_MILE) / (self.total_duration / 3600.)
                         )
@@ -661,30 +677,30 @@ impl GarminReportTrait for WeekSummaryReport {
                 ));
             }
             _ => {
-                tmp_vec.push((format!(" {:10} \t", "").into(), None));
+                tmp_vec.push((format_sstr!(" {:10} \t", "").into(), None));
             }
         }
         tmp_vec.push((
-            format!(" {:10} \t", print_h_m_s(self.total_duration, true)?).into(),
+            format_sstr!(" {:10} \t", print_h_m_s(self.total_duration, true)?).into(),
             None,
         ));
         if self.total_hr_dur > self.total_hr_dis {
             tmp_vec.push((
-                format!(
+                format_sstr!(
                     " {:7} {:2}",
-                    format!("{} bpm", (self.total_hr_dur / self.total_hr_dis) as i32),
+                    format_sstr!("{} bpm", (self.total_hr_dur / self.total_hr_dis) as i32),
                     ""
                 )
                 .into(),
                 None,
             ));
         } else {
-            tmp_vec.push((format!(" {:7} {:2}", "", "").into(), None));
+            tmp_vec.push((format_sstr!(" {:7} {:2}", "", "").into(), None));
         };
         tmp_vec.push((
-            format!(
+            format_sstr!(
                 "{:16}",
-                format!("{} / {} days", self.number_of_days, total_days)
+                format_sstr!("{} / {} days", self.number_of_days, total_days)
             )
             .into(),
             None,
@@ -693,12 +709,12 @@ impl GarminReportTrait for WeekSummaryReport {
         Ok(tmp_vec)
     }
     fn generate_url_string(&self) -> StackString {
-        format!("{},day,{}w{}", self.sport, self.year, self.week).into()
+        format_sstr!("{},day,{}w{}", self.sport, self.year, self.week).into()
     }
 }
 
 async fn week_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<WeekSummaryReport>, Error> {
-    let query = format!(
+    let query = format_sstr!(
         "
         WITH c AS (
             SELECT a.begin_datetime,
@@ -760,26 +776,26 @@ impl GarminReportTrait for MonthSummaryReport {
         debug!("{:?}", self);
 
         let mut tmp_vec = vec![(
-            format!(
+            format_sstr!(
                 "{:8} {:10} {:8} \t",
-                format!("{} {}", self.year, MONTH_NAMES[self.month as usize - 1]),
+                format_sstr!("{} {}", self.year, MONTH_NAMES[self.month as usize - 1]),
                 self.sport,
-                format!("{:4.2} mi", (self.total_distance / METERS_PER_MILE)),
+                format_sstr!("{:4.2} mi", (self.total_distance / METERS_PER_MILE)),
             )
             .into(),
             None,
         )];
         tmp_vec.push((
-            format!("{:10} \t", format!("{} cal", self.total_calories)).into(),
+            format_sstr!("{:10} \t", format_sstr!("{} cal", self.total_calories)).into(),
             None,
         ));
 
         match self.sport.as_str() {
             "running" | "walking" => {
                 tmp_vec.push((
-                    format!(
+                    format_sstr!(
                         " {:10} \t",
-                        format!(
+                        format_sstr!(
                             "{} / mi",
                             print_h_m_s(
                                 self.total_duration / (self.total_distance / METERS_PER_MILE),
@@ -791,9 +807,9 @@ impl GarminReportTrait for MonthSummaryReport {
                     None,
                 ));
                 tmp_vec.push((
-                    format!(
+                    format_sstr!(
                         " {:10} \t",
-                        format!(
+                        format_sstr!(
                             "{} / km",
                             print_h_m_s(
                                 self.total_duration / (self.total_distance / 1000.),
@@ -807,9 +823,9 @@ impl GarminReportTrait for MonthSummaryReport {
             }
             "biking" => {
                 tmp_vec.push((
-                    format!(
+                    format_sstr!(
                         " {:10} \t",
-                        format!(
+                        format_sstr!(
                             "{:.2} mph",
                             (self.total_distance / METERS_PER_MILE)
                                 / (self.total_duration / 60. / 60.)
@@ -820,32 +836,32 @@ impl GarminReportTrait for MonthSummaryReport {
                 ));
             }
             _ => {
-                tmp_vec.push((format!(" {:10} \t", "").into(), None));
+                tmp_vec.push((format_sstr!(" {:10} \t", "").into(), None));
             }
         };
         tmp_vec.push((
-            format!(" {:10} \t", print_h_m_s(self.total_duration, true)?).into(),
+            format_sstr!(" {:10} \t", print_h_m_s(self.total_duration, true)?).into(),
             None,
         ));
 
         if self.total_hr_dur > self.total_hr_dis {
             tmp_vec.push((
-                format!(
+                format_sstr!(
                     " {:7} {:2}",
-                    format!("{} bpm", (self.total_hr_dur / self.total_hr_dis) as i32),
+                    format_sstr!("{} bpm", (self.total_hr_dur / self.total_hr_dis) as i32),
                     ""
                 )
                 .into(),
                 None,
             ));
         } else {
-            tmp_vec.push((format!(" {:7} {:2}", " ", " ").into(), None));
+            tmp_vec.push((format_sstr!(" {:7} {:2}", " ", " ").into(), None));
         };
 
         tmp_vec.push((
-            format!(
+            format_sstr!(
                 "{:16}",
-                format!("{} / {} days", self.number_of_days, total_days)
+                format_sstr!("{} / {} days", self.number_of_days, total_days)
             )
             .into(),
             None,
@@ -854,7 +870,7 @@ impl GarminReportTrait for MonthSummaryReport {
         Ok(tmp_vec)
     }
     fn generate_url_string(&self) -> StackString {
-        format!("{},day,{:04}-{:02}", self.sport, self.year, self.month).into()
+        format_sstr!("{},day,{:04}-{:02}", self.sport, self.year, self.month).into()
     }
 }
 
@@ -862,7 +878,7 @@ async fn month_summary_report(
     pool: &PgPool,
     constr: &str,
 ) -> Result<Vec<MonthSummaryReport>, Error> {
-    let query = format!(
+    let query = format_sstr!(
         "
         WITH c AS (
             SELECT a.begin_datetime,
@@ -918,17 +934,17 @@ impl GarminReportTrait for SportSummaryReport {
     fn get_text_entry(&self) -> Result<Vec<GarminTextEntry>, Error> {
         debug!("{:?}", self);
         let mut tmp_vec = vec![
-            (format!("{:10} \t", self.sport).into(), None),
+            (format_sstr!("{:10} \t", self.sport).into(), None),
             (
-                format!(
+                format_sstr!(
                     "{:10} \t",
-                    format!("{:4.2} mi", self.total_distance / METERS_PER_MILE),
+                    format_sstr!("{:4.2} mi", self.total_distance / METERS_PER_MILE),
                 )
                 .into(),
                 None,
             ),
             (
-                format!("{:10} \t", format!("{} cal", self.total_calories)).into(),
+                format_sstr!("{:10} \t", format_sstr!("{} cal", self.total_calories)).into(),
                 None,
             ),
         ];
@@ -936,9 +952,9 @@ impl GarminReportTrait for SportSummaryReport {
         match self.sport.as_str() {
             "running" | "walking" => {
                 tmp_vec.push((
-                    format!(
+                    format_sstr!(
                         "{:10} ",
-                        format!(
+                        format_sstr!(
                             "{} / mi",
                             print_h_m_s(
                                 self.total_duration / (self.total_distance / METERS_PER_MILE),
@@ -950,9 +966,9 @@ impl GarminReportTrait for SportSummaryReport {
                     None,
                 ));
                 tmp_vec.push((
-                    format!(
+                    format_sstr!(
                         "{:10} ",
-                        format!(
+                        format_sstr!(
                             "{} / km",
                             print_h_m_s(
                                 self.total_duration / (self.total_distance / 1000.),
@@ -966,9 +982,9 @@ impl GarminReportTrait for SportSummaryReport {
             }
             "biking" => {
                 tmp_vec.push((
-                    format!(
+                    format_sstr!(
                         " {:10} \t",
-                        format!(
+                        format_sstr!(
                             "{:.2} mph",
                             (self.total_distance / METERS_PER_MILE)
                                 / (self.total_duration / 60. / 60.)
@@ -982,27 +998,27 @@ impl GarminReportTrait for SportSummaryReport {
         };
 
         tmp_vec.push((
-            format!(" {:10} \t", print_h_m_s(self.total_duration, true)?).into(),
+            format_sstr!(" {:10} \t", print_h_m_s(self.total_duration, true)?).into(),
             None,
         ));
         if self.total_hr_dur > self.total_hr_dis {
             tmp_vec.push((
-                format!(
+                format_sstr!(
                     " {:7} {:2}",
-                    format!("{} bpm", (self.total_hr_dur / self.total_hr_dis) as i32),
+                    format_sstr!("{} bpm", (self.total_hr_dur / self.total_hr_dis) as i32),
                     ""
                 )
                 .into(),
                 None,
             ));
         } else {
-            tmp_vec.push((format!(" {:7} {:2}", "", "").into(), None));
+            tmp_vec.push((format_sstr!(" {:7} {:2}", "", "").into(), None));
         }
 
         Ok(tmp_vec)
     }
     fn generate_url_string(&self) -> StackString {
-        format!("year,{}", self.sport).into()
+        format_sstr!("year,{}", self.sport).into()
     }
 }
 
@@ -1010,7 +1026,7 @@ async fn sport_summary_report(
     pool: &PgPool,
     constr: &str,
 ) -> Result<Vec<SportSummaryReport>, Error> {
-    let query = format!(
+    let query = format_sstr!(
         "
         WITH c AS (
             SELECT a.begin_datetime,
@@ -1067,19 +1083,19 @@ impl GarminReportTrait for YearSummaryReport {
 
         let mut tmp_vec = vec![
             (
-                format!("{:5} {:10} \t", self.year, self.sport,).into(),
+                format_sstr!("{:5} {:10} \t", self.year, self.sport,).into(),
                 None,
             ),
             (
-                format!(
+                format_sstr!(
                     "{:10} \t",
-                    format!("{:4.2} mi", self.total_distance / METERS_PER_MILE),
+                    format_sstr!("{:4.2} mi", self.total_distance / METERS_PER_MILE),
                 )
                 .into(),
                 None,
             ),
             (
-                format!("{:10} \t", format!("{} cal", self.total_calories)).into(),
+                format_sstr!("{:10} \t", format_sstr!("{} cal", self.total_calories)).into(),
                 None,
             ),
         ];
@@ -1087,9 +1103,9 @@ impl GarminReportTrait for YearSummaryReport {
         match self.sport.as_str() {
             "running" | "walking" => {
                 tmp_vec.push((
-                    format!(
+                    format_sstr!(
                         "{:10} ",
-                        format!(
+                        format_sstr!(
                             "{} / mi",
                             print_h_m_s(
                                 self.total_duration / (self.total_distance / METERS_PER_MILE),
@@ -1101,9 +1117,9 @@ impl GarminReportTrait for YearSummaryReport {
                     None,
                 ));
                 tmp_vec.push((
-                    format!(
+                    format_sstr!(
                         "{:10} ",
-                        format!(
+                        format_sstr!(
                             "{} / km",
                             print_h_m_s(
                                 self.total_duration / (self.total_distance / 1000.),
@@ -1117,9 +1133,9 @@ impl GarminReportTrait for YearSummaryReport {
             }
             "biking" => {
                 tmp_vec.push((
-                    format!(
+                    format_sstr!(
                         " {:10} ",
-                        format!(
+                        format_sstr!(
                             "{:.2} mph",
                             (self.total_distance / METERS_PER_MILE)
                                 / (self.total_duration / 60. / 60.)
@@ -1133,27 +1149,27 @@ impl GarminReportTrait for YearSummaryReport {
         };
 
         tmp_vec.push((
-            format!(" {:10} \t", print_h_m_s(self.total_duration, true)?).into(),
+            format_sstr!(" {:10} \t", print_h_m_s(self.total_duration, true)?).into(),
             None,
         ));
         if self.total_hr_dur > self.total_hr_dis {
             tmp_vec.push((
-                format!(
+                format_sstr!(
                     " {:7} {:2}",
-                    format!("{} bpm", (self.total_hr_dur / self.total_hr_dis) as i32),
+                    format_sstr!("{} bpm", (self.total_hr_dur / self.total_hr_dis) as i32),
                     ""
                 )
                 .into(),
                 None,
             ));
         } else {
-            tmp_vec.push((format!(" {:7} {:2}", "", "").into(), None));
+            tmp_vec.push((format_sstr!(" {:7} {:2}", "", "").into(), None));
         }
 
         tmp_vec.push((
-            format!(
+            format_sstr!(
                 "{:16}",
-                format!("{} / {} days", self.number_of_days, total_days)
+                format_sstr!("{} / {} days", self.number_of_days, total_days)
             )
             .into(),
             None,
@@ -1162,12 +1178,12 @@ impl GarminReportTrait for YearSummaryReport {
         Ok(tmp_vec)
     }
     fn generate_url_string(&self) -> StackString {
-        format!("{},month,{}", self.sport, self.year).into()
+        format_sstr!("{},month,{}", self.sport, self.year).into()
     }
 }
 
 async fn year_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<YearSummaryReport>, Error> {
-    let query = format!(
+    let query = format_sstr!(
         "
         WITH c AS (
             SELECT a.begin_datetime,

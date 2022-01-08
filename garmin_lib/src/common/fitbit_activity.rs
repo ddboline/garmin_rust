@@ -4,8 +4,8 @@ use futures::future::try_join_all;
 use log::debug;
 use postgres_query::{query, query_dyn, FromSqlRow, Parameter};
 use serde::{Deserialize, Serialize};
-use stack_string::StackString;
-use std::collections::HashMap;
+use stack_string::{format_sstr, StackString};
+use std::{collections::HashMap, fmt::Write};
 
 use crate::common::pgpool::PgPool;
 
@@ -47,13 +47,13 @@ impl FitbitActivity {
             conditions.push("date(start_time) <= $end_date");
             bindings.push(("end_date", d));
         }
-        let query = format!(
+        let query = format_sstr!(
             "{} {} ORDER BY start_time",
             query,
             if conditions.is_empty() {
-                "".to_string()
+                "".into()
             } else {
-                format!("WHERE {}", conditions.join(" AND "))
+                format_sstr!("WHERE {}", conditions.join(" AND "))
             }
         );
         let query_bindings: Vec<_> = bindings.iter().map(|(k, v)| (*k, v as Parameter)).collect();
@@ -163,7 +163,7 @@ impl FitbitActivity {
             let pool = pool.clone();
             async move {
                 activity.update_db(&pool).await?;
-                let activity_str = StackString::from_display(activity.log_id)?;
+                let activity_str = StackString::from_display(activity.log_id);
                 Ok(activity_str)
             }
         });
@@ -174,7 +174,7 @@ impl FitbitActivity {
             let pool = pool.clone();
             async move {
                 activity.insert_into_db(&pool).await?;
-                let activity_str = StackString::from_display(activity.log_id)?;
+                let activity_str = StackString::from_display(activity.log_id);
                 Ok(activity_str)
             }
         });

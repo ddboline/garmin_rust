@@ -48,4 +48,4 @@ flate2 = "1.0"
 itertools = "0.10"
 url = "2.2"
 uuid = "0.8"
-stack-string = { version="0.4", features=["postgres_types"] }
+stack-string = { version="0.5", features=["postgres_types"] }

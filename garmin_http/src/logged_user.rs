@@ -7,10 +7,11 @@ use log::debug;
 use reqwest::{header::HeaderValue, Client};
 use rweb::{filters::cookie::cookie, Filter, Rejection, Schema};
 use serde::{Deserialize, Serialize};
-use stack_string::StackString;
+use stack_string::{format_sstr, StackString};
 use std::{
     convert::{TryFrom, TryInto},
     env::var,
+    fmt::Write,
     str::FromStr,
 };
 use uuid::Uuid;
@@ -60,12 +61,12 @@ impl LoggedUser {
         struct SessionResponse {
             history: Option<Vec<StackString>>,
         }
-        let url = format!("https://{}/api/session/garmin", config.domain);
-        let session_str = StackString::from_display(self.session)?;
+        let url = format_sstr!("https://{}/api/session/garmin", config.domain);
+        let session_str = StackString::from_display(self.session);
         let value = HeaderValue::from_str(&session_str)?;
         let key = HeaderValue::from_str(&self.secret_key)?;
         let session: Option<SessionResponse> = client
-            .get(url)
+            .get(url.as_str())
             .header("session", value)
             .header("secret-key", key)
             .send()
@@ -88,12 +89,12 @@ impl LoggedUser {
         config: &GarminConfig,
         session: &Session,
     ) -> Result<(), anyhow::Error> {
-        let url = format!("https://{}/api/session/garmin", config.domain);
-        let session_str = StackString::from_display(self.session)?;
+        let url = format_sstr!("https://{}/api/session/garmin", config.domain);
+        let session_str = StackString::from_display(self.session);
         let value = HeaderValue::from_str(&session_str)?;
         let key = HeaderValue::from_str(&self.secret_key)?;
         client
-            .post(url)
+            .post(url.as_str())
             .header("session", value)
             .header("secret-key", key)
             .json(session)

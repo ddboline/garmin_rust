@@ -38,7 +38,7 @@ impl From<RaceType> for String {
 
 impl From<RaceType> for StackString {
     fn from(item: RaceType) -> Self {
-        StackString::from_display(item).unwrap()
+        StackString::from_display(item)
     }
 }
 
@@ -97,7 +97,7 @@ impl ToSql for RaceType {
     where
         Self: Sized,
     {
-        let s = StackString::from_display(self)?;
+        let s = StackString::from_display(self);
         s.to_sql(ty, out)
     }
 
@@ -113,7 +113,7 @@ impl ToSql for RaceType {
         ty: &Type,
         out: &mut BytesMut,
     ) -> Result<IsNull, Box<dyn std::error::Error + Sync + Send>> {
-        let s = StackString::from_display(self)?;
+        let s = StackString::from_display(self);
         s.to_sql_checked(ty, out)
     }
 }

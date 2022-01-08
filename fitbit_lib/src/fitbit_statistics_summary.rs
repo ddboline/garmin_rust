@@ -3,9 +3,9 @@ use chrono::{DateTime, Duration, NaiveDate, Utc};
 use maplit::hashmap;
 use postgres_query::{query, FromSqlRow};
 use serde::{Deserialize, Serialize};
-use stack_string::StackString;
+use stack_string::{format_sstr, StackString};
 use statistical::{mean, median, standard_deviation};
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Write};
 
 use garmin_lib::common::{garmin_templates::HBR, pgpool::PgPool};
 
@@ -150,8 +150,7 @@ impl FitbitStatisticsSummary {
         let min_heartrate: Vec<_> = stats
             .iter()
             .map(|stat| {
-                let key =
-                    StackString::from_display(stat.date.format("%Y-%m-%dT00:00:00Z")).unwrap();
+                let key = StackString::from_display(stat.date.format("%Y-%m-%dT00:00:00Z"));
                 (key, stat.min_heartrate)
             })
             .collect();
@@ -171,8 +170,7 @@ impl FitbitStatisticsSummary {
         let max_heartrate: Vec<_> = stats
             .iter()
             .map(|stat| {
-                let key =
-                    StackString::from_display(stat.date.format("%Y-%m-%dT00:00:00Z")).unwrap();
+                let key = StackString::from_display(stat.date.format("%Y-%m-%dT00:00:00Z"));
                 (key, stat.max_heartrate)
             })
             .collect();
@@ -191,8 +189,7 @@ impl FitbitStatisticsSummary {
         let mean_heartrate: Vec<_> = stats
             .iter()
             .map(|stat| {
-                let key =
-                    StackString::from_display(stat.date.format("%Y-%m-%dT00:00:00Z")).unwrap();
+                let key = StackString::from_display(stat.date.format("%Y-%m-%dT00:00:00Z"));
                 (key, stat.mean_heartrate)
             })
             .collect();
@@ -211,8 +208,7 @@ impl FitbitStatisticsSummary {
         let median_heartrate: Vec<_> = stats
             .iter()
             .map(|stat| {
-                let key =
-                    StackString::from_display(stat.date.format("%Y-%m-%dT00:00:00Z")).unwrap();
+                let key = StackString::from_display(stat.date.format("%Y-%m-%dT00:00:00Z"));
                 (key, stat.median_heartrate)
             })
             .collect();
@@ -233,7 +229,7 @@ impl FitbitStatisticsSummary {
             .iter()
             .map(|stat| {
                 let date = stat.date;
-                format!(
+                format_sstr!(
                     r#"
                     <td>{}</td><td>{:3.1}</td><td>{:2.1}</td><td>{:2.1}</td>
                     <td>{:2.1}</td>"#,
@@ -245,7 +241,7 @@ impl FitbitStatisticsSummary {
                 )
             })
             .collect();
-        let entries = format!(
+        let entries = format_sstr!(
             r#"
             <table border=1>
             <thead>
@@ -259,14 +255,14 @@ impl FitbitStatisticsSummary {
             <br>{}{}"#,
             entries.join("</tr><tr>"),
             if offset >= 10 {
-                format!(
+                format_sstr!(
                     r#"<button type="submit" onclick="heartrate_stat_plot({});">Previous</button>"#,
                     offset - 10
                 )
             } else {
-                "".to_string()
+                "".into()
             },
-            format!(
+            format_sstr!(
                 r#"<button type="submit" onclick="heartrate_stat_plot({});">Next</button>"#,
                 offset + 10
             ),

@@ -9,8 +9,9 @@ use rand::{
     thread_rng,
 };
 use smallvec::SmallVec;
-use stack_string::StackString;
+use stack_string::{format_sstr, StackString};
 use std::{
+    fmt::Write,
     fs::{remove_file, File},
     future::Future,
     io::{BufRead, BufReader, Read},
@@ -57,7 +58,7 @@ pub fn get_md5sum(filename: &Path) -> Result<StackString, Error> {
             "md5sum not installed (or not present at /usr/bin/md5sum"
         ));
     }
-    let command = format!("md5sum {}", filename.to_string_lossy());
+    let command = format_sstr!("md5sum {}", filename.to_string_lossy());
 
     let stream = Exec::shell(command).stream_stdout()?;
 
@@ -76,9 +77,9 @@ pub fn print_h_m_s(second: f64, do_hours: bool) -> Result<StackString, Error> {
     let minutes = (second / 60.0) as i32 - hours * 60;
     let seconds = second as i32 - minutes * 60 - hours * 3600;
     if (hours > 0) | ((hours == 0) & do_hours) {
-        Ok(format!("{:02}:{:02}:{:02}", hours, minutes, seconds).into())
+        Ok(format_sstr!("{:02}:{:02}:{:02}", hours, minutes, seconds).into())
     } else if hours == 0 {
-        Ok(format!("{:02}:{:02}", minutes, seconds).into())
+        Ok(format_sstr!("{:02}:{:02}", minutes, seconds).into())
     } else {
         Err(format_err!("Negative result!"))
     }
@@ -115,7 +116,7 @@ pub fn titlecase(input: &str) -> StackString {
         "".into()
     } else {
         let firstchar = input[0..1].to_uppercase();
-        format!("{}{}", firstchar, &input[1..input.len()]).into()
+        format_sstr!("{}{}", firstchar, &input[1..input.len()]).into()
     }
 }
 
@@ -176,8 +177,8 @@ pub fn extract_zip_from_garmin_connect(
     let new_filename = filename
         .file_stem()
         .ok_or_else(|| format_err!("Bad filename {}", filename.to_string_lossy()))?;
-    let new_filename = format!("{}_ACTIVITY.fit", new_filename.to_string_lossy());
-    let command = format!(
+    let new_filename = format_sstr!("{}_ACTIVITY.fit", new_filename.to_string_lossy());
+    let command = format_sstr!(
         "unzip {} -d {}",
         filename.to_string_lossy(),
         ziptmpdir.to_string_lossy()

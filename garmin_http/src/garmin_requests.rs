@@ -2,8 +2,8 @@ use chrono::{DateTime, Duration, Local, NaiveDate, NaiveDateTime, NaiveTime, Utc
 use futures::future::try_join_all;
 use rweb::Schema;
 use serde::{Deserialize, Serialize};
-use stack_string::StackString;
-use std::{collections::HashMap, path::PathBuf};
+use stack_string::{format_sstr, StackString};
+use std::{collections::HashMap, fmt::Write, path::PathBuf};
 use tokio::task::spawn_blocking;
 use url::Url;
 
@@ -647,7 +647,7 @@ impl StravaUploadRequest {
     pub async fn handle(&self, config: &GarminConfig) -> Result<StackString, Error> {
         let filename = config.gps_dir.join(self.filename.as_str());
         if !filename.exists() {
-            return Ok(format!("File {} does not exist", self.filename).into());
+            return Ok(format_sstr!("File {} does not exist", self.filename));
         }
         let config = config.clone();
         let client = StravaClient::with_auth(config).await?;
@@ -949,7 +949,7 @@ impl HeartrateStatisticsSummaryDBUpdateRequest {
             let entry: FitbitStatisticsSummary = entry.into();
             async move {
                 entry.upsert_entry(&pool).await?;
-                let date_str = StackString::from_display(entry.date)?;
+                let date_str = StackString::from_display(entry.date);
                 Ok(date_str)
             }
         });
@@ -985,7 +985,7 @@ impl RaceResultFlagRequest {
     pub async fn handle(&self, pool: &PgPool) -> Result<StackString, Error> {
         if let Some(mut result) = RaceResults::get_result_by_id(self.id, pool).await? {
             result.race_flag = !result.race_flag;
-            let flag_str = StackString::from_display(result.race_flag)?;
+            let flag_str = StackString::from_display(result.race_flag);
             result.update_db(pool).await?;
             Ok(flag_str)
         } else {

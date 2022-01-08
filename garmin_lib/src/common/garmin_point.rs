@@ -4,7 +4,7 @@ use fitparser::{FitDataField, Value};
 use itertools::Itertools;
 use roxmltree::{Node, NodeType};
 use serde::{Deserialize, Serialize};
-use stack_string::StackString;
+use stack_string::{format_sstr, StackString};
 use std::{fmt, fmt::Write};
 
 use crate::utils::{
@@ -209,29 +209,25 @@ impl fmt::Display for GarminPoint {
             "avg_speed_value_permi",
         ];
         let vals = vec![
-            StackString::from_display(self.time).unwrap(),
-            StackString::from_display(self.latitude.unwrap_or(-1.0)).unwrap(),
-            StackString::from_display(self.longitude.unwrap_or(-1.0)).unwrap(),
-            StackString::from_display(self.altitude.unwrap_or(-1.0)).unwrap(),
-            StackString::from_display(self.distance.unwrap_or(-1.0)).unwrap(),
-            StackString::from_display(self.heart_rate.unwrap_or(-1.0)).unwrap(),
-            StackString::from_display(self.duration_from_last).unwrap(),
-            StackString::from_display(self.duration_from_begin).unwrap(),
-            StackString::from_display(self.speed_mps).unwrap(),
-            StackString::from_display(self.speed_permi).unwrap(),
-            StackString::from_display(self.speed_mph).unwrap(),
-            StackString::from_display(self.avg_speed_value_permi).unwrap(),
+            StackString::from_display(self.time),
+            StackString::from_display(self.latitude.unwrap_or(-1.0)),
+            StackString::from_display(self.longitude.unwrap_or(-1.0)),
+            StackString::from_display(self.altitude.unwrap_or(-1.0)),
+            StackString::from_display(self.distance.unwrap_or(-1.0)),
+            StackString::from_display(self.heart_rate.unwrap_or(-1.0)),
+            StackString::from_display(self.duration_from_last),
+            StackString::from_display(self.duration_from_begin),
+            StackString::from_display(self.speed_mps),
+            StackString::from_display(self.speed_permi),
+            StackString::from_display(self.speed_mph),
+            StackString::from_display(self.avg_speed_value_permi),
         ];
         write!(
             f,
             "GarminPoint<{}>",
             keys.iter()
                 .zip(vals.iter())
-                .map(|(k, v)| {
-                    let mut s = StackString::new();
-                    write!(s, "{}={}", k, v).unwrap();
-                    s
-                })
+                .map(|(k, v)| { format_sstr!("{}={}", k, v) })
                 .join(",")
         )
     }

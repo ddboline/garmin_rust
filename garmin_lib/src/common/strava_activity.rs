@@ -4,8 +4,8 @@ use futures::future::try_join_all;
 use log::debug;
 use postgres_query::{query, query_dyn, FromSqlRow, Parameter};
 use serde::{Deserialize, Serialize};
-use stack_string::StackString;
-use std::collections::HashMap;
+use stack_string::{format_sstr, StackString};
+use std::{collections::HashMap, fmt::Write};
 
 use crate::{
     common::{garmin_summary::GarminSummary, pgpool::PgPool, strava_timezone::StravaTimeZone},
@@ -67,13 +67,13 @@ impl StravaActivity {
             conditions.push("date(start_date) <= $end_date");
             bindings.push(("end_date", d));
         }
-        let query = format!(
+        let query = format_sstr!(
             "{} {} ORDER BY start_date",
             query,
             if conditions.is_empty() {
-                "".to_string()
+                "".into()
             } else {
-                format!("WHERE {}", conditions.join(" AND "))
+                format_sstr!("WHERE {}", conditions.join(" AND "))
             }
         );
         let query_bindings: Vec<_> = bindings.iter().map(|(k, v)| (*k, v as Parameter)).collect();
@@ -191,7 +191,7 @@ impl StravaActivity {
                 let pool = pool.clone();
                 async move {
                     activity.update_db(&pool).await?;
-                    let id_str = StackString::from_display(activity.id)?;
+                    let id_str = StackString::from_display(activity.id);
                     Ok(id_str)
                 }
             });
@@ -202,7 +202,7 @@ impl StravaActivity {
             let pool = pool.clone();
             async move {
                 activity.insert_into_db(&pool).await?;
-                let id_str = StackString::from_display(activity.id)?;
+                let id_str = StackString::from_display(activity.id);
                 Ok(id_str)
             }
         });

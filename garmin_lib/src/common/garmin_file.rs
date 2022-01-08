@@ -3,8 +3,8 @@ use avro_rs::{from_value, Codec, Reader, Schema, Writer};
 use chrono::{DateTime, Utc};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use stack_string::StackString;
-use std::{collections::HashMap, fs::File, path::Path};
+use stack_string::{format_sstr, StackString};
+use std::{collections::HashMap, fmt::Write, fs::File, path::Path};
 use tokio::task::spawn_blocking;
 
 use crate::utils::{
@@ -75,7 +75,7 @@ impl GarminFile {
     }
 
     fn get_avro_schema() -> StackString {
-        format!(
+        format_sstr!(
             "{}{}{}{}{}",
             r#"{
                 "namespace": "garmin.avro",
@@ -128,7 +128,7 @@ impl GarminFile {
     }
 
     pub fn get_standardized_name(&self, suffix: &str) -> StackString {
-        format!(
+        format_sstr!(
             "{}.{}",
             self.begin_datetime.format("%Y-%m-%d_%H-%M-%S_1_1"),
             suffix

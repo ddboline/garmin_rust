@@ -98,7 +98,7 @@ impl From<StravaTimeZone> for String {
 
 impl From<StravaTimeZone> for StackString {
     fn from(item: StravaTimeZone) -> Self {
-        StackString::from_display(item).unwrap()
+        StackString::from_display(item)
     }
 }
 
@@ -173,7 +173,7 @@ impl ToSql for StravaTimeZone {
     where
         Self: Sized,
     {
-        let s = StackString::from_display(self).unwrap();
+        let s = StackString::from_display(self);
         s.to_sql(ty, out)
     }
 
@@ -189,7 +189,7 @@ impl ToSql for StravaTimeZone {
         ty: &Type,
         out: &mut BytesMut,
     ) -> Result<IsNull, Box<dyn std::error::Error + Sync + Send>> {
-        let s = StackString::from_display(self).unwrap();
+        let s = StackString::from_display(self);
         s.to_sql_checked(ty, out)
     }
 }
@@ -197,6 +197,8 @@ impl ToSql for StravaTimeZone {
 #[cfg(test)]
 mod tests {
     use anyhow::Error;
+    use stack_string::format_sstr;
+    use std::fmt::Write;
 
     use crate::common::strava_timezone::StravaTimeZone;
 
@@ -212,7 +214,7 @@ mod tests {
         ];
         for tz in timezones.iter() {
             let stz: StravaTimeZone = tz.parse()?;
-            assert_eq!(&format!("{}", stz).as_str(), tz);
+            assert_eq!(&format_sstr!("{}", stz).as_str(), tz);
         }
         Ok(())
     }

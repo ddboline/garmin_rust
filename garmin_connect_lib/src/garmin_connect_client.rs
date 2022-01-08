@@ -6,8 +6,8 @@ use http::Method;
 use log::debug;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
-use stack_string::StackString;
-use std::{path::PathBuf, process::Stdio};
+use stack_string::{format_sstr, StackString};
+use std::{fmt::Write, path::PathBuf, process::Stdio};
 use tokio::{
     fs,
     process::{Child, Command},
@@ -63,7 +63,7 @@ impl GarminConnectClient {
         }
         if self.trigger_auth {
             let webdriver = Command::new(&self.config.webdriver_path)
-                .args(&[&format!("--port={}", self.config.webdriver_port)])
+                .args(&[&format_sstr!("--port={}", self.config.webdriver_port)])
                 .kill_on_drop(true)
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped())
@@ -86,7 +86,10 @@ impl GarminConnectClient {
             caps.insert("unhandledPromptBehavior".to_string(), "accept".into());
             let mut client = ClientBuilder::rustls()
                 .capabilities(caps)
-                .connect(&format!("http://localhost:{}", self.config.webdriver_port))
+                .connect(&format_sstr!(
+                    "http://localhost:{}",
+                    self.config.webdriver_port
+                ))
                 .await?;
             client
                 .set_ua(
@@ -238,7 +241,7 @@ impl GarminConnectClient {
             .ok_or_else(|| format_err!("Bad URL"))?
             .join("/proxy/usersummary-service/usersummary/daily/")?
             .join(display_name)?;
-        let date_str = StackString::from_display(date)?;
+        let date_str = StackString::from_display(date);
         url.query_pairs_mut().append_pair("calendarDate", &date_str);
         let js = Self::raw_get(client, &url).await?;
         let user_summary: GarminConnectUserDailySummary = serde_json::from_slice(&js)?;
@@ -265,7 +268,7 @@ impl GarminConnectClient {
             .ok_or_else(|| format_err!("Bad URL"))?
             .join("/proxy/wellness-service/wellness/dailyHeartRate/")?
             .join(display_name)?;
-        let date_str = StackString::from_display(date)?;
+        let date_str = StackString::from_display(date);
         url.query_pairs_mut().append_pair("date", &date_str);
         let js = Self::raw_get(client, &url).await?;
         self.last_used = Utc::now();
@@ -287,7 +290,7 @@ impl GarminConnectClient {
             .ok_or_else(|| format_err!("Bad URL"))?
             .join("/proxy/activitylist-service/activities/search/activities")?;
         if let Some(start_datetime) = start_datetime {
-            let datetime_str = StackString::from_display(start_datetime.naive_utc().date())?;
+            let datetime_str = StackString::from_display(start_datetime.naive_utc().date());
             url.query_pairs_mut()
                 .append_pair("startDate", &datetime_str);
         }
@@ -309,7 +312,7 @@ impl GarminConnectClient {
         fs::create_dir_all(&self.config.download_directory).await?;
 
         for activity in activities {
-            let id_str = StackString::from_display(activity.activity_id)?;
+            let id_str = StackString::from_display(activity.activity_id);
             let fname = self
                 .config
                 .download_directory

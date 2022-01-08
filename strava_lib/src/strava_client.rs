@@ -16,9 +16,10 @@ use reqwest::{
 use select::{document::Document, predicate::Attr};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
-use stack_string::StackString;
+use stack_string::{format_sstr, StackString};
 use std::{
     collections::HashSet,
+    fmt::Write,
     path::{Path, PathBuf},
 };
 use tempfile::Builder;
@@ -179,12 +180,12 @@ impl StravaClient {
             .strava_endpoint
             .as_ref()
             .unwrap()
-            .join(&format!("activities/{}/export_original", activity_id))?;
+            .join(&format_sstr!("activities/{}/export_original", activity_id))?;
         let resp = self.client.get(url).send().await?.error_for_status()?;
 
         create_dir_all(&self.config.download_directory).await?;
 
-        let id_str = StackString::from_display(activity_id)?;
+        let id_str = StackString::from_display(activity_id);
         let fname = self
             .config
             .download_directory
@@ -216,7 +217,7 @@ impl StravaClient {
             .strava_endpoint
             .as_ref()
             .ok_or_else(|| format_err!("Bad URL"))?
-            .join(&format!("activities/{}", activity_id))?;
+            .join(&format_sstr!("activities/{}", activity_id))?;
         let data = hashmap! {
             "_method" => "delete",
             web_csrf.param.as_str() => web_csrf.token.as_str(),
@@ -252,16 +253,16 @@ impl StravaClient {
     pub async fn to_file(&self) -> Result<(), Error> {
         let mut f = File::create(&self.config.strava_tokenfile).await?;
         f.write_all(b"[API]\n").await?;
-        f.write_all(format!("client_id = {}\n", self.client_id).as_bytes())
+        f.write_all(format_sstr!("client_id = {}\n", self.client_id).as_bytes())
             .await?;
-        f.write_all(format!("client_secret = {}\n", self.client_secret).as_bytes())
+        f.write_all(format_sstr!("client_secret = {}\n", self.client_secret).as_bytes())
             .await?;
         if let Some(token) = self.access_token.as_ref() {
-            f.write_all(format!("access_token = {}\n", token).as_bytes())
+            f.write_all(format_sstr!("access_token = {}\n", token).as_bytes())
                 .await?;
         }
         if let Some(token) = self.refresh_token.as_ref() {
-            f.write_all(format!("refresh_token = {}\n", token).as_bytes())
+            f.write_all(format_sstr!("refresh_token = {}\n", token).as_bytes())
                 .await?;
         }
         Ok(())
@@ -273,7 +274,7 @@ impl StravaClient {
     }
 
     pub async fn get_authorization_url_api(&self) -> Result<Url, Error> {
-        let redirect_uri = format!("https://{}/garmin/strava/callback", &self.config.domain);
+        let redirect_uri = format_sstr!("https://{}/garmin/strava/callback", &self.config.domain);
         let state = Self::get_random_string();
         let url = self
             .config
@@ -379,7 +380,10 @@ impl StravaClient {
             .access_token
             .as_ref()
             .ok_or_else(|| format_err!("no access token"))?;
-        headers.insert("Authorization", format!("Bearer {}", access_token).parse()?);
+        headers.insert(
+            "Authorization",
+            format_sstr!("Bearer {}", access_token).parse()?,
+        );
         Ok(headers)
     }
 
@@ -408,14 +412,14 @@ impl StravaClient {
         end_date: Option<DateTime<Utc>>,
         page: usize,
     ) -> Result<Vec<StravaActivity>, Error> {
-        let page_str = StackString::from_display(page)?;
+        let page_str = StackString::from_display(page);
         let mut params = vec![("page", page_str)];
         if let Some(start_date) = start_date {
-            let date_str = StackString::from_display(start_date.timestamp())?;
+            let date_str = StackString::from_display(start_date.timestamp());
             params.push(("after", date_str));
         }
         if let Some(end_date) = end_date {
-            let date_str = StackString::from_display(end_date.timestamp())?;
+            let date_str = StackString::from_display(end_date.timestamp());
             params.push(("before", date_str));
         }
 
@@ -487,13 +491,13 @@ impl StravaClient {
                     start_datetime
                         .with_timezone(&tz)
                         .format("%Y-%m-%dT%H:%M:%S%z"),
-                )?
+                )
             }
             None => StackString::from_display(
                 start_datetime
                     .with_timezone(&Local)
                     .format("%Y-%m-%dT%H:%M:%S%z"),
-            )?,
+            ),
         };
 
         let data = CreateActivityForm {
@@ -552,7 +556,9 @@ impl StravaClient {
         let filename = if &ext == "gz" {
             filepath.canonicalize()?.to_string_lossy().into_owned()
         } else {
-            let tfile = Builder::new().suffix(&format!(".{}.gz", ext)).tempfile()?;
+            let tfile = Builder::new()
+                .suffix(&format_sstr!(".{}.gz", ext))
+                .tempfile()?;
             let infname = filepath.canonicalize()?;
             let outfpath = tfile.path().to_path_buf();
             let outfname = outfpath.to_string_lossy().into_owned();
@@ -602,7 +608,7 @@ impl StravaClient {
             .strava_endpoint
             .as_ref()
             .ok_or_else(|| format_err!("Bad URL"))?
-            .join(&format!("api/v3/uploads/{}", result.id))?;
+            .join(&format_sstr!("api/v3/uploads/{}", result.id))?;
         for _ in 0..10 {
             let result: UploadResponse = self
                 .client
@@ -620,7 +626,7 @@ impl StravaClient {
             sleep(std::time::Duration::from_secs(2)).await;
         }
 
-        let url = format!("https://{}/garmin/strava_sync", self.config.domain).into();
+        let url = format_sstr!("https://{}/garmin/strava_sync", self.config.domain).into();
         Ok(url)
     }
 
@@ -660,7 +666,7 @@ impl StravaClient {
             .strava_endpoint
             .as_ref()
             .ok_or_else(|| format_err!("Bad URL"))?
-            .join(&format!("api/v3/activities/{}", activity_id))?;
+            .join(&format_sstr!("api/v3/activities/{}", activity_id))?;
         self.client
             .put(url)
             .headers(headers)
@@ -668,7 +674,7 @@ impl StravaClient {
             .send()
             .await?
             .error_for_status()?;
-        let url = format!("https://{}/garmin/strava_sync", self.config.domain);
+        let url = format_sstr!("https://{}/garmin/strava_sync", self.config.domain);
         let url = if let Some(start_time) = start_time {
             let start_time = convert_datetime_to_str(start_time);
             Url::parse_with_params(
@@ -697,12 +703,12 @@ impl StravaClient {
         StravaActivity::upsert_activities(&new_activities, pool).await?;
         StravaActivity::fix_summary_id_in_db(pool).await?;
 
-        let mut constraints: SmallVec<[String; 2]> = SmallVec::new();
+        let mut constraints: SmallVec<[StackString; 2]> = SmallVec::new();
         if let Some(start_datetime) = start_datetime {
-            constraints.push(format!("begin_datetime >= '{}'", start_datetime));
+            constraints.push(format_sstr!("begin_datetime >= '{}'", start_datetime));
         }
         if let Some(end_datetime) = end_datetime {
-            constraints.push(format!("begin_datetime <= '{}'", end_datetime));
+            constraints.push(format_sstr!("begin_datetime <= '{}'", end_datetime));
         }
         let constraints = constraints.join(" AND ");
 

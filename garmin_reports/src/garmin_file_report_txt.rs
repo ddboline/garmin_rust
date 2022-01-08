@@ -1,7 +1,7 @@
 use anyhow::Error;
 use itertools::Itertools;
 use log::debug;
-use stack_string::StackString;
+use stack_string::{format_sstr, StackString};
 use std::fmt::Write;
 
 use garmin_lib::{
@@ -13,7 +13,7 @@ use garmin_lib::{
 };
 
 pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<StackString>, Error> {
-    let mut return_vec = vec![format!("Start time {}", gfile.filename).into()];
+    let mut return_vec = vec![format_sstr!("Start time {}", gfile.filename).into()];
 
     let sport_type = gfile.sport;
 
@@ -32,7 +32,7 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<StackString>, Error
 
     let mut tmp_str = Vec::new();
     if sport_type == SportTypes::Running {
-        tmp_str.push(format!(
+        tmp_str.push(format_sstr!(
             "total {:.2} mi {} calories {} time {} min/mi {} min/km",
             gfile.total_distance / METERS_PER_MILE,
             gfile.total_calories,
@@ -41,17 +41,17 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<StackString>, Error
             print_h_m_s(min_mile * 60.0 / METERS_PER_MILE * 1000., false)?
         ));
     } else {
-        tmp_str.push(format!(
+        tmp_str.push(format_sstr!(
             "total {:.2} mi {} calories {} time {} mph",
             gfile.total_distance / METERS_PER_MILE,
             gfile.total_calories,
             print_h_m_s(gfile.total_duration, true)?,
-            format!("{:.2}", mi_per_hr),
+            format_sstr!("{:.2}", mi_per_hr),
         ));
     }
 
     if gfile.total_hr_dur > gfile.total_hr_dis {
-        tmp_str.push(format!(
+        tmp_str.push(format_sstr!(
             "{:.2} bpm",
             (gfile.total_hr_dur / gfile.total_hr_dis) as i32
         ));
@@ -114,7 +114,7 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<StackString>, Error
     if (sum_time > 0.0) & !hr_vals.is_empty() {
         return_vec.push("".into());
         return_vec.push(
-            format!(
+            format_sstr!(
                 "Heart Rate {:2.2} avg {:2.2} max",
                 avg_hr,
                 hr_vals.iter().map(|x| *x as i32).max().unwrap_or(0)
@@ -147,14 +147,14 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<StackString>, Error
 
     if !alt_vals.is_empty() {
         return_vec.push(
-            format!(
+            format_sstr!(
                 "max altitude diff: {:.2} m",
                 alt_vals.iter().map(|x| *x as i32).max().unwrap_or(0)
                     - alt_vals.iter().map(|x| *x as i32).min().unwrap_or(0)
             )
             .into(),
         );
-        return_vec.push(format!("vertical climb: {:.2} m", vertical_climb).into());
+        return_vec.push(format_sstr!("vertical climb: {:.2} m", vertical_climb).into());
     }
 
     Ok(return_vec)
@@ -163,7 +163,7 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<StackString>, Error
 fn print_lap_string(glap: &GarminLap, sport: SportTypes) -> Result<StackString, Error> {
     let sport_str: StackString = sport.into();
 
-    let mut outstr = vec![format!(
+    let mut outstr = vec![format_sstr!(
         "{} lap {} {:.2} mi {} {} calories {:.2} min",
         sport_str,
         glap.lap_number,
@@ -188,9 +188,7 @@ fn print_lap_string(glap: &GarminLap, sport: SportTypes) -> Result<StackString, 
     };
     if let Some(x) = glap.lap_avg_hr {
         if x > 0.0 {
-            let mut s = StackString::new();
-            write!(s, "{} bpm", x)?;
-            outstr.push(s);
+            outstr.push(format_sstr!("{} bpm", x));
         }
     }
 
@@ -213,7 +211,7 @@ fn print_splits(
             let tim = val.time_value;
             let hrt = val.avg_heart_rate.unwrap_or(0.0);
 
-            format!(
+            format_sstr!(
                 "{} {} \t {} \t {} / mi \t {} / km \t {} \t {:.2} bpm avg",
                 dis,
                 label,

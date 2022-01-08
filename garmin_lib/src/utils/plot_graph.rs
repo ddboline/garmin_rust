@@ -1,14 +1,14 @@
 use anyhow::{format_err, Error};
 use log::debug;
 use maplit::hashmap;
-use stack_string::StackString;
-use std::collections::HashMap;
+use stack_string::{format_sstr, StackString};
+use std::{collections::HashMap, fmt::Write};
 
 use crate::{common::garmin_templates::HBR, utils::plot_opts::PlotOpts};
 
 #[allow(clippy::similar_names)]
 pub fn generate_d3_plot(opts: &PlotOpts) -> Result<StackString, Error> {
-    let err_str = format!("No data points {}", opts.name);
+    let err_str = format_sstr!("No data points {}", opts.name);
 
     let data = match opts.data.as_ref() {
         Some(x) => {
@@ -78,8 +78,8 @@ pub fn generate_d3_plot(opts: &PlotOpts) -> Result<StackString, Error> {
             .map(|((xb, yb), c)| (*xb as f64 * xstep + xmin, *yb as f64 * ystep + ymin, c))
             .collect();
 
-        let xstep = StackString::from_display(xstep)?;
-        let ystep = StackString::from_display(ystep)?;
+        let xstep = StackString::from_display(xstep);
+        let ystep = StackString::from_display(ystep);
         let data = serde_json::to_string(&data).unwrap_or_else(|_| "".to_string());
 
         let params = hashmap! {

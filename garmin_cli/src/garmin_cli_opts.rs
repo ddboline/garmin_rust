@@ -3,8 +3,8 @@ use chrono::{Duration, NaiveDate, Utc};
 use futures::future::try_join_all;
 use itertools::Itertools;
 use refinery::embed_migrations;
-use stack_string::StackString;
-use std::path::PathBuf;
+use stack_string::{format_sstr, StackString};
+use std::{fmt::Write, path::PathBuf};
 use structopt::StructOpt;
 use tokio::{
     fs::{read_to_string, File},
@@ -165,7 +165,7 @@ impl GarminCliOpts {
                         .await?;
                     date += Duration::days(1);
                 }
-                cli.stdout.send(format!("{:?}", updates));
+                cli.stdout.send(format_sstr!("{:?}", updates));
 
                 let start_date = (Utc::now() - Duration::days(10)).naive_utc().date();
                 let filenames = client.sync_tcx(start_date).await?;
@@ -211,7 +211,8 @@ impl GarminCliOpts {
                         ScaleMeasurement::merge_updates(&mut measurements, &pool).await?;
                         stdout()
                             .write_all(
-                                format!("scale_measurements {}\n", measurements.len()).as_bytes(),
+                                format_sstr!("scale_measurements {}\n", measurements.len())
+                                    .as_bytes(),
                             )
                             .await?;
                     }
@@ -221,7 +222,7 @@ impl GarminCliOpts {
                         StravaActivity::fix_summary_id_in_db(&pool).await?;
                         stdout()
                             .write_all(
-                                format!("strava_activities {}\n", activities.len()).as_bytes(),
+                                format_sstr!("strava_activities {}\n", activities.len()).as_bytes(),
                             )
                             .await?;
                     }
@@ -231,7 +232,7 @@ impl GarminCliOpts {
                         FitbitActivity::fix_summary_id_in_db(&pool).await?;
                         stdout()
                             .write_all(
-                                format!("fitbit_activities {}\n", activities.len()).as_bytes(),
+                                format_sstr!("fitbit_activities {}\n", activities.len()).as_bytes(),
                             )
                             .await?;
                     }
@@ -247,7 +248,7 @@ impl GarminCliOpts {
                         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
                         stdout()
                             .write_all(
-                                format!("heartrate_statistics_summary {}\n", results?.len())
+                                format_sstr!("heartrate_statistics_summary {}\n", results?.len())
                                     .as_bytes(),
                             )
                             .await?;
@@ -258,7 +259,7 @@ impl GarminCliOpts {
                         GarminConnectActivity::fix_summary_id_in_db(&pool).await?;
                         stdout()
                             .write_all(
-                                format!("garmin_connect_activities {}\n", activities.len())
+                                format_sstr!("garmin_connect_activities {}\n", activities.len())
                                     .as_bytes(),
                             )
                             .await?;
@@ -274,7 +275,7 @@ impl GarminCliOpts {
                         });
                         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
                         stdout()
-                            .write_all(format!("race_results {}\n", results?.len()).as_bytes())
+                            .write_all(format_sstr!("race_results {}\n", results?.len()).as_bytes())
                             .await?;
                     }
                     _ => {}

@@ -4,8 +4,8 @@ use futures::future::try_join_all;
 use log::debug;
 use postgres_query::{query, query_dyn, FromSqlRow, Parameter};
 use serde::{Deserialize, Deserializer, Serialize};
-use stack_string::StackString;
-use std::{collections::HashMap, fs::File, path::Path};
+use stack_string::{format_sstr, StackString};
+use std::{collections::HashMap, fmt::Write, fs::File, path::Path};
 
 use super::{garmin_config::GarminConfig, pgpool::PgPool};
 
@@ -49,13 +49,13 @@ impl GarminConnectActivity {
             conditions.push("date(start_time_gmt) <= $end_date");
             bindings.push(("end_date", d));
         }
-        let query = format!(
+        let query = format_sstr!(
             "{} {} ORDER BY start_time_gmt",
             query,
             if conditions.is_empty() {
-                "".to_string()
+                "".into()
             } else {
-                format!("WHERE {}", conditions.join(" AND "))
+                format_sstr!("WHERE {}", conditions.join(" AND "))
             }
         );
         let query_bindings: Vec<_> = bindings.iter().map(|(k, v)| (*k, v as Parameter)).collect();
@@ -164,7 +164,7 @@ impl GarminConnectActivity {
             let pool = pool.clone();
             async move {
                 activity.update_db(&pool).await?;
-                let activity_str = StackString::from_display(activity.activity_id)?;
+                let activity_str = StackString::from_display(activity.activity_id);
                 Ok(activity_str)
             }
         });
@@ -175,7 +175,7 @@ impl GarminConnectActivity {
             let pool = pool.clone();
             async move {
                 activity.insert_into_db(&pool).await?;
-                let activity_str = StackString::from_display(activity.activity_id)?;
+                let activity_str = StackString::from_display(activity.activity_id);
                 Ok(activity_str)
             }
         });

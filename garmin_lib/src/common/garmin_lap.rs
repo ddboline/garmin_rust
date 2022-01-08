@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use fitparser::{FitDataField, Value};
 use roxmltree::{Node, NodeType};
 use serde::{Deserialize, Serialize};
-use stack_string::StackString;
+use stack_string::{format_sstr, StackString};
 use std::{fmt, fmt::Write};
 
 use crate::utils::{
@@ -273,11 +273,7 @@ impl fmt::Display for GarminLap {
             "GarminLap<{}>",
             keys.iter()
                 .zip(vals.iter())
-                .map(|(k, v)| {
-                    let mut s = StackString::new();
-                    write!(s, "{}={}", k, v).unwrap();
-                    s
-                })
+                .map(|(k, v)| { format_sstr!("{}={}", k, v) })
                 .collect::<Vec<_>>()
                 .join(",")
         )

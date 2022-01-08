@@ -4,10 +4,11 @@ use futures::future::try_join_all;
 use itertools::Itertools;
 use log::debug;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
-use stack_string::StackString;
+use stack_string::{format_sstr, StackString};
 use std::{
     collections::{HashMap, HashSet},
     ffi::OsStr,
+    fmt::Write,
     fs::{copy, rename},
     path::{Path, PathBuf},
     sync::Arc,
@@ -142,7 +143,7 @@ impl GarminCli {
             Some(GarminCliOptions::FileNames(flist)) => flist
                 .par_iter()
                 .map(|f| {
-                    self.stdout.send(format!("Process {:?}", &f));
+                    self.stdout.send(format_sstr!("Process {:?}", &f));
                     GarminSummary::process_single_gps_file(
                         f,
                         &self.get_config().cache_dir,
@@ -177,7 +178,7 @@ impl GarminCli {
                     .into_par_iter()
                     .filter_map(|f| f.file_name().map(|x| x.to_string_lossy().to_string()))
                     .filter_map(|f| {
-                        let cachefile = format!("{}.avro", f);
+                        let cachefile = format_sstr!("{}.avro", f);
                         if dbset.contains(f.as_str()) && cacheset.contains(cachefile.as_str()) {
                             None
                         } else {
@@ -408,7 +409,7 @@ impl GarminCli {
                     .gps_dir
                     .join(gfile.get_standardized_name(suffix).as_str());
 
-                stdout.send(format!("{:?} {:?}", filename, outfile));
+                stdout.send(format_sstr!("{:?} {:?}", filename, outfile));
 
                 if outfile.exists() {
                     return Ok(None);

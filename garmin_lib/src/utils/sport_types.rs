@@ -42,7 +42,7 @@ impl fmt::Display for SportTypes {
 
 impl From<SportTypes> for StackString {
     fn from(item: SportTypes) -> StackString {
-        StackString::from_display(item).unwrap()
+        StackString::from_display(item)
     }
 }
 
@@ -243,7 +243,7 @@ impl ToSql for SportTypes {
     where
         Self: Sized,
     {
-        let s = StackString::from_display(self).unwrap();
+        let s = StackString::from_display(self);
         s.to_sql(ty, out)
     }
 
@@ -259,7 +259,7 @@ impl ToSql for SportTypes {
         ty: &Type,
         out: &mut BytesMut,
     ) -> Result<IsNull, Box<dyn std::error::Error + Sync + Send>> {
-        let s = StackString::from_display(self).unwrap();
+        let s = StackString::from_display(self);
         s.to_sql_checked(ty, out)
     }
 }

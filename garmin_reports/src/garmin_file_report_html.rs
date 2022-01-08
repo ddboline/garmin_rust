@@ -4,7 +4,7 @@ use itertools::Itertools;
 use log::debug;
 use maplit::hashmap;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use stack_string::StackString;
+use stack_string::{format_sstr, StackString};
 use std::{collections::HashSet, fmt::Write};
 
 use garmin_lib::{
@@ -33,7 +33,7 @@ use crate::garmin_file_report_txt::get_splits;
 
 pub fn generate_history_buttons<T: AsRef<str>>(history_vec: &[T]) -> StackString {
     fn history_button_string(most_recent: &str) -> StackString {
-        format!(
+        format_sstr!(
             "{}{}{}{}{}",
             r#"<button type="submit" onclick="send_command('filter="#,
             most_recent,
@@ -52,9 +52,12 @@ pub fn generate_history_buttons<T: AsRef<str>>(history_vec: &[T]) -> StackString
     } else {
         (year - 1, 12)
     };
-    let default_string: StackString = format!(
+    let default_string: StackString = format_sstr!(
         "{:04}-{:02},{:04}-{:02},week",
-        prev_year, prev_month, year, month
+        prev_year,
+        prev_month,
+        year,
+        month
     )
     .into();
     let mut used_buttons: HashSet<StackString> = HashSet::new();
@@ -224,9 +227,10 @@ fn get_plot_opts(report_objs: &ReportObjects) -> Vec<PlotOpts> {
         plot_opts.push(
             PlotOpts::new()
                 .with_name("heart_rate")
-                .with_title(&format!(
+                .with_title(&format_sstr!(
                     "Heart Rate {:2.2} avg {:2.2} max",
-                    report_objs.avg_hr, report_objs.max_hr
+                    report_objs.avg_hr,
+                    report_objs.max_hr
                 ))
                 .with_data(&report_objs.hr_values)
                 .with_labels("mi", "bpm"),
@@ -281,9 +285,10 @@ fn get_plot_opts(report_objs: &ReportObjects) -> Vec<PlotOpts> {
         plot_opts.push(
             PlotOpts::new()
                 .with_name("avg_speed_minpermi")
-                .with_title(&format!(
+                .with_title(&format_sstr!(
                     "Avg Speed {}:{:02} min/mi",
-                    avg_speed_value_min, avg_speed_value_sec
+                    avg_speed_value_min,
+                    avg_speed_value_sec
                 ))
                 .with_data(&report_objs.heart_rate_speed)
                 .with_scatter()
@@ -300,7 +305,7 @@ fn get_plot_opts(report_objs: &ReportObjects) -> Vec<PlotOpts> {
         plot_opts.push(
             PlotOpts::new()
                 .with_name("avg_speed_mph")
-                .with_title(&format!("Avg Speed {:.2} mph", avg_mph_speed_value))
+                .with_title(&format_sstr!("Avg Speed {:.2} mph", avg_mph_speed_value))
                 .with_data(&report_objs.avg_mph_speed_values)
                 .with_scatter()
                 .with_labels("mi", "min/mi"),
@@ -407,7 +412,7 @@ fn get_garmin_template_vec<T: AsRef<str>>(
     is_demo: bool,
 ) -> Result<Vec<StackString>, Error> {
     let insert_text_here = vec![
-        format!(
+        format_sstr!(
             "{}\n",
             get_file_html(
                 gfile,
@@ -417,33 +422,35 @@ fn get_garmin_template_vec<T: AsRef<str>>(
                 race_result
             )
         ),
-        format!(
+        format_sstr!(
             "<br><br>{}\n",
             get_html_splits(gfile, METERS_PER_MILE, "mi")?
         ),
-        format!("<br><br>{}\n", get_html_splits(gfile, 5000.0, "km")?),
+        format_sstr!("<br><br>{}\n", get_html_splits(gfile, 5000.0, "km")?),
     ];
     let sport_str: StackString = sport.into();
-    let sport_title_link = format!(
+    let sport_title_link = format_sstr!(
         "Garmin Event {} on {}",
         titlecase(&sport_str),
         gfile.begin_datetime
     );
     let sport_title_link = match strava_activity {
-        Some(strava_activity) => format!(
+        Some(strava_activity) => format_sstr!(
             r#"<a href="https://www.strava.com/activities/{}" target="_blank">{} {}</a>"#,
-            strava_activity.id, strava_activity.name, gfile.begin_datetime
+            strava_activity.id,
+            strava_activity.name,
+            gfile.begin_datetime
         ),
         None => sport_title_link,
     };
 
     let button_str = if let Some(strava_activity) = strava_activity {
-        format!(
+        format_sstr!(
             r#"<form>{}</form>"#,
             if is_demo {
-                "".to_string()
+                "".into()
             } else {
-                format!(
+                format_sstr!(
                     r#"
                         <input type="text" name="cmd" id="strava_upload"/>
                         <input type="button" name="submitSTRAVA" value="Title"
@@ -456,11 +463,11 @@ fn get_garmin_template_vec<T: AsRef<str>>(
             },
         )
     } else {
-        "".to_string()
+        "".into()
     };
     let history_buttons = generate_history_buttons(history);
     let insert_text_here = insert_text_here.join("\n");
-    let sport_title_date = format!(
+    let sport_title_date = format_sstr!(
         "Garmin Event {} on {}",
         titlecase(&sport_str),
         gfile.begin_datetime
@@ -542,29 +549,31 @@ where
         (10, 0.4),
     ];
     let sport_str: StackString = sport.into();
-    let sport_title_date = format!(
+    let sport_title_date = format_sstr!(
         "Garmin Event {} on {}",
         titlecase(&sport_str),
         gfile.begin_datetime
     );
     let sport_title_link = match strava_activity {
-        Some(strava_activity) => format!(
+        Some(strava_activity) => format_sstr!(
             r#"<a href="https://www.strava.com/activities/{}" target="_blank">{} {}</a>"#,
-            strava_activity.id, strava_activity.name, gfile.begin_datetime
+            strava_activity.id,
+            strava_activity.name,
+            gfile.begin_datetime
         ),
-        None => format!(
+        None => format_sstr!(
             "Garmin Event {} on {}",
             titlecase(&sport_str),
             gfile.begin_datetime
         ),
     };
     let button_str = if let Some(strava_activity) = strava_activity {
-        format!(
+        format_sstr!(
             r#"<form>{}</form>"#,
             if is_demo {
-                "".to_string()
+                "".into()
             } else {
-                format!(
+                format_sstr!(
                     r#"
                         <input type="text" name="cmd" id="strava_upload"/>
                         <input type="button" name="submitSTRAVA" value="Title"
@@ -577,12 +586,12 @@ where
             },
         )
     } else {
-        format!(
+        format_sstr!(
             r#"<form>{}</form>"#,
             if is_demo {
-                "".to_string()
+                "".into()
             } else {
-                format!(
+                format_sstr!(
                     r#"
                         <input type="text" name="cmd" id="strava_upload"/>
                         <input type="button" name="submitSTRAVA" value="Title"
@@ -597,11 +606,11 @@ where
     let mut zoom_value = StackString::new();
     for (zoom, thresh) in &latlon_thresholds {
         if (latlon_min < *thresh) | (*zoom == 10) {
-            write!(zoom_value, "{}", zoom)?;
+            zoom_value = StackString::from_display(zoom);
             break;
         }
     }
-    let insert_table_here = format!(
+    let insert_table_here = format_sstr!(
         "{}\n<br><br>{}\n<br><br>{}\n",
         get_file_html(
             gfile,
@@ -617,14 +626,14 @@ where
         .lat_vals
         .iter()
         .zip(report_objs.lon_vals.iter())
-        .map(|(latv, lonv)| format!("new google.maps.LatLng({},{}),", latv, lonv))
+        .map(|(latv, lonv)| format_sstr!("new google.maps.LatLng({},{}),", latv, lonv))
         .join("\n");
-    let minlat = StackString::from_display(minlat)?;
-    let maxlat = StackString::from_display(maxlat)?;
-    let minlon = StackString::from_display(minlon)?;
-    let maxlon = StackString::from_display(maxlon)?;
-    let central_lat = StackString::from_display(central_lat)?;
-    let central_lon = StackString::from_display(central_lon)?;
+    let minlat = StackString::from_display(minlat);
+    let maxlat = StackString::from_display(maxlat);
+    let minlon = StackString::from_display(minlon);
+    let maxlon = StackString::from_display(maxlon);
+    let central_lat = StackString::from_display(central_lat);
+    let central_lon = StackString::from_display(central_lon);
     let insert_other_images_here = graphs.iter().map(AsRef::as_ref).join("\n");
     let history_buttons = generate_history_buttons(history);
     let filename = config.gps_dir.join(gfile.filename.as_str());
@@ -681,13 +690,13 @@ fn get_sport_selector(current_sport: SportTypes) -> StackString {
     sport_types.insert(0, current_sport);
     let sport_types = sport_types
         .into_iter()
-        .map(|s| format!(r#"<option value="{sport}">{sport}</option>"#, sport = s))
+        .map(|s| format_sstr!(r#"<option value="{sport}">{sport}</option>"#, sport = s))
         .join("\n");
-    format!(r#"<select id="sport_select">{}</select>"#, sport_types).into()
+    format_sstr!(r#"<select id="sport_select">{}</select>"#, sport_types).into()
 }
 
 fn get_correction_button(begin_datetime: DateTime<Utc>) -> StackString {
-    format!(
+    format_sstr!(
         r#"<button type="submit" onclick="addGarminCorrectionSport('{}')">Apply</button>"#,
         begin_datetime
     )
@@ -705,14 +714,14 @@ fn get_file_html(
 
     let sport: StackString = gfile.sport.into();
 
-    retval.push(r#"<table border="1" class="dataframe">"#.to_string());
+    retval.push(r#"<table border="1" class="dataframe">"#.into());
     retval.push(
         r#"<thead><tr style="text-align: center;"><th>Start Time</th>
                    <th>Sport</th><th></th><th>FitbitID</th><th>Fitbit Steps</th><th>GarminConnectID</th>
                    <th>Garmin Steps</th><th>StravaID</th></tr></thead>"#
-            .to_string(),
+            .into(),
     );
-    retval.push(format!(
+    retval.push(format_sstr!(
         "<tbody><tr style={qt}text-align: \
          center;{qt}><td>{dt}</td><td>{sp}</td><td>{gc}</td><td>{fid}</td><td>{fstep}</td>
          <td>{gid}</td><td>{gstep}</td><td>{sid}</td></tr></tbody>",
@@ -721,38 +730,38 @@ fn get_file_html(
         sp=get_sport_selector(gfile.sport),
         gc=get_correction_button(gfile.begin_datetime),
         sid = if let Some(strava_activity) = strava_activity {
-            format!(
+            format_sstr!(
                 r#"<a href="https://www.strava.com/activities/{0}" target="_blank">{0}</a>"#,
                 strava_activity.id,
             )
         } else {
-            format!(
+            format_sstr!(
                 r#"<button type="submit" onclick="createStravaActivity('{}');">create</button>"#,
                 gfile.filename,
             )
         },
         fid = if let Some(fitbit_activity) = fitbit_activity {
-            format!(
+            format_sstr!(
                 r#"<a href="https://www.fitbit.com/activities/exercise/{0}" target="_blank">{0}</a>"#,
                 fitbit_activity.log_id,
             )
         } else {
-            "".to_string()
+            "".into()
         },
         fstep = fitbit_activity.as_ref().map_or(0, |x| x.steps.unwrap_or(0)),
         gid = if let Some(connect_activity) = connect_activity {
-            format!(
+            format_sstr!(
                 r#"<a href="https://connect.garmin.com/modern/activity/{0}" target="_blank">{0}</a>"#,
                 connect_activity.activity_id,
             )
         } else {
-            "".to_string()
+            "".into()
         },
         gstep = connect_activity.as_ref().map_or(0, |x| x.steps.unwrap_or(0)),
     ));
-    retval.push(r#"</table><br>"#.to_string());
+    retval.push(r#"</table><br>"#.into());
     if race_result.is_none() && gfile.sport == SportTypes::Running {
-        retval.push(format!(
+        retval.push(format_sstr!(
             r#"<button type="submit" onclick="raceResultImport('{}');">ImportRace</button>"#,
             gfile.filename,
         ));
@@ -769,21 +778,21 @@ fn get_file_html(
         "Pace / km",
         "Heart Rate",
     ];
-    retval.push(r#"<table border="1" class="dataframe">"#.to_string());
-    retval.push(r#"<thead><tr style="text-align: center;">"#.to_string());
+    retval.push(r#"<table border="1" class="dataframe">"#.into());
+    retval.push(r#"<thead><tr style="text-align: center;">"#.into());
     for label in labels {
-        retval.push(format!("<th>{}</th>", label));
+        retval.push(format_sstr!("<th>{}</th>", label));
     }
-    retval.push("</tr></thead>".to_string());
-    retval.push("<tbody>".to_string());
+    retval.push("</tr></thead>".into());
+    retval.push("<tbody>".into());
     for lap in &gfile.laps {
-        retval.push(r#"<tr style="text-align: center;">"#.to_string());
+        retval.push(r#"<tr style="text-align: center;">"#.into());
         for lap_html in get_lap_html(lap, &sport) {
             retval.push(lap_html.into());
         }
-        retval.push("</tr>".to_string());
+        retval.push("</tr>".into());
     }
-    retval.push(r#"</table><br>"#.to_string());
+    retval.push(r#"</table><br>"#.into());
 
     let min_mile = if gfile.total_distance > 0.0 {
         (gfile.total_duration / 60.) / (gfile.total_distance / METERS_PER_MILE)
@@ -801,30 +810,25 @@ fn get_file_html(
         "running" => (
             vec!["", "Distance", "Calories", "Time", "Pace / mi", "Pace / km"],
             vec![
-                "total".to_string(),
-                format!("{:.2} mi", gfile.total_distance / METERS_PER_MILE),
-                format!("{}", gfile.total_calories),
-                print_h_m_s(gfile.total_duration, true)
-                    .unwrap_or_else(|_| "".into())
-                    .into(),
-                print_h_m_s(min_mile * 60.0, false)
-                    .unwrap_or_else(|_| "".into())
-                    .into(),
+                "total".into(),
+                format_sstr!("{:.2} mi", gfile.total_distance / METERS_PER_MILE),
+                format_sstr!("{}", gfile.total_calories),
+                print_h_m_s(gfile.total_duration, true).unwrap_or_else(|_| "".into()),
+                print_h_m_s(min_mile * 60.0, false).unwrap_or_else(|_| "".into()),
                 print_h_m_s(min_mile * 60.0 / METERS_PER_MILE * 1000., false)
-                    .unwrap_or_else(|_| "".into())
-                    .into(),
+                    .unwrap_or_else(|_| "".into()),
             ],
         ),
         _ => (
             vec!["total", "Distance", "Calories", "Time", "Pace mph"],
             vec![
-                "".to_string(),
-                format!("{:.2} mi", gfile.total_distance / METERS_PER_MILE),
-                format!("{}", gfile.total_calories),
+                "".into(),
+                format_sstr!("{:.2} mi", gfile.total_distance / METERS_PER_MILE),
+                format_sstr!("{}", gfile.total_calories),
                 print_h_m_s(gfile.total_duration, true)
                     .unwrap_or_else(|_| "".into())
                     .into(),
-                format!("{}", mi_per_hr),
+                format_sstr!("{}", mi_per_hr),
             ],
         ),
     };
@@ -834,44 +838,42 @@ fn get_file_html(
         & (gfile.total_hr_dur > gfile.total_hr_dis)
     {
         labels.push("Heart Rate");
-        values.push(format!(
+        values.push(format_sstr!(
             "{} bpm",
             (gfile.total_hr_dur / gfile.total_hr_dis) as i32
         ));
     };
 
-    retval.push(r#"<table border="1" class="dataframe">"#.to_string());
-    retval.push(r#"<thead><tr style="text-align: center;">"#.to_string());
+    retval.push(r#"<table border="1" class="dataframe">"#.into());
+    retval.push(r#"<thead><tr style="text-align: center;">"#.into());
 
     for label in labels {
-        retval.push(format!("<th>{}</th>", label));
+        retval.push(format_sstr!("<th>{}</th>", label));
     }
 
-    retval.push("</tr></thead>".to_string());
-    retval.push(r#"<tbody><tr style="text-align: center;">"#.to_string());
+    retval.push("</tr></thead>".into());
+    retval.push(r#"<tbody><tr style="text-align: center;">"#.into());
 
     for value in values {
-        retval.push(format!("<td>{}</td>", value));
+        retval.push(format_sstr!("<td>{}</td>", value));
     }
 
-    retval.push("</tr></tbody></table>".to_string());
+    retval.push("</tr></tbody></table>".into());
 
     retval.join("\n").into()
 }
 
 fn get_lap_html(glap: &GarminLap, sport: &str) -> Vec<StackString> {
     let mut values = vec![
-        sport.to_string(),
-        format!("{}", glap.lap_number),
-        format!("{:.2} mi", glap.lap_distance / METERS_PER_MILE),
-        print_h_m_s(glap.lap_duration, true)
-            .unwrap_or_else(|_| "".into())
-            .into(),
-        format!("{}", glap.lap_calories),
-        format!("{:.2} min", glap.lap_duration / 60.),
+        sport.into(),
+        format_sstr!("{}", glap.lap_number),
+        format_sstr!("{:.2} mi", glap.lap_distance / METERS_PER_MILE),
+        print_h_m_s(glap.lap_duration, true).unwrap_or_else(|_| "".into()),
+        format_sstr!("{}", glap.lap_calories),
+        format_sstr!("{:.2} min", glap.lap_duration / 60.),
     ];
     if glap.lap_distance > 0.0 {
-        values.push(format!(
+        values.push(format_sstr!(
             "{} / mi",
             print_h_m_s(
                 glap.lap_duration / (glap.lap_distance / METERS_PER_MILE),
@@ -879,18 +881,18 @@ fn get_lap_html(glap: &GarminLap, sport: &str) -> Vec<StackString> {
             )
             .unwrap_or_else(|_| "".into())
         ));
-        values.push(format!(
+        values.push(format_sstr!(
             "{} / km",
             print_h_m_s(glap.lap_duration / (glap.lap_distance / 1000.), false)
                 .unwrap_or_else(|_| "".into())
         ));
     }
     if let Some(lap_avg_hr) = glap.lap_avg_hr {
-        values.push(format!("{} bpm", lap_avg_hr));
+        values.push(format_sstr!("{} bpm", lap_avg_hr));
     }
     values
         .iter()
-        .map(|v| format!("<td>{}</td>", v).into())
+        .map(|v| format_sstr!("<td>{}</td>", v).into())
         .collect()
 }
 
@@ -918,7 +920,7 @@ fn get_html_splits(
                 let tim = val.time_value;
                 let hrt = val.avg_heart_rate.unwrap_or(0.0) as i32;
                 vec![
-                    format!("{} {}", dis, label),
+                    format_sstr!("{} {}", dis, label),
                     print_h_m_s(tim, true).unwrap_or_else(|_| "".into()).into(),
                     print_h_m_s(tim / (split_distance_in_meters / METERS_PER_MILE), false)
                         .unwrap_or_else(|_| "".into())
@@ -932,28 +934,28 @@ fn get_html_splits(
                     )
                     .unwrap_or_else(|_| "".into())
                     .into(),
-                    format!("{} bpm", hrt),
+                    format_sstr!("{} bpm", hrt),
                 ]
             })
             .collect();
 
         let mut retval = vec![
-            r#"<table border="1" class="dataframe">"#.to_string(),
-            r#"<thead><tr style="text-align: center;">"#.to_string(),
+            r#"<table border="1" class="dataframe">"#.into(),
+            r#"<thead><tr style="text-align: center;">"#.into(),
         ];
         for label in labels {
-            retval.push(format!("<th>{}</th>", label));
+            retval.push(format_sstr!("<th>{}</th>", label));
         }
-        retval.push("</tr></thead>".to_string());
-        retval.push("<tbody>".to_string());
+        retval.push("</tr></thead>".into());
+        retval.push("<tbody>".into());
         for line in values {
-            retval.push(r#"<tr style="text-align: center;">"#.to_string());
+            retval.push(r#"<tr style="text-align: center;">"#.into());
             for val in line {
-                retval.push(format!("<td>{}</td>", val));
+                retval.push(format_sstr!("<td>{}</td>", val));
             }
-            retval.push("</tr>".to_string());
+            retval.push("</tr>".into());
         }
-        retval.push("</tbody></table>".to_string());
+        retval.push("</tbody></table>".into());
         Ok(retval.join("\n").into())
     }
 }

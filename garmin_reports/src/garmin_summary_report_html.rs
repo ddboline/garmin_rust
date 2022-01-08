@@ -1,6 +1,7 @@
 use anyhow::Error;
 use maplit::hashmap;
-use stack_string::StackString;
+use stack_string::{format_sstr, StackString};
+use std::fmt::Write;
 
 use garmin_lib::common::garmin_templates::{get_buttons, get_scripts, get_style, HBR};
 
@@ -21,7 +22,7 @@ where
 
     let htmlostr = htmlostr.join("\n").replace("\n\n", "<br>\n");
 
-    let insert_text_here = format!(r#"<table border="0">{}</table>"#, htmlostr);
+    let insert_text_here = format_sstr!(r#"<table border="0">{}</table>"#, htmlostr);
     let history_buttons = generate_history_buttons(history);
     let buttons = get_buttons(is_demo).join("\n");
     let style = get_style(false);

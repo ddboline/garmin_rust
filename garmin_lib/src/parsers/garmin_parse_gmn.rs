@@ -1,7 +1,8 @@
 use anyhow::{format_err, Error};
 use chrono::{DateTime, Utc};
 use roxmltree::{Document, NodeType};
-use std::{collections::HashMap, path::Path};
+use stack_string::format_sstr;
+use std::{collections::HashMap, fmt::Write, path::Path};
 use subprocess::{Exec, Redirection};
 
 use crate::{
@@ -63,9 +64,11 @@ impl GarminParseTrait for GarminParseGmn {
     fn parse_file(&self, filename: &Path) -> Result<ParseOutput, Error> {
         let filename = filename.to_string_lossy().to_string();
         assert!(Path::new("/usr/bin/garmin_dump").exists());
-        let command = format!(
+        let command = format_sstr!(
             "echo \"{}\" `garmin_dump {}` \"{}\"",
-            "<root>", filename, "</root>"
+            "<root>",
+            filename,
+            "</root>"
         );
 
         let output = Exec::shell(command)

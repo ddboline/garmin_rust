@@ -3,7 +3,8 @@ use derive_more::Deref;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use regex::Regex;
-use stack_string::StackString;
+use stack_string::{format_sstr, StackString};
+use std::fmt::Write;
 
 use garmin_lib::{common::garmin_config::GarminConfig, utils::sport_types::get_sport_type_map};
 
@@ -37,28 +38,29 @@ impl Default for GarminConstraint {
 }
 
 impl GarminConstraint {
-    fn to_query_string(&self) -> String {
+    fn to_query_string(&self) -> StackString {
         match self {
             Self::Latest => {
                 "a.begin_datetime=(select max(begin_datetime) from garmin_summary)".into()
             }
             Self::IsoWeek { year, week } => {
-                format!(
+                format_sstr!(
                     "(EXTRACT(isoyear from a.begin_datetime at time zone 'localtime') = {} AND
                       EXTRACT(week from a.begin_datetime at time zone 'localtime') = {})",
-                    year, week
+                    year,
+                    week
                 )
             }
-            Self::Filename(filename) => format!("filename = '{}'", filename),
+            Self::Filename(filename) => format_sstr!("filename = '{}'", filename),
             Self::DateTime(dt) => {
-                format!(
+                format_sstr!(
                     "replace({}, '%', 'T') = '{}'",
                     "to_char(a.begin_datetime at time zone 'utc', 'YYYY-MM-DD%HH24:MI:SSZ')",
                     dt.with_timezone(&Utc).format("%Y-%m-%dT%H:%M:%SZ")
                 )
             }
             Self::YearMonthDay { year, month, day } => {
-                format!(
+                format_sstr!(
                     "replace({}, '%', 'T') like '{:04}-{:02}-{:02}T%'",
                     "to_char(a.begin_datetime at time zone 'localtime', 'YYYY-MM-DD%HH24:MI:SS')",
                     year,
@@ -67,7 +69,7 @@ impl GarminConstraint {
                 )
             }
             Self::YearMonth { year, month } => {
-                format!(
+                format_sstr!(
                     "replace({}, '%', 'T') like '{:04}-{:02}-%'",
                     "to_char(a.begin_datetime at time zone 'localtime', 'YYYY-MM-DD%HH24:MI:SS')",
                     year,
@@ -75,14 +77,14 @@ impl GarminConstraint {
                 )
             }
             Self::Year(year) => {
-                format!(
+                format_sstr!(
                     "replace({}, '%', 'T') like '{:04}-%'",
                     "to_char(a.begin_datetime at time zone 'localtime', 'YYYY-MM-DD%HH24:MI:SS')",
                     year
                 )
             }
             Self::Query(query) => {
-                format!("lower(b.name) like '%{}%'", query.to_lowercase())
+                format_sstr!("lower(b.name) like '%{}%'", query.to_lowercase())
             }
         }
     }

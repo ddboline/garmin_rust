@@ -11,9 +11,10 @@ use rand::{thread_rng, Rng};
 use reqwest::{header::HeaderMap, Client, Response, Url};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
-use stack_string::StackString;
+use stack_string::{format_sstr, StackString};
 use std::{
     collections::{HashMap, HashSet},
+    fmt::Write,
     path::PathBuf,
 };
 use tokio::{
@@ -108,11 +109,11 @@ impl FitbitClient {
 
     pub async fn to_file(&self) -> Result<(), Error> {
         let mut f = tokio::fs::File::create(&self.config.fitbit_tokenfile).await?;
-        f.write_all(format!("user_id={}\n", self.user_id).as_bytes())
+        f.write_all(format_sstr!("user_id={}\n", self.user_id).as_bytes())
             .await?;
-        f.write_all(format!("access_token={}\n", self.access_token).as_bytes())
+        f.write_all(format_sstr!("access_token={}\n", self.access_token).as_bytes())
             .await?;
-        f.write_all(format!("refresh_token={}\n", self.refresh_token).as_bytes())
+        f.write_all(format_sstr!("refresh_token={}\n", self.refresh_token).as_bytes())
             .await?;
         Ok(())
     }
@@ -185,7 +186,7 @@ impl FitbitClient {
     }
 
     pub async fn get_fitbit_auth_url(&self) -> Result<Url, Error> {
-        let redirect_uri = format!("https://{}/garmin/fitbit/callback", self.config.domain);
+        let redirect_uri = format_sstr!("https://{}/garmin/fitbit/callback", self.config.domain);
         let scopes = &[
             "activity",
             "nutrition",
@@ -223,11 +224,12 @@ impl FitbitClient {
         headers.insert("Content-type", "application/x-www-form-urlencoded".parse()?);
         headers.insert(
             "Authorization",
-            format!(
+            format_sstr!(
                 "Basic {}",
-                encode(format!(
+                encode(format_sstr!(
                     "{}:{}",
-                    self.config.fitbit_clientid, self.config.fitbit_clientsecret
+                    self.config.fitbit_clientid,
+                    self.config.fitbit_clientsecret
                 ))
             )
             .parse()?,
@@ -239,7 +241,7 @@ impl FitbitClient {
         let mut headers = HeaderMap::new();
         headers.insert(
             "Authorization",
-            format!("Bearer {}", self.access_token,).parse()?,
+            format_sstr!("Bearer {}", self.access_token,).parse()?,
         );
         headers.insert("Accept-Language", "en_US".parse()?);
         headers.insert("Accept-Locale", "en_US".parse()?);
@@ -290,7 +292,8 @@ impl FitbitClient {
                 return Err(format_err!("Incorrect state"));
             }
             let headers = self.get_basic_headers()?;
-            let redirect_uri = format!("https://{}/garmin/fitbit/callback", self.config.domain);
+            let redirect_uri =
+                format_sstr!("https://{}/garmin/fitbit/callback", self.config.domain);
             let data = hashmap! {
                 "code" => code,
                 "grant_type" => "authorization_code",
@@ -355,7 +358,7 @@ impl FitbitClient {
             .as_ref()
             .ok_or_else(|| format_err!("Bad URL"))?
             .join("1/user/-/")?
-            .join(&format!("activities/heart/date/{}/1d/1min.json", date))?;
+            .join(&format_sstr!("activities/heart/date/{}/1d/1min.json", date))?;
         let dataset: HeartRateResp = self
             .client
             .get(url)
@@ -371,7 +374,7 @@ impl FitbitClient {
             .dataset
             .into_iter()
             .map(|entry| {
-                let datetime = format!("{}T{}{}", date, entry.time, offset);
+                let datetime = format_sstr!("{}T{}{}", date, entry.time, offset);
                 let datetime = DateTime::parse_from_rfc3339(&datetime)?.with_timezone(&Utc);
                 let value = entry.value;
                 Ok(FitbitHeartRate { datetime, value })
@@ -421,7 +424,7 @@ impl FitbitClient {
             .as_ref()
             .ok_or_else(|| format_err!("Bad URL"))?
             .join("1/user/-/")?
-            .join(&format!("body/log/weight/date/{}/30d.json", date))?;
+            .join(&format_sstr!("body/log/weight/date/{}/30d.json", date))?;
         let body_weight: BodyWeight = self
             .client
             .get(url)
@@ -435,7 +438,7 @@ impl FitbitClient {
             .weight
             .into_iter()
             .filter_map(|bw| {
-                let datetime = format!("{}T{}{}", bw.date, bw.time, offset);
+                let datetime = format_sstr!("{}T{}{}", bw.date, bw.time, offset);
                 let datetime = DateTime::parse_from_rfc3339(&datetime)
                     .ok()?
                     .with_timezone(&Utc);
@@ -463,10 +466,9 @@ impl FitbitClient {
             async move {
                 let datetime = update.datetime.with_timezone(&offset);
                 let date = datetime.date().naive_local();
-                let date_str = StackString::from_display(date)?;
-                let time_str =
-                    StackString::from_display(datetime.naive_local().format("%H:%M:%S"))?;
-                let weight_str = StackString::from_display(update.mass)?;
+                let date_str = StackString::from_display(date);
+                let time_str = StackString::from_display(datetime.naive_local().format("%H:%M:%S"));
+                let weight_str = StackString::from_display(update.mass);
                 let url = self
                     .config
                     .fitbit_api_endpoint
@@ -494,7 +496,7 @@ impl FitbitClient {
                     .ok_or_else(|| format_err!("Bad URL"))?
                     .join("1/user/-/")?
                     .join("body/log/fat.json")?;
-                let fat_pct_str = StackString::from_display(update.fat_pct)?;
+                let fat_pct_str = StackString::from_display(update.fat_pct);
                 let data = hashmap! {
                     "fat" => &fat_pct_str,
                     "date" => &date_str,
@@ -534,9 +536,10 @@ impl FitbitClient {
             .as_ref()
             .ok_or_else(|| format_err!("Bad URL"))?
             .join("1/user/-/")?
-            .join(&format!(
+            .join(&format_sstr!(
                 "activities/list.json?afterDate={}&offset={}&limit=20&sort=asc",
-                start_date, offset,
+                start_date,
+                offset,
             ))?;
         let activities: AcivityListResp = self
             .get_url(url, headers)
@@ -645,25 +648,27 @@ impl FitbitClient {
             .await?;
         let mut id_map: HashMap<StackString, StackString> = HashMap::new();
         for category in &categories.categories {
-            let id_str = StackString::from_display(category.id)?;
+            let id_str = StackString::from_display(category.id);
             id_map.insert(id_str, category.name.clone());
             for activity in &category.activities {
-                let name = format!("{}/{}", category.name, activity.name).into();
-                let id_str = StackString::from_display(activity.id)?;
+                let name = format_sstr!("{}/{}", category.name, activity.name).into();
+                let id_str = StackString::from_display(activity.id);
                 id_map.insert(id_str, name);
             }
             if let Some(sub_categories) = category.sub_categories.as_ref() {
                 for sub_category in sub_categories.iter() {
-                    let name = format!("{}/{}", category.name, sub_category.name).into();
-                    let id_str = StackString::from_display(sub_category.id)?;
+                    let name = format_sstr!("{}/{}", category.name, sub_category.name).into();
+                    let id_str = StackString::from_display(sub_category.id);
                     id_map.insert(id_str, name);
                     for sub_activity in &sub_category.activities {
-                        let name = format!(
+                        let name = format_sstr!(
                             "{}/{}/{}",
-                            category.name, sub_category.name, sub_activity.name
+                            category.name,
+                            sub_category.name,
+                            sub_activity.name
                         )
                         .into();
-                        let id_str = StackString::from_display(sub_activity.id)?;
+                        let id_str = StackString::from_display(sub_activity.id);
                         id_map.insert(id_str, name);
                     }
                 }
@@ -714,8 +719,7 @@ impl FitbitClient {
             .into_iter()
             .map(|activity| {
                 let start_time_str =
-                    StackString::from_display(activity.start_time.format("%Y-%m-%dT%H:%M"))
-                        .unwrap();
+                    StackString::from_display(activity.start_time.format("%Y-%m-%dT%H:%M"));
                 (start_time_str, activity)
             })
             .sorted_by(|x, y| x.0.cmp(&y.0))
@@ -739,9 +743,9 @@ impl FitbitClient {
                 }
                 if let Some(activity) = FitbitActivity::get_by_id(pool, log_id).await? {
                     activity.delete_from_db(pool).await?;
-                    Ok(format!("fully deleted {}", log_id).into())
+                    Ok(format_sstr!("fully deleted {}", log_id).into())
                 } else {
-                    Ok(format!("not fully deleted {}", log_id).into())
+                    Ok(format_sstr!("not fully deleted {}", log_id).into())
                 }
             });
         try_join_all(futures).await
@@ -797,8 +801,7 @@ impl FitbitClient {
                     None
                 } else {
                     let start_time_str =
-                        StackString::from_display(activity.start_time.format("%Y-%m-%dT%H:%M"))
-                            .unwrap();
+                        StackString::from_display(activity.start_time.format("%Y-%m-%dT%H:%M"));
                     Some((start_time_str, activity))
                 }
             })
@@ -826,13 +829,13 @@ impl FitbitClient {
         results?;
 
         let old_activities = get_list_of_activities_from_db(
-            &format!("begin_datetime >= '{}'", begin_datetime),
+            &format_sstr!("begin_datetime >= '{}'", begin_datetime),
             pool,
         )
         .await?
         .into_iter()
         .filter(|(d, _)| {
-            let key = StackString::from_display(d.format("%Y-%m-%dT%H:%M")).unwrap();
+            let key = StackString::from_display(d.format("%Y-%m-%dT%H:%M"));
             !new_activities.contains_key(&key)
         });
 
@@ -862,7 +865,7 @@ impl FitbitClient {
             .as_ref()
             .ok_or_else(|| format_err!("Bad URL"))?
             .join("1/user/-/")?
-            .join(&format!("activities/{}.json", log_id))?;
+            .join(&format_sstr!("activities/{}.json", log_id))?;
         let headers = self.get_auth_headers()?;
         self.client
             .delete(url)
@@ -932,10 +935,7 @@ impl FitbitClient {
                 let fname = self
                     .config
                     .gps_dir
-                    .join({
-                        StackString::from_display(start_time.format("%Y-%m-%d_%H-%M-%S_1_1"))
-                            .unwrap()
-                    })
+                    .join({ StackString::from_display(start_time.format("%Y-%m-%d_%H-%M-%S_1_1")) })
                     .with_extension("tcx");
                 if fname.exists() {
                     None
@@ -976,8 +976,7 @@ struct ActivityLoggingEntry {
 impl ActivityLoggingEntry {
     fn from_summary(item: &GarminSummary, offset: FixedOffset) -> Option<Self> {
         let start_time_str =
-            StackString::from_display(item.begin_datetime.with_timezone(&offset).format("%H:%M"))
-                .unwrap();
+            StackString::from_display(item.begin_datetime.with_timezone(&offset).format("%H:%M"));
         item.sport.to_fitbit_activity_id().map(|activity_id| Self {
             activity_id: Some(activity_id),
             start_time: start_time_str,

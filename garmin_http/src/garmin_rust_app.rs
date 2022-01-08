@@ -9,7 +9,8 @@ use rweb::{
     openapi::{self, Info},
     Filter, Reply,
 };
-use std::{net::SocketAddr, sync::Arc, time::Duration};
+use stack_string::format_sstr;
+use std::{fmt::Write, net::SocketAddr, sync::Arc, time::Duration};
 use tokio::{sync::Mutex, task::spawn, time::interval};
 
 use garmin_connect_lib::garmin_connect_client::GarminConnectClient;
@@ -260,7 +261,7 @@ async fn run_app(config: &GarminConfig, pool: &PgPool, proxy: &ConnectProxy) -> 
         .or(spec_json_path)
         .or(spec_yaml_path)
         .recover(error_response);
-    let addr: SocketAddr = format!("{}:{}", config.host, config.port).parse()?;
+    let addr: SocketAddr = format_sstr!("{}:{}", config.host, config.port).parse()?;
     rweb::serve(routes).bind(addr).await;
     Ok(())
 }

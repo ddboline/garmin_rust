@@ -7,10 +7,11 @@ use postgres_query::{query, query_dyn, FromSqlRow, Parameter};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{self, Deserialize, Serialize};
 use smallvec::SmallVec;
-use stack_string::StackString;
+use stack_string::{format_sstr, StackString};
 use std::{
     collections::{HashMap, HashSet},
     fmt,
+    fmt::Write,
     sync::Arc,
 };
 
@@ -199,13 +200,13 @@ impl ScaleMeasurement {
             conditions.push("date(datetime) <= $end_date");
             bindings.push(("end_date", d));
         }
-        let query = format!(
+        let query = format_sstr!(
             "{} {} ORDER BY datetime",
             query,
             if conditions.is_empty() {
-                "".to_string()
+                "".into()
             } else {
-                format!("WHERE {}", conditions.join(" AND "))
+                format_sstr!("WHERE {}", conditions.join(" AND "))
             }
         );
         let query_bindings: Vec<_> = bindings.iter().map(|(k, v)| (*k, v as Parameter)).collect();
@@ -231,8 +232,7 @@ impl ScaleMeasurement {
         let mass: Vec<_> = measurements
             .iter()
             .map(|meas| {
-                let key =
-                    StackString::from_display(meas.datetime.format("%Y-%m-%dT%H:%M:%S%z")).unwrap();
+                let key = StackString::from_display(meas.datetime.format("%Y-%m-%dT%H:%M:%S%z"));
                 (key, meas.mass)
             })
             .collect();
@@ -252,8 +252,7 @@ impl ScaleMeasurement {
         let fat: Vec<_> = measurements
             .iter()
             .map(|meas| {
-                let key =
-                    StackString::from_display(meas.datetime.format("%Y-%m-%dT%H:%M:%S%z")).unwrap();
+                let key = StackString::from_display(meas.datetime.format("%Y-%m-%dT%H:%M:%S%z"));
                 (key, meas.fat_pct)
             })
             .collect();
@@ -273,8 +272,7 @@ impl ScaleMeasurement {
         let water: Vec<_> = measurements
             .iter()
             .map(|meas| {
-                let key =
-                    StackString::from_display(meas.datetime.format("%Y-%m-%dT%H:%M:%S%z")).unwrap();
+                let key = StackString::from_display(meas.datetime.format("%Y-%m-%dT%H:%M:%S%z"));
                 (key, meas.water_pct)
             })
             .collect();
@@ -294,8 +292,7 @@ impl ScaleMeasurement {
         let muscle: Vec<_> = measurements
             .iter()
             .map(|meas| {
-                let key =
-                    StackString::from_display(meas.datetime.format("%Y-%m-%dT%H:%M:%S%z")).unwrap();
+                let key = StackString::from_display(meas.datetime.format("%Y-%m-%dT%H:%M:%S%z"));
                 (key, meas.muscle_pct)
             })
             .collect();
@@ -315,8 +312,7 @@ impl ScaleMeasurement {
         let bone: Vec<_> = measurements
             .iter()
             .map(|meas| {
-                let key =
-                    StackString::from_display(meas.datetime.format("%Y-%m-%dT%H:%M:%S%z")).unwrap();
+                let key = StackString::from_display(meas.datetime.format("%Y-%m-%dT%H:%M:%S%z"));
                 (key, meas.bone_pct)
             })
             .collect();
@@ -338,15 +334,20 @@ impl ScaleMeasurement {
             .iter()
             .map(|meas| {
                 let date = meas.datetime.with_timezone(&Local).date().naive_local();
-                format!(
+                format_sstr!(
                     r#"
                     <td>{}</td><td>{:3.1}</td><td>{:2.1}</td><td>{:2.1}</td>
                     <td>{:2.1}</td><td>{:2.1}</td>"#,
-                    date, meas.mass, meas.fat_pct, meas.water_pct, meas.muscle_pct, meas.bone_pct,
+                    date,
+                    meas.mass,
+                    meas.fat_pct,
+                    meas.water_pct,
+                    meas.muscle_pct,
+                    meas.bone_pct,
                 )
             })
             .collect();
-        let entries = format!(
+        let entries = format_sstr!(
             r#"
             <table border=1>
             <thead>
@@ -362,14 +363,14 @@ impl ScaleMeasurement {
             <br>{}{}"#,
             entries.join("</tr><tr>"),
             if offset >= 10 {
-                format!(
+                format_sstr!(
                     r#"<button type="submit" onclick="scale_measurement_plots({});">Previous</button>"#,
                     offset - 10
                 )
             } else {
-                "".to_string()
+                "".into()
             },
-            format!(
+            format_sstr!(
                 r#"<button type="submit" onclick="scale_measurement_plots({});">Next</button>"#,
                 offset + 10
             ),

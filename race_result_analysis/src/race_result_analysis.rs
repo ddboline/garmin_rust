@@ -301,7 +301,7 @@ impl RaceResultAnalysis {
         Ok(hashmap! {
             "INSERTTABLESHERE".into() => plots.into(),
             "INSERTTEXTHERE".into() => buttons.into(),
-            "INSERTOTHERIMAGESHERE".into() => entries.into(),
+            "INSERTOTHERIMAGESHERE".into() => entries,
         })
     }
 }

@@ -59,10 +59,10 @@ impl Display for RaceResults {
                     .filter_map(|id| id.map(|i| StackString::from_display(i)))
                     .join(",");
 
-                if !summary_ids.is_empty() {
-                    format_sstr!("summary_ids: {}", summary_ids)
-                } else {
+                if summary_ids.is_empty() {
                     StackString::new()
+                } else {
+                    format_sstr!("summary_ids: {}", summary_ids)
                 }
             }
         )

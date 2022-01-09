@@ -41,7 +41,6 @@ pub fn generate_history_buttons<T: AsRef<str>>(history_vec: &[T]) -> StackString
             most_recent,
             " </button>"
         )
-        .into()
     }
 
     let local: Date<Local> = Local::today();
@@ -52,14 +51,13 @@ pub fn generate_history_buttons<T: AsRef<str>>(history_vec: &[T]) -> StackString
     } else {
         (year - 1, 12)
     };
-    let default_string: StackString = format_sstr!(
+    let default_string = format_sstr!(
         "{:04}-{:02},{:04}-{:02},week",
         prev_year,
         prev_month,
         year,
         month
-    )
-    .into();
+    );
     let mut used_buttons: HashSet<StackString> = HashSet::new();
     let mut history_buttons = vec![history_button_string(&default_string)];
     used_buttons.insert(default_string);
@@ -692,7 +690,7 @@ fn get_sport_selector(current_sport: SportTypes) -> StackString {
         .into_iter()
         .map(|s| format_sstr!(r#"<option value="{sport}">{sport}</option>"#, sport = s))
         .join("\n");
-    format_sstr!(r#"<select id="sport_select">{}</select>"#, sport_types).into()
+    format_sstr!(r#"<select id="sport_select">{}</select>"#, sport_types)
 }
 
 fn get_correction_button(begin_datetime: DateTime<Utc>) -> StackString {
@@ -700,7 +698,6 @@ fn get_correction_button(begin_datetime: DateTime<Utc>) -> StackString {
         r#"<button type="submit" onclick="addGarminCorrectionSport('{}')">Apply</button>"#,
         begin_datetime
     )
-    .into()
 }
 
 fn get_file_html(
@@ -788,7 +785,7 @@ fn get_file_html(
     for lap in &gfile.laps {
         retval.push(r#"<tr style="text-align: center;">"#.into());
         for lap_html in get_lap_html(lap, &sport) {
-            retval.push(lap_html.into());
+            retval.push(lap_html);
         }
         retval.push("</tr>".into());
     }
@@ -825,9 +822,7 @@ fn get_file_html(
                 "".into(),
                 format_sstr!("{:.2} mi", gfile.total_distance / METERS_PER_MILE),
                 format_sstr!("{}", gfile.total_calories),
-                print_h_m_s(gfile.total_duration, true)
-                    .unwrap_or_else(|_| "".into())
-                    .into(),
+                print_h_m_s(gfile.total_duration, true).unwrap_or_else(|_| "".into()),
                 format_sstr!("{}", mi_per_hr),
             ],
         ),
@@ -892,7 +887,7 @@ fn get_lap_html(glap: &GarminLap, sport: &str) -> Vec<StackString> {
     }
     values
         .iter()
-        .map(|v| format_sstr!("<td>{}</td>", v).into())
+        .map(|v| format_sstr!("<td>{}</td>", v))
         .collect()
 }
 
@@ -921,19 +916,16 @@ fn get_html_splits(
                 let hrt = val.avg_heart_rate.unwrap_or(0.0) as i32;
                 vec![
                     format_sstr!("{} {}", dis, label),
-                    print_h_m_s(tim, true).unwrap_or_else(|_| "".into()).into(),
+                    print_h_m_s(tim, true).unwrap_or_else(|_| "".into()),
                     print_h_m_s(tim / (split_distance_in_meters / METERS_PER_MILE), false)
-                        .unwrap_or_else(|_| "".into())
-                        .into(),
+                        .unwrap_or_else(|_| "".into()),
                     print_h_m_s(tim / (split_distance_in_meters / 1000.), false)
-                        .unwrap_or_else(|_| "".into())
-                        .into(),
+                        .unwrap_or_else(|_| "".into()),
                     print_h_m_s(
                         tim / (split_distance_in_meters / METERS_PER_MILE) * MARATHON_DISTANCE_MI,
                         true,
                     )
-                    .unwrap_or_else(|_| "".into())
-                    .into(),
+                    .unwrap_or_else(|_| "".into()),
                     format_sstr!("{} bpm", hrt),
                 ]
             })

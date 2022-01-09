@@ -97,7 +97,6 @@ impl GarminFile {
             GARMIN_POINT_AVRO_SCHEMA,
             r#"}}]}"#,
         )
-        .into()
     }
 
     pub fn dump_avro(&self, output_filename: &Path) -> Result<(), Error> {
@@ -133,7 +132,6 @@ impl GarminFile {
             self.begin_datetime.format("%Y-%m-%d_%H-%M-%S_1_1"),
             suffix
         )
-        .into()
     }
 }
 

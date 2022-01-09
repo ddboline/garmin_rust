@@ -77,9 +77,9 @@ pub fn print_h_m_s(second: f64, do_hours: bool) -> Result<StackString, Error> {
     let minutes = (second / 60.0) as i32 - hours * 60;
     let seconds = second as i32 - minutes * 60 - hours * 3600;
     if (hours > 0) | ((hours == 0) & do_hours) {
-        Ok(format_sstr!("{:02}:{:02}:{:02}", hours, minutes, seconds).into())
+        Ok(format_sstr!("{:02}:{:02}:{:02}", hours, minutes, seconds))
     } else if hours == 0 {
-        Ok(format_sstr!("{:02}:{:02}", minutes, seconds).into())
+        Ok(format_sstr!("{:02}:{:02}", minutes, seconds))
     } else {
         Err(format_err!("Negative result!"))
     }
@@ -116,7 +116,7 @@ pub fn titlecase(input: &str) -> StackString {
         "".into()
     } else {
         let firstchar = input[0..1].to_uppercase();
-        format_sstr!("{}{}", firstchar, &input[1..input.len()]).into()
+        format_sstr!("{}{}", firstchar, &input[1..input.len()])
     }
 }
 

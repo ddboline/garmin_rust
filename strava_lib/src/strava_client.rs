@@ -484,7 +484,7 @@ impl StravaClient {
 
         let start_datetime = activity.start_date;
 
-        let start_time = match self.config.default_time_zone {
+        let start_date_local = match self.config.default_time_zone {
             Some(tz) => {
                 let tz: Tz = tz.into();
                 StackString::from_display(
@@ -503,7 +503,7 @@ impl StravaClient {
         let data = CreateActivityForm {
             name: activity.name.clone(),
             activity_type: activity.activity_type,
-            start_date_local: start_time.into(),
+            start_date_local,
             elapsed_time: activity.elapsed_time,
             description: "".into(),
             distance: activity.distance.map_or(0, |d| d as i64),
@@ -626,7 +626,7 @@ impl StravaClient {
             sleep(std::time::Duration::from_secs(2)).await;
         }
 
-        let url = format_sstr!("https://{}/garmin/strava_sync", self.config.domain).into();
+        let url = format_sstr!("https://{}/garmin/strava_sync", self.config.domain);
         Ok(url)
     }
 

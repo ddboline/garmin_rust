@@ -13,7 +13,7 @@ use garmin_lib::{
 };
 
 pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<StackString>, Error> {
-    let mut return_vec = vec![format_sstr!("Start time {}", gfile.filename).into()];
+    let mut return_vec = vec![format_sstr!("Start time {}", gfile.filename)];
 
     let sport_type = gfile.sport;
 
@@ -113,14 +113,11 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<StackString>, Error
 
     if (sum_time > 0.0) & !hr_vals.is_empty() {
         return_vec.push("".into());
-        return_vec.push(
-            format_sstr!(
-                "Heart Rate {:2.2} avg {:2.2} max",
-                avg_hr,
-                hr_vals.iter().map(|x| *x as i32).max().unwrap_or(0)
-            )
-            .into(),
-        );
+        return_vec.push(format_sstr!(
+            "Heart Rate {:2.2} avg {:2.2} max",
+            avg_hr,
+            hr_vals.iter().map(|x| *x as i32).max().unwrap_or(0)
+        ));
     }
 
     let mut vertical_climb = 0.0;
@@ -146,15 +143,12 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<StackString>, Error
         .collect();
 
     if !alt_vals.is_empty() {
-        return_vec.push(
-            format_sstr!(
-                "max altitude diff: {:.2} m",
-                alt_vals.iter().map(|x| *x as i32).max().unwrap_or(0)
-                    - alt_vals.iter().map(|x| *x as i32).min().unwrap_or(0)
-            )
-            .into(),
-        );
-        return_vec.push(format_sstr!("vertical climb: {:.2} m", vertical_climb).into());
+        return_vec.push(format_sstr!(
+            "max altitude diff: {:.2} m",
+            alt_vals.iter().map(|x| *x as i32).max().unwrap_or(0)
+                - alt_vals.iter().map(|x| *x as i32).min().unwrap_or(0)
+        ));
+        return_vec.push(format_sstr!("vertical climb: {:.2} m", vertical_climb));
     }
 
     Ok(return_vec)
@@ -171,8 +165,7 @@ fn print_lap_string(glap: &GarminLap, sport: SportTypes) -> Result<StackString, 
         print_h_m_s(glap.lap_duration, true)?,
         glap.lap_calories,
         glap.lap_duration / 60.
-    )
-    .into()];
+    )];
 
     if (sport == SportTypes::Running) & (glap.lap_distance > 0.0) {
         outstr.push(print_h_m_s(

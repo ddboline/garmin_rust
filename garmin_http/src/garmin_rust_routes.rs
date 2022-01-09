@@ -196,9 +196,7 @@ async fn garmin_upload_body(
     .await?;
 
     let query = FilterRequest {
-        filter: datetimes
-            .get(0)
-            .map(|dt| convert_datetime_to_str(*dt).into()),
+        filter: datetimes.get(0).map(|dt| convert_datetime_to_str(*dt)),
     };
 
     let grec = proc_pattern_wrapper(&state.config, query, &session.history, false);
@@ -238,7 +236,7 @@ pub async fn garmin_connect_sync(
 
 #[derive(RwebResponse)]
 #[response(description = "Connect Sync", content = "html")]
-struct ConnectHrSyncResponse(HtmlBase<String, Error>);
+struct ConnectHrSyncResponse(HtmlBase<StackString, Error>);
 
 #[get("/garmin/garmin_connect_hr_sync")]
 pub async fn garmin_connect_hr_sync(
@@ -250,7 +248,7 @@ pub async fn garmin_connect_hr_sync(
         .into_inner()
         .handle(&state.db, &state.connect_proxy, &state.config)
         .await?;
-    let body: String = heartrates.to_table(Some(20)).into();
+    let body = heartrates.to_table(Some(20));
     Ok(HtmlBase::new(body).into())
 }
 
@@ -314,33 +312,33 @@ pub async fn strava_sync(
 
 #[derive(RwebResponse)]
 #[response(description = "Strava Auth", content = "html")]
-struct StravaAuthResponse(HtmlBase<String, Error>);
+struct StravaAuthResponse(HtmlBase<StackString, Error>);
 
 #[get("/garmin/strava/auth")]
 pub async fn strava_auth(
     #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<StravaAuthResponse> {
-    let body: String = StravaAuthRequest {}.handle(&state.config).await?.into();
+    let body = StravaAuthRequest {}.handle(&state.config).await?;
     Ok(HtmlBase::new(body).into())
 }
 
 #[derive(RwebResponse)]
 #[response(description = "Strava Refresh Auth", content = "html")]
-struct StravaRefreshResponse(HtmlBase<String, Error>);
+struct StravaRefreshResponse(HtmlBase<StackString, Error>);
 
 #[get("/garmin/strava/refresh_auth")]
 pub async fn strava_refresh(
     #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<StravaRefreshResponse> {
-    let body: String = StravaRefreshRequest {}.handle(&state.config).await?.into();
+    let body = StravaRefreshRequest {}.handle(&state.config).await?;
     Ok(HtmlBase::new(body).into())
 }
 
 #[derive(RwebResponse)]
 #[response(description = "Strava Callback", content = "html")]
-struct StravaCallbackResponse(HtmlBase<String, Error>);
+struct StravaCallbackResponse(HtmlBase<StackString, Error>);
 
 #[get("/garmin/strava/callback")]
 pub async fn strava_callback(
@@ -348,7 +346,7 @@ pub async fn strava_callback(
     #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<StravaCallbackResponse> {
-    let body: String = query.into_inner().handle(&state.config).await?.into();
+    let body = query.into_inner().handle(&state.config).await?;
     Ok(HtmlBase::new(body).into())
 }
 
@@ -408,7 +406,7 @@ pub async fn strava_activities_db_update(
 
 #[derive(RwebResponse)]
 #[response(description = "Strava Upload", status = "CREATED", content = "html")]
-struct StravaUploadResponse(HtmlBase<String, Error>);
+struct StravaUploadResponse(HtmlBase<StackString, Error>);
 
 #[post("/garmin/strava/upload")]
 pub async fn strava_upload(
@@ -416,13 +414,13 @@ pub async fn strava_upload(
     #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<StravaUploadResponse> {
-    let body: String = payload.into_inner().handle(&state.config).await?.into();
+    let body = payload.into_inner().handle(&state.config).await?.into();
     Ok(HtmlBase::new(body).into())
 }
 
 #[derive(RwebResponse)]
 #[response(description = "Strava Update", status = "CREATED", content = "html")]
-struct StravaUpdateResponse(HtmlBase<String, Error>);
+struct StravaUpdateResponse(HtmlBase<StackString, Error>);
 
 #[post("/garmin/strava/update")]
 pub async fn strava_update(
@@ -430,8 +428,8 @@ pub async fn strava_update(
     #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<StravaUpdateResponse> {
-    let body: String = payload.into_inner().handle(&state.config).await?.into();
-    Ok(HtmlBase::new(body).into())
+    let body = payload.into_inner().handle(&state.config).await?;
+    Ok(HtmlBase::new(body.as_str().into()).into())
 }
 
 #[derive(RwebResponse)]
@@ -445,36 +443,33 @@ pub async fn strava_create(
     #[data] state: AppState,
 ) -> WarpResult<StravaCreateResponse> {
     let activity_id = query.into_inner().handle(&state.db, &state.config).await?;
-    let body = activity_id.map_or_else(
-        || "".into(),
-        |activity_id| StackString::from_display(activity_id),
-    );
+    let body = activity_id.map_or_else(|| "".into(), StackString::from_display);
     Ok(HtmlBase::new(body).into())
 }
 
 #[derive(RwebResponse)]
 #[response(description = "Fitbit Auth", content = "html")]
-struct FitbitAuthResponse(HtmlBase<String, Error>);
+struct FitbitAuthResponse(HtmlBase<StackString, Error>);
 
 #[get("/garmin/fitbit/auth")]
 pub async fn fitbit_auth(
     #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<FitbitAuthResponse> {
-    let body: String = FitbitAuthRequest {}.handle(&state.config).await?.into();
+    let body = FitbitAuthRequest {}.handle(&state.config).await?;
     Ok(HtmlBase::new(body).into())
 }
 
 #[derive(RwebResponse)]
 #[response(description = "Fitbit Refresh Auth", content = "html")]
-struct FitbitRefreshResponse(HtmlBase<String, Error>);
+struct FitbitRefreshResponse(HtmlBase<StackString, Error>);
 
 #[get("/garmin/fitbit/refresh_auth")]
 pub async fn fitbit_refresh(
     #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<FitbitRefreshResponse> {
-    let body: String = FitbitRefreshRequest {}.handle(&state.config).await?.into();
+    let body = FitbitRefreshRequest {}.handle(&state.config).await?;
     Ok(HtmlBase::new(body).into())
 }
 
@@ -587,20 +582,20 @@ pub async fn fitbit_activities(
 
 #[derive(RwebResponse)]
 #[response(description = "Fitbit Callback", content = "html")]
-struct FitbitCallbackResponse(HtmlBase<String, Error>);
+struct FitbitCallbackResponse(HtmlBase<StackString, Error>);
 
 #[get("/garmin/fitbit/callback")]
 pub async fn fitbit_callback(
     query: Query<FitbitCallbackRequest>,
     #[data] state: AppState,
 ) -> WarpResult<FitbitCallbackResponse> {
-    let body: String = query.into_inner().handle(&state.config).await?.into();
+    let body = query.into_inner().handle(&state.config).await?;
     Ok(HtmlBase::new(body).into())
 }
 
 #[derive(RwebResponse)]
 #[response(description = "Fitbit Sync", content = "html")]
-struct FitbitSyncResponse(HtmlBase<String, Error>);
+struct FitbitSyncResponse(HtmlBase<StackString, Error>);
 
 #[get("/garmin/fitbit/sync")]
 pub async fn fitbit_sync(
@@ -614,7 +609,7 @@ pub async fn fitbit_sync(
     } else {
         0
     };
-    let body: String = FitbitHeartRate::create_table(&heartrates[start..]).into();
+    let body = FitbitHeartRate::create_table(&heartrates[start..]);
     Ok(HtmlBase::new(body).into())
 }
 
@@ -638,7 +633,7 @@ async fn heartrate_statistics_plots_impl(
 
 #[derive(RwebResponse)]
 #[response(description = "Fitbit Heartrate Statistics Plots", content = "html")]
-struct FitbitStatisticsPlotResponse(HtmlBase<String, Error>);
+struct FitbitStatisticsPlotResponse(HtmlBase<StackString, Error>);
 
 #[get("/garmin/fitbit/heartrate_statistics_plots")]
 pub async fn heartrate_statistics_plots(
@@ -651,9 +646,7 @@ pub async fn heartrate_statistics_plots(
         .get_session(&state.client, &state.config)
         .await
         .map_err(Into::<Error>::into)?;
-    let body: String = heartrate_statistics_plots_impl(query, state, session)
-        .await?
-        .into();
+    let body = heartrate_statistics_plots_impl(query, state, session).await?;
     Ok(HtmlBase::new(body).into())
 }
 
@@ -667,7 +660,7 @@ pub async fn heartrate_statistics_plots_demo(
     query.is_demo = true;
     let session = session.unwrap_or_default();
 
-    let body: String = heartrate_statistics_plots_impl(query, state, session)
+    let body = heartrate_statistics_plots_impl(query, state, session)
         .await?
         .into();
     Ok(HtmlBase::new(body).into())
@@ -1278,7 +1271,7 @@ async fn race_result_plot_impl(
 
 #[derive(RwebResponse)]
 #[response(description = "Race Result Plot", content = "html")]
-struct RaceResultPlotResponse(HtmlBase<String, Error>);
+struct RaceResultPlotResponse(HtmlBase<StackString, Error>);
 
 #[get("/garmin/race_result_plot")]
 pub async fn race_result_plot(
@@ -1292,7 +1285,7 @@ pub async fn race_result_plot(
         .get_session(&state.client, &state.config)
         .await
         .map_err(Into::<Error>::into)?;
-    let body: String = race_result_plot_impl(query, state, session).await?.into();
+    let body = race_result_plot_impl(query, state, session).await?;
     Ok(HtmlBase::new(body).into())
 }
 
@@ -1305,13 +1298,13 @@ pub async fn race_result_plot_demo(
     let mut query = query.into_inner();
     query.demo = Some(true);
     let session = session.unwrap_or_default();
-    let body: String = race_result_plot_impl(query, state, session).await?.into();
+    let body = race_result_plot_impl(query, state, session).await?;
     Ok(HtmlBase::new(body).into())
 }
 
 #[derive(RwebResponse)]
 #[response(description = "Race Result Plot", content = "html")]
-struct RaceResultFlagResponse(HtmlBase<String, Error>);
+struct RaceResultFlagResponse(HtmlBase<StackString, Error>);
 
 #[get("/garmin/race_result_flag")]
 pub async fn race_result_flag(
@@ -1319,7 +1312,7 @@ pub async fn race_result_flag(
     #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<RaceResultFlagResponse> {
-    let result: String = query.into_inner().handle(&state.db).await?.into();
+    let result = query.into_inner().handle(&state.db).await?;
     Ok(HtmlBase::new(result).into())
 }
 

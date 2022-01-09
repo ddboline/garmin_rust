@@ -272,7 +272,7 @@ impl FitbitStatisticsSummary {
         Ok(hashmap! {
             "INSERTOTHERIMAGESHERE".into() => "".into(),
             "INSERTTABLESHERE".into() => graphs.into(),
-            "INSERTTEXTHERE".into() => entries.into(),
+            "INSERTTEXTHERE".into() => entries,
         })
     }
 }

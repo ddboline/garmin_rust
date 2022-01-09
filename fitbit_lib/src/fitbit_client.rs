@@ -651,13 +651,13 @@ impl FitbitClient {
             let id_str = StackString::from_display(category.id);
             id_map.insert(id_str, category.name.clone());
             for activity in &category.activities {
-                let name = format_sstr!("{}/{}", category.name, activity.name).into();
+                let name = format_sstr!("{}/{}", category.name, activity.name);
                 let id_str = StackString::from_display(activity.id);
                 id_map.insert(id_str, name);
             }
             if let Some(sub_categories) = category.sub_categories.as_ref() {
                 for sub_category in sub_categories.iter() {
-                    let name = format_sstr!("{}/{}", category.name, sub_category.name).into();
+                    let name = format_sstr!("{}/{}", category.name, sub_category.name);
                     let id_str = StackString::from_display(sub_category.id);
                     id_map.insert(id_str, name);
                     for sub_activity in &sub_category.activities {
@@ -666,8 +666,7 @@ impl FitbitClient {
                             category.name,
                             sub_category.name,
                             sub_activity.name
-                        )
-                        .into();
+                        );
                         let id_str = StackString::from_display(sub_activity.id);
                         id_map.insert(id_str, name);
                     }
@@ -743,9 +742,9 @@ impl FitbitClient {
                 }
                 if let Some(activity) = FitbitActivity::get_by_id(pool, log_id).await? {
                     activity.delete_from_db(pool).await?;
-                    Ok(format_sstr!("fully deleted {}", log_id).into())
+                    Ok(format_sstr!("fully deleted {}", log_id))
                 } else {
-                    Ok(format_sstr!("not fully deleted {}", log_id).into())
+                    Ok(format_sstr!("not fully deleted {}", log_id))
                 }
             });
         try_join_all(futures).await
@@ -935,7 +934,9 @@ impl FitbitClient {
                 let fname = self
                     .config
                     .gps_dir
-                    .join({ StackString::from_display(start_time.format("%Y-%m-%d_%H-%M-%S_1_1")) })
+                    .join(StackString::from_display(
+                        start_time.format("%Y-%m-%d_%H-%M-%S_1_1"),
+                    ))
                     .with_extension("tcx");
                 if fname.exists() {
                     None

@@ -213,7 +213,7 @@ pub fn get_sport_type_map() -> &'static HashMap<StackString, SportTypes> {
 }
 
 pub fn convert_sport_name(sport: &str) -> Option<StackString> {
-    sport.parse().ok().map(|s: SportTypes| s.into())
+    sport.parse::<SportTypes>().ok().map(Into::into)
 }
 
 pub fn convert_sport_name_to_activity_type(sport: &str) -> Option<StackString> {

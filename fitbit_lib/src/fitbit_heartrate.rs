@@ -100,7 +100,6 @@ impl FitbitHeartRate {
              Rate</th></thead><tbody>{}</tbody></table>",
             rows
         )
-        .into()
     }
 
     pub fn from_json_heartrate_entry(entry: JsonHeartRateEntry) -> Self {

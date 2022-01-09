@@ -216,8 +216,7 @@ impl GarminSync {
             n_keys,
             uploaded_files.len(),
             downloaded_files.len()
-        )
-        .into();
+        );
 
         Ok(msg)
     }

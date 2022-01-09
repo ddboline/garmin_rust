@@ -56,7 +56,7 @@ impl Display for RaceResults {
                 let summary_ids = self
                     .race_summary_ids
                     .iter()
-                    .filter_map(|id| id.map(|i| StackString::from_display(i)))
+                    .filter_map(|id| id.map(StackString::from_display))
                     .join(",");
 
                 if summary_ids.is_empty() {

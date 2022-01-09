@@ -96,7 +96,7 @@ fn optional_session() -> impl Filter<Extract = (Option<Session>,), Error = Infal
 
 #[derive(RwebResponse)]
 #[response(description = "Main Page", content = "html")]
-struct IndexResponse(HtmlBase<String, Error>);
+struct IndexResponse(HtmlBase<StackString, Error>);
 
 #[get("/garmin/index.html")]
 pub async fn garmin(
@@ -125,15 +125,15 @@ async fn garmin_body(
     state: &AppState,
     history: &mut Vec<StackString>,
     is_demo: bool,
-) -> HttpResult<String> {
+) -> HttpResult<StackString> {
     let grec = proc_pattern_wrapper(&state.config, query, history, is_demo);
     if history.len() > 5 {
         history.remove(0);
     }
-    history.push(grec.request.filter.as_str().into());
+    history.push(grec.request.filter.clone());
     let body = grec.handle(&state.db).await?;
 
-    Ok(body.into())
+    Ok(body)
 }
 
 #[get("/garmin/demo.html")]
@@ -151,7 +151,7 @@ pub async fn garmin_demo(
 
 #[derive(RwebResponse)]
 #[response(description = "Upload Response", content = "html", status = "CREATED")]
-struct UploadResponse(HtmlBase<String, Error>);
+struct UploadResponse(HtmlBase<StackString, Error>);
 
 #[post("/garmin/upload_file")]
 pub async fn garmin_upload(
@@ -171,7 +171,7 @@ async fn garmin_upload_body(
     mut form: FormData,
     state: AppState,
     session: Session,
-) -> HttpResult<String> {
+) -> HttpResult<StackString> {
     let tempdir = TempDir::new("garmin")?;
     let tempdir_str = tempdir.path().to_string_lossy();
     let mut fname = StackString::new();
@@ -202,7 +202,7 @@ async fn garmin_upload_body(
     let grec = proc_pattern_wrapper(&state.config, query, &session.history, false);
     let body = grec.handle(&state.db).await?;
 
-    Ok(body.into())
+    Ok(body)
 }
 
 async fn save_file(file_path: &str, field: Part) -> Result<u64, anyhow::Error> {
@@ -391,7 +391,7 @@ pub async fn strava_activities_db(
     status = "CREATED",
     content = "html"
 )]
-struct StravaActivitiesUpdateResponse(HtmlBase<String, Error>);
+struct StravaActivitiesUpdateResponse(HtmlBase<StackString, Error>);
 
 #[post("/garmin/strava/activities_db")]
 pub async fn strava_activities_db_update(
@@ -400,7 +400,7 @@ pub async fn strava_activities_db_update(
     #[data] state: AppState,
 ) -> WarpResult<StravaActivitiesUpdateResponse> {
     let body = payload.into_inner().handle(&state.db).await?;
-    let body = body.join("\n");
+    let body = body.join("\n").into();
     Ok(HtmlBase::new(body).into())
 }
 
@@ -414,7 +414,7 @@ pub async fn strava_upload(
     #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<StravaUploadResponse> {
-    let body = payload.into_inner().handle(&state.config).await?.into();
+    let body = payload.into_inner().handle(&state.config).await?;
     Ok(HtmlBase::new(body).into())
 }
 
@@ -670,7 +670,7 @@ async fn fitbit_plots_impl(
     query: ScaleMeasurementPlotRequest,
     state: AppState,
     session: Session,
-) -> HttpResult<String> {
+) -> HttpResult<StackString> {
     let is_demo = query.is_demo;
     let buttons = get_buttons(is_demo).join("\n");
     let mut params = query.handle(&state.db).await?;
@@ -681,13 +681,13 @@ async fn fitbit_plots_impl(
     params.insert("GARMIN_STYLE".into(), get_style(false));
     params.insert("GARMINBUTTONS".into(), buttons.into());
     params.insert("GARMIN_SCRIPTS".into(), get_scripts(is_demo).into());
-    let body = HBR.render("GARMIN_TEMPLATE", &params)?;
+    let body = HBR.render("GARMIN_TEMPLATE", &params)?.into();
     Ok(body)
 }
 
 #[derive(RwebResponse)]
 #[response(description = "Scale Measurement Plots", content = "html")]
-struct ScaleMeasurementResponse(HtmlBase<String, Error>);
+struct ScaleMeasurementResponse(HtmlBase<StackString, Error>);
 
 #[get("/garmin/fitbit/plots")]
 pub async fn fitbit_plots(
@@ -721,7 +721,7 @@ async fn heartrate_plots_impl(
     query: FitbitHeartratePlotRequest,
     state: AppState,
     session: Session,
-) -> HttpResult<String> {
+) -> HttpResult<StackString> {
     let is_demo = query.is_demo;
     let buttons = get_buttons(is_demo).join("\n");
     info!("buttons {}", buttons);
@@ -733,13 +733,13 @@ async fn heartrate_plots_impl(
     params.insert("GARMIN_STYLE".into(), get_style(false));
     params.insert("GARMINBUTTONS".into(), buttons.into());
     params.insert("GARMIN_SCRIPTS".into(), get_scripts(is_demo).into());
-    let body = HBR.render("GARMIN_TEMPLATE", &params)?;
+    let body = HBR.render("GARMIN_TEMPLATE", &params)?.into();
     Ok(body)
 }
 
 #[derive(RwebResponse)]
 #[response(description = "Fitbit Heartrate Plots", content = "html")]
-struct FitbitHeartratePlotResponse(HtmlBase<String, Error>);
+struct FitbitHeartratePlotResponse(HtmlBase<StackString, Error>);
 
 #[get("/garmin/fitbit/heartrate_plots")]
 pub async fn heartrate_plots(
@@ -1151,7 +1151,7 @@ pub async fn garmin_connect_activities_db(
     content = "html",
     status = "CREATED"
 )]
-struct GarminConnectActivitiesUpdateResponse(HtmlBase<String, Error>);
+struct GarminConnectActivitiesUpdateResponse(HtmlBase<StackString, Error>);
 
 #[post("/garmin/garmin_connect_activities_db")]
 pub async fn garmin_connect_activities_db_update(
@@ -1159,7 +1159,12 @@ pub async fn garmin_connect_activities_db_update(
     #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<GarminConnectActivitiesUpdateResponse> {
-    let body = payload.into_inner().handle(&state.db).await?.join("\n");
+    let body = payload
+        .into_inner()
+        .handle(&state.db)
+        .await?
+        .join("\n")
+        .into();
     Ok(HtmlBase::new(body).into())
 }
 
@@ -1202,7 +1207,7 @@ pub async fn fitbit_activities_db(
     content = "html",
     status = "CREATED"
 )]
-struct FitbitActivitiesDBUpdateResponse(HtmlBase<String, Error>);
+struct FitbitActivitiesDBUpdateResponse(HtmlBase<StackString, Error>);
 
 #[post("/garmin/fitbit/fitbit_activities_db")]
 pub async fn fitbit_activities_db_update(
@@ -1210,7 +1215,12 @@ pub async fn fitbit_activities_db_update(
     #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<FitbitActivitiesDBUpdateResponse> {
-    let body = payload.into_inner().handle(&state.db).await?.join("\n");
+    let body = payload
+        .into_inner()
+        .handle(&state.db)
+        .await?
+        .join("\n")
+        .into();
     Ok(HtmlBase::new(body).into())
 }
 
@@ -1239,7 +1249,7 @@ pub async fn heartrate_statistics_summary_db(
     content = "html",
     status = "CREATED"
 )]
-struct HeartrateStatisticsUpdateResponse(HtmlBase<String, Error>);
+struct HeartrateStatisticsUpdateResponse(HtmlBase<StackString, Error>);
 
 #[post("/garmin/fitbit/heartrate_statistics_summary_db")]
 pub async fn heartrate_statistics_summary_db_update(
@@ -1247,7 +1257,12 @@ pub async fn heartrate_statistics_summary_db_update(
     #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<HeartrateStatisticsUpdateResponse> {
-    let body = payload.into_inner().handle(&state.db).await?.join("\n");
+    let body = payload
+        .into_inner()
+        .handle(&state.db)
+        .await?
+        .join("\n")
+        .into();
     Ok(HtmlBase::new(body).into())
 }
 

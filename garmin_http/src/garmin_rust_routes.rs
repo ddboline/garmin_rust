@@ -661,8 +661,7 @@ pub async fn heartrate_statistics_plots_demo(
     let session = session.unwrap_or_default();
 
     let body = heartrate_statistics_plots_impl(query, state, session)
-        .await?
-        .into();
+        .await?;
     Ok(HtmlBase::new(body).into())
 }
 

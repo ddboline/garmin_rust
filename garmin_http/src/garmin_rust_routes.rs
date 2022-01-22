@@ -182,7 +182,7 @@ async fn garmin_upload_body(
         if filename.is_empty() {
             return Err(Error::BadRequest("Empty Filename".into()));
         }
-        fname = format_sstr!("{}/{}", tempdir_str, filename,);
+        fname = format_sstr!("{tempdir_str}/{filename}");
         let file_size = save_file(fname.as_str(), item).await?;
         if file_size == 0 {
             return Err(Error::BadRequest("Empty File".into()));
@@ -306,7 +306,7 @@ pub async fn strava_sync(
         .into_iter()
         .map(|p| p.to_string_lossy().into_owned())
         .join("\n");
-    let body = format_sstr!(r#"<textarea cols=100 rows=40>{}</textarea>"#, body);
+    let body = format_sstr!(r#"<textarea cols=100 rows=40>{body}</textarea>"#);
     Ok(HtmlBase::new(body).into())
 }
 
@@ -660,8 +660,7 @@ pub async fn heartrate_statistics_plots_demo(
     query.is_demo = true;
     let session = session.unwrap_or_default();
 
-    let body = heartrate_statistics_plots_impl(query, state, session)
-        .await?;
+    let body = heartrate_statistics_plots_impl(query, state, session).await?;
     Ok(HtmlBase::new(body).into())
 }
 
@@ -946,11 +945,10 @@ pub async fn strava_athlete(
                 <th>Url</th>
                 </thead>
                 <tbody>
-                {}
+                {lines}
                 </tbody>
                 </table>
-            "#,
-            lines
+            "#
         )
     } else {
         "".into()
@@ -987,10 +985,9 @@ pub async fn strava_athlete(
                 <th>Name</th>
                 <th>Distance (mi)</th>
                 </thead>
-                <tbody>{}</tbody>
+                <tbody>{lines}</tbody>
                 </table>
-            "#,
-            lines
+            "#
         )
     } else {
         "".into()
@@ -1025,29 +1022,23 @@ pub async fn strava_athlete(
         created_at = result.created_at,
         updated_at = result.updated_at,
         follower_count = if let Some(follower_count) = result.follower_count {
-            format_sstr!(
-                "<tr><td>Follower Count</td><td>{}</td></tr>",
-                follower_count
-            )
+            format_sstr!("<tr><td>Follower Count</td><td>{follower_count}</td></tr>")
         } else {
             StackString::new()
         },
         friend_count = if let Some(friend_count) = result.friend_count {
-            format_sstr!("<tr><td>Friend Count</td><td>{}</td></tr>", friend_count)
+            format_sstr!("<tr><td>Friend Count</td><td>{friend_count}</td></tr>")
         } else {
             StackString::new()
         },
         measurement_preference = if let Some(measurement_preference) = result.measurement_preference
         {
             format_sstr!(
-                "<tr><td>Measurement Preference</td><td>{}</td></tr>",
-                measurement_preference
+                "<tr><td>Measurement Preference</td><td>{measurement_preference}</td></tr>"
             )
         } else {
             StackString::new()
         },
-        clubs = clubs,
-        shoes = shoes,
     );
     Ok(HtmlBase::new(body).into())
 }

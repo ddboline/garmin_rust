@@ -4,8 +4,8 @@ use crossbeam_utils::atomic::AtomicCell;
 use futures::StreamExt;
 use lazy_static::lazy_static;
 use log::debug;
-use stack_string::StackString;
-use std::{collections::HashSet, sync::Arc};
+use stack_string::{format_sstr, StackString};
+use std::{collections::HashSet, fmt::Write, sync::Arc};
 use telegram_bot::{
     types::refs::UserId, Api, CanReplySendMessage, Message, MessageKind, Update, UpdateKind,
 };
@@ -74,15 +74,18 @@ impl TelegramBot {
         while let Some(update) = stream.next().await {
             FAILURE_COUNT.check()?;
             // If the received update contains a new message...
-            self.process_update(|message, s| api.spawn(message.text_reply(s)), update?)
-                .await?;
+            self.process_update(
+                |message, s| api.spawn(message.text_reply(s.as_str())),
+                update?,
+            )
+            .await?;
         }
         Ok(())
     }
 
     async fn process_update(
         &self,
-        func: impl Fn(&Message, String),
+        func: impl Fn(&Message, StackString),
         update: Update,
     ) -> Result<(), Error> {
         if let UpdateKind::Message(message) = update.kind {
@@ -107,29 +110,28 @@ impl TelegramBot {
         data: &str,
         first_name: &str,
         user_id: UserId,
-    ) -> Result<String, Error> {
+    ) -> Result<StackString, Error> {
         if USERIDS.load().contains(&user_id) {
             FAILURE_COUNT.check()?;
             if &data.to_lowercase() == "check" {
                 if let Some(meas) = LAST_WEIGHT.load() {
-                    Ok(format!("latest measurement {}", meas))
+                    Ok(format_sstr!("latest measurement {meas}"))
                 } else {
                     Ok("No measurements".into())
                 }
             } else {
                 match ScaleMeasurement::from_telegram_text(data) {
                     Ok(meas) => match self.process_measurement(meas).await {
-                        Ok(meas) => Ok(format!("sent to the db {}", meas)),
-                        Err(e) => Ok(format!("Send Error {}", e)),
+                        Ok(meas) => Ok(format_sstr!("sent to the db {meas}")),
+                        Err(e) => Ok(format_sstr!("Send Error {e}")),
                     },
-                    Err(e) => Ok(format!("Parse error {}", e)),
+                    Err(e) => Ok(format_sstr!("Parse error {e}")),
                 }
             }
         } else {
             // Answer message with "Hi".
-            Ok(format!(
-                "Hi, {}, user_id {}! You just wrote '{}'",
-                first_name, user_id, data
+            Ok(format_sstr!(
+                "Hi, {first_name}, user_id {user_id}! You just wrote '{data}'"
             ))
         }
     }
@@ -195,7 +197,8 @@ mod tests {
     use parking_lot::Mutex;
     use postgres_query::query;
     use rand::{distributions::Alphanumeric, thread_rng, Rng};
-    use std::{collections::HashSet, sync::Arc};
+    use stack_string::{format_sstr, StackString};
+    use std::{collections::HashSet, fmt::Write, sync::Arc};
     use telegram_bot::UserId;
 
     use fitbit_lib::scale_measurement::ScaleMeasurement;
@@ -250,17 +253,17 @@ mod tests {
 
         LAST_WEIGHT.store(Some(obs));
 
-        let exp = format!(
+        let exp = format_sstr!(
             "ScaleMeasurement(\nid: -1\ndatetime: {}\nmass: 188 lbs\nfat: 20.6%\nwater: \
              59.6%\nmuscle: 40.4%\nbone: 4.2%\n)",
             convert_datetime_to_str(obs.datetime.into())
         );
 
-        assert_eq!(obs.to_string(), exp);
+        assert_eq!(StackString::from_display(obs), exp);
 
         let result = bot.process_message_text("check", "User", user).await?;
 
-        assert_eq!(result, format!("latest measurement {}", obs));
+        assert_eq!(result, format_sstr!("latest measurement {obs}"));
 
         let result = bot
             .process_message_text("1880=206=596=404=42", "User", user)
@@ -317,7 +320,7 @@ mod tests {
         let pool = PgPool::new(&config.pgurl);
         let bot = TelegramBot::new("8675309", &pool);
 
-        let email = format!("user{}@localhost", get_random_string(32));
+        let email = format_sstr!("user{}@localhost", get_random_string(32));
         let userid: UserId = 8675309.into();
 
         let original_user_ids = bot.list_of_telegram_user_ids().await?;

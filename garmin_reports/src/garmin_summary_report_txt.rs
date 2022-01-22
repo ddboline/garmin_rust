@@ -93,7 +93,7 @@ pub async fn create_report_query(
     constraints: &GarminConstraints,
 ) -> Result<GarminReportQuery, Error> {
     let sport_constr = if let Some(x) = options.do_sport {
-        format_sstr!("sport = '{}'", x)
+        format_sstr!("sport = '{x}'")
     } else {
         StackString::new()
     };
@@ -101,7 +101,7 @@ pub async fn create_report_query(
     let mut constr = StackString::new();
     if constraints.is_empty() {
         if !sport_constr.is_empty() {
-            constr = format_sstr!("WHERE {}", sport_constr);
+            constr = format_sstr!("WHERE {sport_constr}");
         }
     } else if sport_constr.is_empty() {
         constr = format_sstr!("WHERE {}", constraints.to_query_string());
@@ -172,10 +172,7 @@ impl GarminReportTrait for FileSummaryReport {
 
         match self.sport.as_str() {
             "running" | "walking" => {
-                tmp_vec.push((
-                    format_sstr!("{:17}", format_sstr!("{:10}", datetime),),
-                    None,
-                ));
+                tmp_vec.push((format_sstr!("{:17}", format_sstr!("{datetime:10}"),), None));
                 tmp_vec.push((format_sstr!("{:02} {:3}", self.week, weekdayname), None));
                 if self.total_distance > 0.0 {
                     tmp_vec.push((
@@ -218,10 +215,7 @@ impl GarminReportTrait for FileSummaryReport {
                 }
             }
             "biking" => {
-                tmp_vec.push((
-                    format_sstr!("{:17}", format_sstr!("{:10}", datetime),),
-                    None,
-                ));
+                tmp_vec.push((format_sstr!("{:17}", format_sstr!("{datetime:10}"),), None));
                 tmp_vec.push((format_sstr!("{:02} {:3}", self.week, weekdayname), None));
                 tmp_vec.push((
                     format_sstr!(
@@ -240,10 +234,7 @@ impl GarminReportTrait for FileSummaryReport {
                 ));
             }
             _ => {
-                tmp_vec.push((
-                    format_sstr!("{:17}", format_sstr!("{:10}", datetime),),
-                    None,
-                ));
+                tmp_vec.push((format_sstr!("{:17}", format_sstr!("{datetime:10}"),), None));
                 tmp_vec.push((format_sstr!("{:02} {:3}", self.week, weekdayname), None));
                 tmp_vec.push((
                     format_sstr!(
@@ -272,14 +263,14 @@ impl GarminReportTrait for FileSummaryReport {
         }
         if self.total_fitbit_steps > 0 || self.total_connect_steps > 0 {
             let fitbit_url: Option<Url> = if let Some(id) = self.fitbit_id {
-                format_sstr!("https://www.fitbit.com/activities/exercise/{}", id)
+                format_sstr!("https://www.fitbit.com/activities/exercise/{id}")
                     .parse()
                     .ok()
             } else {
                 None
             };
             let connect_url: Option<Url> = if let Some(id) = self.connect_id {
-                format_sstr!("https://connect.garmin.com/modern/activity/{}", id)
+                format_sstr!("https://connect.garmin.com/modern/activity/{id}")
                     .parse()
                     .ok()
             } else {
@@ -309,7 +300,7 @@ impl GarminReportTrait for FileSummaryReport {
             };
             let html_str = format_sstr!(
                 " {:>16} steps",
-                format_sstr!("{} / {}", fitbit_str, connect_str),
+                format_sstr!("{fitbit_str} / {connect_str}"),
             );
             tmp_vec.push((text, Some(html_str)));
         } else {
@@ -318,17 +309,17 @@ impl GarminReportTrait for FileSummaryReport {
         if let Some(strava_title) = &self.strava_title {
             if let Some(strava_id) = &self.strava_id {
                 let url: Option<Url> =
-                    format_sstr!("https://www.strava.com/activities/{}", strava_id)
+                    format_sstr!("https://www.strava.com/activities/{strava_id}")
                         .parse()
                         .ok();
                 tmp_vec.push((
-                    format_sstr!(" {}", strava_title),
+                    format_sstr!(" {strava_title}"),
                     url.map(|u| {
-                        format_sstr!(r#"<a href="{}" target="_blank">{}</a>"#, u, strava_title)
+                        format_sstr!(r#"<a href="{u}" target="_blank">{strava_title}</a>"#)
                     }),
                 ));
             } else {
-                tmp_vec.push((format_sstr!(" {}", strava_title), None));
+                tmp_vec.push((format_sstr!(" {strava_title}"), None));
             }
         } else {
             tmp_vec.push(("".into(), None));
@@ -365,10 +356,9 @@ async fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<FileSumm
                 a.id as summary_id
         FROM garmin_summary a
         LEFT JOIN strava_activities b ON a.id = b.summary_id
-        {}
+        {constr}
         ORDER BY datetime, sport
-    ",
-        constr
+    "
     );
 
     let rows = pool.get().await?.query(query.as_str(), &[]).await?;
@@ -544,7 +534,7 @@ async fn day_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<DaySummar
                    CASE WHEN a.total_hr_dur > 0.0 THEN a.total_hr_dis ELSE 0.0 END AS total_hr_dis
             FROM garmin_summary a
             LEFT JOIN strava_activities b ON a.id = b.summary_id
-            {}
+            {constr}
         )
         SELECT
             CAST(CAST(begin_datetime at time zone 'localtime' as date) as text) as date,
@@ -559,8 +549,7 @@ async fn day_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<DaySummar
         FROM c
         GROUP BY sport, date, week, isodow
         ORDER BY sport, date, week, isodow
-    ",
-        constr
+    "
     );
 
     debug!("{}", query);
@@ -698,7 +687,7 @@ async fn week_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<WeekSumm
                    CASE WHEN a.total_hr_dur > 0.0 THEN a.total_hr_dis ELSE 0.0 END AS total_hr_dis
             FROM garmin_summary a
             LEFT JOIN strava_activities b ON a.id = b.summary_id
-            {}
+            {constr}
         )
         SELECT
             EXTRACT(isoyear from begin_datetime at time zone 'localtime') as year,
@@ -713,8 +702,7 @@ async fn week_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<WeekSumm
         FROM c
         GROUP BY sport, year, week
         ORDER BY sport, year, week
-    ",
-        constr
+    "
     );
 
     debug!("{}", query);
@@ -856,7 +844,7 @@ async fn month_summary_report(
                    CASE WHEN a.total_hr_dur > 0.0 THEN a.total_hr_dis ELSE 0.0 END AS total_hr_dis
             FROM garmin_summary a
             LEFT JOIN strava_activities b ON a.id = b.summary_id
-            {}
+            {constr}
         )
         SELECT
             EXTRACT(year from begin_datetime at time zone 'localtime') as year,
@@ -871,8 +859,7 @@ async fn month_summary_report(
         FROM c
         GROUP BY sport, year, month
         ORDER BY sport, year, month
-    ",
-        constr
+    "
     );
 
     debug!("{}", query);
@@ -999,7 +986,7 @@ async fn sport_summary_report(
                    CASE WHEN a.total_hr_dur > 0.0 THEN a.total_hr_dis ELSE 0.0 END AS total_hr_dis
             FROM garmin_summary a
             LEFT JOIN strava_activities b ON a.id = b.summary_id
-            {}
+            {constr}
         )
         SELECT sport,
                sum(total_calories) as total_calories,
@@ -1010,8 +997,7 @@ async fn sport_summary_report(
         FROM c
         GROUP BY sport
         ORDER BY sport
-        ",
-        constr
+        "
     );
     debug!("{}", query);
 
@@ -1147,7 +1133,7 @@ async fn year_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<YearSumm
                    CASE WHEN a.total_hr_dur > 0.0 THEN a.total_hr_dis ELSE 0.0 END AS total_hr_dis
             FROM garmin_summary a
             LEFT JOIN strava_activities b ON a.id = b.summary_id
-            {}
+            {constr}
         )
         SELECT
             EXTRACT(year from begin_datetime at time zone 'localtime') as year,
@@ -1161,8 +1147,7 @@ async fn year_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<YearSumm
         FROM c
         GROUP BY sport, year
         ORDER BY sport, year
-        ",
-        constr
+        "
     );
     debug!("{}", query);
 

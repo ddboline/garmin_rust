@@ -231,13 +231,12 @@ impl FitbitStatisticsSummary {
                 let date = stat.date;
                 format_sstr!(
                     r#"
-                    <td>{}</td><td>{:3.1}</td><td>{:2.1}</td><td>{:2.1}</td>
-                    <td>{:2.1}</td>"#,
-                    date,
-                    stat.min_heartrate,
-                    stat.max_heartrate,
-                    stat.mean_heartrate,
-                    stat.median_heartrate,
+                    <td>{date}</td><td>{min:3.1}</td><td>{max:2.1}</td><td>{mnh:2.1}</td>
+                    <td>{mdh:2.1}</td>"#,
+                    min = stat.min_heartrate,
+                    max = stat.max_heartrate,
+                    mnh = stat.mean_heartrate,
+                    mdh = stat.median_heartrate,
                 )
             })
             .collect();

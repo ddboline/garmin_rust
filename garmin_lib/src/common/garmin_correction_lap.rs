@@ -128,7 +128,7 @@ impl GarminCorrectionLap {
                                     None => corr,
                                 })
                             }
-                            _ => Err(format_err!("something unexpected {}", result)),
+                            _ => Err(format_err!("something unexpected {result}")),
                         })
                         .collect(),
                     _ => Vec::new(),

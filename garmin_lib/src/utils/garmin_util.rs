@@ -55,7 +55,7 @@ pub fn convert_xml_local_time_to_utc(xml_local_time: &str) -> Result<DateTime<Ut
 pub fn get_md5sum(filename: &Path) -> Result<StackString, Error> {
     if !Path::new("/usr/bin/md5sum").exists() {
         return Err(format_err!(
-            "md5sum not installed (or not present at /usr/bin/md5sum"
+            "md5sum not installed (or not present at /usr/bin/md5sum)"
         ));
     }
     let command = format_sstr!("md5sum {}", filename.to_string_lossy());
@@ -77,9 +77,9 @@ pub fn print_h_m_s(second: f64, do_hours: bool) -> Result<StackString, Error> {
     let minutes = (second / 60.0) as i32 - hours * 60;
     let seconds = second as i32 - minutes * 60 - hours * 3600;
     if (hours > 0) | ((hours == 0) & do_hours) {
-        Ok(format_sstr!("{:02}:{:02}:{:02}", hours, minutes, seconds))
+        Ok(format_sstr!("{hours:02}:{minutes:02}:{seconds:02}"))
     } else if hours == 0 {
-        Ok(format_sstr!("{:02}:{:02}", minutes, seconds))
+        Ok(format_sstr!("{minutes:02}:{seconds:02}"))
     } else {
         Err(format_err!("Negative result!"))
     }
@@ -116,7 +116,7 @@ pub fn titlecase(input: &str) -> StackString {
         "".into()
     } else {
         let firstchar = input[0..1].to_uppercase();
-        format_sstr!("{}{}", firstchar, &input[1..input.len()])
+        format_sstr!("{firstchar}{s}", s = &input[1..])
     }
 }
 
@@ -191,7 +191,7 @@ pub fn extract_zip_from_garmin_connect(
             f.read_to_string(&mut buf)?;
             error!("{}", buf);
         }
-        return Err(format_err!("Failed with exit status {:?}", exit_status));
+        return Err(format_err!("Failed with exit status {exit_status:?}"));
     }
     let new_filename = ziptmpdir.join(new_filename);
     remove_file(filename)?;
@@ -206,7 +206,7 @@ where
     let input_filename = input_filename.as_ref();
     let output_filename = output_filename.as_ref();
     if !input_filename.exists() {
-        return Err(format_err!("File {:?} does not exist", input_filename));
+        return Err(format_err!("File {input_filename:?} does not exist"));
     }
     std::io::copy(
         &mut GzEncoder::new(File::open(input_filename)?, Compression::fast()),

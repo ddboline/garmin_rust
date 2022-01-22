@@ -201,9 +201,8 @@ impl ScaleMeasurement {
             bindings.push(("end_date", d));
         }
         let query = format_sstr!(
-            "{} {} ORDER BY datetime",
-            query,
-            if conditions.is_empty() {
+            "{query} {c} ORDER BY datetime",
+            c = if conditions.is_empty() {
                 "".into()
             } else {
                 format_sstr!("WHERE {}", conditions.join(" AND "))
@@ -336,14 +335,13 @@ impl ScaleMeasurement {
                 let date = meas.datetime.with_timezone(&Local).date().naive_local();
                 format_sstr!(
                     r#"
-                    <td>{}</td><td>{:3.1}</td><td>{:2.1}</td><td>{:2.1}</td>
-                    <td>{:2.1}</td><td>{:2.1}</td>"#,
-                    date,
-                    meas.mass,
-                    meas.fat_pct,
-                    meas.water_pct,
-                    meas.muscle_pct,
-                    meas.bone_pct,
+                    <td>{date}</td><td>{m:3.1}</td><td>{f:2.1}</td><td>{w:2.1}</td>
+                    <td>{ms:2.1}</td><td>{b:2.1}</td>"#,
+                    m = meas.mass,
+                    f = meas.fat_pct,
+                    w = meas.water_pct,
+                    ms = meas.muscle_pct,
+                    b = meas.bone_pct,
                 )
             })
             .collect();

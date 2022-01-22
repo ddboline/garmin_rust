@@ -358,7 +358,7 @@ impl FitbitClient {
             .as_ref()
             .ok_or_else(|| format_err!("Bad URL"))?
             .join("1/user/-/")?
-            .join(&format_sstr!("activities/heart/date/{}/1d/1min.json", date))?;
+            .join(&format_sstr!("activities/heart/date/{date}/1d/1min.json"))?;
         let dataset: HeartRateResp = self
             .client
             .get(url)
@@ -374,7 +374,7 @@ impl FitbitClient {
             .dataset
             .into_iter()
             .map(|entry| {
-                let datetime = format_sstr!("{}T{}{}", date, entry.time, offset);
+                let datetime = format_sstr!("{date}T{t}{offset}", t = entry.time);
                 let datetime = DateTime::parse_from_rfc3339(&datetime)?.with_timezone(&Utc);
                 let value = entry.value;
                 Ok(FitbitHeartRate { datetime, value })
@@ -424,7 +424,7 @@ impl FitbitClient {
             .as_ref()
             .ok_or_else(|| format_err!("Bad URL"))?
             .join("1/user/-/")?
-            .join(&format_sstr!("body/log/weight/date/{}/30d.json", date))?;
+            .join(&format_sstr!("body/log/weight/date/{date}/30d.json"))?;
         let body_weight: BodyWeight = self
             .client
             .get(url)
@@ -438,7 +438,7 @@ impl FitbitClient {
             .weight
             .into_iter()
             .filter_map(|bw| {
-                let datetime = format_sstr!("{}T{}{}", bw.date, bw.time, offset);
+                let datetime = format_sstr!("{d}T{t}{offset}", d = bw.date, t = bw.time);
                 let datetime = DateTime::parse_from_rfc3339(&datetime)
                     .ok()?
                     .with_timezone(&Utc);
@@ -537,9 +537,7 @@ impl FitbitClient {
             .ok_or_else(|| format_err!("Bad URL"))?
             .join("1/user/-/")?
             .join(&format_sstr!(
-                "activities/list.json?afterDate={}&offset={}&limit=20&sort=asc",
-                start_date,
-                offset,
+                "activities/list.json?afterDate={start_date}&offset={offset}&limit=20&sort=asc"
             ))?;
         let activities: AcivityListResp = self
             .get_url(url, headers)
@@ -742,9 +740,9 @@ impl FitbitClient {
                 }
                 if let Some(activity) = FitbitActivity::get_by_id(pool, log_id).await? {
                     activity.delete_from_db(pool).await?;
-                    Ok(format_sstr!("fully deleted {}", log_id))
+                    Ok(format_sstr!("fully deleted {log_id}"))
                 } else {
-                    Ok(format_sstr!("not fully deleted {}", log_id))
+                    Ok(format_sstr!("not fully deleted {log_id}"))
                 }
             });
         try_join_all(futures).await
@@ -828,7 +826,7 @@ impl FitbitClient {
         results?;
 
         let old_activities = get_list_of_activities_from_db(
-            &format_sstr!("begin_datetime >= '{}'", begin_datetime),
+            &format_sstr!("begin_datetime >= '{begin_datetime}'"),
             pool,
         )
         .await?
@@ -864,7 +862,7 @@ impl FitbitClient {
             .as_ref()
             .ok_or_else(|| format_err!("Bad URL"))?
             .join("1/user/-/")?
-            .join(&format_sstr!("activities/{}.json", log_id))?;
+            .join(&format_sstr!("activities/{log_id}.json"))?;
         let headers = self.get_auth_headers()?;
         self.client
             .delete(url)
@@ -1081,7 +1079,7 @@ mod tests {
                 f.write_all(&data)?;
 
                 let metadata = f.as_file().metadata()?;
-                debug!("{} {:?} {}", start_time, metadata, metadata.len());
+                debug!("{start_time} {metadata:?} {l}", l = metadata.len());
                 assert!(metadata.len() > 0);
             }
             break;

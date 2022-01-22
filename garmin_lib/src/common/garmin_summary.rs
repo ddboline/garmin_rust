@@ -58,25 +58,25 @@ impl GarminSummary {
     ) -> Result<Self, Error> {
         let filename = filepath
             .file_name()
-            .ok_or_else(|| format_err!("Failed to split filename {:?}", filepath))?
+            .ok_or_else(|| format_err!("Failed to split filename {filepath:?}"))?
             .to_string_lossy();
-        let cache_file = cache_dir.join(&format_sstr!("{}.avro", filename));
+        let cache_file = cache_dir.join(&format_sstr!("{filename}.avro"));
 
         debug!("Get md5sum {} ", filename);
         let md5sum = get_md5sum(filepath)?;
 
         debug!("{} Found md5sum {} ", filename, md5sum);
         let gfile = GarminParse::new().with_file(filepath, corr_map)?;
-
+        let filename = &gfile.filename;
         match gfile.laps.get(0) {
             Some(l) if l.lap_start == sentinel_datetime() => {
-                return Err(format_err!("{} has empty lap start?", &gfile.filename));
+                return Err(format_err!("{filename} has empty lap start?"));
             }
             Some(_) => (),
-            None => return Err(format_err!("{} has no laps?", gfile.filename)),
+            None => return Err(format_err!("{filename} has no laps?")),
         };
         gfile.dump_avro(&cache_file)?;
-        debug!("{:?} Found md5sum {} success", filepath, md5sum);
+        debug!("{filepath:?} Found md5sum {md5sum} success");
         Ok(Self::new(&gfile, &md5sum))
     }
 
@@ -93,26 +93,21 @@ impl GarminSummary {
                 debug!("Process {:?}", &input_file);
                 let filename = input_file
                     .file_name()
-                    .ok_or_else(|| format_err!("Failed to split input_file {:?}", input_file))?
+                    .ok_or_else(|| format_err!("Failed to split input_file {input_file:?}"))?
                     .to_string_lossy();
-                let cache_file = cache_dir.join(&format_sstr!("{}.avro", filename));
+                let cache_file = cache_dir.join(&format_sstr!("{filename}.avro"));
                 let md5sum = get_md5sum(&input_file)?;
                 let gfile = GarminParse::new().with_file(&input_file, corr_map)?;
+                let filename = &gfile.filename;
                 match gfile.laps.get(0) {
                     Some(l) if l.lap_start == sentinel_datetime() => {
                         return Err(format_err!(
-                            "{:?} {:?} has empty lap start?",
-                            &input_file,
-                            &gfile.filename
+                            "{input_file:?} {filename:?} has empty lap start?"
                         ));
                     }
                     Some(_) => (),
                     None => {
-                        return Err(format_err!(
-                            "{:?} {:?} has no laps?",
-                            &input_file,
-                            &gfile.filename
-                        ));
+                        return Err(format_err!("{input_file:?} {filename:?} has no laps?"));
                     }
                 };
                 gfile.dump_avro(&cache_file)?;
@@ -128,7 +123,7 @@ impl GarminSummary {
         let where_str = if pattern.is_empty() {
             "".into()
         } else {
-            format_sstr!("WHERE filename like '%{}%'", pattern)
+            format_sstr!("WHERE filename like '%{pattern}%'")
         };
 
         let query = format_sstr!(
@@ -144,8 +139,7 @@ impl GarminSummary {
                    total_hr_dis,
                    md5sum
             FROM garmin_summary
-            {}",
-            where_str
+            {where_str}"
         );
         pool.get()
             .await?
@@ -202,10 +196,10 @@ impl GarminSummary {
     ) -> Result<(), Error> {
         let rand_str = generate_random_string(8);
 
-        let temp_table_name = format_sstr!("garmin_summary_{}", rand_str);
+        let temp_table_name = format_sstr!("garmin_summary_{rand_str}");
 
         let create_table_query = format_sstr!(
-            "CREATE TABLE {} (
+            "CREATE TABLE {temp_table_name} (
                 filename text NOT NULL PRIMARY KEY,
                 begin_datetime TIMESTAMP WITH TIME ZONE NOT NULL,
                 sport varchar(12),
@@ -215,8 +209,7 @@ impl GarminSummary {
                 total_hr_dur double precision,
                 total_hr_dis double precision,
                 md5sum varchar(32)
-            );",
-            temp_table_name
+            );"
         );
         let conn = pool.get().await?;
 
@@ -224,13 +217,12 @@ impl GarminSummary {
 
         let insert_query = Arc::new(format_sstr!(
             "
-            INSERT INTO {} (
+            INSERT INTO {temp_table_name} (
                 filename, begin_datetime, sport, total_calories, total_distance, total_duration,
                 total_hr_dur, total_hr_dis, md5sum
             )
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        ",
-            temp_table_name
+        "
         ));
 
         let futures = summary_list.iter().map(|gsum| {
@@ -268,10 +260,9 @@ impl GarminSummary {
             )
             SELECT b.filename, b.begin_datetime, b.sport, b.total_calories, b.total_distance,
                    b.total_duration, b.total_hr_dur, b.total_hr_dis, b.md5sum
-            FROM {} b
+            FROM {temp_table_name} b
             WHERE b.filename not in (select filename from garmin_summary)
-        ",
-            temp_table_name
+        "
         );
 
         let update_query = format_sstr!(
@@ -283,13 +274,12 @@ impl GarminSummary {
             ) = (b.begin_datetime,b.sport,b.total_calories,b.total_distance,b.total_duration,
                  b.total_hr_dur,b.total_hr_dis,b.md5sum
             )
-            FROM {} b
+            FROM {temp_table_name} b
             WHERE a.filename = b.filename
-        ",
-            temp_table_name
+        "
         );
 
-        let drop_table_query = format_sstr!("DROP TABLE {}", temp_table_name);
+        let drop_table_query = format_sstr!("DROP TABLE {temp_table_name}");
 
         conn.execute(insert_query.as_str(), &[]).await?;
         conn.execute(update_query.as_str(), &[]).await?;
@@ -329,7 +319,7 @@ impl fmt::Display for GarminSummary {
             "GarminSummaryTable<{}>",
             keys.iter()
                 .zip(vals.iter())
-                .map(|(k, v)| { format_sstr!("{}={}", k, v) })
+                .map(|(k, v)| { format_sstr!("{k}={v}") })
                 .join(",")
         )
     }
@@ -342,7 +332,7 @@ pub async fn get_list_of_files_from_db(
     let constr = if constraints.is_empty() {
         "".into()
     } else {
-        format_sstr!("WHERE {}", constraints)
+        format_sstr!("WHERE {constraints}")
     };
 
     let query = format_sstr!(
@@ -350,9 +340,8 @@ pub async fn get_list_of_files_from_db(
             SELECT a.filename
             FROM garmin_summary a
             LEFT JOIN strava_activities b ON a.id = b.summary_id
-            {}
-        ",
-        constr
+            {constr}
+        "
     );
 
     debug!("{}", query);
@@ -393,13 +382,10 @@ pub async fn get_list_of_activities_from_db(
     let constr = if constraints.is_empty() {
         "".into()
     } else {
-        format_sstr!("WHERE {}", constraints)
+        format_sstr!("WHERE {constraints}")
     };
 
-    let query = format_sstr!(
-        "SELECT begin_datetime, filename FROM garmin_summary {}",
-        constr
-    );
+    let query = format_sstr!("SELECT begin_datetime, filename FROM garmin_summary {constr}",);
 
     debug!("{}", query);
 

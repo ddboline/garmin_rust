@@ -218,7 +218,7 @@ impl GarminConnectClient {
             let val: SocialProfile = serde_json::from_str(entry)?;
             Ok(val.display_name)
         } else {
-            Err(format_err!("NO DISPLAY NAME {}", text))
+            Err(format_err!("NO DISPLAY NAME {text}"))
         }
     }
 

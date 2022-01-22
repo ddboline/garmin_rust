@@ -143,7 +143,7 @@ impl GarminCli {
             Some(GarminCliOptions::FileNames(flist)) => flist
                 .par_iter()
                 .map(|f| {
-                    self.stdout.send(format_sstr!("Process {:?}", &f));
+                    self.stdout.send(format_sstr!("Process {f:?}"));
                     GarminSummary::process_single_gps_file(
                         f,
                         &self.get_config().cache_dir,
@@ -178,7 +178,7 @@ impl GarminCli {
                     .into_par_iter()
                     .filter_map(|f| f.file_name().map(|x| x.to_string_lossy().to_string()))
                     .filter_map(|f| {
-                        let cachefile = format_sstr!("{}.avro", f);
+                        let cachefile = format_sstr!("{f}.avro");
                         if dbset.contains(f.as_str()) && cacheset.contains(cachefile.as_str()) {
                             None
                         } else {
@@ -409,7 +409,7 @@ impl GarminCli {
                     .gps_dir
                     .join(gfile.get_standardized_name(suffix).as_str());
 
-                stdout.send(format_sstr!("{:?} {:?}", filename, outfile));
+                stdout.send(format_sstr!("{filename:?} {outfile:?}"));
 
                 if outfile.exists() {
                     return Ok(None);

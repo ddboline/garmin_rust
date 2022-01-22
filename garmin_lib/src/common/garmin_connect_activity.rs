@@ -50,9 +50,8 @@ impl GarminConnectActivity {
             bindings.push(("end_date", d));
         }
         let query = format_sstr!(
-            "{} {} ORDER BY start_time_gmt",
-            query,
-            if conditions.is_empty() {
+            "{query} {cond} ORDER BY start_time_gmt",
+            cond = if conditions.is_empty() {
                 "".into()
             } else {
                 format_sstr!("WHERE {}", conditions.join(" AND "))

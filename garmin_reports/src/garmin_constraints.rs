@@ -45,10 +45,8 @@ impl GarminConstraint {
             }
             Self::IsoWeek { year, week } => {
                 format_sstr!(
-                    "(EXTRACT(isoyear from a.begin_datetime at time zone 'localtime') = {} AND
-                      EXTRACT(week from a.begin_datetime at time zone 'localtime') = {})",
-                    year,
-                    week
+                    "(EXTRACT(isoyear from a.begin_datetime at time zone 'localtime') = {year} AND
+                      EXTRACT(week from a.begin_datetime at time zone 'localtime') = {week})"
                 )
             }
             Self::Filename(filename) => format_sstr!("filename = '{}'", filename),
@@ -61,26 +59,23 @@ impl GarminConstraint {
             }
             Self::YearMonthDay { year, month, day } => {
                 format_sstr!(
-                    "replace({}, '%', 'T') like '{:04}-{:02}-{:02}T%'",
-                    "to_char(a.begin_datetime at time zone 'localtime', 'YYYY-MM-DD%HH24:MI:SS')",
-                    year,
-                    month,
-                    day
+                    "replace({s}, '%', 'T') like '{year:04}-{month:02}-{day:02}T%'",
+                    s = "to_char(a.begin_datetime at time zone 'localtime', \
+                         'YYYY-MM-DD%HH24:MI:SS')",
                 )
             }
             Self::YearMonth { year, month } => {
                 format_sstr!(
-                    "replace({}, '%', 'T') like '{:04}-{:02}-%'",
-                    "to_char(a.begin_datetime at time zone 'localtime', 'YYYY-MM-DD%HH24:MI:SS')",
-                    year,
-                    month
+                    "replace({s}, '%', 'T') like '{year:04}-{month:02}-%'",
+                    s = "to_char(a.begin_datetime at time zone 'localtime', \
+                         'YYYY-MM-DD%HH24:MI:SS')",
                 )
             }
             Self::Year(year) => {
                 format_sstr!(
-                    "replace({}, '%', 'T') like '{:04}-%'",
-                    "to_char(a.begin_datetime at time zone 'localtime', 'YYYY-MM-DD%HH24:MI:SS')",
-                    year
+                    "replace({s}, '%', 'T') like '{year:04}-%'",
+                    s = "to_char(a.begin_datetime at time zone 'localtime', \
+                         'YYYY-MM-DD%HH24:MI:SS')",
                 )
             }
             Self::Query(query) => {

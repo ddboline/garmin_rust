@@ -22,7 +22,7 @@ where
 
     let htmlostr = htmlostr.join("\n").replace("\n\n", "<br>\n");
 
-    let insert_text_here = format_sstr!(r#"<table border="0">{}</table>"#, htmlostr);
+    let insert_text_here = format_sstr!(r#"<table border="0">{htmlostr}</table>"#);
     let history_buttons = generate_history_buttons(history);
     let buttons = get_buttons(is_demo).join("\n");
     let style = get_style(false);

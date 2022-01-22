@@ -227,7 +227,7 @@ impl fmt::Display for GarminPoint {
             "GarminPoint<{}>",
             keys.iter()
                 .zip(vals.iter())
-                .map(|(k, v)| { format_sstr!("{}={}", k, v) })
+                .map(|(k, v)| { format_sstr!("{k}={v}") })
                 .join(",")
         )
     }

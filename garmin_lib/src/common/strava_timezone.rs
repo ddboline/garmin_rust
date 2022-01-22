@@ -37,7 +37,7 @@ impl FromStr for StravaTz {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         s.parse()
             .map(Self)
-            .map_err(|e| format_err!("{} is not a valid timezone", e))
+            .map_err(|e| format_err!("{e} is not a valid timezone"))
     }
 }
 
@@ -130,7 +130,7 @@ impl StravaTimeZone {
         let tz_strs: SmallVec<[&str; 2]> = s.split_whitespace().take(2).collect();
         if let Some(tz) = tz_strs.get(0) {
             if tz.get(1..=3) != Some("GMT") {
-                return Err(format_err!("Time string isn't GMT: {}", tz));
+                return Err(format_err!("Time string isn't GMT: {tz}"));
             }
             if let Some(hours) = tz.get(4..=6).and_then(|s| s.parse::<i32>().ok()) {
                 if let Some(minutes) = tz.get(8..=9).and_then(|s| s.parse::<i32>().ok()) {
@@ -141,7 +141,7 @@ impl StravaTimeZone {
         if let Some(tz) = tz_strs.get(1) {
             let tz: Tz = tz
                 .parse()
-                .map_err(|e| format_err!("{} is not a valid timezone", e))?;
+                .map_err(|e| format_err!("{e} is not a valid timezone"))?;
             let offset = offset.ok_or_else(|| format_err!("Bad offset"))?;
             Ok(Self(offset, tz))
         } else {
@@ -212,9 +212,9 @@ mod tests {
             "(GMT-07:00) America/Denver",
             "(GMT-08:00) America/Los_Angeles",
         ];
-        for tz in timezones.iter() {
+        for tz in timezones {
             let stz: StravaTimeZone = tz.parse()?;
-            assert_eq!(&format_sstr!("{}", stz).as_str(), tz);
+            assert_eq!(format_sstr!("{stz}").as_str(), tz);
         }
         Ok(())
     }

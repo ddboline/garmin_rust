@@ -22,18 +22,13 @@ impl GarminConnectHrData {
                 .filter_map(|(timestamp, heartrate)| {
                     let datetime: DateTime<Utc> = (*timestamp).into();
                     heartrate.map(|heartrate| {
-                        format_sstr!(
-                            "<tr><td>{datetime}</td><td>{heartrate}</td></tr>",
-                            datetime = datetime,
-                            heartrate = heartrate
-                        )
+                        format_sstr!("<tr><td>{datetime}</td><td>{heartrate}</td></tr>")
                     })
                 })
                 .join("\n");
             format_sstr!(
                 "<table border=1><thead><th>Datetime</th><th>Heart \
-                 Rate</th></thead><tbody>{}</tbody></table>",
-                rows
+                 Rate</th></thead><tbody>{rows}</tbody></table>"
             )
         } else {
             "".into()

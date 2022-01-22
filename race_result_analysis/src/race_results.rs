@@ -32,12 +32,12 @@ pub struct RaceResults {
 impl Display for RaceResults {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let race_date_str = if let Some(date) = self.race_date {
-            format_sstr!("\nrace_date: {}", date)
+            format_sstr!("\nrace_date: {date}")
         } else {
             StackString::new()
         };
         let race_name_str = if let Some(name) = &self.race_name {
-            format_sstr!("\nrace_name: {}", name)
+            format_sstr!("\nrace_name: {name}")
         } else {
             StackString::new()
         };
@@ -62,7 +62,7 @@ impl Display for RaceResults {
                 if summary_ids.is_empty() {
                     StackString::new()
                 } else {
-                    format_sstr!("summary_ids: {}", summary_ids)
+                    format_sstr!("summary_ids: {summary_ids}")
                 }
             }
         )

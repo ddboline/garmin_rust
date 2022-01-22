@@ -51,13 +51,7 @@ pub fn generate_history_buttons<T: AsRef<str>>(history_vec: &[T]) -> StackString
     } else {
         (year - 1, 12)
     };
-    let default_string = format_sstr!(
-        "{:04}-{:02},{:04}-{:02},week",
-        prev_year,
-        prev_month,
-        year,
-        month
-    );
+    let default_string = format_sstr!("{prev_year:04}-{prev_month:02},{year:04}-{month:02},week");
     let mut used_buttons: HashSet<StackString> = HashSet::new();
     let mut history_buttons = vec![history_button_string(&default_string)];
     used_buttons.insert(default_string);
@@ -303,7 +297,7 @@ fn get_plot_opts(report_objs: &ReportObjects) -> Vec<PlotOpts> {
         plot_opts.push(
             PlotOpts::new()
                 .with_name("avg_speed_mph")
-                .with_title(&format_sstr!("Avg Speed {:.2} mph", avg_mph_speed_value))
+                .with_title(&format_sstr!("Avg Speed {avg_mph_speed_value:.2} mph"))
                 .with_data(&report_objs.avg_mph_speed_values)
                 .with_scatter()
                 .with_labels("mi", "min/mi"),
@@ -624,7 +618,7 @@ where
         .lat_vals
         .iter()
         .zip(report_objs.lon_vals.iter())
-        .map(|(latv, lonv)| format_sstr!("new google.maps.LatLng({},{}),", latv, lonv))
+        .map(|(latv, lonv)| format_sstr!("new google.maps.LatLng({latv},{lonv}),"))
         .join("\n");
     let minlat = StackString::from_display(minlat);
     let maxlat = StackString::from_display(maxlat);
@@ -688,15 +682,14 @@ fn get_sport_selector(current_sport: SportTypes) -> StackString {
     sport_types.insert(0, current_sport);
     let sport_types = sport_types
         .into_iter()
-        .map(|s| format_sstr!(r#"<option value="{sport}">{sport}</option>"#, sport = s))
+        .map(|s| format_sstr!(r#"<option value="{s}">{s}</option>"#))
         .join("\n");
-    format_sstr!(r#"<select id="sport_select">{}</select>"#, sport_types)
+    format_sstr!(r#"<select id="sport_select">{sport_types}</select>"#)
 }
 
 fn get_correction_button(begin_datetime: DateTime<Utc>) -> StackString {
     format_sstr!(
-        r#"<button type="submit" onclick="addGarminCorrectionSport('{}')">Apply</button>"#,
-        begin_datetime
+        r#"<button type="submit" onclick="addGarminCorrectionSport('{begin_datetime}')">Apply</button>"#
     )
 }
 
@@ -778,7 +771,7 @@ fn get_file_html(
     retval.push(r#"<table border="1" class="dataframe">"#.into());
     retval.push(r#"<thead><tr style="text-align: center;">"#.into());
     for label in labels {
-        retval.push(format_sstr!("<th>{}</th>", label));
+        retval.push(format_sstr!("<th>{label}</th>"));
     }
     retval.push("</tr></thead>".into());
     retval.push("<tbody>".into());
@@ -823,7 +816,7 @@ fn get_file_html(
                 format_sstr!("{:.2} mi", gfile.total_distance / METERS_PER_MILE),
                 format_sstr!("{}", gfile.total_calories),
                 print_h_m_s(gfile.total_duration, true).unwrap_or_else(|_| "".into()),
-                format_sstr!("{}", mi_per_hr),
+                format_sstr!("{mi_per_hr}"),
             ],
         ),
     };
@@ -843,14 +836,14 @@ fn get_file_html(
     retval.push(r#"<thead><tr style="text-align: center;">"#.into());
 
     for label in labels {
-        retval.push(format_sstr!("<th>{}</th>", label));
+        retval.push(format_sstr!("<th>{label}</th>"));
     }
 
     retval.push("</tr></thead>".into());
     retval.push(r#"<tbody><tr style="text-align: center;">"#.into());
 
     for value in values {
-        retval.push(format_sstr!("<td>{}</td>", value));
+        retval.push(format_sstr!("<td>{value}</td>"));
     }
 
     retval.push("</tr></tbody></table>".into());
@@ -883,11 +876,11 @@ fn get_lap_html(glap: &GarminLap, sport: &str) -> Vec<StackString> {
         ));
     }
     if let Some(lap_avg_hr) = glap.lap_avg_hr {
-        values.push(format_sstr!("{} bpm", lap_avg_hr));
+        values.push(format_sstr!("{lap_avg_hr} bpm"));
     }
     values
         .iter()
-        .map(|v| format_sstr!("<td>{}</td>", v))
+        .map(|v| format_sstr!("<td>{v}</td>"))
         .collect()
 }
 
@@ -915,7 +908,7 @@ fn get_html_splits(
                 let tim = val.time_value;
                 let hrt = val.avg_heart_rate.unwrap_or(0.0) as i32;
                 vec![
-                    format_sstr!("{} {}", dis, label),
+                    format_sstr!("{dis} {label}"),
                     print_h_m_s(tim, true).unwrap_or_else(|_| "".into()),
                     print_h_m_s(tim / (split_distance_in_meters / METERS_PER_MILE), false)
                         .unwrap_or_else(|_| "".into()),
@@ -926,7 +919,7 @@ fn get_html_splits(
                         true,
                     )
                     .unwrap_or_else(|_| "".into()),
-                    format_sstr!("{} bpm", hrt),
+                    format_sstr!("{hrt} bpm"),
                 ]
             })
             .collect();
@@ -936,14 +929,14 @@ fn get_html_splits(
             r#"<thead><tr style="text-align: center;">"#.into(),
         ];
         for label in labels {
-            retval.push(format_sstr!("<th>{}</th>", label));
+            retval.push(format_sstr!("<th>{label}</th>"));
         }
         retval.push("</tr></thead>".into());
         retval.push("<tbody>".into());
         for line in values {
             retval.push(r#"<tr style="text-align: center;">"#.into());
             for val in line {
-                retval.push(format_sstr!("<td>{}</td>", val));
+                retval.push(format_sstr!("<td>{val}</td>"));
             }
             retval.push("</tr>".into());
         }

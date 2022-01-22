@@ -183,10 +183,9 @@ impl RaceResultAnalysis {
             <th>Time</th>
             </thead>
             <tbody>
-            <tr>{}</tr>
+            <tr>{entries}</tr>
             </tbody>
-            </table>"#,
-            entries
+            </table>"#
         );
 
         let race_results = self.data.iter().sorted_by(|x, y| x.race_date.cmp(&y.race_date)).rev().map(|result| {
@@ -207,7 +206,7 @@ impl RaceResultAnalysis {
                         format_sstr!(
                             r#"<button type="submit"
                               onclick="send_command('filter={filter},file');"> {date} </button>
-                            "#, date=date, filter=filter)
+                            "#)
                     }
                 }
             } else {"".into()};
@@ -223,21 +222,14 @@ impl RaceResultAnalysis {
                 r#"<td align="right">{distance:0.1}</td><td>{time}</td><td align="center">{pace}</td><td>{date}</td>
                  <td>{name}</td>
                  <td>{flag}</td>"#,
-                distance = distance,
-                time = time,
-                pace = pace,
-                date = date,
                 name = result.race_name.as_ref().map_or("", StackString::as_str),
-                flag = flag,
             )
         }).join("</tr><tr>");
         let entries = format_sstr!(
-            r#"{}<br><table border="1"><thead>
+            r#"{entries}<br><table border="1"><thead>
             <th>Distance (mi)</th><th>Time</th><th>Pace (min/mi)</th><th>Date</th><th>Name</th><th>Flag</th>
             </thead>
-            <tr>{}</tr></table>"#,
-            entries,
-            race_results
+            <tr>{race_results}</tr></table>"#
         );
 
         let x_vals: Vec<f64> = x_vals.map(|x| x * METERS_PER_MILE).to_vec();

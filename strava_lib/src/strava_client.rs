@@ -180,7 +180,7 @@ impl StravaClient {
             .strava_endpoint
             .as_ref()
             .unwrap()
-            .join(&format_sstr!("activities/{}/export_original", activity_id))?;
+            .join(&format_sstr!("activities/{activity_id}/export_original"))?;
         let resp = self.client.get(url).send().await?.error_for_status()?;
 
         create_dir_all(&self.config.download_directory).await?;
@@ -217,7 +217,7 @@ impl StravaClient {
             .strava_endpoint
             .as_ref()
             .ok_or_else(|| format_err!("Bad URL"))?
-            .join(&format_sstr!("activities/{}", activity_id))?;
+            .join(&format_sstr!("activities/{activity_id}"))?;
         let data = hashmap! {
             "_method" => "delete",
             web_csrf.param.as_str() => web_csrf.token.as_str(),
@@ -258,11 +258,11 @@ impl StravaClient {
         f.write_all(format_sstr!("client_secret = {}\n", self.client_secret).as_bytes())
             .await?;
         if let Some(token) = self.access_token.as_ref() {
-            f.write_all(format_sstr!("access_token = {}\n", token).as_bytes())
+            f.write_all(format_sstr!("access_token = {token}\n").as_bytes())
                 .await?;
         }
         if let Some(token) = self.refresh_token.as_ref() {
-            f.write_all(format_sstr!("refresh_token = {}\n", token).as_bytes())
+            f.write_all(format_sstr!("refresh_token = {token}\n").as_bytes())
                 .await?;
         }
         Ok(())
@@ -274,7 +274,7 @@ impl StravaClient {
     }
 
     pub async fn get_authorization_url_api(&self) -> Result<Url, Error> {
-        let redirect_uri = format_sstr!("https://{}/garmin/strava/callback", &self.config.domain);
+        let redirect_uri = format_sstr!("https://{}/garmin/strava/callback", self.config.domain);
         let state = Self::get_random_string();
         let url = self
             .config
@@ -382,7 +382,7 @@ impl StravaClient {
             .ok_or_else(|| format_err!("no access token"))?;
         headers.insert(
             "Authorization",
-            format_sstr!("Bearer {}", access_token).parse()?,
+            format_sstr!("Bearer {access_token}").parse()?,
         );
         Ok(headers)
     }
@@ -557,7 +557,7 @@ impl StravaClient {
             filepath.canonicalize()?.to_string_lossy().into_owned()
         } else {
             let tfile = Builder::new()
-                .suffix(&format_sstr!(".{}.gz", ext))
+                .suffix(&format_sstr!(".{ext}.gz"))
                 .tempfile()?;
             let infname = filepath.canonicalize()?;
             let outfpath = tfile.path().to_path_buf();
@@ -572,7 +572,7 @@ impl StravaClient {
         } else if filename.ends_with("tcx.gz") {
             "tcx.gz"
         } else {
-            return Err(format_err!("Bad extension {}", filename));
+            return Err(format_err!("Bad extension {filename}"));
         };
 
         let part = Part::bytes(tokio::fs::read(&filename).await?).file_name(filename);
@@ -666,7 +666,7 @@ impl StravaClient {
             .strava_endpoint
             .as_ref()
             .ok_or_else(|| format_err!("Bad URL"))?
-            .join(&format_sstr!("api/v3/activities/{}", activity_id))?;
+            .join(&format_sstr!("api/v3/activities/{activity_id}"))?;
         self.client
             .put(url)
             .headers(headers)
@@ -705,10 +705,10 @@ impl StravaClient {
 
         let mut constraints: SmallVec<[StackString; 2]> = SmallVec::new();
         if let Some(start_datetime) = start_datetime {
-            constraints.push(format_sstr!("begin_datetime >= '{}'", start_datetime));
+            constraints.push(format_sstr!("begin_datetime >= '{start_datetime}'"));
         }
         if let Some(end_datetime) = end_datetime {
-            constraints.push(format_sstr!("begin_datetime <= '{}'", end_datetime));
+            constraints.push(format_sstr!("begin_datetime <= '{end_datetime}'"));
         }
         let constraints = constraints.join(" AND ");
 

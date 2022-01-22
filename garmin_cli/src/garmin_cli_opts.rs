@@ -165,7 +165,7 @@ impl GarminCliOpts {
                         .await?;
                     date += Duration::days(1);
                 }
-                cli.stdout.send(format_sstr!("{:?}", updates));
+                cli.stdout.send(format_sstr!("{updates:?}"));
 
                 let start_date = (Utc::now() - Duration::days(10)).naive_utc().date();
                 let filenames = client.sync_tcx(start_date).await?;

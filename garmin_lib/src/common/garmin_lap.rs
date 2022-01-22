@@ -271,7 +271,7 @@ impl fmt::Display for GarminLap {
             "GarminLap<{}>",
             keys.iter()
                 .zip(vals.iter())
-                .map(|(k, v)| { format_sstr!("{}={}", k, v) })
+                .map(|(k, v)| { format_sstr!("{k}={v}") })
                 .collect::<Vec<_>>()
                 .join(",")
         )

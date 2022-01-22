@@ -46,7 +46,7 @@ impl GarminParseTrait for GarminParseTcx {
         let first_lap = lap_list.get(0).ok_or_else(|| format_err!("No laps"))?;
         let filename = filename
             .file_name()
-            .ok_or_else(|| format_err!("filename {:?} has no path", filename))?
+            .ok_or_else(|| format_err!("filename {filename:?} has no path"))?
             .to_string_lossy()
             .to_string()
             .into();
@@ -77,7 +77,7 @@ impl GarminParseTrait for GarminParseTcx {
         } else {
             read_to_string(filename)?
         };
-        let doc = Document::parse(&output).map_err(|e| format_err!("{}", e))?;
+        let doc = Document::parse(&output).map_err(|e| format_err!("{e}"))?;
 
         let mut lap_list = Vec::new();
         let mut point_list = Vec::new();

@@ -42,7 +42,7 @@ impl GarminParseTrait for GarminParseTxt {
     ) -> Result<GarminFile, Error> {
         let file_name = filename
             .file_name()
-            .ok_or_else(|| format_err!("filename {:?} has no path", filename))?
+            .ok_or_else(|| format_err!("filename {filename:?} has no path"))?
             .to_string_lossy()
             .to_string()
             .into();

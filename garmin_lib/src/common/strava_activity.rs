@@ -68,9 +68,8 @@ impl StravaActivity {
             bindings.push(("end_date", d));
         }
         let query = format_sstr!(
-            "{} {} ORDER BY start_date",
-            query,
-            if conditions.is_empty() {
+            "{query} {c} ORDER BY start_date",
+            c = if conditions.is_empty() {
                 "".into()
             } else {
                 format_sstr!("WHERE {}", conditions.join(" AND "))

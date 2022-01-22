@@ -46,7 +46,7 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<StackString>, Error
             gfile.total_distance / METERS_PER_MILE,
             gfile.total_calories,
             print_h_m_s(gfile.total_duration, true)?,
-            format_sstr!("{:.2}", mi_per_hr),
+            format_sstr!("{mi_per_hr:.2}"),
         ));
     }
 
@@ -148,7 +148,7 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<StackString>, Error
             alt_vals.iter().map(|x| *x as i32).max().unwrap_or(0)
                 - alt_vals.iter().map(|x| *x as i32).min().unwrap_or(0)
         ));
-        return_vec.push(format_sstr!("vertical climb: {:.2} m", vertical_climb));
+        return_vec.push(format_sstr!("vertical climb: {vertical_climb:.2} m"));
     }
 
     Ok(return_vec)
@@ -181,7 +181,7 @@ fn print_lap_string(glap: &GarminLap, sport: SportTypes) -> Result<StackString, 
     };
     if let Some(x) = glap.lap_avg_hr {
         if x > 0.0 {
-            outstr.push(format_sstr!("{} bpm", x));
+            outstr.push(format_sstr!("{x} bpm"));
         }
     }
 

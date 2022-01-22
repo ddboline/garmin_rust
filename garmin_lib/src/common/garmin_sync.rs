@@ -210,12 +210,9 @@ impl GarminSync {
         debug!("downloaded {:?}", downloaded_files);
 
         let msg = format_sstr!(
-            "{} {} s3_bucketnkeys {} uploaded {} downloaded {}",
-            title,
-            s3_bucket,
-            n_keys,
-            uploaded_files.len(),
-            downloaded_files.len()
+            "{title} {s3_bucket} s3_bucketnkeys {n_keys} uploaded {u} downloaded {d}",
+            u = uploaded_files.len(),
+            d = downloaded_files.len()
         );
 
         Ok(msg)
@@ -230,7 +227,7 @@ impl GarminSync {
         let tmp_path = {
             let mut rng = thread_rng();
             let rand_str = Alphanumeric.sample_string(&mut rng, 8);
-            local_file.with_file_name(format_sstr!(".tmp_{}", rand_str))
+            local_file.with_file_name(format_sstr!(".tmp_{rand_str}"))
         };
         let etag: Result<StackString, Error> = exponential_retry(|| {
             let tmp_path = tmp_path.clone();

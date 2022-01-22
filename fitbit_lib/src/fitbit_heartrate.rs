@@ -97,8 +97,7 @@ impl FitbitHeartRate {
             .join("\n");
         format_sstr!(
             "<table border=1><thead><th>Datetime</th><th>Heart \
-             Rate</th></thead><tbody>{}</tbody></table>",
-            rows
+             Rate</th></thead><tbody>{rows}</tbody></table>"
         )
     }
 
@@ -135,12 +134,12 @@ impl FitbitHeartRate {
             .collect();
         info!("fitbit_files {:?}", fitbit_files);
         let futures = days.iter().map(|date| async move {
-            let constraint = format_sstr!("date(begin_datetime at time zone 'utc') = '{}'", date);
+            let constraint = format_sstr!("date(begin_datetime at time zone 'utc') = '{date}'");
             let files: Vec<_> = get_list_of_files_from_db(&constraint, pool)
                 .await?
                 .into_par_iter()
                 .filter_map(|filename| {
-                    let avro_file = config.cache_dir.join(&format_sstr!("{}.avro", filename));
+                    let avro_file = config.cache_dir.join(&format_sstr!("{filename}.avro"));
                     if avro_file.exists() {
                         Some(avro_file)
                     } else {
@@ -313,8 +312,7 @@ impl FitbitHeartRate {
                             r#"
                         <button type="submit" id="ID"
                          onclick="heartrate_sync('{date}');">Sync {date}</button>
-                        "#,
-                            date = date
+                        "#
                         )
                     },
                     ""
@@ -327,24 +325,18 @@ impl FitbitHeartRate {
             buttons.push(
                 format_sstr!(r#"
                         <button type="submit"
-                        onclick="heartrate_plot_button('{start_date}', '{end_date}', '{button_date}');">
+                        onclick="heartrate_plot_button('{start_date}', '{end_date}', '{prev_date}');">
                         Prev</button>
-                    "#,
-                    start_date=start_date,
-                    end_date=end_date,
-                    button_date=prev_date,
+                    "#
                 )
             );
         }
         buttons.push(format_sstr!(
             r#"
                     <button type="submit"
-                    onclick="heartrate_plot_button('{start_date}', '{end_date}', '{button_date}');">
+                    onclick="heartrate_plot_button('{start_date}', '{end_date}', '{next_date}');">
                     Next</button>
-                "#,
-            start_date = start_date,
-            end_date = end_date,
-            button_date = next_date,
+                "#
         ));
 
         let params = hashmap! {
@@ -367,7 +359,7 @@ impl FitbitHeartRate {
             let rand_str = Alphanumeric.sample_string(&mut rng, 8);
             output_filename
                 .as_ref()
-                .with_file_name(format_sstr!(".tmp_{}", rand_str))
+                .with_file_name(format_sstr!(".tmp_{rand_str}"))
         };
 
         let output_file = File::create(&tmp_path)?;
@@ -457,7 +449,7 @@ pub fn process_fitbit_json_file(fname: &Path) -> Result<Vec<FitbitHeartRate>, Er
 
 pub fn import_fitbit_json_files(directory: &str) -> Result<(), Error> {
     let config = GarminConfig::get_config(None)?;
-    let filenames: Vec<_> = glob(&format_sstr!("{}/heart_rate-*.json", directory))?.collect();
+    let filenames: Vec<_> = glob(&format_sstr!("{directory}/heart_rate-*.json"))?.collect();
     filenames
         .into_par_iter()
         .map(|fname| {
@@ -487,7 +479,7 @@ pub fn import_garmin_heartrate_file(filename: &Path) -> Result<(), Error> {
     let mut timestamp = None;
     let mut heartrates = Vec::new();
     let mut f = File::open(&filename)?;
-    let records = fitparser::from_reader(&mut f).map_err(|e| format_err!("{:?}", e))?;
+    let records = fitparser::from_reader(&mut f).map_err(|e| format_err!("{e:?}"))?;
     for record in records {
         match record.kind() {
             MesgNum::StressLevel => {

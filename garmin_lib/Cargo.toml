@@ -26,7 +26,7 @@ deadpool-postgres = "0.10"
 dotenv = "0.15"
 lazy_static = "1.4"
 roxmltree = "0.14"
-parking_lot = "0.11"
+parking_lot = "0.12"
 avro-rs = {version = "0.13", features = ["snappy"]}
 regex = "1.4"
 postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.4", features=["deadpool"]}

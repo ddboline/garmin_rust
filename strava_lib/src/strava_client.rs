@@ -545,8 +545,6 @@ impl StravaClient {
             activity_id: Option<u64>,
         }
 
-        let mut _tempfile: Option<_> = None;
-
         let ext = filepath
             .extension()
             .ok_or_else(|| format_err!("No extension"))?
@@ -563,7 +561,6 @@ impl StravaClient {
             let outfpath = tfile.path().to_path_buf();
             let outfname = outfpath.to_string_lossy().into_owned();
             spawn_blocking(move || gzip_file(&infname, &outfpath)).await??;
-            _tempfile = Some(tfile);
             outfname
         };
 

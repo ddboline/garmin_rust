@@ -22,7 +22,7 @@ use std::{
     fmt::Write,
     path::{Path, PathBuf},
 };
-use tempfile::Builder;
+use tempfile::{Builder, NamedTempFile};
 use tokio::{
     fs::{create_dir_all, File},
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
@@ -551,10 +551,11 @@ impl StravaClient {
             .to_string_lossy()
             .into_owned();
 
+        let tfile: NamedTempFile;
         let filename = if &ext == "gz" {
             filepath.canonicalize()?.to_string_lossy().into_owned()
         } else {
-            let tfile = Builder::new()
+            tfile = Builder::new()
                 .suffix(&format_sstr!(".{ext}.gz"))
                 .tempfile()?;
             let infname = filepath.canonicalize()?;
@@ -571,7 +572,6 @@ impl StravaClient {
         } else {
             return Err(format_err!("Bad extension {filename}"));
         };
-
         let part = Part::bytes(tokio::fs::read(&filename).await?).file_name(filename);
         let form = Form::new()
             .part("file", part)
@@ -599,7 +599,6 @@ impl StravaClient {
             .error_for_status()?
             .json()
             .await?;
-
         let url = self
             .config
             .strava_endpoint

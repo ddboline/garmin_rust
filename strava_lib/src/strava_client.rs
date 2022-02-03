@@ -22,7 +22,7 @@ use std::{
     fmt::Write,
     path::{Path, PathBuf},
 };
-use tempfile::{Builder, NamedTempFile};
+use tempfile::Builder;
 use tokio::{
     fs::{create_dir_all, File},
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
@@ -121,18 +121,14 @@ impl StravaClient {
     }
 
     pub async fn webauth(&self) -> Result<(), Error> {
-        let login_url = self
+        let strava_endpoint = self
             .config
             .strava_endpoint
             .as_ref()
-            .ok_or_else(|| format_err!("Bad URL"))?
-            .join("login")?;
-        let session_url = self
-            .config
-            .strava_endpoint
-            .as_ref()
-            .ok_or_else(|| format_err!("Bad URL"))?
-            .join("session")?;
+            .ok_or_else(|| format_err!("Missing strava url"))?;
+
+        let login_url = strava_endpoint.join("login")?;
+        let session_url = strava_endpoint.join("session")?;
         let email = self
             .config
             .strava_email
@@ -538,32 +534,39 @@ impl StravaClient {
         title: &str,
         description: &str,
     ) -> Result<StackString, Error> {
-        #[derive(Deserialize, Debug)]
-        struct UploadResponse {
-            id: u64,
-            status: StackString,
-            activity_id: Option<u64>,
-        }
-
         let ext = filepath
             .extension()
             .ok_or_else(|| format_err!("No extension"))?
             .to_string_lossy()
             .into_owned();
 
-        let tfile: NamedTempFile;
-        let filename = if &ext == "gz" {
-            filepath.canonicalize()?.to_string_lossy().into_owned()
+        if &ext == "gz" {
+            let filename = filepath.canonicalize()?.to_string_lossy().into_owned();
+            self.process_filename(filename, title, description).await
         } else {
-            tfile = Builder::new()
+            let tfile = Builder::new()
                 .suffix(&format_sstr!(".{ext}.gz"))
                 .tempfile()?;
             let infname = filepath.canonicalize()?;
             let outfpath = tfile.path().to_path_buf();
             let outfname = outfpath.to_string_lossy().into_owned();
             spawn_blocking(move || gzip_file(&infname, &outfpath)).await??;
-            outfname
-        };
+            self.process_filename(outfname, title, description).await
+        }
+    }
+
+    async fn process_filename(
+        &self,
+        filename: String,
+        title: &str,
+        description: &str,
+    ) -> Result<StackString, Error> {
+        #[derive(Deserialize, Debug)]
+        struct UploadResponse {
+            id: u64,
+            status: StackString,
+            activity_id: Option<u64>,
+        }
 
         let fext = if filename.ends_with("fit.gz") {
             "fit.gz"
@@ -583,12 +586,12 @@ impl StravaClient {
             .text("external_id", uuid::Uuid::new_v4().to_string());
 
         let headers = self.get_auth_headers()?;
-        let url = self
+        let strava_endpoint = self
             .config
             .strava_endpoint
             .as_ref()
-            .ok_or_else(|| format_err!("Bad URL"))?
-            .join("api/v3/uploads")?;
+            .ok_or_else(|| format_err!("Missing strava url"))?;
+        let url = strava_endpoint.join("api/v3/uploads")?;
         let result: UploadResponse = self
             .client
             .post(url.as_str())
@@ -599,12 +602,7 @@ impl StravaClient {
             .error_for_status()?
             .json()
             .await?;
-        let url = self
-            .config
-            .strava_endpoint
-            .as_ref()
-            .ok_or_else(|| format_err!("Bad URL"))?
-            .join(&format_sstr!("api/v3/uploads/{}", result.id))?;
+        let url = strava_endpoint.join(&format_sstr!("api/v3/uploads/{}", result.id))?;
         for _ in 0..10 {
             let result: UploadResponse = self
                 .client

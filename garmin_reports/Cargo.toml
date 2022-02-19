@@ -1,6 +1,6 @@
 [package]
 name = "garmin_reports"
-version = "0.11.55"
+version = "0.11.56"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -21,4 +21,4 @@ maplit = "1.0"
 url = "2.2"
 itertools = "0.10"
 derive_more = "0.99"
-stack-string = { version="0.5", features=["postgres_types", "rweb-openapi"] }
+stack-string = { version="0.6", features=["postgres_types", "rweb-openapi"] }

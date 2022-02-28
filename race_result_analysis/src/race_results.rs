@@ -287,6 +287,7 @@ impl RaceResults {
                     "
                         INSERT INTO race_results_garmin_summary (race_id, summary_id)
                         VALUES ($race_id, $summary_id)
+                        ON CONFLICT DO NOTHING
                     ",
                     race_id = self.id,
                     summary_id = summary_id,

@@ -10,6 +10,7 @@
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::used_underscore_binding)]
 #![allow(clippy::default_trait_access)]
+#![allow(clippy::return_self_not_must_use)]
 
 pub mod garmin_connect_client;
 pub mod garmin_connect_hr_data;

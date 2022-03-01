@@ -10,6 +10,7 @@
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::similar_names)]
 #![allow(clippy::used_underscore_binding)]
+#![allow(clippy::return_self_not_must_use)]
 
 pub mod garmin_cli;
 pub mod garmin_cli_opts;

@@ -10,6 +10,7 @@
 #![allow(clippy::similar_names)]
 #![allow(clippy::used_underscore_binding)]
 #![allow(clippy::default_trait_access)]
+#![allow(clippy::return_self_not_must_use)]
 
 pub mod fitbit_client;
 pub mod fitbit_heartrate;

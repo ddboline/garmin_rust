@@ -13,6 +13,7 @@
 #![allow(clippy::upper_case_acronyms)]
 #![allow(clippy::default_trait_access)]
 #![allow(clippy::unused_async)]
+#![allow(clippy::return_self_not_must_use)]
 
 pub mod errors;
 pub mod garmin_requests;

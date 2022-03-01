@@ -9,6 +9,7 @@
 #![allow(clippy::shadow_unrelated)]
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::used_underscore_binding)]
+#![allow(clippy::return_self_not_must_use)]
 
 pub mod garmin_constraints;
 pub mod garmin_file_report_html;

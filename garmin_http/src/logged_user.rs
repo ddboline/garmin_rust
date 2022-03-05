@@ -77,7 +77,7 @@ impl LoggedUser {
         debug!("Got session {:?}", session);
         match session {
             Some(session) => Ok(Session {
-                history: session.history.unwrap_or_else(Vec::new),
+                history: session.history.unwrap_or_default(),
             }),
             None => Ok(Session::default()),
         }

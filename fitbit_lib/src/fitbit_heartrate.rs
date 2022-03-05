@@ -389,7 +389,7 @@ impl FitbitHeartRate {
             .next()
             .map(|record| from_value::<Vec<Self>>(&record?))
             .transpose()
-            .map(|x| x.unwrap_or_else(Vec::new))
+            .map(|x| x.unwrap_or_default())
             .map_err(Into::into)
     }
 

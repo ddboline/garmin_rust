@@ -88,7 +88,7 @@ impl GarminConstraint {
         let gps_file = config.gps_dir.join(pat);
         if gps_file.exists() {
             Self::Filename(pat.into())
-        } else if let Ok(dt) = DateTime::parse_from_rfc3339(&pat.replace("Z", "+00:00")) {
+        } else if let Ok(dt) = DateTime::parse_from_rfc3339(&pat.replace('Z', "+00:00")) {
             Self::DateTime(dt)
         } else if WEEK_REG.is_match(pat) {
             let cap = WEEK_REG.captures_iter(pat).next().unwrap();

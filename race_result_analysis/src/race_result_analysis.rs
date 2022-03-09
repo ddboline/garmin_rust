@@ -201,7 +201,7 @@ impl RaceResultAnalysis {
                     }).join(",");
 
                     if filter.is_empty() {
-                        "".into()
+                        format_sstr!("{date}")
                     } else {
                         format_sstr!(
                             r#"<button type="submit"
@@ -214,22 +214,36 @@ impl RaceResultAnalysis {
                 format_sstr!("{}", result.race_flag)
             } else {
                 format_sstr!(
-                    r#"<button type="button" id="race_flag_{id}" onclick="flipRaceResultFlag({id});">{flag}</button>"#,
+                    r#"
+                        <button type="button" id="race_flag_{id}" onclick="flipRaceResultFlag({id});">
+                            {flag}
+                       </button>
+                    "#,
                     flag=result.race_flag, id=result.id
                 )
             };
             format_sstr!(
-                r#"<td align="right">{distance:0.1}</td><td>{time}</td><td align="center">{pace}</td><td>{date}</td>
-                 <td>{name}</td>
-                 <td>{flag}</td>"#,
+                r#"
+                    <td align="right">{distance:0.1}</td>
+                    <td>{time}</td>
+                    <td align="center">{pace}</td>
+                    <td align="center">{date}</td>
+                    <td>{name}</td>
+                    <td>{flag}</td>
+                "#,
                 name = result.race_name.as_ref().map_or("", StackString::as_str),
             )
         }).join("</tr><tr>");
         let entries = format_sstr!(
-            r#"{entries}<br><table border="1"><thead>
-            <th>Distance (mi)</th><th>Time</th><th>Pace (min/mi)</th><th>Date</th><th>Name</th><th>Flag</th>
-            </thead>
-            <tr>{race_results}</tr></table>"#
+            r#"
+                {entries}<br>
+                <table border="1">
+                <thead>
+                <th>Distance (mi)</th><th>Time</th><th>Pace (min/mi)</th><th>Date</th><th>Name</th><th>Flag</th>
+                </thead>
+                <tr>{race_results}</tr>
+                </table>
+            "#
         );
 
         let x_vals: Vec<f64> = x_vals.map(|x| x * METERS_PER_MILE).to_vec();

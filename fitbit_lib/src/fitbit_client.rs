@@ -61,10 +61,13 @@ struct AccessTokenResponse {
 }
 
 impl FitbitClient {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// # Errors
+    /// Returns error if auth fails
     pub async fn with_auth(config: GarminConfig) -> Result<Self, Error> {
         let mut client = Self::from_file(config).await?;
         if let Ok(offset) = client.get_client_offset().await {
@@ -78,6 +81,8 @@ impl FitbitClient {
         Ok(client)
     }
 
+    /// # Errors
+    /// Returns error if reading auth from file fails
     pub async fn from_file(config: GarminConfig) -> Result<Self, Error> {
         let mut client = Self {
             config,
@@ -107,6 +112,8 @@ impl FitbitClient {
         Ok(client)
     }
 
+    /// # Errors
+    /// Returns error if storing to file fails
     pub async fn to_file(&self) -> Result<(), Error> {
         let mut f = tokio::fs::File::create(&self.config.fitbit_tokenfile).await?;
         f.write_all(format_sstr!("user_id={}\n", self.user_id).as_bytes())
@@ -118,6 +125,7 @@ impl FitbitClient {
         Ok(())
     }
 
+    #[must_use]
     pub fn get_offset(&self) -> FixedOffset {
         self.offset.unwrap_or_else(|| FixedOffset::east(0))
     }
@@ -150,6 +158,8 @@ impl FitbitClient {
         Ok(resp)
     }
 
+    /// # Errors
+    /// Returns error if api call fails
     pub async fn get_user_profile(&self) -> Result<FitbitUserProfile, Error> {
         #[derive(Deserialize)]
         struct UserResp {
@@ -185,6 +195,8 @@ impl FitbitClient {
         encode_config(&random_bytes, URL_SAFE_NO_PAD)
     }
 
+    /// # Errors
+    /// Returns error if api call fails
     pub async fn get_fitbit_auth_url(&self) -> Result<Url, Error> {
         let redirect_uri = format_sstr!("https://{}/garmin/fitbit/callback", self.config.domain);
         let scopes = &[
@@ -248,6 +260,8 @@ impl FitbitClient {
         Ok(headers)
     }
 
+    /// # Errors
+    /// Returns error if api call fails
     pub async fn refresh_fitbit_access_token(&mut self) -> Result<StackString, Error> {
         let headers = self.get_basic_headers()?;
         let data = hashmap! {
@@ -282,6 +296,8 @@ impl FitbitClient {
         Ok(success)
     }
 
+    /// # Errors
+    /// Returns error if api call fails
     pub async fn get_fitbit_access_token(
         &mut self,
         code: &str,
@@ -332,6 +348,8 @@ impl FitbitClient {
         }
     }
 
+    /// # Errors
+    /// Returns error if api call fails
     pub async fn get_fitbit_intraday_time_series_heartrate(
         &self,
         date: NaiveDate,
@@ -382,6 +400,8 @@ impl FitbitClient {
             .collect()
     }
 
+    /// # Errors
+    /// Returns error if api call fails
     pub async fn import_fitbit_heartrate(
         &self,
         date: NaiveDate,
@@ -395,6 +415,8 @@ impl FitbitClient {
         .await?
     }
 
+    /// # Errors
+    /// Returns error if api call fails
     pub async fn import_garmin_connect_heartrate(
         config: GarminConfig,
         heartrate_data: &GarminConnectHrData,
@@ -403,6 +425,8 @@ impl FitbitClient {
         spawn_blocking(move || FitbitHeartRate::merge_slice_to_avro(&config, &heartrates)).await?
     }
 
+    /// # Errors
+    /// Returns error if api call fails
     pub async fn get_fitbit_bodyweightfat(&self) -> Result<Vec<FitbitBodyWeightFat>, Error> {
         #[derive(Deserialize)]
         struct BodyWeight {
@@ -454,6 +478,8 @@ impl FitbitClient {
         Ok(result)
     }
 
+    /// # Errors
+    /// Returns error if api call fails
     #[allow(clippy::similar_names)]
     pub async fn update_fitbit_bodyweightfat<'a>(
         &self,
@@ -517,6 +543,8 @@ impl FitbitClient {
         Ok(())
     }
 
+    /// # Errors
+    /// Returns error if api call fails
     pub async fn get_activities(
         &self,
         start_date: NaiveDate,
@@ -548,6 +576,8 @@ impl FitbitClient {
         Ok(activities.activities)
     }
 
+    /// # Errors
+    /// Returns error if api call fails
     pub async fn get_all_activities(
         &self,
         start_date: NaiveDate,
@@ -565,6 +595,8 @@ impl FitbitClient {
         Ok(activities)
     }
 
+    /// # Errors
+    /// Returns error if api call fails
     pub async fn get_tcx_urls(
         &self,
         start_date: NaiveDate,
@@ -588,6 +620,8 @@ impl FitbitClient {
             .collect()
     }
 
+    /// # Errors
+    /// Returns error if api call fails
     pub async fn download_tcx(&self, tcx_url: &str) -> Result<bytes::Bytes, Error> {
         let headers = self.get_auth_headers()?;
         self.client
@@ -601,6 +635,8 @@ impl FitbitClient {
             .map_err(Into::into)
     }
 
+    /// # Errors
+    /// Returns error if api call fails
     pub async fn get_fitbit_activity_types(
         &self,
     ) -> Result<HashMap<StackString, StackString>, Error> {
@@ -709,6 +745,8 @@ impl FitbitClient {
         Ok((resp.activity_log.activity_id, resp.activity_log.steps))
     }
 
+    /// # Errors
+    /// Returns error if api call fails
     pub async fn remove_duplicate_entries(&self, pool: &PgPool) -> Result<Vec<StackString>, Error> {
         let mut last_entry = None;
         let futures = FitbitActivity::read_from_db(pool, None, None)
@@ -748,6 +786,8 @@ impl FitbitClient {
         try_join_all(futures).await
     }
 
+    /// # Errors
+    /// Returns error if api call fails
     #[allow(clippy::manual_filter_map)]
     pub async fn sync_fitbit_activities(
         &self,
@@ -855,6 +895,8 @@ impl FitbitClient {
         Ok(updated?.into_iter().flatten().collect())
     }
 
+    /// # Errors
+    /// Returns error if api call fails
     pub async fn delete_fitbit_activity(&self, log_id: u64) -> Result<(), Error> {
         let url = self
             .config
@@ -873,6 +915,8 @@ impl FitbitClient {
         Ok(())
     }
 
+    /// # Errors
+    /// Returns error if api call fails
     pub async fn sync_everything(
         &self,
         pool: &PgPool,
@@ -922,6 +966,8 @@ impl FitbitClient {
         })
     }
 
+    /// # Errors
+    /// Returns error if api call fails
     #[allow(clippy::manual_filter_map)]
     pub async fn sync_tcx(&self, start_date: NaiveDate) -> Result<Vec<PathBuf>, Error> {
         let futures = self

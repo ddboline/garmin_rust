@@ -49,6 +49,8 @@ impl fmt::Display for ScaleMeasurement {
 }
 
 impl ScaleMeasurement {
+    /// # Errors
+    /// Returns error parsing msg fails
     pub fn from_telegram_text(msg: &str) -> Result<Self, Error> {
         let datetime = Utc::now();
         let sep = if msg.contains(',') {
@@ -88,6 +90,8 @@ impl ScaleMeasurement {
         })
     }
 
+    /// # Errors
+    /// Returns error if db query fails
     pub async fn get_by_id(id: i32, pool: &PgPool) -> Result<Option<Self>, Error> {
         let query = query!("SELECT * FROM scale_measurements WHERE id = $id", id = id);
         let conn = pool.get().await?;
@@ -99,6 +103,8 @@ impl ScaleMeasurement {
         Ok(result)
     }
 
+    /// # Errors
+    /// Returns error if db query fails
     pub async fn get_by_datetime(dt: DateTime<Utc>, pool: &PgPool) -> Result<Option<Self>, Error> {
         let query = query!(
             "SELECT * FROM scale_measurements WHERE datetime = $dt",
@@ -113,6 +119,8 @@ impl ScaleMeasurement {
         Ok(result)
     }
 
+    /// # Errors
+    /// Returns error if db query fails
     pub async fn delete_from_db(self, pool: &PgPool) -> Result<(), Error> {
         let query = query!(
             "DELETE FROM scale_measurements WHERE id = $id",
@@ -125,6 +133,8 @@ impl ScaleMeasurement {
         Ok(())
     }
 
+    /// # Errors
+    /// Returns error if db query fails
     pub async fn insert_into_db(&mut self, pool: &PgPool) -> Result<(), Error> {
         let query = query!(
             "
@@ -169,6 +179,8 @@ impl ScaleMeasurement {
         Ok(())
     }
 
+    /// # Errors
+    /// Returns error if reading files fails
     pub async fn read_latest_from_db(pool: &PgPool) -> Result<Option<Self>, Error> {
         let query = "
             SELECT * FROM scale_measurements
@@ -184,6 +196,8 @@ impl ScaleMeasurement {
         Ok(result)
     }
 
+    /// # Errors
+    /// Returns error if db query fails
     pub async fn read_from_db(
         pool: &PgPool,
         start_date: Option<NaiveDate>,
@@ -215,6 +229,8 @@ impl ScaleMeasurement {
         query.fetch(&conn).await.map_err(Into::into)
     }
 
+    /// # Errors
+    /// Returns error if db query fails
     pub fn get_scale_measurement_plots(
         measurements: &[Self],
         offset: Option<usize>,
@@ -382,6 +398,8 @@ impl ScaleMeasurement {
         })
     }
 
+    /// # Errors
+    /// Returns error if db query fails
     pub async fn merge_updates<'a, T>(measurements: T, pool: &PgPool) -> Result<(), Error>
     where
         T: IntoIterator<Item = &'a mut Self>,

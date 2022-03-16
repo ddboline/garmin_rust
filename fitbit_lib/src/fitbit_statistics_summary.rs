@@ -21,6 +21,7 @@ pub struct FitbitStatisticsSummary {
 }
 
 impl FitbitStatisticsSummary {
+    #[must_use]
     pub fn from_heartrate_values(heartrate_values: &[(DateTime<Utc>, i32)]) -> Option<Self> {
         if heartrate_values.len() < 2 {
             return None;
@@ -49,6 +50,8 @@ impl FitbitStatisticsSummary {
         })
     }
 
+    /// # Errors
+    /// Returns error if db query fails
     pub async fn read_entry(date: NaiveDate, pool: &PgPool) -> Result<Option<Self>, Error> {
         let query = query!(
             r#"
@@ -60,6 +63,8 @@ impl FitbitStatisticsSummary {
         query.fetch_opt(&conn).await.map_err(Into::into)
     }
 
+    /// # Errors
+    /// Returns error if db query fails
     pub async fn read_from_db(
         start_date: Option<NaiveDate>,
         end_date: Option<NaiveDate>,
@@ -82,6 +87,8 @@ impl FitbitStatisticsSummary {
         query.fetch(&conn).await.map_err(Into::into)
     }
 
+    /// # Errors
+    /// Returns error if db query fails
     pub async fn upsert_entry(&self, pool: &PgPool) -> Result<(), Error> {
         if Self::read_entry(self.date, pool).await?.is_some() {
             self.update_entry(pool).await
@@ -90,6 +97,8 @@ impl FitbitStatisticsSummary {
         }
     }
 
+    /// # Errors
+    /// Returns error if db query fails
     pub async fn update_entry(&self, pool: &PgPool) -> Result<(), Error> {
         let query = query!(
             r#"
@@ -111,6 +120,8 @@ impl FitbitStatisticsSummary {
         query.execute(&conn).await.map(|_| ()).map_err(Into::into)
     }
 
+    /// # Errors
+    /// Returns error if db query fails
     pub async fn insert_entry(&self, pool: &PgPool) -> Result<(), Error> {
         let query = query!(
             r#"
@@ -133,6 +144,8 @@ impl FitbitStatisticsSummary {
         query.execute(&conn).await.map(|_| ()).map_err(Into::into)
     }
 
+    /// # Errors
+    /// Returns error if reading file fails
     pub fn get_fitbit_statistics_plots(
         stats: &[Self],
         offset: Option<usize>,

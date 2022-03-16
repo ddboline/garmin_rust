@@ -41,6 +41,6 @@ bytes = "1.0"
 postgres-types = "0.2"
 uuid = "0.8"
 rweb-helper = { git = "https://github.com/ddboline/rweb_helper.git", tag="0.4.3" }
-authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.7.28"}
+authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.7.29"}
 stack-string = { version="0.7", features=["postgres_types", "rweb-openapi"] }
 reqwest = {version="0.11", features=["cookies", "json", "rustls-tls", "stream"], default_features=false}

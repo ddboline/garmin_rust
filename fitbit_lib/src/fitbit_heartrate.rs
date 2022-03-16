@@ -69,6 +69,8 @@ pub struct JsonHeartRateEntry {
     pub value: JsonHeartRateValue,
 }
 
+/// # Errors
+/// Returns error if deserialize/parse datetime fails
 pub fn deserialize_json_mdyhms<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
 where
     D: Deserializer<'de>,
@@ -84,6 +86,7 @@ where
 }
 
 impl FitbitHeartRate {
+    #[must_use]
     pub fn create_table(heartrate_values: &[Self]) -> StackString {
         let rows = heartrate_values
             .iter()
@@ -101,6 +104,7 @@ impl FitbitHeartRate {
         )
     }
 
+    #[must_use]
     pub fn from_json_heartrate_entry(entry: JsonHeartRateEntry) -> Self {
         Self {
             datetime: entry.datetime,
@@ -108,6 +112,8 @@ impl FitbitHeartRate {
         }
     }
 
+    /// # Errors
+    /// Returns error if api call fails
     #[allow(clippy::similar_names)]
     pub async fn get_heartrate_values(
         config: &GarminConfig,
@@ -185,6 +191,8 @@ impl FitbitHeartRate {
         Ok(heartrate_values)
     }
 
+    /// # Errors
+    /// Returns error if api call fails
     pub async fn calculate_summary_statistics(
         config: &GarminConfig,
         pool: &PgPool,
@@ -201,6 +209,8 @@ impl FitbitHeartRate {
         }
     }
 
+    /// # Errors
+    /// Returns error if api call fails
     pub async fn get_all_summary_statistics(
         config: &GarminConfig,
         pool: &PgPool,
@@ -235,6 +245,8 @@ impl FitbitHeartRate {
         Ok(())
     }
 
+    /// # Errors
+    /// Returns error if api call fails
     #[allow(clippy::similar_names)]
     pub async fn get_heartrate_plot(
         config: &GarminConfig,
@@ -347,6 +359,8 @@ impl FitbitHeartRate {
         Ok(params)
     }
 
+    /// # Errors
+    /// Returns error if serialize to avro file fails
     pub fn dump_to_avro(values: &[Self], output_filename: impl AsRef<Path>) -> Result<(), Error> {
         use rand::{
             distributions::{Alphanumeric, DistString},
@@ -372,6 +386,8 @@ impl FitbitHeartRate {
         Ok(())
     }
 
+    /// # Errors
+    /// Returns error if `read_avro` fails
     pub fn read_avro_by_date(config: &GarminConfig, date: NaiveDate) -> Result<Vec<Self>, Error> {
         let date_str = StackString::from_display(date);
         let input_filename = config.fitbit_cachedir.join(date_str).with_extension("avro");
@@ -383,16 +399,20 @@ impl FitbitHeartRate {
         }
     }
 
+    /// # Errors
+    /// Returns error if file read fails
     pub fn read_avro(input_filename: impl AsRef<Path>) -> Result<Vec<Self>, Error> {
         let input_file = File::open(input_filename)?;
         Reader::new(input_file)?
             .next()
             .map(|record| from_value::<Vec<Self>>(&record?))
             .transpose()
-            .map(|x| x.unwrap_or_default())
+            .map(Option::unwrap_or_default)
             .map_err(Into::into)
     }
 
+    /// # Errors
+    /// Returns error if `read_avro_by_date` fails
     pub fn merge_slice_to_avro(config: &GarminConfig, values: &[Self]) -> Result<(), Error> {
         let dates: HashSet<_> = values
             .iter()
@@ -437,6 +457,8 @@ impl FitbitHeartRate {
     }
 }
 
+/// # Errors
+/// Returns error if deserialization fails
 pub fn process_fitbit_json_file(fname: &Path) -> Result<Vec<FitbitHeartRate>, Error> {
     let f = File::open(fname)?;
     let result: Vec<JsonHeartRateEntry> = serde_json::from_reader(f)?;
@@ -447,6 +469,8 @@ pub fn process_fitbit_json_file(fname: &Path) -> Result<Vec<FitbitHeartRate>, Er
     Ok(result)
 }
 
+/// # Errors
+/// Returns error if deserialization fails
 pub fn import_fitbit_json_files(directory: &str) -> Result<(), Error> {
     let config = GarminConfig::get_config(None)?;
     let filenames: Vec<_> = glob(&format_sstr!("{directory}/heart_rate-*.json"))?.collect();
@@ -461,6 +485,8 @@ pub fn import_fitbit_json_files(directory: &str) -> Result<(), Error> {
         .collect()
 }
 
+/// # Errors
+/// Returns error if deserialization fails
 pub fn import_garmin_json_file(filename: &Path) -> Result<(), Error> {
     let config = GarminConfig::get_config(None)?;
 
@@ -473,6 +499,8 @@ pub fn import_garmin_json_file(filename: &Path) -> Result<(), Error> {
     Ok(())
 }
 
+/// # Errors
+/// Returns error if deserialization fails
 pub fn import_garmin_heartrate_file(filename: &Path) -> Result<(), Error> {
     let config = GarminConfig::get_config(None)?;
 

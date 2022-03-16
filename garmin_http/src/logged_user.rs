@@ -173,9 +173,9 @@ pub async fn fill_from_db(pool: &PgPool) -> Result<(), Error> {
         AUTHORIZED_USERS.get_users()
     };
     if let Ok("true") = var("TESTENV").as_ref().map(String::as_str) {
-        AUTHORIZED_USERS.merge_users(["user@test"])?;
+        AUTHORIZED_USERS.merge_users(["user@test"]);
     }
-    AUTHORIZED_USERS.merge_users(&users)?;
+    AUTHORIZED_USERS.merge_users(&users);
     debug!("{:?}", *AUTHORIZED_USERS);
     Ok(())
 }

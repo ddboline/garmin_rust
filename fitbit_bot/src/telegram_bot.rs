@@ -42,6 +42,8 @@ impl TelegramBot {
         }
     }
 
+    /// # Errors
+    /// Returns error if bot call fails
     pub async fn run_bot(&self) -> Result<(), Error> {
         self.initialize_last_weight().await?;
         let fill_user_ids = {

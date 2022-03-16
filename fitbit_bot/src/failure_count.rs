@@ -7,6 +7,7 @@ pub struct FailureCount {
 }
 
 impl FailureCount {
+    #[must_use]
     pub fn new(max_count: usize) -> Self {
         Self {
             max_count,
@@ -14,6 +15,8 @@ impl FailureCount {
         }
     }
 
+    /// # Errors
+    /// Returns error if more than `max_count` errors are encountered
     pub fn check(&self) -> Result<(), Error> {
         if self.counter.load(Ordering::SeqCst) > self.max_count {
             Err(format_err!(
@@ -25,6 +28,8 @@ impl FailureCount {
         }
     }
 
+    /// # Errors
+    /// Returns error if more than `max_count` errors are encountered
     pub fn reset(&self) -> Result<(), Error> {
         if self.counter.swap(0, Ordering::SeqCst) > self.max_count {
             Err(format_err!(
@@ -36,6 +41,8 @@ impl FailureCount {
         }
     }
 
+    /// # Errors
+    /// Returns error if more than `max_count` errors are encountered
     pub fn increment(&self) -> Result<(), Error> {
         if self.counter.fetch_add(1, Ordering::SeqCst) > self.max_count {
             Err(format_err!(

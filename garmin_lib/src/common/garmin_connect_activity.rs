@@ -33,6 +33,8 @@ pub struct GarminConnectActivity {
 }
 
 impl GarminConnectActivity {
+    /// # Errors
+    /// Return error if db query fails
     pub async fn read_from_db(
         pool: &PgPool,
         start_date: Option<NaiveDate>,
@@ -64,6 +66,8 @@ impl GarminConnectActivity {
         query.fetch(&conn).await.map_err(Into::into)
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn get_by_begin_datetime(
         pool: &PgPool,
         begin_datetime: DateTime<Utc>,
@@ -76,6 +80,8 @@ impl GarminConnectActivity {
         query.fetch_opt(&conn).await.map_err(Into::into)
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn get_from_summary_id(
         pool: &PgPool,
         summary_id: i32,
@@ -88,6 +94,8 @@ impl GarminConnectActivity {
         query.fetch_opt(&conn).await.map_err(Into::into)
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn insert_into_db(&self, pool: &PgPool) -> Result<(), Error> {
         let query = query!(
             "
@@ -116,6 +124,8 @@ impl GarminConnectActivity {
         query.execute(&conn).await.map(|_| ()).map_err(Into::into)
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn update_db(&self, pool: &PgPool) -> Result<(), Error> {
         let query = query!(
             "
@@ -144,6 +154,8 @@ impl GarminConnectActivity {
         Ok(())
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn upsert_activities(
         activities: &[Self],
         pool: &PgPool,
@@ -183,6 +195,8 @@ impl GarminConnectActivity {
         Ok(output)
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn merge_new_activities(
         new_activities: Vec<Self>,
         pool: &PgPool,
@@ -204,6 +218,8 @@ impl GarminConnectActivity {
         try_join_all(futures).await
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn fix_summary_id_in_db(pool: &PgPool) -> Result<(), Error> {
         let query = "
             UPDATE garmin_connect_activities SET summary_id = (
@@ -217,6 +233,8 @@ impl GarminConnectActivity {
     }
 }
 
+/// # Errors
+/// Return error if serialization fails
 pub async fn import_garmin_connect_activity_json_file(filename: &Path) -> Result<(), Error> {
     let config = GarminConfig::get_config(None)?;
     let pool = PgPool::new(&config.pgurl);
@@ -226,6 +244,8 @@ pub async fn import_garmin_connect_activity_json_file(filename: &Path) -> Result
     Ok(())
 }
 
+/// # Errors
+/// Return error if deserialize fails
 pub fn deserialize_start_time<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
 where
     D: Deserializer<'de>,

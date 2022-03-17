@@ -66,6 +66,7 @@ pub struct GarminCli {
 }
 
 impl GarminCli {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             config: GarminConfig::new(),
@@ -73,6 +74,8 @@ impl GarminCli {
         }
     }
 
+    /// # Errors
+    /// Return error if config init fails
     pub fn with_config() -> Result<Self, Error> {
         let config = GarminConfig::get_config(None)?;
         let pool = PgPool::new(&config.pgurl);
@@ -86,6 +89,8 @@ impl GarminCli {
         Ok(obj)
     }
 
+    /// # Errors
+    /// Return error if config init fails
     pub fn from_pool(pool: &PgPool) -> Result<Self, Error> {
         let config = GarminConfig::get_config(None)?;
         let corr = GarminCorrectionMap::new();
@@ -98,26 +103,34 @@ impl GarminCli {
         Ok(obj)
     }
 
+    #[must_use]
     pub fn get_pool(&self) -> PgPool {
         self.pool.clone()
     }
 
+    #[must_use]
     pub fn get_config(&self) -> &GarminConfig {
         &self.config
     }
 
+    #[must_use]
     pub fn get_opts(&self) -> &Option<GarminCliOptions> {
         &self.opts
     }
 
+    #[must_use]
     pub fn get_corr(&self) -> &GarminCorrectionMap {
         &self.corr
     }
 
+    #[must_use]
     pub fn get_parser(&self) -> &GarminParse {
         &self.parser
     }
 
+    /// # Errors
+    /// Return error if `read_corrections_from_db` fails or `get_summary_list`
+    /// fails
     pub async fn proc_everything(&self) -> Result<Vec<StackString>, Error> {
         let pool = self.get_pool();
         let corr_map = GarminCorrectionLap::read_corrections_from_db(&pool).await?;
@@ -133,6 +146,8 @@ impl GarminCli {
         }
     }
 
+    /// # Errors
+    /// Return error if reading summary list fails
     pub async fn get_summary_list(
         &self,
         corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
@@ -200,10 +215,14 @@ impl GarminCli {
         Ok(gsum_list)
     }
 
+    /// # Errors
+    /// Return error if `sync_everything` fails
     pub async fn run_bootstrap(&self) -> Result<Vec<StackString>, Error> {
         self.sync_everything(true).await
     }
 
+    /// # Errors
+    /// Return error if `sync_dir` fails
     pub async fn sync_everything(&self, check_md5: bool) -> Result<Vec<StackString>, Error> {
         let gsync = GarminSync::new();
 
@@ -253,6 +272,8 @@ impl GarminCli {
         }
     }
 
+    /// # Errors
+    /// Return error if various function fail
     pub async fn run_cli(
         &self,
         options: &GarminReportOptions,
@@ -304,6 +325,8 @@ impl GarminCli {
         Ok(())
     }
 
+    /// # Errors
+    /// Return error if various function fail
     pub async fn run_html(&self, req: &GarminRequest, is_demo: bool) -> Result<StackString, Error> {
         let pg_conn = self.get_pool();
 
@@ -422,6 +445,8 @@ impl GarminCli {
             .collect()
     }
 
+    /// # Errors
+    /// Return error if `process_filenames_sync` fails
     pub async fn process_filenames(
         &self,
         filenames: impl IntoIterator<Item = impl AsRef<Path>>,

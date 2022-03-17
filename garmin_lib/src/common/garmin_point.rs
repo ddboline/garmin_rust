@@ -39,6 +39,7 @@ impl Default for GarminPoint {
 }
 
 impl GarminPoint {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             time: sentinel_datetime(),
@@ -73,6 +74,8 @@ impl GarminPoint {
         self.avg_speed_value_mph = 0.0;
     }
 
+    /// # Errors
+    /// Return error in `convert_xml_local_time_to_utc` fails
     pub fn read_point_xml(entries: &Node) -> Result<Self, Error> {
         let mut new_point = Self::new();
         for entry in entries.attributes() {
@@ -89,6 +92,8 @@ impl GarminPoint {
         Ok(new_point)
     }
 
+    /// # Errors
+    /// Return error if `convert_xml_local_time_to_utc` fails
     pub fn read_point_tcx(entries: &Node) -> Result<Self, Error> {
         let mut new_point = Self::new();
         for d in entries.descendants() {
@@ -137,7 +142,8 @@ impl GarminPoint {
         Ok(new_point)
     }
 
-    pub fn read_point_fit(fields: &[FitDataField]) -> Result<Self, Error> {
+    #[must_use]
+    pub fn read_point_fit(fields: &[FitDataField]) -> Self {
         let mut new_point = Self::new();
         for field in fields {
             match field.name() {
@@ -173,7 +179,7 @@ impl GarminPoint {
                 _ => {}
             }
         }
-        Ok(new_point)
+        new_point
     }
 
     pub fn calculate_durations(point_list: &mut [Self]) {

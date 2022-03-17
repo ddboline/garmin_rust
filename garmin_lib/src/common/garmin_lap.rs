@@ -37,6 +37,7 @@ impl Default for GarminLap {
 }
 
 impl GarminLap {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             lap_type: None,
@@ -71,6 +72,8 @@ impl GarminLap {
         self.lap_start_string = None;
     }
 
+    /// # Errors
+    /// Return error if `convert_xml_local_time_to_utc` fails
     pub fn read_lap_xml(entries: &Node) -> Result<Self, Error> {
         let mut new_lap = Self::new();
         for d in entries.descendants() {
@@ -105,6 +108,8 @@ impl GarminLap {
         Ok(new_lap)
     }
 
+    /// # Errors
+    /// Returns error if `convert_xml_local_time_to_utc` fails
     pub fn read_lap_tcx(entries: &Node) -> Result<Self, Error> {
         let mut new_lap = Self::new();
         for d in entries.children() {
@@ -153,7 +158,8 @@ impl GarminLap {
         Ok(new_lap)
     }
 
-    pub fn read_lap_fit(fields: &[FitDataField]) -> Result<(Self, Option<SportTypes>), Error> {
+    #[must_use]
+    pub fn read_lap_fit(fields: &[FitDataField]) -> (Self, Option<SportTypes>) {
         let mut new_lap = Self::new();
         let mut lap_sport = None;
         for field in fields {
@@ -205,7 +211,7 @@ impl GarminLap {
                 _ => {}
             }
         }
-        Ok((new_lap, lap_sport))
+        (new_lap, lap_sport)
     }
 
     pub fn fix_lap_number(lap_list: &mut [Self]) {

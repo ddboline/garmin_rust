@@ -77,10 +77,13 @@ pub struct StravaClient {
 }
 
 impl StravaClient {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// # Errors
+    /// Return error if client init fails or `refresh_access_token` fails
     pub async fn with_auth(config: GarminConfig) -> Result<Self, Error> {
         let mut client = Self::from_file(config).await?;
         if client.get_strava_athlete().await.is_err() {
@@ -90,6 +93,8 @@ impl StravaClient {
         Ok(client)
     }
 
+    /// # Errors
+    /// Return error if loading info from file fails
     pub async fn from_file(config: GarminConfig) -> Result<Self, Error> {
         let mut client = Self {
             config,
@@ -120,6 +125,8 @@ impl StravaClient {
         Ok(client)
     }
 
+    /// # Errors
+    /// Return error if authorization calls fail
     pub async fn webauth(&self) -> Result<(), Error> {
         let strava_endpoint = self
             .config
@@ -197,6 +204,8 @@ impl StravaClient {
         Ok(fname)
     }
 
+    /// # Errors
+    /// Return error if api calls fail
     pub async fn delete_activity(&self, activity_id: u64) -> Result<(), Error> {
         let web_csrf = if let Some(web_csrf) = WEB_CSRF.swap(None) {
             web_csrf
@@ -246,6 +255,8 @@ impl StravaClient {
         Err(format_err!("No csrf token"))
     }
 
+    /// # Errors
+    /// Return error if writing config to file fails
     pub async fn to_file(&self) -> Result<(), Error> {
         let mut f = File::create(&self.config.strava_tokenfile).await?;
         f.write_all(b"[API]\n").await?;
@@ -269,6 +280,8 @@ impl StravaClient {
         encode_config(&random_bytes, URL_SAFE_NO_PAD).into()
     }
 
+    /// # Errors
+    /// Return error if api calls fail
     pub async fn get_authorization_url_api(&self) -> Result<Url, Error> {
         let redirect_uri = format_sstr!("https://{}/garmin/strava/callback", self.config.domain);
         let state = Self::get_random_string();
@@ -293,6 +306,8 @@ impl StravaClient {
         Ok(url)
     }
 
+    /// # Errors
+    /// Return error if api calls fail
     pub async fn process_callback(&mut self, code: &str, state: &str) -> Result<(), Error> {
         #[derive(Deserialize)]
         struct TokenResponse {
@@ -333,6 +348,8 @@ impl StravaClient {
         }
     }
 
+    /// # Errors
+    /// Return error if api calls fail
     pub async fn refresh_access_token(&mut self) -> Result<(), Error> {
         #[derive(Deserialize)]
         struct TokenResponse {
@@ -383,6 +400,8 @@ impl StravaClient {
         Ok(headers)
     }
 
+    /// # Errors
+    /// Return error if api calls fail
     pub async fn get_strava_athlete(&self) -> Result<StravaAthlete, Error> {
         let url = self
             .config
@@ -402,6 +421,8 @@ impl StravaClient {
             .map_err(Into::into)
     }
 
+    /// # Errors
+    /// Return error if api calls fail
     pub async fn get_strava_activities(
         &self,
         start_date: Option<DateTime<Utc>>,
@@ -439,6 +460,8 @@ impl StravaClient {
             .map_err(Into::into)
     }
 
+    /// # Errors
+    /// Return error if api calls fail
     pub async fn get_all_strava_activites(
         &self,
         start_date: Option<DateTime<Utc>>,
@@ -459,6 +482,8 @@ impl StravaClient {
         Ok(activities)
     }
 
+    /// # Errors
+    /// Return error if api calls fail
     pub async fn create_strava_activity(&self, activity: &StravaActivity) -> Result<i64, Error> {
         #[derive(Serialize, Deserialize)]
         struct CreateActivityForm {
@@ -527,6 +552,8 @@ impl StravaClient {
         Ok(resp.id)
     }
 
+    /// # Errors
+    /// Return error if api calls fail
     #[allow(clippy::similar_names)]
     pub async fn upload_strava_activity(
         &self,
@@ -624,6 +651,8 @@ impl StravaClient {
         Ok(url)
     }
 
+    /// # Errors
+    /// Return error if api calls fail
     pub async fn update_strava_activity(
         &self,
         activity_id: u64,
@@ -684,6 +713,8 @@ impl StravaClient {
         Ok(url)
     }
 
+    /// # Errors
+    /// Return error if api calls fail
     pub async fn sync_with_client(
         &self,
         start_datetime: Option<DateTime<Utc>>,

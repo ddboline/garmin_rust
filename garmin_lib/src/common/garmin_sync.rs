@@ -25,6 +25,7 @@ use tokio::task::spawn_blocking;
 
 use crate::utils::garmin_util::{exponential_retry, get_md5sum};
 
+#[must_use]
 pub fn get_s3_client() -> S3Client {
     get_client_sts!(S3Client, Region::UsEast1).expect("Failed to obtain client")
 }
@@ -87,18 +88,22 @@ fn process_s3_item(mut item: S3Object) -> Option<KeyItem> {
 }
 
 impl GarminSync {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             s3_client: get_s3_client(),
         }
     }
 
+    #[must_use]
     pub fn from_client(s3client: S3Client) -> Self {
         Self {
             s3_client: s3client,
         }
     }
 
+    /// # Errors
+    /// Return error if s3 api call fails
     pub async fn get_list_of_keys(&self, bucket: &str) -> Result<Vec<KeyItem>, Error> {
         let results: Result<Vec<_>, _> = exponential_retry(|| async move {
             self.s3_client
@@ -113,6 +118,8 @@ impl GarminSync {
         Ok(list_of_keys)
     }
 
+    /// # Errors
+    /// Return error if s3 api call fails
     pub async fn sync_dir(
         &self,
         title: &str,
@@ -218,6 +225,8 @@ impl GarminSync {
         Ok(msg)
     }
 
+    /// # Errors
+    /// Return error if s3 api call fails
     pub async fn download_file(
         &self,
         local_file: &Path,
@@ -253,6 +262,8 @@ impl GarminSync {
         etag
     }
 
+    /// # Errors
+    /// Return error if s3 api call fails
     pub async fn upload_file(
         &self,
         local_file: &Path,
@@ -262,6 +273,8 @@ impl GarminSync {
         self.upload_file_acl(local_file, s3_bucket, s3_key).await
     }
 
+    /// # Errors
+    /// Return error if s3 api call fails
     pub async fn upload_file_acl(
         &self,
         local_file: &Path,

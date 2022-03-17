@@ -77,6 +77,8 @@ impl From<SportTypesWrapper> for SportTypes {
     }
 }
 
+/// # Errors
+/// Return error if `serialize_str` fails
 #[allow(clippy::trivially_copy_pass_by_ref)]
 pub fn serialize<S>(sport: &SportTypesWrapper, serializer: S) -> Result<S::Ok, S::Error>
 where
@@ -86,6 +88,8 @@ where
     serializer.serialize_str(&sport.to_strava_activity())
 }
 
+/// # Errors
+/// Return error if deserialization fails
 #[allow(clippy::trivially_copy_pass_by_ref)]
 pub fn deserialize<'de, D>(deserializer: D) -> Result<SportTypesWrapper, D::Error>
 where

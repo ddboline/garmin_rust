@@ -21,6 +21,7 @@ use super::garmin_parse::{GarminParseTrait, ParseOutput};
 pub struct GarminParseGmn {}
 
 impl GarminParseGmn {
+    #[must_use]
     pub fn new() -> Self {
         Self {}
     }

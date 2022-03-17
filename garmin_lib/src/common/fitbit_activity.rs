@@ -31,6 +31,8 @@ pub struct FitbitActivity {
 }
 
 impl FitbitActivity {
+    /// # Errors
+    /// Return error if db query fails
     pub async fn read_from_db(
         pool: &PgPool,
         start_date: Option<NaiveDate>,
@@ -63,12 +65,16 @@ impl FitbitActivity {
         query.fetch(&conn).await.map_err(Into::into)
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn get_by_id(pool: &PgPool, id: i64) -> Result<Option<Self>, Error> {
         let query = query!("SELECT * FROM fitbit_activities WHERE log_id=$id", id = id);
         let conn = pool.get().await?;
         query.fetch_opt(&conn).await.map_err(Into::into)
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn get_from_summary_id(
         pool: &PgPool,
         summary_id: i32,
@@ -81,6 +87,8 @@ impl FitbitActivity {
         query.fetch_opt(&conn).await.map_err(Into::into)
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn delete_from_db(self, pool: &PgPool) -> Result<(), Error> {
         let query = query!(
             "DELETE FROM fitbit_activities WHERE log_id=$id",
@@ -91,6 +99,8 @@ impl FitbitActivity {
         Ok(())
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn insert_into_db(&self, pool: &PgPool) -> Result<(), Error> {
         let query = query!(
             "
@@ -118,6 +128,8 @@ impl FitbitActivity {
         query.execute(&conn).await.map(|_| ()).map_err(Into::into)
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn update_db(&self, pool: &PgPool) -> Result<(), Error> {
         let query = query!(
             "
@@ -144,6 +156,8 @@ impl FitbitActivity {
         Ok(())
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn upsert_activities(
         activities: &[Self],
         pool: &PgPool,
@@ -184,6 +198,8 @@ impl FitbitActivity {
         Ok(output)
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn fix_summary_id_in_db(pool: &PgPool) -> Result<(), Error> {
         let query = "
             UPDATE fitbit_activities SET summary_id = (

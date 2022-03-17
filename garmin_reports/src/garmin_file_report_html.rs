@@ -87,6 +87,8 @@ struct ReportObjects {
     heart_rate_speed: Vec<(f64, f64)>,
 }
 
+/// # Errors
+/// Return error if `extract_report_objects_from_file` or `get_html_string` fail
 pub async fn file_report_html<T: AsRef<str>>(
     config: &GarminConfig,
     gfile: &GarminFile,
@@ -94,7 +96,7 @@ pub async fn file_report_html<T: AsRef<str>>(
     pool: &PgPool,
     is_demo: bool,
 ) -> Result<StackString, Error> {
-    let report_objs = extract_report_objects_from_file(gfile)?;
+    let report_objs = extract_report_objects_from_file(gfile);
     let plot_opts = get_plot_opts(&report_objs);
     let graphs = get_graphs(&plot_opts);
 
@@ -111,8 +113,8 @@ pub async fn file_report_html<T: AsRef<str>>(
     .await
 }
 
-fn extract_report_objects_from_file(gfile: &GarminFile) -> Result<ReportObjects, Error> {
-    let speed_values = get_splits(gfile, 400., "lap", true)?;
+fn extract_report_objects_from_file(gfile: &GarminFile) -> ReportObjects {
+    let speed_values = get_splits(gfile, 400., "lap", true);
     let heart_rate_speed = speed_values
         .iter()
         .map(|v| {
@@ -131,7 +133,7 @@ fn extract_report_objects_from_file(gfile: &GarminFile) -> Result<ReportObjects,
         })
         .collect();
 
-    let mile_split_vals = get_splits(gfile, METERS_PER_MILE, "mi", false)?
+    let mile_split_vals = get_splits(gfile, METERS_PER_MILE, "mi", false)
         .into_iter()
         .map(|v| {
             let d = v.split_distance;
@@ -198,7 +200,7 @@ fn extract_report_objects_from_file(gfile: &GarminFile) -> Result<ReportObjects,
             .unwrap_or(&0.0);
     };
 
-    Ok(report_objs)
+    report_objs
 }
 
 fn get_plot_opts(report_objs: &ReportObjects) -> Vec<PlotOpts> {
@@ -416,9 +418,9 @@ fn get_garmin_template_vec<T: AsRef<str>>(
         ),
         format_sstr!(
             "<br><br>{}\n",
-            get_html_splits(gfile, METERS_PER_MILE, "mi")?
+            get_html_splits(gfile, METERS_PER_MILE, "mi")
         ),
-        format_sstr!("<br><br>{}\n", get_html_splits(gfile, 5000.0, "km")?),
+        format_sstr!("<br><br>{}\n", get_html_splits(gfile, 5000.0, "km")),
     ];
     let sport_str: StackString = sport.into();
     let sport_title_link = format_sstr!(
@@ -611,8 +613,8 @@ where
             connect_activity,
             race_result
         ),
-        get_html_splits(gfile, METERS_PER_MILE, "mi")?,
-        get_html_splits(gfile, 5000.0, "km")?
+        get_html_splits(gfile, METERS_PER_MILE, "mi"),
+        get_html_splits(gfile, 5000.0, "km")
     );
     let map_segment = report_objs
         .lat_vals
@@ -671,15 +673,15 @@ fn get_sport_selector(current_sport: SportTypes) -> StackString {
     let mut sport_types: Vec<_> = get_sport_type_map()
         .keys()
         .filter_map(|s| {
-            if s == &current_sport {
+            if *s == current_sport.as_str() {
                 None
             } else {
-                Some(s.clone())
+                Some(*s)
             }
         })
         .collect();
-    sport_types.sort();
-    sport_types.insert(0, current_sport);
+    sport_types.sort_unstable();
+    sport_types.insert(0, current_sport.as_str());
     let sport_types = sport_types
         .into_iter()
         .map(|s| format_sstr!(r#"<option value="{s}">{s}</option>"#))
@@ -884,13 +886,9 @@ fn get_lap_html(glap: &GarminLap, sport: &str) -> Vec<StackString> {
         .collect()
 }
 
-fn get_html_splits(
-    gfile: &GarminFile,
-    split_distance_in_meters: f64,
-    label: &str,
-) -> Result<StackString, Error> {
+fn get_html_splits(gfile: &GarminFile, split_distance_in_meters: f64, label: &str) -> StackString {
     if gfile.points.is_empty() {
-        Ok("".into())
+        "".into()
     } else {
         let labels = vec![
             "Split",
@@ -901,7 +899,7 @@ fn get_html_splits(
             "Heart Rate",
         ];
 
-        let values: Vec<_> = get_splits(gfile, split_distance_in_meters, label, true)?
+        let values: Vec<_> = get_splits(gfile, split_distance_in_meters, label, true)
             .into_iter()
             .map(|val| {
                 let dis = val.split_distance as i32;
@@ -941,6 +939,6 @@ fn get_html_splits(
             retval.push("</tr>".into());
         }
         retval.push("</tbody></table>".into());
-        Ok(retval.join("\n").into())
+        retval.join("\n").into()
     }
 }

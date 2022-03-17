@@ -29,7 +29,12 @@ use crate::{
 type GarminTextEntry = (StackString, Option<StackString>);
 
 pub trait GarminReportTrait {
+    /// # Errors
+    /// Returns error if getting text entry fails
     fn get_text_entry(&self) -> Result<Vec<GarminTextEntry>, Error>;
+
+    /// # Errors
+    /// Returns error if `get_text_entry` entry fails
     fn get_html_entry(&self) -> Result<StackString, Error> {
         let ent = self
             .get_text_entry()?
@@ -47,6 +52,8 @@ pub trait GarminReportTrait {
             ent.trim()
         ))
     }
+
+    #[must_use]
     fn generate_url_string(&self) -> StackString {
         "year,running".into()
     }
@@ -63,6 +70,8 @@ pub enum GarminReportQuery {
 }
 
 impl GarminReportQuery {
+    /// # Errors
+    /// Return error if `get_text_entry` fails
     pub fn get_text_entries(&self) -> Result<Vec<Vec<GarminTextEntry>>, Error> {
         match self {
             Self::Year(x) => x.iter().map(GarminReportTrait::get_text_entry).collect(),
@@ -74,6 +83,9 @@ impl GarminReportQuery {
             Self::Empty => Ok(Vec::new()),
         }
     }
+
+    /// # Errors
+    /// Return error if `get_html_entry` fails
     pub fn get_html_entries(&self) -> Result<Vec<StackString>, Error> {
         match self {
             Self::Year(x) => x.iter().map(GarminReportTrait::get_html_entry).collect(),
@@ -87,6 +99,8 @@ impl GarminReportQuery {
     }
 }
 
+/// # Errors
+/// Return error if db queries fail
 pub async fn create_report_query(
     pool: &PgPool,
     options: &GarminReportOptions,

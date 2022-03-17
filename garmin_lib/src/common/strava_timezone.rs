@@ -117,14 +117,18 @@ impl TryFrom<&str> for StravaTimeZone {
 }
 
 impl StravaTimeZone {
+    #[must_use]
     pub fn tz(&self) -> &Tz {
         &self.1
     }
 
+    #[must_use]
     pub fn offset(&self) -> &FixedOffset {
         &self.0
     }
 
+    /// # Errors
+    /// Return error if parsing timezone fails
     pub fn from_strava_str(s: &str) -> Result<Self, Error> {
         let mut offset = None;
         let tz_strs: SmallVec<[&str; 2]> = s.split_whitespace().take(2).collect();

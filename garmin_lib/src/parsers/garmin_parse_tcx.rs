@@ -28,6 +28,7 @@ pub struct GarminParseTcx {
 }
 
 impl GarminParseTcx {
+    #[must_use]
     pub fn new() -> Self {
         Self { is_gzip: false }
     }

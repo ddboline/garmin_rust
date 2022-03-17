@@ -37,6 +37,7 @@ impl Default for GarminCorrectionLap {
 }
 
 impl GarminCorrectionLap {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             id: -1,
@@ -49,31 +50,37 @@ impl GarminCorrectionLap {
         }
     }
 
+    #[must_use]
     pub fn with_id(mut self, id: i32) -> Self {
         self.id = id;
         self
     }
 
+    #[must_use]
     pub fn with_start_time(mut self, start_time: DateTime<Utc>) -> Self {
         self.start_time = start_time;
         self
     }
 
+    #[must_use]
     pub fn with_lap_number(mut self, lap_number: i32) -> Self {
         self.lap_number = lap_number;
         self
     }
 
+    #[must_use]
     pub fn with_sport(mut self, sport: SportTypes) -> Self {
         self.sport = Some(sport);
         self
     }
 
+    #[must_use]
     pub fn with_distance(mut self, distance: f64) -> Self {
         self.distance = Some(distance);
         self
     }
 
+    #[must_use]
     pub fn with_duration(mut self, duration: f64) -> Self {
         self.duration = Some(duration);
         self
@@ -86,10 +93,13 @@ impl GarminCorrectionLap {
             .collect()
     }
 
+    #[must_use]
     pub fn get_corr_list(corr_map: &GarminCorrectionMap) -> Vec<Self> {
         corr_map.values().copied().collect()
     }
 
+    /// # Errors
+    /// Return error if loading correction map fails
     pub fn corr_map_from_buffer(buffer: &[u8]) -> Result<GarminCorrectionMap, Error> {
         let jsval = parse(str::from_utf8(buffer)?)?;
 
@@ -146,6 +156,8 @@ impl GarminCorrectionLap {
         Ok(corr_map)
     }
 
+    /// # Errors
+    /// Return error if loading correction map fails
     pub fn corr_list_from_json<T: AsRef<Path>>(
         json_filename: T,
     ) -> Result<GarminCorrectionMap, Error> {
@@ -232,6 +244,8 @@ impl GarminCorrectionLap {
         }
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn dump_corrections_to_db(
         corr_list_map: &GarminCorrectionMap,
         pool: &PgPool,
@@ -294,6 +308,8 @@ impl GarminCorrectionLap {
         Ok(())
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn read_corrections_from_db(pool: &PgPool) -> Result<GarminCorrectionMap, Error> {
         let conn = pool.get().await?;
         conn.query(
@@ -312,6 +328,8 @@ impl GarminCorrectionLap {
         .collect()
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn fix_corrections_in_db(pool: &PgPool) -> Result<(), Error> {
         let query = "
             UPDATE garmin_corrections_laps_backup SET summary_id = (

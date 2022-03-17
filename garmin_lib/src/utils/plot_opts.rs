@@ -14,6 +14,7 @@ pub struct PlotOpts<'a> {
 
 #[allow(clippy::similar_names)]
 impl<'a> PlotOpts<'a> {
+    #[must_use]
     pub fn new() -> PlotOpts<'a> {
         PlotOpts {
             name: "".into(),
@@ -26,31 +27,37 @@ impl<'a> PlotOpts<'a> {
         }
     }
 
+    #[must_use]
     pub fn with_name(mut self, name: &str) -> PlotOpts<'a> {
         self.name = name.into();
         self
     }
 
+    #[must_use]
     pub fn with_title(mut self, title: &str) -> PlotOpts<'a> {
         self.title = title.into();
         self
     }
 
+    #[must_use]
     pub fn with_data(mut self, data: &'a [(f64, f64)]) -> PlotOpts<'a> {
         self.data = Some(data);
         self
     }
 
+    #[must_use]
     pub fn with_scatter(mut self) -> PlotOpts<'a> {
         self.do_scatter = true;
         self
     }
 
+    #[must_use]
     pub fn with_marker(mut self, marker: &str) -> PlotOpts<'a> {
         self.marker = Some(marker.into());
         self
     }
 
+    #[must_use]
     pub fn with_labels(mut self, xlabel: &str, ylabel: &str) -> PlotOpts<'a> {
         self.xlabel = xlabel.into();
         self.ylabel = ylabel.into();

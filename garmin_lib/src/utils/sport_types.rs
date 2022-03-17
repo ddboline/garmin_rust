@@ -7,7 +7,7 @@ use std::{collections::HashMap, convert::TryFrom, fmt, str::FromStr};
 use tokio_postgres::types::{FromSql, IsNull, ToSql, Type};
 
 lazy_static! {
-    static ref SPORT_TYPE_MAP: HashMap<StackString, SportTypes> = init_sport_type_map();
+    static ref SPORT_TYPE_MAP: HashMap<&'static str, SportTypes> = init_sport_type_map();
 }
 
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq, Serialize, Deserialize)]
@@ -46,6 +46,8 @@ impl From<SportTypes> for StackString {
     }
 }
 
+/// # Errors
+/// Return error if serialization fails
 #[allow(clippy::trivially_copy_pass_by_ref)]
 pub fn serialize<S>(sport: &SportTypes, serializer: S) -> Result<S::Ok, S::Error>
 where
@@ -54,6 +56,8 @@ where
     serializer.serialize_str(&sport.to_strava_activity())
 }
 
+/// # Errors
+/// Return error if deserialization fails
 #[allow(clippy::trivially_copy_pass_by_ref)]
 pub fn deserialize<'de, D>(deserializer: D) -> Result<SportTypes, D::Error>
 where
@@ -64,6 +68,7 @@ where
 }
 
 impl SportTypes {
+    #[must_use]
     pub fn to_str(self) -> &'static str {
         match self {
             Self::Running => "running",
@@ -82,6 +87,7 @@ impl SportTypes {
         }
     }
 
+    #[must_use]
     pub fn to_strava_activity(self) -> StackString {
         match self {
             Self::Running => "Run",
@@ -100,6 +106,8 @@ impl SportTypes {
         .into()
     }
 
+    /// # Errors
+    /// Return error if input doesn't match valid activity type
     pub fn from_strava_activity(item: &str) -> Result<Self, Error> {
         match item {
             "Run" => Ok(Self::Running),
@@ -116,6 +124,7 @@ impl SportTypes {
         }
     }
 
+    #[must_use]
     pub fn to_fitbit_activity_id(self) -> Option<u64> {
         match self {
             Self::Running => Some(90009),
@@ -133,6 +142,7 @@ impl SportTypes {
         }
     }
 
+    #[must_use]
     pub fn from_fitbit_activity_id(id: usize) -> Self {
         match id {
             90009 => Self::Running,
@@ -176,7 +186,7 @@ impl TryFrom<StackString> for SportTypes {
     }
 }
 
-fn init_sport_type_map() -> HashMap<StackString, SportTypes> {
+fn init_sport_type_map() -> HashMap<&'static str, SportTypes> {
     [
         ("running", SportTypes::Running),
         ("run", SportTypes::Running),
@@ -204,11 +214,12 @@ fn init_sport_type_map() -> HashMap<StackString, SportTypes> {
         ("none", SportTypes::None),
     ]
     .iter()
-    .map(|(k, v)| ((*k).into(), *v))
+    .map(|(k, v)| (*k, *v))
     .collect()
 }
 
-pub fn get_sport_type_map() -> &'static HashMap<StackString, SportTypes> {
+#[must_use]
+pub fn get_sport_type_map() -> &'static HashMap<&'static str, SportTypes> {
     &SPORT_TYPE_MAP
 }
 

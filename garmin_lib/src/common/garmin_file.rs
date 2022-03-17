@@ -44,6 +44,7 @@ impl Default for GarminFile {
 }
 
 impl GarminFile {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             filename: "".into(),
@@ -99,6 +100,9 @@ impl GarminFile {
         )
     }
 
+    /// # Errors
+    /// Return error if `parse_str` fails, or opening file fails, or writing
+    /// codec fails
     pub fn dump_avro(&self, output_filename: &Path) -> Result<(), Error> {
         let schema = Schema::parse_str(&GARMIN_FILE_AVRO_SCHEMA)?;
 
@@ -110,11 +114,15 @@ impl GarminFile {
         Ok(())
     }
 
+    /// # Errors
+    /// Return error if `read_avro` fails
     pub async fn read_avro_async(input_filename: &Path) -> Result<Self, Error> {
         let input_filename = input_filename.to_owned();
         spawn_blocking(move || Self::read_avro(&input_filename)).await?
     }
 
+    /// # Errors
+    /// Return error if open file fails, or reader fails
     pub fn read_avro(input_filename: &Path) -> Result<Self, Error> {
         let input_file = File::open(input_filename)?;
 
@@ -126,6 +134,7 @@ impl GarminFile {
         Err(format_err!("Failed to find file"))
     }
 
+    #[must_use]
     pub fn get_standardized_name(&self, suffix: &str) -> StackString {
         format_sstr!(
             "{d}.{suffix}",
@@ -143,6 +152,7 @@ pub enum GarminFileTypes {
     Gmn,
 }
 
+#[must_use]
 pub fn get_file_type_map() -> HashMap<StackString, GarminFileTypes> {
     [
         ("txt", GarminFileTypes::Txt),
@@ -156,6 +166,7 @@ pub fn get_file_type_map() -> HashMap<StackString, GarminFileTypes> {
     .collect()
 }
 
+#[must_use]
 pub fn get_reverse_file_type_map() -> HashMap<GarminFileTypes, StackString> {
     get_file_type_map()
         .into_iter()

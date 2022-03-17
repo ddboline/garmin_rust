@@ -19,6 +19,7 @@ use super::{
 pub struct GarminParse {}
 
 impl GarminParse {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -62,11 +63,15 @@ pub trait GarminParseTrait
 where
     Self: Send + Sync,
 {
+    /// # Errors
+    /// May return error if parsing and loading file fails
     fn with_file(
         self,
         filename: &Path,
         corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
     ) -> Result<GarminFile, Error>;
 
+    /// # Errors
+    /// May return error if parsing file fails
     fn parse_file(&self, filename: &Path) -> Result<ParseOutput, Error>;
 }

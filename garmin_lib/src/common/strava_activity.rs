@@ -51,6 +51,8 @@ impl Default for StravaActivity {
 }
 
 impl StravaActivity {
+    /// # Errors
+    /// Return error if db query fails
     pub async fn read_from_db(
         pool: &PgPool,
         start_date: Option<NaiveDate>,
@@ -82,6 +84,8 @@ impl StravaActivity {
         query.fetch(&conn).await.map_err(Into::into)
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn get_by_begin_datetime(
         pool: &PgPool,
         begin_datetime: DateTime<Utc>,
@@ -94,6 +98,8 @@ impl StravaActivity {
         query.fetch_opt(&conn).await.map_err(Into::into)
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn get_from_summary_id(
         pool: &PgPool,
         summary_id: i32,
@@ -106,6 +112,8 @@ impl StravaActivity {
         query.fetch_opt(&conn).await.map_err(Into::into)
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn insert_into_db(&self, pool: &PgPool) -> Result<(), Error> {
         let query = query!(
             "
@@ -133,6 +141,8 @@ impl StravaActivity {
         query.execute(&conn).await.map(|_| ()).map_err(Into::into)
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn update_db(&self, pool: &PgPool) -> Result<(), Error> {
         let query = query!(
             "
@@ -160,6 +170,8 @@ impl StravaActivity {
         Ok(())
     }
 
+    /// # Errors
+    /// Return error if db query fails
     #[allow(clippy::manual_filter_map)]
     pub async fn upsert_activities(
         activities: &[Self],
@@ -211,6 +223,8 @@ impl StravaActivity {
         Ok(output)
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn fix_summary_id_in_db(pool: &PgPool) -> Result<(), Error> {
         let query = "
             UPDATE strava_activities SET summary_id = (

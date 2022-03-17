@@ -21,6 +21,7 @@ pub enum RaceType {
 }
 
 impl RaceType {
+    #[must_use]
     pub fn to_str(self) -> &'static str {
         match self {
             Self::Personal => "personal",

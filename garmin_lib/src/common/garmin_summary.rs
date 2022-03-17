@@ -36,6 +36,7 @@ pub struct GarminSummary {
 }
 
 impl GarminSummary {
+    #[must_use]
     pub fn new(gfile: &GarminFile, md5sum: &str) -> Self {
         Self {
             id: -1,
@@ -51,6 +52,8 @@ impl GarminSummary {
         }
     }
 
+    /// # Errors
+    /// Return error if parsing or dumping avro fails
     pub fn process_single_gps_file(
         filepath: &Path,
         cache_dir: &Path,
@@ -80,6 +83,8 @@ impl GarminSummary {
         Ok(Self::new(&gfile, &md5sum))
     }
 
+    /// # Errors
+    /// Return error if parsing or dumping avro fails
     pub fn process_all_gps_files(
         gps_dir: &Path,
         cache_dir: &Path,
@@ -116,6 +121,8 @@ impl GarminSummary {
             .collect()
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn read_summary_from_postgres(
         pool: &PgPool,
         pattern: &str,
@@ -150,6 +157,8 @@ impl GarminSummary {
             .collect()
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn get_by_filename(pool: &PgPool, filename: &str) -> Result<Option<Self>, Error> {
         let query = query!(
             "
@@ -170,6 +179,8 @@ impl GarminSummary {
         query.fetch_opt(&conn).await.map_err(Into::into)
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn get_by_id(pool: &PgPool, id: i32) -> Result<Option<Self>, Error> {
         let query = query!(
             "
@@ -190,6 +201,8 @@ impl GarminSummary {
         query.fetch_opt(&conn).await.map_err(Into::into)
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn write_summary_to_postgres(
         summary_list: &[Self],
         pool: &PgPool,
@@ -325,6 +338,8 @@ impl fmt::Display for GarminSummary {
     }
 }
 
+/// # Errors
+/// Return error if db query fails
 pub async fn get_list_of_files_from_db(
     constraints: &str,
     pool: &PgPool,
@@ -355,6 +370,8 @@ pub async fn get_list_of_files_from_db(
         .collect()
 }
 
+/// # Errors
+/// Return error if db query fails
 pub async fn get_filename_from_datetime(
     pool: &PgPool,
     begin_datetime: DateTime<Utc>,
@@ -375,6 +392,8 @@ pub async fn get_filename_from_datetime(
         .transpose()
 }
 
+/// # Errors
+/// Return error if db query fails
 pub async fn get_list_of_activities_from_db(
     constraints: &str,
     pool: &PgPool,
@@ -402,6 +421,8 @@ pub async fn get_list_of_activities_from_db(
         .collect()
 }
 
+/// # Errors
+/// Return error if db query fails
 pub async fn get_maximum_begin_datetime(pool: &PgPool) -> Result<Option<DateTime<Utc>>, Error> {
     let query = "SELECT MAX(begin_datetime) FROM garmin_summary";
 

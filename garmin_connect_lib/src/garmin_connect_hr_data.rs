@@ -13,6 +13,7 @@ pub struct GarminConnectHrData {
 }
 
 impl GarminConnectHrData {
+    #[must_use]
     pub fn to_table(&self, entries: Option<usize>) -> StackString {
         if let Some(heartrate_values) = self.heartrate_values.as_ref() {
             let entries = entries.unwrap_or(heartrate_values.len());

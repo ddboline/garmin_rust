@@ -34,6 +34,8 @@ pub struct LoggedUser {
 }
 
 impl LoggedUser {
+    /// # Errors
+    /// Returns error if `session_id` does not match `self.session`
     pub fn verify_session_id(&self, session_id: Uuid) -> Result<(), Error> {
         if self.session == session_id {
             Ok(())
@@ -42,6 +44,7 @@ impl LoggedUser {
         }
     }
 
+    #[must_use]
     pub fn filter() -> impl Filter<Extract = (Self,), Error = Rejection> + Copy {
         cookie("session-id")
             .and(cookie("jwt"))
@@ -52,6 +55,8 @@ impl LoggedUser {
             })
     }
 
+    /// # Errors
+    /// Returns error if api call fails
     pub async fn get_session(
         &self,
         client: &Client,
@@ -83,6 +88,8 @@ impl LoggedUser {
         }
     }
 
+    /// # Errors
+    /// Returns error if api call fails
     pub async fn set_session(
         &self,
         client: &Client,
@@ -154,6 +161,7 @@ impl FromStr for Session {
 }
 
 impl Session {
+    #[must_use]
     pub fn get_jwt_cookie(&self, domain: &str) -> Cookie<'static> {
         let history_str = self.history.join(";");
         let token = base64::encode(history_str);
@@ -165,6 +173,8 @@ impl Session {
     }
 }
 
+/// # Errors
+/// Returns error if api call fails
 pub async fn fill_from_db(pool: &PgPool) -> Result<(), Error> {
     debug!("{:?}", *TRIGGER_DB_UPDATE);
     let users = if TRIGGER_DB_UPDATE.check() {

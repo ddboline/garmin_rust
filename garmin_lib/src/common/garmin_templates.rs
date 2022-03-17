@@ -33,6 +33,7 @@ lazy_static! {
     pub static ref HBR: Handlebars<'static> = get_templates().expect("Failed to parse templates");
 }
 
+#[must_use]
 pub fn get_scripts(demo: bool) -> &'static str {
     if demo {
         include_str!("../../../templates/GARMIN_SCRIPTS_DEMO.js.hbr")
@@ -41,6 +42,7 @@ pub fn get_scripts(demo: bool) -> &'static str {
     }
 }
 
+#[must_use]
 pub fn get_buttons(demo: bool) -> Vec<&'static str> {
     let mut buttons = Vec::new();
     if !demo {
@@ -81,6 +83,7 @@ pub fn get_buttons(demo: bool) -> Vec<&'static str> {
     buttons
 }
 
+#[must_use]
 pub fn get_style(is_map: bool) -> StackString {
     let style_str = r#"
 <style>

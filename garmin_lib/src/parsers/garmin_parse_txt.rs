@@ -28,6 +28,7 @@ use super::garmin_parse::{GarminParseTrait, ParseOutput};
 pub struct GarminParseTxt {}
 
 impl GarminParseTxt {
+    #[must_use]
     pub fn new() -> Self {
         Self {}
     }

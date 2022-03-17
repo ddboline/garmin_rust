@@ -6,6 +6,8 @@ use std::{collections::HashMap, fmt::Write};
 
 use crate::{common::garmin_templates::HBR, utils::plot_opts::PlotOpts};
 
+/// # Errors
+/// Return error if rendering template fails
 #[allow(clippy::similar_names)]
 pub fn generate_d3_plot(opts: &PlotOpts) -> Result<StackString, Error> {
     let err_str = format_sstr!("No data points {}", opts.name);

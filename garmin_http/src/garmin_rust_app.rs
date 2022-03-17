@@ -52,6 +52,8 @@ pub struct AppState {
     pub client: Arc<Client>,
 }
 
+/// # Errors
+/// Returns error if call to connect client fails
 pub async fn close_connect_proxy(proxy: &ConnectProxy) -> Result<(), Error> {
     let mut proxy = proxy.lock().await;
     if proxy.last_used < Utc::now() - chrono::Duration::seconds(300) {
@@ -67,6 +69,8 @@ pub async fn close_connect_proxy(proxy: &ConnectProxy) -> Result<(), Error> {
 ///    `/garmin` is the main route, providing the same functionality as the CLI
 /// interface, while adding the ability of upload to strava, and
 /// `/garmin/get_hr_pace` return structured json intended for separate analysis
+/// # Errors
+/// Returns error if server init fails
 pub async fn start_app() -> Result<(), Error> {
     async fn update_db(pool: PgPool, proxy: ConnectProxy) {
         let mut i = interval(Duration::from_secs(60));

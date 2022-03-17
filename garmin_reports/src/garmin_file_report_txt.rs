@@ -12,6 +12,8 @@ use garmin_lib::{
     },
 };
 
+/// # Errors
+/// Returns error if we try to parse a negative duration or time
 pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<StackString>, Error> {
     let mut return_vec = vec![format_sstr!("Start time {}", gfile.filename)];
 
@@ -58,9 +60,9 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<StackString>, Error
     };
     return_vec.push(tmp_str.join(" ").into());
     return_vec.push("".into());
-    return_vec.push(print_splits(gfile, METERS_PER_MILE, "mi")?);
+    return_vec.push(print_splits(gfile, METERS_PER_MILE, "mi"));
     return_vec.push("".into());
-    return_vec.push(print_splits(gfile, 5000.0, "km")?);
+    return_vec.push(print_splits(gfile, 5000.0, "km"));
 
     let avg_hr: f64 = gfile
         .points
@@ -154,6 +156,8 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<StackString>, Error
     Ok(return_vec)
 }
 
+/// # Errors
+/// Returns error if we try to parse a negative duration or time
 fn print_lap_string(glap: &GarminLap, sport: SportTypes) -> Result<StackString, Error> {
     let sport_str: StackString = sport.into();
 
@@ -188,16 +192,14 @@ fn print_lap_string(glap: &GarminLap, sport: SportTypes) -> Result<StackString, 
     Ok(outstr.join(" ").into())
 }
 
-fn print_splits(
-    gfile: &GarminFile,
-    split_distance_in_meters: f64,
-    label: &str,
-) -> Result<StackString, Error> {
+/// # Errors
+/// Returns error if we try to parse a negative duration or time
+fn print_splits(gfile: &GarminFile, split_distance_in_meters: f64, label: &str) -> StackString {
     if gfile.points.is_empty() {
-        return Ok("".into());
+        return "".into();
     }
 
-    let retval = get_splits(gfile, split_distance_in_meters, label, true)?
+    get_splits(gfile, split_distance_in_meters, label, true)
         .into_iter()
         .map(|val| {
             let dis = val.split_distance as i32;
@@ -222,8 +224,7 @@ fn print_splits(
             )
         })
         .join("\n")
-        .into();
-    Ok(retval)
+        .into()
 }
 
 #[derive(Debug)]
@@ -233,15 +234,16 @@ pub struct SplitValue {
     pub avg_heart_rate: Option<f64>,
 }
 
+#[must_use]
 pub fn get_splits(
     gfile: &GarminFile,
     split_distance_in_meters: f64,
     label: &str,
     do_heart_rate: bool,
-) -> Result<Vec<SplitValue>, Error> {
+) -> Vec<SplitValue> {
     if gfile.points.len() < 3 {
-        return Ok(Vec::new());
-    };
+        return Vec::new();
+    }
     let mut last_point_me = 0.0;
     let mut last_point_time = 0.0;
     let mut prev_split_time = 0.0;
@@ -312,5 +314,5 @@ pub fn get_splits(
         last_point_me = cur_point_me;
         last_point_time = cur_point_time;
     }
-    Ok(split_vector)
+    split_vector
 }

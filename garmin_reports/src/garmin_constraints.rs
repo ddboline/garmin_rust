@@ -154,6 +154,7 @@ pub struct GarminConstraints {
 }
 
 impl GarminConstraints {
+    #[must_use]
     pub fn to_query_string(&self) -> String {
         self.constraints
             .iter()

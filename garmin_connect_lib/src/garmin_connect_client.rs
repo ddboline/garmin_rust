@@ -37,6 +37,7 @@ impl Default for GarminConnectClient {
 }
 
 impl GarminConnectClient {
+    #[must_use]
     pub fn new(config: GarminConfig) -> Self {
         Self {
             config,
@@ -48,6 +49,8 @@ impl GarminConnectClient {
         }
     }
 
+    /// # Errors
+    /// Return error if spawn fails
     pub async fn init(&mut self) -> Result<(), Error> {
         if !self.config.webdriver_path.exists() {
             return Err(format_err!(
@@ -115,6 +118,8 @@ impl GarminConnectClient {
             .map_err(Into::into)
     }
 
+    /// # Errors
+    /// Return error if authorize fails
     pub async fn authorize(&mut self) -> Result<(), Error> {
         let client = self
             .client
@@ -184,6 +189,8 @@ impl GarminConnectClient {
         Ok(())
     }
 
+    /// # Errors
+    /// Return error if api call fails
     pub async fn close(&mut self) -> Result<(), Error> {
         if let Some(mut client) = self.client.take() {
             client.close().await?;
@@ -199,6 +206,8 @@ impl GarminConnectClient {
         Ok(())
     }
 
+    /// # Errors
+    /// Return error if api call fails
     pub fn extract_display_name(text: &str) -> Result<StackString, Error> {
         if let Some(line) = text
             .split('\n')
@@ -222,6 +231,8 @@ impl GarminConnectClient {
         }
     }
 
+    /// # Errors
+    /// Return error if api call fails
     pub async fn get_user_summary(
         &mut self,
         date: NaiveDate,
@@ -252,6 +263,8 @@ impl GarminConnectClient {
         Ok(user_summary)
     }
 
+    /// # Errors
+    /// Return error if api call fails
     pub async fn get_heartrate(&mut self, date: NaiveDate) -> Result<GarminConnectHrData, Error> {
         let display_name = self
             .display_name
@@ -275,6 +288,8 @@ impl GarminConnectClient {
         serde_json::from_slice(&js).map_err(Into::into)
     }
 
+    /// # Errors
+    /// Return error if api call fails
     pub async fn get_activities(
         &mut self,
         start_datetime: Option<DateTime<Utc>>,
@@ -299,6 +314,8 @@ impl GarminConnectClient {
         serde_json::from_slice(&js).map_err(Into::into)
     }
 
+    /// # Errors
+    /// Return error if api call fails
     pub async fn get_activity_files(
         &mut self,
         activities: &[GarminConnectActivity],
@@ -333,6 +350,8 @@ impl GarminConnectClient {
         Ok(filenames)
     }
 
+    /// # Errors
+    /// Return error if api call fails
     pub async fn get_and_merge_activity_files(
         &mut self,
         activities: Vec<GarminConnectActivity>,

@@ -31,6 +31,8 @@ pub const MONTH_NAMES: [&str; 12] = [
 ];
 pub const WEEKDAY_NAMES: [&str; 7] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+/// # Errors
+/// Return error if parsing time string fails
 pub fn convert_time_string(time_str: &str) -> Result<f64, Error> {
     let entries: SmallVec<[&str; 3]> = time_str.split(':').take(3).collect();
     let (h, m, s): (i32, i32, f64) = match entries.get(0) {
@@ -46,12 +48,16 @@ pub fn convert_time_string(time_str: &str) -> Result<f64, Error> {
     Ok(s + 60.0 * (f64::from(m) + 60.0 * f64::from(h)))
 }
 
+/// # Errors
+/// Return error if parsing time string fails
 pub fn convert_xml_local_time_to_utc(xml_local_time: &str) -> Result<DateTime<Utc>, Error> {
     DateTime::parse_from_rfc3339(xml_local_time)
         .map(|x| x.with_timezone(&Utc))
         .map_err(Into::into)
 }
 
+/// # Errors
+/// Return error if running `md5sum` fails
 pub fn get_md5sum(filename: &Path) -> Result<StackString, Error> {
     if !Path::new("/usr/bin/md5sum").exists() {
         return Err(format_err!(
@@ -72,6 +78,8 @@ pub fn get_md5sum(filename: &Path) -> Result<StackString, Error> {
     Ok("".into())
 }
 
+/// # Errors
+/// Return error if second is negative
 pub fn print_h_m_s(second: f64, do_hours: bool) -> Result<StackString, Error> {
     let hours = (second / 3600.0) as i32;
     let minutes = (second / 60.0) as i32 - hours * 60;
@@ -85,10 +93,12 @@ pub fn print_h_m_s(second: f64, do_hours: bool) -> Result<StackString, Error> {
     }
 }
 
+#[must_use]
 pub fn days_in_year(year: i32) -> i64 {
     (Utc.ymd(year + 1, 1, 1) - Utc.ymd(year, 1, 1)).num_days()
 }
 
+#[must_use]
 pub fn days_in_month(year: i32, month: u32) -> i64 {
     let mut y1 = year;
     let mut m1 = month + 1;
@@ -99,6 +109,7 @@ pub fn days_in_month(year: i32, month: u32) -> i64 {
     (Utc.ymd(y1, m1, 1) - Utc.ymd(year, month, 1)).num_days()
 }
 
+#[must_use]
 pub fn expected_calories(weight: f64, pace_min_per_mile: f64, distance: f64) -> f64 {
     let cal_per_mi = weight
         * (0.0395
@@ -111,6 +122,7 @@ pub fn expected_calories(weight: f64, pace_min_per_mile: f64, distance: f64) -> 
     cal_per_mi * distance
 }
 
+#[must_use]
 pub fn titlecase(input: &str) -> StackString {
     if input.is_empty() {
         "".into()
@@ -120,6 +132,7 @@ pub fn titlecase(input: &str) -> StackString {
     }
 }
 
+#[must_use]
 pub fn generate_random_string(nchar: usize) -> StackString {
     let mut rng = thread_rng();
     Alphanumeric
@@ -129,6 +142,7 @@ pub fn generate_random_string(nchar: usize) -> StackString {
         .collect()
 }
 
+#[must_use]
 pub fn get_file_list(path: &Path) -> Vec<PathBuf> {
     match path.read_dir() {
         Ok(it) => it
@@ -144,6 +158,8 @@ pub fn get_file_list(path: &Path) -> Vec<PathBuf> {
     }
 }
 
+/// # Errors
+/// Return error if closure fails
 pub async fn exponential_retry<T, U, F>(f: T) -> Result<U, Error>
 where
     T: Fn() -> F,
@@ -165,6 +181,8 @@ where
     }
 }
 
+/// # Errors
+/// Return error if unzip fails
 pub fn extract_zip_from_garmin_connect(
     filename: &Path,
     ziptmpdir: &Path,
@@ -198,6 +216,12 @@ pub fn extract_zip_from_garmin_connect(
     Ok(new_filename)
 }
 
+/// # Errors
+/// Return error if:
+///     * input file does not exist
+///     * opening it fails
+///     * creating the output file fails
+///     * writing to the file fails
 pub fn gzip_file<T, U>(input_filename: T, output_filename: U) -> Result<(), Error>
 where
     T: AsRef<Path>,
@@ -215,6 +239,7 @@ where
     Ok(())
 }
 
+#[must_use]
 pub fn get_f64(value: &Value) -> Option<f64> {
     match value {
         Value::Timestamp(val) => Some(val.timestamp() as f64),
@@ -234,6 +259,7 @@ pub fn get_f64(value: &Value) -> Option<f64> {
     }
 }
 
+#[must_use]
 pub fn get_i64(value: &Value) -> Option<i64> {
     match value {
         Value::Timestamp(val) => Some(val.timestamp() as i64),
@@ -254,10 +280,13 @@ pub fn get_i64(value: &Value) -> Option<i64> {
 }
 
 #[inline]
+#[must_use]
 pub fn get_degrees_from_semicircles(s: f64) -> f64 {
     s * 180.0 / (2_147_483_648.0)
 }
 
+/// # Errors
+/// Return error if db query fails
 pub async fn get_authorized_users(pool: &PgPool) -> Result<Vec<StackString>, Error> {
     let query = "SELECT email FROM authorized_users";
     pool.get()
@@ -272,6 +301,8 @@ pub async fn get_authorized_users(pool: &PgPool) -> Result<Vec<StackString>, Err
         .collect()
 }
 
+/// # Errors
+/// Return error if db query fails
 pub async fn get_list_of_telegram_userids(pool: &PgPool) -> Result<Vec<i64>, Error> {
     let query = "
     SELECT distinct telegram_userid

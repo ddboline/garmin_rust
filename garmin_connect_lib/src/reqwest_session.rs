@@ -59,6 +59,7 @@ impl ReqwestSessionInner {
 }
 
 impl ReqwestSession {
+    #[must_use]
     pub fn new(allow_redirects: bool) -> Self {
         let redirect_policy = if allow_redirects {
             Policy::limited(20)
@@ -77,6 +78,8 @@ impl ReqwestSession {
         }
     }
 
+    /// # Errors
+    /// Return error if request fails
     pub async fn get(&self, url: &Url, headers: &HeaderMap) -> Result<Response, Error> {
         exponential_retry(|| {
             let url = url.clone();
@@ -86,12 +89,16 @@ impl ReqwestSession {
         .await
     }
 
+    /// # Errors
+    /// Return error if get fails
     pub async fn get_no_retry(&self, url: &Url, headers: &HeaderMap) -> Result<Response, Error> {
         let url = url.clone();
         let headers = headers.clone();
         self.client.lock().await.get(url, headers).await
     }
 
+    /// # Errors
+    /// Return error if post fails
     pub async fn post(
         &self,
         url: &Url,
@@ -112,6 +119,8 @@ impl ReqwestSession {
         .await
     }
 
+    /// # Errors
+    /// Return error if post fails
     pub async fn post_no_retry(
         &self,
         url: &Url,
@@ -127,6 +136,8 @@ impl ReqwestSession {
             .await
     }
 
+    /// # Errors
+    /// Return error if parse headers fails
     pub async fn set_default_headers(&self, headers: HashMap<&str, &str>) -> Result<(), Error> {
         for (k, v) in headers {
             let name: HeaderName = k.parse()?;

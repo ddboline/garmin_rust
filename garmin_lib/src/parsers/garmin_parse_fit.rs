@@ -20,6 +20,7 @@ use super::garmin_parse::{GarminParseTrait, ParseOutput};
 pub struct GarminParseFit {}
 
 impl GarminParseFit {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -71,7 +72,7 @@ impl GarminParseTrait for GarminParseFit {
         for record in records {
             match record.kind() {
                 MesgNum::Record => {
-                    let new_point = GarminPoint::read_point_fit(record.fields())?;
+                    let new_point = GarminPoint::read_point_fit(record.fields());
                     if new_point.latitude.is_some()
                         && new_point.longitude.is_some()
                         && new_point.distance > Some(0.0)
@@ -80,7 +81,7 @@ impl GarminParseTrait for GarminParseFit {
                     }
                 }
                 MesgNum::Lap => {
-                    let (new_lap, lap_sport) = GarminLap::read_lap_fit(record.fields())?;
+                    let (new_lap, lap_sport) = GarminLap::read_lap_fit(record.fields());
                     if let Some(sp) = lap_sport {
                         sport = sp;
                     }

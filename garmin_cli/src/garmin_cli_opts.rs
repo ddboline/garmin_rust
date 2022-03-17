@@ -87,6 +87,8 @@ pub enum GarminCliOpts {
 }
 
 impl GarminCliOpts {
+    /// # Errors
+    /// Return error if config fails, or `process_opts` fails
     pub async fn process_args() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
         let opts = Self::from_args();
@@ -350,6 +352,8 @@ impl GarminCliOpts {
         cli.stdout.close().await
     }
 
+    /// # Errors
+    /// Return error if various function fail
     pub async fn garmin_proc(cli: &GarminCli) -> Result<(), Error> {
         if let Some(GarminCliOptions::Connect {
             start_date,
@@ -379,6 +383,8 @@ impl GarminCliOpts {
         Ok(())
     }
 
+    /// # Errors
+    /// Return error if various function fail
     pub async fn sync_with_garmin_connect(
         cli: &GarminCli,
         start_date: Option<NaiveDate>,
@@ -416,6 +422,8 @@ impl GarminCliOpts {
         }
     }
 
+    /// # Errors
+    /// Return error if various function fail
     pub async fn sync_with_strava(cli: &GarminCli) -> Result<Vec<PathBuf>, Error> {
         let config = cli.config.clone();
         let start_datetime = Some(Utc::now() - Duration::days(15));

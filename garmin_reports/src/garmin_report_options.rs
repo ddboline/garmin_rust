@@ -16,6 +16,7 @@ pub struct GarminReportOptions {
 }
 
 impl GarminReportOptions {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             agg: None,

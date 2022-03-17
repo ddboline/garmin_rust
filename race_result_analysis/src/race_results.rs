@@ -70,6 +70,8 @@ impl Display for RaceResults {
 }
 
 impl RaceResults {
+    /// # Errors
+    /// Return error if db query fails
     pub async fn get_results_by_type(
         race_type: RaceType,
         pool: &PgPool,
@@ -88,6 +90,8 @@ impl RaceResults {
         query.fetch(&conn).await.map_err(Into::into)
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn get_result_by_id(id: i32, pool: &PgPool) -> Result<Option<Self>, Error> {
         let query = query!(
             "SELECT a.id, a.race_type, a.race_date, a.race_name, a.race_distance, a.race_time,
@@ -102,6 +106,8 @@ impl RaceResults {
         query.fetch_opt(&conn).await.map_err(Into::into)
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn get_races_by_date(
         race_date: NaiveDate,
         race_type: RaceType,
@@ -121,6 +127,8 @@ impl RaceResults {
         query.fetch(&conn).await.map_err(Into::into)
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn get_race_by_summary_id(
         summary_id: i32,
         pool: &PgPool,
@@ -142,6 +150,8 @@ impl RaceResults {
         query.fetch_opt(&conn).await.map_err(Into::into)
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn get_race_by_distance(
         race_distance: i32,
         race_type: RaceType,
@@ -161,6 +171,8 @@ impl RaceResults {
         query.fetch(&conn).await.map_err(Into::into)
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn get_summary_map(pool: &PgPool) -> Result<HashMap<i32, GarminSummary>, Error> {
         let query = "
             SELECT a.*
@@ -179,6 +191,8 @@ impl RaceResults {
             .collect()
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn get_race_id(&self, pool: &PgPool) -> Result<Option<i32>, Error> {
         let conn = pool.get().await?;
         let query = match self.race_type {
@@ -212,6 +226,8 @@ impl RaceResults {
         Ok(id.map(|(id,)| id))
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn set_race_id(&mut self, pool: &PgPool) -> Result<(), Error> {
         if let Some(id) = self.get_race_id(pool).await? {
             self.id = id;
@@ -219,6 +235,8 @@ impl RaceResults {
         Ok(())
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn insert_into_db(&self, pool: &PgPool) -> Result<(), Error> {
         let query = query!(
             "
@@ -241,6 +259,8 @@ impl RaceResults {
         Ok(())
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn update_db(&self, pool: &PgPool) -> Result<(), Error> {
         let query = query!(
             "UPDATE race_results
@@ -261,6 +281,8 @@ impl RaceResults {
         Ok(())
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn upsert_db(&mut self, pool: &PgPool) -> Result<(), Error> {
         if Self::get_result_by_id(self.id, pool).await?.is_some() {
             self.update_db(pool).await?;
@@ -272,6 +294,8 @@ impl RaceResults {
         Ok(())
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn update_race_summary_ids(&self, pool: &PgPool) -> Result<(), Error> {
         let summary_ids: SmallVec<[&i32; 2]> = self
             .race_summary_ids
@@ -298,12 +322,16 @@ impl RaceResults {
         Ok(())
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn delete_from_db(self, pool: &PgPool) -> Result<(), Error> {
         let query = query!("DELETE FROM race_results WHERE id = $id", id = self.id);
         let conn = pool.get().await?;
         query.execute(&conn).await.map(|_| ()).map_err(Into::into)
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub fn parse_from_race_results_text_file(input: &str) -> Result<Vec<Self>, Error> {
         let results = input
             .split('\n')
@@ -342,11 +370,9 @@ impl RaceResults {
         Ok(results)
     }
 
-    pub fn parse_world_record_text_file(
-        input: &str,
-        race_type: RaceType,
-    ) -> Result<Vec<Self>, Error> {
-        let results = input
+    #[must_use]
+    pub fn parse_world_record_text_file(input: &str, race_type: RaceType) -> Vec<Self> {
+        input
             .split('\n')
             .filter_map(|line| {
                 let entries: SmallVec<[&str; 2]> = line.split_whitespace().take(2).collect();
@@ -370,8 +396,7 @@ impl RaceResults {
                     race_summary_ids: Vec::new(),
                 })
             })
-            .collect();
-        Ok(results)
+            .collect()
     }
 }
 
@@ -619,10 +644,10 @@ mod tests {
     async fn test_parse_world_record_text_file() -> Result<(), Error> {
         let mens = include_str!("../../tests/data/running_world_records_men.txt");
         let mens_results =
-            RaceResults::parse_world_record_text_file(&mens, RaceType::WorldRecordMen)?;
+            RaceResults::parse_world_record_text_file(&mens, RaceType::WorldRecordMen);
         let womens = include_str!("../../tests/data/running_world_records_women.txt");
         let womens_results =
-            RaceResults::parse_world_record_text_file(&womens, RaceType::WorldRecordWomen)?;
+            RaceResults::parse_world_record_text_file(&womens, RaceType::WorldRecordWomen);
         assert_eq!(mens_results.len(), 24);
         assert_eq!(womens_results.len(), 24);
 

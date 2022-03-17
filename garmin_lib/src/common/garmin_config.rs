@@ -169,7 +169,7 @@ pub struct GarminConfig(Arc<GarminConfigInner>);
 impl GarminConfigInner {
     /// Some variables have natural default values, which we set in the new()
     /// method.
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self {
             home_dir: default_home_dir(),
             gps_dir: default_gps_dir(),
@@ -187,6 +187,7 @@ impl GarminConfigInner {
 }
 
 impl GarminConfig {
+    #[must_use]
     pub fn new() -> Self {
         Self(Arc::new(GarminConfigInner::new()))
     }
@@ -196,6 +197,8 @@ impl GarminConfig {
     /// then try `${HOME}/.config/garmin_rust/config.env`,
     /// if that doesn't exist fall back on the default behaviour of dotenv
     /// Panic if required variables aren't set appropriately.
+    /// # Errors
+    /// Returns error if init of config fails
     pub fn get_config(fname: Option<&str>) -> Result<Self, Error> {
         let config_dir = dirs::config_dir().ok_or_else(|| format_err!("No CONFIG directory"))?;
         let default_fname = config_dir.join("garmin_rust").join("config.env");

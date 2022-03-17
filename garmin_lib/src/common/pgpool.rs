@@ -21,6 +21,7 @@ impl fmt::Debug for PgPool {
 
 impl PgPool {
     #[allow(clippy::missing_panics_doc)]
+    #[must_use]
     pub fn new(pgurl: &str) -> Self {
         let pgconf: PgConfig = pgurl.parse().expect("Failed to parse Url");
 
@@ -51,6 +52,9 @@ impl PgPool {
         }
     }
 
+    /// # Errors
+    /// Return error if pool doesn't exist or we cannot pull connection from
+    /// pool
     pub async fn get(&self) -> Result<Client, Error> {
         self.pool
             .as_ref()

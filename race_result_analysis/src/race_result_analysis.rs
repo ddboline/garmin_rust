@@ -43,6 +43,8 @@ pub enum ParamType {
 }
 
 impl RaceResultAnalysis {
+    /// # Errors
+    /// Return error if db queries fail
     pub async fn run_analysis(race_type: RaceType, pool: &PgPool) -> Result<Self, Error> {
         let data = RaceResults::get_results_by_type(race_type, pool).await?;
         let summary_map = RaceResults::get_summary_map(pool).await?;
@@ -86,6 +88,7 @@ impl RaceResultAnalysis {
         })
     }
 
+    #[must_use]
     pub fn params(&self, param_type: ParamType) -> Array1<f64> {
         match param_type {
             ParamType::Nom => self.parameters.clone(),
@@ -94,6 +97,8 @@ impl RaceResultAnalysis {
         }
     }
 
+    /// # Errors
+    /// Return error if template rendering fails
     pub fn create_plot(&self, is_demo: bool) -> Result<HashMap<StackString, StackString>, Error> {
         fn extract_points(result: &RaceResults) -> (i32, f64, StackString, NaiveDate, StackString) {
             let distance = f64::from(result.race_distance) / METERS_PER_MILE;
@@ -321,6 +326,8 @@ pub struct RaceResultAggregated {
 }
 
 impl RaceResultAggregated {
+    /// # Errors
+    /// Return error if db query fails
     pub async fn get_aggregated_race_results(
         race_type: RaceType,
         pool: &PgPool,

@@ -7,7 +7,7 @@ use log::debug;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
-use std::{fmt::Write, path::PathBuf, process::Stdio};
+use std::{path::PathBuf, process::Stdio};
 use tokio::{
     fs,
     process::{Child, Command},

@@ -4,7 +4,6 @@ use itertools::Itertools;
 use lazy_static::lazy_static;
 use regex::Regex;
 use stack_string::{format_sstr, StackString};
-use std::fmt::Write;
 
 use garmin_lib::{common::garmin_config::GarminConfig, utils::sport_types::get_sport_type_map};
 

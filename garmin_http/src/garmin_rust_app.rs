@@ -10,7 +10,7 @@ use rweb::{
     Filter, Reply,
 };
 use stack_string::format_sstr;
-use std::{fmt::Write, net::SocketAddr, sync::Arc, time::Duration};
+use std::{net::SocketAddr, sync::Arc, time::Duration};
 use tokio::{sync::Mutex, task::spawn, time::interval};
 
 use garmin_connect_lib::garmin_connect_client::GarminConnectClient;

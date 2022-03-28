@@ -5,7 +5,7 @@ use futures::StreamExt;
 use lazy_static::lazy_static;
 use log::debug;
 use stack_string::{format_sstr, StackString};
-use std::{collections::HashSet, fmt::Write, sync::Arc};
+use std::{collections::HashSet, sync::Arc};
 use telegram_bot::{
     types::refs::UserId, Api, CanReplySendMessage, Message, MessageKind, Update, UpdateKind,
 };
@@ -200,7 +200,7 @@ mod tests {
     use postgres_query::query;
     use rand::{distributions::Alphanumeric, thread_rng, Rng};
     use stack_string::{format_sstr, StackString};
-    use std::{collections::HashSet, fmt::Write, sync::Arc};
+    use std::{collections::HashSet, sync::Arc};
     use telegram_bot::UserId;
 
     use fitbit_lib::scale_measurement::ScaleMeasurement;

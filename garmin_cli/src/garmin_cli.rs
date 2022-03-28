@@ -8,7 +8,6 @@ use stack_string::{format_sstr, StackString};
 use std::{
     collections::{HashMap, HashSet},
     ffi::OsStr,
-    fmt::Write,
     fs::{copy, rename},
     path::{Path, PathBuf},
     sync::Arc,
@@ -69,7 +68,7 @@ impl GarminCli {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            config: GarminConfig::new(),
+            config: GarminConfig::default(),
             ..Self::default()
         }
     }

@@ -19,7 +19,6 @@ use smallvec::SmallVec;
 use stack_string::{format_sstr, StackString};
 use std::{
     collections::HashSet,
-    fmt::Write,
     path::{Path, PathBuf},
 };
 use tempfile::Builder;

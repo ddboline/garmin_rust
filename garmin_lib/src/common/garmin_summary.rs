@@ -7,7 +7,7 @@ use postgres_query::{query, FromSqlRow};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
-use std::{collections::HashMap, fmt, fmt::Write, path::Path, sync::Arc};
+use std::{collections::HashMap, fmt, path::Path, sync::Arc};
 
 use crate::{
     parsers::garmin_parse::{GarminParse, GarminParseTrait},

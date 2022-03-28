@@ -7,7 +7,7 @@ use smallvec::SmallVec;
 use stack_string::{format_sstr, StackString};
 use std::{
     collections::HashMap,
-    fmt::{self, Display, Formatter, Write},
+    fmt::{self, Display, Formatter},
 };
 
 use garmin_lib::{
@@ -442,7 +442,7 @@ mod tests {
     use lazy_static::lazy_static;
     use parking_lot::Mutex;
     use stack_string::format_sstr;
-    use std::{collections::HashMap, fmt::Write};
+    use std::collections::HashMap;
 
     use garmin_lib::common::{
         garmin_config::GarminConfig,

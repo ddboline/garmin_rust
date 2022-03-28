@@ -6,7 +6,7 @@ use ndarray::{array, Array1};
 use postgres_query::{query, FromSqlRow};
 use rusfun::{curve_fit::Minimizer, func1d::Func1D};
 use stack_string::{format_sstr, StackString};
-use std::{collections::HashMap, fmt::Write};
+use std::collections::HashMap;
 
 use garmin_lib::{
     common::{garmin_summary::GarminSummary, garmin_templates::HBR, pgpool::PgPool},

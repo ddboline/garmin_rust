@@ -5,7 +5,6 @@ use itertools::Itertools;
 use log::debug;
 use postgres_query::FromSqlRow;
 use stack_string::{format_sstr, StackString};
-use std::fmt::Write;
 use url::Url;
 
 use garmin_lib::{

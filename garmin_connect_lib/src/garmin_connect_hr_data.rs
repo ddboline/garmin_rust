@@ -2,7 +2,6 @@ use chrono::{DateTime, Utc};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
-use std::fmt::Write;
 
 use super::garmin_connect_timestamp::GarminConnectTimestamp;
 

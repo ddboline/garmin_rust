@@ -3,7 +3,7 @@ use futures::future::try_join_all;
 use rweb::Schema;
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
-use std::{collections::HashMap, fmt::Write, path::PathBuf};
+use std::{collections::HashMap, path::PathBuf};
 use tokio::task::spawn_blocking;
 use url::Url;
 

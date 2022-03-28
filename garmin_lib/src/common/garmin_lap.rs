@@ -4,7 +4,7 @@ use fitparser::{FitDataField, Value};
 use roxmltree::{Node, NodeType};
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
-use std::{fmt, fmt::Write};
+use std::fmt;
 
 use crate::utils::{
     garmin_util::{convert_time_string, convert_xml_local_time_to_utc, get_f64, get_i64},

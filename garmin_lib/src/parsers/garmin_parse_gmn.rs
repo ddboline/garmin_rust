@@ -2,7 +2,7 @@ use anyhow::{format_err, Error};
 use chrono::{DateTime, Utc};
 use roxmltree::{Document, NodeType};
 use stack_string::format_sstr;
-use std::{collections::HashMap, fmt::Write, path::Path};
+use std::{collections::HashMap, path::Path};
 use subprocess::{Exec, Redirection};
 
 use crate::{

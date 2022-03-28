@@ -5,7 +5,7 @@ use log::debug;
 use postgres_query::{query, query_dyn, FromSqlRow, Parameter};
 use serde::{Deserialize, Deserializer, Serialize};
 use stack_string::{format_sstr, StackString};
-use std::{collections::HashMap, fmt::Write, fs::File, path::Path};
+use std::{collections::HashMap, fs::File, path::Path};
 
 use super::{garmin_config::GarminConfig, pgpool::PgPool};
 

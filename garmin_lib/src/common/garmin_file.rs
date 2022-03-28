@@ -4,7 +4,7 @@ use chrono::{DateTime, Utc};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
-use std::{collections::HashMap, fmt::Write, fs::File, path::Path};
+use std::{collections::HashMap, fs::File, path::Path};
 use tokio::task::spawn_blocking;
 
 use crate::utils::{

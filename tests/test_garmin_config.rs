@@ -10,7 +10,7 @@ fn test_garmin_config_new() {
         .join("run")
         .join("gps_tracks");
 
-    let gc = garmin_config::GarminConfig::new();
+    let gc = garmin_config::GarminConfig::default();
 
     assert_eq!(gc.port, 8000);
     assert_eq!(&gc.pgurl, "");

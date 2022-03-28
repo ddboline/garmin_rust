@@ -18,7 +18,7 @@ use super::strava_timezone::StravaTz;
 /// `GarminConfig` holds configuration information which can be set either
 /// through environment variables or the config.env file, see the dotenv crate
 /// for more information about the config file format.
-#[derive(Default, Debug, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct GarminConfigInner {
     #[serde(default = "default_home_dir")]
     pub home_dir: PathBuf,
@@ -163,35 +163,17 @@ fn default_connect_api_endpoint() -> Option<UrlWrapper> {
     "https://connect.garmin.com/modern".try_into().ok()
 }
 
-#[derive(Default, Debug, Clone)]
-pub struct GarminConfig(Arc<GarminConfigInner>);
-
-impl GarminConfigInner {
-    /// Some variables have natural default values, which we set in the new()
-    /// method.
-    fn new() -> Self {
-        Self {
-            home_dir: default_home_dir(),
-            gps_dir: default_gps_dir(),
-            cache_dir: default_cache_dir(),
-            port: default_port(),
-            n_db_workers: default_n_db_workers(),
-            secret_key: default_secret_key(),
-            domain: default_domain(),
-            fitbit_tokenfile: default_fitbit_tokenfile(),
-            fitbit_cachedir: default_fitbit_cachedir(),
-            strava_tokenfile: default_strava_tokenfile(),
-            ..Self::default()
-        }
+impl Default for GarminConfigInner {
+    fn default() -> Self {
+        let default = r#"{"pgurl":""}"#;
+        serde_json::from_str(default).unwrap()
     }
 }
 
-impl GarminConfig {
-    #[must_use]
-    pub fn new() -> Self {
-        Self(Arc::new(GarminConfigInner::new()))
-    }
+#[derive(Default, Debug, Clone)]
+pub struct GarminConfig(Arc<GarminConfigInner>);
 
+impl GarminConfig {
     /// Pull configuration from a file if it exists,
     /// first look for a config.env file in the current directory,
     /// then try `${HOME}/.config/garmin_rust/config.env`,

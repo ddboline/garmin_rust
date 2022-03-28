@@ -202,7 +202,6 @@ impl ToSql for StravaTimeZone {
 mod tests {
     use anyhow::Error;
     use stack_string::format_sstr;
-    use std::fmt::Write;
 
     use crate::common::strava_timezone::StravaTimeZone;
 

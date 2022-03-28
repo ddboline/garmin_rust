@@ -2,7 +2,7 @@ use anyhow::{format_err, Error};
 use log::debug;
 use maplit::hashmap;
 use stack_string::{format_sstr, StackString};
-use std::{collections::HashMap, fmt::Write};
+use std::collections::HashMap;
 
 use crate::{common::garmin_templates::HBR, utils::plot_opts::PlotOpts};
 

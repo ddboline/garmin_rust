@@ -14,7 +14,6 @@ use smallvec::SmallVec;
 use stack_string::{format_sstr, StackString};
 use std::{
     collections::{HashMap, HashSet},
-    fmt::Write,
     path::PathBuf,
 };
 use tokio::{

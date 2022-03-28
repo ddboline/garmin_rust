@@ -5,7 +5,7 @@ use log::debug;
 use maplit::hashmap;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use stack_string::{format_sstr, StackString};
-use std::{collections::HashSet, fmt::Write};
+use std::collections::HashSet;
 
 use garmin_lib::{
     common::{

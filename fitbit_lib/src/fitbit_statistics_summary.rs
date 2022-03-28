@@ -5,7 +5,7 @@ use postgres_query::{query, FromSqlRow};
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
 use statistical::{mean, median, standard_deviation};
-use std::{collections::HashMap, fmt::Write};
+use std::collections::HashMap;
 
 use garmin_lib::common::{garmin_templates::HBR, pgpool::PgPool};
 

@@ -11,7 +11,6 @@ use stack_string::{format_sstr, StackString};
 use std::{
     collections::{HashMap, HashSet},
     fmt,
-    fmt::Write,
     sync::Arc,
 };
 

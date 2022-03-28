@@ -11,7 +11,6 @@ use stack_string::{format_sstr, StackString};
 use std::{
     convert::{TryFrom, TryInto},
     env::var,
-    fmt::Write,
     str::FromStr,
 };
 use uuid::Uuid;

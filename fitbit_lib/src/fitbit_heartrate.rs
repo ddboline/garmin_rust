@@ -15,7 +15,6 @@ use serde::{self, Deserialize, Deserializer, Serialize};
 use stack_string::{format_sstr, StackString};
 use std::{
     collections::{HashMap, HashSet},
-    fmt::Write,
     fs::{rename, File},
     path::Path,
 };

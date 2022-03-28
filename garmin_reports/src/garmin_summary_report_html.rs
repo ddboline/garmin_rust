@@ -1,7 +1,6 @@
 use anyhow::Error;
 use maplit::hashmap;
 use stack_string::{format_sstr, StackString};
-use std::fmt::Write;
 
 use garmin_lib::common::garmin_templates::{get_buttons, get_scripts, get_style, HBR};
 

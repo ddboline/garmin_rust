@@ -2,7 +2,6 @@ use anyhow::Error;
 use itertools::Itertools;
 use log::debug;
 use stack_string::{format_sstr, StackString};
-use std::fmt::Write;
 
 use garmin_lib::{
     common::{garmin_file::GarminFile, garmin_lap::GarminLap},

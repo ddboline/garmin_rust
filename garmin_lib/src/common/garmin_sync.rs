@@ -14,7 +14,6 @@ use stack_string::{format_sstr, StackString};
 use std::{
     borrow::Borrow,
     collections::{HashMap, HashSet},
-    fmt::Write,
     fs,
     hash::{Hash, Hasher},
     path::{Path, PathBuf},

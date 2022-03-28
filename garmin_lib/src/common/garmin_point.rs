@@ -5,7 +5,7 @@ use itertools::Itertools;
 use roxmltree::{Node, NodeType};
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
-use std::{fmt, fmt::Write};
+use std::fmt;
 
 use crate::utils::{
     garmin_util::{

@@ -5,7 +5,7 @@ use log::debug;
 use postgres_query::{query, query_dyn, FromSqlRow, Parameter};
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
-use std::{collections::HashMap, fmt::Write};
+use std::collections::HashMap;
 
 use crate::{
     common::{garmin_summary::GarminSummary, pgpool::PgPool, strava_timezone::StravaTimeZone},

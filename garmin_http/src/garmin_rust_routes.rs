@@ -12,7 +12,7 @@ use rweb_helper::{
 };
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
-use std::{convert::Infallible, fmt::Write, string::ToString};
+use std::{convert::Infallible, string::ToString};
 use tempdir::TempDir;
 use tokio::{fs::File, io::AsyncWriteExt};
 use tokio_stream::StreamExt;

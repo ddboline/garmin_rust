@@ -1,9 +1,9 @@
 use anyhow::{format_err, Error};
-use chrono::{DateTime, Utc};
 use roxmltree::{Document, NodeType};
 use stack_string::format_sstr;
 use std::{collections::HashMap, path::Path};
 use subprocess::{Exec, Redirection};
+use time::OffsetDateTime;
 
 use crate::{
     common::{
@@ -31,7 +31,7 @@ impl GarminParseTrait for GarminParseGmn {
     fn with_file(
         self,
         filename: &Path,
-        corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
+        corr_map: &HashMap<(OffsetDateTime, i32), GarminCorrectionLap>,
     ) -> Result<GarminFile, Error> {
         let gmn_output = self.parse_file(filename)?;
         let filename = filename

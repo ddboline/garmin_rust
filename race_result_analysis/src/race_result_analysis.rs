@@ -1,5 +1,4 @@
 use anyhow::Error;
-use chrono::{NaiveDate, Utc};
 use itertools::Itertools;
 use maplit::hashmap;
 use ndarray::{array, Array1};
@@ -7,6 +6,8 @@ use postgres_query::{query, FromSqlRow};
 use rusfun::{curve_fit::Minimizer, func1d::Func1D};
 use stack_string::{format_sstr, StackString};
 use std::collections::HashMap;
+use time::{Date, OffsetDateTime};
+use time_tz::{OffsetDateTimeExt, Tz};
 
 use garmin_lib::{
     common::{garmin_summary::GarminSummary, garmin_templates::HBR, pgpool::PgPool},
@@ -100,7 +101,10 @@ impl RaceResultAnalysis {
     /// # Errors
     /// Return error if template rendering fails
     pub fn create_plot(&self, is_demo: bool) -> Result<HashMap<StackString, StackString>, Error> {
-        fn extract_points(result: &RaceResults) -> (i32, f64, StackString, NaiveDate, StackString) {
+        fn extract_points(
+            result: &RaceResults,
+            tz: &Tz,
+        ) -> (i32, f64, StackString, Date, StackString) {
             let distance = f64::from(result.race_distance) / METERS_PER_MILE;
             let duration = result.race_time / 60.0;
             let x = result.race_distance;
@@ -109,13 +113,14 @@ impl RaceResultAnalysis {
                 x,
                 y,
                 result.race_name.clone().unwrap_or_else(|| "".into()),
-                result
-                    .race_date
-                    .map_or_else(|| Utc::now().naive_local().date(), Into::into),
+                result.race_date.map_or_else(
+                    || OffsetDateTime::now_utc().to_timezone(tz).date(),
+                    Into::into,
+                ),
                 print_h_m_s(result.race_time, true).unwrap_or_else(|_| "".into()),
             )
         }
-
+        let local = time_tz::system::get_timezone()?;
         let xticks: Vec<_> = [
             100,
             200,
@@ -143,13 +148,16 @@ impl RaceResultAnalysis {
             RaceType::WorldRecordMen => (2, 12),
             RaceType::WorldRecordWomen => (2, 16),
         };
-        let yticks: Vec<_> = (ymin..ymax).collect();
+        let yticks: Vec<i32> = (ymin..ymax).collect();
 
         let (data, other_data): (Vec<_>, Vec<_>) =
             self.data.iter().partition(|result| result.race_flag);
 
-        let data: Vec<_> = data.into_iter().map(extract_points).collect();
-        let other_data: Vec<_> = other_data.into_iter().map(extract_points).collect();
+        let data: Vec<_> = data.into_iter().map(|d| extract_points(d, local)).collect();
+        let other_data: Vec<_> = other_data
+            .into_iter()
+            .map(|d| extract_points(d, local))
+            .collect();
 
         let (xmin, xmax) = match self.race_type {
             RaceType::Personal => (1.0, 100.0),

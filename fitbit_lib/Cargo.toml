@@ -11,7 +11,8 @@ serde = {version="1.0", features=["derive"]}
 serde_json = "1.0"
 garmin_lib = {path = "../garmin_lib"}
 garmin_connect_lib = {path = "../garmin_connect_lib"}
-chrono = "0.4"
+time = {version="0.3", features=["serde-human-readable", "macros", "formatting", "parsing"]}
+time-tz = {version="0.5", features=["system"]}
 dotenv = "0.15"
 glob = "0.3"
 rayon = "1.5"
@@ -31,7 +32,7 @@ base64 = "0.13"
 maplit = "1.0"
 bytes = "1.0"
 statistical = "1.0"
-fitparser = "0.4.3"
+fitparser = {git="https://github.com/ddboline/fitparse-rs.git", branch="time-0.3"}
 smallvec = "1.6"
 crossbeam-utils = "0.8"
 stack-string = { version="0.7", features=["postgres_types"] }

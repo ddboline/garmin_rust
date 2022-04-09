@@ -1,7 +1,7 @@
-use chrono::{DateTime, Utc};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
+use time::OffsetDateTime;
 
 use super::garmin_connect_timestamp::GarminConnectTimestamp;
 
@@ -20,7 +20,7 @@ impl GarminConnectHrData {
                 .iter()
                 .skip(heartrate_values.len() - entries)
                 .filter_map(|(timestamp, heartrate)| {
-                    let datetime: DateTime<Utc> = (*timestamp).into();
+                    let datetime: OffsetDateTime = (*timestamp).into();
                     heartrate.map(|heartrate| {
                         format_sstr!("<tr><td>{datetime}</td><td>{heartrate}</td></tr>")
                     })

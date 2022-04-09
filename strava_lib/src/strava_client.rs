@@ -1,7 +1,5 @@
 use anyhow::{format_err, Error};
 use base64::{encode_config, URL_SAFE_NO_PAD};
-use chrono::{DateTime, Local, Utc};
-use chrono_tz::Tz;
 use crossbeam_utils::atomic::AtomicCell;
 use futures::future::try_join_all;
 use lazy_static::lazy_static;
@@ -22,6 +20,8 @@ use std::{
     path::{Path, PathBuf},
 };
 use tempfile::Builder;
+use time::{macros::format_description, OffsetDateTime};
+use time_tz::{OffsetDateTimeExt, Tz};
 use tokio::{
     fs::{create_dir_all, File},
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
@@ -37,7 +37,7 @@ use garmin_lib::{
     },
     utils::{
         garmin_util::gzip_file,
-        iso_8601_datetime::convert_datetime_to_str,
+        iso_8601_datetime::{self, convert_datetime_to_str},
         sport_types::{self, SportTypes},
     },
 };
@@ -424,18 +424,18 @@ impl StravaClient {
     /// Return error if api calls fail
     pub async fn get_strava_activities(
         &self,
-        start_date: Option<DateTime<Utc>>,
-        end_date: Option<DateTime<Utc>>,
+        start_date: Option<OffsetDateTime>,
+        end_date: Option<OffsetDateTime>,
         page: usize,
     ) -> Result<Vec<StravaActivity>, Error> {
         let page_str = StackString::from_display(page);
         let mut params = vec![("page", page_str)];
         if let Some(start_date) = start_date {
-            let date_str = StackString::from_display(start_date.timestamp());
+            let date_str = StackString::from_display(start_date.unix_timestamp());
             params.push(("after", date_str));
         }
         if let Some(end_date) = end_date {
-            let date_str = StackString::from_display(end_date.timestamp());
+            let date_str = StackString::from_display(end_date.unix_timestamp());
             params.push(("before", date_str));
         }
 
@@ -463,8 +463,8 @@ impl StravaClient {
     /// Return error if api calls fail
     pub async fn get_all_strava_activites(
         &self,
-        start_date: Option<DateTime<Utc>>,
-        end_date: Option<DateTime<Utc>>,
+        start_date: Option<OffsetDateTime>,
+        end_date: Option<OffsetDateTime>,
     ) -> Result<Vec<StravaActivity>, Error> {
         let mut page = 1;
         let mut activities = Vec::new();
@@ -503,21 +503,17 @@ impl StravaClient {
         }
 
         let start_datetime = activity.start_date;
-
+        let tformat = format_description!(
+            "[year]-[month]-[day]T[hour]:[minute]:[second][offset_hour \
+             sign:mandatory]:[offset_minute]"
+        );
+        let local = time_tz::system::get_timezone()?;
         let start_date_local = match self.config.default_time_zone {
             Some(tz) => {
-                let tz: Tz = tz.into();
-                StackString::from_display(
-                    start_datetime
-                        .with_timezone(&tz)
-                        .format("%Y-%m-%dT%H:%M:%S%z"),
-                )
+                let tz: &Tz = tz.into();
+                StackString::from_display(start_datetime.to_timezone(tz).format(tformat)?)
             }
-            None => StackString::from_display(
-                start_datetime
-                    .with_timezone(&Local)
-                    .format("%Y-%m-%dT%H:%M:%S%z"),
-            ),
+            None => StackString::from_display(start_datetime.to_timezone(local).format(tformat)?),
         };
 
         let data = CreateActivityForm {
@@ -658,7 +654,7 @@ impl StravaClient {
         title: &str,
         description: Option<&str>,
         sport: SportTypes,
-        start_time: Option<DateTime<Utc>>,
+        start_time: Option<OffsetDateTime>,
     ) -> Result<Url, Error> {
         #[derive(Serialize)]
         struct UpdatableActivity {
@@ -716,8 +712,8 @@ impl StravaClient {
     /// Return error if api calls fail
     pub async fn sync_with_client(
         &self,
-        start_datetime: Option<DateTime<Utc>>,
-        end_datetime: Option<DateTime<Utc>>,
+        start_datetime: Option<OffsetDateTime>,
+        end_datetime: Option<OffsetDateTime>,
         pool: &PgPool,
     ) -> Result<Vec<PathBuf>, Error> {
         let new_activities: Vec<_> = self
@@ -772,8 +768,10 @@ pub struct StravaAthlete {
     pub state: StackString,
     pub sex: StackString,
     pub weight: f64,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    #[serde(with = "iso_8601_datetime")]
+    pub created_at: OffsetDateTime,
+    #[serde(with = "iso_8601_datetime")]
+    pub updated_at: OffsetDateTime,
     pub follower_count: Option<u64>,
     pub friend_count: Option<u64>,
     pub measurement_preference: Option<StackString>,
@@ -807,10 +805,10 @@ pub struct StravaGear {
 #[cfg(test)]
 mod tests {
     use anyhow::Error;
-    use chrono::{DateTime, Utc};
     use futures::future::try_join_all;
     use log::debug;
     use std::collections::HashMap;
+    use time::macros::datetime;
 
     use garmin_lib::{
         common::{garmin_config::GarminConfig, pgpool::PgPool},
@@ -876,7 +874,7 @@ mod tests {
             .map(|activity| (activity.id, activity))
             .collect();
         let client = StravaClient::with_auth(config).await?;
-        let start_date: DateTime<Utc> = "2020-01-01T00:00:00Z".parse()?;
+        let start_date = datetime!(2020-01-01 00:00:00 +00:00);
         let new_activities: Vec<_> = client
             .get_all_strava_activites(Some(start_date), None)
             .await?

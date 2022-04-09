@@ -1,20 +1,20 @@
 use anyhow::Error;
-use chrono::{DateTime, NaiveDate, Utc};
 use futures::future::try_join_all;
 use log::debug;
 use postgres_query::{query, query_dyn, FromSqlRow, Parameter};
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
 use std::collections::HashMap;
+use time::{Date, OffsetDateTime};
 
-use crate::common::pgpool::PgPool;
+use crate::{common::pgpool::PgPool, utils::iso_8601_datetime};
 
 #[derive(Serialize, Deserialize, Clone, Debug, FromSqlRow)]
 pub struct FitbitActivity {
     #[serde(alias = "logType")]
     pub log_type: StackString,
-    #[serde(alias = "startTime")]
-    pub start_time: DateTime<Utc>,
+    #[serde(alias = "startTime", with = "iso_8601_datetime")]
+    pub start_time: OffsetDateTime,
     #[serde(alias = "tcxLink")]
     pub tcx_link: Option<StackString>,
     #[serde(alias = "activityTypeId")]
@@ -35,8 +35,8 @@ impl FitbitActivity {
     /// Return error if db query fails
     pub async fn read_from_db(
         pool: &PgPool,
-        start_date: Option<NaiveDate>,
-        end_date: Option<NaiveDate>,
+        start_date: Option<Date>,
+        end_date: Option<Date>,
     ) -> Result<Vec<Self>, Error> {
         let query = "SELECT * FROM fitbit_activities";
         let mut conditions = Vec::new();

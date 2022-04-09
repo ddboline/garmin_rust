@@ -1,11 +1,12 @@
 use anyhow::{format_err, Error};
-use chrono::{DateTime, Utc};
 use fitparser::{FitDataField, Value};
 use itertools::Itertools;
 use roxmltree::{Node, NodeType};
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
 use std::fmt;
+use time::OffsetDateTime;
+use time_tz::{timezones::db::UTC, OffsetDateTimeExt};
 
 use crate::utils::{
     garmin_util::{
@@ -17,7 +18,7 @@ use crate::utils::{
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct GarminPoint {
     #[serde(with = "iso_8601_datetime")]
-    pub time: DateTime<Utc>,
+    pub time: OffsetDateTime,
     pub latitude: Option<f64>,
     pub longitude: Option<f64>,
     pub altitude: Option<f64>,
@@ -149,7 +150,7 @@ impl GarminPoint {
             match field.name() {
                 "timestamp" => {
                     if let Value::Timestamp(t) = field.value() {
-                        new_point.time = t.with_timezone(&Utc);
+                        new_point.time = t.to_timezone(UTC);
                     }
                 }
                 "enhanced_altitude" => {
@@ -188,7 +189,7 @@ impl GarminPoint {
         for point in point_list.iter_mut() {
             let duration_from_last = match last_time.replace(point.time) {
                 None => 0.0,
-                Some(last_time) => (point.time - last_time).num_seconds() as f64,
+                Some(last_time) => (point.time - last_time).whole_seconds() as f64,
             };
             time_from_begin += duration_from_last;
             let duration_from_begin = time_from_begin;

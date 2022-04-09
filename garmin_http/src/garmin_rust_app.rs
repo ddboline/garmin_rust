@@ -1,7 +1,6 @@
 #![allow(clippy::needless_pass_by_value)]
 
 use anyhow::Error;
-use chrono::Utc;
 use reqwest::{Client, ClientBuilder};
 use rweb::{
     filters::BoxedFilter,
@@ -10,7 +9,8 @@ use rweb::{
     Filter, Reply,
 };
 use stack_string::format_sstr;
-use std::{net::SocketAddr, sync::Arc, time::Duration};
+use std::{net::SocketAddr, sync::Arc};
+use time::{Duration, OffsetDateTime};
 use tokio::{sync::Mutex, task::spawn, time::interval};
 
 use garmin_connect_lib::garmin_connect_client::GarminConnectClient;
@@ -56,7 +56,7 @@ pub struct AppState {
 /// Returns error if call to connect client fails
 pub async fn close_connect_proxy(proxy: &ConnectProxy) -> Result<(), Error> {
     let mut proxy = proxy.lock().await;
-    if proxy.last_used < Utc::now() - chrono::Duration::seconds(300) {
+    if proxy.last_used < OffsetDateTime::now_utc() - Duration::seconds(300) {
         proxy.close().await?;
     }
     Ok(())
@@ -73,7 +73,7 @@ pub async fn close_connect_proxy(proxy: &ConnectProxy) -> Result<(), Error> {
 /// Returns error if server init fails
 pub async fn start_app() -> Result<(), Error> {
     async fn update_db(pool: PgPool, proxy: ConnectProxy) {
-        let mut i = interval(Duration::from_secs(60));
+        let mut i = interval(std::time::Duration::from_secs(60));
         loop {
             fill_from_db(&pool).await.unwrap_or(());
             close_connect_proxy(&proxy).await.unwrap_or(());

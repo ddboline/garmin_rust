@@ -1,5 +1,4 @@
 use anyhow::{format_err, Error};
-use chrono::{DateTime, Utc};
 use futures::future::try_join_all;
 use itertools::Itertools;
 use log::debug;
@@ -8,6 +7,7 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
 use std::{collections::HashMap, fmt, path::Path, sync::Arc};
+use time::OffsetDateTime;
 
 use crate::{
     parsers::garmin_parse::{GarminParse, GarminParseTrait},
@@ -25,7 +25,7 @@ pub struct GarminSummary {
     pub id: i32,
     pub filename: StackString,
     #[serde(with = "iso_8601_datetime")]
-    pub begin_datetime: DateTime<Utc>,
+    pub begin_datetime: OffsetDateTime,
     pub sport: SportTypes,
     pub total_calories: i32,
     pub total_distance: f64,
@@ -57,7 +57,7 @@ impl GarminSummary {
     pub fn process_single_gps_file(
         filepath: &Path,
         cache_dir: &Path,
-        corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
+        corr_map: &HashMap<(OffsetDateTime, i32), GarminCorrectionLap>,
     ) -> Result<Self, Error> {
         let filename = filepath
             .file_name()
@@ -88,7 +88,7 @@ impl GarminSummary {
     pub fn process_all_gps_files(
         gps_dir: &Path,
         cache_dir: &Path,
-        corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
+        corr_map: &HashMap<(OffsetDateTime, i32), GarminCorrectionLap>,
     ) -> Result<Vec<Self>, Error> {
         let path = Path::new(gps_dir);
 
@@ -374,7 +374,7 @@ pub async fn get_list_of_files_from_db(
 /// Return error if db query fails
 pub async fn get_filename_from_datetime(
     pool: &PgPool,
-    begin_datetime: DateTime<Utc>,
+    begin_datetime: OffsetDateTime,
 ) -> Result<Option<StackString>, Error> {
     let query = r#"
         SELECT filename
@@ -397,7 +397,7 @@ pub async fn get_filename_from_datetime(
 pub async fn get_list_of_activities_from_db(
     constraints: &str,
     pool: &PgPool,
-) -> Result<Vec<(DateTime<Utc>, StackString)>, Error> {
+) -> Result<Vec<(OffsetDateTime, StackString)>, Error> {
     let constr = if constraints.is_empty() {
         "".into()
     } else {
@@ -423,7 +423,7 @@ pub async fn get_list_of_activities_from_db(
 
 /// # Errors
 /// Return error if db query fails
-pub async fn get_maximum_begin_datetime(pool: &PgPool) -> Result<Option<DateTime<Utc>>, Error> {
+pub async fn get_maximum_begin_datetime(pool: &PgPool) -> Result<Option<OffsetDateTime>, Error> {
     let query = "SELECT MAX(begin_datetime) FROM garmin_summary";
 
     let conn = pool.get().await?;

@@ -1,5 +1,4 @@
 use anyhow::Error;
-use chrono::NaiveDate;
 use itertools::Itertools;
 use postgres_query::{query, FromSqlRow};
 use serde::{Deserialize, Serialize};
@@ -9,6 +8,8 @@ use std::{
     collections::HashMap,
     fmt::{self, Display, Formatter},
 };
+use time::{macros::format_description, Date};
+use time_tz::{timezones::db::UTC, OffsetDateTimeExt};
 
 use garmin_lib::{
     common::{garmin_summary::GarminSummary, pgpool::PgPool},
@@ -21,7 +22,7 @@ use crate::race_type::RaceType;
 pub struct RaceResults {
     pub id: i32,
     pub race_type: RaceType,
-    pub race_date: Option<NaiveDate>,
+    pub race_date: Option<Date>,
     pub race_name: Option<StackString>,
     pub race_distance: i32, // distance in meters
     pub race_time: f64,
@@ -109,7 +110,7 @@ impl RaceResults {
     /// # Errors
     /// Return error if db query fails
     pub async fn get_races_by_date(
-        race_date: NaiveDate,
+        race_date: Date,
         race_type: RaceType,
         pool: &PgPool,
     ) -> Result<Vec<Self>, Error> {
@@ -353,7 +354,8 @@ impl RaceResults {
                     Some(t) => t,
                     None => return None,
                 };
-                let race_date = entries[4].parse().ok();
+                let race_date =
+                    Date::parse(entries[4], format_description!("[year]-[month]-[day]")).ok();
                 let race_name = entries[5..].join(" ");
                 Some(RaceResults {
                     id: -1,
@@ -422,10 +424,11 @@ fn parse_time_string(s: &str) -> Option<f64> {
 
 impl From<GarminSummary> for RaceResults {
     fn from(item: GarminSummary) -> Self {
+        let local = time_tz::system::get_timezone().unwrap_or(UTC);
         Self {
             id: -1,
             race_type: RaceType::Personal,
-            race_date: Some(item.begin_datetime.naive_local().date()),
+            race_date: Some(item.begin_datetime.to_timezone(local).date()),
             race_name: None,
             race_distance: item.total_distance as i32,
             race_time: item.total_duration,
@@ -438,11 +441,11 @@ impl From<GarminSummary> for RaceResults {
 #[cfg(test)]
 mod tests {
     use anyhow::Error;
-    use chrono::{Datelike, NaiveDate, Utc};
     use lazy_static::lazy_static;
     use parking_lot::Mutex;
     use stack_string::format_sstr;
     use std::collections::HashMap;
+    use time::{macros::date, OffsetDateTime};
 
     use garmin_lib::common::{
         garmin_config::GarminConfig,
@@ -463,7 +466,7 @@ mod tests {
         RaceResults {
             id: 0,
             race_type: RaceType::Personal,
-            race_date: Some(NaiveDate::from_ymd(2020, 1, 27).into()),
+            race_date: Some(date!(2020 - 01 - 27)),
             race_name: Some("A Test Race".into()),
             race_distance: 5000,
             race_time: 1563.0,
@@ -491,23 +494,17 @@ mod tests {
         println!("{:?}", result);
         result.insert_into_db(&pool).await?;
 
-        let db_result = RaceResults::get_races_by_date(
-            NaiveDate::from_ymd(2020, 1, 27),
-            RaceType::Personal,
-            &pool,
-        )
-        .await?;
+        let db_result =
+            RaceResults::get_races_by_date(date!(2020 - 01 - 27), RaceType::Personal, &pool)
+                .await?;
         println!("{:?}", db_result);
         assert_eq!(db_result.len(), 1);
         for r in db_result {
             r.delete_from_db(&pool).await?;
         }
-        let db_result = RaceResults::get_races_by_date(
-            NaiveDate::from_ymd(2020, 1, 27),
-            RaceType::Personal,
-            &pool,
-        )
-        .await?;
+        let db_result =
+            RaceResults::get_races_by_date(date!(2020 - 01 - 27), RaceType::Personal, &pool)
+                .await?;
         assert_eq!(db_result.len(), 0);
         Ok(())
     }
@@ -533,7 +530,7 @@ mod tests {
                     let name = result.race_name.clone().unwrap_or_else(|| "".into());
                     let year = result
                         .race_date
-                        .map_or_else(|| Utc::now().year(), |d| d.year());
+                        .map_or_else(|| OffsetDateTime::now_utc().year(), |d| d.year());
                     let key = (name, year);
                     map.entry(key).or_insert_with(Vec::new).push(result);
                     map
@@ -543,7 +540,7 @@ mod tests {
             let name = result.race_name.clone().unwrap_or_else(|| "".into());
             let year = result
                 .race_date
-                .map_or_else(|| Utc::now().year(), |d| d.year());
+                .map_or_else(|| OffsetDateTime::now_utc().year(), |d| d.year());
             let key = (name, year);
             if !existing_map.contains_key(&key) {
                 result.insert_into_db(&pool).await?;
@@ -560,7 +557,7 @@ mod tests {
                     let name = result.race_name.clone().unwrap_or_else(|| "".into());
                     let year = result
                         .race_date
-                        .map_or_else(|| Utc::now().year(), |d| d.year());
+                        .map_or_else(|| OffsetDateTime::now_utc().year(), |d| d.year());
                     let key = (name, year);
                     map.entry(key).or_insert_with(Vec::new).push(result);
                     map

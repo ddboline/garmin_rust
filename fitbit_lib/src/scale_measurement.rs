@@ -1,5 +1,4 @@
 use anyhow::{format_err, Error};
-use chrono::{DateTime, Local, NaiveDate, Utc};
 use futures::future::try_join_all;
 use log::debug;
 use maplit::hashmap;
@@ -13,6 +12,8 @@ use std::{
     fmt,
     sync::Arc,
 };
+use time::{macros::format_description, Date, OffsetDateTime};
+use time_tz::OffsetDateTimeExt;
 
 use garmin_lib::{
     common::{garmin_templates::HBR, pgpool::PgPool},
@@ -22,7 +23,7 @@ use garmin_lib::{
 #[derive(Debug, Clone, Serialize, Deserialize, Copy, FromSqlRow, PartialEq)]
 pub struct ScaleMeasurement {
     pub id: i32,
-    pub datetime: DateTime<Utc>,
+    pub datetime: OffsetDateTime,
     pub mass: f64,
     pub fat_pct: f64,
     pub water_pct: f64,
@@ -51,7 +52,7 @@ impl ScaleMeasurement {
     /// # Errors
     /// Returns error parsing msg fails
     pub fn from_telegram_text(msg: &str) -> Result<Self, Error> {
-        let datetime = Utc::now();
+        let datetime = OffsetDateTime::now_utc();
         let sep = if msg.contains(',') {
             ','
         } else if msg.contains(':') {
@@ -104,7 +105,7 @@ impl ScaleMeasurement {
 
     /// # Errors
     /// Returns error if db query fails
-    pub async fn get_by_datetime(dt: DateTime<Utc>, pool: &PgPool) -> Result<Option<Self>, Error> {
+    pub async fn get_by_datetime(dt: OffsetDateTime, pool: &PgPool) -> Result<Option<Self>, Error> {
         let query = query!(
             "SELECT * FROM scale_measurements WHERE datetime = $dt",
             dt = dt
@@ -199,8 +200,8 @@ impl ScaleMeasurement {
     /// Returns error if db query fails
     pub async fn read_from_db(
         pool: &PgPool,
-        start_date: Option<NaiveDate>,
-        end_date: Option<NaiveDate>,
+        start_date: Option<Date>,
+        end_date: Option<Date>,
     ) -> Result<Vec<Self>, Error> {
         let query = "SELECT * FROM scale_measurements";
         let mut conditions = Vec::new();
@@ -243,10 +244,15 @@ impl ScaleMeasurement {
         }
         let mut graphs = Vec::new();
 
+        let tformat = format_description!(
+            "[year]-[month]-[day]T[hour]:[minute]:[second][offset_hour \
+             sign:mandatory]:[offset_minute]"
+        );
+
         let mass: Vec<_> = measurements
             .iter()
             .map(|meas| {
-                let key = StackString::from_display(meas.datetime.format("%Y-%m-%dT%H:%M:%S%z"));
+                let key = meas.datetime.format(tformat).unwrap_or_else(|_| "".into());
                 (key, meas.mass)
             })
             .collect();
@@ -266,7 +272,7 @@ impl ScaleMeasurement {
         let fat: Vec<_> = measurements
             .iter()
             .map(|meas| {
-                let key = StackString::from_display(meas.datetime.format("%Y-%m-%dT%H:%M:%S%z"));
+                let key = meas.datetime.format(tformat).unwrap_or_else(|_| "".into());
                 (key, meas.fat_pct)
             })
             .collect();
@@ -286,7 +292,7 @@ impl ScaleMeasurement {
         let water: Vec<_> = measurements
             .iter()
             .map(|meas| {
-                let key = StackString::from_display(meas.datetime.format("%Y-%m-%dT%H:%M:%S%z"));
+                let key = meas.datetime.format(tformat).unwrap_or_else(|_| "".into());
                 (key, meas.water_pct)
             })
             .collect();
@@ -306,7 +312,7 @@ impl ScaleMeasurement {
         let muscle: Vec<_> = measurements
             .iter()
             .map(|meas| {
-                let key = StackString::from_display(meas.datetime.format("%Y-%m-%dT%H:%M:%S%z"));
+                let key = meas.datetime.format(tformat).unwrap_or_else(|_| "".into());
                 (key, meas.muscle_pct)
             })
             .collect();
@@ -326,7 +332,7 @@ impl ScaleMeasurement {
         let bone: Vec<_> = measurements
             .iter()
             .map(|meas| {
-                let key = StackString::from_display(meas.datetime.format("%Y-%m-%dT%H:%M:%S%z"));
+                let key = meas.datetime.format(tformat).unwrap_or_else(|_| "".into());
                 (key, meas.bone_pct)
             })
             .collect();
@@ -342,12 +348,13 @@ impl ScaleMeasurement {
         };
         let plot = HBR.render("TIMESERIESTEMPLATE", &params)?;
         graphs.push(plot.into());
+        let local = time_tz::system::get_timezone()?;
 
         let n = measurements.len();
         let entries: Vec<_> = measurements[(n - 10 - offset)..(n - offset)]
             .iter()
             .map(|meas| {
-                let date = meas.datetime.with_timezone(&Local).date().naive_local();
+                let date = meas.datetime.to_timezone(local).date();
                 format_sstr!(
                     r#"
                     <td>{date}</td><td>{m:3.1}</td><td>{f:2.1}</td><td>{w:2.1}</td>
@@ -430,7 +437,7 @@ impl ScaleMeasurement {
 #[cfg(test)]
 mod tests {
     use anyhow::Error;
-    use chrono::{DateTime, Utc};
+    use time::{macros::datetime, OffsetDateTime};
 
     use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
 
@@ -440,7 +447,7 @@ mod tests {
     fn test_from_telegram_text() -> Result<(), Error> {
         let mut exp = ScaleMeasurement {
             id: -1,
-            datetime: Utc::now().into(),
+            datetime: OffsetDateTime::now_utc().into(),
             mass: 188.0,
             fat_pct: 20.6,
             water_pct: 59.6,
@@ -464,7 +471,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_write_read_scale_measurement_from_db() -> Result<(), Error> {
-        let first_date: DateTime<Utc> = "2010-01-01T04:00:00-05:00".parse()?;
+        let first_date = datetime!(2010-01-01 04:00:00 -05:00);
         let mut exp = ScaleMeasurement {
             id: -1,
             datetime: first_date.into(),

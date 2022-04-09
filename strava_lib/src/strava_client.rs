@@ -37,7 +37,7 @@ use garmin_lib::{
     },
     utils::{
         garmin_util::gzip_file,
-        iso_8601_datetime::convert_datetime_to_str,
+        iso_8601_datetime::{convert_datetime_to_str, self},
         sport_types::{self, SportTypes},
     },
 };
@@ -768,7 +768,9 @@ pub struct StravaAthlete {
     pub state: StackString,
     pub sex: StackString,
     pub weight: f64,
+    #[serde(with="iso_8601_datetime")]
     pub created_at: OffsetDateTime,
+    #[serde(with="iso_8601_datetime")]
     pub updated_at: OffsetDateTime,
     pub follower_count: Option<u64>,
     pub friend_count: Option<u64>,

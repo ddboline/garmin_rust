@@ -12,11 +12,12 @@ garmin_cli = {path = "../garmin_cli"}
 garmin_connect_lib = {path="../garmin_connect_lib"}
 garmin_reports = {path="../garmin_reports"}
 race_result_analysis = {path="../race_result_analysis"}
-rweb = {version="0.15", features=["openapi", "chrono", "uuid"], default-features=false}
+rweb = {version="0.15", features=["openapi", "uuid"], default-features=false}
 http = "0.2"
 tokio = {version="1.17", features=["full"]}
 tokio-stream = "0.1"
-chrono = "0.4"
+time = {version="0.3", features=["serde-human-readable", "macros", "formatting", "parsing"]}
+time-tz = {version="0.5", features=["system"]}
 futures = "0.3"
 serde = "1.0"
 serde_derive = "1.0"
@@ -40,7 +41,7 @@ derive_more = "0.99"
 bytes = "1.0"
 postgres-types = "0.2"
 uuid = "0.8"
-rweb-helper = { git = "https://github.com/ddboline/rweb_helper.git", tag="0.4.3" }
-authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.7.30"}
+rweb-helper = { git = "https://github.com/ddboline/rweb_helper.git", tag="0.4.9" }
+authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.8.0"}
 stack-string = { version="0.7", features=["postgres_types", "rweb-openapi"] }
 reqwest = {version="0.11", features=["cookies", "json", "rustls-tls", "stream"], default_features=false}

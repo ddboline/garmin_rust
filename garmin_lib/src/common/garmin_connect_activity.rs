@@ -1,11 +1,14 @@
 use anyhow::Error;
-use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
 use futures::future::try_join_all;
 use log::debug;
 use postgres_query::{query, query_dyn, FromSqlRow, Parameter};
 use serde::{Deserialize, Deserializer, Serialize};
 use stack_string::{format_sstr, StackString};
 use std::{collections::HashMap, fs::File, path::Path};
+use time::{
+    format_description::well_known::Rfc3339, macros::format_description, Date, OffsetDateTime,
+};
+use time_tz::{timezones::db::UTC, OffsetDateTimeExt};
 
 use super::{garmin_config::GarminConfig, pgpool::PgPool};
 
@@ -17,7 +20,7 @@ pub struct GarminConnectActivity {
     pub activity_name: Option<StackString>,
     pub description: Option<StackString>,
     #[serde(alias = "startTimeGMT", deserialize_with = "deserialize_start_time")]
-    pub start_time_gmt: DateTime<Utc>,
+    pub start_time_gmt: OffsetDateTime,
     pub distance: Option<f64>,
     pub duration: f64,
     #[serde(alias = "elapsedDuration")]
@@ -37,8 +40,8 @@ impl GarminConnectActivity {
     /// Return error if db query fails
     pub async fn read_from_db(
         pool: &PgPool,
-        start_date: Option<NaiveDate>,
-        end_date: Option<NaiveDate>,
+        start_date: Option<Date>,
+        end_date: Option<Date>,
     ) -> Result<Vec<Self>, Error> {
         let query = "SELECT * FROM garmin_connect_activities";
         let mut conditions = Vec::new();
@@ -70,7 +73,7 @@ impl GarminConnectActivity {
     /// Return error if db query fails
     pub async fn get_by_begin_datetime(
         pool: &PgPool,
-        begin_datetime: DateTime<Utc>,
+        begin_datetime: OffsetDateTime,
     ) -> Result<Option<Self>, Error> {
         let query = query!(
             "SELECT * FROM garmin_connect_activities WHERE start_time_gmt=$start_date",
@@ -246,16 +249,19 @@ pub async fn import_garmin_connect_activity_json_file(filename: &Path) -> Result
 
 /// # Errors
 /// Return error if deserialize fails
-pub fn deserialize_start_time<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
+pub fn deserialize_start_time<'de, D>(deserializer: D) -> Result<OffsetDateTime, D::Error>
 where
     D: Deserializer<'de>,
 {
     let s = String::deserialize(deserializer)?;
-    if let Ok(dt) = s.parse() {
+    if let Ok(dt) = OffsetDateTime::parse(&s, &Rfc3339) {
         Ok(dt)
     } else {
-        NaiveDateTime::parse_from_str(&s, "%Y-%m-%d %H:%M:%S")
-            .map(|datetime| DateTime::from_utc(datetime, Utc))
-            .map_err(serde::de::Error::custom)
+        OffsetDateTime::parse(
+            &s,
+            format_description!("[year]-[month]-[day] [hour]:[minute]:[second]"),
+        )
+        .map(|dt| dt.to_timezone(UTC))
+        .map_err(serde::de::Error::custom)
     }
 }

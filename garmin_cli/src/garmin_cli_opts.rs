@@ -1,17 +1,19 @@
 use anyhow::{format_err, Error};
-use chrono::{Duration, NaiveDate, Utc};
 use futures::future::try_join_all;
 use itertools::Itertools;
 use refinery::embed_migrations;
 use stack_string::{format_sstr, StackString};
 use std::path::PathBuf;
 use structopt::StructOpt;
+use time::{macros::format_description, Date, Duration, OffsetDateTime};
+use time_tz::OffsetDateTimeExt;
 use tokio::{
     fs::{read_to_string, File},
     io::{stdin, stdout, AsyncReadExt, AsyncWrite, AsyncWriteExt},
     task::spawn_blocking,
 };
 
+use derive_more::{From, Into};
 use fitbit_lib::{
     fitbit_client::FitbitClient, fitbit_heartrate::FitbitHeartRate,
     fitbit_statistics_summary::FitbitStatisticsSummary, scale_measurement::ScaleMeasurement,
@@ -23,11 +25,24 @@ use garmin_lib::common::{
     pgpool::PgPool, strava_activity::StravaActivity,
 };
 use race_result_analysis::{race_results::RaceResults, race_type::RaceType};
+use std::str::FromStr;
 use strava_lib::strava_client::StravaClient;
 
 use crate::garmin_cli::{GarminCli, GarminCliOptions};
 
 embed_migrations!("../migrations");
+
+#[derive(Into, From, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct DateType(Date);
+
+impl FromStr for DateType {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Date::parse(s, format_description!("[year]-[month]-[day]"))
+            .map(Self)
+            .map_err(Into::into)
+    }
+}
 
 #[derive(StructOpt, PartialEq)]
 pub enum GarminCliOpts {
@@ -45,9 +60,9 @@ pub enum GarminCliOpts {
     #[structopt(alias = "cnt")]
     Connect {
         #[structopt(short, long)]
-        start_date: Option<NaiveDate>,
+        start_date: Option<DateType>,
         #[structopt(short, long)]
-        end_date: Option<NaiveDate>,
+        end_date: Option<DateType>,
     },
     Sync {
         #[structopt(short, long)]
@@ -58,9 +73,9 @@ pub enum GarminCliOpts {
         #[structopt(short, long)]
         all: bool,
         #[structopt(short, long)]
-        start_date: Option<NaiveDate>,
+        start_date: Option<DateType>,
         #[structopt(short, long)]
-        end_date: Option<NaiveDate>,
+        end_date: Option<DateType>,
     },
     Strava,
     Import {
@@ -138,8 +153,8 @@ impl GarminCliOpts {
                     return Err(format_err!("Invalid date range"));
                 }
                 GarminCliOptions::Connect {
-                    start_date,
-                    end_date,
+                    start_date: start_date.map(Into::into),
+                    end_date: end_date.map(Into::into),
                 }
             }
             Self::Sync { md5sum } => GarminCliOptions::Sync(md5sum),
@@ -157,9 +172,12 @@ impl GarminCliOpts {
                 let cli = GarminCli::with_config()?;
                 let client = FitbitClient::with_auth(config.clone()).await?;
                 let updates = client.sync_everything(&pool).await?;
-                let start_date = start_date
-                    .unwrap_or_else(|| (Utc::now() - Duration::days(3)).naive_utc().date());
-                let end_date = end_date.unwrap_or_else(|| Utc::now().naive_utc().date());
+                let start_date = start_date.map_or_else(
+                    || (OffsetDateTime::now_utc() - Duration::days(3)).date(),
+                    Into::into,
+                );
+                let end_date =
+                    end_date.map_or_else(|| OffsetDateTime::now_utc().date(), Into::into);
                 let mut date = start_date;
                 while date <= end_date {
                     client.import_fitbit_heartrate(date).await?;
@@ -169,7 +187,7 @@ impl GarminCliOpts {
                 }
                 cli.stdout.send(format_sstr!("{updates:?}"));
 
-                let start_date = (Utc::now() - Duration::days(10)).naive_utc().date();
+                let start_date = (OffsetDateTime::now_utc() - Duration::days(10)).date();
                 let filenames = client.sync_tcx(start_date).await?;
                 if !filenames.is_empty() {
                     let mut buf = cli.proc_everything().await?;
@@ -290,34 +308,45 @@ impl GarminCliOpts {
                 } else {
                     Box::new(stdout())
                 };
+                let local = time_tz::system::get_timezone()?;
                 match table.as_str() {
                     "scale_measurements" => {
-                        let start_date = (Utc::now() - Duration::days(7)).naive_local().date();
+                        let start_date = (OffsetDateTime::now_utc() - Duration::days(7))
+                            .to_timezone(local)
+                            .date();
                         let measurements =
                             ScaleMeasurement::read_from_db(&pool, Some(start_date), None).await?;
                         file.write_all(&serde_json::to_vec(&measurements)?).await?;
                     }
                     "strava_activities" => {
-                        let start_date = (Utc::now() - Duration::days(7)).naive_local().date();
+                        let start_date = (OffsetDateTime::now_utc() - Duration::days(7))
+                            .to_timezone(local)
+                            .date();
                         let activities =
                             StravaActivity::read_from_db(&pool, Some(start_date), None).await?;
                         file.write_all(&serde_json::to_vec(&activities)?).await?;
                     }
                     "fitbit_activities" => {
-                        let start_date = (Utc::now() - Duration::days(7)).naive_local().date();
+                        let start_date = (OffsetDateTime::now_utc() - Duration::days(7))
+                            .to_timezone(local)
+                            .date();
                         let activities =
                             FitbitActivity::read_from_db(&pool, Some(start_date), None).await?;
                         file.write_all(&serde_json::to_vec(&activities)?).await?;
                     }
                     "heartrate_statistics_summary" => {
-                        let start_date = (Utc::now() - Duration::days(7)).naive_local().date();
+                        let start_date = (OffsetDateTime::now_utc() - Duration::days(7))
+                            .to_timezone(local)
+                            .date();
                         let entries =
                             FitbitStatisticsSummary::read_from_db(Some(start_date), None, &pool)
                                 .await?;
                         file.write_all(&serde_json::to_vec(&entries)?).await?;
                     }
                     "garmin_connect_activities" => {
-                        let start_date = (Utc::now() - Duration::days(7)).naive_local().date();
+                        let start_date = (OffsetDateTime::now_utc() - Duration::days(7))
+                            .to_timezone(local)
+                            .date();
                         let activities =
                             GarminConnectActivity::read_from_db(&pool, Some(start_date), None)
                                 .await?;
@@ -387,16 +416,16 @@ impl GarminCliOpts {
     /// Return error if various function fail
     pub async fn sync_with_garmin_connect(
         cli: &GarminCli,
-        start_date: Option<NaiveDate>,
-        end_date: Option<NaiveDate>,
+        start_date: Option<Date>,
+        end_date: Option<Date>,
     ) -> Result<Vec<PathBuf>, Error> {
         if let Some(max_datetime) = get_maximum_begin_datetime(&cli.pool).await? {
             let mut session = GarminConnectClient::new(cli.config.clone());
             session.init().await?;
             let activities = session.get_activities(Some(max_datetime)).await?;
-            let start_date =
-                start_date.unwrap_or_else(|| (Utc::now() - Duration::days(3)).naive_utc().date());
-            let end_date = end_date.unwrap_or_else(|| Utc::now().naive_utc().date());
+            let start_date = start_date
+                .unwrap_or_else(|| (OffsetDateTime::now_utc() - Duration::days(3)).date());
+            let end_date = end_date.unwrap_or_else(|| OffsetDateTime::now_utc().date());
             let mut date = start_date;
             while date <= end_date {
                 let hr_values = session.get_heartrate(date).await?;
@@ -426,8 +455,8 @@ impl GarminCliOpts {
     /// Return error if various function fail
     pub async fn sync_with_strava(cli: &GarminCli) -> Result<Vec<PathBuf>, Error> {
         let config = cli.config.clone();
-        let start_datetime = Some(Utc::now() - Duration::days(15));
-        let end_datetime = Some(Utc::now());
+        let start_datetime = Some(OffsetDateTime::now_utc() - Duration::days(15));
+        let end_datetime = Some(OffsetDateTime::now_utc());
 
         let client = StravaClient::with_auth(config).await?;
         let filenames = client

@@ -1,10 +1,10 @@
 use anyhow::{format_err, Error};
 use avro_rs::{from_value, Codec, Reader, Schema, Writer};
-use chrono::{DateTime, Utc};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
 use std::{collections::HashMap, fs::File, path::Path};
+use time::{macros::format_description, OffsetDateTime};
 use tokio::task::spawn_blocking;
 
 use crate::utils::{
@@ -26,7 +26,7 @@ pub struct GarminFile {
     pub filename: StackString,
     pub filetype: StackString,
     #[serde(with = "iso_8601_datetime")]
-    pub begin_datetime: DateTime<Utc>,
+    pub begin_datetime: OffsetDateTime,
     pub sport: SportTypes,
     pub total_calories: i32,
     pub total_distance: f64,
@@ -138,7 +138,12 @@ impl GarminFile {
     pub fn get_standardized_name(&self, suffix: &str) -> StackString {
         format_sstr!(
             "{d}.{suffix}",
-            d = self.begin_datetime.format("%Y-%m-%d_%H-%M-%S_1_1"),
+            d = self
+                .begin_datetime
+                .format(format_description!(
+                    "[year]-[month]-[day]_[hour]-[minute]-[second]-1-1"
+                ))
+                .unwrap_or_else(|_| "".into())
         )
     }
 }

@@ -1,11 +1,11 @@
 use anyhow::Error;
-use chrono::{DateTime, NaiveDate, Utc};
 use futures::future::try_join_all;
 use log::debug;
 use postgres_query::{query, query_dyn, FromSqlRow, Parameter};
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
 use std::collections::HashMap;
+use time::{Date, OffsetDateTime};
 
 use crate::{
     common::{garmin_summary::GarminSummary, pgpool::PgPool, strava_timezone::StravaTimeZone},
@@ -19,7 +19,7 @@ use crate::{
 pub struct StravaActivity {
     pub name: StackString,
     #[serde(with = "iso_8601_datetime")]
-    pub start_date: DateTime<Utc>,
+    pub start_date: OffsetDateTime,
     pub id: i64,
     pub distance: Option<f64>,
     pub moving_time: Option<i64>,
@@ -36,7 +36,7 @@ impl Default for StravaActivity {
     fn default() -> Self {
         Self {
             name: "".into(),
-            start_date: Utc::now(),
+            start_date: OffsetDateTime::now_utc(),
             id: -1,
             distance: None,
             moving_time: None,
@@ -55,8 +55,8 @@ impl StravaActivity {
     /// Return error if db query fails
     pub async fn read_from_db(
         pool: &PgPool,
-        start_date: Option<NaiveDate>,
-        end_date: Option<NaiveDate>,
+        start_date: Option<Date>,
+        end_date: Option<Date>,
     ) -> Result<Vec<Self>, Error> {
         let query = "SELECT * FROM strava_activities";
         let mut conditions = Vec::new();
@@ -88,7 +88,7 @@ impl StravaActivity {
     /// Return error if db query fails
     pub async fn get_by_begin_datetime(
         pool: &PgPool,
-        begin_datetime: DateTime<Utc>,
+        begin_datetime: OffsetDateTime,
     ) -> Result<Option<Self>, Error> {
         let query = query!(
             "SELECT * FROM strava_activities WHERE start_date=$start_date",

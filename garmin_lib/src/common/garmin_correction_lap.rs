@@ -1,13 +1,13 @@
 #![allow(clippy::wrong_self_convention)]
 
 use anyhow::{format_err, Error};
-use chrono::{DateTime, Utc};
 use json::{parse, JsonValue};
 use log::debug;
 use postgres_query::FromSqlRow;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use stack_string::StackString;
 use std::{collections::HashMap, fs, hash::BuildHasher, path::Path, str};
+use time::OffsetDateTime;
 
 use crate::utils::{
     garmin_util::METERS_PER_MILE,
@@ -20,7 +20,7 @@ use super::{garmin_lap::GarminLap, pgpool::PgPool};
 #[derive(Debug, Clone, Copy, PartialEq, FromSqlRow)]
 pub struct GarminCorrectionLap {
     pub id: i32,
-    pub start_time: DateTime<Utc>,
+    pub start_time: OffsetDateTime,
     pub lap_number: i32,
     pub sport: Option<SportTypes>,
     pub distance: Option<f64>,
@@ -28,7 +28,7 @@ pub struct GarminCorrectionLap {
     pub summary_id: Option<i32>,
 }
 
-pub type GarminCorrectionMap = HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>;
+pub type GarminCorrectionMap = HashMap<(OffsetDateTime, i32), GarminCorrectionLap>;
 
 impl Default for GarminCorrectionLap {
     fn default() -> Self {
@@ -57,7 +57,7 @@ impl GarminCorrectionLap {
     }
 
     #[must_use]
-    pub fn with_start_time(mut self, start_time: DateTime<Utc>) -> Self {
+    pub fn with_start_time(mut self, start_time: OffsetDateTime) -> Self {
         self.start_time = start_time;
         self
     }
@@ -349,7 +349,7 @@ impl GarminCorrectionLap {
 pub fn apply_lap_corrections<S: BuildHasher + Sync>(
     lap_list: &[GarminLap],
     sport: SportTypes,
-    corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap, S>,
+    corr_map: &HashMap<(OffsetDateTime, i32), GarminCorrectionLap, S>,
 ) -> (Vec<GarminLap>, SportTypes) {
     let mut new_sport = sport;
     match lap_list.get(0) {

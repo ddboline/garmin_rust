@@ -1,5 +1,4 @@
 use anyhow::{format_err, Error};
-use chrono::{DateTime, Utc};
 use flate2::read::GzDecoder;
 use roxmltree::{Document, NodeType};
 use std::{
@@ -9,6 +8,7 @@ use std::{
     io::Read,
     path::Path,
 };
+use time::OffsetDateTime;
 
 use crate::{
     common::{
@@ -38,7 +38,7 @@ impl GarminParseTrait for GarminParseTcx {
     fn with_file(
         mut self,
         filename: &Path,
-        corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
+        corr_map: &HashMap<(OffsetDateTime, i32), GarminCorrectionLap>,
     ) -> Result<GarminFile, Error> {
         self.is_gzip = filename.extension().and_then(OsStr::to_str) == Some("gz");
         let tcx_output = self.parse_file(filename)?;

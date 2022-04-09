@@ -1,8 +1,8 @@
 use anyhow::{format_err, Error};
-use chrono::{DateTime, Utc};
 use fitparser::{profile::field_types::MesgNum, Value};
 use log::debug;
 use std::{collections::HashMap, fs::File, path::Path};
+use time::OffsetDateTime;
 
 use crate::{
     common::{
@@ -30,7 +30,7 @@ impl GarminParseTrait for GarminParseFit {
     fn with_file(
         self,
         filename: &Path,
-        corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
+        corr_map: &HashMap<(OffsetDateTime, i32), GarminCorrectionLap>,
     ) -> Result<GarminFile, Error> {
         let fit_output = self.parse_file(filename)?;
         let (lap_list, sport) =

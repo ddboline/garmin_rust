@@ -1,5 +1,4 @@
 use anyhow::{format_err, Error};
-use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, Utc};
 use smallvec::SmallVec;
 use stack_string::StackString;
 use std::{
@@ -7,6 +6,10 @@ use std::{
     fs::File,
     io::{BufRead, BufReader},
     path::Path,
+};
+use time::{
+    macros::{format_description, time},
+    Date, OffsetDateTime, PrimitiveDateTime, Time,
 };
 
 use crate::{
@@ -39,7 +42,7 @@ impl GarminParseTrait for GarminParseTxt {
     fn with_file(
         self,
         filename: &Path,
-        corr_map: &HashMap<(DateTime<Utc>, i32), GarminCorrectionLap>,
+        corr_map: &HashMap<(OffsetDateTime, i32), GarminCorrectionLap>,
     ) -> Result<GarminFile, Error> {
         let file_name = filename
             .file_name()
@@ -219,20 +222,17 @@ impl GarminParseTxt {
             .collect();
 
         let date = match entry_dict.get("date") {
-            Some(val) => NaiveDate::parse_from_str(val, "%Y%m%d")?,
+            Some(val) => Date::parse(val, format_description!("[year][month][day]"))?,
             None => return Err(format_err!("No date value")),
         };
 
         let time = if let Some(val) = entry_dict.get("time") {
-            NaiveTime::parse_from_str(val, "%H:%M:%S")?
+            Time::parse(val, format_description!("[hour]:[minute]:[second]"))?
         } else {
-            NaiveTime::from_hms(12, 0, 0)
+            time!(12:00:00)
         };
 
-        let lap_start = {
-            let dt = NaiveDateTime::new(date, time);
-            DateTime::from_utc(dt, Utc)
-        };
+        let lap_start = { PrimitiveDateTime::new(date, time).assume_utc() };
 
         let lap_type = match entry_dict.get("type") {
             Some(val) => sport_type_map.get(val.as_str()).map(|_| val.into()),

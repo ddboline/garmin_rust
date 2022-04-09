@@ -1,9 +1,10 @@
-use chrono::{DateTime, FixedOffset, Utc};
 use derive_more::Deref;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use regex::Regex;
 use stack_string::{format_sstr, StackString};
+use time::{format_description::well_known::Rfc3339, macros::format_description, OffsetDateTime};
+use time_tz::{timezones::db::UTC, OffsetDateTimeExt};
 
 use garmin_lib::{common::garmin_config::GarminConfig, utils::sport_types::get_sport_type_map};
 
@@ -23,7 +24,7 @@ pub enum GarminConstraint {
     Latest,
     IsoWeek { year: i32, week: u8 },
     Filename(StackString),
-    DateTime(DateTime<FixedOffset>),
+    DateTime(OffsetDateTime),
     YearMonthDay { year: i32, month: u8, day: u8 },
     YearMonth { year: i32, month: u8 },
     Year(i32),
@@ -53,7 +54,11 @@ impl GarminConstraint {
                 format_sstr!(
                     "replace({}, '%', 'T') = '{}'",
                     "to_char(a.begin_datetime at time zone 'utc', 'YYYY-MM-DD%HH24:MI:SSZ')",
-                    dt.with_timezone(&Utc).format("%Y-%m-%dT%H:%M:%SZ")
+                    dt.to_timezone(UTC)
+                        .format(format_description!(
+                            "[year]-[month]-[day]T[hour]:[minute]:[second]Z"
+                        ))
+                        .unwrap_or_else(|_| "".into())
                 )
             }
             Self::YearMonthDay { year, month, day } => {
@@ -87,7 +92,7 @@ impl GarminConstraint {
         let gps_file = config.gps_dir.join(pat);
         if gps_file.exists() {
             Self::Filename(pat.into())
-        } else if let Ok(dt) = DateTime::parse_from_rfc3339(&pat.replace('Z', "+00:00")) {
+        } else if let Ok(dt) = OffsetDateTime::parse(&pat.replace('Z', "+00:00"), &Rfc3339) {
             Self::DateTime(dt)
         } else if WEEK_REG.is_match(pat) {
             let cap = WEEK_REG.captures_iter(pat).next().unwrap();
@@ -200,7 +205,7 @@ impl GarminConstraints {
 #[cfg(test)]
 mod tests {
     use anyhow::Error;
-    use chrono::DateTime;
+    use time::macros::datetime;
 
     use garmin_lib::common::garmin_config::GarminConfig;
 
@@ -208,13 +213,13 @@ mod tests {
 
     #[test]
     fn test_garmin_constraints() -> Result<(), Error> {
-        let dt = DateTime::parse_from_rfc3339("2019-02-09T13:06:13+00:00")?;
+        let dt = datetime!(2019-02-09 13:06:13 +00:00);
         let cs = GarminConstraint::DateTime(dt);
         let obs = cs.to_query_string();
         println!("{}", obs);
         let exp = "replace(to_char(a.begin_datetime at time zone 'utc', \
                    'YYYY-MM-DD%HH24:MI:SSZ'), '%', 'T') = '2019-02-09T13:06:13Z'";
-        assert_eq!(obs, exp);
+        assert_eq!(&obs, exp);
         Ok(())
     }
 
@@ -248,7 +253,7 @@ mod tests {
         let result = GarminConstraint::match_pattern(&config, "Manitou");
         assert_eq!(result, GarminConstraint::Query("Manitou".into()));
         let result = GarminConstraint::match_pattern(&config, "2001-12-05T01:23:45Z");
-        let expected = "2001-12-05T01:23:45Z".parse()?;
+        let expected = datetime!(2001-12-05 01:23:45 +00:00);
         assert_eq!(result, GarminConstraint::DateTime(expected));
         Ok(())
     }

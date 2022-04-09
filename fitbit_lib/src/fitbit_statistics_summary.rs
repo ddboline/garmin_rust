@@ -1,17 +1,18 @@
 use anyhow::Error;
-use chrono::{DateTime, Duration, NaiveDate, Utc};
 use maplit::hashmap;
 use postgres_query::{query, FromSqlRow};
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
 use statistical::{mean, median, standard_deviation};
 use std::collections::HashMap;
+use time::{macros::format_description, Date, Duration, OffsetDateTime};
+use time_tz::{timezones::db::UTC, OffsetDateTimeExt};
 
 use garmin_lib::common::{garmin_templates::HBR, pgpool::PgPool};
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, FromSqlRow)]
 pub struct FitbitStatisticsSummary {
-    pub date: NaiveDate,
+    pub date: Date,
     pub min_heartrate: f64,
     pub max_heartrate: f64,
     pub mean_heartrate: f64,
@@ -22,13 +23,14 @@ pub struct FitbitStatisticsSummary {
 
 impl FitbitStatisticsSummary {
     #[must_use]
-    pub fn from_heartrate_values(heartrate_values: &[(DateTime<Utc>, i32)]) -> Option<Self> {
+    pub fn from_heartrate_values(heartrate_values: &[(OffsetDateTime, i32)]) -> Option<Self> {
+        let local = time_tz::system::get_timezone().unwrap_or(UTC);
         if heartrate_values.len() < 2 {
             return None;
         }
         let date = heartrate_values[heartrate_values.len() / 2]
             .0
-            .naive_local()
+            .to_timezone(local)
             .date();
         let min_heartrate = f64::from(heartrate_values.iter().map(|(_, v)| *v).min()?);
         let max_heartrate = f64::from(heartrate_values.iter().map(|(_, v)| *v).max()?);
@@ -52,7 +54,7 @@ impl FitbitStatisticsSummary {
 
     /// # Errors
     /// Returns error if db query fails
-    pub async fn read_entry(date: NaiveDate, pool: &PgPool) -> Result<Option<Self>, Error> {
+    pub async fn read_entry(date: Date, pool: &PgPool) -> Result<Option<Self>, Error> {
         let query = query!(
             r#"
             SELECT * FROM heartrate_statistics_summary WHERE date = $date
@@ -66,13 +68,18 @@ impl FitbitStatisticsSummary {
     /// # Errors
     /// Returns error if db query fails
     pub async fn read_from_db(
-        start_date: Option<NaiveDate>,
-        end_date: Option<NaiveDate>,
+        start_date: Option<Date>,
+        end_date: Option<Date>,
         pool: &PgPool,
     ) -> Result<Vec<Self>, Error> {
-        let start_date =
-            start_date.unwrap_or_else(|| (Utc::now() - Duration::days(365)).naive_local().date());
-        let end_date = end_date.unwrap_or_else(|| Utc::now().naive_local().date());
+        let local = time_tz::system::get_timezone().unwrap_or(UTC);
+        let start_date = start_date.unwrap_or_else(|| {
+            (OffsetDateTime::now_utc() - Duration::days(365))
+                .to_timezone(local)
+                .date()
+        });
+        let end_date =
+            end_date.unwrap_or_else(|| OffsetDateTime::now_utc().to_timezone(local).date());
 
         let query = query!(
             r#"
@@ -159,11 +166,11 @@ impl FitbitStatisticsSummary {
             });
         }
         let mut graphs = Vec::new();
-
+        let dformat = format_description!("[year]-[month]-[day]T00:00:00Z");
         let min_heartrate: Vec<_> = stats
             .iter()
             .map(|stat| {
-                let key = StackString::from_display(stat.date.format("%Y-%m-%dT00:00:00Z"));
+                let key = stat.date.format(dformat).unwrap_or_else(|_| "".into());
                 (key, stat.min_heartrate)
             })
             .collect();
@@ -183,7 +190,7 @@ impl FitbitStatisticsSummary {
         let max_heartrate: Vec<_> = stats
             .iter()
             .map(|stat| {
-                let key = StackString::from_display(stat.date.format("%Y-%m-%dT00:00:00Z"));
+                let key = stat.date.format(dformat).unwrap_or_else(|_| "".into());
                 (key, stat.max_heartrate)
             })
             .collect();
@@ -202,7 +209,7 @@ impl FitbitStatisticsSummary {
         let mean_heartrate: Vec<_> = stats
             .iter()
             .map(|stat| {
-                let key = StackString::from_display(stat.date.format("%Y-%m-%dT00:00:00Z"));
+                let key = stat.date.format(dformat).unwrap_or_else(|_| "".into());
                 (key, stat.mean_heartrate)
             })
             .collect();
@@ -221,7 +228,7 @@ impl FitbitStatisticsSummary {
         let median_heartrate: Vec<_> = stats
             .iter()
             .map(|stat| {
-                let key = StackString::from_display(stat.date.format("%Y-%m-%dT00:00:00Z"));
+                let key = stat.date.format(dformat).unwrap_or_else(|_| "".into());
                 (key, stat.median_heartrate)
             })
             .collect();

@@ -7,7 +7,6 @@
 #![allow(clippy::similar_names)]
 
 use anyhow::{format_err, Error};
-use chrono::{Duration, Utc};
 use fitbit_lib::fitbit_heartrate::FitbitHeartRate;
 use garmin_connect_lib::garmin_connect_client::GarminConnectClient;
 use garmin_lib::common::{
@@ -20,6 +19,7 @@ use reqwest::{
 };
 use serde::Deserialize;
 use std::collections::HashSet;
+use time::{Duration, OffsetDateTime};
 use url::Url;
 
 #[tokio::main]
@@ -68,7 +68,7 @@ async fn main() -> Result<(), Error> {
     connect.init().await?;
 
     for idx in 0..3 {
-        let date = (Utc::now() - Duration::days(idx)).naive_utc().date();
+        let date = (OffsetDateTime::now_utc() - Duration::days(idx)).date();
         let hr_values = connect.get_heartrate(date).await?;
         let hr_values = FitbitHeartRate::from_garmin_connect_hr(&hr_values);
         if !hr_values.is_empty() {
@@ -86,7 +86,7 @@ async fn main() -> Result<(), Error> {
     }
 
     let connect_activities = connect
-        .get_activities(Some(Utc::now() - Duration::days(14)))
+        .get_activities(Some(OffsetDateTime::now_utc() - Duration::days(14)))
         .await?;
     let url = remote_url.join("/garmin/garmin_connect_activities_db")?;
     let db_activities: Vec<GarminConnectActivity> = client

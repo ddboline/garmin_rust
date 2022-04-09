@@ -1,6 +1,5 @@
 use anyhow::{format_err, Error};
 use avro_rs::{from_value, Codec, Reader, Schema, Writer};
-use chrono::{DateTime, Duration, FixedOffset, Local, NaiveDate, NaiveDateTime, TimeZone, Utc};
 use fitparser::{profile::field_types::MesgNum, Value};
 use futures::future::try_join_all;
 use glob::glob;
@@ -12,12 +11,18 @@ use rayon::{
     slice::ParallelSliceMut,
 };
 use serde::{self, Deserialize, Deserializer, Serialize};
+use smallvec::SmallVec;
 use stack_string::{format_sstr, StackString};
 use std::{
     collections::{HashMap, HashSet},
+    convert::TryInto,
     fs::{rename, File},
     path::Path,
 };
+use time::{
+    macros::format_description, Date, Duration, Month, OffsetDateTime, PrimitiveDateTime, Time,
+};
+use time_tz::{timezones::db::UTC, OffsetDateTimeExt, PrimitiveDateTimeExt};
 
 use garmin_connect_lib::garmin_connect_hr_data::GarminConnectHrData;
 use garmin_lib::{
@@ -33,7 +38,7 @@ use crate::fitbit_statistics_summary::FitbitStatisticsSummary;
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq)]
 pub struct FitbitHeartRate {
     #[serde(with = "iso_8601_datetime")]
-    pub datetime: DateTime<Utc>,
+    pub datetime: OffsetDateTime,
     pub value: i32,
 }
 
@@ -64,23 +69,39 @@ pub struct JsonHeartRateValue {
 #[derive(Deserialize, Copy, Clone)]
 pub struct JsonHeartRateEntry {
     #[serde(rename = "dateTime", deserialize_with = "deserialize_json_mdyhms")]
-    pub datetime: DateTime<Utc>,
+    pub datetime: OffsetDateTime,
     pub value: JsonHeartRateValue,
 }
 
 /// # Errors
 /// Returns error if deserialize/parse datetime fails
-pub fn deserialize_json_mdyhms<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
+pub fn deserialize_json_mdyhms<'de, D>(deserializer: D) -> Result<OffsetDateTime, D::Error>
 where
     D: Deserializer<'de>,
 {
+    let local = time_tz::system::get_timezone().unwrap_or(UTC);
     String::deserialize(deserializer).and_then(|s| {
-        NaiveDateTime::parse_from_str(&s, "%m/%d/%y %H:%M:%S")
-            .map(|datetime| {
-                let offset = Local.offset_from_utc_datetime(&datetime);
-                DateTime::<FixedOffset>::from_utc(datetime, offset).with_timezone(&Utc)
-            })
-            .map_err(serde::de::Error::custom)
+        let d_t: SmallVec<[_; 2]> = s.split(' ').take(2).collect();
+        let mdy: Result<SmallVec<[u32; 3]>, _> =
+            d_t[0].split('/').take(3).map(str::parse).collect();
+        let mdy = mdy.map_err(serde::de::Error::custom)?;
+        let hms: Result<SmallVec<[u8; 3]>, _> = d_t[1].split(':').take(3).map(str::parse).collect();
+        let hms = hms.map_err(serde::de::Error::custom)?;
+        let month: Month = (mdy[0] as u8)
+            .try_into()
+            .map_err(serde::de::Error::custom)?;
+        let day = mdy[1] as u8;
+        let year = mdy[2] as i32 + 2000;
+        let hour = hms[0];
+        let minute = hms[1];
+        let second = hms[2];
+
+        let d = Date::from_calendar_date(year, month, day).map_err(serde::de::Error::custom)?;
+        let t = Time::from_hms(hour, minute, second).map_err(serde::de::Error::custom)?;
+
+        Ok(PrimitiveDateTime::new(d, t)
+            .assume_timezone(local)
+            .to_timezone(UTC))
     })
 }
 
@@ -117,10 +138,10 @@ impl FitbitHeartRate {
     pub async fn get_heartrate_values(
         config: &GarminConfig,
         pool: &PgPool,
-        start_date: NaiveDate,
-        end_date: NaiveDate,
-    ) -> Result<Vec<(DateTime<Utc>, i32)>, Error> {
-        let ndays = (end_date - start_date).num_days();
+        start_date: Date,
+        end_date: Date,
+    ) -> Result<Vec<(OffsetDateTime, i32)>, Error> {
+        let ndays = (end_date - start_date).whole_days();
 
         let days: Vec<_> = (0..=ndays)
             .map(|i| start_date + Duration::days(i))
@@ -195,7 +216,7 @@ impl FitbitHeartRate {
     pub async fn calculate_summary_statistics(
         config: &GarminConfig,
         pool: &PgPool,
-        start_date: NaiveDate,
+        start_date: Date,
     ) -> Result<Option<FitbitStatisticsSummary>, Error> {
         let heartrate_values =
             Self::get_heartrate_values(config, pool, start_date, start_date).await?;
@@ -220,11 +241,12 @@ impl FitbitHeartRate {
         ))?
         .map(|x| {
             x.map_err(Into::into).and_then(|f| {
-                let date: NaiveDate = f
-                    .file_stem()
-                    .ok_or_else(|| format_err!("No name"))?
-                    .to_string_lossy()
-                    .parse()?;
+                let date = Date::parse(
+                    &f.file_stem()
+                        .ok_or_else(|| format_err!("No name"))?
+                        .to_string_lossy(),
+                    format_description!("[year]-[month]-[day]"),
+                )?;
                 Ok(date)
             })
         })
@@ -250,12 +272,14 @@ impl FitbitHeartRate {
     pub async fn get_heartrate_plot(
         config: &GarminConfig,
         pool: &PgPool,
-        start_date: NaiveDate,
-        end_date: NaiveDate,
-        button_date: Option<NaiveDate>,
+        start_date: Date,
+        end_date: Date,
+        button_date: Option<Date>,
         is_demo: bool,
     ) -> Result<HashMap<StackString, StackString>, Error> {
-        let button_date = button_date.unwrap_or_else(|| Local::today().naive_local());
+        let local = time_tz::system::get_timezone()?;
+        let button_date =
+            button_date.unwrap_or_else(|| OffsetDateTime::now_utc().to_timezone(local).date());
         info!(
             "get_heartrate_plot {} {} {:?}",
             start_date, end_date, button_date
@@ -264,7 +288,7 @@ impl FitbitHeartRate {
             Self::get_heartrate_values(config, pool, start_date, end_date)
                 .await?
                 .into_iter()
-                .group_by(|(d, _)| d.timestamp() / (NMINUTES * 60))
+                .group_by(|(d, _)| d.unix_timestamp() / (NMINUTES * 60))
                 .into_iter()
                 .map(|(_, group)| {
                     let (begin_datetime, entries, heartrate_sum) = group.fold(
@@ -283,8 +307,12 @@ impl FitbitHeartRate {
                     );
                     begin_datetime.map(|begin_datetime| {
                         let average_heartrate = heartrate_sum / entries;
-                        let begin_datetime_str =
-                            StackString::from_display(begin_datetime.format("%Y-%m-%dT%H:%M:%S%z"));
+                        let begin_datetime_str = begin_datetime
+                            .format(format_description!(
+                                "[year]-[month]-[day]T[hour]:[minute]:[second][offset_hour \
+                                 sign:mandatory]:[offset_minute]"
+                            ))
+                            .unwrap_or_else(|_| "".into());
                         (begin_datetime_str, average_heartrate)
                     })
                 })
@@ -332,7 +360,7 @@ impl FitbitHeartRate {
             .collect();
         let prev_date = button_date + Duration::days(5);
         let next_date = button_date - Duration::days(5);
-        if prev_date <= Local::now().naive_local().date() {
+        if prev_date <= OffsetDateTime::now_utc().to_timezone(local).date() {
             buttons.push(
                 format_sstr!(r#"
                         <button type="submit"
@@ -387,7 +415,7 @@ impl FitbitHeartRate {
 
     /// # Errors
     /// Returns error if `read_avro` fails
-    pub fn read_avro_by_date(config: &GarminConfig, date: NaiveDate) -> Result<Vec<Self>, Error> {
+    pub fn read_avro_by_date(config: &GarminConfig, date: Date) -> Result<Vec<Self>, Error> {
         let date_str = StackString::from_display(date);
         let input_filename = config.fitbit_cachedir.join(date_str).with_extension("avro");
         debug!("avro {:?}", input_filename);
@@ -415,11 +443,11 @@ impl FitbitHeartRate {
     pub fn merge_slice_to_avro(config: &GarminConfig, values: &[Self]) -> Result<(), Error> {
         let dates: HashSet<_> = values
             .iter()
-            .map(|entry| entry.datetime.naive_utc().date())
+            .map(|entry| entry.datetime.to_timezone(UTC).date())
             .collect();
         for date in dates {
             let new_values = values.iter().filter_map(|entry| {
-                if entry.datetime.naive_utc().date() == date {
+                if entry.datetime.to_timezone(UTC).date() == date {
                     Some(*entry)
                 } else {
                     None
@@ -429,7 +457,7 @@ impl FitbitHeartRate {
                 .into_iter()
                 .chain(new_values)
                 .collect();
-            merged_values.par_sort_by_key(|entry| entry.datetime.timestamp());
+            merged_values.par_sort_by_key(|entry| entry.datetime.unix_timestamp());
             merged_values.dedup();
             let date_str = StackString::from_display(date);
             let input_filename = config.fitbit_cachedir.join(date_str).with_extension("avro");
@@ -514,7 +542,7 @@ pub fn import_garmin_heartrate_file(filename: &Path) -> Result<(), Error> {
                     if field.name() == "stress_level_time" {
                         if let Value::Timestamp(t) = field.value() {
                             println!("timestamp {}", t);
-                            timestamp.replace(t.with_timezone(&Utc));
+                            timestamp.replace(t.to_timezone(UTC));
                         }
                     }
                 }
@@ -543,7 +571,7 @@ pub fn import_garmin_heartrate_file(filename: &Path) -> Result<(), Error> {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct FitbitBodyWeightFat {
-    pub datetime: DateTime<Utc>,
+    pub datetime: OffsetDateTime,
     pub weight: f64,
     pub fat: f64,
 }
@@ -551,9 +579,10 @@ pub struct FitbitBodyWeightFat {
 #[cfg(test)]
 mod tests {
     use anyhow::Error;
-    use chrono::NaiveDate;
     use log::debug;
     use std::{collections::HashSet, path::Path};
+    use time::macros::date;
+    use time_tz::OffsetDateTimeExt;
 
     use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
 
@@ -566,13 +595,13 @@ mod tests {
         let path = Path::new("tests/data/test_heartrate_data.json");
         let result = process_fitbit_json_file(&path)?;
         debug!("{}", result.len());
-
+        let local = time_tz::system::get_timezone()?;
         let dates: HashSet<_> = result
             .iter()
-            .map(|entry| entry.datetime.date().naive_local())
+            .map(|entry| entry.datetime.to_timezone(local).date())
             .collect();
         debug!("{:?}", dates);
-        let dates = vec![NaiveDate::from_ymd(2019, 11, 1)];
+        let dates = vec![date!(2019 - 11 - 01)];
         assert_eq!(result.len(), 3);
         assert_eq!(dates.len(), 1);
 
@@ -592,8 +621,8 @@ mod tests {
     async fn test_get_heartrate_plot() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
         let pool = PgPool::new(&config.pgurl);
-        let start_date = NaiveDate::from_ymd(2019, 8, 1);
-        let end_date = NaiveDate::from_ymd(2019, 8, 2);
+        let start_date = date!(2019 - 08 - 01);
+        let end_date = date!(2019 - 08 - 02);
         let results =
             FitbitHeartRate::get_heartrate_plot(&config, &pool, start_date, end_date, None, false)
                 .await?;
@@ -607,7 +636,7 @@ mod tests {
     async fn test_calculate_summary_statistics() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
         let pool = PgPool::new(&config.pgurl);
-        let start_date = NaiveDate::from_ymd(2019, 8, 1);
+        let start_date = date!(2019 - 08 - 01);
         let result =
             FitbitHeartRate::calculate_summary_statistics(&config, &pool, start_date).await?;
         assert!(result.is_some());

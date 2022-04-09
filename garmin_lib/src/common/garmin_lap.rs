@@ -1,10 +1,11 @@
 use anyhow::Error;
-use chrono::{DateTime, Utc};
 use fitparser::{FitDataField, Value};
 use roxmltree::{Node, NodeType};
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
 use std::fmt;
+use time::OffsetDateTime;
+use time_tz::{timezones::db::UTC, OffsetDateTimeExt};
 
 use crate::utils::{
     garmin_util::{convert_time_string, convert_xml_local_time_to_utc, get_f64, get_i64},
@@ -17,7 +18,7 @@ pub struct GarminLap {
     pub lap_type: Option<StackString>,
     pub lap_index: i32,
     #[serde(with = "iso_8601_datetime")]
-    pub lap_start: DateTime<Utc>,
+    pub lap_start: OffsetDateTime,
     pub lap_duration: f64,
     pub lap_distance: f64,
     pub lap_trigger: Option<StackString>,
@@ -166,7 +167,7 @@ impl GarminLap {
             match field.name() {
                 "start_time" => {
                     if let Value::Timestamp(t) = field.value() {
-                        new_lap.lap_start = t.with_timezone(&Utc);
+                        new_lap.lap_start = t.to_timezone(UTC);
                         new_lap.lap_start_string = Some(convert_datetime_to_str(new_lap.lap_start));
                     }
                 }

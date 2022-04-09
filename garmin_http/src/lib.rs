@@ -15,13 +15,12 @@ pub mod garmin_rust_routes;
 pub mod logged_user;
 pub mod sport_types_wrapper;
 
-use chrono::{DateTime, NaiveDate, Utc};
 use derive_more::{From, Into};
 use rweb::{
     openapi::{self, ComponentDescriptor, ComponentOrInlineSchema, Entity},
     Schema,
 };
-use rweb_helper::derive_rweb_schema;
+use rweb_helper::{derive_rweb_schema, DateTimeType, DateType};
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
 use std::{borrow::Cow, collections::HashMap};
@@ -67,7 +66,7 @@ derive_rweb_schema!(FitbitHeartRateWrapper, _FitbitHeartRateWrapper);
 #[derive(Schema)]
 struct _FitbitHeartRateWrapper {
     #[schema(description = "DateTime")]
-    datetime: DateTime<Utc>,
+    datetime: DateTimeType,
     #[schema(description = "Heartrate Value (bpm)")]
     value: i32,
 }
@@ -83,7 +82,7 @@ struct _StravaActivityWrapper {
     #[schema(description = "Activity Name")]
     name: StackString,
     #[schema(description = "Start Date")]
-    start_date: DateTime<Utc>,
+    start_date: DateTimeType,
     #[schema(description = "Activity ID")]
     id: i64,
     #[schema(description = "Distance (m)")]
@@ -113,7 +112,7 @@ derive_rweb_schema!(FitbitBodyWeightFatWrapper, _FitbitBodyWeightFatWrapper);
 #[derive(Schema)]
 struct _FitbitBodyWeightFatWrapper {
     #[schema(description = "DateTime")]
-    datetime: DateTime<Utc>,
+    datetime: DateTimeType,
     #[schema(description = "Weight (lbs)")]
     weight: f64,
     #[schema(description = "Fat %")]
@@ -131,7 +130,7 @@ struct _ScaleMeasurementWrapper {
     #[schema(description = "Scale Measurement ID")]
     id: i32,
     #[schema(description = "DateTime")]
-    datetime: DateTime<Utc>,
+    datetime: DateTimeType,
     #[schema(description = "Mass (lbs)")]
     mass: f64,
     #[schema(description = "Fat %")]
@@ -157,7 +156,7 @@ struct _FitbitBodyWeightFatUpdateOutputWrapper {
     #[schema(description = "Measurements")]
     measurements: Vec<ScaleMeasurementWrapper>,
     #[schema(description = "Activity DateTimes")]
-    activities: Vec<DateTime<Utc>>,
+    activities: Vec<DateTimeType>,
     #[schema(description = "Duplicate Messages")]
     duplicates: Vec<StackString>,
 }
@@ -172,7 +171,7 @@ struct _FitbitActivityWrapper {
     #[schema(description = "Log Type")]
     log_type: StackString,
     #[schema(description = "Start Datetime")]
-    start_time: DateTime<Utc>,
+    start_time: DateTimeType,
     #[schema(description = "TCX Link")]
     tcx_link: Option<StackString>,
     #[schema(description = "Activity Type ID")]
@@ -206,7 +205,7 @@ struct _GarminConnectActivityWrapper {
     #[schema(description = "Description")]
     description: Option<StackString>,
     #[schema(description = "Start Time UTC")]
-    start_time_gmt: DateTime<Utc>,
+    start_time_gmt: DateTimeType,
     #[schema(description = "Distance (m)")]
     distance: Option<f64>,
     #[schema(description = "Duration (s)")]
@@ -251,7 +250,7 @@ struct _GarminConnectUserDailySummaryWrapper {
     #[schema(description = "User Daily Summary ID")]
     user_daily_summary_id: Option<u64>,
     #[schema(description = "Calendar Date")]
-    calendar_date: NaiveDate,
+    calendar_date: DateType,
 }
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, Into, From)]
@@ -266,7 +265,7 @@ derive_rweb_schema!(
 #[derive(Schema)]
 struct _FitbitStatisticsSummaryWrapper {
     #[schema(description = "Date")]
-    date: NaiveDate,
+    date: DateType,
     #[schema(description = "Minimum Heartrate")]
     min_heartrate: f64,
     #[schema(description = "Maximum Heartrate")]
@@ -310,7 +309,7 @@ struct _RaceResultsWrapper {
     #[schema(description = "Race Type")]
     race_type: RaceTypeWrapper,
     #[schema(description = "Race Date")]
-    race_date: Option<NaiveDate>,
+    race_date: Option<DateType>,
     #[schema(description = "Race Name")]
     race_name: Option<StackString>,
     #[schema(description = "Race Distance (m)")]

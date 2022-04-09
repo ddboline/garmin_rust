@@ -1,6 +1,5 @@
 use anyhow::{format_err, Error};
 use bytes::Bytes;
-use chrono::{DateTime, NaiveDate, Utc};
 use fantoccini::{Client, ClientBuilder, Locator};
 use http::Method;
 use log::debug;
@@ -8,6 +7,8 @@ use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
 use std::{path::PathBuf, process::Stdio};
+use time::{Date, OffsetDateTime};
+use time_tz::{timezones::db::UTC, OffsetDateTimeExt};
 use tokio::{
     fs,
     process::{Child, Command},
@@ -24,7 +25,7 @@ pub struct GarminConnectClient {
     config: GarminConfig,
     client: Option<Client>,
     webdriver: Option<Child>,
-    pub last_used: DateTime<Utc>,
+    pub last_used: OffsetDateTime,
     display_name: Option<StackString>,
     trigger_auth: bool,
 }
@@ -43,7 +44,7 @@ impl GarminConnectClient {
             config,
             client: None,
             webdriver: None,
-            last_used: Utc::now(),
+            last_used: OffsetDateTime::now_utc(),
             display_name: None,
             trigger_auth: true,
         }
@@ -102,7 +103,7 @@ impl GarminConnectClient {
                 .await?;
 
             self.client.replace(client);
-            self.last_used = Utc::now();
+            self.last_used = OffsetDateTime::now_utc();
             self.trigger_auth = false;
         }
         if self.display_name.is_none() {
@@ -179,7 +180,7 @@ impl GarminConnectClient {
 
         let js = Self::raw_get(client, modern_url).await?;
         let text = std::str::from_utf8(&js)?;
-        self.last_used = Utc::now();
+        self.last_used = OffsetDateTime::now_utc();
 
         self.display_name
             .replace(GarminConnectClient::extract_display_name(text)?);
@@ -200,7 +201,7 @@ impl GarminConnectClient {
                 debug!("Failed to kill {}", e);
             }
         }
-        self.last_used = Utc::now();
+        self.last_used = OffsetDateTime::now_utc();
         self.display_name.take();
         self.trigger_auth = true;
         Ok(())
@@ -235,7 +236,7 @@ impl GarminConnectClient {
     /// Return error if api call fails
     pub async fn get_user_summary(
         &mut self,
-        date: NaiveDate,
+        date: Date,
     ) -> Result<GarminConnectUserDailySummary, Error> {
         let client = self
             .client
@@ -256,7 +257,7 @@ impl GarminConnectClient {
         url.query_pairs_mut().append_pair("calendarDate", &date_str);
         let js = Self::raw_get(client, &url).await?;
         let user_summary: GarminConnectUserDailySummary = serde_json::from_slice(&js)?;
-        self.last_used = Utc::now();
+        self.last_used = OffsetDateTime::now_utc();
         if user_summary.total_steps.is_none() {
             self.trigger_auth = true;
         }
@@ -265,7 +266,7 @@ impl GarminConnectClient {
 
     /// # Errors
     /// Return error if api call fails
-    pub async fn get_heartrate(&mut self, date: NaiveDate) -> Result<GarminConnectHrData, Error> {
+    pub async fn get_heartrate(&mut self, date: Date) -> Result<GarminConnectHrData, Error> {
         let display_name = self
             .display_name
             .as_ref()
@@ -284,7 +285,7 @@ impl GarminConnectClient {
         let date_str = StackString::from_display(date);
         url.query_pairs_mut().append_pair("date", &date_str);
         let js = Self::raw_get(client, &url).await?;
-        self.last_used = Utc::now();
+        self.last_used = OffsetDateTime::now_utc();
         serde_json::from_slice(&js).map_err(Into::into)
     }
 
@@ -292,7 +293,7 @@ impl GarminConnectClient {
     /// Return error if api call fails
     pub async fn get_activities(
         &mut self,
-        start_datetime: Option<DateTime<Utc>>,
+        start_datetime: Option<OffsetDateTime>,
     ) -> Result<Vec<GarminConnectActivity>, Error> {
         let client = self
             .client
@@ -305,12 +306,12 @@ impl GarminConnectClient {
             .ok_or_else(|| format_err!("Bad URL"))?
             .join("/proxy/activitylist-service/activities/search/activities")?;
         if let Some(start_datetime) = start_datetime {
-            let datetime_str = StackString::from_display(start_datetime.naive_utc().date());
+            let datetime_str = StackString::from_display(start_datetime.to_timezone(UTC).date());
             url.query_pairs_mut()
                 .append_pair("startDate", &datetime_str);
         }
         let js = Self::raw_get(client, &url).await?;
-        self.last_used = Utc::now();
+        self.last_used = OffsetDateTime::now_utc();
         serde_json::from_slice(&js).map_err(Into::into)
     }
 
@@ -343,7 +344,7 @@ impl GarminConnectClient {
                 .join("/proxy/download-service/files/activity/")?
                 .join(&id_str)?;
             let data = Self::raw_get(client, &url).await?;
-            self.last_used = Utc::now();
+            self.last_used = OffsetDateTime::now_utc();
             fs::write(&fname, &data).await?;
             filenames.push(fname);
         }
@@ -379,15 +380,16 @@ pub struct GarminConnectUserDailySummary {
     #[serde(alias = "userDailySummaryId")]
     pub user_daily_summary_id: Option<u64>,
     #[serde(alias = "calendarDate")]
-    pub calendar_date: NaiveDate,
+    pub calendar_date: Date,
 }
 
 #[cfg(test)]
 mod tests {
     use anyhow::Error;
-    use chrono::{Duration, Utc};
     use futures::future::try_join_all;
     use std::collections::HashMap;
+    use time::{Duration, OffsetDateTime};
+    use time_tz::OffsetDateTimeExt;
 
     use garmin_lib::common::{
         garmin_config::GarminConfig, garmin_connect_activity::GarminConnectActivity, pgpool::PgPool,
@@ -409,13 +411,17 @@ mod tests {
         let config = GarminConfig::get_config(None)?;
         let mut session = GarminConnectClient::new(config.clone());
         session.init().await?;
-
+        let local = time_tz::system::get_timezone()?;
         let user_summary = session
-            .get_user_summary((Utc::now() - Duration::days(1)).naive_local().date())
+            .get_user_summary(
+                (OffsetDateTime::now_utc() - Duration::days(1))
+                    .to_timezone(local)
+                    .date(),
+            )
             .await?;
         assert_eq!(user_summary.user_profile_id, 1377808);
 
-        let max_timestamp = Utc::now() - Duration::days(14);
+        let max_timestamp = OffsetDateTime::now_utc() - Duration::days(14);
         let result = match session.get_activities(Some(max_timestamp)).await {
             Ok(r) => r,
             Err(_) => {
@@ -435,7 +441,7 @@ mod tests {
             .map(|activity| (activity.activity_id, activity))
             .collect();
 
-        let max_timestamp = Utc::now() - Duration::days(30);
+        let max_timestamp = OffsetDateTime::now_utc() - Duration::days(30);
         let new_activities: Vec<_> = session
             .get_activities(Some(max_timestamp))
             .await?

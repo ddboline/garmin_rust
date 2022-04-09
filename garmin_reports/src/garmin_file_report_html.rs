@@ -1,11 +1,12 @@
 use anyhow::Error;
-use chrono::{Date, DateTime, Datelike, Local, Utc};
 use itertools::Itertools;
 use log::debug;
 use maplit::hashmap;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use stack_string::{format_sstr, StackString};
 use std::collections::HashSet;
+use time::OffsetDateTime;
+use time_tz::{timezones::db::UTC, OffsetDateTimeExt};
 
 use garmin_lib::{
     common::{
@@ -42,10 +43,10 @@ pub fn generate_history_buttons<T: AsRef<str>>(history_vec: &[T]) -> StackString
             " </button>"
         )
     }
-
-    let local: Date<Local> = Local::today();
+    let local = time_tz::system::get_timezone().unwrap_or(UTC);
+    let local = OffsetDateTime::now_utc().to_timezone(local).date();
     let year = local.year();
-    let month = local.month();
+    let month: u8 = local.month().into();
     let (prev_year, prev_month) = if month > 1 {
         (year, month - 1)
     } else {
@@ -689,7 +690,7 @@ fn get_sport_selector(current_sport: SportTypes) -> StackString {
     format_sstr!(r#"<select id="sport_select">{sport_types}</select>"#)
 }
 
-fn get_correction_button(begin_datetime: DateTime<Utc>) -> StackString {
+fn get_correction_button(begin_datetime: OffsetDateTime) -> StackString {
     format_sstr!(
         r#"<button type="submit" onclick="addGarminCorrectionSport('{begin_datetime}')">Apply</button>"#
     )

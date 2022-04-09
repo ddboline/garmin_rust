@@ -1,9 +1,11 @@
-use chrono::{DateTime, Duration, Local, NaiveDate, NaiveDateTime, NaiveTime, Utc};
 use futures::future::try_join_all;
 use rweb::Schema;
+use rweb_helper::{DateTimeType, DateType};
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
 use std::{collections::HashMap, path::PathBuf};
+use time::{macros::time, Date, Duration, OffsetDateTime};
+use time_tz::{timezones::db::UTC, OffsetDateTimeExt};
 use tokio::task::spawn_blocking;
 use url::Url;
 
@@ -111,7 +113,7 @@ pub struct GarminUploadRequest {
 impl GarminUploadRequest {
     /// # Errors
     /// Returns error if db query fails
-    pub async fn handle(self, pool: &PgPool) -> Result<Vec<DateTime<Utc>>, Error> {
+    pub async fn handle(self, pool: &PgPool) -> Result<Vec<OffsetDateTime>, Error> {
         let gcli = GarminCli::from_pool(pool)?;
         let filenames = vec![self.filename];
         let datetimes = gcli.process_filenames(&filenames).await?;
@@ -129,7 +131,7 @@ impl GarminConnectSyncRequest {
     pub async fn handle(&self, pool: &PgPool, proxy: &ConnectProxy) -> Result<Vec<PathBuf>, Error> {
         let gcli = GarminCli::from_pool(pool)?;
 
-        let max_timestamp = Utc::now() - Duration::days(30);
+        let max_timestamp = OffsetDateTime::now_utc() - Duration::days(30);
 
         let mut session = proxy.lock().await;
         session.init().await?;
@@ -151,7 +153,7 @@ impl GarminConnectSyncRequest {
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct GarminConnectHrSyncRequest {
-    pub date: NaiveDate,
+    pub date: DateType,
 }
 
 impl GarminConnectHrSyncRequest {
@@ -165,18 +167,18 @@ impl GarminConnectHrSyncRequest {
     ) -> Result<GarminConnectHrData, Error> {
         let mut session = proxy.lock().await;
         session.init().await?;
-
-        let heartrate_data = session.get_heartrate(self.date).await?;
+        let date = self.date.into();
+        let heartrate_data = session.get_heartrate(date).await?;
         FitbitClient::import_garmin_connect_heartrate(config.clone(), &heartrate_data).await?;
         let config = config.clone();
-        FitbitHeartRate::calculate_summary_statistics(&config, pool, self.date).await?;
+        FitbitHeartRate::calculate_summary_statistics(&config, pool, date).await?;
         Ok(heartrate_data)
     }
 }
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct GarminConnectHrApiRequest {
-    pub date: NaiveDate,
+    pub date: DateType,
 }
 
 impl GarminConnectHrApiRequest {
@@ -186,7 +188,7 @@ impl GarminConnectHrApiRequest {
         let mut session = proxy.lock().await;
         session.init().await?;
 
-        let heartrate_data = session.get_heartrate(self.date).await?;
+        let heartrate_data = session.get_heartrate(self.date.into()).await?;
         let hr_vals = FitbitHeartRate::from_garmin_connect_hr(&heartrate_data);
         Ok(hr_vals)
     }
@@ -194,8 +196,8 @@ impl GarminConnectHrApiRequest {
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct StravaSyncRequest {
-    pub start_datetime: Option<DateTime<Utc>>,
-    pub end_datetime: Option<DateTime<Utc>>,
+    pub start_datetime: Option<DateTimeType>,
+    pub end_datetime: Option<DateTimeType>,
 }
 
 impl StravaSyncRequest {
@@ -211,11 +213,11 @@ impl StravaSyncRequest {
         let start_datetime = self
             .start_datetime
             .map(Into::into)
-            .or_else(|| Some(Utc::now() - Duration::days(15)));
+            .or_else(|| Some(OffsetDateTime::now_utc() - Duration::days(15)));
         let end_datetime = self
             .end_datetime
             .map(Into::into)
-            .or_else(|| Some(Utc::now()));
+            .or_else(|| Some(OffsetDateTime::now_utc()));
 
         let client = StravaClient::with_auth(config.clone()).await?;
         let filenames = client
@@ -294,7 +296,7 @@ impl FitbitCallbackRequest {
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct FitbitHeartrateApiRequest {
-    date: NaiveDate,
+    date: DateType,
 }
 
 impl FitbitHeartrateApiRequest {
@@ -303,7 +305,7 @@ impl FitbitHeartrateApiRequest {
     pub async fn handle(&self, config: &GarminConfig) -> Result<Vec<FitbitHeartRate>, Error> {
         let client = FitbitClient::with_auth(config.clone()).await?;
         client
-            .get_fitbit_intraday_time_series_heartrate(self.date)
+            .get_fitbit_intraday_time_series_heartrate(self.date.into())
             .await
             .map_err(Into::into)
     }
@@ -311,7 +313,7 @@ impl FitbitHeartrateApiRequest {
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct FitbitHeartrateCacheRequest {
-    date: NaiveDate,
+    date: DateType,
 }
 
 impl FitbitHeartrateCacheRequest {
@@ -320,7 +322,7 @@ impl FitbitHeartrateCacheRequest {
     pub async fn handle(self, config: &GarminConfig) -> Result<Vec<FitbitHeartRate>, Error> {
         let config = config.clone();
         spawn_blocking(move || {
-            FitbitHeartRate::read_avro_by_date(&config, self.date).map_err(Into::into)
+            FitbitHeartRate::read_avro_by_date(&config, self.date.into()).map_err(Into::into)
         })
         .await?
     }
@@ -372,7 +374,7 @@ impl FitbitBodyWeightFatUpdateRequest {
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct FitbitSyncRequest {
-    date: NaiveDate,
+    date: DateType,
 }
 
 impl FitbitSyncRequest {
@@ -383,16 +385,17 @@ impl FitbitSyncRequest {
         pool: &PgPool,
         config: &GarminConfig,
     ) -> Result<Vec<FitbitHeartRate>, Error> {
+        let date = self.date.into();
         let client = FitbitClient::with_auth(config.clone()).await?;
-        let heartrates = client.import_fitbit_heartrate(self.date).await?;
-        FitbitHeartRate::calculate_summary_statistics(&client.config, pool, self.date).await?;
+        let heartrates = client.import_fitbit_heartrate(date).await?;
+        FitbitHeartRate::calculate_summary_statistics(&client.config, pool, date).await?;
         Ok(heartrates)
     }
 }
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct FitbitTcxSyncRequest {
-    pub start_date: Option<NaiveDate>,
+    pub start_date: Option<DateType>,
 }
 
 impl FitbitTcxSyncRequest {
@@ -405,7 +408,7 @@ impl FitbitTcxSyncRequest {
     ) -> Result<Vec<PathBuf>, Error> {
         let client = FitbitClient::with_auth(config.clone()).await?;
         let start_date = self.start_date.map_or_else(
-            || (Utc::now() - Duration::days(10)).naive_utc().date(),
+            || (OffsetDateTime::now_utc() - Duration::days(10)).date(),
             Into::into,
         );
         let filenames = client.sync_tcx(start_date).await?;
@@ -420,29 +423,35 @@ impl FitbitTcxSyncRequest {
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Schema)]
 pub struct ScaleMeasurementRequest {
     #[schema(description = "Start Date")]
-    pub start_date: Option<NaiveDate>,
+    pub start_date: Option<DateType>,
     #[schema(description = "End Date")]
-    pub end_date: Option<NaiveDate>,
+    pub end_date: Option<DateType>,
     #[schema(description = "Button Date")]
-    pub button_date: Option<NaiveDate>,
+    pub button_date: Option<DateType>,
     #[schema(description = "Offset")]
     pub offset: Option<usize>,
 }
 
 impl ScaleMeasurementRequest {
     fn add_default(&self, ndays: i64) -> Self {
+        let local = time_tz::system::get_timezone().unwrap_or(UTC);
         Self {
             start_date: match self.start_date {
                 Some(d) => Some(d),
-                None => Some((Local::now() - Duration::days(ndays)).naive_utc().date()),
+                None => Some(
+                    (OffsetDateTime::now_utc() - Duration::days(ndays))
+                        .to_timezone(local)
+                        .date()
+                        .into(),
+                ),
             },
             end_date: match self.end_date {
                 Some(d) => Some(d),
-                None => Some(Local::now().naive_utc().date()),
+                None => Some(OffsetDateTime::now_utc().to_timezone(local).date().into()),
             },
             button_date: match self.button_date {
                 Some(d) => Some(d),
-                None => Some(Local::now().naive_utc().date()),
+                None => Some(OffsetDateTime::now_utc().to_timezone(local).date().into()),
             },
             offset: self.offset,
         }
@@ -524,9 +533,9 @@ impl ScaleMeasurementPlotRequest {
 }
 
 pub struct FitbitHeartratePlotRequest {
-    pub start_date: NaiveDate,
-    pub end_date: NaiveDate,
-    pub button_date: Option<NaiveDate>,
+    pub start_date: DateType,
+    pub end_date: DateType,
+    pub button_date: Option<DateType>,
     pub is_demo: bool,
 }
 
@@ -553,9 +562,9 @@ impl FitbitHeartratePlotRequest {
         FitbitHeartRate::get_heartrate_plot(
             config,
             pool,
-            self.start_date,
-            self.end_date,
-            self.button_date,
+            self.start_date.into(),
+            self.end_date.into(),
+            self.button_date.map(Into::into),
             self.is_demo,
         )
         .await
@@ -636,9 +645,9 @@ impl StravaCallbackRequest {
 #[derive(Debug, Serialize, Deserialize, Schema)]
 pub struct StravaActivitiesRequest {
     #[schema(description = "Start Date")]
-    pub start_date: Option<NaiveDate>,
+    pub start_date: Option<DateType>,
     #[schema(description = "End Date")]
-    pub end_date: Option<NaiveDate>,
+    pub end_date: Option<DateType>,
 }
 
 impl StravaActivitiesRequest {
@@ -646,11 +655,13 @@ impl StravaActivitiesRequest {
     /// Returns error if db query fails
     pub async fn handle(&self, config: &GarminConfig) -> Result<Vec<StravaActivity>, Error> {
         let client = StravaClient::with_auth(config.clone()).await?;
-        let start_date = self
-            .start_date
-            .map(|s| DateTime::from_utc(NaiveDateTime::new(s, NaiveTime::from_hms(0, 0, 0)), Utc));
+        let start_date = self.start_date.map(|s| {
+            let d: Date = s.into();
+            d.with_time(time!(00:00:00)).assume_utc()
+        });
         let end_date = self.end_date.map(|s| {
-            DateTime::from_utc(NaiveDateTime::new(s, NaiveTime::from_hms(23, 59, 59)), Utc)
+            let d: Date = s.into();
+            d.with_time(time!(23:59:59)).assume_utc()
         });
         client
             .get_all_strava_activites(start_date, end_date)
@@ -739,7 +750,7 @@ pub struct StravaUpdateRequest {
     #[schema(description = "Privacy Flag")]
     pub is_private: Option<bool>,
     #[schema(description = "Start DateTime")]
-    pub start_time: Option<DateTime<Utc>>,
+    pub start_time: Option<DateTimeType>,
 }
 
 impl StravaUpdateRequest {
@@ -790,7 +801,7 @@ impl StravaCreateRequest {
 #[derive(Serialize, Deserialize, Schema)]
 pub struct AddGarminCorrectionRequest {
     #[schema(description = "Start DateTime")]
-    pub start_time: DateTime<Utc>,
+    pub start_time: DateTimeType,
     #[schema(description = "Lap Number")]
     pub lap_number: i32,
     #[schema(description = "Distance (m)")]
@@ -806,12 +817,13 @@ impl AddGarminCorrectionRequest {
     /// Returns error if db query fails
     pub async fn handle(self, pool: &PgPool) -> Result<StackString, Error> {
         let mut corr_map = GarminCorrectionLap::read_corrections_from_db(pool).await?;
-        let unique_key = (self.start_time, self.lap_number);
+        let start_time = self.start_time.into();
+        let unique_key = (start_time, self.lap_number);
 
         let mut new_corr = corr_map.get(&unique_key).map_or_else(
             || {
                 GarminCorrectionLap::new()
-                    .with_start_time(self.start_time)
+                    .with_start_time(start_time)
                     .with_lap_number(self.lap_number)
             },
             |corr| *corr,
@@ -856,17 +868,22 @@ impl FitbitActivityTypesRequest {
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct FitbitActivitiesRequest {
-    pub start_date: Option<NaiveDate>,
+    pub start_date: Option<DateType>,
 }
 
 impl FitbitActivitiesRequest {
     /// # Errors
     /// Returns error if db query fails
     pub async fn handle(&self, config: &GarminConfig) -> Result<Vec<FitbitActivity>, Error> {
+        let local = time_tz::system::get_timezone().unwrap_or(UTC);
         let config = config.clone();
         let client = FitbitClient::with_auth(config).await?;
         let start_date = self.start_date.map_or_else(
-            || (Utc::now() - Duration::days(14)).naive_local().date(),
+            || {
+                (OffsetDateTime::now_utc() - Duration::days(14))
+                    .to_timezone(local)
+                    .date()
+            },
             Into::into,
         );
         client
@@ -878,21 +895,23 @@ impl FitbitActivitiesRequest {
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct GarminConnectActivitiesRequest {
-    pub start_date: Option<NaiveDate>,
+    pub start_date: Option<DateType>,
 }
 
 impl GarminConnectActivitiesRequest {
     /// # Errors
     /// Returns error if db query fails
     pub async fn handle(&self, proxy: &ConnectProxy) -> Result<Vec<GarminConnectActivity>, Error> {
+        let local = time_tz::system::get_timezone().unwrap_or(UTC);
         let start_date = self.start_date.map_or_else(
-            || (Utc::now() - Duration::days(14)).naive_local().date(),
+            || {
+                (OffsetDateTime::now_utc() - Duration::days(14))
+                    .to_timezone(local)
+                    .date()
+            },
             Into::into,
         );
-        let start_datetime = DateTime::from_utc(
-            NaiveDateTime::new(start_date, NaiveTime::from_hms(0, 0, 0)),
-            Utc,
-        );
+        let start_datetime = start_date.with_time(time!(00:00:00)).assume_utc();
         let mut session = proxy.lock().await;
         session.init().await?;
 
@@ -929,7 +948,7 @@ impl FitbitProfileRequest {
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct GarminConnectUserSummaryRequest {
-    pub date: Option<NaiveDate>,
+    pub date: Option<DateType>,
 }
 
 impl GarminConnectUserSummaryRequest {
@@ -939,12 +958,14 @@ impl GarminConnectUserSummaryRequest {
         &self,
         proxy: &ConnectProxy,
     ) -> Result<GarminConnectUserDailySummary, Error> {
+        let local = time_tz::system::get_timezone().unwrap_or(UTC);
         let mut session = proxy.lock().await;
         session.init().await?;
 
-        let date = self
-            .date
-            .map_or_else(|| Local::now().naive_local().date(), Into::into);
+        let date = self.date.map_or_else(
+            || OffsetDateTime::now_utc().to_timezone(local).date(),
+            Into::into,
+        );
         session.get_user_summary(date).await.map_err(Into::into)
     }
 }

@@ -1,22 +1,25 @@
 use anyhow::{format_err, Error};
 use bytes::BytesMut;
-use chrono::offset::FixedOffset;
-use chrono_tz::Tz;
 use derive_more::Into;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use stack_string::StackString;
 use std::{convert::TryFrom, fmt, ops::Deref, str::FromStr};
+use time::UtcOffset;
+use time_tz::{
+    timezones::{db::UTC, get_by_name},
+    TimeZone, Tz,
+};
 use tokio_postgres::types::{FromSql, IsNull, ToSql, Type};
 
 #[derive(Into, Debug, PartialEq, Copy, Clone, Eq, Serialize, Deserialize)]
 #[serde(into = "String", try_from = "&str")]
-pub struct StravaTz(Tz);
+pub struct StravaTz(&'static Tz);
 
 impl Deref for StravaTz {
     type Target = Tz;
     fn deref(&self) -> &Self::Target {
-        &self.0
+        self.0
     }
 }
 
@@ -35,9 +38,9 @@ impl From<StravaTz> for StackString {
 impl FromStr for StravaTz {
     type Err = Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        s.parse()
+        get_by_name(s)
             .map(Self)
-            .map_err(|e| format_err!("{e} is not a valid timezone"))
+            .ok_or_else(|| format_err!("{s} is not a valid timezone"))
     }
 }
 
@@ -57,17 +60,28 @@ impl TryFrom<StackString> for StravaTz {
 
 #[derive(Into, Debug, PartialEq, Copy, Clone, Eq, Serialize, Deserialize)]
 #[serde(into = "String", try_from = "&str")]
-pub struct StravaTimeZone(FixedOffset, Tz);
+pub struct StravaTimeZone(UtcOffset, &'static Tz);
 
 impl Default for StravaTimeZone {
     fn default() -> Self {
-        Self(FixedOffset::east(0), Tz::UTC)
+        Self(
+            UtcOffset::from_whole_seconds(0).unwrap_or(UtcOffset::UTC),
+            UTC,
+        )
     }
 }
 
 impl fmt::Display for StravaTimeZone {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "(GMT{:?}) {:?}", self.0, self.1)
+        let (h, m, _) = self.0.as_hms();
+        write!(
+            f,
+            "(GMT{s}{h:02}:{m:02}) {t}",
+            s = if self.0.is_negative() { '-' } else { '+' },
+            h = h.abs(),
+            m = m.abs(),
+            t = self.1.name(),
+        )
     }
 }
 
@@ -84,8 +98,8 @@ impl AsRef<Tz> for StravaTimeZone {
     }
 }
 
-impl AsRef<FixedOffset> for StravaTimeZone {
-    fn as_ref(&self) -> &FixedOffset {
+impl AsRef<UtcOffset> for StravaTimeZone {
+    fn as_ref(&self) -> &UtcOffset {
         self.offset()
     }
 }
@@ -119,11 +133,11 @@ impl TryFrom<&str> for StravaTimeZone {
 impl StravaTimeZone {
     #[must_use]
     pub fn tz(&self) -> &Tz {
-        &self.1
+        self.1
     }
 
     #[must_use]
-    pub fn offset(&self) -> &FixedOffset {
+    pub fn offset(&self) -> &UtcOffset {
         &self.0
     }
 
@@ -138,14 +152,15 @@ impl StravaTimeZone {
             }
             if let Some(hours) = tz.get(4..=6).and_then(|s| s.parse::<i32>().ok()) {
                 if let Some(minutes) = tz.get(8..=9).and_then(|s| s.parse::<i32>().ok()) {
-                    offset.replace(FixedOffset::east(hours * 3600 + minutes * 60));
+                    offset.replace(
+                        UtcOffset::from_whole_seconds(hours * 3600 + minutes * 60)
+                            .unwrap_or(UtcOffset::UTC),
+                    );
                 }
             }
         }
         if let Some(tz) = tz_strs.get(1) {
-            let tz: Tz = tz
-                .parse()
-                .map_err(|e| format_err!("{e} is not a valid timezone"))?;
+            let tz = get_by_name(tz).ok_or_else(|| format_err!("{tz} is not a valid timezone"))?;
             let offset = offset.ok_or_else(|| format_err!("Bad offset"))?;
             Ok(Self(offset, tz))
         } else {

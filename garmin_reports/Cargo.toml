@@ -10,7 +10,8 @@ edition = "2018"
 garmin_lib = {path="../garmin_lib"}
 race_result_analysis = {path="../race_result_analysis"}
 anyhow = "1.0"
-chrono = "0.4"
+time = {version="0.3", features=["serde-human-readable", "macros", "formatting", "parsing"]}
+time-tz = {version="0.5", features=["system"]}
 log = "0.4"
 rayon = "1.5"
 lazy_static = "1.4"

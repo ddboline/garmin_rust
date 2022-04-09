@@ -1,5 +1,4 @@
 use anyhow::{format_err, Error};
-use chrono::{DateTime, TimeZone, Utc};
 use fitparser::Value;
 use flate2::{read::GzEncoder, Compression};
 use log::{debug, error};
@@ -11,12 +10,15 @@ use rand::{
 use smallvec::SmallVec;
 use stack_string::{format_sstr, StackString};
 use std::{
+    convert::TryInto,
     fs::{remove_file, File},
     future::Future,
     io::{BufRead, BufReader, Read},
     path::{Path, PathBuf},
 };
 use subprocess::{Exec, Redirection};
+use time::{format_description::well_known::Rfc3339, macros::date, Date, Month, OffsetDateTime};
+use time_tz::{timezones::db::UTC, OffsetDateTimeExt};
 use tokio::time::{sleep, Duration};
 
 use crate::common::pgpool::PgPool;
@@ -49,9 +51,9 @@ pub fn convert_time_string(time_str: &str) -> Result<f64, Error> {
 
 /// # Errors
 /// Return error if parsing time string fails
-pub fn convert_xml_local_time_to_utc(xml_local_time: &str) -> Result<DateTime<Utc>, Error> {
-    DateTime::parse_from_rfc3339(xml_local_time)
-        .map(|x| x.with_timezone(&Utc))
+pub fn convert_xml_local_time_to_utc(xml_local_time: &str) -> Result<OffsetDateTime, Error> {
+    OffsetDateTime::parse(xml_local_time, &Rfc3339)
+        .map(|x| x.to_timezone(UTC))
         .map_err(Into::into)
 }
 
@@ -94,7 +96,9 @@ pub fn print_h_m_s(second: f64, do_hours: bool) -> Result<StackString, Error> {
 
 #[must_use]
 pub fn days_in_year(year: i32) -> i64 {
-    (Utc.ymd(year + 1, 1, 1) - Utc.ymd(year, 1, 1)).num_days()
+    (Date::from_calendar_date(year + 1, Month::January, 1).unwrap_or(date!(1969 - 01 - 01))
+        - Date::from_calendar_date(year, Month::January, 1).unwrap_or(date!(1969 - 01 - 01)))
+    .whole_days()
 }
 
 #[must_use]
@@ -105,7 +109,11 @@ pub fn days_in_month(year: i32, month: u32) -> i64 {
         y1 += 1;
         m1 = 1;
     }
-    (Utc.ymd(y1, m1, 1) - Utc.ymd(year, month, 1)).num_days()
+    let month: Month = (month as u8).try_into().unwrap_or(Month::January);
+    let m1: Month = (m1 as u8).try_into().unwrap_or(Month::January);
+    (Date::from_calendar_date(y1, m1, 1).unwrap_or(date!(1969 - 01 - 01))
+        - Date::from_calendar_date(year, month, 1).unwrap_or(date!(1969 - 01 - 01)))
+    .whole_days()
 }
 
 #[must_use]
@@ -241,7 +249,7 @@ where
 #[must_use]
 pub fn get_f64(value: &Value) -> Option<f64> {
     match value {
-        Value::Timestamp(val) => Some(val.timestamp() as f64),
+        Value::Timestamp(val) => Some(val.unix_timestamp() as f64),
         Value::Byte(val) | Value::Enum(val) | Value::UInt8(val) | Value::UInt8z(val) => {
             Some(f64::from(*val))
         }
@@ -261,7 +269,7 @@ pub fn get_f64(value: &Value) -> Option<f64> {
 #[must_use]
 pub fn get_i64(value: &Value) -> Option<i64> {
     match value {
-        Value::Timestamp(val) => Some(val.timestamp() as i64),
+        Value::Timestamp(val) => Some(val.unix_timestamp() as i64),
         Value::Byte(val) | Value::Enum(val) | Value::UInt8(val) | Value::UInt8z(val) => {
             Some(i64::from(*val))
         }

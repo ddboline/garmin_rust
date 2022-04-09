@@ -14,7 +14,9 @@ race_result_analysis = {path="../race_result_analysis"}
 garmin_connect_lib = {path="../garmin_connect_lib"}
 garmin_reports = {path="../garmin_reports"}
 structopt = "0.3"
-chrono = "0.4"
+derive_more = "0.99"
+time = {version="0.3", features=["serde-human-readable", "macros", "formatting", "parsing"]}
+time-tz = {version="0.5", features=["system"]}
 anyhow = "1.0"
 thiserror = "1.0"
 tokio = {version="1.17", features=["full"]}
@@ -26,7 +28,7 @@ regex = "1.4"
 tempdir = "0.3"
 serde_json = "1.0"
 itertools = "0.10"
-tokio-postgres = {version = "0.7", features = ["with-chrono-0_4"]}
+tokio-postgres = {version = "0.7", features = ["with-time-0_3"]}
 refinery = {version="0.8", features=["tokio-postgres"]}
 stack-string = { version="0.7", features=["postgres_types"] }
 stdout-channel = "0.5"

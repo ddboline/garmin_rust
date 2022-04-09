@@ -1,10 +1,10 @@
 use anyhow::Error;
-use chrono::{DateTime, Datelike, Utc};
 use futures::future::try_join_all;
 use itertools::Itertools;
 use log::debug;
 use postgres_query::FromSqlRow;
 use stack_string::{format_sstr, StackString};
+use time::OffsetDateTime;
 use url::Url;
 
 use garmin_lib::{
@@ -157,7 +157,7 @@ pub async fn create_report_query(
 
 #[derive(Debug)]
 pub struct FileSummaryReport {
-    datetime: DateTime<Utc>,
+    datetime: OffsetDateTime,
     week: u32,
     isodow: u32,
     sport: StackString,
@@ -347,7 +347,7 @@ impl GarminReportTrait for FileSummaryReport {
 async fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<FileSummaryReport>, Error> {
     #[derive(FromSqlRow, Debug)]
     struct FileSummaryReportRow {
-        datetime: DateTime<Utc>,
+        datetime: OffsetDateTime,
         sport: StackString,
         total_calories: i32,
         total_distance: f64,
@@ -398,8 +398,8 @@ async fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<FileSumm
 
             let result = FileSummaryReport {
                 datetime: item.datetime,
-                week: item.datetime.iso_week().week(),
-                isodow: item.datetime.weekday().num_days_from_monday() + 1,
+                week: u32::from(item.datetime.iso_week()),
+                isodow: u32::from(item.datetime.weekday().number_days_from_sunday()),
                 sport: item.sport,
                 total_calories: i64::from(item.total_calories),
                 total_distance: item.total_distance,

@@ -463,4 +463,12 @@ mod tests {
         session.close().await?;
         Ok(())
     }
+
+    #[test]
+    fn test_activity_deserialization() -> Result<(), Error> {
+        let s = include_str!("../tests/data/activity.json");
+        let a: Vec<GarminConnectActivity> = serde_json::from_str(s)?;
+        println!("{a:?}");
+        Ok(())
+    }
 }

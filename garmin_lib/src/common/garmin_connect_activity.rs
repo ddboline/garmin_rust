@@ -7,8 +7,8 @@ use stack_string::{format_sstr, StackString};
 use std::{collections::HashMap, fs::File, path::Path};
 use time::{
     format_description::well_known::Rfc3339, macros::format_description, Date, OffsetDateTime,
+    PrimitiveDateTime,
 };
-use time_tz::{timezones::db::UTC, OffsetDateTimeExt};
 
 use super::{garmin_config::GarminConfig, pgpool::PgPool};
 
@@ -257,11 +257,11 @@ where
     if let Ok(dt) = OffsetDateTime::parse(&s, &Rfc3339) {
         Ok(dt)
     } else {
-        OffsetDateTime::parse(
+        PrimitiveDateTime::parse(
             &s,
             format_description!("[year]-[month]-[day] [hour]:[minute]:[second]"),
         )
-        .map(|dt| dt.to_timezone(UTC))
+        .map(PrimitiveDateTime::assume_utc)
         .map_err(serde::de::Error::custom)
     }
 }

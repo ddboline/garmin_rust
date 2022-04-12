@@ -68,13 +68,13 @@ pub struct JsonHeartRateValue {
 #[derive(Deserialize, Copy, Clone)]
 pub struct JsonHeartRateEntry {
     #[serde(rename = "dateTime", deserialize_with = "deserialize_json_mdyhms")]
-    pub datetime: OffsetDateTime,
+    pub datetime: DateTimeWrapper,
     pub value: JsonHeartRateValue,
 }
 
 /// # Errors
 /// Returns error if deserialize/parse datetime fails
-pub fn deserialize_json_mdyhms<'de, D>(deserializer: D) -> Result<OffsetDateTime, D::Error>
+pub fn deserialize_json_mdyhms<'de, D>(deserializer: D) -> Result<DateTimeWrapper, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -100,7 +100,7 @@ where
 
         Ok(PrimitiveDateTime::new(d, t)
             .assume_timezone(local)
-            .to_timezone(UTC))
+            .to_timezone(UTC).into())
     })
 }
 
@@ -572,7 +572,7 @@ pub fn import_garmin_heartrate_file(filename: &Path) -> Result<(), Error> {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct FitbitBodyWeightFat {
-    pub datetime: OffsetDateTime,
+    pub datetime: DateTimeWrapper,
     pub weight: f64,
     pub fat: f64,
 }

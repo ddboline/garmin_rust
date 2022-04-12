@@ -484,7 +484,7 @@ impl FitbitClient {
                 let datetime = format_sstr!("{d}T{t}{offset}", d = bw.date, t = bw.time);
                 let datetime = OffsetDateTime::parse(&datetime, &Rfc3339)
                     .ok()?
-                    .to_timezone(UTC);
+                    .to_timezone(UTC).into();
                 let weight = bw.weight;
                 let fat = bw.fat?;
                 Some(FitbitBodyWeightFat {

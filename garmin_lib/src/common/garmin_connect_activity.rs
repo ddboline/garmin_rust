@@ -10,6 +10,8 @@ use time::{
     PrimitiveDateTime,
 };
 
+use crate::utils::date_time_wrapper::DateTimeWrapper;
+
 use super::{garmin_config::GarminConfig, pgpool::PgPool};
 
 #[derive(Serialize, Deserialize, Debug, FromSqlRow)]
@@ -20,7 +22,7 @@ pub struct GarminConnectActivity {
     pub activity_name: Option<StackString>,
     pub description: Option<StackString>,
     #[serde(alias = "startTimeGMT", deserialize_with = "deserialize_start_time")]
-    pub start_time_gmt: OffsetDateTime,
+    pub start_time_gmt: DateTimeWrapper,
     pub distance: Option<f64>,
     pub duration: f64,
     #[serde(alias = "elapsedDuration")]
@@ -249,19 +251,19 @@ pub async fn import_garmin_connect_activity_json_file(filename: &Path) -> Result
 
 /// # Errors
 /// Return error if deserialize fails
-pub fn deserialize_start_time<'de, D>(deserializer: D) -> Result<OffsetDateTime, D::Error>
+pub fn deserialize_start_time<'de, D>(deserializer: D) -> Result<DateTimeWrapper, D::Error>
 where
     D: Deserializer<'de>,
 {
     let s = String::deserialize(deserializer)?;
     if let Ok(dt) = OffsetDateTime::parse(&s, &Rfc3339) {
-        Ok(dt)
+        Ok(dt.into())
     } else {
         PrimitiveDateTime::parse(
             &s,
             format_description!("[year]-[month]-[day] [hour]:[minute]:[second]"),
         )
-        .map(PrimitiveDateTime::assume_utc)
+        .map(|d| d.assume_utc().into())
         .map_err(serde::de::Error::custom)
     }
 }

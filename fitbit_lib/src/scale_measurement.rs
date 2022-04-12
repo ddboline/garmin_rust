@@ -17,13 +17,13 @@ use time_tz::OffsetDateTimeExt;
 
 use garmin_lib::{
     common::{garmin_templates::HBR, pgpool::PgPool},
-    utils::date_time_wrapper::iso8601::convert_datetime_to_str,
+    utils::date_time_wrapper::{iso8601::convert_datetime_to_str, DateTimeWrapper},
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, Copy, FromSqlRow, PartialEq)]
 pub struct ScaleMeasurement {
     pub id: i32,
-    pub datetime: OffsetDateTime,
+    pub datetime: DateTimeWrapper,
     pub mass: f64,
     pub fat_pct: f64,
     pub water_pct: f64,
@@ -38,7 +38,7 @@ impl fmt::Display for ScaleMeasurement {
             "ScaleMeasurement(\nid: {}\ndatetime: {}\nmass: {} lbs\nfat: {}%\nwater: {}%\nmuscle: \
              {}%\nbone: {}%\n)",
             self.id,
-            convert_datetime_to_str(self.datetime),
+            convert_datetime_to_str(self.datetime.into()),
             self.mass,
             self.fat_pct,
             self.water_pct,
@@ -52,7 +52,7 @@ impl ScaleMeasurement {
     /// # Errors
     /// Returns error parsing msg fails
     pub fn from_telegram_text(msg: &str) -> Result<Self, Error> {
-        let datetime = OffsetDateTime::now_utc();
+        let datetime = DateTimeWrapper::now();
         let sep = if msg.contains(',') {
             ','
         } else if msg.contains(':') {
@@ -472,10 +472,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_write_read_scale_measurement_from_db() -> Result<(), Error> {
-        let first_date = datetime!(2010-01-01 04:00:00 -05:00);
+        let first_date = datetime!(2010-01-01 04:00:00 -05:00).into();
         let mut exp = ScaleMeasurement {
             id: -1,
-            datetime: first_date.into(),
+            datetime: first_date,
             mass: 188.0,
             fat_pct: 20.6,
             water_pct: 59.6,

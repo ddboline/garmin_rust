@@ -21,8 +21,8 @@ use garmin_lib::{
         strava_activity::StravaActivity,
     },
     utils::{
+        date_time_wrapper::iso8601::convert_datetime_to_str,
         garmin_util::{print_h_m_s, titlecase, MARATHON_DISTANCE_MI, METERS_PER_MILE},
-        iso_8601_datetime::convert_datetime_to_str,
         plot_graph::generate_d3_plot,
         plot_opts::PlotOpts,
         sport_types::{get_sport_type_map, SportTypes},
@@ -453,7 +453,7 @@ fn get_garmin_template_vec<T: AsRef<str>>(
                     "#,
                     strava_activity.id,
                     gfile.sport.to_strava_activity(),
-                    convert_datetime_to_str(strava_activity.start_date),
+                    convert_datetime_to_str(strava_activity.start_date.into()),
                 )
             },
         )
@@ -576,7 +576,7 @@ where
                     "#,
                     strava_activity.id,
                     gfile.sport.to_strava_activity(),
-                    convert_datetime_to_str(strava_activity.start_date),
+                    convert_datetime_to_str(strava_activity.start_date.into()),
                 )
             },
         )
@@ -721,7 +721,7 @@ fn get_file_html(
         qt = '"',
         dt=gfile.begin_datetime,
         sp=get_sport_selector(gfile.sport),
-        gc=get_correction_button(gfile.begin_datetime),
+        gc=get_correction_button(gfile.begin_datetime.into()),
         sid = if let Some(strava_activity) = strava_activity {
             format_sstr!(
                 r#"<a href="https://www.strava.com/activities/{0}" target="_blank">{0}</a>"#,

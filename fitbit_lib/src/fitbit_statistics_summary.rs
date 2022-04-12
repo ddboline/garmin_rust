@@ -8,7 +8,10 @@ use std::collections::HashMap;
 use time::{macros::format_description, Date, Duration, OffsetDateTime};
 use time_tz::{timezones::db::UTC, OffsetDateTimeExt};
 
-use garmin_lib::common::{garmin_templates::HBR, pgpool::PgPool};
+use garmin_lib::{
+    common::{garmin_templates::HBR, pgpool::PgPool},
+    utils::date_time_wrapper::DateTimeWrapper,
+};
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, FromSqlRow)]
 pub struct FitbitStatisticsSummary {
@@ -23,7 +26,7 @@ pub struct FitbitStatisticsSummary {
 
 impl FitbitStatisticsSummary {
     #[must_use]
-    pub fn from_heartrate_values(heartrate_values: &[(OffsetDateTime, i32)]) -> Option<Self> {
+    pub fn from_heartrate_values(heartrate_values: &[(DateTimeWrapper, i32)]) -> Option<Self> {
         let local = time_tz::system::get_timezone().unwrap_or(UTC);
         if heartrate_values.len() < 2 {
             return None;

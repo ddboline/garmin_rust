@@ -4,13 +4,10 @@ use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
 use std::{collections::HashMap, fs::File, path::Path};
-use time::{macros::format_description, OffsetDateTime};
+use time::macros::format_description;
 use tokio::task::spawn_blocking;
 
-use crate::utils::{
-    iso_8601_datetime::{self, sentinel_datetime},
-    sport_types::SportTypes,
-};
+use crate::utils::{date_time_wrapper::DateTimeWrapper, sport_types::SportTypes};
 
 use super::{
     garmin_lap::{GarminLap, GARMIN_LAP_AVRO_SCHEMA},
@@ -25,8 +22,7 @@ lazy_static! {
 pub struct GarminFile {
     pub filename: StackString,
     pub filetype: StackString,
-    #[serde(with = "iso_8601_datetime")]
-    pub begin_datetime: OffsetDateTime,
+    pub begin_datetime: DateTimeWrapper,
     pub sport: SportTypes,
     pub total_calories: i32,
     pub total_distance: f64,
@@ -49,7 +45,7 @@ impl GarminFile {
         Self {
             filename: "".into(),
             filetype: "".into(),
-            begin_datetime: sentinel_datetime(),
+            begin_datetime: DateTimeWrapper::sentinel_datetime(),
             sport: SportTypes::None,
             total_calories: 0,
             total_distance: 0.0,
@@ -64,7 +60,7 @@ impl GarminFile {
     pub fn clear(&mut self) {
         self.filename = "".into();
         self.filetype = "".into();
-        self.begin_datetime = sentinel_datetime();
+        self.begin_datetime = DateTimeWrapper::sentinel_datetime();
         self.sport = SportTypes::None;
         self.total_calories = 0;
         self.total_distance = 0.0;

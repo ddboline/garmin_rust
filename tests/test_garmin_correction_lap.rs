@@ -3,7 +3,7 @@ use std::io::{stdout, Write};
 
 use garmin_lib::{
     common::garmin_correction_lap::GarminCorrectionLap,
-    utils::{iso_8601_datetime::convert_str_to_datetime, sport_types::SportTypes},
+    utils::{date_time_wrapper::iso8601::convert_str_to_datetime, sport_types::SportTypes},
 };
 
 #[test]
@@ -88,7 +88,9 @@ fn test_corr_map_from_buffer() -> Result<(), Error> {
         first,
         &GarminCorrectionLap {
             id: -1,
-            start_time: convert_str_to_datetime("2011-07-04T08:58:27Z").unwrap(),
+            start_time: convert_str_to_datetime("2011-07-04T08:58:27Z")
+                .unwrap()
+                .into(),
             lap_number: 0,
             sport: None,
             distance: Some(3.10685596118667),
@@ -100,7 +102,9 @@ fn test_corr_map_from_buffer() -> Result<(), Error> {
         second,
         &GarminCorrectionLap {
             id: -1,
-            start_time: convert_str_to_datetime("2013-01-17T16:14:32Z").unwrap(),
+            start_time: convert_str_to_datetime("2013-01-17T16:14:32Z")
+                .unwrap()
+                .into(),
             lap_number: 0,
             sport: None,
             distance: Some(0.507143),
@@ -112,7 +116,9 @@ fn test_corr_map_from_buffer() -> Result<(), Error> {
         third,
         &GarminCorrectionLap {
             id: -1,
-            start_time: convert_str_to_datetime("2013-01-17T16:14:32Z").unwrap(),
+            start_time: convert_str_to_datetime("2013-01-17T16:14:32Z")
+                .unwrap()
+                .into(),
             lap_number: 1,
             sport: None,
             distance: Some(0.190476),
@@ -124,7 +130,9 @@ fn test_corr_map_from_buffer() -> Result<(), Error> {
         fourth,
         &GarminCorrectionLap {
             id: -1,
-            start_time: convert_str_to_datetime("2014-08-23T10:17:14Z").unwrap(),
+            start_time: convert_str_to_datetime("2014-08-23T10:17:14Z")
+                .unwrap()
+                .into(),
             lap_number: 0,
             sport: None,
             distance: Some(6.5),
@@ -149,11 +157,19 @@ fn test_corr_map_from_buffer_invalid() -> Result<(), Error> {
 fn test_add_mislabeled_times_to_corr_list() -> Result<(), Error> {
     let mut corr_map = GarminCorrectionLap::map_from_vec(vec![
         GarminCorrectionLap::new()
-            .with_start_time(convert_str_to_datetime("2010-11-20T19:55:34Z").unwrap())
+            .with_start_time(
+                convert_str_to_datetime("2010-11-20T19:55:34Z")
+                    .unwrap()
+                    .into(),
+            )
             .with_distance(10.0)
             .with_lap_number(0),
         GarminCorrectionLap::new()
-            .with_start_time(convert_str_to_datetime("2010-11-20T19:55:34Z").unwrap())
+            .with_start_time(
+                convert_str_to_datetime("2010-11-20T19:55:34Z")
+                    .unwrap()
+                    .into(),
+            )
             .with_distance(5.0)
             .with_lap_number(1),
     ]);
@@ -166,11 +182,18 @@ fn test_add_mislabeled_times_to_corr_list() -> Result<(), Error> {
 
     assert_eq!(
         corr_map
-            .get(&(convert_str_to_datetime("2010-11-20T19:55:34Z").unwrap(), 0))
+            .get(&(
+                convert_str_to_datetime("2010-11-20T19:55:34Z")
+                    .unwrap()
+                    .into(),
+                0
+            ))
             .unwrap(),
         &GarminCorrectionLap {
             id: -1,
-            start_time: convert_str_to_datetime("2010-11-20T19:55:34Z").unwrap(),
+            start_time: convert_str_to_datetime("2010-11-20T19:55:34Z")
+                .unwrap()
+                .into(),
             lap_number: 0,
             sport: Some(SportTypes::Biking),
             distance: Some(10.0),
@@ -180,11 +203,18 @@ fn test_add_mislabeled_times_to_corr_list() -> Result<(), Error> {
     );
     assert_eq!(
         corr_map
-            .get(&(convert_str_to_datetime("2010-11-20T19:55:34Z").unwrap(), 1))
+            .get(&(
+                convert_str_to_datetime("2010-11-20T19:55:34Z")
+                    .unwrap()
+                    .into(),
+                1
+            ))
             .unwrap(),
         &GarminCorrectionLap {
             id: -1,
-            start_time: convert_str_to_datetime("2010-11-20T19:55:34Z").unwrap(),
+            start_time: convert_str_to_datetime("2010-11-20T19:55:34Z")
+                .unwrap()
+                .into(),
             lap_number: 1,
             sport: Some(SportTypes::Biking),
             distance: Some(5.0),

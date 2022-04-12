@@ -5,16 +5,16 @@ use postgres_query::{query, query_dyn, FromSqlRow, Parameter};
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
 use std::collections::HashMap;
-use time::{Date, OffsetDateTime};
+use time::Date;
 
-use crate::{common::pgpool::PgPool, utils::iso_8601_datetime};
+use crate::{common::pgpool::PgPool, utils::date_time_wrapper::DateTimeWrapper};
 
 #[derive(Serialize, Deserialize, Clone, Debug, FromSqlRow)]
 pub struct FitbitActivity {
     #[serde(alias = "logType")]
     pub log_type: StackString,
-    #[serde(alias = "startTime", with = "iso_8601_datetime")]
-    pub start_time: OffsetDateTime,
+    #[serde(alias = "startTime")]
+    pub start_time: DateTimeWrapper,
     #[serde(alias = "tcxLink")]
     pub tcx_link: Option<StackString>,
     #[serde(alias = "activityTypeId")]

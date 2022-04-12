@@ -13,10 +13,10 @@ use garmin_lib::{
         pgpool::PgPool, strava_activity::StravaActivity,
     },
     utils::{
+        date_time_wrapper::iso8601::convert_datetime_to_str,
         garmin_util::{
             days_in_month, days_in_year, print_h_m_s, METERS_PER_MILE, MONTH_NAMES, WEEKDAY_NAMES,
         },
-        iso_8601_datetime::convert_datetime_to_str,
     },
 };
 

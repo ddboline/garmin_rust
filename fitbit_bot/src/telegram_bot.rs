@@ -206,7 +206,7 @@ mod tests {
     use fitbit_lib::scale_measurement::ScaleMeasurement;
     use garmin_lib::{
         common::{garmin_config::GarminConfig, pgpool::PgPool},
-        utils::iso_8601_datetime::convert_datetime_to_str,
+        utils::date_time_wrapper::iso8601::convert_datetime_to_str,
     };
 
     use crate::telegram_bot::{TelegramBot, LAST_WEIGHT, USERIDS};

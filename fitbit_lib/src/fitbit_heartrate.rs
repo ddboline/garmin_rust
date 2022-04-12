@@ -30,15 +30,14 @@ use garmin_lib::{
         garmin_config::GarminConfig, garmin_file::GarminFile,
         garmin_summary::get_list_of_files_from_db, garmin_templates::HBR, pgpool::PgPool,
     },
-    utils::{garmin_util::get_f64, iso_8601_datetime},
+    utils::{date_time_wrapper::DateTimeWrapper, garmin_util::get_f64},
 };
 
 use crate::fitbit_statistics_summary::FitbitStatisticsSummary;
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq)]
 pub struct FitbitHeartRate {
-    #[serde(with = "iso_8601_datetime")]
-    pub datetime: OffsetDateTime,
+    pub datetime: DateTimeWrapper,
     pub value: i32,
 }
 
@@ -127,7 +126,7 @@ impl FitbitHeartRate {
     #[must_use]
     pub fn from_json_heartrate_entry(entry: JsonHeartRateEntry) -> Self {
         Self {
-            datetime: entry.datetime,
+            datetime: entry.datetime.into(),
             value: entry.value.bpm,
         }
     }
@@ -140,7 +139,7 @@ impl FitbitHeartRate {
         pool: &PgPool,
         start_date: Date,
         end_date: Date,
-    ) -> Result<Vec<(OffsetDateTime, i32)>, Error> {
+    ) -> Result<Vec<(DateTimeWrapper, i32)>, Error> {
         let ndays = (end_date - start_date).whole_days();
 
         let days: Vec<_> = (0..=ndays)
@@ -475,7 +474,8 @@ impl FitbitHeartRate {
                     .iter()
                     .filter_map(|(timestamp, hr_val_opt)| {
                         hr_val_opt.map(|value| {
-                            let datetime = (*timestamp).into();
+                            let datetime: OffsetDateTime = (*timestamp).into();
+                            let datetime = datetime.into();
                             Self { datetime, value }
                         })
                     })
@@ -554,6 +554,7 @@ pub fn import_garmin_heartrate_file(filename: &Path) -> Result<(), Error> {
                             if let Some(heartrate) = get_f64(field.value()) {
                                 let value = heartrate as i32;
                                 println!("heartrate {}", value);
+                                let datetime = datetime.into();
                                 heartrates.push(FitbitHeartRate { datetime, value });
                             }
                         }

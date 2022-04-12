@@ -442,6 +442,7 @@ impl From<GarminSummary> for RaceResults {
 mod tests {
     use anyhow::Error;
     use lazy_static::lazy_static;
+    use log::debug;
     use parking_lot::Mutex;
     use stack_string::format_sstr;
     use std::collections::HashMap;
@@ -491,13 +492,13 @@ mod tests {
         let config = GarminConfig::get_config(None)?;
         let pool = PgPool::new(&config.pgurl);
         let result = get_test_race_result();
-        println!("{:?}", result);
+        debug!("{:?}", result);
         result.insert_into_db(&pool).await?;
 
         let db_result =
             RaceResults::get_races_by_date(date!(2020 - 01 - 27), RaceType::Personal, &pool)
                 .await?;
-        println!("{:?}", db_result);
+        debug!("{:?}", db_result);
         assert_eq!(db_result.len(), 1);
         for r in db_result {
             r.delete_from_db(&pool).await?;
@@ -614,13 +615,13 @@ mod tests {
                         GarminSummary::get_by_filename(&pool, filename.as_str()).await?
                     {
                         if (summary.total_distance as i32 - result.race_distance).abs() < 4000 {
-                            println!("set filename: {}", filename);
-                            println!("{:?}", result);
-                            println!("{:?}", summary);
+                            debug!("set filename: {}", filename);
+                            debug!("{:?}", result);
+                            debug!("{:?}", summary);
                             result.race_summary_ids.push(Some(summary.id));
                             result.upsert_db(&pool).await?;
                         } else {
-                            println!(
+                            debug!(
                                 "{} difference {} {} {} {}",
                                 race_date,
                                 summary.total_distance as i32,

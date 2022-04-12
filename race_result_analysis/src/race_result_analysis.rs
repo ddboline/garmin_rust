@@ -364,6 +364,7 @@ impl RaceResultAggregated {
 #[cfg(test)]
 mod tests {
     use anyhow::Error;
+    use log::debug;
 
     use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
 
@@ -380,8 +381,8 @@ mod tests {
 
         let results =
             RaceResultAggregated::get_aggregated_race_results(RaceType::Personal, &pool).await?;
-        println!("{:#?}", results);
-        println!("{}", results.len());
+        debug!("{:#?}", results);
+        debug!("{}", results.len());
         assert!(results.len() >= 23);
         Ok(())
     }

@@ -24,7 +24,7 @@ use garmin_lib::{
         garmin_config::GarminConfig,
         garmin_templates::{get_buttons, get_scripts, get_style, HBR},
     },
-    utils::{garmin_util::METERS_PER_MILE, iso_8601_datetime::convert_datetime_to_str},
+    utils::{date_time_wrapper::iso8601::convert_datetime_to_str, garmin_util::METERS_PER_MILE},
 };
 use garmin_reports::garmin_file_report_html::generate_history_buttons;
 
@@ -196,7 +196,9 @@ async fn garmin_upload_body(
     .await?;
 
     let query = FilterRequest {
-        filter: datetimes.get(0).map(|dt| convert_datetime_to_str(*dt)),
+        filter: datetimes
+            .get(0)
+            .map(|dt| convert_datetime_to_str((*dt).into())),
     };
 
     let grec = proc_pattern_wrapper(&state.config, query, &session.history, false);

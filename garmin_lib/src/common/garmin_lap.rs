@@ -4,12 +4,11 @@ use roxmltree::{Node, NodeType};
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
 use std::fmt;
-use time::OffsetDateTime;
 use time_tz::{timezones::db::UTC, OffsetDateTimeExt};
 
 use crate::utils::{
+    date_time_wrapper::{iso8601::convert_datetime_to_str, DateTimeWrapper},
     garmin_util::{convert_time_string, convert_xml_local_time_to_utc, get_f64, get_i64},
-    iso_8601_datetime::{self, convert_datetime_to_str, sentinel_datetime},
     sport_types::SportTypes,
 };
 
@@ -17,8 +16,7 @@ use crate::utils::{
 pub struct GarminLap {
     pub lap_type: Option<StackString>,
     pub lap_index: i32,
-    #[serde(with = "iso_8601_datetime")]
-    pub lap_start: OffsetDateTime,
+    pub lap_start: DateTimeWrapper,
     pub lap_duration: f64,
     pub lap_distance: f64,
     pub lap_trigger: Option<StackString>,
@@ -43,7 +41,7 @@ impl GarminLap {
         Self {
             lap_type: None,
             lap_index: -1,
-            lap_start: sentinel_datetime(),
+            lap_start: DateTimeWrapper::sentinel_datetime(),
             lap_duration: 0.0,
             lap_distance: 0.0,
             lap_trigger: None,
@@ -60,7 +58,7 @@ impl GarminLap {
     pub fn clear(&mut self) {
         self.lap_type = None;
         self.lap_index = -1;
-        self.lap_start = sentinel_datetime();
+        self.lap_start = DateTimeWrapper::sentinel_datetime();
         self.lap_duration = 0.0;
         self.lap_distance = 0.0;
         self.lap_trigger = None;
@@ -94,8 +92,9 @@ impl GarminLap {
                 "type" => new_lap.lap_type = Some(entry.value().into()),
                 "index" => new_lap.lap_index = entry.value().parse().unwrap_or(-1),
                 "start" => {
-                    new_lap.lap_start = convert_xml_local_time_to_utc(entry.value())?;
-                    new_lap.lap_start_string = Some(convert_datetime_to_str(new_lap.lap_start));
+                    new_lap.lap_start = convert_xml_local_time_to_utc(entry.value())?.into();
+                    new_lap.lap_start_string =
+                        Some(convert_datetime_to_str(new_lap.lap_start.into()));
                 }
                 "duration" => {
                     new_lap.lap_duration = convert_time_string(entry.value()).unwrap_or(0.0);
@@ -152,8 +151,8 @@ impl GarminLap {
         }
         for entry in entries.attributes() {
             if entry.name() == "StartTime" {
-                new_lap.lap_start = convert_xml_local_time_to_utc(entry.value())?;
-                new_lap.lap_start_string = Some(convert_datetime_to_str(new_lap.lap_start));
+                new_lap.lap_start = convert_xml_local_time_to_utc(entry.value())?.into();
+                new_lap.lap_start_string = Some(convert_datetime_to_str(new_lap.lap_start.into()));
             }
         }
         Ok(new_lap)
@@ -167,8 +166,9 @@ impl GarminLap {
             match field.name() {
                 "start_time" => {
                     if let Value::Timestamp(t) = field.value() {
-                        new_lap.lap_start = t.to_timezone(UTC);
-                        new_lap.lap_start_string = Some(convert_datetime_to_str(new_lap.lap_start));
+                        new_lap.lap_start = t.to_timezone(UTC).into();
+                        new_lap.lap_start_string =
+                            Some(convert_datetime_to_str(new_lap.lap_start.into()));
                     }
                 }
                 "total_timer_time" => {

@@ -7,11 +7,10 @@ use postgres_query::FromSqlRow;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use stack_string::StackString;
 use std::{collections::HashMap, fs, hash::BuildHasher, path::Path, str};
-use time::OffsetDateTime;
 
 use crate::utils::{
+    date_time_wrapper::{iso8601::convert_str_to_datetime, DateTimeWrapper},
     garmin_util::METERS_PER_MILE,
-    iso_8601_datetime::{convert_str_to_datetime, sentinel_datetime},
     sport_types::SportTypes,
 };
 
@@ -20,7 +19,7 @@ use super::{garmin_lap::GarminLap, pgpool::PgPool};
 #[derive(Debug, Clone, Copy, PartialEq, FromSqlRow)]
 pub struct GarminCorrectionLap {
     pub id: i32,
-    pub start_time: OffsetDateTime,
+    pub start_time: DateTimeWrapper,
     pub lap_number: i32,
     pub sport: Option<SportTypes>,
     pub distance: Option<f64>,
@@ -28,7 +27,7 @@ pub struct GarminCorrectionLap {
     pub summary_id: Option<i32>,
 }
 
-pub type GarminCorrectionMap = HashMap<(OffsetDateTime, i32), GarminCorrectionLap>;
+pub type GarminCorrectionMap = HashMap<(DateTimeWrapper, i32), GarminCorrectionLap>;
 
 impl Default for GarminCorrectionLap {
     fn default() -> Self {
@@ -41,7 +40,7 @@ impl GarminCorrectionLap {
     pub fn new() -> Self {
         Self {
             id: -1,
-            start_time: sentinel_datetime(),
+            start_time: DateTimeWrapper::sentinel_datetime(),
             lap_number: -1,
             sport: None,
             distance: None,
@@ -57,7 +56,7 @@ impl GarminCorrectionLap {
     }
 
     #[must_use]
-    pub fn with_start_time(mut self, start_time: OffsetDateTime) -> Self {
+    pub fn with_start_time(mut self, start_time: DateTimeWrapper) -> Self {
         self.start_time = start_time;
         self
     }
@@ -112,7 +111,7 @@ impl GarminCorrectionLap {
                         .map(|(lap, result)| match result {
                             JsonValue::Number(_) => {
                                 let corr = Self::new()
-                                    .with_start_time(convert_str_to_datetime(key)?)
+                                    .with_start_time(convert_str_to_datetime(key)?.into())
                                     .with_lap_number(lap.parse()?);
                                 Ok(match result.as_f64() {
                                     Some(r) => corr.with_distance(r),
@@ -121,7 +120,7 @@ impl GarminCorrectionLap {
                             }
                             JsonValue::Array(arr) => {
                                 let corr = Self::new()
-                                    .with_start_time(convert_str_to_datetime(key)?)
+                                    .with_start_time(convert_str_to_datetime(key)?.into())
                                     .with_lap_number(lap.parse()?);
                                 let corr = match arr.get(0) {
                                     Some(x) => match x.as_f64() {
@@ -217,7 +216,9 @@ impl GarminCorrectionLap {
         for (sport, times_list) in mislabeled_times {
             let sport: SportTypes = sport.parse().unwrap_or(SportTypes::None);
             for time in times_list {
-                let time = convert_str_to_datetime(time).expect("Invalid time string");
+                let time = convert_str_to_datetime(time)
+                    .expect("Invalid time string")
+                    .into();
                 let lap_list: Vec<_> = corr_list_map
                     .keys()
                     .filter_map(|(t, n)| if *t == time { Some(*n) } else { None })
@@ -349,7 +350,7 @@ impl GarminCorrectionLap {
 pub fn apply_lap_corrections<S: BuildHasher + Sync>(
     lap_list: &[GarminLap],
     sport: SportTypes,
-    corr_map: &HashMap<(OffsetDateTime, i32), GarminCorrectionLap, S>,
+    corr_map: &HashMap<(DateTimeWrapper, i32), GarminCorrectionLap, S>,
 ) -> (Vec<GarminLap>, SportTypes) {
     let mut new_sport = sport;
     match lap_list.get(0) {

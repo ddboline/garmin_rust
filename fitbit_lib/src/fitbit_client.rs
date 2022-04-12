@@ -28,11 +28,14 @@ use tokio::{
 };
 
 use garmin_connect_lib::garmin_connect_hr_data::GarminConnectHrData;
-use garmin_lib::common::{
-    fitbit_activity::FitbitActivity,
-    garmin_config::GarminConfig,
-    garmin_summary::{get_list_of_activities_from_db, GarminSummary},
-    pgpool::PgPool,
+use garmin_lib::{
+    common::{
+        fitbit_activity::FitbitActivity,
+        garmin_config::GarminConfig,
+        garmin_summary::{get_list_of_activities_from_db, GarminSummary},
+        pgpool::PgPool,
+    },
+    utils::date_time_wrapper::DateTimeWrapper,
 };
 
 use crate::{
@@ -403,7 +406,9 @@ impl FitbitClient {
                     m = m.abs()
                 );
                 let datetime = format_sstr!("{date}T{t}{offset}", t = entry.time);
-                let datetime = OffsetDateTime::parse(&datetime, &Rfc3339)?.to_timezone(UTC);
+                let datetime = OffsetDateTime::parse(&datetime, &Rfc3339)?
+                    .to_timezone(UTC)
+                    .into();
                 let value = entry.value;
                 Ok(FitbitHeartRate { datetime, value })
             })
@@ -617,7 +622,7 @@ impl FitbitClient {
     pub async fn get_tcx_urls(
         &self,
         start_date: Date,
-    ) -> Result<Vec<(OffsetDateTime, StackString)>, Error> {
+    ) -> Result<Vec<(DateTimeWrapper, StackString)>, Error> {
         let activities = self.get_activities(start_date, None).await?;
 
         activities
@@ -1028,7 +1033,7 @@ impl FitbitClient {
 #[derive(Debug, Serialize)]
 pub struct FitbitBodyWeightFatUpdateOutput {
     pub measurements: Vec<ScaleMeasurement>,
-    pub activities: Vec<OffsetDateTime>,
+    pub activities: Vec<DateTimeWrapper>,
     pub duplicates: Vec<StackString>,
 }
 
@@ -1214,7 +1219,7 @@ mod tests {
 
         let date = begin_datetime.date();
         let new_activities = client.get_all_activities(date).await?;
-        println!("{:#?}", new_activities);
+        debug!("{:#?}", new_activities);
         assert!(new_activities.len() > 0);
         Ok(())
     }
@@ -1229,7 +1234,7 @@ mod tests {
 
         let pool = PgPool::new(&config.pgurl);
         let dates = client.sync_fitbit_activities(begin_datetime, &pool).await?;
-        println!("{:?}", dates);
+        debug!("{:?}", dates);
         assert_eq!(dates.len(), 0);
         Ok(())
     }
@@ -1284,7 +1289,7 @@ mod tests {
         let client = FitbitClient::with_auth(config.clone()).await?;
 
         let output = client.remove_duplicate_entries(&pool).await?;
-        println!("{:?}", output);
+        debug!("{:?}", output);
         assert_eq!(output.len(), 0);
         Ok(())
     }

@@ -5,7 +5,7 @@ use std::path::Path;
 use garmin_lib::{
     common::garmin_correction_lap::GarminCorrectionLap,
     parsers::{garmin_parse::GarminParseTrait, garmin_parse_fit},
-    utils::{iso_8601_datetime::convert_datetime_to_str, sport_types::SportTypes},
+    utils::{date_time_wrapper::iso8601::convert_datetime_to_str, sport_types::SportTypes},
 };
 
 #[test]
@@ -20,7 +20,7 @@ fn test_garmin_parse_fit() -> Result<(), Error> {
     assert_eq!(gfile.sport, SportTypes::Running);
     assert_eq!(gfile.filetype, "fit");
     assert_eq!(
-        convert_datetime_to_str(gfile.begin_datetime),
+        convert_datetime_to_str(gfile.begin_datetime.into()),
         "2014-01-12T16:00:05Z"
     );
     assert_eq!(gfile.total_calories, 351);

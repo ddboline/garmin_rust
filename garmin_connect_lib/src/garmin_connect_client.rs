@@ -387,6 +387,7 @@ pub struct GarminConnectUserDailySummary {
 mod tests {
     use anyhow::Error;
     use futures::future::try_join_all;
+    use log::debug;
     use std::collections::HashMap;
     use time::{Duration, OffsetDateTime};
     use time_tz::OffsetDateTimeExt;
@@ -448,7 +449,7 @@ mod tests {
             .into_iter()
             .filter(|activity| !activities.contains_key(&activity.activity_id))
             .collect();
-        println!("{:?}", new_activities);
+        debug!("{:?}", new_activities);
         let futures = new_activities.iter().map(|activity| {
             let pool = pool.clone();
             async move {
@@ -468,7 +469,7 @@ mod tests {
     fn test_activity_deserialization() -> Result<(), Error> {
         let s = include_str!("../tests/data/activity.json");
         let a: Vec<GarminConnectActivity> = serde_json::from_str(s)?;
-        println!("{a:?}");
+        debug!("{a:?}");
         Ok(())
     }
 }

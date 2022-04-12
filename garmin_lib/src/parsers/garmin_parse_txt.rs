@@ -9,7 +9,7 @@ use std::{
 };
 use time::{
     macros::{format_description, time},
-    Date, OffsetDateTime, PrimitiveDateTime, Time,
+    Date, PrimitiveDateTime, Time,
 };
 
 use crate::{
@@ -20,6 +20,7 @@ use crate::{
         garmin_point::GarminPoint,
     },
     utils::{
+        date_time_wrapper::DateTimeWrapper,
         garmin_util::{convert_time_string, METERS_PER_MILE},
         sport_types::{get_sport_type_map, SportTypes},
     },
@@ -42,7 +43,7 @@ impl GarminParseTrait for GarminParseTxt {
     fn with_file(
         self,
         filename: &Path,
-        corr_map: &HashMap<(OffsetDateTime, i32), GarminCorrectionLap>,
+        corr_map: &HashMap<(DateTimeWrapper, i32), GarminCorrectionLap>,
     ) -> Result<GarminFile, Error> {
         let file_name = filename
             .file_name()
@@ -232,7 +233,7 @@ impl GarminParseTxt {
             time!(12:00:00)
         };
 
-        let lap_start = { PrimitiveDateTime::new(date, time).assume_utc() };
+        let lap_start = PrimitiveDateTime::new(date, time).assume_utc().into();
 
         let lap_type = match entry_dict.get("type") {
             Some(val) => sport_type_map.get(val.as_str()).map(|_| val.into()),

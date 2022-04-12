@@ -9,16 +9,15 @@ use time::OffsetDateTime;
 use time_tz::{timezones::db::UTC, OffsetDateTimeExt};
 
 use crate::utils::{
+    date_time_wrapper::DateTimeWrapper,
     garmin_util::{
         convert_xml_local_time_to_utc, get_degrees_from_semicircles, get_f64, METERS_PER_MILE,
     },
-    iso_8601_datetime::{self, sentinel_datetime},
 };
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct GarminPoint {
-    #[serde(with = "iso_8601_datetime")]
-    pub time: OffsetDateTime,
+    pub time: DateTimeWrapper,
     pub latitude: Option<f64>,
     pub longitude: Option<f64>,
     pub altitude: Option<f64>,
@@ -43,7 +42,7 @@ impl GarminPoint {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            time: sentinel_datetime(),
+            time: DateTimeWrapper::sentinel_datetime(),
             latitude: None,
             longitude: None,
             altitude: None,
@@ -60,7 +59,7 @@ impl GarminPoint {
     }
 
     pub fn clear(&mut self) {
-        self.time = sentinel_datetime();
+        self.time = DateTimeWrapper::sentinel_datetime();
         self.latitude = None;
         self.longitude = None;
         self.altitude = None;
@@ -81,7 +80,7 @@ impl GarminPoint {
         let mut new_point = Self::new();
         for entry in entries.attributes() {
             match entry.name() {
-                "time" => new_point.time = convert_xml_local_time_to_utc(entry.value())?,
+                "time" => new_point.time = convert_xml_local_time_to_utc(entry.value())?.into(),
                 "lat" => new_point.latitude = entry.value().parse().ok(),
                 "lon" => new_point.longitude = entry.value().parse().ok(),
                 "alt" => new_point.altitude = entry.value().parse().ok(),
@@ -103,7 +102,8 @@ impl GarminPoint {
                     "Time" => {
                         new_point.time = convert_xml_local_time_to_utc(
                             d.text().ok_or_else(|| format_err!("Malformed time"))?,
-                        )?;
+                        )?
+                        .into();
                     }
                     "AltitudeMeters" => new_point.altitude = d.text().and_then(|x| x.parse().ok()),
                     "LatitudeDegrees" => new_point.latitude = d.text().and_then(|x| x.parse().ok()),
@@ -150,7 +150,7 @@ impl GarminPoint {
             match field.name() {
                 "timestamp" => {
                     if let Value::Timestamp(t) = field.value() {
-                        new_point.time = t.to_timezone(UTC);
+                        new_point.time = t.to_timezone(UTC).into();
                     }
                 }
                 "enhanced_altitude" => {
@@ -187,9 +187,10 @@ impl GarminPoint {
         let mut time_from_begin = 0.0;
         let mut last_time = None;
         for point in point_list.iter_mut() {
-            let duration_from_last = match last_time.replace(point.time) {
+            let point_time: OffsetDateTime = point.time.into();
+            let duration_from_last = match last_time.replace(point_time) {
                 None => 0.0,
-                Some(last_time) => (point.time - last_time).whole_seconds() as f64,
+                Some(last_time) => (point_time - last_time).whole_seconds() as f64,
             };
             time_from_begin += duration_from_last;
             let duration_from_begin = time_from_begin;

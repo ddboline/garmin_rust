@@ -17,7 +17,7 @@ use time_tz::OffsetDateTimeExt;
 
 use garmin_lib::{
     common::{garmin_templates::HBR, pgpool::PgPool},
-    utils::iso_8601_datetime::convert_datetime_to_str,
+    utils::date_time_wrapper::iso8601::convert_datetime_to_str,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, Copy, FromSqlRow, PartialEq)]
@@ -437,6 +437,7 @@ impl ScaleMeasurement {
 #[cfg(test)]
 mod tests {
     use anyhow::Error;
+    use log::debug;
     use time::{macros::datetime, OffsetDateTime};
 
     use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
@@ -500,7 +501,7 @@ mod tests {
         let measurements = ScaleMeasurement::read_from_db(&pool, None, None).await?;
         assert!(measurements.len() > 0);
         let first = measurements[0];
-        println!("{:#?}", first);
+        debug!("{:#?}", first);
         assert_eq!(first, exp);
         assert_eq!(first.datetime, first_date);
 

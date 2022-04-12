@@ -5,7 +5,7 @@ use std::path::Path;
 use garmin_lib::{
     common::garmin_correction_lap::GarminCorrectionLap,
     parsers::{garmin_parse::GarminParseTrait, garmin_parse_tcx},
-    utils::{iso_8601_datetime::convert_datetime_to_str, sport_types::SportTypes},
+    utils::{date_time_wrapper::iso8601::convert_datetime_to_str, sport_types::SportTypes},
 };
 
 #[test]
@@ -20,7 +20,7 @@ fn test_garmin_parse_tcx() -> Result<(), Error> {
     assert_eq!(gfile.sport, SportTypes::Biking);
     assert_eq!(gfile.filetype, "tcx");
     assert_eq!(
-        convert_datetime_to_str(gfile.begin_datetime),
+        convert_datetime_to_str(gfile.begin_datetime.into()),
         "2012-11-05T11:52:21Z"
     );
     assert_eq!(gfile.total_calories, 285);
@@ -46,7 +46,7 @@ fn test_garmin_parse_tcx_gz() -> Result<(), Error> {
     assert_eq!(gfile.sport, SportTypes::Biking);
     assert_eq!(gfile.filetype, "tcx");
     assert_eq!(
-        convert_datetime_to_str(gfile.begin_datetime),
+        convert_datetime_to_str(gfile.begin_datetime.into()),
         "2012-11-05T11:52:21Z"
     );
     assert_eq!(gfile.total_calories, 285);

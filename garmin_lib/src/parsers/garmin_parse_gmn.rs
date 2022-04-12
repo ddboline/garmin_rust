@@ -3,7 +3,6 @@ use roxmltree::{Document, NodeType};
 use stack_string::format_sstr;
 use std::{collections::HashMap, path::Path};
 use subprocess::{Exec, Redirection};
-use time::OffsetDateTime;
 
 use crate::{
     common::{
@@ -12,7 +11,7 @@ use crate::{
         garmin_lap::GarminLap,
         garmin_point::GarminPoint,
     },
-    utils::sport_types::SportTypes,
+    utils::{date_time_wrapper::DateTimeWrapper, sport_types::SportTypes},
 };
 
 use super::garmin_parse::{GarminParseTrait, ParseOutput};
@@ -31,7 +30,7 @@ impl GarminParseTrait for GarminParseGmn {
     fn with_file(
         self,
         filename: &Path,
-        corr_map: &HashMap<(OffsetDateTime, i32), GarminCorrectionLap>,
+        corr_map: &HashMap<(DateTimeWrapper, i32), GarminCorrectionLap>,
     ) -> Result<GarminFile, Error> {
         let gmn_output = self.parse_file(filename)?;
         let filename = filename

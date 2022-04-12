@@ -10,7 +10,7 @@ use time::{Date, OffsetDateTime};
 use crate::{
     common::{garmin_summary::GarminSummary, pgpool::PgPool, strava_timezone::StravaTimeZone},
     utils::{
-        iso_8601_datetime,
+        date_time_wrapper::DateTimeWrapper,
         sport_types::{self, SportTypes},
     },
 };
@@ -18,8 +18,7 @@ use crate::{
 #[derive(Serialize, Deserialize, FromSqlRow, Debug, Clone, PartialEq)]
 pub struct StravaActivity {
     pub name: StackString,
-    #[serde(with = "iso_8601_datetime")]
-    pub start_date: OffsetDateTime,
+    pub start_date: DateTimeWrapper,
     pub id: i64,
     pub distance: Option<f64>,
     pub moving_time: Option<i64>,
@@ -36,7 +35,7 @@ impl Default for StravaActivity {
     fn default() -> Self {
         Self {
             name: "".into(),
-            start_date: OffsetDateTime::now_utc(),
+            start_date: DateTimeWrapper::now(),
             id: -1,
             distance: None,
             moving_time: None,

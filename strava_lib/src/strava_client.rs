@@ -36,8 +36,8 @@ use garmin_lib::{
         pgpool::PgPool, strava_activity::StravaActivity,
     },
     utils::{
+        date_time_wrapper::{iso8601::convert_datetime_to_str, DateTimeWrapper},
         garmin_util::gzip_file,
-        iso_8601_datetime::{self, convert_datetime_to_str},
         sport_types::{self, SportTypes},
     },
 };
@@ -768,10 +768,8 @@ pub struct StravaAthlete {
     pub state: StackString,
     pub sex: StackString,
     pub weight: f64,
-    #[serde(with = "iso_8601_datetime")]
-    pub created_at: OffsetDateTime,
-    #[serde(with = "iso_8601_datetime")]
-    pub updated_at: OffsetDateTime,
+    pub created_at: DateTimeWrapper,
+    pub updated_at: DateTimeWrapper,
     pub follower_count: Option<u64>,
     pub friend_count: Option<u64>,
     pub measurement_preference: Option<StackString>,
@@ -881,7 +879,7 @@ mod tests {
             .into_iter()
             .filter(|activity| !activities.contains_key(&activity.id))
             .collect();
-        println!("{:?}", new_activities);
+        debug!("{:?}", new_activities);
         let futures = new_activities.iter().map(|activity| {
             let pool = pool.clone();
             async move {

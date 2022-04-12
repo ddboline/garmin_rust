@@ -1,13 +1,12 @@
 use anyhow::{format_err, Error};
 use std::{collections::HashMap, ffi::OsStr, path::Path};
-use time::OffsetDateTime;
 
 use crate::{
     common::{
         garmin_correction_lap::GarminCorrectionLap, garmin_file::GarminFile, garmin_lap::GarminLap,
         garmin_point::GarminPoint,
     },
-    utils::sport_types::SportTypes,
+    utils::{date_time_wrapper::DateTimeWrapper, sport_types::SportTypes},
 };
 
 use super::{
@@ -29,7 +28,7 @@ impl GarminParseTrait for GarminParse {
     fn with_file(
         self,
         filename: &Path,
-        corr_map: &HashMap<(OffsetDateTime, i32), GarminCorrectionLap>,
+        corr_map: &HashMap<(DateTimeWrapper, i32), GarminCorrectionLap>,
     ) -> Result<GarminFile, Error> {
         match filename.extension().and_then(OsStr::to_str) {
             Some("txt") => GarminParseTxt::new().with_file(filename, corr_map),
@@ -68,7 +67,7 @@ where
     fn with_file(
         self,
         filename: &Path,
-        corr_map: &HashMap<(OffsetDateTime, i32), GarminCorrectionLap>,
+        corr_map: &HashMap<(DateTimeWrapper, i32), GarminCorrectionLap>,
     ) -> Result<GarminFile, Error>;
 
     /// # Errors

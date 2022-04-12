@@ -12,8 +12,8 @@ use time::OffsetDateTime;
 use crate::{
     parsers::garmin_parse::{GarminParse, GarminParseTrait},
     utils::{
+        date_time_wrapper::{iso8601::convert_datetime_to_str, DateTimeWrapper},
         garmin_util::{generate_random_string, get_file_list, get_md5sum},
-        iso_8601_datetime::{self, convert_datetime_to_str, sentinel_datetime},
         sport_types::SportTypes,
     },
 };
@@ -24,8 +24,7 @@ use super::{garmin_correction_lap::GarminCorrectionLap, garmin_file::GarminFile,
 pub struct GarminSummary {
     pub id: i32,
     pub filename: StackString,
-    #[serde(with = "iso_8601_datetime")]
-    pub begin_datetime: OffsetDateTime,
+    pub begin_datetime: DateTimeWrapper,
     pub sport: SportTypes,
     pub total_calories: i32,
     pub total_distance: f64,
@@ -57,7 +56,7 @@ impl GarminSummary {
     pub fn process_single_gps_file(
         filepath: &Path,
         cache_dir: &Path,
-        corr_map: &HashMap<(OffsetDateTime, i32), GarminCorrectionLap>,
+        corr_map: &HashMap<(DateTimeWrapper, i32), GarminCorrectionLap>,
     ) -> Result<Self, Error> {
         let filename = filepath
             .file_name()
@@ -72,7 +71,7 @@ impl GarminSummary {
         let gfile = GarminParse::new().with_file(filepath, corr_map)?;
         let filename = &gfile.filename;
         match gfile.laps.get(0) {
-            Some(l) if l.lap_start == sentinel_datetime() => {
+            Some(l) if l.lap_start == DateTimeWrapper::sentinel_datetime() => {
                 return Err(format_err!("{filename} has empty lap start?"));
             }
             Some(_) => (),
@@ -88,7 +87,7 @@ impl GarminSummary {
     pub fn process_all_gps_files(
         gps_dir: &Path,
         cache_dir: &Path,
-        corr_map: &HashMap<(OffsetDateTime, i32), GarminCorrectionLap>,
+        corr_map: &HashMap<(DateTimeWrapper, i32), GarminCorrectionLap>,
     ) -> Result<Vec<Self>, Error> {
         let path = Path::new(gps_dir);
 
@@ -105,7 +104,7 @@ impl GarminSummary {
                 let gfile = GarminParse::new().with_file(&input_file, corr_map)?;
                 let filename = &gfile.filename;
                 match gfile.laps.get(0) {
-                    Some(l) if l.lap_start == sentinel_datetime() => {
+                    Some(l) if l.lap_start == DateTimeWrapper::sentinel_datetime() => {
                         return Err(format_err!(
                             "{input_file:?} {filename:?} has empty lap start?"
                         ));
@@ -318,7 +317,7 @@ impl fmt::Display for GarminSummary {
         ];
         let vals = vec![
             self.filename.clone(),
-            convert_datetime_to_str(self.begin_datetime),
+            convert_datetime_to_str(self.begin_datetime.into()),
             StackString::from_display(self.sport),
             StackString::from_display(self.total_calories),
             StackString::from_display(self.total_distance),

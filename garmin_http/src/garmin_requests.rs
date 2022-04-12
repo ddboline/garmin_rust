@@ -20,14 +20,17 @@ use garmin_connect_lib::{
     garmin_connect_client::GarminConnectUserDailySummary,
     garmin_connect_hr_data::GarminConnectHrData,
 };
-use garmin_lib::common::{
-    fitbit_activity::FitbitActivity,
-    garmin_config::GarminConfig,
-    garmin_connect_activity::GarminConnectActivity,
-    garmin_correction_lap::GarminCorrectionLap,
-    garmin_summary::{get_list_of_files_from_db, GarminSummary},
-    pgpool::PgPool,
-    strava_activity::StravaActivity,
+use garmin_lib::{
+    common::{
+        fitbit_activity::FitbitActivity,
+        garmin_config::GarminConfig,
+        garmin_connect_activity::GarminConnectActivity,
+        garmin_correction_lap::GarminCorrectionLap,
+        garmin_summary::{get_list_of_files_from_db, GarminSummary},
+        pgpool::PgPool,
+        strava_activity::StravaActivity,
+    },
+    utils::date_time_wrapper::DateTimeWrapper,
 };
 use garmin_reports::garmin_constraints::GarminConstraints;
 use race_result_analysis::{
@@ -113,7 +116,7 @@ pub struct GarminUploadRequest {
 impl GarminUploadRequest {
     /// # Errors
     /// Returns error if db query fails
-    pub async fn handle(self, pool: &PgPool) -> Result<Vec<OffsetDateTime>, Error> {
+    pub async fn handle(self, pool: &PgPool) -> Result<Vec<DateTimeWrapper>, Error> {
         let gcli = GarminCli::from_pool(pool)?;
         let filenames = vec![self.filename];
         let datetimes = gcli.process_filenames(&filenames).await?;
@@ -817,7 +820,8 @@ impl AddGarminCorrectionRequest {
     /// Returns error if db query fails
     pub async fn handle(self, pool: &PgPool) -> Result<StackString, Error> {
         let mut corr_map = GarminCorrectionLap::read_corrections_from_db(pool).await?;
-        let start_time = self.start_time.into();
+        let start_time: OffsetDateTime = self.start_time.into();
+        let start_time = start_time.into();
         let unique_key = (start_time, self.lap_number);
 
         let mut new_corr = corr_map.get(&unique_key).map_or_else(
@@ -1123,7 +1127,7 @@ impl RaceResultImportRequest {
     /// Returns error if db query fails
     pub async fn handle(&self, pool: &PgPool) -> Result<(), Error> {
         if let Some(summary) = GarminSummary::get_by_filename(pool, self.filename.as_str()).await? {
-            let begin_datetime = summary.begin_datetime;
+            let begin_datetime = summary.begin_datetime.into();
             let mut result: RaceResults = summary.into();
             if let Some(activity) =
                 StravaActivity::get_by_begin_datetime(pool, begin_datetime).await?

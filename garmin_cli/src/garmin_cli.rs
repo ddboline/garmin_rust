@@ -13,7 +13,7 @@ use std::{
 };
 use stdout_channel::StdoutChannel;
 use tempdir::TempDir;
-use time::{Date, OffsetDateTime};
+use time::Date;
 use tokio::task::spawn_blocking;
 
 use garmin_lib::{
@@ -32,7 +32,10 @@ use garmin_lib::{
         garmin_parse_tcx::GarminParseTcx,
         garmin_parse_txt::GarminParseTxt,
     },
-    utils::garmin_util::{extract_zip_from_garmin_connect, get_file_list},
+    utils::{
+        date_time_wrapper::DateTimeWrapper,
+        garmin_util::{extract_zip_from_garmin_connect, get_file_list},
+    },
 };
 use garmin_reports::{
     garmin_constraints::GarminConstraints, garmin_file_report_html::file_report_html,
@@ -149,7 +152,7 @@ impl GarminCli {
     /// Return error if reading summary list fails
     pub async fn get_summary_list(
         &self,
-        corr_map: &HashMap<(OffsetDateTime, i32), GarminCorrectionLap>,
+        corr_map: &HashMap<(DateTimeWrapper, i32), GarminCorrectionLap>,
     ) -> Result<Vec<GarminSummary>, Error> {
         let pg_conn = self.get_pool();
 
@@ -397,7 +400,7 @@ impl GarminCli {
         filenames: Vec<PathBuf>,
         stdout: &StdoutChannel<StackString>,
         config: &GarminConfig,
-    ) -> Result<Vec<OffsetDateTime>, Error> {
+    ) -> Result<Vec<DateTimeWrapper>, Error> {
         let tempdir = TempDir::new("garmin_zip")?;
         let ziptmpdir = tempdir.path();
 
@@ -449,7 +452,7 @@ impl GarminCli {
     pub async fn process_filenames(
         &self,
         filenames: impl IntoIterator<Item = impl AsRef<Path>>,
-    ) -> Result<Vec<OffsetDateTime>, Error> {
+    ) -> Result<Vec<DateTimeWrapper>, Error> {
         let config = self.get_config().clone();
         let stdout = self.stdout.clone();
 

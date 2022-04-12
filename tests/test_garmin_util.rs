@@ -1,6 +1,6 @@
 use garmin_lib::utils::{
+    date_time_wrapper::iso8601::convert_datetime_to_str,
     garmin_util::{convert_time_string, convert_xml_local_time_to_utc, titlecase},
-    iso_8601_datetime::convert_datetime_to_str,
     plot_graph, plot_opts,
 };
 

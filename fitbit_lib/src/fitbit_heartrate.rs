@@ -100,7 +100,8 @@ where
 
         Ok(PrimitiveDateTime::new(d, t)
             .assume_timezone(local)
-            .to_timezone(UTC).into())
+            .to_timezone(UTC)
+            .into())
     })
 }
 
@@ -126,7 +127,7 @@ impl FitbitHeartRate {
     #[must_use]
     pub fn from_json_heartrate_entry(entry: JsonHeartRateEntry) -> Self {
         Self {
-            datetime: entry.datetime.into(),
+            datetime: entry.datetime,
             value: entry.value.bpm,
         }
     }

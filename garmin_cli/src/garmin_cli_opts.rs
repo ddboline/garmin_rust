@@ -407,6 +407,14 @@ impl GarminCliOpts {
             Some(GarminCliOptions::Connect { .. }) => {
                 let mut buf = cli.proc_everything().await?;
                 buf.extend_from_slice(&cli.sync_everything(false).await?);
+                let client = FitbitClient::with_auth(cli.config.clone()).await?;
+                let result = client.sync_everything(&cli.pool).await?;
+                buf.push(format_sstr!(
+                    "Syncing Fitbit Heartrate {hr} Activities {ac} Duplicates {dp}",
+                    hr = result.measurements.len(),
+                    ac = result.activities.len(),
+                    dp = result.duplicates.len(),
+                ));
                 Ok(buf)
             }
             _ => cli.proc_everything().await,

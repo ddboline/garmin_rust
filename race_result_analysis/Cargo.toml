@@ -1,6 +1,6 @@
 [package]
 name = "race_result_analysis"
-version = "0.12.1"
+version = "0.12.2"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -16,7 +16,7 @@ serde = {version="1.0", features=["derive"]}
 serde_json = "1.0"
 postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.4", features=["deadpool"]}
 time = {version="0.3", features=["serde-human-readable", "macros", "formatting", "parsing"]}
-time-tz = {version="0.5", features=["system"]}
+time-tz = {version="1.0", features=["system"]}
 tokio = {version="1.17", features=["full"]}
 ndarray = "0.15"
 log = "0.4"

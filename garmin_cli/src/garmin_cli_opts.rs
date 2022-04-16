@@ -19,10 +19,13 @@ use fitbit_lib::{
     fitbit_statistics_summary::FitbitStatisticsSummary, scale_measurement::ScaleMeasurement,
 };
 use garmin_connect_lib::garmin_connect_client::GarminConnectClient;
-use garmin_lib::common::{
-    fitbit_activity::FitbitActivity, garmin_config::GarminConfig,
-    garmin_connect_activity::GarminConnectActivity, garmin_summary::get_maximum_begin_datetime,
-    pgpool::PgPool, strava_activity::StravaActivity,
+use garmin_lib::{
+    common::{
+        fitbit_activity::FitbitActivity, garmin_config::GarminConfig,
+        garmin_connect_activity::GarminConnectActivity, garmin_summary::get_maximum_begin_datetime,
+        pgpool::PgPool, strava_activity::StravaActivity,
+    },
+    utils::date_time_wrapper::DateTimeWrapper,
 };
 use race_result_analysis::{race_results::RaceResults, race_type::RaceType};
 use std::str::FromStr;
@@ -308,7 +311,7 @@ impl GarminCliOpts {
                 } else {
                     Box::new(stdout())
                 };
-                let local = time_tz::system::get_timezone()?;
+                let local = DateTimeWrapper::local_tz();
                 match table.as_str() {
                     "scale_measurements" => {
                         let start_date = (OffsetDateTime::now_utc() - Duration::days(7))

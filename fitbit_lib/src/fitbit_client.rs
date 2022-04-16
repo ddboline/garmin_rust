@@ -953,7 +953,7 @@ impl FitbitClient {
         let offset = self.get_offset();
         let start_datetime = OffsetDateTime::now_utc() - Duration::days(30);
         let start_date: Date = start_datetime.to_offset(offset).date();
-        let local = time_tz::system::get_timezone()?;
+        let local = DateTimeWrapper::local_tz();
 
         let existing_map: HashMap<_, _> = self
             .get_fitbit_bodyweightfat()
@@ -1111,7 +1111,6 @@ mod tests {
     use crate::fitbit_client::{FitbitActivity, FitbitClient};
     use anyhow::Error;
     use futures::future::try_join_all;
-    use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
     use log::debug;
     use std::collections::HashMap;
     use tempfile::NamedTempFile;
@@ -1120,6 +1119,11 @@ mod tests {
         Date, Duration, OffsetDateTime,
     };
     use time_tz::OffsetDateTimeExt;
+
+    use garmin_lib::{
+        common::{garmin_config::GarminConfig, pgpool::PgPool},
+        utils::date_time_wrapper::DateTimeWrapper,
+    };
 
     #[tokio::test]
     #[ignore]
@@ -1135,7 +1139,7 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_get_tcx_urls() -> Result<(), Error> {
-        let local = time_tz::system::get_timezone()?;
+        let local = DateTimeWrapper::local_tz();
         let config = GarminConfig::get_config(None)?;
         let client = FitbitClient::with_auth(config.clone()).await?;
         let start_date = (OffsetDateTime::now_utc() - Duration::days(10)).date();

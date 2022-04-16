@@ -392,8 +392,12 @@ mod tests {
     use time::{Duration, OffsetDateTime};
     use time_tz::OffsetDateTimeExt;
 
-    use garmin_lib::common::{
-        garmin_config::GarminConfig, garmin_connect_activity::GarminConnectActivity, pgpool::PgPool,
+    use garmin_lib::{
+        common::{
+            garmin_config::GarminConfig, garmin_connect_activity::GarminConnectActivity,
+            pgpool::PgPool,
+        },
+        utils::date_time_wrapper::DateTimeWrapper,
     };
 
     use crate::garmin_connect_client::GarminConnectClient;
@@ -412,7 +416,7 @@ mod tests {
         let config = GarminConfig::get_config(None)?;
         let mut session = GarminConnectClient::new(config.clone());
         session.init().await?;
-        let local = time_tz::system::get_timezone()?;
+        let local = DateTimeWrapper::local_tz();
         let user_summary = session
             .get_user_summary(
                 (OffsetDateTime::now_utc() - Duration::days(1))

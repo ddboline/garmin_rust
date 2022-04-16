@@ -507,7 +507,7 @@ impl StravaClient {
             "[year]-[month]-[day]T[hour]:[minute]:[second][offset_hour \
              sign:mandatory]:[offset_minute]"
         );
-        let local = time_tz::system::get_timezone()?;
+        let local = DateTimeWrapper::local_tz();
         let start_date_local = match self.config.default_time_zone {
             Some(tz) => {
                 let tz: &Tz = tz.into();

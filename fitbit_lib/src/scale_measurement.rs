@@ -348,7 +348,7 @@ impl ScaleMeasurement {
         };
         let plot = HBR.render("TIMESERIESTEMPLATE", &params)?;
         graphs.push(plot.into());
-        let local = time_tz::system::get_timezone()?;
+        let local = DateTimeWrapper::local_tz();
 
         let n = measurements.len();
         let entries: Vec<_> = measurements[(n - 10 - offset)..(n - offset)]

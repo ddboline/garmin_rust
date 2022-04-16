@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
 use std::{collections::HashMap, path::PathBuf};
 use time::{macros::time, Date, Duration, OffsetDateTime};
-use time_tz::{timezones::db::UTC, OffsetDateTimeExt};
+use time_tz::OffsetDateTimeExt;
 use tokio::task::spawn_blocking;
 use url::Url;
 
@@ -437,7 +437,7 @@ pub struct ScaleMeasurementRequest {
 
 impl ScaleMeasurementRequest {
     fn add_default(&self, ndays: i64) -> Self {
-        let local = time_tz::system::get_timezone().unwrap_or(UTC);
+        let local = DateTimeWrapper::local_tz();
         Self {
             start_date: match self.start_date {
                 Some(d) => Some(d),
@@ -879,7 +879,7 @@ impl FitbitActivitiesRequest {
     /// # Errors
     /// Returns error if db query fails
     pub async fn handle(&self, config: &GarminConfig) -> Result<Vec<FitbitActivity>, Error> {
-        let local = time_tz::system::get_timezone().unwrap_or(UTC);
+        let local = DateTimeWrapper::local_tz();
         let config = config.clone();
         let client = FitbitClient::with_auth(config).await?;
         let start_date = self.start_date.map_or_else(
@@ -906,7 +906,7 @@ impl GarminConnectActivitiesRequest {
     /// # Errors
     /// Returns error if db query fails
     pub async fn handle(&self, proxy: &ConnectProxy) -> Result<Vec<GarminConnectActivity>, Error> {
-        let local = time_tz::system::get_timezone().unwrap_or(UTC);
+        let local = DateTimeWrapper::local_tz();
         let start_date = self.start_date.map_or_else(
             || {
                 (OffsetDateTime::now_utc() - Duration::days(14))
@@ -962,7 +962,7 @@ impl GarminConnectUserSummaryRequest {
         &self,
         proxy: &ConnectProxy,
     ) -> Result<GarminConnectUserDailySummary, Error> {
-        let local = time_tz::system::get_timezone().unwrap_or(UTC);
+        let local = DateTimeWrapper::local_tz();
         let mut session = proxy.lock().await;
         session.init().await?;
 

@@ -1,6 +1,6 @@
 [package]
 name = "fitbit_lib"
-version = "0.12.1"
+version = "0.12.2"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -12,7 +12,7 @@ serde_json = "1.0"
 garmin_lib = {path = "../garmin_lib"}
 garmin_connect_lib = {path = "../garmin_connect_lib"}
 time = {version="0.3", features=["serde-human-readable", "macros", "formatting", "parsing"]}
-time-tz = {version="0.5", features=["system"]}
+time-tz = {version="1.0", features=["system"]}
 dotenv = "0.15"
 glob = "0.3"
 rayon = "1.5"

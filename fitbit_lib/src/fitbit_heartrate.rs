@@ -78,7 +78,7 @@ pub fn deserialize_json_mdyhms<'de, D>(deserializer: D) -> Result<DateTimeWrappe
 where
     D: Deserializer<'de>,
 {
-    let local = time_tz::system::get_timezone().unwrap_or(UTC);
+    let local = DateTimeWrapper::local_tz();
     String::deserialize(deserializer).and_then(|s| {
         let d_t: SmallVec<[_; 2]> = s.split(' ').take(2).collect();
         let mdy: Result<SmallVec<[u32; 3]>, _> =
@@ -100,6 +100,7 @@ where
 
         Ok(PrimitiveDateTime::new(d, t)
             .assume_timezone(local)
+            .unwrap()
             .to_timezone(UTC)
             .into())
     })
@@ -277,7 +278,7 @@ impl FitbitHeartRate {
         button_date: Option<Date>,
         is_demo: bool,
     ) -> Result<HashMap<StackString, StackString>, Error> {
-        let local = time_tz::system::get_timezone()?;
+        let local = DateTimeWrapper::local_tz();
         let button_date =
             button_date.unwrap_or_else(|| OffsetDateTime::now_utc().to_timezone(local).date());
         info!(
@@ -586,7 +587,10 @@ mod tests {
     use time::macros::date;
     use time_tz::OffsetDateTimeExt;
 
-    use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
+    use garmin_lib::{
+        common::{garmin_config::GarminConfig, pgpool::PgPool},
+        utils::date_time_wrapper::DateTimeWrapper,
+    };
 
     use crate::fitbit_heartrate::{process_fitbit_json_file, FitbitHeartRate};
 
@@ -597,7 +601,7 @@ mod tests {
         let path = Path::new("tests/data/test_heartrate_data.json");
         let result = process_fitbit_json_file(&path)?;
         debug!("{}", result.len());
-        let local = time_tz::system::get_timezone()?;
+        let local = DateTimeWrapper::local_tz();
         let dates: HashSet<_> = result
             .iter()
             .map(|entry| entry.datetime.to_timezone(local).date())

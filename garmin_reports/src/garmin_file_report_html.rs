@@ -6,7 +6,7 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use stack_string::{format_sstr, StackString};
 use std::collections::HashSet;
 use time::OffsetDateTime;
-use time_tz::{timezones::db::UTC, OffsetDateTimeExt};
+use time_tz::OffsetDateTimeExt;
 
 use garmin_lib::{
     common::{
@@ -21,7 +21,7 @@ use garmin_lib::{
         strava_activity::StravaActivity,
     },
     utils::{
-        date_time_wrapper::iso8601::convert_datetime_to_str,
+        date_time_wrapper::{iso8601::convert_datetime_to_str, DateTimeWrapper},
         garmin_util::{print_h_m_s, titlecase, MARATHON_DISTANCE_MI, METERS_PER_MILE},
         plot_graph::generate_d3_plot,
         plot_opts::PlotOpts,
@@ -43,7 +43,7 @@ pub fn generate_history_buttons<T: AsRef<str>>(history_vec: &[T]) -> StackString
             " </button>"
         )
     }
-    let local = time_tz::system::get_timezone().unwrap_or(UTC);
+    let local = DateTimeWrapper::local_tz();
     let local = OffsetDateTime::now_utc().to_timezone(local).date();
     let year = local.year();
     let month: u8 = local.month().into();

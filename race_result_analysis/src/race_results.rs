@@ -9,11 +9,14 @@ use std::{
     fmt::{self, Display, Formatter},
 };
 use time::{macros::format_description, Date};
-use time_tz::{timezones::db::UTC, OffsetDateTimeExt};
+use time_tz::OffsetDateTimeExt;
 
 use garmin_lib::{
     common::{garmin_summary::GarminSummary, pgpool::PgPool},
-    utils::garmin_util::{print_h_m_s, METERS_PER_MILE},
+    utils::{
+        date_time_wrapper::DateTimeWrapper,
+        garmin_util::{print_h_m_s, METERS_PER_MILE},
+    },
 };
 
 use crate::race_type::RaceType;
@@ -424,7 +427,7 @@ fn parse_time_string(s: &str) -> Option<f64> {
 
 impl From<GarminSummary> for RaceResults {
     fn from(item: GarminSummary) -> Self {
-        let local = time_tz::system::get_timezone().unwrap_or(UTC);
+        let local = DateTimeWrapper::local_tz();
         Self {
             id: -1,
             race_type: RaceType::Personal,

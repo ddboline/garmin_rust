@@ -11,7 +11,10 @@ use time_tz::{OffsetDateTimeExt, Tz};
 
 use garmin_lib::{
     common::{garmin_summary::GarminSummary, garmin_templates::HBR, pgpool::PgPool},
-    utils::garmin_util::{print_h_m_s, MARATHON_DISTANCE_M, METERS_PER_MILE},
+    utils::{
+        date_time_wrapper::DateTimeWrapper,
+        garmin_util::{print_h_m_s, MARATHON_DISTANCE_M, METERS_PER_MILE},
+    },
 };
 
 use crate::{race_results::RaceResults, race_type::RaceType};
@@ -120,7 +123,7 @@ impl RaceResultAnalysis {
                 print_h_m_s(result.race_time, true).unwrap_or_else(|_| "".into()),
             )
         }
-        let local = time_tz::system::get_timezone()?;
+        let local = DateTimeWrapper::local_tz();
         let xticks: Vec<_> = [
             100,
             200,

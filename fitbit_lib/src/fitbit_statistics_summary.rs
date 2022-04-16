@@ -6,7 +6,7 @@ use stack_string::{format_sstr, StackString};
 use statistical::{mean, median, standard_deviation};
 use std::collections::HashMap;
 use time::{macros::format_description, Date, Duration, OffsetDateTime};
-use time_tz::{timezones::db::UTC, OffsetDateTimeExt};
+use time_tz::OffsetDateTimeExt;
 
 use garmin_lib::{
     common::{garmin_templates::HBR, pgpool::PgPool},
@@ -27,7 +27,7 @@ pub struct FitbitStatisticsSummary {
 impl FitbitStatisticsSummary {
     #[must_use]
     pub fn from_heartrate_values(heartrate_values: &[(DateTimeWrapper, i32)]) -> Option<Self> {
-        let local = time_tz::system::get_timezone().unwrap_or(UTC);
+        let local = DateTimeWrapper::local_tz();
         if heartrate_values.len() < 2 {
             return None;
         }
@@ -75,7 +75,7 @@ impl FitbitStatisticsSummary {
         end_date: Option<Date>,
         pool: &PgPool,
     ) -> Result<Vec<Self>, Error> {
-        let local = time_tz::system::get_timezone().unwrap_or(UTC);
+        let local = DateTimeWrapper::local_tz();
         let start_date = start_date.unwrap_or_else(|| {
             (OffsetDateTime::now_utc() - Duration::days(365))
                 .to_timezone(local)

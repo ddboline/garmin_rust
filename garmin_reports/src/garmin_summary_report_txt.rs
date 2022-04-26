@@ -176,7 +176,7 @@ pub struct FileSummaryReport {
 
 impl GarminReportTrait for FileSummaryReport {
     fn get_text_entry(&self) -> Result<Vec<GarminTextEntry>, Error> {
-        let weekdayname = WEEKDAY_NAMES[self.isodow as usize - 1];
+        let weekdayname = WEEKDAY_NAMES[self.isodow as usize];
         let datetime = convert_datetime_to_str(self.datetime);
 
         debug!("{} {:?}", datetime, self);
@@ -399,7 +399,7 @@ async fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<FileSumm
             let result = FileSummaryReport {
                 datetime: item.datetime,
                 week: u32::from(item.datetime.iso_week()),
-                isodow: u32::from(item.datetime.weekday().number_days_from_sunday()),
+                isodow: u32::from(item.datetime.weekday().number_days_from_monday()),
                 sport: item.sport,
                 total_calories: i64::from(item.total_calories),
                 total_distance: item.total_distance,

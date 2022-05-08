@@ -6,6 +6,7 @@ use cookie::Cookie;
 use log::debug;
 use reqwest::{header::HeaderValue, Client};
 use rweb::{filters::cookie::cookie, Filter, Rejection, Schema};
+use rweb_helper::UuidWrapper;
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
 use std::{
@@ -13,7 +14,6 @@ use std::{
     env::var,
     str::FromStr,
 };
-use rweb_helper::UuidWrapper;
 use uuid::Uuid;
 
 use garmin_lib::{

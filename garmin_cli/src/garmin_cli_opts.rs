@@ -146,7 +146,7 @@ impl GarminCliOpts {
                 };
                 let cli = GarminCli::with_config()?;
                 cli.run_cli(&req.options, &req.constraints).await?;
-                return cli.stdout.close().await;
+                return cli.stdout.close().await.map_err(Into::into);
             }
             Self::Connect {
                 start_date,
@@ -207,7 +207,7 @@ impl GarminCliOpts {
                 if all {
                     FitbitHeartRate::get_all_summary_statistics(&client.config, &pool).await?;
                 }
-                return cli.stdout.close().await;
+                return cli.stdout.close().await.map_err(Into::into);
             }
             Self::Strava => {
                 let cli = GarminCli::with_config()?;
@@ -217,7 +217,7 @@ impl GarminCliOpts {
                     .map(|p| p.to_string_lossy().into_owned())
                     .join("\n");
                 cli.stdout.send(filenames);
-                return cli.stdout.close().await;
+                return cli.stdout.close().await.map_err(Into::into);
             }
             Self::Import { table, filepath } => {
                 let data = if let Some(filepath) = filepath {
@@ -381,7 +381,7 @@ impl GarminCliOpts {
         };
 
         Self::garmin_proc(&cli).await?;
-        cli.stdout.close().await
+        cli.stdout.close().await.map_err(Into::into)
     }
 
     /// # Errors

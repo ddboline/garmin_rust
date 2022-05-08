@@ -13,6 +13,7 @@ use std::{
     env::var,
     str::FromStr,
 };
+use rweb_helper::UuidWrapper;
 use uuid::Uuid;
 
 use garmin_lib::{
@@ -27,7 +28,7 @@ pub struct LoggedUser {
     #[schema(description = "Email Address")]
     pub email: StackString,
     #[schema(description = "Session UUID")]
-    pub session: Uuid,
+    pub session: UuidWrapper,
     #[schema(description = "Secret Key")]
     pub secret_key: StackString,
 }
@@ -36,6 +37,7 @@ impl LoggedUser {
     /// # Errors
     /// Returns error if `session_id` does not match `self.session`
     pub fn verify_session_id(&self, session_id: Uuid) -> Result<(), Error> {
+        let session_id = session_id.into();
         if self.session == session_id {
             Ok(())
         } else {
@@ -66,7 +68,8 @@ impl LoggedUser {
             history: Option<Vec<StackString>>,
         }
         let url = format_sstr!("https://{}/api/session/garmin", config.domain);
-        let session_str = StackString::from_display(self.session);
+        let session: Uuid = self.session.into();
+        let session_str = StackString::from_display(session);
         let value = HeaderValue::from_str(&session_str)?;
         let key = HeaderValue::from_str(&self.secret_key)?;
         let session: Option<SessionResponse> = client
@@ -96,7 +99,8 @@ impl LoggedUser {
         session: &Session,
     ) -> Result<(), anyhow::Error> {
         let url = format_sstr!("https://{}/api/session/garmin", config.domain);
-        let session_str = StackString::from_display(self.session);
+        let session_id: Uuid = self.session.into();
+        let session_str = StackString::from_display(session_id);
         let value = HeaderValue::from_str(&session_str)?;
         let key = HeaderValue::from_str(&self.secret_key)?;
         client
@@ -115,7 +119,7 @@ impl From<AuthorizedUser> for LoggedUser {
     fn from(user: AuthorizedUser) -> Self {
         Self {
             email: user.email,
-            session: user.session,
+            session: user.session.into(),
             secret_key: user.secret_key,
         }
     }

@@ -88,7 +88,7 @@ impl GarminConnectClient {
             caps.insert("goog:chromeOptions".to_string(), opts.clone());
             caps.insert("pageLoadStrategy".to_string(), "eager".into());
             caps.insert("unhandledPromptBehavior".to_string(), "accept".into());
-            let mut client = ClientBuilder::rustls()
+            let client = ClientBuilder::rustls()
                 .capabilities(caps)
                 .connect(&format_sstr!(
                     "http://localhost:{}",
@@ -148,7 +148,7 @@ impl GarminConnectClient {
             .enter_frame()
             .await?;
 
-        let mut form = client.form(Locator::Id("login-form")).await?;
+        let form = client.form(Locator::Id("login-form")).await?;
         form.set_by_name("username", &self.config.garmin_connect_email)
             .await?
             .set_by_name("password", &self.config.garmin_connect_password)
@@ -193,7 +193,7 @@ impl GarminConnectClient {
     /// # Errors
     /// Return error if api call fails
     pub async fn close(&mut self) -> Result<(), Error> {
-        if let Some(mut client) = self.client.take() {
+        if let Some(client) = self.client.take() {
             client.close().await?;
         }
         if let Some(mut webdriver) = self.webdriver.take() {

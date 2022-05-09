@@ -37,7 +37,6 @@ impl LoggedUser {
     /// # Errors
     /// Returns error if `session_id` does not match `self.session`
     pub fn verify_session_id(&self, session_id: Uuid) -> Result<(), Error> {
-        let session_id = session_id.into();
         if self.session == session_id {
             Ok(())
         } else {
@@ -68,8 +67,7 @@ impl LoggedUser {
             history: Option<Vec<StackString>>,
         }
         let url = format_sstr!("https://{}/api/session/garmin", config.domain);
-        let session: Uuid = self.session.into();
-        let session_str = StackString::from_display(session);
+        let session_str = StackString::from_display(self.session);
         let value = HeaderValue::from_str(&session_str)?;
         let key = HeaderValue::from_str(&self.secret_key)?;
         let session: Option<SessionResponse> = client
@@ -99,8 +97,7 @@ impl LoggedUser {
         session: &Session,
     ) -> Result<(), anyhow::Error> {
         let url = format_sstr!("https://{}/api/session/garmin", config.domain);
-        let session_id: Uuid = self.session.into();
-        let session_str = StackString::from_display(session_id);
+        let session_str = StackString::from_display(self.session);
         let value = HeaderValue::from_str(&session_str)?;
         let key = HeaderValue::from_str(&self.secret_key)?;
         client

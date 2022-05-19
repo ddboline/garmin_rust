@@ -450,11 +450,11 @@ impl ScaleMeasurementRequest {
             },
             end_date: match self.end_date {
                 Some(d) => Some(d),
-                None => Some(OffsetDateTime::now_utc().to_timezone(local).date().into()),
+                None => Some(OffsetDateTime::now_utc().date().into()),
             },
             button_date: match self.button_date {
                 Some(d) => Some(d),
-                None => Some(OffsetDateTime::now_utc().to_timezone(local).date().into()),
+                None => Some(OffsetDateTime::now_utc().date().into()),
             },
             offset: self.offset,
         }

@@ -422,8 +422,8 @@ async fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<FileSumm
 #[derive(FromSqlRow, Debug)]
 pub struct DaySummaryReport {
     date: StackString,
-    week: f64,
-    isodow: f64,
+    week: i32,
+    isodow: i32,
     sport: StackString,
     total_calories: i64,
     total_distance: f64,
@@ -551,8 +551,8 @@ async fn day_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<DaySummar
         )
         SELECT
             CAST(CAST(begin_datetime at time zone 'localtime' as date) as text) as date,
-            EXTRACT(week from begin_datetime at time zone 'localtime') as week,
-            EXTRACT(isodow from begin_datetime at time zone 'localtime') as isodow,
+            CAST(EXTRACT(week from begin_datetime at time zone 'localtime') AS INT) as week,
+            CAST(EXTRACT(isodow from begin_datetime at time zone 'localtime') AS INT) as isodow,
             sport,
             sum(total_calories) as total_calories,
             sum(total_distance) as total_distance,
@@ -578,8 +578,8 @@ async fn day_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<DaySummar
 
 #[derive(FromSqlRow, Debug)]
 pub struct WeekSummaryReport {
-    year: f64,
-    week: f64,
+    year: i32,
+    week: i32,
     sport: StackString,
     total_calories: i64,
     total_distance: f64,
@@ -703,8 +703,8 @@ async fn week_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<WeekSumm
             {constr}
         )
         SELECT
-            EXTRACT(isoyear from begin_datetime at time zone 'localtime') as year,
-            EXTRACT(week from begin_datetime at time zone 'localtime') as week,
+            CAST(EXTRACT(isoyear from begin_datetime at time zone 'localtime') AS INT) as year,
+            CAST(EXTRACT(week from begin_datetime at time zone 'localtime') AS INT) as week,
             sport,
             sum(total_calories) as total_calories,
             sum(total_distance) as total_distance,
@@ -731,8 +731,8 @@ async fn week_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<WeekSumm
 
 #[derive(FromSqlRow, Debug)]
 pub struct MonthSummaryReport {
-    year: f64,
-    month: f64,
+    year: i32,
+    month: i32,
     sport: StackString,
     total_calories: i64,
     total_distance: f64,
@@ -860,8 +860,8 @@ async fn month_summary_report(
             {constr}
         )
         SELECT
-            EXTRACT(year from begin_datetime at time zone 'localtime') as year,
-            EXTRACT(month from begin_datetime at time zone 'localtime') as month,
+            CAST(EXTRACT(year from begin_datetime at time zone 'localtime') AS INT) as year,
+            CAST(EXTRACT(month from begin_datetime at time zone 'localtime') AS INT) as month,
             sport,
             sum(total_calories) as total_calories,
             sum(total_distance) as total_distance,
@@ -1025,7 +1025,7 @@ async fn sport_summary_report(
 
 #[derive(FromSqlRow, Debug)]
 pub struct YearSummaryReport {
-    year: f64,
+    year: i32,
     sport: StackString,
     total_calories: i64,
     total_distance: f64,
@@ -1149,7 +1149,7 @@ async fn year_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<YearSumm
             {constr}
         )
         SELECT
-            EXTRACT(year from begin_datetime at time zone 'localtime') as year,
+            CAST(EXTRACT(year from begin_datetime at time zone 'localtime') AS INT) as year,
             sport,
             sum(total_calories) as total_calories,
             sum(total_distance) as total_distance,

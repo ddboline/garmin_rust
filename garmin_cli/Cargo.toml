@@ -1,6 +1,6 @@
 [package]
 name = "garmin_cli"
-version = "0.12.6"
+version = "0.12.7"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -19,7 +19,7 @@ time = {version="0.3", features=["serde-human-readable", "macros", "formatting",
 time-tz = {version="1.0", features=["system"]}
 anyhow = "1.0"
 thiserror = "1.0"
-tokio = {version="1.17", features=["full"]}
+tokio = {version="1.19", features=["full"]}
 futures = "0.3"
 lazy_static = "1.4"
 log = "0.4"

@@ -1,6 +1,6 @@
 [package]
 name = "garmin_rust"
-version = "0.12.6"
+version = "0.12.7"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -28,7 +28,7 @@ crossbeam-utils = "0.8"
 structopt = "0.3"
 anyhow = "1.0"
 thiserror = "1.0"
-tokio = {version="1.17", features=["full"]}
+tokio = {version="1.19", features=["full"]}
 dirs = "4.0"
 time = {version="0.3", features=["serde-human-readable", "macros", "formatting", "parsing"]}
 url = "2.2"

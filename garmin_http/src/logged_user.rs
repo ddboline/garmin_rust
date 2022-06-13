@@ -4,7 +4,7 @@ pub use authorized_users::{
 };
 use cookie::Cookie;
 use log::debug;
-use reqwest::{header::HeaderValue, Client};
+use reqwest::Client;
 use rweb::{filters::cookie::cookie, Filter, Rejection, Schema};
 use rweb_helper::UuidWrapper;
 use serde::{Deserialize, Serialize};

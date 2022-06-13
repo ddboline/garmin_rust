@@ -15,6 +15,7 @@ use std::{
     str::FromStr,
 };
 use uuid::Uuid;
+use url::Url;
 
 use garmin_lib::{
     common::{garmin_config::GarminConfig, pgpool::PgPool},
@@ -66,19 +67,16 @@ impl LoggedUser {
         struct SessionResponse {
             history: Option<Vec<StackString>>,
         }
-        let url = format_sstr!("https://{}/api/session/garmin", config.domain);
-        let session_str = StackString::from_display(self.session);
-        let value = HeaderValue::from_str(&session_str)?;
-        let key = HeaderValue::from_str(&self.secret_key)?;
-        let session: Option<SessionResponse> = client
-            .get(url.as_str())
-            .header("session", value)
-            .header("secret-key", key)
-            .send()
-            .await?
-            .error_for_status()?
-            .json()
-            .await?;
+
+        let base_url: Url = format_sstr!("https://{}", config.domain).parse()?;
+        let session: Option<SessionResponse> = AuthorizedUser::get_session_data(
+            &base_url,
+            self.session.into(),
+            &self.secret_key,
+            client,
+            "garmin"
+        ).await?;
+
         debug!("Got session {:?}", session);
         match session {
             Some(session) => Ok(Session {
@@ -96,18 +94,15 @@ impl LoggedUser {
         config: &GarminConfig,
         session: &Session,
     ) -> Result<(), anyhow::Error> {
-        let url = format_sstr!("https://{}/api/session/garmin", config.domain);
-        let session_str = StackString::from_display(self.session);
-        let value = HeaderValue::from_str(&session_str)?;
-        let key = HeaderValue::from_str(&self.secret_key)?;
-        client
-            .post(url.as_str())
-            .header("session", value)
-            .header("secret-key", key)
-            .json(session)
-            .send()
-            .await?
-            .error_for_status()?;
+        let base_url: Url = format_sstr!("https://{}", config.domain).parse()?;
+        AuthorizedUser::set_session_data(
+            &base_url,
+            self.session.into(),
+            &self.secret_key,
+            client,
+            "garmin",
+            session,
+        ).await?;
         Ok(())
     }
 }

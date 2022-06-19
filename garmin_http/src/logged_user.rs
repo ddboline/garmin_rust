@@ -14,8 +14,8 @@ use std::{
     env::var,
     str::FromStr,
 };
-use uuid::Uuid;
 use url::Url;
+use uuid::Uuid;
 
 use garmin_lib::{
     common::{garmin_config::GarminConfig, pgpool::PgPool},
@@ -74,8 +74,9 @@ impl LoggedUser {
             self.session.into(),
             &self.secret_key,
             client,
-            "garmin"
-        ).await?;
+            "garmin",
+        )
+        .await?;
 
         debug!("Got session {:?}", session);
         match session {
@@ -102,7 +103,8 @@ impl LoggedUser {
             client,
             "garmin",
             session,
-        ).await?;
+        )
+        .await?;
         Ok(())
     }
 }

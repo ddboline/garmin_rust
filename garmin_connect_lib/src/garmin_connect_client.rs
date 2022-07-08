@@ -6,7 +6,10 @@ use log::debug;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
-use std::{path::PathBuf, process::Stdio};
+use std::{
+    path::{Path, PathBuf},
+    process::Stdio,
+};
 use time::{Date, OffsetDateTime};
 use time_tz::{timezones::db::UTC, OffsetDateTimeExt};
 use tokio::{
@@ -63,6 +66,13 @@ impl GarminConnectClient {
             return Err(format_err!(
                 "CHROME NOT FOUND {:?}",
                 self.config.chrome_path
+            ));
+        }
+        let chrome_version = check_version(&self.config.chrome_path, "Google Chrome ").await?;
+        let driver_version = check_version(&self.config.webdriver_path, "ChromeDriver ").await?;
+        if chrome_version != driver_version {
+            return Err(format_err!(
+                "Chrome version {chrome_version} does not match driver version {driver_version}"
             ));
         }
         if self.trigger_auth {
@@ -383,6 +393,29 @@ pub struct GarminConnectUserDailySummary {
     pub calendar_date: Date,
 }
 
+async fn check_version(cmd: &Path, prefix: &str) -> Result<u64, Error> {
+    Command::new(cmd)
+        .args(&["--version"])
+        .kill_on_drop(true)
+        .output()
+        .await
+        .map_err(Into::into)
+        .and_then(|p| {
+            if p.status.success() {
+                if let Some(version) = String::from_utf8_lossy(&p.stdout)
+                    .split(prefix)
+                    .skip(1)
+                    .next()
+                {
+                    if let Some(Ok(major)) = version.split('.').next().map(|s| s.parse()) {
+                        return Ok(major);
+                    }
+                }
+            }
+            Err(format_err!("Version check failed"))
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use anyhow::Error;
@@ -400,13 +433,23 @@ mod tests {
         utils::date_time_wrapper::DateTimeWrapper,
     };
 
-    use crate::garmin_connect_client::GarminConnectClient;
+    use crate::garmin_connect_client::{check_version, GarminConnectClient};
 
     #[test]
     fn test_extract_display_name() -> Result<(), Error> {
         let resp_text = include_str!("../../tests/data/garmin_connect_display_name.html");
         let display_name = GarminConnectClient::extract_display_name(resp_text)?;
         assert_eq!(display_name.as_str(), "ddboline");
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_check_versions() -> Result<(), Error> {
+        let config = GarminConfig::get_config(None)?;
+        let chrome_version = check_version(&config.chrome_path, "Google Chrome ").await?;
+        let driver_version = check_version(&config.webdriver_path, "ChromeDriver ").await?;
+        assert_eq!(chrome_version, driver_version);
         Ok(())
     }
 

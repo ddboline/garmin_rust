@@ -163,7 +163,7 @@ impl GarminConnectClient {
             .await?
             .set_by_name("password", &self.config.garmin_connect_password)
             .await?;
-        sleep(std::time::Duration::from_secs(1)).await;
+        sleep(std::time::Duration::from_secs(5)).await;
         client
             .find(Locator::XPath("//*[@name=\"rememberme\"]"))
             .await?
@@ -174,6 +174,7 @@ impl GarminConnectClient {
             .await?
             .click()
             .await?;
+        sleep(std::time::Duration::from_secs(5)).await;
 
         let modern_url = self
             .config
@@ -185,6 +186,7 @@ impl GarminConnectClient {
 
         client
             .wait()
+            .at_most(std::time::Duration::from_secs(10))
             .for_element(Locator::XPath("//*[@class=\"main-header\"]"))
             .await?;
 

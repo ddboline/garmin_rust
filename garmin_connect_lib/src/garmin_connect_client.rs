@@ -404,12 +404,8 @@ async fn check_version(cmd: &Path, prefix: &str) -> Result<u64, Error> {
         .map_err(Into::into)
         .and_then(|p| {
             if p.status.success() {
-                if let Some(version) = String::from_utf8_lossy(&p.stdout)
-                    .split(prefix)
-                    .skip(1)
-                    .next()
-                {
-                    if let Some(Ok(major)) = version.split('.').next().map(|s| s.parse()) {
+                if let Some(version) = String::from_utf8_lossy(&p.stdout).split(prefix).nth(1) {
+                    if let Some(Ok(major)) = version.split('.').next().map(str::parse) {
                         return Ok(major);
                     }
                 }

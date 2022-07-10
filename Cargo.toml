@@ -78,8 +78,3 @@ doc = false
 name = "import-garmin-connect-data"
 path = "src/import_garmin_connect_data.rs"
 doc = false
-
-[[bin]]
-name = "garmin-connect-batch"
-path = "src/garmin_connect_batch.rs"
-doc = false

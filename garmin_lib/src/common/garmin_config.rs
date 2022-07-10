@@ -72,9 +72,6 @@ pub struct GarminConfigInner {
     pub garmin_connect_sso_endpoint: Option<UrlWrapper>,
     #[serde(default = "default_connect_api_endpoint")]
     pub garmin_connect_api_endpoint: Option<UrlWrapper>,
-    pub remote_url: Option<UrlWrapper>,
-    pub remote_email: Option<StackString>,
-    pub remote_password: Option<StackString>,
     #[serde(default = "default_webdriver_path")]
     pub webdriver_path: PathBuf,
     #[serde(default = "default_webdriver_port")]

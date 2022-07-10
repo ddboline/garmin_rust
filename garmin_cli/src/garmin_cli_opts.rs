@@ -202,8 +202,6 @@ impl GarminCliOpts {
                     .join("\n");
                 cli.stdout.send(filenames);
 
-                cli.stdout.close().await?;
-
                 if all {
                     FitbitHeartRate::get_all_summary_statistics(&client.config, &pool).await?;
                 }

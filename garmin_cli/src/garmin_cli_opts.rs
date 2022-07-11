@@ -1,6 +1,7 @@
 use anyhow::{format_err, Error};
 use futures::future::try_join_all;
 use itertools::Itertools;
+use log::info;
 use refinery::embed_migrations;
 use stack_string::{format_sstr, StackString};
 use std::path::PathBuf;
@@ -431,13 +432,17 @@ impl GarminCliOpts {
         if let Some(max_datetime) = get_maximum_begin_datetime(&cli.pool).await? {
             let mut session = GarminConnectClient::new(cli.config.clone());
             session.init().await?;
+            info!("get activities");
             let activities = session.get_activities(Some(max_datetime)).await?;
+            info!("got activities");
             let start_date = start_date
                 .unwrap_or_else(|| (OffsetDateTime::now_utc() - Duration::days(3)).date());
             let end_date = end_date.unwrap_or_else(|| OffsetDateTime::now_utc().date());
             let mut date = start_date;
             while date <= end_date {
+                info!("get heartrate {date}");
                 let hr_values = session.get_heartrate(date).await?;
+                info!("got heartrate {date}");
                 let hr_values = FitbitHeartRate::from_garmin_connect_hr(&hr_values);
                 let config = cli.config.clone();
                 spawn_blocking(move || FitbitHeartRate::merge_slice_to_avro(&config, &hr_values))

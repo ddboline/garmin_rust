@@ -2,13 +2,14 @@ use anyhow::{format_err, Error};
 use bytes::Bytes;
 use fantoccini::{Client, ClientBuilder, Locator};
 use http::Method;
-use log::debug;
+use log::{debug, info};
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
 use std::{
     path::{Path, PathBuf},
     process::Stdio,
+    time::Duration,
 };
 use time::{Date, OffsetDateTime};
 use time_tz::{timezones::db::UTC, OffsetDateTimeExt};
@@ -83,7 +84,7 @@ impl GarminConnectClient {
                 .stderr(Stdio::piped())
                 .spawn()?;
             self.webdriver.replace(webdriver);
-            sleep(std::time::Duration::from_secs(5)).await;
+            sleep(Duration::from_secs(5)).await;
 
             let mut caps = serde_json::map::Map::new();
             let opts = serde_json::json!({
@@ -123,7 +124,17 @@ impl GarminConnectClient {
     }
 
     async fn raw_get(client: &mut Client, url: &Url) -> Result<Bytes, Error> {
-        let raw = client.raw_client_for(Method::GET, url.as_str()).await?;
+        let mut retry_count = 0;
+        let raw = loop {
+            if let Ok(raw) = client.raw_client_for(Method::GET, url.as_str()).await {
+                break raw;
+            } else if retry_count < 5 {
+                sleep(Duration::from_secs(5)).await;
+                retry_count += 1;
+            } else {
+                return Err(format_err!("Retry failed"));
+            }
+        };
         hyper::body::to_bytes(raw.into_body())
             .await
             .map_err(Into::into)
@@ -136,7 +147,7 @@ impl GarminConnectClient {
             .client
             .as_mut()
             .ok_or_else(|| format_err!("No client"))?;
-
+        info!("begin authorize");
         client
             .goto(
                 self.config
@@ -163,33 +174,35 @@ impl GarminConnectClient {
             .await?
             .set_by_name("password", &self.config.garmin_connect_password)
             .await?;
-        sleep(std::time::Duration::from_secs(5)).await;
+        info!("begin login");
+        sleep(Duration::from_secs(5)).await;
         client
             .find(Locator::XPath("//*[@name=\"rememberme\"]"))
             .await?
             .click()
             .await?;
+        info!("click login");
         client
             .find(Locator::Id("login-btn-signin"))
             .await?
             .click()
             .await?;
-        sleep(std::time::Duration::from_secs(5)).await;
-
+        sleep(Duration::from_secs(5)).await;
+        info!("after click");
         let modern_url = self
             .config
             .garmin_connect_api_endpoint
             .as_ref()
             .ok_or_else(|| format_err!("Bad URL"))?;
-
+        info!("goto modern");
         client.goto(modern_url.as_str()).await?;
 
         client
             .wait()
-            .at_most(std::time::Duration::from_secs(10))
+            .at_most(Duration::from_secs(30))
             .for_element(Locator::XPath("//*[@class=\"main-header\"]"))
             .await?;
-
+        info!("raw get");
         let js = Self::raw_get(client, modern_url).await?;
         let text = std::str::from_utf8(&js)?;
         self.last_used = OffsetDateTime::now_utc();
@@ -322,7 +335,9 @@ impl GarminConnectClient {
             url.query_pairs_mut()
                 .append_pair("startDate", &datetime_str);
         }
+        info!("raw get activities");
         let js = Self::raw_get(client, &url).await?;
+        info!("raw got activities");
         self.last_used = OffsetDateTime::now_utc();
         serde_json::from_slice(&js).map_err(Into::into)
     }

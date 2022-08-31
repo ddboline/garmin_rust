@@ -48,7 +48,7 @@ impl FromStr for DateType {
     }
 }
 
-#[derive(StructOpt, PartialEq)]
+#[derive(StructOpt, PartialEq, Eq)]
 pub enum GarminCliOpts {
     #[structopt(alias = "boot")]
     Bootstrap,

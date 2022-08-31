@@ -96,8 +96,8 @@ impl RaceResultAnalysis {
     pub fn params(&self, param_type: ParamType) -> Array1<f64> {
         match param_type {
             ParamType::Nom => self.parameters.clone(),
-            ParamType::Pos => (self.parameters.clone() + &self.errors),
-            ParamType::Neg => (self.parameters.clone() - &self.errors),
+            ParamType::Pos => self.parameters.clone() + &self.errors,
+            ParamType::Neg => self.parameters.clone() - &self.errors,
         }
     }
 

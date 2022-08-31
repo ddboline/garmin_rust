@@ -217,7 +217,7 @@ impl Deref for GarminConfig {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Into, PartialEq, Deref)]
+#[derive(Serialize, Deserialize, Clone, Debug, Into, PartialEq, Deref, Eq)]
 #[serde(into = "String", try_from = "String")]
 pub struct UrlWrapper(Url);
 

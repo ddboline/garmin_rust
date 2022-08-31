@@ -381,7 +381,7 @@ impl RaceResults {
             .split('\n')
             .filter_map(|line| {
                 let entries: SmallVec<[&str; 2]> = line.split_whitespace().take(2).collect();
-                let distance: f64 = match entries.get(0).and_then(|e| e.parse().ok()) {
+                let distance: f64 = match entries.first().and_then(|e| e.parse().ok()) {
                     Some(d) => d,
                     None => return None,
                 };
@@ -408,7 +408,7 @@ impl RaceResults {
 fn parse_time_string(s: &str) -> Option<f64> {
     let times: SmallVec<[&str; 3]> = s.split(':').rev().take(3).collect();
 
-    let seconds: f64 = match times.get(0).and_then(|t| t.parse().ok()) {
+    let seconds: f64 = match times.first().and_then(|t| t.parse().ok()) {
         Some(t) => t,
         None => return None,
     };

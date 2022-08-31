@@ -146,7 +146,7 @@ impl StravaTimeZone {
     pub fn from_strava_str(s: &str) -> Result<Self, Error> {
         let mut offset = None;
         let tz_strs: SmallVec<[&str; 2]> = s.split_whitespace().take(2).collect();
-        if let Some(tz) = tz_strs.get(0) {
+        if let Some(tz) = tz_strs.first() {
             if tz.get(1..=3) != Some("GMT") {
                 return Err(format_err!("Time string isn't GMT: {tz}"));
             }

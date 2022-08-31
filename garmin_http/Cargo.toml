@@ -36,12 +36,13 @@ cookie = {version="0.16.0-rc.1", features=["percent-encode"]}
 base64 = "0.13"
 url = "2.2"
 indexmap = "1.6"
-serde_yaml = "0.8"
+serde_yaml = "0.9"
 derive_more = "0.99"
 bytes = "1.0"
 postgres-types = "0.2"
 uuid = "1.0"
+maplit = "1.0"
 rweb-helper = { git = "https://github.com/ddboline/rweb_helper.git", tag="0.4.13" }
-authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.8.9"}
+authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.9.1"}
 stack-string = { version="0.7", features=["postgres_types", "rweb-openapi"] }
 reqwest = {version="0.11", features=["cookies", "json", "rustls-tls", "stream"], default_features=false}

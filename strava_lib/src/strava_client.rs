@@ -109,7 +109,7 @@ impl StravaClient {
                 break;
             }
             let items: SmallVec<[&str; 2]> = line.split('=').take(2).collect();
-            if let Some(key) = items.get(0) {
+            if let Some(key) = items.first() {
                 if let Some(val) = items.get(1) {
                     match key.trim() {
                         "client_id" => client.client_id = val.trim().into(),

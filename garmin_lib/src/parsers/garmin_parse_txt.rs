@@ -211,7 +211,7 @@ impl GarminParseTxt {
             .split_whitespace()
             .filter_map(|x| {
                 let entries: SmallVec<[&str; 2]> = x.split('=').take(2).collect();
-                if let Some(key) = entries.get(0) {
+                if let Some(key) = entries.first() {
                     if let Some(val) = entries.get(1) {
                         let key: StackString = (*key).into();
                         let val: StackString = val.trim().into();

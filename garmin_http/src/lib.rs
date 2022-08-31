@@ -57,7 +57,7 @@ impl Entity for StravaTimeZoneWrapper {
     }
 }
 
-#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, Into, From)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, Into, From, Eq)]
 pub struct FitbitHeartRateWrapper(FitbitHeartRate);
 
 derive_rweb_schema!(FitbitHeartRateWrapper, _FitbitHeartRateWrapper);
@@ -280,7 +280,7 @@ struct _FitbitStatisticsSummaryWrapper {
     number_of_entries: i32,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize, Into, From)]
+#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize, Into, From, Eq)]
 pub struct RaceTypeWrapper(RaceType);
 
 derive_rweb_schema!(RaceTypeWrapper, _RaceTypeWrapper);
@@ -322,7 +322,7 @@ struct _RaceResultsWrapper {
     race_summary_ids: Vec<Option<i32>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Into, From)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Into, From, Eq)]
 pub struct FitbitActivityTypesWrapper(HashMap<StackString, StackString>);
 
 derive_rweb_schema!(FitbitActivityTypesWrapper, _FitbitActivityTypesWrapper);

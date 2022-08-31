@@ -19,7 +19,7 @@ lazy_static! {
     static ref Y_REG: Regex = Regex::new(r"(?P<year>\d{4})").expect("Bad regex");
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum GarminConstraint {
     Latest,
     IsoWeek { year: i32, week: u8 },

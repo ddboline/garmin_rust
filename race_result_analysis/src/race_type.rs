@@ -9,7 +9,7 @@ use std::{
 };
 use tokio_postgres::types::{FromSql, IsNull, ToSql, Type};
 
-#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize, Eq)]
 #[serde(into = "String", try_from = "String")]
 pub enum RaceType {
     #[serde(rename = "personal")]

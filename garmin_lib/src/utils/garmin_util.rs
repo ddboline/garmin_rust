@@ -10,6 +10,7 @@ use rand::{
 use smallvec::SmallVec;
 use stack_string::{format_sstr, StackString};
 use std::{
+    collections::HashSet,
     convert::TryInto,
     fs::{remove_file, File},
     future::Future,
@@ -36,7 +37,7 @@ pub const WEEKDAY_NAMES: [&str; 7] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", 
 /// Return error if parsing time string fails
 pub fn convert_time_string(time_str: &str) -> Result<f64, Error> {
     let entries: SmallVec<[&str; 3]> = time_str.split(':').take(3).collect();
-    let (h, m, s): (i32, i32, f64) = match entries.get(0) {
+    let (h, m, s): (i32, i32, f64) = match entries.first() {
         Some(h) => match entries.get(1) {
             Some(m) => match entries.get(2) {
                 Some(s) => (h.parse()?, m.parse()?, s.parse()?),
@@ -294,7 +295,7 @@ pub fn get_degrees_from_semicircles(s: f64) -> f64 {
 
 /// # Errors
 /// Return error if db query fails
-pub async fn get_authorized_users(pool: &PgPool) -> Result<Vec<StackString>, Error> {
+pub async fn get_authorized_users(pool: &PgPool) -> Result<HashSet<StackString>, Error> {
     let query = "SELECT email FROM authorized_users";
     pool.get()
         .await?

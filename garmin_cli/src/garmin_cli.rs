@@ -44,7 +44,7 @@ use garmin_reports::{
     garmin_summary_report_txt::create_report_query,
 };
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq)]
 pub enum GarminCliOptions {
     Sync(bool),
     All,

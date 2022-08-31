@@ -35,7 +35,7 @@ use garmin_lib::{
 
 use crate::fitbit_statistics_summary::FitbitStatisticsSummary;
 
-#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, Eq)]
 pub struct FitbitHeartRate {
     pub datetime: DateTimeWrapper,
     pub value: i32,

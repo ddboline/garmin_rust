@@ -203,7 +203,7 @@ impl FitbitClient {
 
     /// # Errors
     /// Returns error if api call fails
-    pub async fn get_fitbit_auth_url(&self) -> Result<Url, Error> {
+    pub fn get_fitbit_auth_url(&self) -> Result<Url, Error> {
         let redirect_uri = format_sstr!("https://{}/garmin/fitbit/callback", self.config.domain);
         let scopes = &[
             "activity",
@@ -1130,7 +1130,7 @@ mod tests {
     async fn test_fitbit_client_from_file() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
         let client = FitbitClient::from_file(config).await?;
-        let url = client.get_fitbit_auth_url().await?;
+        let url = client.get_fitbit_auth_url()?;
         debug!("{:?} {}", client, url);
         assert!(url.as_str().len() > 0);
         Ok(())

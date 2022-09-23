@@ -368,7 +368,6 @@ pub async fn strava_auth(
         .map_err(Into::<Error>::into)?;
     let body: StackString = client
         .get_authorization_url_api()
-        .await
         .map_err(Into::<Error>::into)
         .map(|u| u.as_str().into())?;
 
@@ -567,10 +566,7 @@ pub async fn fitbit_auth(
     let client = FitbitClient::from_file(state.config.clone())
         .await
         .map_err(Into::<Error>::into)?;
-    let url = client
-        .get_fitbit_auth_url()
-        .await
-        .map_err(Into::<Error>::into)?;
+    let url = client.get_fitbit_auth_url().map_err(Into::<Error>::into)?;
     let body = url.as_str().into();
     Ok(HtmlBase::new(body).into())
 }

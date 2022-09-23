@@ -6,14 +6,14 @@
 #![allow(clippy::cast_possible_wrap)]
 #![type_length_limit = "1059389"]
 
+use clap::Parser;
 use stack_string::StackString;
-use structopt::StructOpt;
 
 use fitbit_lib::fitbit_heartrate::import_fitbit_json_files;
 
-#[derive(StructOpt, Debug, Clone)]
+#[derive(Parser, Debug, Clone)]
 pub struct JsonImportOpts {
-    #[structopt(short = "d", long = "directory")]
+    #[clap(short = 'd', long = "directory")]
     pub directory: StackString,
 }
 

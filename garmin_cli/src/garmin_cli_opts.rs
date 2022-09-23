@@ -1,11 +1,11 @@
 use anyhow::{format_err, Error};
+use clap::Parser;
 use futures::future::try_join_all;
 use itertools::Itertools;
 use log::info;
 use refinery::embed_migrations;
 use stack_string::{format_sstr, StackString};
 use std::path::PathBuf;
-use structopt::StructOpt;
 use time::{macros::format_description, Date, Duration, OffsetDateTime};
 use time_tz::OffsetDateTimeExt;
 use tokio::{
@@ -48,56 +48,56 @@ impl FromStr for DateType {
     }
 }
 
-#[derive(StructOpt, PartialEq, Eq)]
+#[derive(Parser, PartialEq, Eq)]
 pub enum GarminCliOpts {
-    #[structopt(alias = "boot")]
+    #[clap(alias = "boot")]
     Bootstrap,
     Proc {
-        #[structopt(short, long)]
+        #[clap(short, long)]
         filename: Vec<PathBuf>,
     },
-    #[structopt(alias = "rpt")]
+    #[clap(alias = "rpt")]
     Report {
-        #[structopt(short, long)]
+        #[clap(short, long)]
         patterns: Vec<StackString>,
     },
-    #[structopt(alias = "cnt")]
+    #[clap(alias = "cnt")]
     Connect {
-        #[structopt(short, long)]
+        #[clap(short, long)]
         start_date: Option<DateType>,
-        #[structopt(short, long)]
+        #[clap(short, long)]
         end_date: Option<DateType>,
     },
     Sync {
-        #[structopt(short, long)]
+        #[clap(short, long)]
         md5sum: bool,
     },
-    #[structopt(alias = "fit")]
+    #[clap(alias = "fit")]
     Fitbit {
-        #[structopt(short, long)]
+        #[clap(short, long)]
         all: bool,
-        #[structopt(short, long)]
+        #[clap(short, long)]
         start_date: Option<DateType>,
-        #[structopt(short, long)]
+        #[clap(short, long)]
         end_date: Option<DateType>,
     },
     Strava,
     Import {
-        #[structopt(short, long)]
+        #[clap(short, long)]
         /// table: allowed values: ['scale_measurements', 'strava_activities',
         /// 'fitbit_activities', 'garmin_connect_activities',
         /// 'race_results', 'heartrate_statistics_summary']
         table: StackString,
-        #[structopt(short, long)]
+        #[clap(short, long)]
         filepath: Option<PathBuf>,
     },
     Export {
-        #[structopt(short, long)]
+        #[clap(short, long)]
         /// table: allowed values: ['scale_measurements', 'strava_activities',
         /// 'fitbit_activities', 'garmin_connect_activities',
         /// 'race_results', 'heartrate_statistics_summary']
         table: StackString,
-        #[structopt(short, long)]
+        #[clap(short, long)]
         filepath: Option<PathBuf>,
     },
     SyncAll,

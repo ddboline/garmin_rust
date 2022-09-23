@@ -281,7 +281,7 @@ impl StravaClient {
 
     /// # Errors
     /// Return error if api calls fail
-    pub async fn get_authorization_url_api(&self) -> Result<Url, Error> {
+    pub fn get_authorization_url_api(&self) -> Result<Url, Error> {
         let redirect_uri = format_sstr!("https://{}/garmin/strava/callback", self.config.domain);
         let state = Self::get_random_string();
         let url = self

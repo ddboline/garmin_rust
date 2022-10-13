@@ -342,6 +342,7 @@ impl ScaleMeasurementPlotRequest {
     pub async fn get_plots(
         &self,
         pool: &PgPool,
+        config: &GarminConfig,
     ) -> Result<HashMap<StackString, StackString>, Error> {
         let measurements = ScaleMeasurement::read_from_db(
             pool,
@@ -349,7 +350,7 @@ impl ScaleMeasurementPlotRequest {
             self.request.end_date.map(Into::into),
         )
         .await?;
-        ScaleMeasurement::get_scale_measurement_plots(&measurements, self.request.offset)
+        ScaleMeasurement::get_scale_measurement_plots(&measurements, self.request.offset, config)
             .map_err(Into::into)
     }
 }

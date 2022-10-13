@@ -16,7 +16,7 @@ use time::{macros::format_description, Date, OffsetDateTime};
 use time_tz::OffsetDateTimeExt;
 
 use garmin_lib::{
-    common::{garmin_templates::HBR, pgpool::PgPool},
+    common::{garmin_config::GarminConfig, garmin_templates::HBR, pgpool::PgPool},
     utils::date_time_wrapper::{iso8601::convert_datetime_to_str, DateTimeWrapper},
 };
 
@@ -49,6 +49,15 @@ impl fmt::Display for ScaleMeasurement {
 }
 
 impl ScaleMeasurement {
+    fn get_bmi(&self, config: &GarminConfig) -> f64 {
+        // Weight in Kg
+        let weight = self.mass * (1.0 / 2.204623);
+        // Height in cm
+        let height = config.height * 0.0254;
+        println!("{weight} {height}");
+        return weight / (height * height);
+    }
+
     /// # Errors
     /// Returns error parsing msg fails
     pub fn from_telegram_text(msg: &str) -> Result<Self, Error> {
@@ -234,6 +243,7 @@ impl ScaleMeasurement {
     pub fn get_scale_measurement_plots(
         measurements: &[Self],
         offset: Option<usize>,
+        config: &GarminConfig,
     ) -> Result<HashMap<StackString, StackString>, Error> {
         let offset = offset.unwrap_or(0);
         if measurements.is_empty() {
@@ -358,12 +368,13 @@ impl ScaleMeasurement {
                 format_sstr!(
                     r#"
                     <td>{date}</td><td>{m:3.1}</td><td>{f:2.1}</td><td>{w:2.1}</td>
-                    <td>{ms:2.1}</td><td>{b:2.1}</td>"#,
+                    <td>{ms:2.1}</td><td>{b:2.1}</td><td>{bmi:2.1}</td>"#,
                     m = meas.mass,
                     f = meas.fat_pct,
                     w = meas.water_pct,
                     ms = meas.muscle_pct,
                     b = meas.bone_pct,
+                    bmi = meas.get_bmi(config),
                 )
             })
             .collect();
@@ -375,6 +386,7 @@ impl ScaleMeasurement {
             <th><a href="https://www.fitbit.com/weight" target="_blank">Weight</a></th>
             <th>Fat %</th><th>Water %</th>
             <th>Muscle %</th><th>Bone %</th>
+            <th>BMI</th>
             </thead>
             <tbody>
             <tr>{}</tr>

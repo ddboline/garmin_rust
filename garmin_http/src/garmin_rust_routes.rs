@@ -838,7 +838,7 @@ async fn fitbit_plots_impl(
 ) -> HttpResult<StackString> {
     let is_demo = query.is_demo;
     let buttons = get_buttons(is_demo).join("\n");
-    let mut params = query.get_plots(&state.db).await?;
+    let mut params = query.get_plots(&state.db, &state.config).await?;
     params.insert(
         "HISTORYBUTTONS".into(),
         generate_history_buttons(&session.history),

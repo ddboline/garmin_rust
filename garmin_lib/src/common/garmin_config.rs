@@ -85,8 +85,13 @@ pub struct GarminConfigInner {
     #[serde(default = "default_download_directory")]
     pub download_directory: PathBuf,
     pub default_time_zone: Option<StravaTz>,
+    #[serde(default = "default_height")]
+    pub height: f64,
 }
 
+fn default_height() -> f64 {
+    return 5.0 * 12.0 + 11.0;
+}
 fn default_home_dir() -> PathBuf {
     dirs::home_dir().expect("No home directory")
 }

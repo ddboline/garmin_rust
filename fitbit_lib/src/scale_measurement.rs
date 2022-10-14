@@ -385,7 +385,7 @@ impl ScaleMeasurement {
             <th><a href="https://www.fitbit.com/weight" target="_blank">Weight</a></th>
             <th>Fat %</th><th>Water %</th>
             <th>Muscle %</th><th>Bone %</th>
-            <th>BMI</th>
+            <th>BMI kg/m^2</th>
             </thead>
             <tbody>
             <tr>{}</tr>

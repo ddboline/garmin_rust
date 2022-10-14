@@ -19,6 +19,6 @@ pub struct JsonImportOpts {
 
 fn main() {
     env_logger::init();
-    let opts = JsonImportOpts::from_args();
+    let opts = JsonImportOpts::parse();
     import_fitbit_json_files(opts.directory.as_str()).unwrap();
 }

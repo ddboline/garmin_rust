@@ -36,7 +36,7 @@ use crate::garmin_cli::{GarminCli, GarminCliOptions};
 
 embed_migrations!("../migrations");
 
-#[derive(Into, From, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Into, From, Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct DateType(Date);
 
 impl FromStr for DateType {
@@ -110,7 +110,7 @@ impl GarminCliOpts {
     /// Return error if config fails, or `process_opts` fails
     pub async fn process_args() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
-        let opts = Self::from_args();
+        let opts = Self::parse();
 
         if opts == Self::SyncAll {
             Self::Connect {

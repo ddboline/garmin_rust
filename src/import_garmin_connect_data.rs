@@ -28,7 +28,7 @@ enum JsonImportOpts {
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    let opts = JsonImportOpts::from_args();
+    let opts = JsonImportOpts::parse();
 
     match opts {
         JsonImportOpts::Activities { filename } => {

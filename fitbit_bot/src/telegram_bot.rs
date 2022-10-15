@@ -126,7 +126,10 @@ impl TelegramBot {
             FAILURE_COUNT.check()?;
             if &data.to_lowercase() == "check" {
                 if let Some(meas) = LAST_WEIGHT.load() {
-                    Ok(format_sstr!("latest measurement {meas}"))
+                    Ok(format_sstr!(
+                        "latest measurement {meas}, bmi {:2.1}",
+                        meas.get_bmi(&self.config)
+                    ))
                 } else {
                     Ok("No measurements".into())
                 }
@@ -134,7 +137,7 @@ impl TelegramBot {
                 match ScaleMeasurement::from_telegram_text(data) {
                     Ok(meas) => match self.process_measurement(meas).await {
                         Ok(meas) => Ok(format_sstr!(
-                            "sent to the db {meas}, bmi {}",
+                            "sent to the db {meas}, bmi {:2.1}",
                             meas.get_bmi(&self.config)
                         )),
                         Err(e) => Ok(format_sstr!("Send Error {e}")),

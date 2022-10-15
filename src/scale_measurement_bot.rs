@@ -16,7 +16,7 @@ async fn main() -> Result<(), Error> {
     let config = GarminConfig::get_config(None)?;
     let pool = PgPool::new(config.pgurl.as_str());
     if let Some(telegram_bot_token) = config.telegram_bot_token.as_ref() {
-        TelegramBot::new(telegram_bot_token, &pool)
+        TelegramBot::new(telegram_bot_token, &pool, &config)
             .run_bot()
             .await?;
     }

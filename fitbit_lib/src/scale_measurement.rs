@@ -49,7 +49,7 @@ impl fmt::Display for ScaleMeasurement {
 }
 
 impl ScaleMeasurement {
-    fn get_bmi(&self, config: &GarminConfig) -> f64 {
+    pub fn get_bmi(&self, config: &GarminConfig) -> f64 {
         // Mass in Kg
         let mass = self.mass * (1.0 / 2.204_623);
         // Height in cm

@@ -15,7 +15,10 @@ use tokio::{
 };
 
 use fitbit_lib::scale_measurement::ScaleMeasurement;
-use garmin_lib::{common::pgpool::PgPool, utils::garmin_util::get_list_of_telegram_userids};
+use garmin_lib::{
+    common::{garmin_config::GarminConfig, pgpool::PgPool},
+    utils::garmin_util::get_list_of_telegram_userids,
+};
 
 use super::failure_count::FailureCount;
 
@@ -32,13 +35,19 @@ lazy_static! {
 pub struct TelegramBot {
     telegram_bot_token: StackString,
     pool: PgPool,
+    config: GarminConfig,
 }
 
 impl TelegramBot {
-    pub fn new(telegram_bot_token: impl Into<StackString>, pool: &PgPool) -> Self {
+    pub fn new(
+        telegram_bot_token: impl Into<StackString>,
+        pool: &PgPool,
+        config: &GarminConfig,
+    ) -> Self {
         Self {
             telegram_bot_token: telegram_bot_token.into(),
             pool: pool.clone(),
+            config: config.clone(),
         }
     }
 
@@ -124,7 +133,10 @@ impl TelegramBot {
             } else {
                 match ScaleMeasurement::from_telegram_text(data) {
                     Ok(meas) => match self.process_measurement(meas).await {
-                        Ok(meas) => Ok(format_sstr!("sent to the db {meas}")),
+                        Ok(meas) => Ok(format_sstr!(
+                            "sent to the db {meas}, bmi {}",
+                            meas.get_bmi(&self.config)
+                        )),
                         Err(e) => Ok(format_sstr!("Send Error {e}")),
                     },
                     Err(e) => Ok(format_sstr!("Parse error {e}")),
@@ -227,7 +239,7 @@ mod tests {
         let config = GarminConfig::get_config(None)?;
         let pool = PgPool::new(&config.pgurl);
 
-        let bot = TelegramBot::new("8675309", &pool);
+        let bot = TelegramBot::new("8675309", &pool, &config);
 
         let result = bot.process_message_text(&message, "User", user).await?;
 
@@ -291,7 +303,7 @@ mod tests {
 
         let config = GarminConfig::get_config(None)?;
         let pool = PgPool::new(&config.pgurl);
-        let bot = TelegramBot::new("8675309", &pool);
+        let bot = TelegramBot::new("8675309", &pool, &config);
 
         exp.insert_into_db(&pool).await?;
         bot.initialize_last_weight().await?;
@@ -320,7 +332,7 @@ mod tests {
 
         let config = GarminConfig::get_config(None)?;
         let pool = PgPool::new(&config.pgurl);
-        let bot = TelegramBot::new("8675309", &pool);
+        let bot = TelegramBot::new("8675309", &pool, &config);
 
         let email = format_sstr!("user{}@localhost", get_random_string(32));
         let userid: UserId = 8675309.into();

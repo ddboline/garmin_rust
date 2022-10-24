@@ -274,7 +274,7 @@ mod tests {
 
         let exp = format_sstr!(
             "ScaleMeasurement(\nid: {id}\ndatetime: {}\nmass: 188 lbs\nfat: 20.6%\nwater: \
-             59.6%\nmuscle: 40.4%\nbone: 4.2%\n), bmi 26.2",
+             59.6%\nmuscle: 40.4%\nbone: 4.2%\n)",
             convert_datetime_to_str(obs.datetime.into())
         );
 

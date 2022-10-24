@@ -282,7 +282,7 @@ mod tests {
 
         let result = bot.process_message_text("check", "User", user).await?;
 
-        assert_eq!(result, format_sstr!("latest measurement {obs}"));
+        assert_eq!(result, format_sstr!("latest measurement {obs}, bmi {}", obs.get_bmi(&config)));
 
         let result = bot
             .process_message_text("1880=206=596=404=42", "User", user)

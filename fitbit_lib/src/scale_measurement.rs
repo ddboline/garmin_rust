@@ -475,10 +475,12 @@ mod tests {
         assert_eq!(obs, exp);
         let msg = "1880,206,596,404,42";
         let obs = ScaleMeasurement::from_telegram_text(msg)?;
+        exp.id = obs.id;
         exp.datetime = obs.datetime;
         assert_eq!(obs, exp);
         let msg = "1880:206:596:404:42";
         let obs = ScaleMeasurement::from_telegram_text(msg)?;
+        exp.id = obs.id;
         exp.datetime = obs.datetime;
         assert_eq!(obs, exp);
         Ok(())

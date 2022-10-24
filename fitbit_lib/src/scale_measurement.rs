@@ -460,6 +460,7 @@ mod tests {
 
     #[test]
     fn test_from_telegram_text() -> Result<(), Error> {
+        let msg = "1880=206=596=404=42";
         let obs = ScaleMeasurement::from_telegram_text(msg)?;
         let mut exp = ScaleMeasurement {
             id: obs.id,
@@ -470,7 +471,6 @@ mod tests {
             muscle_pct: 40.4,
             bone_pct: 4.2,
         };
-        let msg = "1880=206=596=404=42";
         exp.datetime = obs.datetime;
         assert_eq!(obs, exp);
         let msg = "1880,206,596,404,42";

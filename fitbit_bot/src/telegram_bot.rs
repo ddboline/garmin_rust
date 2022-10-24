@@ -268,11 +268,12 @@ mod tests {
 
         let msg = "1880=206=596=404=42";
         let obs = ScaleMeasurement::from_telegram_text(msg)?;
+        let id = obs.id;
 
         LAST_WEIGHT.store(Some(obs));
 
         let exp = format_sstr!(
-            "ScaleMeasurement(\nid: -1\ndatetime: {}\nmass: 188 lbs\nfat: 20.6%\nwater: \
+            "ScaleMeasurement(\nid: {id}\ndatetime: {}\nmass: 188 lbs\nfat: 20.6%\nwater: \
              59.6%\nmuscle: 40.4%\nbone: 4.2%\n)",
             convert_datetime_to_str(obs.datetime.into())
         );

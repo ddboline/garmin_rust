@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
 use std::collections::HashMap;
 use time::Date;
+use uuid::Uuid;
 
 use crate::{common::pgpool::PgPool, utils::date_time_wrapper::DateTimeWrapper};
 
@@ -77,7 +78,7 @@ impl FitbitActivity {
     /// Return error if db query fails
     pub async fn get_from_summary_id(
         pool: &PgPool,
-        summary_id: i32,
+        summary_id: Uuid,
     ) -> Result<Option<Self>, Error> {
         let query = query!(
             "SELECT * FROM fitbit_activities WHERE summary_id = $summary_id",

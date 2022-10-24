@@ -10,6 +10,7 @@ use std::{
 };
 use time::{macros::format_description, Date};
 use time_tz::OffsetDateTimeExt;
+use uuid::Uuid;
 
 use garmin_lib::{
     common::{garmin_summary::GarminSummary, pgpool::PgPool},
@@ -23,14 +24,14 @@ use crate::race_type::RaceType;
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromSqlRow, PartialEq)]
 pub struct RaceResults {
-    pub id: i32,
+    pub id: Uuid,
     pub race_type: RaceType,
     pub race_date: Option<Date>,
     pub race_name: Option<StackString>,
     pub race_distance: i32, // distance in meters
     pub race_time: f64,
     pub race_flag: bool,
-    pub race_summary_ids: Vec<Option<i32>>,
+    pub race_summary_ids: Vec<Option<Uuid>>,
 }
 
 impl Display for RaceResults {
@@ -96,7 +97,7 @@ impl RaceResults {
 
     /// # Errors
     /// Return error if db query fails
-    pub async fn get_result_by_id(id: i32, pool: &PgPool) -> Result<Option<Self>, Error> {
+    pub async fn get_result_by_id(id: Uuid, pool: &PgPool) -> Result<Option<Self>, Error> {
         let query = query!(
             "SELECT a.id, a.race_type, a.race_date, a.race_name, a.race_distance, a.race_time,
                     a.race_flag, array_agg(b.summary_id) as race_summary_ids
@@ -134,7 +135,7 @@ impl RaceResults {
     /// # Errors
     /// Return error if db query fails
     pub async fn get_race_by_summary_id(
-        summary_id: i32,
+        summary_id: Uuid,
         pool: &PgPool,
     ) -> Result<Option<Self>, Error> {
         let query = query!(
@@ -177,7 +178,7 @@ impl RaceResults {
 
     /// # Errors
     /// Return error if db query fails
-    pub async fn get_summary_map(pool: &PgPool) -> Result<HashMap<i32, GarminSummary>, Error> {
+    pub async fn get_summary_map(pool: &PgPool) -> Result<HashMap<Uuid, GarminSummary>, Error> {
         let query = "
             SELECT a.*
             FROM garmin_summary a
@@ -197,7 +198,7 @@ impl RaceResults {
 
     /// # Errors
     /// Return error if db query fails
-    pub async fn get_race_id(&self, pool: &PgPool) -> Result<Option<i32>, Error> {
+    pub async fn get_race_id(&self, pool: &PgPool) -> Result<Option<Uuid>, Error> {
         let conn = pool.get().await?;
         let query = match self.race_type {
             RaceType::WorldRecordMen | RaceType::WorldRecordWomen => {
@@ -226,7 +227,7 @@ impl RaceResults {
                 )
             }
         };
-        let id: Option<(i32,)> = query.fetch_opt(&conn).await?;
+        let id: Option<(Uuid,)> = query.fetch_opt(&conn).await?;
         Ok(id.map(|(id,)| id))
     }
 
@@ -301,7 +302,7 @@ impl RaceResults {
     /// # Errors
     /// Return error if db query fails
     pub async fn update_race_summary_ids(&self, pool: &PgPool) -> Result<(), Error> {
-        let summary_ids: SmallVec<[&i32; 2]> = self
+        let summary_ids: SmallVec<[&Uuid; 2]> = self
             .race_summary_ids
             .iter()
             .filter_map(Option::as_ref)
@@ -361,7 +362,7 @@ impl RaceResults {
                     Date::parse(entries[4], format_description!("[year]-[month]-[day]")).ok();
                 let race_name = entries[5..].join(" ");
                 Some(RaceResults {
-                    id: -1,
+                    id: Uuid::new_v4(),
                     race_type: RaceType::Personal,
                     race_date,
                     race_name: Some(race_name.into()),
@@ -391,7 +392,7 @@ impl RaceResults {
                     None => return None,
                 };
                 Some(RaceResults {
-                    id: -1,
+                    id: Uuid::new_v4(),
                     race_type,
                     race_date: None,
                     race_name: None,
@@ -429,7 +430,7 @@ impl From<GarminSummary> for RaceResults {
     fn from(item: GarminSummary) -> Self {
         let local = DateTimeWrapper::local_tz();
         Self {
-            id: -1,
+            id: Uuid::new_v4(),
             race_type: RaceType::Personal,
             race_date: Some(item.begin_datetime.to_timezone(local).date()),
             race_name: None,
@@ -450,6 +451,7 @@ mod tests {
     use stack_string::format_sstr;
     use std::collections::HashMap;
     use time::{macros::date, OffsetDateTime};
+    use uuid::Uuid;
 
     use garmin_lib::common::{
         garmin_config::GarminConfig,
@@ -468,7 +470,7 @@ mod tests {
 
     fn get_test_race_result() -> RaceResults {
         RaceResults {
-            id: 0,
+            id: Uuid::new_v4(),
             race_type: RaceType::Personal,
             race_date: Some(date!(2020 - 01 - 27)),
             race_name: Some("A Test Race".into()),

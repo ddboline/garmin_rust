@@ -217,6 +217,7 @@ mod tests {
     use stack_string::{format_sstr, StackString};
     use std::{collections::HashSet, sync::Arc};
     use telegram_bot::UserId;
+    use uuid::Uuid;
 
     use fitbit_lib::scale_measurement::ScaleMeasurement;
     use garmin_lib::{
@@ -287,7 +288,7 @@ mod tests {
             .await?;
 
         for line in result.split('\n').filter(|x| x.contains("id: ")) {
-            let id: i32 = line.trim().replace("id: ", "").parse()?;
+            let id: Uuid = line.trim().replace("id: ", "").parse()?;
             println!("{}", id);
             let obj = ScaleMeasurement::get_by_id(id, &pool).await?.unwrap();
             obj.delete_from_db(&pool).await?;

@@ -21,6 +21,7 @@ lazy_static = "1.4"
 parking_lot = "0.12"
 itertools = "0.10"
 avro-rs = {version = "0.13", features = ["snappy"]}
+uuid = { version = "1.0", features = ["serde", "v4"] }
 postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.4", features=["deadpool"]}
 anyhow = "1.0"
 thiserror = "1.0"

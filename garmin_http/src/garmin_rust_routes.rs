@@ -17,6 +17,7 @@ use std::{convert::Infallible, string::ToString};
 use tempdir::TempDir;
 use tokio::{fs::File, io::AsyncWriteExt};
 use tokio_stream::StreamExt;
+use rweb_helper::UuidWrapper;
 
 use fitbit_lib::{
     fitbit_client::FitbitClient, fitbit_heartrate::FitbitHeartRate,
@@ -1531,7 +1532,7 @@ pub async fn race_result_plot_demo(
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct RaceResultFlagRequest {
-    pub id: i32,
+    pub id: UuidWrapper,
 }
 
 #[derive(RwebResponse)]
@@ -1546,7 +1547,7 @@ pub async fn race_result_flag(
 ) -> WarpResult<RaceResultFlagResponse> {
     let query = query.into_inner();
 
-    let result = if let Some(mut result) = RaceResults::get_result_by_id(query.id, &state.db)
+    let result = if let Some(mut result) = RaceResults::get_result_by_id(query.id.into(), &state.db)
         .await
         .map_err(Into::<Error>::into)?
     {

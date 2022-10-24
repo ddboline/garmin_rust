@@ -1,5 +1,6 @@
 use anyhow::Error;
 use std::io::{stdout, Write};
+use uuid::Uuid;
 
 use garmin_lib::{
     common::garmin_correction_lap::GarminCorrectionLap,
@@ -10,19 +11,20 @@ use garmin_lib::{
 fn test_garmin_correction_lap_new() {
     let gc = GarminCorrectionLap::new();
 
-    assert_eq!(gc.id, -1);
     assert_eq!(gc.lap_number, -1);
     assert_eq!(gc.sport, None);
     assert_eq!(gc.distance, None);
     assert_eq!(gc.duration, None);
 
+    let new_uuid = Uuid::new_v4();
+
     let gc = GarminCorrectionLap::new()
-        .with_id(5)
+        .with_id(new_uuid)
         .with_lap_number(3)
         .with_sport(SportTypes::Running)
         .with_distance(5.3)
         .with_duration(6.2);
-    assert_eq!(gc.id, 5);
+    assert_eq!(gc.id, new_uuid);
     assert_eq!(gc.lap_number, 3);
     assert_eq!(gc.sport, Some(SportTypes::Running));
     assert_eq!(gc.distance, Some(5.3));
@@ -87,7 +89,7 @@ fn test_corr_map_from_buffer() -> Result<(), Error> {
     assert_eq!(
         first,
         &GarminCorrectionLap {
-            id: -1,
+            id: first.id,
             start_time: convert_str_to_datetime("2011-07-04T08:58:27Z")
                 .unwrap()
                 .into(),
@@ -101,7 +103,7 @@ fn test_corr_map_from_buffer() -> Result<(), Error> {
     assert_eq!(
         second,
         &GarminCorrectionLap {
-            id: -1,
+            id: second.id,
             start_time: convert_str_to_datetime("2013-01-17T16:14:32Z")
                 .unwrap()
                 .into(),
@@ -115,7 +117,7 @@ fn test_corr_map_from_buffer() -> Result<(), Error> {
     assert_eq!(
         third,
         &GarminCorrectionLap {
-            id: -1,
+            id: third.id,
             start_time: convert_str_to_datetime("2013-01-17T16:14:32Z")
                 .unwrap()
                 .into(),
@@ -129,7 +131,7 @@ fn test_corr_map_from_buffer() -> Result<(), Error> {
     assert_eq!(
         fourth,
         &GarminCorrectionLap {
-            id: -1,
+            id: fourth.id,
             start_time: convert_str_to_datetime("2014-08-23T10:17:14Z")
                 .unwrap()
                 .into(),
@@ -155,8 +157,11 @@ fn test_corr_map_from_buffer_invalid() -> Result<(), Error> {
 
 #[test]
 fn test_add_mislabeled_times_to_corr_list() -> Result<(), Error> {
+    let id_0 = Uuid::new_v4();
+    let id_1 = Uuid::new_v4();
     let mut corr_map = GarminCorrectionLap::map_from_vec(vec![
         GarminCorrectionLap::new()
+            .with_id(id_0)
             .with_start_time(
                 convert_str_to_datetime("2010-11-20T19:55:34Z")
                     .unwrap()
@@ -165,6 +170,7 @@ fn test_add_mislabeled_times_to_corr_list() -> Result<(), Error> {
             .with_distance(10.0)
             .with_lap_number(0),
         GarminCorrectionLap::new()
+            .with_id(id_1)
             .with_start_time(
                 convert_str_to_datetime("2010-11-20T19:55:34Z")
                     .unwrap()
@@ -190,7 +196,7 @@ fn test_add_mislabeled_times_to_corr_list() -> Result<(), Error> {
             ))
             .unwrap(),
         &GarminCorrectionLap {
-            id: -1,
+            id: id_0,
             start_time: convert_str_to_datetime("2010-11-20T19:55:34Z")
                 .unwrap()
                 .into(),
@@ -211,7 +217,7 @@ fn test_add_mislabeled_times_to_corr_list() -> Result<(), Error> {
             ))
             .unwrap(),
         &GarminCorrectionLap {
-            id: -1,
+            id: id_1,
             start_time: convert_str_to_datetime("2010-11-20T19:55:34Z")
                 .unwrap()
                 .into(),

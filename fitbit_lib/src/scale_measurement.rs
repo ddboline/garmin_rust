@@ -14,6 +14,7 @@ use std::{
 };
 use time::{macros::format_description, Date, OffsetDateTime};
 use time_tz::OffsetDateTimeExt;
+use uuid::Uuid;
 
 use garmin_lib::{
     common::{garmin_config::GarminConfig, garmin_templates::HBR, pgpool::PgPool},
@@ -22,7 +23,7 @@ use garmin_lib::{
 
 #[derive(Debug, Clone, Serialize, Deserialize, Copy, FromSqlRow, PartialEq)]
 pub struct ScaleMeasurement {
-    pub id: i32,
+    pub id: Uuid,
     pub datetime: DateTimeWrapper,
     pub mass: f64,
     pub fat_pct: f64,
@@ -88,7 +89,7 @@ impl ScaleMeasurement {
         }
 
         Ok(Self {
-            id: -1,
+            id: Uuid::new_v4(),
             datetime,
             mass: values[0],
             fat_pct: values[1],
@@ -100,7 +101,7 @@ impl ScaleMeasurement {
 
     /// # Errors
     /// Returns error if db query fails
-    pub async fn get_by_id(id: i32, pool: &PgPool) -> Result<Option<Self>, Error> {
+    pub async fn get_by_id(id: Uuid, pool: &PgPool) -> Result<Option<Self>, Error> {
         let query = query!("SELECT * FROM scale_measurements WHERE id = $id", id = id);
         let conn = pool.get().await?;
         let result = conn
@@ -450,6 +451,7 @@ mod tests {
     use anyhow::Error;
     use log::debug;
     use time::{macros::datetime, OffsetDateTime};
+    use uuid::Uuid;
 
     use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
 
@@ -458,7 +460,7 @@ mod tests {
     #[test]
     fn test_from_telegram_text() -> Result<(), Error> {
         let mut exp = ScaleMeasurement {
-            id: -1,
+            id: Uuid::new_v4(),
             datetime: OffsetDateTime::now_utc().into(),
             mass: 188.0,
             fat_pct: 20.6,
@@ -485,7 +487,7 @@ mod tests {
     async fn test_write_read_scale_measurement_from_db() -> Result<(), Error> {
         let first_date = datetime!(2010-01-01 04:00:00 -05:00).into();
         let mut exp = ScaleMeasurement {
-            id: -1,
+            id: Uuid::new_v4(),
             datetime: first_date,
             mass: 188.0,
             fat_pct: 20.6,

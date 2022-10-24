@@ -26,3 +26,4 @@ stack-string = { version="0.7", features=["postgres_types"] }
 maplit = "1.0"
 rand = "0.8"
 postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.4", features=["deadpool"]}
+uuid = { version = "1.0", features = ["serde", "v4"] }

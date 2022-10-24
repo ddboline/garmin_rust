@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
 use std::collections::HashMap;
 use time::{Date, OffsetDateTime};
+use uuid::Uuid;
 
 use crate::{
     common::{garmin_summary::GarminSummary, pgpool::PgPool, strava_timezone::StravaTimeZone},
@@ -101,7 +102,7 @@ impl StravaActivity {
     /// Return error if db query fails
     pub async fn get_from_summary_id(
         pool: &PgPool,
-        summary_id: i32,
+        summary_id: Uuid,
     ) -> Result<Option<Self>, Error> {
         let query = query!(
             "SELECT * FROM strava_activities WHERE summary_id=$summary_id",

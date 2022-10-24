@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
 use std::{collections::HashMap, fmt, path::Path, sync::Arc};
 use time::OffsetDateTime;
+use uuid::Uuid;
 
 use crate::{
     parsers::garmin_parse::{GarminParse, GarminParseTrait},
@@ -22,7 +23,7 @@ use super::{garmin_correction_lap::GarminCorrectionLap, garmin_file::GarminFile,
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromSqlRow)]
 pub struct GarminSummary {
-    pub id: i32,
+    pub id: Uuid,
     pub filename: StackString,
     pub begin_datetime: DateTimeWrapper,
     pub sport: SportTypes,
@@ -38,7 +39,7 @@ impl GarminSummary {
     #[must_use]
     pub fn new(gfile: &GarminFile, md5sum: &str) -> Self {
         Self {
-            id: -1,
+            id: Uuid::new_v4(),
             filename: gfile.filename.clone(),
             begin_datetime: gfile.begin_datetime,
             sport: gfile.sport,

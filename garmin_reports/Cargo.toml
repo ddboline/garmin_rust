@@ -23,3 +23,4 @@ url = "2.3"
 itertools = "0.10"
 derive_more = "0.99"
 stack-string = { version="0.7", features=["postgres_types", "rweb-openapi"] }
+uuid = { version = "1.0", features = ["serde", "v4"] }

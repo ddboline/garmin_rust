@@ -8,6 +8,7 @@ use stack_string::{format_sstr, StackString};
 use std::collections::HashMap;
 use time::{Date, OffsetDateTime};
 use time_tz::{OffsetDateTimeExt, Tz};
+use uuid::Uuid;
 
 use garmin_lib::{
     common::{garmin_summary::GarminSummary, garmin_templates::HBR, pgpool::PgPool},
@@ -21,7 +22,7 @@ use crate::{race_results::RaceResults, race_type::RaceType};
 
 pub struct RaceResultAnalysis {
     data: Vec<RaceResults>,
-    summary_map: HashMap<i32, GarminSummary>,
+    summary_map: HashMap<Uuid, GarminSummary>,
     parameters: Array1<f64>,
     errors: Array1<f64>,
     race_type: RaceType,

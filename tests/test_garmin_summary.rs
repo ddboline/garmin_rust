@@ -1,3 +1,5 @@
+use uuid::Uuid;
+
 use garmin_lib::{
     common::garmin_summary,
     utils::{date_time_wrapper::iso8601::convert_str_to_datetime, sport_types::SportTypes},
@@ -6,7 +8,7 @@ use garmin_lib::{
 #[test]
 fn test_garmin_file_test_display() {
     let garmin_summary = garmin_summary::GarminSummary {
-        id: -1,
+        id: Uuid::new_v4(),
         filename: "test_file".into(),
         begin_datetime: convert_str_to_datetime("2011-05-07T15:43:07-04:00")
             .unwrap()

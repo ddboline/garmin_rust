@@ -7,6 +7,7 @@ use postgres_query::FromSqlRow;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use stack_string::StackString;
 use std::{collections::HashMap, fs, hash::BuildHasher, path::Path, str};
+use uuid::Uuid;
 
 use crate::utils::{
     date_time_wrapper::{iso8601::convert_str_to_datetime, DateTimeWrapper},
@@ -18,13 +19,13 @@ use super::{garmin_lap::GarminLap, pgpool::PgPool};
 
 #[derive(Debug, Clone, Copy, PartialEq, FromSqlRow)]
 pub struct GarminCorrectionLap {
-    pub id: i32,
+    pub id: Uuid,
     pub start_time: DateTimeWrapper,
     pub lap_number: i32,
     pub sport: Option<SportTypes>,
     pub distance: Option<f64>,
     pub duration: Option<f64>,
-    pub summary_id: Option<i32>,
+    pub summary_id: Option<Uuid>,
 }
 
 pub type GarminCorrectionMap = HashMap<(DateTimeWrapper, i32), GarminCorrectionLap>;
@@ -39,7 +40,7 @@ impl GarminCorrectionLap {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            id: -1,
+            id: Uuid::new_v4(),
             start_time: DateTimeWrapper::sentinel_datetime(),
             lap_number: -1,
             sport: None,
@@ -50,7 +51,7 @@ impl GarminCorrectionLap {
     }
 
     #[must_use]
-    pub fn with_id(mut self, id: i32) -> Self {
+    pub fn with_id(mut self, id: Uuid) -> Self {
         self.id = id;
         self
     }

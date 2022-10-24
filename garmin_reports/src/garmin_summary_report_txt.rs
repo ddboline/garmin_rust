@@ -6,6 +6,7 @@ use postgres_query::FromSqlRow;
 use stack_string::{format_sstr, StackString};
 use time::OffsetDateTime;
 use url::Url;
+use uuid::Uuid;
 
 use garmin_lib::{
     common::{
@@ -354,7 +355,7 @@ async fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<FileSumm
         total_duration: f64,
         total_hr_dur: f64,
         total_hr_dis: f64,
-        summary_id: i32,
+        summary_id: Uuid,
     }
 
     let query = format_sstr!(

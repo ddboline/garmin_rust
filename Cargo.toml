@@ -40,6 +40,7 @@ stack-string = { version="0.7", features=["postgres_types"] }
 [dev-dependencies]
 approx = "0.5"
 stdout-channel = "0.5"
+uuid = "1.0"
 
 [workspace]
 members = [

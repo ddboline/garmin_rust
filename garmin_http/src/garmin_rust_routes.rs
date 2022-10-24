@@ -9,7 +9,7 @@ use rweb::{
 };
 use rweb_helper::{
     html_response::HtmlResponse as HtmlBase, json_response::JsonResponse as JsonBase, DateType,
-    RwebResponse,
+    RwebResponse, UuidWrapper,
 };
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
@@ -17,7 +17,6 @@ use std::{convert::Infallible, string::ToString};
 use tempdir::TempDir;
 use tokio::{fs::File, io::AsyncWriteExt};
 use tokio_stream::StreamExt;
-use rweb_helper::UuidWrapper;
 
 use fitbit_lib::{
     fitbit_client::FitbitClient, fitbit_heartrate::FitbitHeartRate,

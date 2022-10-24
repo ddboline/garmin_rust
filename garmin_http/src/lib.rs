@@ -20,7 +20,7 @@ use rweb::{
     openapi::{self, ComponentDescriptor, ComponentOrInlineSchema, Entity},
     Schema,
 };
-use rweb_helper::{derive_rweb_schema, DateTimeType, DateType};
+use rweb_helper::{derive_rweb_schema, DateTimeType, DateType, UuidWrapper};
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
 use std::{borrow::Cow, collections::HashMap};
@@ -128,7 +128,7 @@ derive_rweb_schema!(ScaleMeasurementWrapper, _ScaleMeasurementWrapper);
 #[derive(Schema)]
 struct _ScaleMeasurementWrapper {
     #[schema(description = "Scale Measurement ID")]
-    id: i32,
+    id: UuidWrapper,
     #[schema(description = "DateTime")]
     datetime: DateTimeType,
     #[schema(description = "Mass (lbs)")]
@@ -305,7 +305,7 @@ derive_rweb_schema!(RaceResultsWrapper, _RaceResultsWrapper);
 #[derive(Schema)]
 struct _RaceResultsWrapper {
     #[schema(description = "Race Result ID")]
-    id: i32,
+    id: UuidWrapper,
     #[schema(description = "Race Type")]
     race_type: RaceTypeWrapper,
     #[schema(description = "Race Date")]
@@ -319,7 +319,7 @@ struct _RaceResultsWrapper {
     #[schema(description = "Race Flag")]
     race_flag: bool,
     #[schema(description = "Race Summary IDs")]
-    race_summary_ids: Vec<Option<i32>>,
+    race_summary_ids: Vec<Option<UuidWrapper>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Into, From, Eq)]

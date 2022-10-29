@@ -1,5 +1,5 @@
 use anyhow::{format_err, Error};
-use futures::future::try_join_all;
+use futures::{future::try_join_all, TryStreamExt};
 use itertools::Itertools;
 use log::debug;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
@@ -188,8 +188,8 @@ impl GarminCli {
 
                 let dbset: HashSet<StackString> = get_list_of_files_from_db("", &pg_conn)
                     .await?
-                    .into_iter()
-                    .collect();
+                    .try_collect()
+                    .await?;
 
                 get_file_list(&self.get_config().gps_dir)
                     .into_par_iter()
@@ -282,7 +282,10 @@ impl GarminCli {
         constraints: &GarminConstraints,
     ) -> Result<(), Error> {
         let pg_conn = self.get_pool();
-        let file_list = get_list_of_files_from_db(&constraints.to_query_string(), &pg_conn).await?;
+        let file_list: Vec<_> = get_list_of_files_from_db(&constraints.to_query_string(), &pg_conn)
+            .await?
+            .try_collect()
+            .await?;
 
         match file_list.len() {
             0 => (),
@@ -332,8 +335,11 @@ impl GarminCli {
     pub async fn run_html(&self, req: &GarminRequest, is_demo: bool) -> Result<StackString, Error> {
         let pg_conn = self.get_pool();
 
-        let file_list =
-            get_list_of_files_from_db(&req.constraints.to_query_string(), &pg_conn).await?;
+        let file_list: Vec<_> =
+            get_list_of_files_from_db(&req.constraints.to_query_string(), &pg_conn)
+                .await?
+                .try_collect()
+                .await?;
 
         match file_list.len() {
             0 => Ok("".into()),

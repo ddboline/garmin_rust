@@ -1,8 +1,8 @@
 use anyhow::{format_err, Error};
-use futures::future::try_join_all;
+use futures::{future::try_join_all, Stream, TryStreamExt};
 use itertools::Itertools;
 use log::debug;
-use postgres_query::{query, FromSqlRow};
+use postgres_query::{query, query_dyn, Error as PqError, FromSqlRow};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
@@ -126,7 +126,7 @@ impl GarminSummary {
     pub async fn read_summary_from_postgres(
         pool: &PgPool,
         pattern: &str,
-    ) -> Result<Vec<Self>, Error> {
+    ) -> Result<Option<Self>, Error> {
         let where_str = if pattern.is_empty() {
             "".into()
         } else {
@@ -135,26 +135,25 @@ impl GarminSummary {
 
         let query = format_sstr!(
             "
-            SELECT id,
-                   filename,
-                   begin_datetime,
-                   sport,
-                   total_calories,
-                   total_distance,
-                   total_duration,
-                   total_hr_dur,
-                   total_hr_dis,
-                   md5sum
-            FROM garmin_summary
-            {where_str}"
+                SELECT id,
+                    filename,
+                    begin_datetime,
+                    sport,
+                    total_calories,
+                    total_distance,
+                    total_duration,
+                    total_hr_dur,
+                    total_hr_dis,
+                    md5sum
+                FROM garmin_summary
+                {where_str}
+                ORDER BY begin_datetime DESC
+                LIMIT 1
+            "
         );
-        pool.get()
-            .await?
-            .query(query.as_str(), &[])
-            .await?
-            .iter()
-            .map(|row| GarminSummary::from_row(row).map_err(Into::into))
-            .collect()
+        let query = query_dyn!(&query)?;
+        let conn = pool.get().await?;
+        query.fetch_opt(&conn).await.map_err(Into::into)
     }
 
     /// # Errors
@@ -262,7 +261,7 @@ impl GarminSummary {
                 Ok(())
             }
         });
-        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+        let results: Result<Vec<()>, Error> = try_join_all(futures).await;
         results?;
 
         let insert_query = format_sstr!(
@@ -343,7 +342,7 @@ impl fmt::Display for GarminSummary {
 pub async fn get_list_of_files_from_db(
     constraints: &str,
     pool: &PgPool,
-) -> Result<Vec<StackString>, Error> {
+) -> Result<impl Stream<Item = Result<StackString, PqError>>, Error> {
     let constr = if constraints.is_empty() {
         "".into()
     } else {
@@ -360,14 +359,18 @@ pub async fn get_list_of_files_from_db(
     );
 
     debug!("{}", query);
-
+    let query = query_dyn!(&query)?;
     let conn = pool.get().await?;
-
-    conn.query(query.as_str(), &[])
-        .await?
-        .iter()
-        .map(|row| row.try_get("filename").map_err(Into::into))
-        .collect()
+    query
+        .query_streaming(&conn)
+        .await
+        .map(|stream| {
+            stream.and_then(|row| async move {
+                let s: StackString = row.try_get("filename").map_err(PqError::BeginTransaction)?;
+                Ok(s)
+            })
+        })
+        .map_err(Into::into)
 }
 
 /// # Errors
@@ -397,7 +400,7 @@ pub async fn get_filename_from_datetime(
 pub async fn get_list_of_activities_from_db(
     constraints: &str,
     pool: &PgPool,
-) -> Result<Vec<(OffsetDateTime, StackString)>, Error> {
+) -> Result<impl Stream<Item = Result<(OffsetDateTime, StackString), PqError>>, Error> {
     let constr = if constraints.is_empty() {
         "".into()
     } else {
@@ -405,20 +408,22 @@ pub async fn get_list_of_activities_from_db(
     };
 
     let query = format_sstr!("SELECT begin_datetime, filename FROM garmin_summary {constr}",);
-
     debug!("{}", query);
-
+    let query = query_dyn!(&query)?;
     let conn = pool.get().await?;
-
-    conn.query(query.as_str(), &[])
-        .await?
-        .iter()
-        .map(|row| {
-            let begin_datetime = row.try_get("begin_datetime")?;
-            let filename = row.try_get("filename")?;
-            Ok((begin_datetime, filename))
+    query
+        .query_streaming(&conn)
+        .await
+        .map(|stream| {
+            stream.and_then(|row| async move {
+                let begin_datetime = row
+                    .try_get("begin_datetime")
+                    .map_err(PqError::BeginTransaction)?;
+                let filename = row.try_get("filename").map_err(PqError::BeginTransaction)?;
+                Ok((begin_datetime, filename))
+            })
         })
-        .collect()
+        .map_err(Into::into)
 }
 
 /// # Errors

@@ -1,6 +1,6 @@
 use anyhow::{format_err, Error};
 use clap::Parser;
-use futures::future::try_join_all;
+use futures::{future::try_join_all, TryStreamExt};
 use itertools::Itertools;
 use log::info;
 use refinery::embed_migrations;
@@ -267,7 +267,7 @@ impl GarminCliOpts {
                                 Ok(())
                             }
                         });
-                        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+                        let results: Result<Vec<()>, Error> = try_join_all(futures).await;
                         stdout()
                             .write_all(
                                 format_sstr!("heartrate_statistics_summary {}\n", results?.len())
@@ -295,7 +295,7 @@ impl GarminCliOpts {
                                 Ok(())
                             }
                         });
-                        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+                        let results: Result<Vec<()>, Error> = try_join_all(futures).await;
                         stdout()
                             .write_all(format_sstr!("race_results {}\n", results?.len()).as_bytes())
                             .await?;
@@ -324,8 +324,11 @@ impl GarminCliOpts {
                         let start_date = (OffsetDateTime::now_utc() - Duration::days(7))
                             .to_timezone(local)
                             .date();
-                        let activities =
-                            StravaActivity::read_from_db(&pool, Some(start_date), None).await?;
+                        let activities: Vec<_> =
+                            StravaActivity::read_from_db(&pool, Some(start_date), None)
+                                .await?
+                                .try_collect()
+                                .await?;
                         file.write_all(&serde_json::to_vec(&activities)?).await?;
                     }
                     "fitbit_activities" => {
@@ -340,8 +343,10 @@ impl GarminCliOpts {
                         let start_date = (OffsetDateTime::now_utc() - Duration::days(7))
                             .to_timezone(local)
                             .date();
-                        let entries =
+                        let entries: Vec<_> =
                             FitbitStatisticsSummary::read_from_db(Some(start_date), None, &pool)
+                                .await?
+                                .try_collect()
                                 .await?;
                         file.write_all(&serde_json::to_vec(&entries)?).await?;
                     }
@@ -349,16 +354,20 @@ impl GarminCliOpts {
                         let start_date = (OffsetDateTime::now_utc() - Duration::days(7))
                             .to_timezone(local)
                             .date();
-                        let activities =
+                        let activities: Vec<_> =
                             GarminConnectActivity::read_from_db(&pool, Some(start_date), None)
+                                .await?
+                                .try_collect()
                                 .await?;
                         file.write_all(&serde_json::to_vec(&activities)?).await?;
                     }
                     "race_results" => {
-                        file.write_all(&serde_json::to_vec(
-                            &RaceResults::get_results_by_type(RaceType::Personal, &pool).await?,
-                        )?)
-                        .await?;
+                        let results: Vec<_> =
+                            RaceResults::get_results_by_type(RaceType::Personal, &pool)
+                                .await?
+                                .try_collect()
+                                .await?;
+                        file.write_all(&serde_json::to_vec(&results)?).await?;
                     }
                     _ => {}
                 }

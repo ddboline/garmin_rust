@@ -1,6 +1,7 @@
 use anyhow::Error;
+use futures::Stream;
 use maplit::hashmap;
-use postgres_query::{query, FromSqlRow};
+use postgres_query::{query, Error as PqError, FromSqlRow};
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
 use statistical::{mean, median, standard_deviation};
@@ -74,7 +75,7 @@ impl FitbitStatisticsSummary {
         start_date: Option<Date>,
         end_date: Option<Date>,
         pool: &PgPool,
-    ) -> Result<Vec<Self>, Error> {
+    ) -> Result<impl Stream<Item = Result<Self, PqError>>, Error> {
         let local = DateTimeWrapper::local_tz();
         let start_date = start_date.unwrap_or_else(|| {
             (OffsetDateTime::now_utc() - Duration::days(365))
@@ -94,7 +95,7 @@ impl FitbitStatisticsSummary {
             end_date = end_date
         );
         let conn = pool.get().await?;
-        query.fetch(&conn).await.map_err(Into::into)
+        query.fetch_streaming(&conn).await.map_err(Into::into)
     }
 
     /// # Errors

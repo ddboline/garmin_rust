@@ -1,7 +1,7 @@
 use anyhow::{format_err, Error};
 use base64::{encode_config, URL_SAFE_NO_PAD};
 use crossbeam_utils::atomic::AtomicCell;
-use futures::future::try_join_all;
+use futures::{future::try_join_all, TryStreamExt};
 use lazy_static::lazy_static;
 use log::warn;
 use maplit::hashmap;
@@ -734,9 +734,9 @@ impl StravaClient {
 
         let old_activities: HashSet<_> = get_list_of_activities_from_db(&constraints, pool)
             .await?
-            .into_iter()
-            .map(|(d, _)| d)
-            .collect();
+            .map_ok(|(d, _)| d)
+            .try_collect()
+            .await?;
 
         #[allow(clippy::manual_filter_map)]
         let futures = new_activities
@@ -803,7 +803,7 @@ pub struct StravaGear {
 #[cfg(test)]
 mod tests {
     use anyhow::Error;
-    use futures::future::try_join_all;
+    use futures::{future::try_join_all, TryStreamExt};
     use log::debug;
     use std::collections::HashMap;
     use time::macros::datetime;
@@ -868,9 +868,9 @@ mod tests {
         let pool = PgPool::new(&config.pgurl);
         let activities: HashMap<_, _> = StravaActivity::read_from_db(&pool, None, None)
             .await?
-            .into_iter()
-            .map(|activity| (activity.id, activity))
-            .collect();
+            .map_ok(|activity| (activity.id, activity))
+            .try_collect()
+            .await?;
         let client = StravaClient::with_auth(config).await?;
         let start_date = datetime!(2020-01-01 00:00:00 +00:00);
         let new_activities: Vec<_> = client

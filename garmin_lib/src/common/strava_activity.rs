@@ -1,7 +1,7 @@
 use anyhow::Error;
-use futures::future::try_join_all;
+use futures::{future::try_join_all, Stream, TryStreamExt};
 use log::debug;
-use postgres_query::{query, query_dyn, FromSqlRow, Parameter};
+use postgres_query::{query, query_dyn, Error as PqError, FromSqlRow, Parameter};
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
 use std::collections::HashMap;
@@ -57,7 +57,7 @@ impl StravaActivity {
         pool: &PgPool,
         start_date: Option<Date>,
         end_date: Option<Date>,
-    ) -> Result<Vec<Self>, Error> {
+    ) -> Result<impl Stream<Item = Result<Self, PqError>>, Error> {
         let query = "SELECT * FROM strava_activities";
         let mut conditions = Vec::new();
         let mut bindings = Vec::new();
@@ -81,7 +81,7 @@ impl StravaActivity {
         debug!("query:\n{}", query);
         let query = query_dyn!(&query, ..query_bindings)?;
         let conn = pool.get().await?;
-        query.fetch(&conn).await.map_err(Into::into)
+        query.fetch_streaming(&conn).await.map_err(Into::into)
     }
 
     /// # Errors
@@ -180,9 +180,9 @@ impl StravaActivity {
         let mut output = Vec::new();
         let existing_activities: HashMap<_, _> = Self::read_from_db(pool, None, None)
             .await?
-            .into_iter()
-            .map(|activity| (activity.id, activity))
-            .collect();
+            .map_ok(|activity| (activity.id, activity))
+            .try_collect()
+            .await?;
 
         let (update_items, insert_items): (Vec<_>, Vec<_>) = activities
             .iter()

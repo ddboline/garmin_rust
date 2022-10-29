@@ -1,10 +1,10 @@
 #![allow(clippy::wrong_self_convention)]
 
 use anyhow::{format_err, Error};
+use futures::{Stream, TryStreamExt};
 use json::{parse, JsonValue};
 use log::debug;
-use postgres_query::FromSqlRow;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use postgres_query::{query, Error as PqError, FromSqlRow};
 use stack_string::StackString;
 use std::{collections::HashMap, fs, hash::BuildHasher, path::Path, str};
 use uuid::Uuid;
@@ -313,38 +313,40 @@ impl GarminCorrectionLap {
     /// # Errors
     /// Return error if db query fails
     pub async fn read_corrections_from_db(pool: &PgPool) -> Result<GarminCorrectionMap, Error> {
-        let conn = pool.get().await?;
-        conn.query(
+        Self::_read_corrections_from_db(pool)
+            .await?
+            .map_ok(|corr| ((corr.start_time, corr.lap_number), corr))
+            .try_collect()
+            .await
+            .map_err(Into::into)
+    }
+
+    async fn _read_corrections_from_db(
+        pool: &PgPool,
+    ) -> Result<impl Stream<Item = Result<GarminCorrectionLap, PqError>>, Error> {
+        let query = query!(
             r#"
-                    SELECT id, start_time, lap_number, sport, distance, duration, summary_id
-                    FROM garmin_corrections_laps
-                "#,
-            &[],
-        )
-        .await?
-        .par_iter()
-        .map(|row| {
-            let corr = Self::from_row(row)?;
-            Ok(((corr.start_time, corr.lap_number), corr))
-        })
-        .collect()
+                SELECT id, start_time, lap_number, sport, distance, duration, summary_id
+                FROM garmin_corrections_laps
+            "#
+        );
+        let conn = pool.get().await?;
+        query.fetch_streaming(&conn).await.map_err(Into::into)
     }
 
     /// # Errors
     /// Return error if db query fails
     pub async fn fix_corrections_in_db(pool: &PgPool) -> Result<(), Error> {
-        let query = "
+        let query = query!(
+            "
             UPDATE garmin_corrections_laps_backup SET summary_id = (
                 SELECT id FROM garmin_summary a WHERE a.begin_datetime = start_time
             )
             WHERE summary_id IS NULL
-        ";
-        pool.get()
-            .await?
-            .execute(query, &[])
-            .await
-            .map(|_| ())
-            .map_err(Into::into)
+        "
+        );
+        let conn = pool.get().await?;
+        query.execute(&conn).await.map_err(Into::into).map(|_| ())
     }
 }
 

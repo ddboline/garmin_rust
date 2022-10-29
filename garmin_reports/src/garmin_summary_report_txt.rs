@@ -2,7 +2,7 @@ use anyhow::Error;
 use futures::future::try_join_all;
 use itertools::Itertools;
 use log::debug;
-use postgres_query::FromSqlRow;
+use postgres_query::{query_dyn, FromSqlRow};
 use stack_string::{format_sstr, StackString};
 use time::OffsetDateTime;
 use url::Url;
@@ -374,14 +374,13 @@ async fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<FileSumm
         ORDER BY datetime, sport
     "
     );
+    let query = query_dyn!(&query)?;
+    let conn = pool.get().await?;
+    let items: Vec<FileSummaryReportRow> = query.fetch(&conn).await?;
 
-    let rows = pool.get().await?.query(query.as_str(), &[]).await?;
-
-    let futures = rows.iter().map(|row| {
+    let futures = items.into_iter().map(|item| {
         let pool = pool.clone();
         async move {
-            let item = FileSummaryReportRow::from_row(row)?;
-
             let strava_activity =
                 StravaActivity::get_from_summary_id(&pool, item.summary_id).await?;
             let strava_title = strava_activity.as_ref().map(|s| s.name.clone());
@@ -565,16 +564,10 @@ async fn day_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<DaySummar
         ORDER BY sport, date, week, isodow
     "
     );
-
     debug!("{}", query);
-
-    pool.get()
-        .await?
-        .query(query.as_str(), &[])
-        .await?
-        .iter()
-        .map(|row| DaySummaryReport::from_row(row).map_err(Into::into))
-        .collect()
+    let query = query_dyn!(&query)?;
+    let conn = pool.get().await?;
+    query.fetch(&conn).await.map_err(Into::into)
 }
 
 #[derive(FromSqlRow, Debug)]
@@ -718,16 +711,10 @@ async fn week_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<WeekSumm
         ORDER BY sport, year, week
     "
     );
-
     debug!("{}", query);
-
-    pool.get()
-        .await?
-        .query(query.as_str(), &[])
-        .await?
-        .iter()
-        .map(|row| WeekSummaryReport::from_row(row).map_err(Into::into))
-        .collect()
+    let query = query_dyn!(&query)?;
+    let conn = pool.get().await?;
+    query.fetch(&conn).await.map_err(Into::into)
 }
 
 #[derive(FromSqlRow, Debug)]
@@ -875,16 +862,10 @@ async fn month_summary_report(
         ORDER BY sport, year, month
     "
     );
-
     debug!("{}", query);
-
-    pool.get()
-        .await?
-        .query(query.as_str(), &[])
-        .await?
-        .iter()
-        .map(|row| MonthSummaryReport::from_row(row).map_err(Into::into))
-        .collect()
+    let query = query_dyn!(&query)?;
+    let conn = pool.get().await?;
+    query.fetch(&conn).await.map_err(Into::into)
 }
 
 #[derive(FromSqlRow, Debug)]
@@ -1014,14 +995,9 @@ async fn sport_summary_report(
         "
     );
     debug!("{}", query);
-
-    pool.get()
-        .await?
-        .query(query.as_str(), &[])
-        .await?
-        .iter()
-        .map(|row| SportSummaryReport::from_row(row).map_err(Into::into))
-        .collect()
+    let query = query_dyn!(&query)?;
+    let conn = pool.get().await?;
+    query.fetch(&conn).await.map_err(Into::into)
 }
 
 #[derive(FromSqlRow, Debug)]
@@ -1164,12 +1140,7 @@ async fn year_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<YearSumm
         "
     );
     debug!("{}", query);
-
-    pool.get()
-        .await?
-        .query(query.as_str(), &[])
-        .await?
-        .iter()
-        .map(|row| YearSummaryReport::from_row(row).map_err(Into::into))
-        .collect()
+    let query = query_dyn!(&query)?;
+    let conn = pool.get().await?;
+    query.fetch(&conn).await.map_err(Into::into)
 }

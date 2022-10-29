@@ -1,4 +1,5 @@
 use anyhow::Error;
+use futures::TryStreamExt;
 use itertools::Itertools;
 use maplit::hashmap;
 use ndarray::{array, Array1};
@@ -51,7 +52,10 @@ impl RaceResultAnalysis {
     /// # Errors
     /// Return error if db queries fail
     pub async fn run_analysis(race_type: RaceType, pool: &PgPool) -> Result<Self, Error> {
-        let data = RaceResults::get_results_by_type(race_type, pool).await?;
+        let data = RaceResults::get_results_by_type(race_type, pool)
+            .await?
+            .try_collect()
+            .await?;
         let summary_map = RaceResults::get_summary_map(pool).await?;
         let agg_results =
             RaceResultAggregated::get_aggregated_race_results(race_type, pool).await?;
@@ -340,7 +344,7 @@ pub struct RaceResultAggregated {
 impl RaceResultAggregated {
     /// # Errors
     /// Return error if db query fails
-    pub async fn get_aggregated_race_results(
+    async fn get_aggregated_race_results(
         race_type: RaceType,
         pool: &PgPool,
     ) -> Result<Vec<Self>, Error> {

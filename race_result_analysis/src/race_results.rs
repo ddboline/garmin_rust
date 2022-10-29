@@ -1,6 +1,7 @@
 use anyhow::Error;
+use futures::Stream;
 use itertools::Itertools;
-use postgres_query::{query, FromSqlRow};
+use postgres_query::{query, Error as PqError, FromSqlRow};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use stack_string::{format_sstr, StackString};
@@ -80,7 +81,7 @@ impl RaceResults {
     pub async fn get_results_by_type(
         race_type: RaceType,
         pool: &PgPool,
-    ) -> Result<Vec<Self>, Error> {
+    ) -> Result<impl Stream<Item = Result<Self, PqError>>, Error> {
         let query = query!(
             "SELECT a.id, a.race_type, a.race_date, a.race_name, a.race_distance, a.race_time,
                     a.race_flag, array_agg(b.summary_id) as race_summary_ids
@@ -92,7 +93,7 @@ impl RaceResults {
             race_type = race_type
         );
         let conn = pool.get().await?;
-        query.fetch(&conn).await.map_err(Into::into)
+        query.fetch_streaming(&conn).await.map_err(Into::into)
     }
 
     /// # Errors
@@ -445,6 +446,7 @@ impl From<GarminSummary> for RaceResults {
 #[cfg(test)]
 mod tests {
     use anyhow::Error;
+    use futures::TryStreamExt;
     use lazy_static::lazy_static;
     use log::debug;
     use parking_lot::Mutex;
@@ -531,16 +533,16 @@ mod tests {
         let existing_map: HashMap<_, _> =
             RaceResults::get_results_by_type(RaceType::Personal, &pool)
                 .await?
-                .into_iter()
-                .fold(HashMap::new(), |mut map, result| {
+                .try_fold(HashMap::new(), |mut map, result| async move {
                     let name = result.race_name.clone().unwrap_or_else(|| "".into());
                     let year = result
                         .race_date
                         .map_or_else(|| OffsetDateTime::now_utc().year(), |d| d.year());
                     let key = (name, year);
                     map.entry(key).or_insert_with(Vec::new).push(result);
-                    map
-                });
+                    Ok(map)
+                })
+                .await?;
 
         for result in &new_results {
             let name = result.race_name.clone().unwrap_or_else(|| "".into());
@@ -553,7 +555,10 @@ mod tests {
             }
         }
 
-        let personal_results = RaceResults::get_results_by_type(RaceType::Personal, &pool).await?;
+        let personal_results: Vec<_> = RaceResults::get_results_by_type(RaceType::Personal, &pool)
+            .await?
+            .try_collect()
+            .await?;
         assert!(personal_results.len() >= TEST_RACE_ENTRIES);
 
         let mut existing_map: HashMap<_, _> =
@@ -592,7 +597,10 @@ mod tests {
             }
         }
 
-        let personal_results = RaceResults::get_results_by_type(RaceType::Personal, &pool).await?;
+        let personal_results: Vec<_> = RaceResults::get_results_by_type(RaceType::Personal, &pool)
+            .await?
+            .try_collect()
+            .await?;
         assert!(personal_results.len() >= TEST_RACE_ENTRIES);
 
         for mut result in personal_results {
@@ -611,7 +619,10 @@ mod tests {
                     "to_char(begin_datetime at time zone 'localtime', 'YYYY-MM-DD%HH24:MI:SS')",
                     race_date,
                 );
-                let filenames = get_list_of_files_from_db(&constraint, &pool).await?;
+                let filenames: Vec<_> = get_list_of_files_from_db(&constraint, &pool)
+                    .await?
+                    .try_collect()
+                    .await?;
                 if filenames.is_empty() {
                     continue;
                 }
@@ -670,11 +681,17 @@ mod tests {
             }
             result.upsert_db(&pool).await?;
         }
-        let mens_results =
-            RaceResults::get_results_by_type(RaceType::WorldRecordMen, &pool).await?;
+        let mens_results: Vec<_> =
+            RaceResults::get_results_by_type(RaceType::WorldRecordMen, &pool)
+                .await?
+                .try_collect()
+                .await?;
         assert_eq!(mens_results.len(), WORLD_RECORD_ENTRIES);
-        let womens_results =
-            RaceResults::get_results_by_type(RaceType::WorldRecordWomen, &pool).await?;
+        let womens_results: Vec<_> =
+            RaceResults::get_results_by_type(RaceType::WorldRecordWomen, &pool)
+                .await?
+                .try_collect()
+                .await?;
         assert_eq!(womens_results.len(), WORLD_RECORD_ENTRIES);
         Ok(())
     }

@@ -1,5 +1,5 @@
 use anyhow::{format_err, Error};
-use futures::future::try_join_all;
+use futures::{stream::FuturesUnordered, TryStreamExt};
 use log::debug;
 use maplit::hashmap;
 use postgres_query::{query, query_dyn, FromSqlRow, Parameter};
@@ -429,21 +429,22 @@ impl ScaleMeasurement {
             .map(|d| d.datetime)
             .collect();
         let measurement_set = Arc::new(measurement_set);
-        let futures = measurements.into_iter().map(|meas| {
-            let measurement_set = measurement_set.clone();
-            async move {
-                if measurement_set.contains(&meas.datetime) {
-                    debug!("measurement exists {:?}", meas);
-                } else {
-                    meas.insert_into_db(pool).await?;
-                    debug!("measurement inserted {:?}", meas);
+        let futures: FuturesUnordered<_> = measurements
+            .into_iter()
+            .map(|meas| {
+                let measurement_set = measurement_set.clone();
+                async move {
+                    if measurement_set.contains(&meas.datetime) {
+                        debug!("measurement exists {:?}", meas);
+                    } else {
+                        meas.insert_into_db(pool).await?;
+                        debug!("measurement inserted {:?}", meas);
+                    }
+                    Ok(())
                 }
-                Ok(())
-            }
-        });
-        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
-        results?;
-        Ok(())
+            })
+            .collect();
+        futures.try_collect().await
     }
 }
 

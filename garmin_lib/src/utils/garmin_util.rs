@@ -1,8 +1,10 @@
 use anyhow::{format_err, Error};
 use fitparser::Value;
 use flate2::{read::GzEncoder, Compression};
+use futures::{Stream, TryStreamExt};
 use log::{debug, error};
 use num_traits::pow::Pow;
+use postgres_query::{query, Error as PqError};
 use rand::{
     distributions::{Alphanumeric, Distribution, Uniform},
     thread_rng,
@@ -296,35 +298,43 @@ pub fn get_degrees_from_semicircles(s: f64) -> f64 {
 /// # Errors
 /// Return error if db query fails
 pub async fn get_authorized_users(pool: &PgPool) -> Result<HashSet<StackString>, Error> {
-    let query = "SELECT email FROM authorized_users";
-    pool.get()
+    let query = query!("SELECT email FROM authorized_users");
+    let conn = pool.get().await?;
+    query
+        .query_streaming(&conn)
         .await?
-        .query(query, &[])
-        .await?
-        .into_iter()
-        .map(|row| {
-            let email: StackString = row.try_get(0)?;
+        .and_then(|row| async move {
+            let email: StackString = row.try_get(0).map_err(PqError::BeginTransaction)?;
             Ok(email)
         })
-        .collect()
+        .try_collect()
+        .await
+        .map_err(Into::into)
 }
 
 /// # Errors
 /// Return error if db query fails
-pub async fn get_list_of_telegram_userids(pool: &PgPool) -> Result<Vec<i64>, Error> {
-    let query = "
+pub async fn get_list_of_telegram_userids(
+    pool: &PgPool,
+) -> Result<impl Stream<Item = Result<i64, PqError>>, Error> {
+    let query = query!(
+        "
     SELECT distinct telegram_userid
     FROM authorized_users
     WHERE telegram_userid IS NOT NULL
-    ";
-    pool.get()
-        .await?
-        .query(query, &[])
-        .await?
-        .into_iter()
-        .map(|row| {
-            let telegram_id: i64 = row.try_get("telegram_userid")?;
-            Ok(telegram_id)
+    "
+    );
+    let conn = pool.get().await?;
+    query
+        .query_streaming(&conn)
+        .await
+        .map(|stream| {
+            stream.and_then(|row| async move {
+                let telegram_id: i64 = row
+                    .try_get("telegram_userid")
+                    .map_err(PqError::BeginTransaction)?;
+                Ok(telegram_id)
+            })
         })
-        .collect()
+        .map_err(Into::into)
 }

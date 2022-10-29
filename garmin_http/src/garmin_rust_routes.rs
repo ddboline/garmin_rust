@@ -1,5 +1,5 @@
 #![allow(clippy::needless_pass_by_value)]
-use futures::future::try_join_all;
+use futures::{future::try_join_all, TryStreamExt};
 use itertools::Itertools;
 use log::info;
 use rweb::{
@@ -469,9 +469,10 @@ pub async fn strava_activities_db(
     )
     .await
     .map_err(Into::<Error>::into)?
-    .into_iter()
-    .map(Into::into)
-    .collect();
+    .map_ok(Into::into)
+    .try_collect()
+    .await
+    .map_err(Into::<Error>::into)?;
 
     Ok(JsonBase::new(alist).into())
 }
@@ -1320,9 +1321,10 @@ pub async fn garmin_connect_activities_db(
     )
     .await
     .map_err(Into::<Error>::into)?
-    .into_iter()
-    .map(Into::into)
-    .collect();
+    .map_ok(Into::into)
+    .try_collect()
+    .await
+    .map_err(Into::<Error>::into)?;
     Ok(JsonBase::new(alist).into())
 }
 
@@ -1437,9 +1439,13 @@ pub async fn heartrate_statistics_summary_db(
     )
     .await
     .map_err(Into::<Error>::into)?
-    .into_iter()
-    .map(Into::into)
-    .collect();
+    .map_ok(|x| {
+        let x: FitbitStatisticsSummaryWrapper = x.into();
+        x
+    })
+    .try_collect()
+    .await
+    .map_err(Into::<Error>::into)?;
     Ok(JsonBase::new(alist).into())
 }
 
@@ -1630,9 +1636,10 @@ pub async fn race_results_db(
     let results = RaceResults::get_results_by_type(race_type, &state.db)
         .await
         .map_err(Into::<Error>::into)?
-        .into_iter()
-        .map(Into::into)
-        .collect();
+        .map_ok(Into::into)
+        .try_collect()
+        .await
+        .map_err(Into::<Error>::into)?;
 
     Ok(JsonBase::new(results).into())
 }
@@ -1663,7 +1670,7 @@ pub async fn race_results_db_update(
         let mut result: RaceResults = result.into();
         async move { result.upsert_db(&pool).await.map_err(Into::<Error>::into) }
     });
-    let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+    let results: Result<Vec<()>, Error> = try_join_all(futures).await;
     results?;
     Ok(HtmlBase::new("Finished").into())
 }

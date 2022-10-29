@@ -432,7 +432,7 @@ async fn check_version(cmd: &Path, prefix: &str) -> Result<u64, Error> {
 #[cfg(test)]
 mod tests {
     use anyhow::Error;
-    use futures::future::try_join_all;
+    use futures::{future::try_join_all, TryStreamExt};
     use log::debug;
     use std::collections::HashMap;
     use time::{Duration, OffsetDateTime};
@@ -498,9 +498,9 @@ mod tests {
         let pool = PgPool::new(&config.pgurl);
         let activities: HashMap<_, _> = GarminConnectActivity::read_from_db(&pool, None, None)
             .await?
-            .into_iter()
-            .map(|activity| (activity.activity_id, activity))
-            .collect();
+            .map_ok(|activity| (activity.activity_id, activity))
+            .try_collect()
+            .await?;
 
         let max_timestamp = OffsetDateTime::now_utc() - Duration::days(30);
         let new_activities: Vec<_> = session
@@ -517,7 +517,7 @@ mod tests {
                 Ok(())
             }
         });
-        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+        let results: Result<Vec<()>, Error> = try_join_all(futures).await;
         results?;
         assert_eq!(new_activities.len(), 0);
 

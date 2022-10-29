@@ -1,7 +1,7 @@
 use anyhow::Error;
 use arc_swap::ArcSwap;
 use crossbeam_utils::atomic::AtomicCell;
-use futures::StreamExt;
+use futures::{StreamExt, TryStreamExt};
 use lazy_static::lazy_static;
 use log::debug;
 use stack_string::{format_sstr, StackString};
@@ -199,9 +199,9 @@ impl TelegramBot {
     async fn list_of_telegram_user_ids(&self) -> Result<HashSet<UserId>, Error> {
         let result = get_list_of_telegram_userids(&self.pool)
             .await?
-            .into_iter()
-            .map(UserId::new)
-            .collect();
+            .map_ok(UserId::new)
+            .try_collect()
+            .await?;
         Ok(result)
     }
 }

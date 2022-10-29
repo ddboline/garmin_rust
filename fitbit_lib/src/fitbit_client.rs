@@ -1,7 +1,7 @@
 use anyhow::{format_err, Error};
 use base64::{encode, encode_config, URL_SAFE_NO_PAD};
 use crossbeam_utils::atomic::AtomicCell;
-use futures::future::try_join_all;
+use futures::{future, future::try_join_all, stream::FuturesUnordered, TryStreamExt};
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use log::debug;
@@ -507,66 +507,67 @@ impl FitbitClient {
     ) -> Result<(), Error> {
         let headers = self.get_auth_headers()?;
         let offset = self.get_offset();
-        let futures = updates.into_iter().map(|update| {
-            let headers = headers.clone();
-            async move {
-                let datetime = update.datetime.to_offset(offset);
-                let date = datetime.date();
-                let date_str = date
-                    .format(format_description!("[year]-[month]-[day]"))
-                    .unwrap_or_else(|_| "".into())
-                    .into();
-                let time_str = date
-                    .format(format_description!("[hour]:[minute]:[second]"))
-                    .unwrap_or_else(|_| "".into())
-                    .into();
-                let weight_str = StackString::from_display(update.mass);
-                let url = self
-                    .config
-                    .fitbit_api_endpoint
-                    .as_ref()
-                    .ok_or_else(|| format_err!("Bad URL"))?
-                    .join("1/user/-/")?
-                    .join("body/log/weight.json")?;
-                let data = hashmap! {
-                    "weight" => &weight_str,
-                    "date" => &date_str,
-                    "time" => &time_str,
-                };
-                self.client
-                    .post(url)
-                    .form(&data)
-                    .headers(headers.clone())
-                    .send()
-                    .await?
-                    .error_for_status()?;
+        let futures: FuturesUnordered<_> = updates
+            .into_iter()
+            .map(|update| {
+                let headers = headers.clone();
+                async move {
+                    let datetime = update.datetime.to_offset(offset);
+                    let date = datetime.date();
+                    let date_str = date
+                        .format(format_description!("[year]-[month]-[day]"))
+                        .unwrap_or_else(|_| "".into())
+                        .into();
+                    let time_str = date
+                        .format(format_description!("[hour]:[minute]:[second]"))
+                        .unwrap_or_else(|_| "".into())
+                        .into();
+                    let weight_str = StackString::from_display(update.mass);
+                    let url = self
+                        .config
+                        .fitbit_api_endpoint
+                        .as_ref()
+                        .ok_or_else(|| format_err!("Bad URL"))?
+                        .join("1/user/-/")?
+                        .join("body/log/weight.json")?;
+                    let data = hashmap! {
+                        "weight" => &weight_str,
+                        "date" => &date_str,
+                        "time" => &time_str,
+                    };
+                    self.client
+                        .post(url)
+                        .form(&data)
+                        .headers(headers.clone())
+                        .send()
+                        .await?
+                        .error_for_status()?;
 
-                let url = self
-                    .config
-                    .fitbit_api_endpoint
-                    .as_ref()
-                    .ok_or_else(|| format_err!("Bad URL"))?
-                    .join("1/user/-/")?
-                    .join("body/log/fat.json")?;
-                let fat_pct_str = StackString::from_display(update.fat_pct);
-                let data = hashmap! {
-                    "fat" => &fat_pct_str,
-                    "date" => &date_str,
-                    "time" => &time_str,
-                };
-                self.client
-                    .post(url)
-                    .form(&data)
-                    .headers(headers)
-                    .send()
-                    .await?
-                    .error_for_status()?;
-                Ok(())
-            }
-        });
-        let result: Result<Vec<_>, Error> = try_join_all(futures).await;
-        result?;
-        Ok(())
+                    let url = self
+                        .config
+                        .fitbit_api_endpoint
+                        .as_ref()
+                        .ok_or_else(|| format_err!("Bad URL"))?
+                        .join("1/user/-/")?
+                        .join("body/log/fat.json")?;
+                    let fat_pct_str = StackString::from_display(update.fat_pct);
+                    let data = hashmap! {
+                        "fat" => &fat_pct_str,
+                        "date" => &date_str,
+                        "time" => &time_str,
+                    };
+                    self.client
+                        .post(url)
+                        .form(&data)
+                        .headers(headers)
+                        .send()
+                        .await?
+                        .error_for_status()?;
+                    Ok(())
+                }
+            })
+            .collect();
+        futures.try_collect().await
     }
 
     /// # Errors
@@ -853,7 +854,7 @@ impl FitbitClient {
                 Ok(())
             }
         });
-        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+        let results: Result<Vec<()>, Error> = try_join_all(futures).await;
         results?;
 
         let new_activities: HashMap<_, _> = new_activities
@@ -879,7 +880,7 @@ impl FitbitClient {
                 .map(|activity| (activity.log_id, activity))
                 .collect();
 
-        let futures = new_activities
+        let futures: FuturesUnordered<_> = new_activities
             .values()
             .filter(|activity| !existing_activities.contains_key(&activity.log_id))
             .map(|activity| {
@@ -888,40 +889,50 @@ impl FitbitClient {
                     activity.insert_into_db(&pool).await?;
                     Ok(())
                 }
-            });
-        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+            })
+            .collect();
+        let results: Result<(), Error> = futures.try_collect().await;
         results?;
 
-        let old_activities = get_list_of_activities_from_db(
+        let old_activities: Vec<_> = get_list_of_activities_from_db(
             &format_sstr!("begin_datetime >= '{begin_datetime}'"),
             pool,
         )
         .await?
-        .into_iter()
-        .filter(|(d, _)| {
-            let key = d
-                .format(format_description!("[year]-[month]-[day]T[hour]:[minute]"))
-                .unwrap_or_else(|_| "".into());
-            !new_activities.contains_key(&key)
-        });
+        .try_filter(|(d, _)| {
+            future::ready({
+                let key = d
+                    .format(format_description!("[year]-[month]-[day]T[hour]:[minute]"))
+                    .unwrap_or_else(|_| "".into());
+                !new_activities.contains_key(&key)
+            })
+        })
+        .try_collect()
+        .await?;
 
-        let futures = old_activities.map(|(d, f)| {
-            let pool = pool.clone();
-            async move {
-                if let Some(activity) = GarminSummary::read_summary_from_postgres(&pool, &f)
-                    .await?
-                    .pop()
-                {
-                    if let Some(activity) = ActivityLoggingEntry::from_summary(&activity, offset) {
-                        self.log_fitbit_activity(&activity).await?;
-                        return Ok(Some(d));
+        let futures: FuturesUnordered<_> = old_activities
+            .into_iter()
+            .map(|(d, f)| {
+                let pool = pool.clone();
+                async move {
+                    if let Some(activity) =
+                        GarminSummary::read_summary_from_postgres(&pool, &f).await?
+                    {
+                        if let Some(activity) =
+                            ActivityLoggingEntry::from_summary(&activity, offset)
+                        {
+                            self.log_fitbit_activity(&activity).await?;
+                            return Ok(Some(d));
+                        }
                     }
+                    Ok(None)
                 }
-                Ok(None)
-            }
-        });
-        let updated: Result<Vec<_>, Error> = try_join_all(futures).await;
-        Ok(updated?.into_iter().flatten().collect())
+            })
+            .collect();
+        futures
+            .try_filter_map(|x| async move { Ok(x) })
+            .try_collect()
+            .await
     }
 
     /// # Errors

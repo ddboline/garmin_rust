@@ -1,7 +1,7 @@
 use anyhow::{format_err, Error};
 use avro_rs::{from_value, Codec, Reader, Schema, Writer};
 use fitparser::{profile::field_types::MesgNum, Value};
-use futures::future::try_join_all;
+use futures::{future::try_join_all, stream::FuturesUnordered, TryStreamExt};
 use glob::glob;
 use itertools::Itertools;
 use log::{debug, info};
@@ -164,16 +164,16 @@ impl FitbitHeartRate {
             let constraint = format_sstr!("date(begin_datetime at time zone 'utc') = '{date}'");
             let files: Vec<_> = get_list_of_files_from_db(&constraint, pool)
                 .await?
-                .into_par_iter()
-                .filter_map(|filename| {
+                .try_filter_map(|filename| async move {
                     let avro_file = config.cache_dir.join(&format_sstr!("{filename}.avro"));
                     if avro_file.exists() {
-                        Some(avro_file)
+                        Ok(Some(avro_file))
                     } else {
-                        None
+                        Ok(None)
                     }
                 })
-                .collect();
+                .try_collect()
+                .await?;
             info!("files {} {}", date, files.len());
             Ok(files)
         });
@@ -253,18 +253,19 @@ impl FitbitHeartRate {
         })
         .collect();
         let dates = dates?;
-        let futures = dates.into_iter().map(|date| {
-            let config = config.clone();
-            let pool = pool.clone();
-            async move {
-                Self::calculate_summary_statistics(&config, &pool, date).await?;
-                debug!("{}", date);
-                Ok(())
-            }
-        });
-        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
-        results?;
-        Ok(())
+        let futures: FuturesUnordered<_> = dates
+            .into_iter()
+            .map(|date| {
+                let config = config.clone();
+                let pool = pool.clone();
+                async move {
+                    Self::calculate_summary_statistics(&config, &pool, date).await?;
+                    debug!("{}", date);
+                    Ok(())
+                }
+            })
+            .collect();
+        futures.try_collect().await
     }
 
     /// # Errors

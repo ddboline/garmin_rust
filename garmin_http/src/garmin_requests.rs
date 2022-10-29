@@ -1,4 +1,4 @@
-use futures::future::try_join_all;
+use futures::{future::try_join_all, TryStreamExt};
 use rweb::Schema;
 use rweb_helper::{DateTimeType, DateType};
 use serde::{Deserialize, Serialize};
@@ -48,9 +48,12 @@ impl GarminHtmlRequest {
         &self,
         pool: &PgPool,
     ) -> Result<Vec<StackString>, Error> {
-        get_list_of_files_from_db(&self.request.constraints.to_query_string(), pool)
-            .await
-            .map_err(Into::into)
+        let result: Vec<_> =
+            get_list_of_files_from_db(&self.request.constraints.to_query_string(), pool)
+                .await?
+                .try_collect()
+                .await?;
+        Ok(result)
     }
 }
 
@@ -74,9 +77,11 @@ impl GarminListRequest {
         &self,
         pool: &PgPool,
     ) -> Result<Vec<StackString>, Error> {
-        get_list_of_files_from_db(&self.constraints.to_query_string(), pool)
-            .await
-            .map_err(Into::into)
+        let result: Vec<_> = get_list_of_files_from_db(&self.constraints.to_query_string(), pool)
+            .await?
+            .try_collect()
+            .await?;
+        Ok(result)
     }
 }
 
@@ -310,12 +315,15 @@ impl FitbitStatisticsPlotRequest {
         &self,
         pool: &PgPool,
     ) -> Result<HashMap<StackString, StackString>, Error> {
-        let stats = FitbitStatisticsSummary::read_from_db(
+        let stats: Vec<_> = FitbitStatisticsSummary::read_from_db(
             self.request.start_date.map(Into::into),
             self.request.end_date.map(Into::into),
             pool,
         )
-        .await?;
+        .await?
+        .try_collect()
+        .await
+        .map_err(Into::<Error>::into)?;
         FitbitStatisticsSummary::get_fitbit_statistics_plots(&stats, self.request.offset)
             .map_err(Into::into)
     }

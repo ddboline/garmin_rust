@@ -245,7 +245,7 @@ pub async fn import_garmin_connect_activity_json_file(filename: &Path) -> Result
     let config = GarminConfig::get_config(None)?;
     let pool = PgPool::new(&config.pgurl);
 
-    let activities = serde_json::from_reader(File::open(&filename)?)?;
+    let activities = serde_json::from_reader(File::open(filename)?)?;
     GarminConnectActivity::merge_new_activities(activities, &pool).await?;
     Ok(())
 }

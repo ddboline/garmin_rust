@@ -38,10 +38,8 @@ use garmin_lib::{
     },
 };
 use garmin_reports::{
-    garmin_constraints::GarminConstraints, garmin_file_report_html::file_report_html,
-    garmin_file_report_txt::generate_txt_report, garmin_report_options::GarminReportOptions,
-    garmin_summary_report_html::summary_report_html,
-    garmin_summary_report_txt::create_report_query,
+    garmin_constraints::GarminConstraints, garmin_file_report_txt::generate_txt_report,
+    garmin_report_options::GarminReportOptions, garmin_summary_report_txt::create_report_query,
 };
 
 #[derive(Debug, PartialEq, Clone, Eq)]
@@ -328,59 +326,6 @@ impl GarminCli {
             }
         };
         Ok(())
-    }
-
-    /// # Errors
-    /// Return error if various function fail
-    pub async fn run_html(&self, req: &GarminRequest, is_demo: bool) -> Result<StackString, Error> {
-        let pg_conn = self.get_pool();
-
-        let file_list: Vec<_> =
-            get_list_of_files_from_db(&req.constraints.to_query_string(), &pg_conn)
-                .await?
-                .try_collect()
-                .await?;
-
-        match file_list.len() {
-            0 => Ok("".into()),
-            1 => {
-                let file_name = file_list
-                    .get(0)
-                    .ok_or_else(|| format_err!("This shouldn't be happening..."))?;
-                debug!("{}", &file_name);
-                let avro_file = self.get_config().cache_dir.join(file_name.as_str());
-
-                let gfile =
-                    if let Ok(g) = garmin_file::GarminFile::read_avro_async(&avro_file).await {
-                        debug!("Cached avro file read: {:?}", &avro_file);
-                        g
-                    } else {
-                        let gps_file = self.get_config().gps_dir.join(file_name.as_str());
-                        let pool = self.get_pool();
-                        let corr_map = GarminCorrectionLap::read_corrections_from_db(&pool).await?;
-
-                        debug!("Reading gps_file: {:?}", &gps_file);
-                        spawn_blocking(move || GarminParse::new().with_file(&gps_file, &corr_map))
-                            .await??
-                    };
-
-                debug!("gfile {} {}", gfile.laps.len(), gfile.points.len());
-
-                file_report_html(self.get_config(), &gfile, &req.history, &pg_conn, is_demo).await
-            }
-            _ => {
-                debug!("{:?}", req.options);
-                let txt_result =
-                    create_report_query(&pg_conn, &req.options, &req.constraints).await?;
-
-                summary_report_html(
-                    &self.get_config().domain,
-                    &txt_result,
-                    &req.history,
-                    is_demo,
-                )
-            }
-        }
     }
 
     fn transform_file_name(filename: &Path) -> Result<PathBuf, Error> {

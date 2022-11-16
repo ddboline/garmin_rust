@@ -58,7 +58,7 @@ impl GarminConstraint {
                         .format(format_description!(
                             "[year]-[month]-[day]T[hour]:[minute]:[second]Z"
                         ))
-                        .unwrap_or_else(|_| "".into())
+                        .unwrap_or_else(|_| String::new())
                 )
             }
             Self::YearMonthDay { year, month, day } => {

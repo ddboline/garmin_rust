@@ -141,7 +141,7 @@ impl GarminCliOpts {
             Self::Proc { filename } => GarminCliOptions::ImportFileNames(filename),
             Self::Report { patterns } => {
                 let req = if patterns.is_empty() {
-                    GarminCli::process_pattern(config, &["year"])
+                    GarminCli::process_pattern(config, ["year"])
                 } else {
                     GarminCli::process_pattern(config, &patterns)
                 };

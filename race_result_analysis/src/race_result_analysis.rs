@@ -1,18 +1,16 @@
 use anyhow::Error;
 use futures::TryStreamExt;
-use itertools::Itertools;
-use maplit::hashmap;
 use ndarray::{array, Array1};
 use postgres_query::{query, FromSqlRow};
 use rusfun::{curve_fit::Minimizer, func1d::Func1D};
-use stack_string::{format_sstr, StackString};
+use stack_string::StackString;
 use std::collections::HashMap;
 use time::{Date, OffsetDateTime};
 use time_tz::{OffsetDateTimeExt, Tz};
 use uuid::Uuid;
 
 use garmin_lib::{
-    common::{garmin_summary::GarminSummary, garmin_templates::HBR, pgpool::PgPool},
+    common::{garmin_summary::GarminSummary, pgpool::PgPool},
     utils::{
         date_time_wrapper::DateTimeWrapper,
         garmin_util::{print_h_m_s, MARATHON_DISTANCE_M, METERS_PER_MILE},
@@ -22,11 +20,11 @@ use garmin_lib::{
 use crate::{race_results::RaceResults, race_type::RaceType};
 
 pub struct RaceResultAnalysis {
-    data: Vec<RaceResults>,
-    summary_map: HashMap<Uuid, GarminSummary>,
+    pub data: Vec<RaceResults>,
+    pub summary_map: HashMap<Uuid, GarminSummary>,
     parameters: Array1<f64>,
     errors: Array1<f64>,
-    race_type: RaceType,
+    pub race_type: RaceType,
 }
 
 fn power_law(p: &Array1<f64>, x: &Array1<f64>) -> Array1<f64> {
@@ -46,6 +44,21 @@ pub enum ParamType {
     Nom,
     Pos,
     Neg,
+}
+
+pub struct PlotData {
+    pub data: Vec<(i32, f64, StackString, Date, StackString)>,
+    pub other_data: Vec<(i32, f64, StackString, Date, StackString)>,
+    pub x_proj: Array1<f64>,
+    pub y_proj: Array1<f64>,
+    pub x_vals: Array1<f64>,
+    pub y_nom: Array1<f64>,
+    pub y_neg: Array1<f64>,
+    pub y_pos: Array1<f64>,
+    pub xticks: Vec<i32>,
+    pub yticks: Vec<i32>,
+    pub ymin: i32,
+    pub ymax: i32,
 }
 
 impl RaceResultAnalysis {
@@ -108,7 +121,8 @@ impl RaceResultAnalysis {
 
     /// # Errors
     /// Return error if template rendering fails
-    pub fn create_plot(&self, is_demo: bool) -> Result<HashMap<StackString, StackString>, Error> {
+    #[must_use]
+    pub fn get_data(&self) -> PlotData {
         fn extract_points(
             result: &RaceResults,
             tz: &Tz,
@@ -129,7 +143,7 @@ impl RaceResultAnalysis {
             )
         }
         let local = DateTimeWrapper::local_tz();
-        let xticks: Vec<_> = [
+        let xticks = vec![
             100,
             200,
             400,
@@ -143,13 +157,7 @@ impl RaceResultAnalysis {
             50 * METERS_PER_MILE as i32,
             100 * METERS_PER_MILE as i32,
             300 * METERS_PER_MILE as i32,
-        ]
-        .iter()
-        .collect();
-        let xlabels = [
-            "100m", "", "", "800m", "1mi", "5k", "10k", "Half", "Mar", "", "50mi", "100mi", "300mi",
         ];
-        let xmap: HashMap<_, _> = xticks.iter().zip(xlabels.iter()).collect();
 
         let (ymin, ymax) = match self.race_type {
             RaceType::Personal => (5, 24),
@@ -179,157 +187,23 @@ impl RaceResultAnalysis {
 
         let x_proj: Array1<f64> = xticks
             .iter()
-            .map(|x| f64::from(**x) / METERS_PER_MILE)
+            .map(|x| f64::from(*x) / METERS_PER_MILE)
             .collect();
         let y_proj = power_law(&self.params(ParamType::Nom), &x_proj);
-
-        let entries = x_proj
-            .iter()
-            .zip(y_proj.iter())
-            .map(|(x, y)| {
-                format_sstr!(
-                    r#"
-                    <td>{:.02}</td><td>{}</td><td>{}</td>"#,
-                    x,
-                    print_h_m_s(*y * 60.0, false).unwrap_or_else(|_| "".into()),
-                    print_h_m_s(x * (*y) * 60.0, true).unwrap_or_else(|_| "".into())
-                )
-            })
-            .join("</tr><tr>");
-        let entries = format_sstr!(
-            r#"
-            <table border=1>
-            <thead>
-            <th>Distance (mi)</th><th>Pace (min/mi)</th>
-            <th>Time</th>
-            </thead>
-            <tbody>
-            <tr>{entries}</tr>
-            </tbody>
-            </table>"#
-        );
-
-        let race_results = self.data.iter().sorted_by(|x, y| x.race_date.cmp(&y.race_date)).rev().map(|result| {
-            let distance = f64::from(result.race_distance) / METERS_PER_MILE;
-            let time = print_h_m_s(result.race_time, true).unwrap_or_else(|_| "".into());
-            let pace = print_h_m_s(result.race_time / distance, false).unwrap_or_else(|_| "".into());
-            let date = if let Some(date) = result.race_date {
-                if is_demo {"".into()} else {
-                    let filter = result.race_summary_ids.iter().filter_map(|id| {
-                        id.and_then(|i| {
-                            self.summary_map.get(&i).map(|s| &s.filename)
-                        })
-                    }).join(",");
-
-                    if filter.is_empty() {
-                        format_sstr!("{date}")
-                    } else {
-                        format_sstr!(
-                            r#"<button type="submit"
-                              onclick="send_command('filter={filter},file');"> {date} </button>
-                            "#)
-                    }
-                }
-            } else {"".into()};
-            let flag = if is_demo {
-                format_sstr!("{}", result.race_flag)
-            } else {
-                format_sstr!(
-                    r#"
-                        <button type="button" id="race_flag_{id}" onclick="flipRaceResultFlag({id});">
-                            {flag}
-                       </button>
-                    "#,
-                    flag=result.race_flag, id=result.id
-                )
-            };
-            format_sstr!(
-                r#"
-                    <td align="right">{distance:0.1}</td>
-                    <td>{time}</td>
-                    <td align="center">{pace}</td>
-                    <td align="center">{date}</td>
-                    <td>{name}</td>
-                    <td>{flag}</td>
-                "#,
-                name = result.race_name.as_ref().map_or("", StackString::as_str),
-            )
-        }).join("</tr><tr>");
-        let entries = format_sstr!(
-            r#"
-                {entries}<br>
-                <table border="1">
-                <thead>
-                <th>Distance (mi)</th><th>Time</th><th>Pace (min/mi)</th><th>Date</th><th>Name</th><th>Flag</th>
-                </thead>
-                <tr>{race_results}</tr>
-                </table>
-            "#
-        );
-
-        let x_vals: Vec<f64> = x_vals.map(|x| x * METERS_PER_MILE).to_vec();
-        let y_nom: Vec<(f64, f64)> = y_nom
-            .iter()
-            .zip(x_vals.iter())
-            .map(|(y, x)| (*x, *y))
-            .collect();
-        let y_neg: Vec<(f64, f64)> = y_neg
-            .iter()
-            .zip(x_vals.iter())
-            .map(|(y, x)| (*x, *y))
-            .collect();
-        let y_pos: Vec<(f64, f64)> = y_pos
-            .iter()
-            .zip(x_vals.iter())
-            .map(|(y, x)| (*x, *y))
-            .collect();
-
-        let data = serde_json::to_string(&data).unwrap_or_else(|_| "".to_string());
-        let other_data = serde_json::to_string(&other_data).unwrap_or_else(|_| "".to_string());
-        let xticks = serde_json::to_string(&xticks).unwrap_or_else(|_| "".to_string());
-        let xmap = serde_json::to_string(&xmap).unwrap_or_else(|_| "".to_string());
-        let yticks = serde_json::to_string(&yticks).unwrap_or_else(|_| "".to_string());
-        let fitdata = serde_json::to_string(&y_nom).unwrap_or_else(|_| "".to_string());
-        let negdata = serde_json::to_string(&y_neg).unwrap_or_else(|_| "".to_string());
-        let posdata = serde_json::to_string(&y_pos).unwrap_or_else(|_| "".to_string());
-
-        let title = match self.race_type {
-            RaceType::Personal => "Race Results",
-            RaceType::WorldRecordMen => "Men's World Record",
-            RaceType::WorldRecordWomen => "Women's World Record",
-        };
-        let ymin = StackString::from_display(ymin);
-        let ymax = StackString::from_display(ymax);
-
-        let params = hashmap! {
-            "XAXIS" => "Distance",
-            "YAXIS" => "Pace (min/mi)",
-            "FITDATA" => &fitdata,
-            "NEGDATA" => &negdata,
-            "POSDATA" => &posdata,
-            "OTHERDATA" => &other_data,
-            "DATA" => &data,
-            "EXAMPLETITLE" => title,
-            "XTICKS" => &xticks,
-            "YTICKS" => &yticks,
-            "XMAP" => &xmap,
-            "YMIN" => &ymin,
-            "YMAX" => &ymax,
-        };
-
-        let plots = HBR.render("SCATTERPLOTWITHLINES", &params)?;
-
-        let buttons = [
-            r#"<button type="submit" onclick="race_result_plot_personal();">Personal</button>"#,
-            r#"<button type="submit" onclick="race_result_plot_world_record_men();">Mens World Records</button>"#,
-            r#"<button type="submit" onclick="race_result_plot_world_record_women();">Womens World Records</button>"#,
-        ].join("");
-
-        Ok(hashmap! {
-            "INSERTTABLESHERE".into() => plots.into(),
-            "INSERTTEXTHERE".into() => buttons.into(),
-            "INSERTOTHERIMAGESHERE".into() => entries,
-        })
+        PlotData {
+            data,
+            other_data,
+            x_proj,
+            y_proj,
+            x_vals,
+            y_nom,
+            y_neg,
+            y_pos,
+            xticks,
+            yticks,
+            ymin,
+            ymax,
+        }
     }
 }
 
@@ -376,10 +250,7 @@ mod tests {
 
     use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
 
-    use crate::{
-        race_result_analysis::{RaceResultAggregated, RaceResultAnalysis},
-        race_type::RaceType,
-    };
+    use crate::{race_result_analysis::RaceResultAggregated, race_type::RaceType};
 
     #[tokio::test]
     #[ignore]
@@ -392,18 +263,6 @@ mod tests {
         debug!("{:#?}", results);
         debug!("{}", results.len());
         assert!(results.len() >= 23);
-        Ok(())
-    }
-
-    #[tokio::test]
-    #[ignore]
-    async fn test_run_analysis() -> Result<(), Error> {
-        let config = GarminConfig::get_config(None)?;
-        let pool = PgPool::new(&config.pgurl);
-
-        let personal = RaceResultAnalysis::run_analysis(RaceType::Personal, &pool).await?;
-        let result = personal.create_plot(false)?;
-        assert!(result.len() > 0);
         Ok(())
     }
 }

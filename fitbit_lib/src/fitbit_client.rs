@@ -516,11 +516,11 @@ impl FitbitClient {
                     let date = datetime.date();
                     let date_str = date
                         .format(format_description!("[year]-[month]-[day]"))
-                        .unwrap_or_else(|_| "".into())
+                        .unwrap_or_else(|_| String::new())
                         .into();
                     let time_str = date
                         .format(format_description!("[hour]:[minute]:[second]"))
-                        .unwrap_or_else(|_| "".into())
+                        .unwrap_or_else(|_| String::new())
                         .into();
                     let weight_str = StackString::from_display(update.mass);
                     let url = self
@@ -780,7 +780,7 @@ impl FitbitClient {
                 let start_time_str = activity
                     .start_time
                     .format(format_description!("[year]-[month]-[day]T[hour]:[minute]"))
-                    .unwrap_or_else(|_| "".into());
+                    .unwrap_or_else(|_| String::new());
                 (start_time_str, activity)
             })
             .sorted_by(|x, y| x.0.cmp(&y.0))
@@ -866,7 +866,7 @@ impl FitbitClient {
                     let start_time_str = activity
                         .start_time
                         .format(format_description!("[year]-[month]-[day]T[hour]:[minute]"))
-                        .unwrap_or_else(|_| "".into());
+                        .unwrap_or_else(|_| String::new());
                     Some((start_time_str, activity))
                 }
             })
@@ -903,7 +903,7 @@ impl FitbitClient {
             future::ready({
                 let key = d
                     .format(format_description!("[year]-[month]-[day]T[hour]:[minute]"))
-                    .unwrap_or_else(|_| "".into());
+                    .unwrap_or_else(|_| String::new());
                 !new_activities.contains_key(&key)
             })
         })
@@ -1024,7 +1024,7 @@ impl FitbitClient {
                             .format(format_description!(
                                 "[year]-[month]-[day]_[hour]-[minute]-[second]_1_1"
                             ))
-                            .unwrap_or_else(|_| "".into()),
+                            .unwrap_or_else(|_| String::new()),
                     )
                     .with_extension("tcx");
                 if fname.exists() {

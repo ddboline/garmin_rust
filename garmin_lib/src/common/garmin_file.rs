@@ -105,7 +105,7 @@ impl GarminFile {
         let output_file = File::create(output_filename)?;
 
         let mut writer = Writer::with_codec(&schema, output_file, Codec::Snappy);
-        writer.append_ser(&self)?;
+        writer.append_ser(self)?;
         writer.flush()?;
         Ok(())
     }
@@ -139,7 +139,7 @@ impl GarminFile {
                 .format(format_description!(
                     "[year]-[month]-[day]_[hour]-[minute]-[second]-1-1"
                 ))
-                .unwrap_or_else(|_| "".into())
+                .unwrap_or_else(|_| String::new())
         )
     }
 }

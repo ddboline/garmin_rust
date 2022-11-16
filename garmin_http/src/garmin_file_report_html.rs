@@ -30,7 +30,7 @@ use garmin_lib::{
 };
 use race_result_analysis::race_results::RaceResults;
 
-use crate::garmin_file_report_txt::get_splits;
+use garmin_reports::garmin_file_report_txt::get_splits;
 
 pub fn generate_history_buttons<T: AsRef<str>>(history_vec: &[T]) -> StackString {
     fn history_button_string(most_recent: &str) -> StackString {
@@ -151,7 +151,7 @@ fn extract_report_objects_from_file(gfile: &GarminFile) -> ReportObjects {
     };
 
     for point in &gfile.points {
-        if point.distance == None {
+        if point.distance.is_none() {
             continue;
         }
         let xval = point.distance.unwrap_or(0.0) / METERS_PER_MILE;

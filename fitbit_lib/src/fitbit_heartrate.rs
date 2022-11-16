@@ -108,24 +108,6 @@ where
 
 impl FitbitHeartRate {
     #[must_use]
-    pub fn create_table(heartrate_values: &[Self]) -> StackString {
-        let rows = heartrate_values
-            .iter()
-            .map(|entry| {
-                format_sstr!(
-                    "<tr><td>{datetime}</td><td>{heartrate}</td></tr>",
-                    datetime = entry.datetime,
-                    heartrate = entry.value
-                )
-            })
-            .join("\n");
-        format_sstr!(
-            "<table border=1><thead><th>Datetime</th><th>Heart \
-             Rate</th></thead><tbody>{rows}</tbody></table>"
-        )
-    }
-
-    #[must_use]
     pub fn from_json_heartrate_entry(entry: JsonHeartRateEntry) -> Self {
         Self {
             datetime: entry.datetime,
@@ -314,7 +296,7 @@ impl FitbitHeartRate {
                                 "[year]-[month]-[day]T[hour]:[minute]:[second][offset_hour \
                                  sign:mandatory]:[offset_minute]"
                             ))
-                            .unwrap_or_else(|_| "".into());
+                            .unwrap_or_else(|_| String::new());
                         (begin_datetime_str, average_heartrate)
                     })
                 })
@@ -520,7 +502,7 @@ pub fn import_fitbit_json_files(directory: &str) -> Result<(), Error> {
 pub fn import_garmin_json_file(filename: &Path) -> Result<(), Error> {
     let config = GarminConfig::get_config(None)?;
 
-    let js: GarminConnectHrData = serde_json::from_reader(File::open(&filename)?)?;
+    let js: GarminConnectHrData = serde_json::from_reader(File::open(filename)?)?;
 
     let heartrates = FitbitHeartRate::from_garmin_connect_hr(&js);
 
@@ -536,7 +518,7 @@ pub fn import_garmin_heartrate_file(filename: &Path) -> Result<(), Error> {
 
     let mut timestamp = None;
     let mut heartrates = Vec::new();
-    let mut f = File::open(&filename)?;
+    let mut f = File::open(filename)?;
     let records = fitparser::from_reader(&mut f).map_err(|e| format_err!("{e:?}"))?;
     for record in records {
         match record.kind() {

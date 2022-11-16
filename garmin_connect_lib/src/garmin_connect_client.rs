@@ -78,7 +78,7 @@ impl GarminConnectClient {
         }
         if self.trigger_auth {
             let webdriver = Command::new(&self.config.webdriver_path)
-                .args(&[&format_sstr!("--port={}", self.config.webdriver_port)])
+                .args([&format_sstr!("--port={}", self.config.webdriver_port)])
                 .kill_on_drop(true)
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped())
@@ -412,7 +412,7 @@ pub struct GarminConnectUserDailySummary {
 
 async fn check_version(cmd: &Path, prefix: &str) -> Result<u64, Error> {
     Command::new(cmd)
-        .args(&["--version"])
+        .args(["--version"])
         .kill_on_drop(true)
         .output()
         .await

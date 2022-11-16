@@ -1,6 +1,5 @@
 use anyhow::Error;
 use futures::future::try_join_all;
-use itertools::Itertools;
 use log::debug;
 use postgres_query::{query_dyn, FromSqlRow};
 use stack_string::{format_sstr, StackString};
@@ -26,32 +25,17 @@ use crate::{
     garmin_report_options::{GarminReportAgg, GarminReportOptions},
 };
 
-type GarminTextEntry = (StackString, Option<StackString>);
+pub struct HtmlResult {
+    pub text: Option<StackString>,
+    pub url: Option<Url>,
+}
+
+type GarminTextEntry = (StackString, Option<HtmlResult>);
 
 pub trait GarminReportTrait {
     /// # Errors
     /// Returns error if getting text entry fails
     fn get_text_entry(&self) -> Result<Vec<GarminTextEntry>, Error>;
-
-    /// # Errors
-    /// Returns error if `get_text_entry` entry fails
-    fn get_html_entry(&self) -> Result<StackString, Error> {
-        let ent = self
-            .get_text_entry()?
-            .into_iter()
-            .map(|(s, u)| u.map_or(s, |u| u))
-            .join("</td><td>");
-        let cmd = self.generate_url_string();
-        Ok(format_sstr!(
-            "<tr><td>{}{}{}{}{}{}</td></tr>",
-            r#"<button type="submit" onclick="send_command('filter="#,
-            cmd,
-            r#"');">"#,
-            cmd,
-            "</button></td><td>",
-            ent.trim()
-        ))
-    }
 
     #[must_use]
     fn generate_url_string(&self) -> StackString {
@@ -80,20 +64,6 @@ impl GarminReportQuery {
             Self::Day(x) => x.iter().map(GarminReportTrait::get_text_entry).collect(),
             Self::File(x) => x.iter().map(GarminReportTrait::get_text_entry).collect(),
             Self::Sport(x) => x.iter().map(GarminReportTrait::get_text_entry).collect(),
-            Self::Empty => Ok(Vec::new()),
-        }
-    }
-
-    /// # Errors
-    /// Return error if `get_html_entry` fails
-    pub fn get_html_entries(&self) -> Result<Vec<StackString>, Error> {
-        match self {
-            Self::Year(x) => x.iter().map(GarminReportTrait::get_html_entry).collect(),
-            Self::Month(x) => x.iter().map(GarminReportTrait::get_html_entry).collect(),
-            Self::Week(x) => x.iter().map(GarminReportTrait::get_html_entry).collect(),
-            Self::Day(x) => x.iter().map(GarminReportTrait::get_html_entry).collect(),
-            Self::File(x) => x.iter().map(GarminReportTrait::get_html_entry).collect(),
-            Self::Sport(x) => x.iter().map(GarminReportTrait::get_html_entry).collect(),
             Self::Empty => Ok(Vec::new()),
         }
     }
@@ -316,7 +286,13 @@ impl GarminReportTrait for FileSummaryReport {
                 " {:>16} steps",
                 format_sstr!("{fitbit_str} / {connect_str}"),
             );
-            tmp_vec.push((text, Some(html_str)));
+            tmp_vec.push((
+                text,
+                Some(HtmlResult {
+                    text: Some(html_str),
+                    url: None,
+                }),
+            ));
         } else {
             tmp_vec.push(("".into(), None));
         }
@@ -328,8 +304,9 @@ impl GarminReportTrait for FileSummaryReport {
                         .ok();
                 tmp_vec.push((
                     format_sstr!(" {strava_title}"),
-                    url.map(|u| {
-                        format_sstr!(r#"<a href="{u}" target="_blank">{strava_title}</a>"#)
+                    url.map(|u| HtmlResult {
+                        text: Some(format_sstr!("{strava_title}")),
+                        url: Some(u),
                     }),
                 ));
             } else {

@@ -1,23 +1,17 @@
 use anyhow::{format_err, Error};
 use futures::{stream::FuturesUnordered, TryStreamExt};
 use log::debug;
-use maplit::hashmap;
 use postgres_query::{query, query_dyn, FromSqlRow, Parameter};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{self, Deserialize, Serialize};
 use smallvec::SmallVec;
-use stack_string::{format_sstr, StackString};
-use std::{
-    collections::{HashMap, HashSet},
-    fmt,
-    sync::Arc,
-};
-use time::{macros::format_description, Date, OffsetDateTime};
-use time_tz::OffsetDateTimeExt;
+use stack_string::format_sstr;
+use std::{collections::HashSet, fmt, sync::Arc};
+use time::{Date, OffsetDateTime};
 use uuid::Uuid;
 
 use garmin_lib::{
-    common::{garmin_config::GarminConfig, garmin_templates::HBR, pgpool::PgPool},
+    common::{garmin_config::GarminConfig, pgpool::PgPool},
     utils::date_time_wrapper::{iso8601::convert_datetime_to_str, DateTimeWrapper},
 };
 
@@ -237,184 +231,6 @@ impl ScaleMeasurement {
         let query = query_dyn!(&query, ..query_bindings)?;
         let conn = pool.get().await?;
         query.fetch(&conn).await.map_err(Into::into)
-    }
-
-    /// # Errors
-    /// Returns error if db query fails
-    pub fn get_scale_measurement_plots(
-        measurements: &[Self],
-        offset: Option<usize>,
-        config: &GarminConfig,
-    ) -> Result<HashMap<StackString, StackString>, Error> {
-        let offset = offset.unwrap_or(0);
-        if measurements.is_empty() {
-            return Ok(hashmap! {
-                "INSERTOTHERIMAGESHERE".into() => "".into(),
-                "INSERTTEXTHERE".into() => "".into(),
-            });
-        }
-        let mut graphs = Vec::new();
-
-        let tformat = format_description!(
-            "[year]-[month]-[day]T[hour]:[minute]:[second][offset_hour \
-             sign:mandatory]:[offset_minute]"
-        );
-
-        let mass: Vec<_> = measurements
-            .iter()
-            .map(|meas| {
-                let key = meas.datetime.format(tformat).unwrap_or_else(|_| "".into());
-                (key, meas.mass)
-            })
-            .collect();
-
-        let js_str = serde_json::to_string(&mass).unwrap_or_else(|_| "".to_string());
-        let params = hashmap! {
-            "EXAMPLETITLE" => "Weight",
-            "XAXIS" => "Date",
-            "YAXIS" => "Weight [lbs]",
-            "DATA" => &js_str,
-            "NAME" => "weight",
-            "UNITS" => "lbs",
-        };
-        let plot: StackString = HBR.render("TIMESERIESTEMPLATE", &params)?.into();
-        graphs.push(plot);
-
-        let fat: Vec<_> = measurements
-            .iter()
-            .map(|meas| {
-                let key = meas.datetime.format(tformat).unwrap_or_else(|_| "".into());
-                (key, meas.fat_pct)
-            })
-            .collect();
-
-        let js_str = serde_json::to_string(&fat).unwrap_or_else(|_| "".to_string());
-        let params = hashmap! {
-            "EXAMPLETITLE" => "Fat %",
-            "XAXIS" => "Date",
-            "YAXIS" => "Fat %",
-            "DATA" => &js_str,
-            "NAME" => "fat",
-            "UNITS" => "%",
-        };
-        let plot = HBR.render("TIMESERIESTEMPLATE", &params)?;
-        graphs.push(plot.into());
-
-        let water: Vec<_> = measurements
-            .iter()
-            .map(|meas| {
-                let key = meas.datetime.format(tformat).unwrap_or_else(|_| "".into());
-                (key, meas.water_pct)
-            })
-            .collect();
-
-        let js_str = serde_json::to_string(&water).unwrap_or_else(|_| "".to_string());
-        let params = hashmap! {
-            "EXAMPLETITLE" => "Water %",
-            "XAXIS" => "Date",
-            "YAXIS" => "Water %",
-            "DATA" => &js_str,
-            "NAME" => "water",
-            "UNITS" => "%",
-        };
-        let plot = HBR.render("TIMESERIESTEMPLATE", &params)?;
-        graphs.push(plot.into());
-
-        let muscle: Vec<_> = measurements
-            .iter()
-            .map(|meas| {
-                let key = meas.datetime.format(tformat).unwrap_or_else(|_| "".into());
-                (key, meas.muscle_pct)
-            })
-            .collect();
-
-        let js_str = serde_json::to_string(&muscle).unwrap_or_else(|_| "".to_string());
-        let params = hashmap! {
-            "EXAMPLETITLE" => "Muscle %",
-            "XAXIS" => "Date",
-            "YAXIS" => "Muscle %",
-            "DATA" => &js_str,
-            "NAME" => "muscle",
-            "UNITS" => "%",
-        };
-        let plot = HBR.render("TIMESERIESTEMPLATE", &params)?;
-        graphs.push(plot.into());
-
-        let bone: Vec<_> = measurements
-            .iter()
-            .map(|meas| {
-                let key = meas.datetime.format(tformat).unwrap_or_else(|_| "".into());
-                (key, meas.bone_pct)
-            })
-            .collect();
-
-        let js_str = serde_json::to_string(&bone).unwrap_or_else(|_| "".to_string());
-        let params = hashmap! {
-            "EXAMPLETITLE" => "Bone %",
-            "XAXIS" => "Date",
-            "YAXIS" => "Bone %",
-            "DATA" => &js_str,
-            "NAME" => "bone",
-            "UNITS" => "%",
-        };
-        let plot = HBR.render("TIMESERIESTEMPLATE", &params)?;
-        graphs.push(plot.into());
-        let local = DateTimeWrapper::local_tz();
-
-        let n = measurements.len();
-        let entries: Vec<_> = measurements[(n - 10 - offset)..(n - offset)]
-            .iter()
-            .map(|meas| {
-                let date = meas.datetime.to_timezone(local).date();
-                format_sstr!(
-                    r#"
-                    <td>{date}</td><td>{m:3.1}</td><td>{f:2.1}</td><td>{w:2.1}</td>
-                    <td>{ms:2.1}</td><td>{b:2.1}</td><td>{bmi:2.1}</td>"#,
-                    m = meas.mass,
-                    f = meas.fat_pct,
-                    w = meas.water_pct,
-                    ms = meas.muscle_pct,
-                    b = meas.bone_pct,
-                    bmi = meas.get_bmi(config),
-                )
-            })
-            .collect();
-        let entries = format_sstr!(
-            r#"
-            <table border=1>
-            <thead>
-            <th>Date</th>
-            <th><a href="https://www.fitbit.com/weight" target="_blank">Weight</a></th>
-            <th>Fat %</th><th>Water %</th>
-            <th>Muscle %</th><th>Bone %</th>
-            <th>BMI kg/m^2</th>
-            </thead>
-            <tbody>
-            <tr>{}</tr>
-            </tbody>
-            </table>
-            <br>{}{}"#,
-            entries.join("</tr><tr>"),
-            if offset >= 10 {
-                format_sstr!(
-                    r#"<button type="submit" onclick="scale_measurement_plots({});">Previous</button>"#,
-                    offset - 10
-                )
-            } else {
-                "".into()
-            },
-            format_sstr!(
-                r#"<button type="submit" onclick="scale_measurement_plots({});">Next</button>"#,
-                offset + 10
-            ),
-        );
-        let graphs = graphs.join("\n");
-
-        Ok(hashmap! {
-            "INSERTOTHERIMAGESHERE".into() => "".into(),
-            "INSERTTABLESHERE".into() => graphs.into(),
-            "INSERTTEXTHERE".into() => entries,
-        })
     }
 
     /// # Errors

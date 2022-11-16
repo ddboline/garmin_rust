@@ -1,18 +1,12 @@
 use anyhow::Error;
 use futures::Stream;
-use maplit::hashmap;
 use postgres_query::{query, Error as PqError, FromSqlRow};
 use serde::{Deserialize, Serialize};
-use stack_string::{format_sstr, StackString};
 use statistical::{mean, median, standard_deviation};
-use std::collections::HashMap;
-use time::{macros::format_description, Date, Duration, OffsetDateTime};
+use time::{Date, Duration, OffsetDateTime};
 use time_tz::OffsetDateTimeExt;
 
-use garmin_lib::{
-    common::{garmin_templates::HBR, pgpool::PgPool},
-    utils::date_time_wrapper::DateTimeWrapper,
-};
+use garmin_lib::{common::pgpool::PgPool, utils::date_time_wrapper::DateTimeWrapper};
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, FromSqlRow)]
 pub struct FitbitStatisticsSummary {
@@ -153,149 +147,5 @@ impl FitbitStatisticsSummary {
         );
         let conn = pool.get().await?;
         query.execute(&conn).await.map(|_| ()).map_err(Into::into)
-    }
-
-    /// # Errors
-    /// Returns error if reading file fails
-    pub fn get_fitbit_statistics_plots(
-        stats: &[Self],
-        offset: Option<usize>,
-    ) -> Result<HashMap<StackString, StackString>, Error> {
-        let offset = offset.unwrap_or(0);
-        if stats.is_empty() {
-            return Ok(hashmap! {
-                "INSERTOTHERIMAGESHERE".into() => "".into(),
-                "INSERTTEXTHERE".into() => "".into(),
-                "INSERTOTHERTEXTHERE".into() => "".into(),
-            });
-        }
-        let mut graphs = Vec::new();
-        let dformat = format_description!("[year]-[month]-[day]T00:00:00Z");
-        let min_heartrate: Vec<_> = stats
-            .iter()
-            .map(|stat| {
-                let key = stat.date.format(dformat).unwrap_or_else(|_| "".into());
-                (key, stat.min_heartrate)
-            })
-            .collect();
-
-        let js_str = serde_json::to_string(&min_heartrate).unwrap_or_else(|_| "".to_string());
-        let params = hashmap! {
-            "EXAMPLETITLE" => "Minimum Heartrate",
-            "DATA" => &js_str,
-            "XAXIS" => "Date",
-            "YAXIS" => "Heartrate [bpm]",
-            "NAME" => "minimum_heartrate",
-            "UNITS" => "bpm",
-        };
-        let plot = HBR.render("TIMESERIESTEMPLATE", &params)?;
-        graphs.push(plot);
-
-        let max_heartrate: Vec<_> = stats
-            .iter()
-            .map(|stat| {
-                let key = stat.date.format(dformat).unwrap_or_else(|_| "".into());
-                (key, stat.max_heartrate)
-            })
-            .collect();
-        let js_str = serde_json::to_string(&max_heartrate).unwrap_or_else(|_| "".to_string());
-        let params = hashmap! {
-            "EXAMPLETITLE" => "Maximum Heartrate",
-            "DATA" => &js_str,
-            "XAXIS" => "Date",
-            "YAXIS" => "Heartrate [bpm]",
-            "NAME" => "maximum_heartrate",
-            "UNITS" => "bpm",
-        };
-        let plot = HBR.render("TIMESERIESTEMPLATE", &params)?;
-        graphs.push(plot);
-
-        let mean_heartrate: Vec<_> = stats
-            .iter()
-            .map(|stat| {
-                let key = stat.date.format(dformat).unwrap_or_else(|_| "".into());
-                (key, stat.mean_heartrate)
-            })
-            .collect();
-        let js_str = serde_json::to_string(&mean_heartrate).unwrap_or_else(|_| "".to_string());
-        let params = hashmap! {
-            "EXAMPLETITLE" => "Mean Heartrate",
-            "DATA" => &js_str,
-            "XAXIS" => "Date",
-            "YAXIS" => "Heartrate [bpm]",
-            "NAME" => "mean_heartrate",
-            "UNITS" => "bpm",
-        };
-        let plot = HBR.render("TIMESERIESTEMPLATE", &params)?;
-        graphs.push(plot);
-
-        let median_heartrate: Vec<_> = stats
-            .iter()
-            .map(|stat| {
-                let key = stat.date.format(dformat).unwrap_or_else(|_| "".into());
-                (key, stat.median_heartrate)
-            })
-            .collect();
-        let js_str = serde_json::to_string(&median_heartrate).unwrap_or_else(|_| "".to_string());
-        let params = hashmap! {
-            "EXAMPLETITLE" => "Median Heartrate",
-            "DATA" => &js_str,
-            "XAXIS" => "Date",
-            "YAXIS" => "Heartrate [bpm]",
-            "NAME" => "median_heartrate",
-            "UNITS" => "bpm",
-        };
-        let plot = HBR.render("TIMESERIESTEMPLATE", &params)?;
-        graphs.push(plot);
-
-        let n = stats.len();
-        let entries: Vec<_> = stats[(n - 10 - offset)..(n - offset)]
-            .iter()
-            .map(|stat| {
-                let date = stat.date;
-                format_sstr!(
-                    r#"
-                    <td>{date}</td><td>{min:3.1}</td><td>{max:2.1}</td><td>{mnh:2.1}</td>
-                    <td>{mdh:2.1}</td>"#,
-                    min = stat.min_heartrate,
-                    max = stat.max_heartrate,
-                    mnh = stat.mean_heartrate,
-                    mdh = stat.median_heartrate,
-                )
-            })
-            .collect();
-        let entries = format_sstr!(
-            r#"
-            <table border=1>
-            <thead>
-            <th>Date</th><th>Min</th><th>Max</th><th>Mean</th>
-            <th>Median</th>
-            </thead>
-            <tbody>
-            <tr>{}</tr>
-            </tbody>
-            </table>
-            <br>{}{}"#,
-            entries.join("</tr><tr>"),
-            if offset >= 10 {
-                format_sstr!(
-                    r#"<button type="submit" onclick="heartrate_stat_plot({});">Previous</button>"#,
-                    offset - 10
-                )
-            } else {
-                "".into()
-            },
-            format_sstr!(
-                r#"<button type="submit" onclick="heartrate_stat_plot({});">Next</button>"#,
-                offset + 10
-            ),
-        );
-        let graphs = graphs.join("\n");
-
-        Ok(hashmap! {
-            "INSERTOTHERIMAGESHERE".into() => "".into(),
-            "INSERTTABLESHERE".into() => graphs.into(),
-            "INSERTTEXTHERE".into() => entries,
-        })
     }
 }

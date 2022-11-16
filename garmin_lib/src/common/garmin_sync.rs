@@ -252,7 +252,7 @@ impl GarminSync {
                     )
                     .await?
                     .e_tag
-                    .unwrap_or_else(|| "".to_string());
+                    .unwrap_or_default();
                 Ok(etag.into())
             }
         })
@@ -283,7 +283,7 @@ impl GarminSync {
         exponential_retry(|| async move {
             self.s3_client
                 .upload_from_file(
-                    &local_file,
+                    local_file,
                     PutObjectRequest {
                         bucket: s3_bucket.to_string(),
                         key: s3_key.to_string(),

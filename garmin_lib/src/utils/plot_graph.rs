@@ -82,7 +82,7 @@ pub fn generate_d3_plot(opts: &PlotOpts) -> Result<StackString, Error> {
 
         let xstep = StackString::from_display(xstep);
         let ystep = StackString::from_display(ystep);
-        let data = serde_json::to_string(&data).unwrap_or_else(|_| "".to_string());
+        let data = serde_json::to_string(&data).unwrap_or_else(|_| String::new());
 
         let params = hashmap! {
             "EXAMPLETITLE" => opts.title.as_str(),
@@ -95,7 +95,7 @@ pub fn generate_d3_plot(opts: &PlotOpts) -> Result<StackString, Error> {
 
         HBR.render("SCATTERPLOTTEMPLATE", &params)?.into()
     } else {
-        let data = serde_json::to_string(&data).unwrap_or_else(|_| "".to_string());
+        let data = serde_json::to_string(&data).unwrap_or_else(|_| String::new());
         let params = hashmap! {
             "EXAMPLETITLE" => opts.title.as_str(),
             "XAXIS" => opts.xlabel.as_str(),

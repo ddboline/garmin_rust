@@ -1,0 +1,284 @@
+function send_command( command ) {
+    let url = '/garmin/index.html?' + command;
+    location.replace(url);
+}
+function processFormData() {
+    let garmin_filter = document.getElementById( 'garmin_filter' );
+    send_command( 'filter=' + garmin_filter.value );
+}
+function processStravaData(filename, activity_type) {
+    let strava_title = document.getElementById( 'strava_upload' );
+    let url = '/garmin/strava/upload';
+    let data = JSON.stringify(
+        {
+            "filename": filename,
+            "title": strava_title.value,
+            "activity_type": activity_type
+        }
+    );
+    let xmlhttp = new XMLHttpRequest();
+    xmlhttp.onload = function() {
+        let xmlhttp2 = new XMLHttpRequest();
+        xmlhttp2.onload = function() {
+            location.reload()
+        }
+        xmlhttp2.open("GET", xmlhttp.responseText, true);
+        xmlhttp2.send(null);
+        document.getElementById("garminconnectoutput").innerHTML = "syncing";
+    }
+    xmlhttp.open( "POST", url , true );
+    xmlhttp.setRequestHeader("Content-Type", "application/json");
+    xmlhttp.send(data);
+    document.getElementById("garminconnectoutput").innerHTML = "uploading";
+}
+function processStravaUpdate(activity_id, activity_type, start_time) {
+    let strava_title = document.getElementById( 'strava_upload' );
+    let url = '/garmin/strava/update';
+    let data = JSON.stringify(
+        {
+            "activity_id": activity_id,
+            "title": strava_title.value,
+            "activity_type": activity_type,
+            "start_time": start_time,
+        }
+    );
+    let xmlhttp = new XMLHttpRequest();
+    xmlhttp.onload = function() {
+        let xmlhttp2 = new XMLHttpRequest();
+        xmlhttp2.onload = function() {
+            location.reload()
+        }
+        xmlhttp2.open("GET", xmlhttp.responseText, true);
+        xmlhttp2.send(null);
+        document.getElementById("garminconnectoutput").innerHTML = "syncing";
+    }
+    xmlhttp.open( "POST", url , true );
+    xmlhttp.setRequestHeader("Content-Type", "application/json");
+    xmlhttp.send(data);
+    document.getElementById("garminconnectoutput").innerHTML = "updating";
+}
+function garmin_sync() {
+    let url = '/garmin/garmin_sync';
+    let xmlhttp = new XMLHttpRequest();
+    xmlhttp.open("GET", url, true);
+    xmlhttp.onload = function nothing() {
+        document.getElementById("garminconnectoutput").innerHTML = "done";
+        document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
+    }
+    xmlhttp.send(null);
+    document.getElementById("garminconnectoutput").innerHTML = "syncing";
+}
+function garmin_connect_sync() {
+    let url = '/garmin/garmin_connect_sync';
+    let xmlhttp = new XMLHttpRequest();
+    xmlhttp.open("GET", url, true);
+    xmlhttp.onload = function nothing() {
+        document.getElementById("garminconnectoutput").innerHTML = "done";
+        document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
+    }
+    xmlhttp.send(null);
+    document.getElementById("garminconnectoutput").innerHTML = "syncing";
+}
+function fitbit_tcx_sync() {
+    let url = '/garmin/fitbit/fitbit_tcx_sync';
+    let xmlhttp = new XMLHttpRequest();
+    xmlhttp.open("GET", url, true);
+    xmlhttp.onload = function nothing() {
+        document.getElementById("garminconnectoutput").innerHTML = "done";
+        document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
+    }
+    xmlhttp.send(null);
+    document.getElementById("garminconnectoutput").innerHTML = "syncing";
+}
+function stravaAuth() {
+    let url = "/garmin/strava/auth";
+    let xmlhttp = new XMLHttpRequest();
+    xmlhttp.onload = function() {
+        let win = window.open(xmlhttp.responseText, '_blank');
+        win.focus()
+    }
+    xmlhttp.open( "GET", url, true );
+    xmlhttp.send(null);
+}
+function stravaAthlete() {
+    let url = "/garmin/strava/athlete";
+    let xmlhttp = new XMLHttpRequest();
+    xmlhttp.open("GET", url, true);
+    xmlhttp.onload = function nothing() {
+        document.getElementById("garminconnectoutput").innerHTML = "done";
+        document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
+    }
+    xmlhttp.send(null);
+    document.getElementById("garminconnectoutput").innerHTML = "syncing";
+}
+function strava_sync() {
+    let url = '/garmin/strava_sync';
+    let xmlhttp = new XMLHttpRequest();
+    xmlhttp.open("GET", url, true);
+    xmlhttp.onload = function nothing() {
+        document.getElementById("garminconnectoutput").innerHTML = "done";
+        document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
+    }
+    xmlhttp.send(null);
+    document.getElementById("garminconnectoutput").innerHTML = "syncing";
+}
+function fitbitAuth() {
+    let url = '/garmin/fitbit/auth';
+    let xmlhttp = new XMLHttpRequest();
+    xmlhttp.onload = function() {
+        let win = window.open(xmlhttp.responseText, '_blank');
+        win.focus()
+    }
+    xmlhttp.open("GET", url, true);
+    xmlhttp.send(null);
+}
+function fitbitProfile() {
+    let url = "/garmin/fitbit/profile";
+    let xmlhttp = new XMLHttpRequest();
+    xmlhttp.open("GET", url, true);
+    xmlhttp.onload = function nothing() {
+        document.getElementById("garminconnectoutput").innerHTML = "done";
+        document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
+    }
+    xmlhttp.send(null);
+    document.getElementById("garminconnectoutput").innerHTML = "syncing";
+}
+function fitbitSync() {
+    let url = '/garmin/fitbit/bodyweight_sync';
+    let xmlhttp = new XMLHttpRequest();
+    xmlhttp.open("GET", url, true);
+    xmlhttp.onload = function nothing() {
+        document.getElementById("garminconnectoutput").innerHTML = "done";
+        document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
+    }
+    xmlhttp.send(null);
+    document.getElementById("garminconnectoutput").innerHTML = "syncing";
+}
+function scale_measurement_plots(offset) {
+    let url = '/garmin/fitbit/plots?offset=' + offset;
+    location.replace(url)
+}
+function heartrate_plot() {
+    let url = '/garmin/fitbit/heartrate_plots';
+    location.replace(url)
+}
+function heartrate_stat_plot(offset) {
+    let url = '/garmin/fitbit/heartrate_statistics_plots?offset=' + offset;
+    location.replace(url)
+}
+function heartrateSync() {
+    let url = '/sync/sync_garmin';
+    let xmlhttp = new XMLHttpRequest();
+    xmlhttp.open("GET", url, true);
+    xmlhttp.onload = function nothing() {
+        document.getElementById("garminconnectoutput").innerHTML = "done";
+        document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
+    }
+    xmlhttp.send(null);
+    document.getElementById("garminconnectoutput").innerHTML = "syncing";
+}
+function addGarminCorrectionSport(begin_datetime) {
+    let sport = document.getElementById( 'sport_select' );
+    let url = '/garmin/add_garmin_correction';
+    let data = JSON.stringify(
+        {
+            "start_time": begin_datetime,
+            "lap_number": 0,
+            "sport": sport.value
+        }
+    );
+    let xmlhttp = new XMLHttpRequest();
+    xmlhttp.onload = function() {
+        document.getElementById("garminconnectoutput").innerHTML = "done";
+    }
+    xmlhttp.open( "POST", url , true );
+    xmlhttp.setRequestHeader("Content-Type", "application/json");
+    xmlhttp.send(data);
+    document.getElementById("garminconnectoutput").innerHTML = "updating";
+}
+function race_result_plot_personal() {
+    let url = "/garmin/race_result_plot?race_type=personal"
+    location.replace(url)
+}
+function race_result_plot_world_record_men() {
+    let url = "/garmin/race_result_plot?race_type=world_record_men"
+    location.replace(url)
+}
+function race_result_plot_world_record_women() {
+    let url = "/garmin/race_result_plot?race_type=world_record_women"
+    location.replace(url)
+}
+function flipRaceResultFlag(id) {
+    let url = '/garmin/race_result_flag?id=' + id;
+    let xmlhttp = new XMLHttpRequest();
+    xmlhttp.open("GET", url, true);
+    xmlhttp.onload = function nothing() {
+        document.getElementById("garminconnectoutput").innerHTML = "done";
+        document.getElementById("race_flag_" + id).innerHTML = xmlhttp.responseText;
+    }
+    xmlhttp.send(null);
+    document.getElementById("garminconnectoutput").innerHTML = "updating";
+}
+function garminConnectUserSummary() {
+    let url = "/garmin/garmin_connect_user_summary";
+    let xmlhttp = new XMLHttpRequest();
+    xmlhttp.open("GET", url, true);
+    xmlhttp.onload = function nothing() {
+        document.getElementById("garminconnectoutput").innerHTML = "done";
+        document.getElementById("garmin_text_box").innerHTML = JSON.stringify(JSON.parse(xmlhttp.responseText),null,2);
+    }
+    xmlhttp.send(null);
+    document.getElementById("garminconnectoutput").innerHTML = "updating";
+}
+function heartrate_plot_date(start_date, end_date) {
+    let url = '/garmin/fitbit/heartrate_plots?start_date=' + start_date + "&end_date=" + end_date;
+    location.replace(url)
+}
+function heartrate_plot_button(start_date, end_date, button_date) {
+    let url = '/garmin/fitbit/heartrate_plots?start_date=' + start_date + '&end_date=' + end_date + '&button_date=' + button_date;
+    location.replace(url)
+}
+function heartrate_sync(date) {
+    let url = '/garmin/fitbit/sync?date=' + date;
+    let xmlhttp = new XMLHttpRequest();
+    xmlhttp.open("GET", url, true);
+    xmlhttp.onload = function nothing() {
+        document.getElementById("garminconnectoutput").innerHTML = "done";
+        document.getElementById("garmin_image_box").innerHTML = xmlhttp.responseText;
+    }
+    xmlhttp.send(null);
+    document.getElementById("garminconnectoutput").innerHTML = "syncing";
+}
+function connect_hr_sync(date) {
+    let url = '/garmin/garmin_connect_hr_sync?date=' + date;
+    let xmlhttp = new XMLHttpRequest();
+    xmlhttp.open("GET", url, true);
+    xmlhttp.onload = function nothing() {
+        document.getElementById("garminconnectoutput").innerHTML = "done";
+        document.getElementById("garmin_image_box").innerHTML = xmlhttp.responseText;
+    }
+    xmlhttp.send(null);
+    document.getElementById("garminconnectoutput").innerHTML = "syncing";
+}
+function createStravaActivity(filename) {
+    let url = '/garmin/strava/create?filename=' + filename;
+    let xmlhttp = new XMLHttpRequest();
+    xmlhttp.onload = function() {
+        document.getElementById("garminconnectoutput").innerHTML = "done";
+        document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
+    }
+    xmlhttp.open("POST", url, true);
+    xmlhttp.send(null);
+    document.getElementById("garminconnectoutput").innerHTML = "processing";
+}
+function raceResultImport(filename) {
+    let url = '/garmin/race_result_import?filename=' + filename;
+    let xmlhttp = new XMLHttpRequest();
+    xmlhttp.open("GET", url, true);
+    xmlhttp.onload = function nothing() {
+        document.getElementById("garminconnectoutput").innerHTML = "done";
+        document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
+    }
+    xmlhttp.send(null);
+    document.getElementById("garminconnectoutput").innerHTML = "syncing";
+}

@@ -33,7 +33,8 @@ use crate::{
         race_results_db_update, scale_measurement, scale_measurement_update, strava_activities,
         strava_activities_db, strava_activities_db_update, strava_athlete, strava_auth,
         strava_callback, strava_create, strava_refresh, strava_sync, strava_update, strava_upload,
-        user,
+        user, garmin_scripts_js, garmin_scripts_demo_js, line_plot_js, scatter_plot_js,
+        scatter_plot_with_lines_js, time_series_js
     },
     logged_user::{fill_from_db, get_secrets, TRIGGER_DB_UPDATE},
 };
@@ -205,6 +206,13 @@ fn get_garmin_path(app: &AppState) -> BoxedFilter<(impl Reply,)> {
     let race_results_db_post = race_results_db_update(app.clone());
     let race_results_db_path = race_results_db_get.or(race_results_db_post).boxed();
 
+    let garmin_scripts_js_path = garmin_scripts_js();
+    let garmin_scripts_demo_js_path = garmin_scripts_demo_js();
+    let line_plot_js_path = line_plot_js();
+    let scatter_plot_js_path = scatter_plot_js();
+    let scatter_plot_with_lines_js_path = scatter_plot_with_lines_js();
+    let time_series_js_path = time_series_js();
+
     index_path
         .or(garmin_demo_path)
         .or(garmin_upload_path)
@@ -226,6 +234,12 @@ fn get_garmin_path(app: &AppState) -> BoxedFilter<(impl Reply,)> {
         .or(race_result_import_path)
         .or(race_result_plot_demo_path)
         .or(race_results_db_path)
+        .or(garmin_scripts_js_path)
+        .or(garmin_scripts_demo_js_path)
+        .or(line_plot_js_path)
+        .or(scatter_plot_js_path)
+        .or(scatter_plot_with_lines_js_path)
+        .or(time_series_js_path)
         .boxed()
 }
 

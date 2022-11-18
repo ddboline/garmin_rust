@@ -215,6 +215,40 @@ pub async fn garmin_demo(
 }
 
 #[derive(RwebResponse)]
+#[response(description = "Javascript", content = "js")]
+struct JsResponse(HtmlBase<&'static str, Infallible>);
+
+#[get("/garmin/scripts/garmin_scripts.js")]
+pub async fn garmin_scripts_js() -> WarpResult<JsResponse> {
+    Ok(HtmlBase::new(include_str!("../../templates/garmin_scripts.js")).into())
+}
+
+#[get("/garmin/scripts/garmin_scripts_demo.js")]
+pub async fn garmin_scripts_demo_js() -> WarpResult<JsResponse> {
+    Ok(HtmlBase::new(include_str!("../../templates/garmin_scripts_demo.js")).into())
+}
+
+#[get("/garmin/scripts/line_plot.js")]
+pub async fn line_plot_js() -> WarpResult<JsResponse> {
+    Ok(HtmlBase::new(include_str!("../../templates/line_plot.js")).into())
+}
+
+#[get("/garmin/scripts/scatter_plot.js")]
+pub async fn scatter_plot_js() -> WarpResult<JsResponse> {
+    Ok(HtmlBase::new(include_str!("../../templates/scatter_plot.js")).into())
+}
+
+#[get("/garmin/scripts/scatter_plot_with_lines.js")]
+pub async fn scatter_plot_with_lines_js() -> WarpResult<JsResponse> {
+    Ok(HtmlBase::new(include_str!("../../templates/scatter_plot_with_lines.js")).into())
+}
+
+#[get("/garmin/scripts/time_series.js")]
+pub async fn time_series_js() -> WarpResult<JsResponse> {
+    Ok(HtmlBase::new(include_str!("../../templates/time_series.js")).into())
+}
+
+#[derive(RwebResponse)]
 #[response(description = "Upload Response", content = "html", status = "CREATED")]
 struct UploadResponse(HtmlBase<StackString, Error>);
 

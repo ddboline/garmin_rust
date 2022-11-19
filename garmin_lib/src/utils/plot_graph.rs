@@ -6,23 +6,18 @@ use std::collections::HashMap;
 
 use crate::{common::garmin_templates::HBR, utils::plot_opts::PlotOpts};
 
+#[derive(PartialEq, Debug)]
+pub struct ScatterPlotData {
+    pub data: Vec<(f64, f64, u64)>,
+    pub xstep: f64,
+    pub ystep: f64,
+}
+
 /// # Errors
 /// Return error if rendering template fails
 #[allow(clippy::similar_names)]
-pub fn generate_d3_plot(opts: &PlotOpts) -> Result<StackString, Error> {
-    let err_str = format_sstr!("No data points {}", opts.name);
-
-    let data = match opts.data.as_ref() {
-        Some(x) => {
-            if x.is_empty() {
-                return Err(format_err!(err_str));
-            }
-            x
-        }
-        None => return Err(format_err!(err_str)),
-    };
-
-    let body = if opts.do_scatter {
+pub fn generate_plot_data(opts: &PlotOpts, data: &[(f64, f64)]) -> Option<ScatterPlotData> {
+    if opts.do_scatter {
         let nbins = 10;
         let xmin = data
             .iter()
@@ -75,11 +70,35 @@ pub fn generate_d3_plot(opts: &PlotOpts) -> Result<StackString, Error> {
             }
         }
 
-        let data: Vec<_> = bins
+        let data: Vec<(f64, f64, u64)> = bins
             .iter()
-            .map(|((xb, yb), c)| (*xb as f64 * xstep + xmin, *yb as f64 * ystep + ymin, c))
+            .map(|((xb, yb), c)| (*xb as f64 * xstep + xmin, *yb as f64 * ystep + ymin, *c))
             .collect();
 
+        Some(ScatterPlotData { data, xstep, ystep })
+    } else {
+        None
+    }
+}
+
+/// # Errors
+/// Return error if rendering template fails
+#[allow(clippy::similar_names)]
+pub fn generate_d3_plot(opts: &PlotOpts) -> Result<StackString, Error> {
+    let err_str = format_sstr!("No data points {}", opts.name);
+
+    let data = match opts.data.as_ref() {
+        Some(x) => {
+            if x.is_empty() {
+                return Err(format_err!(err_str));
+            }
+            x
+        }
+        None => return Err(format_err!(err_str)),
+    };
+
+    let body = if let Some(ScatterPlotData { data, xstep, ystep }) = generate_plot_data(opts, *data)
+    {
         let xstep = StackString::from_display(xstep);
         let ystep = StackString::from_display(ystep);
         let data = serde_json::to_string(&data).unwrap_or_else(|_| String::new());

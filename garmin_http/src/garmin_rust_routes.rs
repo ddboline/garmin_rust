@@ -23,7 +23,7 @@ use tokio_stream::StreamExt;
 
 use fitbit_lib::{
     fitbit_client::FitbitClient, fitbit_heartrate::FitbitHeartRate,
-    fitbit_statistics_summary::FitbitStatisticsSummary,
+    fitbit_statistics_summary::FitbitStatisticsSummary, scale_measurement::ScaleMeasurement,
 };
 use garmin_cli::garmin_cli::{GarminCli, GarminRequest};
 use garmin_connect_lib::garmin_connect_hr_data::GarminConnectHrData;
@@ -42,7 +42,7 @@ use garmin_lib::{
     parsers::garmin_parse::{GarminParse, GarminParseTrait},
     utils::{
         date_time_wrapper::iso8601::convert_datetime_to_str,
-        garmin_util::{print_h_m_s, METERS_PER_MILE},
+        garmin_util::{print_h_m_s, titlecase, METERS_PER_MILE},
     },
 };
 use garmin_reports::garmin_summary_report_txt::create_report_query;
@@ -55,7 +55,8 @@ use strava_lib::strava_client::StravaClient;
 
 use crate::{
     errors::ServiceError as Error,
-    garmin_file_report_html::{file_report_html, generate_history_buttons},
+    garmin_elements::{index_new_body, IndexConfig},
+    garmin_file_report_html::generate_history_buttons,
     garmin_requests::{
         get_connect_activities, AddGarminCorrectionRequest, FitbitActivitiesRequest,
         FitbitHeartrateCacheRequest, FitbitHeartratePlotRequest, FitbitHeartrateUpdateRequest,
@@ -66,7 +67,6 @@ use crate::{
         StravaCreateRequest, StravaSyncRequest, StravaUpdateRequest, StravaUploadRequest,
     },
     garmin_rust_app::AppState,
-    garmin_summary_report_html::summary_report_html,
     logged_user::{LoggedUser, Session},
     FitbitActivityTypesWrapper, FitbitActivityWrapper, FitbitBodyWeightFatUpdateOutputWrapper,
     FitbitBodyWeightFatWrapper, FitbitHeartRateWrapper, FitbitStatisticsSummaryWrapper,
@@ -129,7 +129,18 @@ pub async fn garmin(
         .await
         .map_err(Into::<Error>::into)?;
 
-    let body = garmin_body(query, &state, &mut session.history, false).await?;
+    let grec = proc_pattern_wrapper(&state.config, query, &session.history, false);
+    if !session.history.contains(&grec.request.filter) {
+        if session.history.len() > 5 {
+            session.history.remove(0);
+        }
+        session.history.push(grec.request.filter.clone());
+    }
+
+    let body = get_index_body(&state.db, &state.config, &grec.request, false)
+        .await
+        .map_err(Into::<Error>::into)?
+        .into();
 
     user.set_session(&state.client, &state.config, &session)
         .await
@@ -138,32 +149,17 @@ pub async fn garmin(
     Ok(HtmlBase::new(body).into())
 }
 
-async fn garmin_body(
-    query: FilterRequest,
-    state: &AppState,
-    history: &mut Vec<StackString>,
-    is_demo: bool,
-) -> HttpResult<StackString> {
-    let grec = proc_pattern_wrapper(&state.config, query, history, is_demo);
-    if history.len() > 5 {
-        history.remove(0);
-    }
-    history.push(grec.request.filter.clone());
-
-    let body = run_html(&state.config, &state.db, &grec.request, grec.is_demo).await?;
-    Ok(body)
-}
-
-async fn run_html(
-    config: &GarminConfig,
+async fn get_index_body(
     pool: &PgPool,
+    config: &GarminConfig,
     req: &GarminRequest,
     is_demo: bool,
-) -> Result<StackString, Error> {
-    let file_list: Vec<_> = get_list_of_files_from_db(&req.constraints.to_query_string(), pool)
-        .await?
-        .try_collect()
-        .await?;
+) -> HttpResult<String> {
+    let file_list: Vec<StackString> =
+        get_list_of_files_from_db(&req.constraints.to_query_string(), pool)
+            .await?
+            .try_collect()
+            .await?;
 
     match file_list.len() {
         0 => Ok("".into()),
@@ -184,19 +180,33 @@ async fn run_html(
                 debug!("Reading gps_file: {:?}", &gps_file);
                 spawn_blocking(move || GarminParse::new().with_file(&gps_file, &corr_map)).await??
             };
-
-            debug!("gfile {} {}", gfile.laps.len(), gfile.points.len());
-
-            file_report_html(config, &gfile, &req.history, pool, is_demo)
-                .await
-                .map_err(Into::<Error>::into)
+            let sport: StackString = gfile.sport.into();
+            let sport = titlecase(&sport);
+            let dt = gfile.begin_datetime;
+            let body = index_new_body(
+                config.clone(),
+                pool,
+                format_sstr!("Garmin Event {sport} at {dt}"),
+                is_demo,
+                req.history.clone(),
+                IndexConfig::File { gfile },
+            )
+            .await?
+            .into();
+            Ok(body)
         }
         _ => {
-            debug!("{:?}", req.options);
-            let txt_result = create_report_query(pool, &req.options, &req.constraints).await?;
-
-            summary_report_html(&config.domain, &txt_result, &req.history, is_demo)
-                .map_err(Into::<Error>::into)
+            let reports = create_report_query(pool, &req.options, &req.constraints).await?;
+            let body = index_new_body(
+                config.clone(),
+                pool,
+                "Garmin Summary".into(),
+                is_demo,
+                req.history.clone(),
+                IndexConfig::Report { reports },
+            )
+            .await?;
+            Ok(body)
         }
     }
 }
@@ -207,8 +217,23 @@ pub async fn garmin_demo(
     #[data] state: AppState,
     #[filter = "optional_session"] session: Option<Session>,
 ) -> WarpResult<IndexResponse> {
+    let query = query.into_inner();
+
     let mut session = session.unwrap_or_default();
-    let body = garmin_body(query.into_inner(), &state, &mut session.history, true).await?;
+
+    let grec = proc_pattern_wrapper(&state.config, query, &session.history, false);
+    if !session.history.contains(&grec.request.filter) {
+        if session.history.len() > 5 {
+            session.history.remove(0);
+        }
+        session.history.push(grec.request.filter.clone());
+    }
+
+    let body = get_index_body(&state.db, &state.config, &grec.request, true)
+        .await
+        .map_err(Into::<Error>::into)?
+        .into();
+
     let jwt = session.get_jwt_cookie(&state.config.domain);
     let jwt_str = StackString::from_display(jwt.encoded());
     Ok(HtmlBase::new(body).with_cookie(&jwt_str).into())
@@ -246,6 +271,11 @@ pub async fn scatter_plot_with_lines_js() -> WarpResult<JsResponse> {
 #[get("/garmin/scripts/time_series.js")]
 pub async fn time_series_js() -> WarpResult<JsResponse> {
     Ok(HtmlBase::new(include_str!("../../templates/time_series.js")).into())
+}
+
+#[get("/garmin/scripts/initialize_map.js")]
+pub async fn initialize_map_js() -> WarpResult<JsResponse> {
+    Ok(HtmlBase::new(include_str!("../../templates/initialize_map.js")).into())
 }
 
 #[derive(RwebResponse)]
@@ -302,8 +332,9 @@ async fn garmin_upload_body(
     };
 
     let grec = proc_pattern_wrapper(&state.config, query, &session.history, false);
-    let body = run_html(&state.config, &state.db, &grec.request, grec.is_demo).await?;
-
+    let body = get_index_body(&state.db, &state.config, &grec.request, false)
+        .await?
+        .into();
     Ok(body)
 }
 
@@ -911,24 +942,6 @@ fn create_fitbit_table(heartrate_values: &[FitbitHeartRate]) -> StackString {
     )
 }
 
-async fn heartrate_statistics_plots_impl(
-    query: FitbitStatisticsPlotRequest,
-    state: AppState,
-    session: Session,
-) -> Result<StackString, Error> {
-    let is_demo = query.is_demo;
-    let buttons = get_buttons(is_demo).join("\n");
-    let mut params = query.get_plots(&state.db).await?;
-    params.insert(
-        "HISTORYBUTTONS".into(),
-        generate_history_buttons(&session.history),
-    );
-    params.insert("GARMIN_STYLE".into(), get_style(false));
-    params.insert("GARMINBUTTONS".into(), buttons.into());
-    params.insert("GARMIN_SCRIPTS".into(), get_scripts(is_demo).into());
-    Ok(HBR.render("GARMIN_TEMPLATE", &params)?.into())
-}
-
 #[derive(RwebResponse)]
 #[response(description = "Fitbit Heartrate Statistics Plots", content = "html")]
 struct FitbitStatisticsPlotResponse(HtmlBase<StackString, Error>);
@@ -944,7 +957,29 @@ pub async fn heartrate_statistics_plots(
         .get_session(&state.client, &state.config)
         .await
         .map_err(Into::<Error>::into)?;
-    let body = heartrate_statistics_plots_impl(query, state, session).await?;
+    let stats: Vec<FitbitStatisticsSummary> = FitbitStatisticsSummary::read_from_db(
+        query.request.start_date.map(Into::into),
+        query.request.end_date.map(Into::into),
+        &state.db,
+    )
+    .await
+    .map_err(Into::<Error>::into)?
+    .try_collect()
+    .await
+    .map_err(Into::<Error>::into)?;
+    let body = index_new_body(
+        state.config.clone(),
+        &state.db,
+        "".into(),
+        false,
+        session.history,
+        IndexConfig::HearRateSummary {
+            stats,
+            offset: query.request.offset,
+        },
+    )
+    .await?
+    .into();
     Ok(HtmlBase::new(body).into())
 }
 
@@ -958,7 +993,30 @@ pub async fn heartrate_statistics_plots_demo(
     query.is_demo = true;
     let session = session.unwrap_or_default();
 
-    let body = heartrate_statistics_plots_impl(query, state, session).await?;
+    let stats: Vec<FitbitStatisticsSummary> = FitbitStatisticsSummary::read_from_db(
+        query.request.start_date.map(Into::into),
+        query.request.end_date.map(Into::into),
+        &state.db,
+    )
+    .await
+    .map_err(Into::<Error>::into)?
+    .try_collect()
+    .await
+    .map_err(Into::<Error>::into)?;
+    let body = index_new_body(
+        state.config.clone(),
+        &state.db,
+        "".into(),
+        true,
+        session.history,
+        IndexConfig::HearRateSummary {
+            stats,
+            offset: query.request.offset,
+        },
+    )
+    .await?
+    .into();
+
     Ok(HtmlBase::new(body).into())
 }
 
@@ -996,7 +1054,29 @@ pub async fn fitbit_plots(
         .await
         .map_err(Into::<Error>::into)?;
     let query: ScaleMeasurementPlotRequest = query.into_inner().into();
-    let body = fitbit_plots_impl(query, state, session).await?;
+
+    let measurements = ScaleMeasurement::read_from_db(
+        &state.db,
+        query.request.start_date.map(Into::into),
+        query.request.end_date.map(Into::into),
+    )
+    .await
+    .map_err(Into::<Error>::into)?;
+
+    let body = index_new_body(
+        state.config.clone(),
+        &state.db,
+        "".into(),
+        false,
+        session.history,
+        IndexConfig::Scale {
+            measurements,
+            offset: query.request.offset,
+        },
+    )
+    .await?
+    .into();
+
     Ok(HtmlBase::new(body).into())
 }
 
@@ -1048,7 +1128,31 @@ pub async fn heartrate_plots(
         .get_session(&state.client, &state.config)
         .await
         .map_err(Into::<Error>::into)?;
-    let body = heartrate_plots_impl(query, state, session).await?;
+
+    let heartrate = FitbitHeartRate::get_heartrate_values(
+        &state.config,
+        &state.db,
+        query.start_date.into(),
+        query.end_date.into(),
+    )
+    .await
+    .map_err(Into::<Error>::into)?;
+    let body = index_new_body(
+        state.config.clone(),
+        &state.db,
+        "".into(),
+        false,
+        session.history,
+        IndexConfig::HeartRate {
+            heartrate,
+            start_date: query.start_date,
+            end_date: query.end_date,
+            button_date: query.button_date,
+        },
+    )
+    .await
+    .map_err(Into::<Error>::into)?
+    .into();
     Ok(HtmlBase::new(body).into())
 }
 
@@ -1615,209 +1719,20 @@ async fn race_result_plot_impl(
     state: AppState,
     session: Session,
 ) -> Result<StackString, Error> {
-    let is_demo = req.demo.unwrap_or(true);
-    let buttons = get_buttons(is_demo).join("\n");
-
     let model = RaceResultAnalysis::run_analysis(req.race_type.into(), &state.db).await?;
     let demo = req.demo.unwrap_or(true);
-    let mut params = create_plot(&model, demo)?;
 
-    params.insert(
-        "HISTORYBUTTONS".into(),
-        generate_history_buttons(&session.history),
-    );
-    params.insert("GARMIN_STYLE".into(), get_style(false));
-    params.insert("GARMINBUTTONS".into(), buttons.into());
-    params.insert("GARMIN_SCRIPTS".into(), get_scripts(is_demo).into());
-    Ok(HBR.render("GARMIN_TEMPLATE", &params)?.into())
-}
-
-fn create_plot(
-    model: &RaceResultAnalysis,
-    is_demo: bool,
-) -> Result<HashMap<StackString, StackString>, Error> {
-    let PlotData {
-        data,
-        other_data,
-        x_proj,
-        y_proj,
-        x_vals,
-        y_nom,
-        y_neg,
-        y_pos,
-        xticks,
-        yticks,
-        ymin,
-        ymax,
-    } = model.get_data();
-
-    let xlabels = [
-        "100m", "", "", "800m", "1mi", "5k", "10k", "Half", "Mar", "", "50mi", "100mi", "300mi",
-    ];
-    let xmap: HashMap<_, _> = xticks.iter().zip(xlabels.iter()).collect();
-
-    let entries = x_proj
-        .iter()
-        .zip(y_proj.iter())
-        .map(|(x, y)| {
-            format_sstr!(
-                r#"
-                <td>{:.02}</td><td>{}</td><td>{}</td>"#,
-                x,
-                print_h_m_s(*y * 60.0, false).unwrap_or_else(|_| "".into()),
-                print_h_m_s(x * (*y) * 60.0, true).unwrap_or_else(|_| "".into())
-            )
-        })
-        .join("</tr><tr>");
-    let entries = format_sstr!(
-        r#"
-        <table border=1>
-        <thead>
-        <th>Distance (mi)</th><th>Pace (min/mi)</th>
-        <th>Time</th>
-        </thead>
-        <tbody>
-        <tr>{entries}</tr>
-        </tbody>
-        </table>"#
-    );
-
-    let race_results = model
-        .data
-        .iter()
-        .sorted_by(|x, y| x.race_date.cmp(&y.race_date))
-        .rev()
-        .map(|result| {
-            let distance = f64::from(result.race_distance) / METERS_PER_MILE;
-            let time = print_h_m_s(result.race_time, true).unwrap_or_else(|_| "".into());
-            let pace =
-                print_h_m_s(result.race_time / distance, false).unwrap_or_else(|_| "".into());
-            let date = if let Some(date) = result.race_date {
-                if is_demo {
-                    "".into()
-                } else {
-                    let filter = result
-                        .race_summary_ids
-                        .iter()
-                        .filter_map(|id| {
-                            id.and_then(|i| model.summary_map.get(&i).map(|s| &s.filename))
-                        })
-                        .join(",");
-
-                    if filter.is_empty() {
-                        format_sstr!("{date}")
-                    } else {
-                        format_sstr!(
-                            r#"<button type="submit"
-                          onclick="send_command('filter={filter},file');"> {date} </button>
-                        "#
-                        )
-                    }
-                }
-            } else {
-                "".into()
-            };
-            let flag = if is_demo {
-                format_sstr!("{}", result.race_flag)
-            } else {
-                format_sstr!(
-                    r#"
-                    <button type="button" id="race_flag_{id}" onclick="flipRaceResultFlag({id});">
-                        {flag}
-                   </button>
-                "#,
-                    flag = result.race_flag,
-                    id = result.id
-                )
-            };
-            format_sstr!(
-                r#"
-                <td align="right">{distance:0.1}</td>
-                <td>{time}</td>
-                <td align="center">{pace}</td>
-                <td align="center">{date}</td>
-                <td>{name}</td>
-                <td>{flag}</td>
-            "#,
-                name = result.race_name.as_ref().map_or("", StackString::as_str),
-            )
-        })
-        .join("</tr><tr>");
-    let entries = format_sstr!(
-        r#"
-            {entries}<br>
-            <table border="1">
-            <thead>
-            <th>Distance (mi)</th><th>Time</th><th>Pace (min/mi)</th><th>Date</th><th>Name</th><th>Flag</th>
-            </thead>
-            <tr>{race_results}</tr>
-            </table>
-        "#
-    );
-
-    let x_vals: Vec<f64> = x_vals.map(|x| x * METERS_PER_MILE).to_vec();
-    let y_nom: Vec<(f64, f64)> = y_nom
-        .iter()
-        .zip(x_vals.iter())
-        .map(|(y, x)| (*x, *y))
-        .collect();
-    let y_neg: Vec<(f64, f64)> = y_neg
-        .iter()
-        .zip(x_vals.iter())
-        .map(|(y, x)| (*x, *y))
-        .collect();
-    let y_pos: Vec<(f64, f64)> = y_pos
-        .iter()
-        .zip(x_vals.iter())
-        .map(|(y, x)| (*x, *y))
-        .collect();
-
-    let data = serde_json::to_string(&data).unwrap_or_else(|_| String::new());
-    let other_data = serde_json::to_string(&other_data).unwrap_or_else(|_| String::new());
-    let xticks = serde_json::to_string(&xticks).unwrap_or_else(|_| String::new());
-    let xmap = serde_json::to_string(&xmap).unwrap_or_else(|_| String::new());
-    let yticks = serde_json::to_string(&yticks).unwrap_or_else(|_| String::new());
-    let fitdata = serde_json::to_string(&y_nom).unwrap_or_else(|_| String::new());
-    let negdata = serde_json::to_string(&y_neg).unwrap_or_else(|_| String::new());
-    let posdata = serde_json::to_string(&y_pos).unwrap_or_else(|_| String::new());
-
-    let title = match model.race_type {
-        RaceType::Personal => "Race Results",
-        RaceType::WorldRecordMen => "Men's World Record",
-        RaceType::WorldRecordWomen => "Women's World Record",
-    };
-    let ymin = StackString::from_display(ymin);
-    let ymax = StackString::from_display(ymax);
-
-    let params = hashmap! {
-        "XAXIS" => "Distance",
-        "YAXIS" => "Pace (min/mi)",
-        "FITDATA" => &fitdata,
-        "NEGDATA" => &negdata,
-        "POSDATA" => &posdata,
-        "OTHERDATA" => &other_data,
-        "DATA" => &data,
-        "EXAMPLETITLE" => title,
-        "XTICKS" => &xticks,
-        "YTICKS" => &yticks,
-        "XMAP" => &xmap,
-        "YMIN" => &ymin,
-        "YMAX" => &ymax,
-    };
-
-    let plots = HBR.render("SCATTERPLOTWITHLINES", &params)?;
-
-    let buttons = [
-        r#"<button type="submit" onclick="race_result_plot_personal();">Personal</button>"#,
-        r#"<button type="submit" onclick="race_result_plot_world_record_men();">Mens World Records</button>"#,
-        r#"<button type="submit" onclick="race_result_plot_world_record_women();">Womens World Records</button>"#,
-    ].join("");
-
-    Ok(hashmap! {
-        "INSERTTABLESHERE".into() => plots.into(),
-        "INSERTTEXTHERE".into() => buttons.into(),
-        "INSERTOTHERIMAGESHERE".into() => entries,
-    })
+    let body = index_new_body(
+        state.config.clone(),
+        &state.db,
+        "".into(),
+        demo,
+        session.history,
+        IndexConfig::RaceResult { model },
+    )
+    .await?
+    .into();
+    Ok(body)
 }
 
 #[derive(RwebResponse)]
@@ -1991,27 +1906,4 @@ pub async fn race_results_db_update(
     let results: Result<Vec<()>, Error> = try_join_all(futures).await;
     results?;
     Ok(HtmlBase::new("Finished").into())
-}
-
-#[cfg(test)]
-mod tests {
-    use anyhow::Error;
-
-    use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
-
-    use race_result_analysis::{race_result_analysis::RaceResultAnalysis, race_type::RaceType};
-
-    use super::create_plot;
-
-    #[tokio::test]
-    #[ignore]
-    async fn test_run_analysis() -> Result<(), Error> {
-        let config = GarminConfig::get_config(None)?;
-        let pool = PgPool::new(&config.pgurl);
-
-        let personal = RaceResultAnalysis::run_analysis(RaceType::Personal, &pool).await?;
-        let result = create_plot(&personal, false)?;
-        assert!(result.len() > 0);
-        Ok(())
-    }
 }

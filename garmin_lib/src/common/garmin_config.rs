@@ -18,7 +18,7 @@ use super::strava_timezone::StravaTz;
 /// `GarminConfig` holds configuration information which can be set either
 /// through environment variables or the config.env file, see the dotenv crate
 /// for more information about the config file format.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, PartialEq)]
 pub struct GarminConfigInner {
     #[serde(default = "default_home_dir")]
     pub home_dir: PathBuf,
@@ -172,7 +172,7 @@ impl Default for GarminConfigInner {
     }
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct GarminConfig(Arc<GarminConfigInner>);
 
 impl GarminConfig {

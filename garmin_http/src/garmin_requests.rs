@@ -320,7 +320,7 @@ impl FitbitStatisticsPlotRequest {
         &self,
         pool: &PgPool,
     ) -> Result<HashMap<StackString, StackString>, Error> {
-        let stats: Vec<_> = FitbitStatisticsSummary::read_from_db(
+        let stats: Vec<FitbitStatisticsSummary> = FitbitStatisticsSummary::read_from_db(
             self.request.start_date.map(Into::into),
             self.request.end_date.map(Into::into),
             pool,

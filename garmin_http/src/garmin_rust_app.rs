@@ -26,15 +26,15 @@ use crate::{
         fitbit_refresh, fitbit_sync, fitbit_tcx_sync, garmin, garmin_connect_activities,
         garmin_connect_activities_db, garmin_connect_activities_db_update, garmin_connect_hr_api,
         garmin_connect_hr_sync, garmin_connect_sync, garmin_connect_user_summary, garmin_demo,
-        garmin_sync, garmin_upload, heartrate_plots, heartrate_plots_demo,
-        heartrate_statistics_plots, heartrate_statistics_plots_demo,
-        heartrate_statistics_summary_db, heartrate_statistics_summary_db_update, race_result_flag,
-        race_result_import, race_result_plot, race_result_plot_demo, race_results_db,
-        race_results_db_update, scale_measurement, scale_measurement_update, strava_activities,
+        garmin_scripts_demo_js, garmin_scripts_js, garmin_sync, garmin_upload, heartrate_plots,
+        heartrate_plots_demo, heartrate_statistics_plots, heartrate_statistics_plots_demo,
+        heartrate_statistics_summary_db, heartrate_statistics_summary_db_update, initialize_map_js,
+        line_plot_js, race_result_flag, race_result_import, race_result_plot,
+        race_result_plot_demo, race_results_db, race_results_db_update, scale_measurement,
+        scale_measurement_update, scatter_plot_js, scatter_plot_with_lines_js, strava_activities,
         strava_activities_db, strava_activities_db_update, strava_athlete, strava_auth,
         strava_callback, strava_create, strava_refresh, strava_sync, strava_update, strava_upload,
-        user, garmin_scripts_js, garmin_scripts_demo_js, line_plot_js, scatter_plot_js,
-        scatter_plot_with_lines_js, time_series_js
+        time_series_js, user,
     },
     logged_user::{fill_from_db, get_secrets, TRIGGER_DB_UPDATE},
 };
@@ -212,6 +212,7 @@ fn get_garmin_path(app: &AppState) -> BoxedFilter<(impl Reply,)> {
     let scatter_plot_js_path = scatter_plot_js();
     let scatter_plot_with_lines_js_path = scatter_plot_with_lines_js();
     let time_series_js_path = time_series_js();
+    let initialize_map_js_path = initialize_map_js().boxed();
 
     index_path
         .or(garmin_demo_path)
@@ -240,6 +241,7 @@ fn get_garmin_path(app: &AppState) -> BoxedFilter<(impl Reply,)> {
         .or(scatter_plot_js_path)
         .or(scatter_plot_with_lines_js_path)
         .or(time_series_js_path)
+        .or(initialize_map_js_path)
         .boxed()
 }
 

@@ -15,7 +15,7 @@ use crate::utils::date_time_wrapper::DateTimeWrapper;
 
 use super::{garmin_config::GarminConfig, pgpool::PgPool};
 
-#[derive(Serialize, Deserialize, Debug, FromSqlRow)]
+#[derive(Serialize, Deserialize, Debug, FromSqlRow, PartialEq)]
 pub struct GarminConnectActivity {
     #[serde(alias = "activityId")]
     pub activity_id: i64,

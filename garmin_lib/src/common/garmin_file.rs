@@ -18,7 +18,7 @@ lazy_static! {
     static ref GARMIN_FILE_AVRO_SCHEMA: StackString = GarminFile::get_avro_schema();
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GarminFile {
     pub filename: StackString,
     pub filetype: StackString,

@@ -25,6 +25,7 @@ use crate::{
     garmin_report_options::{GarminReportAgg, GarminReportOptions},
 };
 
+#[derive(PartialEq)]
 pub struct HtmlResult {
     pub text: Option<StackString>,
     pub url: Option<Url>,
@@ -43,6 +44,7 @@ pub trait GarminReportTrait {
     }
 }
 
+#[derive(PartialEq)]
 pub enum GarminReportQuery {
     Year(Vec<YearSummaryReport>),
     Month(Vec<MonthSummaryReport>),
@@ -65,6 +67,38 @@ impl GarminReportQuery {
             Self::File(x) => x.iter().map(GarminReportTrait::get_text_entry).collect(),
             Self::Sport(x) => x.iter().map(GarminReportTrait::get_text_entry).collect(),
             Self::Empty => Ok(Vec::new()),
+        }
+    }
+
+    /// # Errors
+    /// Return error if `get_text_entry` fails
+    pub fn get_url_strings(&self) -> Vec<StackString> {
+        match self {
+            Self::Year(x) => x
+                .iter()
+                .map(GarminReportTrait::generate_url_string)
+                .collect(),
+            Self::Month(x) => x
+                .iter()
+                .map(GarminReportTrait::generate_url_string)
+                .collect(),
+            Self::Week(x) => x
+                .iter()
+                .map(GarminReportTrait::generate_url_string)
+                .collect(),
+            Self::Day(x) => x
+                .iter()
+                .map(GarminReportTrait::generate_url_string)
+                .collect(),
+            Self::File(x) => x
+                .iter()
+                .map(GarminReportTrait::generate_url_string)
+                .collect(),
+            Self::Sport(x) => x
+                .iter()
+                .map(GarminReportTrait::generate_url_string)
+                .collect(),
+            Self::Empty => Vec::new(),
         }
     }
 }
@@ -126,7 +160,7 @@ pub async fn create_report_query(
     Ok(result_vec)
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct FileSummaryReport {
     datetime: OffsetDateTime,
     week: u32,
@@ -396,7 +430,7 @@ async fn file_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<FileSumm
     try_join_all(futures).await
 }
 
-#[derive(FromSqlRow, Debug)]
+#[derive(FromSqlRow, Debug, PartialEq)]
 pub struct DaySummaryReport {
     date: StackString,
     week: i32,
@@ -547,7 +581,7 @@ async fn day_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<DaySummar
     query.fetch(&conn).await.map_err(Into::into)
 }
 
-#[derive(FromSqlRow, Debug)]
+#[derive(FromSqlRow, Debug, PartialEq)]
 pub struct WeekSummaryReport {
     year: i32,
     week: i32,
@@ -694,7 +728,7 @@ async fn week_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<WeekSumm
     query.fetch(&conn).await.map_err(Into::into)
 }
 
-#[derive(FromSqlRow, Debug)]
+#[derive(FromSqlRow, Debug, PartialEq)]
 pub struct MonthSummaryReport {
     year: i32,
     month: i32,
@@ -845,7 +879,7 @@ async fn month_summary_report(
     query.fetch(&conn).await.map_err(Into::into)
 }
 
-#[derive(FromSqlRow, Debug)]
+#[derive(FromSqlRow, Debug, PartialEq)]
 pub struct SportSummaryReport {
     sport: StackString,
     total_calories: i64,
@@ -977,7 +1011,7 @@ async fn sport_summary_report(
     query.fetch(&conn).await.map_err(Into::into)
 }
 
-#[derive(FromSqlRow, Debug)]
+#[derive(FromSqlRow, Debug, PartialEq)]
 pub struct YearSummaryReport {
     year: i32,
     sport: StackString,

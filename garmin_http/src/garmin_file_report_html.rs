@@ -68,24 +68,24 @@ pub fn generate_history_buttons<T: AsRef<str>>(history_vec: &[T]) -> StackString
     history_buttons.join("\n").into()
 }
 
-#[derive(Default)]
-struct ReportObjects {
-    avg_hr: f64,
-    sum_time: f64,
-    max_hr: f64,
+#[derive(Default, PartialEq)]
+pub struct ReportObjects {
+    pub avg_hr: f64,
+    pub sum_time: f64,
+    pub max_hr: f64,
 
-    hr_vals: Vec<f64>,
-    hr_values: Vec<(f64, f64)>,
-    alt_vals: Vec<f64>,
-    alt_values: Vec<(f64, f64)>,
-    mph_speed_values: Vec<(f64, f64)>,
-    avg_speed_values: Vec<(f64, f64)>,
-    avg_mph_speed_values: Vec<(f64, f64)>,
-    lat_vals: Vec<f64>,
-    lon_vals: Vec<f64>,
-    mile_split_vals: Vec<(f64, f64)>,
-    speed_values: Vec<(f64, f64)>,
-    heart_rate_speed: Vec<(f64, f64)>,
+    pub hr_vals: Vec<f64>,
+    pub hr_values: Vec<(f64, f64)>,
+    pub alt_vals: Vec<f64>,
+    pub alt_values: Vec<(f64, f64)>,
+    pub mph_speed_values: Vec<(f64, f64)>,
+    pub avg_speed_values: Vec<(f64, f64)>,
+    pub avg_mph_speed_values: Vec<(f64, f64)>,
+    pub lat_vals: Vec<f64>,
+    pub lon_vals: Vec<f64>,
+    pub mile_split_vals: Vec<(f64, f64)>,
+    pub speed_values: Vec<(f64, f64)>,
+    pub heart_rate_speed: Vec<(f64, f64)>,
 }
 
 /// # Errors
@@ -114,7 +114,7 @@ pub async fn file_report_html<T: AsRef<str>>(
     .await
 }
 
-fn extract_report_objects_from_file(gfile: &GarminFile) -> ReportObjects {
+pub fn extract_report_objects_from_file(gfile: &GarminFile) -> ReportObjects {
     let speed_values = get_splits(gfile, 400., "lap", true);
     let heart_rate_speed = speed_values
         .iter()
@@ -204,7 +204,7 @@ fn extract_report_objects_from_file(gfile: &GarminFile) -> ReportObjects {
     report_objs
 }
 
-fn get_plot_opts(report_objs: &ReportObjects) -> Vec<PlotOpts> {
+pub fn get_plot_opts(report_objs: &ReportObjects) -> Vec<PlotOpts> {
     let mut plot_opts = Vec::new();
 
     if !report_objs.mile_split_vals.is_empty() {
@@ -310,7 +310,7 @@ fn get_plot_opts(report_objs: &ReportObjects) -> Vec<PlotOpts> {
     plot_opts
 }
 
-fn get_graphs(plot_opts: &[PlotOpts]) -> Vec<StackString> {
+pub fn get_graphs(plot_opts: &[PlotOpts]) -> Vec<StackString> {
     plot_opts
         .par_iter()
         .filter_map(|options| match generate_d3_plot(options) {

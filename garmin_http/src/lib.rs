@@ -9,6 +9,7 @@
 #![allow(clippy::unused_async)]
 
 pub mod errors;
+pub mod garmin_elements;
 pub mod garmin_file_report_html;
 pub mod garmin_requests;
 pub mod garmin_rust_app;

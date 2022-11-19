@@ -19,6 +19,7 @@ use garmin_lib::{
 
 use crate::{race_results::RaceResults, race_type::RaceType};
 
+#[derive(PartialEq)]
 pub struct RaceResultAnalysis {
     pub data: Vec<RaceResults>,
     pub summary_map: HashMap<Uuid, GarminSummary>,

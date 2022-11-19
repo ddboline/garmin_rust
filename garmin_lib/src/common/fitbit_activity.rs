@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 use crate::{common::pgpool::PgPool, utils::date_time_wrapper::DateTimeWrapper};
 
-#[derive(Serialize, Deserialize, Clone, Debug, FromSqlRow)]
+#[derive(Serialize, Deserialize, Clone, Debug, FromSqlRow, PartialEq)]
 pub struct FitbitActivity {
     #[serde(alias = "logType")]
     pub log_type: StackString,

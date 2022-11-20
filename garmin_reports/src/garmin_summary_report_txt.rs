@@ -25,7 +25,7 @@ use crate::{
     garmin_report_options::{GarminReportAgg, GarminReportOptions},
 };
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 pub struct HtmlResult {
     pub text: Option<StackString>,
     pub url: Option<Url>,
@@ -72,6 +72,7 @@ impl GarminReportQuery {
 
     /// # Errors
     /// Return error if `get_text_entry` fails
+    #[must_use]
     pub fn get_url_strings(&self) -> Vec<StackString> {
         match self {
             Self::Year(x) => x

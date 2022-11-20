@@ -1082,7 +1082,7 @@ impl ActivityLoggingEntry {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct FitbitUserProfile {
     #[serde(alias = "averageDailySteps")]
     pub average_daily_steps: u64,

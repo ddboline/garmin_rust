@@ -25,9 +25,9 @@ use crate::{
         fitbit_heartrate_cache_update, fitbit_plots, fitbit_plots_demo, fitbit_profile,
         fitbit_refresh, fitbit_sync, fitbit_tcx_sync, garmin, garmin_connect_activities,
         garmin_connect_activities_db, garmin_connect_activities_db_update, garmin_connect_hr_api,
-        garmin_connect_hr_sync, garmin_connect_sync, garmin_connect_user_summary, garmin_demo,
-        garmin_scripts_demo_js, garmin_scripts_js, garmin_sync, garmin_upload, heartrate_plots,
-        heartrate_plots_demo, heartrate_statistics_plots, heartrate_statistics_plots_demo,
+        garmin_connect_sync, garmin_connect_user_summary, garmin_demo, garmin_scripts_demo_js,
+        garmin_scripts_js, garmin_sync, garmin_upload, heartrate_plots, heartrate_plots_demo,
+        heartrate_statistics_plots, heartrate_statistics_plots_demo,
         heartrate_statistics_summary_db, heartrate_statistics_summary_db_update, initialize_map_js,
         line_plot_js, race_result_flag, race_result_import, race_result_plot,
         race_result_plot_demo, race_results_db, race_results_db_update, scale_measurement,
@@ -113,7 +113,6 @@ fn get_garmin_path(app: &AppState) -> BoxedFilter<(impl Reply,)> {
     let garmin_connect_activities_db_path = garmin_connect_activities_db_get
         .or(garmin_connect_activities_db_post)
         .boxed();
-    let garmin_connect_hr_sync_path = garmin_connect_hr_sync(app.clone()).boxed();
     let garmin_connect_hr_api_path = garmin_connect_hr_api(app.clone()).boxed();
     let garmin_connect_user_summary_path = garmin_connect_user_summary(app.clone()).boxed();
     let garmin_sync_path = garmin_sync(app.clone()).boxed();
@@ -221,7 +220,6 @@ fn get_garmin_path(app: &AppState) -> BoxedFilter<(impl Reply,)> {
         .or(garmin_connect_sync_path)
         .or(garmin_connect_activities_path)
         .or(garmin_connect_activities_db_path)
-        .or(garmin_connect_hr_sync_path)
         .or(garmin_connect_hr_api_path)
         .or(garmin_connect_user_summary_path)
         .or(garmin_sync_path)

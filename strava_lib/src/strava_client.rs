@@ -757,7 +757,7 @@ impl StravaClient {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct StravaAthlete {
     pub id: u64,
     pub resource_state: i64,
@@ -778,7 +778,7 @@ pub struct StravaAthlete {
     pub shoes: Option<Vec<StravaGear>>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct StravaClub {
     pub id: u64,
     pub name: StackString,
@@ -791,7 +791,7 @@ pub struct StravaClub {
     pub url: StackString,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct StravaGear {
     pub id: StackString,
     pub resource_state: i64,

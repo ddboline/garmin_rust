@@ -2,8 +2,7 @@
 use anyhow::format_err;
 use futures::{future::try_join_all, TryStreamExt};
 use itertools::Itertools;
-use log::{debug, info};
-use maplit::hashmap;
+use log::debug;
 use rweb::{
     get,
     multipart::{FormData, Part},
@@ -15,9 +14,8 @@ use rweb_helper::{
 };
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
-use std::{collections::HashMap, convert::Infallible, string::ToString};
+use std::{convert::Infallible, string::ToString};
 use tempdir::TempDir;
-use time::OffsetDateTime;
 use tokio::{fs::File, io::AsyncWriteExt, task::spawn_blocking};
 use tokio_stream::StreamExt;
 
@@ -26,7 +24,6 @@ use fitbit_lib::{
     fitbit_statistics_summary::FitbitStatisticsSummary, scale_measurement::ScaleMeasurement,
 };
 use garmin_cli::garmin_cli::{GarminCli, GarminRequest};
-use garmin_connect_lib::garmin_connect_hr_data::GarminConnectHrData;
 use garmin_lib::{
     common::{
         fitbit_activity::FitbitActivity,
@@ -35,28 +32,23 @@ use garmin_lib::{
         garmin_correction_lap::GarminCorrectionLap,
         garmin_file,
         garmin_summary::{get_list_of_files_from_db, GarminSummary},
-        garmin_templates::{get_buttons, get_scripts, get_style, HBR},
         pgpool::PgPool,
         strava_activity::StravaActivity,
     },
     parsers::garmin_parse::{GarminParse, GarminParseTrait},
-    utils::{
-        date_time_wrapper::iso8601::convert_datetime_to_str,
-        garmin_util::{print_h_m_s, titlecase, METERS_PER_MILE},
-    },
+    utils::{date_time_wrapper::iso8601::convert_datetime_to_str, garmin_util::titlecase},
 };
 use garmin_reports::garmin_summary_report_txt::create_report_query;
 use race_result_analysis::{
-    race_result_analysis::{PlotData, RaceResultAnalysis},
-    race_results::RaceResults,
-    race_type::RaceType,
+    race_result_analysis::RaceResultAnalysis, race_results::RaceResults, race_type::RaceType,
 };
 use strava_lib::strava_client::StravaClient;
 
 use crate::{
     errors::ServiceError as Error,
-    garmin_elements::{index_new_body, IndexConfig},
-    garmin_file_report_html::generate_history_buttons,
+    garmin_elements::{
+        create_fitbit_table, fitbit_body, index_new_body, strava_body, table_body, IndexConfig,
+    },
     garmin_requests::{
         get_connect_activities, AddGarminCorrectionRequest, FitbitActivitiesRequest,
         FitbitHeartrateCacheRequest, FitbitHeartratePlotRequest, FitbitHeartrateUpdateRequest,
@@ -162,7 +154,7 @@ async fn get_index_body(
             .await?;
 
     match file_list.len() {
-        0 => Ok("".into()),
+        0 => Ok(String::new()),
         1 => {
             let file_name = file_list
                 .get(0)
@@ -191,8 +183,7 @@ async fn get_index_body(
                 req.history.clone(),
                 IndexConfig::File { gfile },
             )
-            .await?
-            .into();
+            .await?;
             Ok(body)
         }
         _ => {
@@ -371,57 +362,6 @@ pub struct GarminConnectHrSyncRequest {
     pub date: DateType,
 }
 
-#[derive(RwebResponse)]
-#[response(description = "Connect Sync", content = "html")]
-struct ConnectHrSyncResponse(HtmlBase<StackString, Error>);
-
-#[get("/garmin/garmin_connect_hr_sync")]
-pub async fn garmin_connect_hr_sync(
-    query: Query<GarminConnectHrSyncRequest>,
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
-) -> WarpResult<ConnectHrSyncResponse> {
-    let query = query.into_inner();
-    let mut session = state.connect_proxy.lock().await;
-    session.init().await.map_err(Into::<Error>::into)?;
-    let date = query.date.into();
-    let heartrates = session
-        .get_heartrate(date)
-        .await
-        .map_err(Into::<Error>::into)?;
-    FitbitClient::import_garmin_connect_heartrate(state.config.clone(), &heartrates)
-        .await
-        .map_err(Into::<Error>::into)?;
-    FitbitHeartRate::calculate_summary_statistics(&state.config, &state.db, date)
-        .await
-        .map_err(Into::<Error>::into)?;
-
-    let body = to_table(&heartrates, Some(20));
-    Ok(HtmlBase::new(body).into())
-}
-
-fn to_table(hr: &GarminConnectHrData, entries: Option<usize>) -> StackString {
-    if let Some(heartrate_values) = hr.heartrate_values.as_ref() {
-        let entries = entries.unwrap_or(heartrate_values.len());
-        let rows = heartrate_values
-            .iter()
-            .skip(heartrate_values.len() - entries)
-            .filter_map(|(timestamp, heartrate)| {
-                let datetime: OffsetDateTime = (*timestamp).into();
-                heartrate.map(|heartrate| {
-                    format_sstr!("<tr><td>{datetime}</td><td>{heartrate}</td></tr>")
-                })
-            })
-            .join("\n");
-        format_sstr!(
-            "<table border=1><thead><th>Datetime</th><th>Heart \
-             Rate</th></thead><tbody>{rows}</tbody></table>"
-        )
-    } else {
-        "".into()
-    }
-}
-
 #[derive(Serialize, Deserialize, Schema)]
 pub struct GarminConnectHrApiRequest {
     pub date: DateType,
@@ -469,11 +409,8 @@ pub async fn garmin_sync(
         .await
         .map_err(Into::<Error>::into)?;
     body.extend_from_slice(&gcli.proc_everything().await.map_err(Into::<Error>::into)?);
-
-    let body = format_sstr!(
-        r#"<textarea cols=100 rows=40>{}</textarea>"#,
-        body.join("\n")
-    );
+    let body = body.join("\n").into();
+    let body = table_body(body).into();
     Ok(HtmlBase::new(body).into())
 }
 
@@ -493,8 +430,9 @@ pub async fn strava_sync(
         .await?
         .into_iter()
         .map(|p| p.to_string_lossy().into_owned())
-        .join("\n");
-    let body = format_sstr!(r#"<textarea cols=100 rows=40>{body}</textarea>"#);
+        .join("\n")
+        .into();
+    let body = table_body(body).into();
     Ok(HtmlBase::new(body).into())
 }
 
@@ -909,7 +847,7 @@ pub async fn fitbit_sync(
     let client = FitbitClient::with_auth(state.config.clone())
         .await
         .map_err(Into::<Error>::into)?;
-    let heartrates = client
+    let mut heartrates = client
         .import_fitbit_heartrate(date)
         .await
         .map_err(Into::<Error>::into)?;
@@ -921,25 +859,9 @@ pub async fn fitbit_sync(
     } else {
         0
     };
-    let body = create_fitbit_table(&heartrates[start..]);
+    let heartrates = heartrates.split_off(start);
+    let body = create_fitbit_table(heartrates).into();
     Ok(HtmlBase::new(body).into())
-}
-
-fn create_fitbit_table(heartrate_values: &[FitbitHeartRate]) -> StackString {
-    let rows = heartrate_values
-        .iter()
-        .map(|entry| {
-            format_sstr!(
-                "<tr><td>{datetime}</td><td>{heartrate}</td></tr>",
-                datetime = entry.datetime,
-                heartrate = entry.value
-            )
-        })
-        .join("\n");
-    format_sstr!(
-        "<table border=1><thead><th>Datetime</th><th>Heart \
-         Rate</th></thead><tbody>{rows}</tbody></table>"
-    )
 }
 
 #[derive(RwebResponse)]
@@ -1020,25 +942,6 @@ pub async fn heartrate_statistics_plots_demo(
     Ok(HtmlBase::new(body).into())
 }
 
-async fn fitbit_plots_impl(
-    query: ScaleMeasurementPlotRequest,
-    state: AppState,
-    session: Session,
-) -> HttpResult<StackString> {
-    let is_demo = query.is_demo;
-    let buttons = get_buttons(is_demo).join("\n");
-    let mut params = query.get_plots(&state.db, &state.config).await?;
-    params.insert(
-        "HISTORYBUTTONS".into(),
-        generate_history_buttons(&session.history),
-    );
-    params.insert("GARMIN_STYLE".into(), get_style(false));
-    params.insert("GARMINBUTTONS".into(), buttons.into());
-    params.insert("GARMIN_SCRIPTS".into(), get_scripts(is_demo).into());
-    let body = HBR.render("GARMIN_TEMPLATE", &params)?.into();
-    Ok(body)
-}
-
 #[derive(RwebResponse)]
 #[response(description = "Scale Measurement Plots", content = "html")]
 struct ScaleMeasurementResponse(HtmlBase<StackString, Error>);
@@ -1089,28 +992,30 @@ pub async fn fitbit_plots_demo(
     let session = session.unwrap_or_default();
     let mut query: ScaleMeasurementPlotRequest = query.into_inner().into();
     query.is_demo = true;
-    let body = fitbit_plots_impl(query, state, session).await?;
-    Ok(HtmlBase::new(body).into())
-}
 
-async fn heartrate_plots_impl(
-    query: FitbitHeartratePlotRequest,
-    state: AppState,
-    session: Session,
-) -> HttpResult<StackString> {
-    let is_demo = query.is_demo;
-    let buttons = get_buttons(is_demo).join("\n");
-    info!("buttons {}", buttons);
-    let mut params = query.get_plots(&state.db, &state.config).await?;
-    params.insert(
-        "HISTORYBUTTONS".into(),
-        generate_history_buttons(&session.history),
-    );
-    params.insert("GARMIN_STYLE".into(), get_style(false));
-    params.insert("GARMINBUTTONS".into(), buttons.into());
-    params.insert("GARMIN_SCRIPTS".into(), get_scripts(is_demo).into());
-    let body = HBR.render("GARMIN_TEMPLATE", &params)?.into();
-    Ok(body)
+    let measurements = ScaleMeasurement::read_from_db(
+        &state.db,
+        query.request.start_date.map(Into::into),
+        query.request.end_date.map(Into::into),
+    )
+    .await
+    .map_err(Into::<Error>::into)?;
+
+    let body = index_new_body(
+        state.config.clone(),
+        &state.db,
+        "".into(),
+        true,
+        session.history,
+        IndexConfig::Scale {
+            measurements,
+            offset: query.request.offset,
+        },
+    )
+    .await?
+    .into();
+
+    Ok(HtmlBase::new(body).into())
 }
 
 #[derive(RwebResponse)]
@@ -1165,7 +1070,32 @@ pub async fn heartrate_plots_demo(
     let mut query: FitbitHeartratePlotRequest = query.into_inner().into();
     query.is_demo = true;
     let session = session.unwrap_or_default();
-    let body = heartrate_plots_impl(query, state, session).await?;
+
+    let heartrate = FitbitHeartRate::get_heartrate_values(
+        &state.config,
+        &state.db,
+        query.start_date.into(),
+        query.end_date.into(),
+    )
+    .await
+    .map_err(Into::<Error>::into)?;
+    let body = index_new_body(
+        state.config.clone(),
+        &state.db,
+        "".into(),
+        true,
+        session.history,
+        IndexConfig::HeartRate {
+            heartrate,
+            start_date: query.start_date,
+            end_date: query.end_date,
+            button_date: query.button_date,
+        },
+    )
+    .await
+    .map_err(Into::<Error>::into)?
+    .into();
+
     Ok(HtmlBase::new(body).into())
 }
 
@@ -1313,147 +1243,7 @@ pub async fn strava_athlete(
         .get_strava_athlete()
         .await
         .map_err(Into::<Error>::into)?;
-    let clubs = if let Some(clubs) = &result.clubs {
-        let lines = clubs
-            .iter()
-            .map(|c| {
-                format_sstr!(
-                    r#"
-                    <tr>
-                    <td>{id}</td>
-                    <td>{name}</td>
-                    <td>{sport_type}</td>
-                    <td>{city}</td>
-                    <td>{state}</td>
-                    <td>{country}</td>
-                    <td>{private}</td>
-                    <td>{member_count}</td>
-                    <td>{url}</td>
-                    </tr>
-                "#,
-                    id = c.id,
-                    name = c.name,
-                    sport_type = c.sport_type,
-                    city = c.city,
-                    state = c.state,
-                    country = c.country,
-                    private = c.private,
-                    member_count = c.member_count,
-                    url = c.url,
-                )
-            })
-            .join("\n");
-        format_sstr!(
-            r#"
-                <br>Clubs<br>
-                <table border=1>
-                <thead>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Sport Type</th>
-                <th>City</th>
-                <th>State</th>
-                <th>Country</th>
-                <th>Private</th>
-                <th>Member Count</th>
-                <th>Url</th>
-                </thead>
-                <tbody>
-                {lines}
-                </tbody>
-                </table>
-            "#
-        )
-    } else {
-        "".into()
-    };
-    let shoes = if let Some(shoes) = &result.shoes {
-        let lines = shoes
-            .iter()
-            .map(|s| {
-                format_sstr!(
-                    r#"
-                    <tr>
-                    <td>{id}</td>
-                    <td>{resource_state}</td>
-                    <td>{primary}</td>
-                    <td>{name}</td>
-                    <td>{distance:0.2}</td>
-                "#,
-                    id = s.id,
-                    resource_state = s.resource_state,
-                    primary = s.primary,
-                    name = s.name,
-                    distance = s.distance / METERS_PER_MILE,
-                )
-            })
-            .join("\n");
-        format_sstr!(
-            r#"
-                <br>Shoes<br>
-                <table border=1>
-                <thead>
-                <th>ID</th>
-                <th>Resource State</th>
-                <th>Primary</th>
-                <th>Name</th>
-                <th>Distance (mi)</th>
-                </thead>
-                <tbody>{lines}</tbody>
-                </table>
-            "#
-        )
-    } else {
-        "".into()
-    };
-    let body = format_sstr!(
-        r#"
-            <table border=1>
-            <tbody>
-            <tr><td>ID</td><td>{id}</td></tr>
-            <tr><td>Username</td><td>{username}</td></tr>
-            <tr><td>First Name</td><td>{firstname}</td></tr>
-            <tr><td>Last Name</td><td>{lastname}</td></tr>
-            <tr><td>City</td><td>{city}</td></tr>
-            <tr><td>State</td><td>{state}</td></tr>
-            <tr><td>Sex</td><td>{sex}</td></tr>
-            <tr><td>Weight</td><td>{weight}</td></tr>
-            <tr><td>Created At</td><td>{created_at}</td></tr>
-            <tr><td>Updated At</td><td>{updated_at}</td></tr>
-            {follower_count}{friend_count}{measurement_preference}
-            </tbody>
-            </table>
-            {clubs}{shoes}
-        "#,
-        id = result.id,
-        username = result.username,
-        firstname = result.firstname,
-        lastname = result.lastname,
-        city = result.city,
-        state = result.state,
-        sex = result.sex,
-        weight = result.weight,
-        created_at = result.created_at,
-        updated_at = result.updated_at,
-        follower_count = if let Some(follower_count) = result.follower_count {
-            format_sstr!("<tr><td>Follower Count</td><td>{follower_count}</td></tr>")
-        } else {
-            StackString::new()
-        },
-        friend_count = if let Some(friend_count) = result.friend_count {
-            format_sstr!("<tr><td>Friend Count</td><td>{friend_count}</td></tr>")
-        } else {
-            StackString::new()
-        },
-        measurement_preference = if let Some(measurement_preference) = result.measurement_preference
-        {
-            format_sstr!(
-                "<tr><td>Measurement Preference</td><td>{measurement_preference}</td></tr>"
-            )
-        } else {
-            StackString::new()
-        },
-    );
+    let body = strava_body(result).into();
     Ok(HtmlBase::new(body).into())
 }
 
@@ -1473,50 +1263,7 @@ pub async fn fitbit_profile(
         .get_user_profile()
         .await
         .map_err(Into::<Error>::into)?;
-    let body = format_sstr!(
-        r#"
-            <table border=1>
-            <tbody>
-            <tr><td>Encoded ID</td><td>{encoded_id}</td></tr>
-            <tr><td>First Name</td><td>{first_name}</td></tr>
-            <tr><td>Last Name</td><td>{last_name}</td></tr>
-            <tr><td>Full Name</td><td>{full_name}</td></tr>
-            <tr><td>Avg Daily Steps</td><td>{average_daily_steps}</td></tr>
-            <tr><td>Country</td><td>{country}</td></tr>
-            <tr><td>DOB</td><td>{date_of_birth}</td></tr>
-            <tr><td>Display Name</td><td>{display_name}</td></tr>
-            <tr><td>Distance Unit</td><td>{distance_unit}</td></tr>
-            <tr><td>Gender</td><td>{gender}</td></tr>
-            <tr><td>Height</td><td>{height:0.2}</td></tr>
-            <tr><td>Height Unit</td><td>{height_unit}</td></tr>
-            <tr><td>Timezone</td><td>{timezone}</td></tr>
-            <tr><td>Offset</td><td>{offset_from_utc_millis}</td></tr>
-            <tr><td>Stride Length Running</td><td>{stride_length_running:0.2}</td></tr>
-            <tr><td>Stride Length Walking</td><td>{stride_length_walking:0.2}</td></tr>
-            <tr><td>Weight</td><td>{weight}</td></tr>
-            <tr><td>Weight Unit</td><td>{weight_unit}</td></tr>
-            </tbody>
-            </table>
-        "#,
-        average_daily_steps = result.average_daily_steps,
-        country = result.country,
-        date_of_birth = result.date_of_birth,
-        display_name = result.display_name,
-        distance_unit = result.distance_unit,
-        encoded_id = result.encoded_id,
-        first_name = result.first_name,
-        last_name = result.last_name,
-        full_name = result.full_name,
-        gender = result.gender,
-        height = result.height,
-        height_unit = result.height_unit,
-        timezone = result.timezone,
-        offset_from_utc_millis = result.offset_from_utc_millis,
-        stride_length_running = result.stride_length_running,
-        stride_length_walking = result.stride_length_walking,
-        weight = result.weight,
-        weight_unit = result.weight_unit,
-    );
+    let body = fitbit_body(result).into();
     Ok(HtmlBase::new(body).into())
 }
 

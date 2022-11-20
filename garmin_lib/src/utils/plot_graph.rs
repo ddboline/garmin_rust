@@ -16,6 +16,7 @@ pub struct ScatterPlotData {
 /// # Errors
 /// Return error if rendering template fails
 #[allow(clippy::similar_names)]
+#[must_use]
 pub fn generate_plot_data(opts: &PlotOpts, data: &[(f64, f64)]) -> Option<ScatterPlotData> {
     if opts.do_scatter {
         let nbins = 10;
@@ -97,7 +98,7 @@ pub fn generate_d3_plot(opts: &PlotOpts) -> Result<StackString, Error> {
         None => return Err(format_err!(err_str)),
     };
 
-    let body = if let Some(ScatterPlotData { data, xstep, ystep }) = generate_plot_data(opts, *data)
+    let body = if let Some(ScatterPlotData { data, xstep, ystep }) = generate_plot_data(opts, data)
     {
         let xstep = StackString::from_display(xstep);
         let ystep = StackString::from_display(ystep);

@@ -1,10 +1,7 @@
-use anyhow::{format_err, Error};
 use log::debug;
-use maplit::hashmap;
-use stack_string::{format_sstr, StackString};
 use std::collections::HashMap;
 
-use crate::{common::garmin_templates::HBR, utils::plot_opts::PlotOpts};
+use crate::utils::plot_opts::PlotOpts;
 
 #[derive(PartialEq, Debug)]
 pub struct ScatterPlotData {
@@ -82,49 +79,3 @@ pub fn generate_plot_data(opts: &PlotOpts, data: &[(f64, f64)]) -> Option<Scatte
     }
 }
 
-/// # Errors
-/// Return error if rendering template fails
-#[allow(clippy::similar_names)]
-pub fn generate_d3_plot(opts: &PlotOpts) -> Result<StackString, Error> {
-    let err_str = format_sstr!("No data points {}", opts.name);
-
-    let data = match opts.data.as_ref() {
-        Some(x) => {
-            if x.is_empty() {
-                return Err(format_err!(err_str));
-            }
-            x
-        }
-        None => return Err(format_err!(err_str)),
-    };
-
-    let body = if let Some(ScatterPlotData { data, xstep, ystep }) = generate_plot_data(opts, data)
-    {
-        let xstep = StackString::from_display(xstep);
-        let ystep = StackString::from_display(ystep);
-        let data = serde_json::to_string(&data).unwrap_or_else(|_| String::new());
-
-        let params = hashmap! {
-            "EXAMPLETITLE" => opts.title.as_str(),
-            "XSTEP"=> &xstep,
-            "YSTEP" => &ystep,
-            "DATA" => &data,
-            "XLABEL" => &opts.xlabel,
-            "YLABEL" => &opts.ylabel,
-        };
-
-        HBR.render("SCATTERPLOTTEMPLATE", &params)?.into()
-    } else {
-        let data = serde_json::to_string(&data).unwrap_or_else(|_| String::new());
-        let params = hashmap! {
-            "EXAMPLETITLE" => opts.title.as_str(),
-            "XAXIS" => opts.xlabel.as_str(),
-            "YAXIS" => opts.ylabel.as_str(),
-            "DATA" => &data,
-            "NAME" => opts.name.as_str(),
-        };
-
-        HBR.render("LINEPLOTTEMPLATE", &params)?.into()
-    };
-    Ok(body)
-}

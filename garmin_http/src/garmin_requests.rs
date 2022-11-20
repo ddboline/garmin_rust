@@ -3,7 +3,7 @@ use rweb::Schema;
 use rweb_helper::{DateTimeType, DateType};
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
-use std::{collections::HashMap, path::PathBuf};
+use std::path::PathBuf;
 use time::{macros::time, Date, Duration, OffsetDateTime};
 use time_tz::OffsetDateTimeExt;
 use tokio::task::spawn_blocking;
@@ -339,27 +339,6 @@ impl From<ScaleMeasurementRequest> for FitbitHeartratePlotRequest {
             button_date: item.button_date,
             is_demo: false,
         }
-    }
-}
-
-impl FitbitHeartratePlotRequest {
-    /// # Errors
-    /// Returns error if db query fails
-    pub async fn get_plots(
-        &self,
-        pool: &PgPool,
-        config: &GarminConfig,
-    ) -> Result<HashMap<StackString, StackString>, Error> {
-        FitbitHeartRate::get_heartrate_plot(
-            config,
-            pool,
-            self.start_date.into(),
-            self.end_date.into(),
-            self.button_date.map(Into::into),
-            self.is_demo,
-        )
-        .await
-        .map_err(Into::into)
     }
 }
 

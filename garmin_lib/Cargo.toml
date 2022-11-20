@@ -41,8 +41,6 @@ derive_more = "0.99"
 rustls-native-certs = {version="0.6", default_features=false}
 envy = "0.4"
 fitparser = {git="https://github.com/ddboline/fitparse-rs.git", branch="time-0.3"}
-handlebars = "4.0"
-maplit = "1.0"
 smallvec = "1.6"
 flate2 = "1.0"
 itertools = "0.10"

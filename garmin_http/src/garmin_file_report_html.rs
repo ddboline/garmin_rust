@@ -1,10 +1,8 @@
-use log::debug;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use stack_string::{format_sstr, StackString};
+use stack_string::{format_sstr};
 
 use garmin_lib::{
     common::garmin_file::GarminFile,
-    utils::{garmin_util::METERS_PER_MILE, plot_graph::generate_d3_plot, plot_opts::PlotOpts},
+    utils::{garmin_util::METERS_PER_MILE, plot_opts::PlotOpts},
 };
 
 use garmin_reports::garmin_file_report_txt::get_splits;
@@ -225,18 +223,4 @@ pub fn get_plot_opts(report_objs: &ReportObjects) -> Vec<PlotOpts> {
     };
 
     plot_opts
-}
-
-#[must_use]
-pub fn get_graphs(plot_opts: &[PlotOpts]) -> Vec<StackString> {
-    plot_opts
-        .par_iter()
-        .filter_map(|options| match generate_d3_plot(options) {
-            Ok(s) => Some(s),
-            Err(e) => {
-                debug!("{}", e);
-                None
-            }
-        })
-        .collect()
 }

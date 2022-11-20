@@ -21,7 +21,7 @@ use crate::{
 
 use super::{garmin_correction_lap::GarminCorrectionLap, garmin_file::GarminFile, pgpool::PgPool};
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromSqlRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromSqlRow, PartialEq)]
 pub struct GarminSummary {
     pub id: Uuid,
     pub filename: StackString,

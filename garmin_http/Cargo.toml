@@ -1,6 +1,6 @@
 [package]
 name = "garmin_http"
-version = "0.12.20"
+version = "0.12.21"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -42,6 +42,7 @@ bytes = "1.0"
 postgres-types = "0.2"
 uuid = "1.0"
 maplit = "1.0"
+dioxus = { version = "0.2", features = ["ssr"] }
 rweb-helper = { git = "https://github.com/ddboline/rweb_helper.git", tag="0.4.13" }
 authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.9.3"}
 stack-string = { version="0.7", features=["postgres_types", "rweb-openapi"] }

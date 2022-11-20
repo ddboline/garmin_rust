@@ -12,7 +12,7 @@ use crate::utils::{
     sport_types::SportTypes,
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GarminLap {
     pub lap_type: Option<StackString>,
     pub lap_index: i32,

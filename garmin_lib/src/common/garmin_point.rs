@@ -15,7 +15,7 @@ use crate::utils::{
     },
 };
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub struct GarminPoint {
     pub time: DateTimeWrapper,
     pub latitude: Option<f64>,

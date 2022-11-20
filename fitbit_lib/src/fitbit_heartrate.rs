@@ -3,9 +3,7 @@ use avro_rs::{from_value, Codec, Reader, Schema, Writer};
 use fitparser::{profile::field_types::MesgNum, Value};
 use futures::{future::try_join_all, stream::FuturesUnordered, TryStreamExt};
 use glob::glob;
-use itertools::Itertools;
 use log::{debug, info};
-use maplit::hashmap;
 use rayon::{
     iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelExtend, ParallelIterator},
     slice::ParallelSliceMut,
@@ -14,7 +12,7 @@ use serde::{self, Deserialize, Deserializer, Serialize};
 use smallvec::SmallVec;
 use stack_string::{format_sstr, StackString};
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{HashSet},
     convert::TryInto,
     fs::{rename, File},
     path::Path,
@@ -28,7 +26,7 @@ use garmin_connect_lib::garmin_connect_hr_data::GarminConnectHrData;
 use garmin_lib::{
     common::{
         garmin_config::GarminConfig, garmin_file::GarminFile,
-        garmin_summary::get_list_of_files_from_db, garmin_templates::HBR, pgpool::PgPool,
+        garmin_summary::get_list_of_files_from_db, pgpool::PgPool,
     },
     utils::{date_time_wrapper::DateTimeWrapper, garmin_util::get_f64},
 };
@@ -56,8 +54,6 @@ pub const FITBITHEARTRATE_SCHEMA: &str = r#"
         }
     }
 "#;
-
-const NMINUTES: i64 = 5;
 
 #[derive(Deserialize, Copy, Clone)]
 pub struct JsonHeartRateValue {
@@ -248,126 +244,6 @@ impl FitbitHeartRate {
             })
             .collect();
         futures.try_collect().await
-    }
-
-    /// # Errors
-    /// Returns error if api call fails
-    #[allow(clippy::similar_names)]
-    pub async fn get_heartrate_plot(
-        config: &GarminConfig,
-        pool: &PgPool,
-        start_date: Date,
-        end_date: Date,
-        button_date: Option<Date>,
-        is_demo: bool,
-    ) -> Result<HashMap<StackString, StackString>, Error> {
-        let local = DateTimeWrapper::local_tz();
-        let button_date =
-            button_date.unwrap_or_else(|| OffsetDateTime::now_utc().to_timezone(local).date());
-        info!(
-            "get_heartrate_plot {} {} {:?}",
-            start_date, end_date, button_date
-        );
-        let mut final_values: Vec<_> =
-            Self::get_heartrate_values(config, pool, start_date, end_date)
-                .await?
-                .into_iter()
-                .group_by(|(d, _)| d.unix_timestamp() / (NMINUTES * 60))
-                .into_iter()
-                .map(|(_, group)| {
-                    let (begin_datetime, entries, heartrate_sum) = group.fold(
-                        (None, 0, 0),
-                        |(begin_datetime, entries, heartrate_sum), (datetime, heartrate)| {
-                            (
-                                if begin_datetime.is_none() || begin_datetime < Some(datetime) {
-                                    Some(datetime)
-                                } else {
-                                    begin_datetime
-                                },
-                                entries + 1,
-                                heartrate_sum + heartrate,
-                            )
-                        },
-                    );
-                    begin_datetime.map(|begin_datetime| {
-                        let average_heartrate = heartrate_sum / entries;
-                        let begin_datetime_str = begin_datetime
-                            .format(format_description!(
-                                "[year]-[month]-[day]T[hour]:[minute]:[second][offset_hour \
-                                 sign:mandatory]:[offset_minute]"
-                            ))
-                            .unwrap_or_else(|_| String::new());
-                        (begin_datetime_str, average_heartrate)
-                    })
-                })
-                .collect();
-        info!("final_value {}", final_values.len());
-        final_values.par_sort();
-        let js_str = serde_json::to_string(&final_values)?;
-
-        let params = hashmap! {
-            "DATA" => js_str.as_str(),
-            "EXAMPLETITLE" => "Heart Rate",
-            "XAXIS" => "Date",
-            "YAXIS" => "Heart Rate",
-            "NAME" => "heartrate",
-            "UNITS" => "bpm",
-        };
-
-        let plots = HBR.render("TIMESERIESTEMPLATE", &params)?;
-
-        let mut buttons: Vec<_> = (0..5)
-            .map(|i| {
-                let date = button_date - Duration::days(i);
-                format_sstr!(
-                    "{}{}{}<br>",
-                    format_sstr!(
-                        r#"
-                        <button type="submit" id="ID"
-                         onclick="heartrate_plot_button('{date}','{date}', '{button_date}');"">Plot {date}</button>"#,
-                        date = date,
-                        button_date=button_date,
-                    ),
-                    if is_demo {
-                        "".into()
-                    } else {
-                        format_sstr!(
-                            r#"
-                        <button type="submit" id="ID"
-                         onclick="heartrate_sync('{date}');">Sync {date}</button>
-                        "#
-                        )
-                    },
-                    ""
-                )
-            })
-            .collect();
-        let prev_date = button_date + Duration::days(5);
-        let next_date = button_date - Duration::days(5);
-        if prev_date <= OffsetDateTime::now_utc().to_timezone(local).date() {
-            buttons.push(
-                format_sstr!(r#"
-                        <button type="submit"
-                        onclick="heartrate_plot_button('{start_date}', '{end_date}', '{prev_date}');">
-                        Prev</button>
-                    "#
-                )
-            );
-        }
-        buttons.push(format_sstr!(
-            r#"
-                    <button type="submit"
-                    onclick="heartrate_plot_button('{start_date}', '{end_date}', '{next_date}');">
-                    Next</button>
-                "#
-        ));
-
-        let params = hashmap! {
-            "INSERTOTHERIMAGESHERE".into() => "".into(),
-            "INSERTTABLESHERE".into() => plots.into(),
-            "INSERTTEXTHERE".into() => buttons.join("\n").into(),
-        };
-        Ok(params)
     }
 
     /// # Errors
@@ -602,21 +478,6 @@ mod tests {
         }
         debug!("{}", current_datetimes.len());
         assert_eq!(current_datetimes.len(), 11212);
-        Ok(())
-    }
-
-    #[tokio::test]
-    #[ignore]
-    async fn test_get_heartrate_plot() -> Result<(), Error> {
-        let config = GarminConfig::get_config(None)?;
-        let pool = PgPool::new(&config.pgurl);
-        let start_date = date!(2019 - 08 - 01);
-        let end_date = date!(2019 - 08 - 02);
-        let results =
-            FitbitHeartRate::get_heartrate_plot(&config, &pool, start_date, end_date, None, false)
-                .await?;
-        debug!("{:?}", results);
-        assert!(results.len() > 0);
         Ok(())
     }
 

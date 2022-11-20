@@ -1,0 +1,25 @@
+html, body, #garmin_text_box {
+    height: 80%;
+    width: 80%;
+    }
+body { font: 12px Arial;}
+path {
+    stroke: steelblue;
+    stroke-width: 2;
+    fill: none;
+}
+.axis path,
+.axis line {
+    fill: none;
+    stroke-width: 1;
+    shape-rendering: crispEdges;
+
+    stroke: #000;
+}
+.label {
+font-weight: bold;
+}
+
+.tile {
+shape-rendering: crispEdges;
+}

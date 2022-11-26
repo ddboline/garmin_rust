@@ -244,18 +244,7 @@ function heartrate_sync(date) {
     xmlhttp.open("GET", url, true);
     xmlhttp.onload = function nothing() {
         document.getElementById("garminconnectoutput").innerHTML = "done";
-        document.getElementById("garmin_image_box").innerHTML = xmlhttp.responseText;
-    }
-    xmlhttp.send(null);
-    document.getElementById("garminconnectoutput").innerHTML = "syncing";
-}
-function connect_hr_sync(date) {
-    let url = '/garmin/garmin_connect_hr_sync?date=' + date;
-    let xmlhttp = new XMLHttpRequest();
-    xmlhttp.open("GET", url, true);
-    xmlhttp.onload = function nothing() {
-        document.getElementById("garminconnectoutput").innerHTML = "done";
-        document.getElementById("garmin_image_box").innerHTML = xmlhttp.responseText;
+        document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
     }
     xmlhttp.send(null);
     document.getElementById("garminconnectoutput").innerHTML = "syncing";

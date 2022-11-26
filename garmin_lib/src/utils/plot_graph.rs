@@ -78,4 +78,3 @@ pub fn generate_plot_data(opts: &PlotOpts, data: &[(f64, f64)]) -> Option<Scatte
         None
     }
 }
-

@@ -1,4 +1,4 @@
-use stack_string::{format_sstr};
+use stack_string::format_sstr;
 
 use garmin_lib::{
     common::garmin_file::GarminFile,

@@ -28,6 +28,7 @@ regex = "1.4"
 tempdir = "0.3"
 serde_json = "1.0"
 itertools = "0.10"
+smallvec = "1.6"
 tokio-postgres = {version = "0.7", features = ["with-time-0_3"]}
 refinery = {version="0.8", features=["tokio-postgres"]}
 stack-string = { version="0.7", features=["postgres_types"] }

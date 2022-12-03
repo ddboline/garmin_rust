@@ -61,6 +61,9 @@ impl GarminParseTrait for GarminParseFit {
     }
 
     fn parse_file(&self, filename: &Path) -> Result<ParseOutput, Error> {
+        if !filename.exists() {
+            return Err(format_err!("file {filename:?} does not exist"));
+        }
         let mut f = File::open(filename)?;
         let records = fitparser::from_reader(&mut f).map_err(|e| format_err!("{e:?}"))?;
 

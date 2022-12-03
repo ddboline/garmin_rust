@@ -70,6 +70,9 @@ impl GarminParseTrait for GarminParseTcx {
     }
 
     fn parse_file(&self, filename: &Path) -> Result<ParseOutput, Error> {
+        if !filename.exists() {
+            return Err(format_err!("file {filename:?} does not exist"));
+        }
         let output = if self.is_gzip {
             let mut buf = String::new();
             GzDecoder::new(File::open(filename)?).read_to_string(&mut buf)?;

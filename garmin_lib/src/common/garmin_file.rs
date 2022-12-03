@@ -120,6 +120,9 @@ impl GarminFile {
     /// # Errors
     /// Return error if open file fails, or reader fails
     pub fn read_avro(input_filename: &Path) -> Result<Self, Error> {
+        if !input_filename.exists() {
+            return Err(format_err!("file {input_filename:?} does not exist"));
+        }
         let input_file = File::open(input_filename)?;
 
         let mut reader = Reader::new(input_file)?;

@@ -289,6 +289,12 @@ impl FitbitHeartRate {
     /// # Errors
     /// Returns error if file read fails
     pub fn read_avro(input_filename: impl AsRef<Path>) -> Result<Vec<Self>, Error> {
+        if !input_filename.as_ref().exists() {
+            return Err(format_err!(
+                "file {:?} does not exist",
+                input_filename.as_ref()
+            ));
+        }
         let input_file = File::open(input_filename)?;
         Reader::new(input_file)?
             .next()
@@ -348,6 +354,9 @@ impl FitbitHeartRate {
 /// # Errors
 /// Returns error if deserialization fails
 pub fn process_fitbit_json_file(fname: &Path) -> Result<Vec<FitbitHeartRate>, Error> {
+    if !fname.exists() {
+        return Err(format_err!("file {fname:?} does not exist"));
+    }
     let f = File::open(fname)?;
     let result: Vec<JsonHeartRateEntry> = serde_json::from_reader(f)?;
     let result: Vec<_> = result
@@ -377,7 +386,9 @@ pub fn import_fitbit_json_files(directory: &str) -> Result<(), Error> {
 /// Returns error if deserialization fails
 pub fn import_garmin_json_file(filename: &Path) -> Result<(), Error> {
     let config = GarminConfig::get_config(None)?;
-
+    if !filename.exists() {
+        return Err(format_err!("file {filename:?} does not exist"));
+    }
     let js: GarminConnectHrData = serde_json::from_reader(File::open(filename)?)?;
 
     let heartrates = FitbitHeartRate::from_garmin_connect_hr(&js);
@@ -394,6 +405,9 @@ pub fn import_garmin_heartrate_file(filename: &Path) -> Result<(), Error> {
 
     let mut timestamp = None;
     let mut heartrates = Vec::new();
+    if !filename.exists() {
+        return Err(format_err!("file {filename:?} does not exist"));
+    }
     let mut f = File::open(filename)?;
     let records = fitparser::from_reader(&mut f).map_err(|e| format_err!("{e:?}"))?;
     for record in records {

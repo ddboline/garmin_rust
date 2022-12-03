@@ -188,6 +188,9 @@ impl GarminParseTrait for GarminParseTxt {
 
 impl GarminParseTxt {
     fn get_lap_list(filename: &Path) -> Result<Vec<GarminLap>, Error> {
+        if !filename.exists() {
+            return Err(format_err!("file {filename:?} does not exist"));
+        }
         let file = File::open(filename)?;
         let mut reader = BufReader::new(file);
         let mut line = String::new();

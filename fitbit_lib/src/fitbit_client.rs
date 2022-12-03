@@ -95,7 +95,11 @@ impl FitbitClient {
             client: Client::builder().cookie_store(true).build()?,
             ..Self::default()
         };
-        let f = File::open(&client.config.fitbit_tokenfile).await?;
+        let filename = &client.config.fitbit_tokenfile;
+        if !filename.exists() {
+            return Err(format_err!("file {filename:?} does not exist"));
+        }
+        let f = File::open(filename).await?;
         let mut b = BufReader::new(f);
         let mut line = String::new();
         loop {

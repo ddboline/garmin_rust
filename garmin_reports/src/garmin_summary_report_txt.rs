@@ -116,6 +116,11 @@ pub async fn create_report_query(
     } else {
         StackString::new()
     };
+    let constraints_str = if constraints.constraints.is_empty() {
+        StackString::new()
+    } else {
+        constraints.to_query_string().into()
+    };
 
     let mut constr = StackString::new();
     if constraints.is_empty() {
@@ -123,16 +128,13 @@ pub async fn create_report_query(
             constr = format_sstr!("WHERE {sport_constr}");
         }
     } else if sport_constr.is_empty() {
-        constr = format_sstr!("WHERE {}", constraints.to_query_string());
+        constr = format_sstr!("WHERE {constraints_str}");
     } else {
-        constr = format_sstr!(
-            "WHERE ({}) AND {}",
-            constraints.to_query_string(),
-            sport_constr
-        );
+        constr = format_sstr!("WHERE ({sport_constr}) AND ({constraints_str})",);
     }
 
-    debug!("{}", constr);
+    let agg = &options.agg;
+    debug!("agg: {agg:?}, constr: {constr}");
 
     let result_vec = if let Some(agg) = &options.agg {
         match agg {
@@ -155,7 +157,7 @@ pub async fn create_report_query(
     } else if options.do_sport.is_none() {
         GarminReportQuery::Sport(sport_summary_report(pool, &constr).await?)
     } else {
-        GarminReportQuery::Empty
+        GarminReportQuery::Year(year_summary_report(pool, &constr).await?)
     };
 
     Ok(result_vec)

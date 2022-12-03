@@ -27,7 +27,7 @@ deadpool = "0.9"
 deadpool-postgres = "0.10"
 dotenv = "0.15"
 lazy_static = "1.4"
-roxmltree = "0.15"
+roxmltree = "0.16"
 parking_lot = "0.12"
 avro-rs = {version = "0.13", features = ["snappy"]}
 regex = "1.4"
@@ -40,7 +40,7 @@ tokio = {version="1.21", features=["full"]}
 derive_more = "0.99"
 rustls-native-certs = {version="0.6", default_features=false}
 envy = "0.4"
-fitparser = {git="https://github.com/ddboline/fitparse-rs.git", branch="time-0.3"}
+fitparser = {git="https://github.com/ddboline/fitparse-rs.git", branch="time-0.3-0.5.1"}
 smallvec = "1.6"
 flate2 = "1.0"
 itertools = "0.10"

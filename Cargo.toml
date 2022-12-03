@@ -23,7 +23,7 @@ garmin_connect_lib = {path="garmin_connect_lib"}
 race_result_analysis = {path="race_result_analysis"}
 garmin_reports = {path="garmin_reports"}
 log = "0.4"
-env_logger = "0.9"
+env_logger = "0.10"
 crossbeam-utils = "0.8"
 clap = {version="4.0", features=["derive"]}
 anyhow = "1.0"

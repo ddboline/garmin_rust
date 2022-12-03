@@ -141,13 +141,18 @@ impl GarminCliOpts {
             Self::Bootstrap => GarminCliOptions::Bootstrap,
             Self::Proc { filename } => GarminCliOptions::ImportFileNames(filename),
             Self::Report { patterns } => {
-                let patterns: SmallVec<[StackString; 1]> = patterns.into_iter().flat_map(|s| {
-                    if s.contains(',') {
-                        s.split(',').map(Into::into).collect::<SmallVec<[StackString; 1]>>()
-                    } else {
-                        smallvec![s]
-                    }
-                }).collect();
+                let patterns: SmallVec<[StackString; 1]> = patterns
+                    .into_iter()
+                    .flat_map(|s| {
+                        if s.contains(',') {
+                            s.split(',')
+                                .map(Into::into)
+                                .collect::<SmallVec<[StackString; 1]>>()
+                        } else {
+                            smallvec![s]
+                        }
+                    })
+                    .collect();
 
                 let patterns: SmallVec<[StackString; 2]> = patterns
                     .into_iter()

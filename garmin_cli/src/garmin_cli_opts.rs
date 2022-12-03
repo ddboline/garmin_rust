@@ -4,6 +4,7 @@ use futures::{future::try_join_all, TryStreamExt};
 use itertools::Itertools;
 use log::info;
 use refinery::embed_migrations;
+use smallvec::{smallvec, SmallVec};
 use stack_string::{format_sstr, StackString};
 use std::path::PathBuf;
 use time::{macros::format_description, Date, Duration, OffsetDateTime};
@@ -140,6 +141,23 @@ impl GarminCliOpts {
             Self::Bootstrap => GarminCliOptions::Bootstrap,
             Self::Proc { filename } => GarminCliOptions::ImportFileNames(filename),
             Self::Report { patterns } => {
+                let patterns: SmallVec<[StackString; 1]> = patterns.into_iter().flat_map(|s| {
+                    if s.contains(',') {
+                        s.split(',').map(Into::into).collect::<SmallVec<[StackString; 1]>>()
+                    } else {
+                        smallvec![s]
+                    }
+                }).collect();
+
+                let patterns: SmallVec<[StackString; 2]> = patterns
+                    .into_iter()
+                    .flat_map(|s| {
+                        s.split(',')
+                            .map(Into::into)
+                            .collect::<SmallVec<[StackString; 2]>>()
+                    })
+                    .collect();
+
                 let req = if patterns.is_empty() {
                     GarminCli::process_pattern(config, ["year"])
                 } else {

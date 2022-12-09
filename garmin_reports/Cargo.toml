@@ -1,6 +1,6 @@
 [package]
 name = "garmin_reports"
-version = "0.12.23"
+version = "0.13.0"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -20,5 +20,5 @@ postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag =
 url = "2.3"
 itertools = "0.10"
 derive_more = "0.99"
-stack-string = { version="0.7", features=["postgres_types", "rweb-openapi"] }
+stack-string = { version="0.8", features=["postgres_types", "rweb-openapi"] }
 uuid = { version = "1.0", features = ["serde", "v4"] }

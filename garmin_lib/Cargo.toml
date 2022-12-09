@@ -1,6 +1,6 @@
 [package]
 name = "garmin_lib"
-version = "0.12.23"
+version = "0.13.0"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -45,4 +45,4 @@ smallvec = "1.6"
 flate2 = "1.0"
 itertools = "0.10"
 url = "2.3"
-stack-string = { version="0.7", features=["postgres_types"] }
+stack-string = { version="0.8", features=["postgres_types"] }

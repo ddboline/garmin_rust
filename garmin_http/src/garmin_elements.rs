@@ -1083,6 +1083,21 @@ fn index_element(
             h3 {
                 buttons,
             },
+            form {
+                action: "javascript:processFormData()",
+                method: "get",
+                input {
+                    "type": "text",
+                    name: "cmd",
+                    id: "garmin_filter",
+                },
+                input {
+                    "type": "button",
+                    name: "submit_input",
+                    value: "Submit",
+                    "onclick": "processFormData()"
+                }
+            }
             history_buttons,
             "<br>",
             upload_button,

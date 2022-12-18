@@ -50,10 +50,10 @@ use crate::{
         create_fitbit_table, fitbit_body, index_new_body, strava_body, table_body, IndexConfig,
     },
     garmin_requests::{
-        get_connect_activities, AddGarminCorrectionRequest, FitbitActivitiesRequest,
+        AddGarminCorrectionRequest, FitbitActivitiesRequest,
         FitbitHeartrateCacheRequest, FitbitHeartratePlotRequest, FitbitHeartrateUpdateRequest,
         FitbitStatisticsPlotRequest, FitbitTcxSyncRequest, GarminConnectActivitiesDBUpdateRequest,
-        GarminConnectActivitiesRequest, GarminConnectUserSummaryRequest, GarminHtmlRequest,
+        GarminHtmlRequest,
         HeartrateStatisticsSummaryDBUpdateRequest, ScaleMeasurementPlotRequest,
         ScaleMeasurementRequest, ScaleMeasurementUpdateRequest, StravaActivitiesRequest,
         StravaCreateRequest, StravaSyncRequest, StravaUpdateRequest, StravaUploadRequest,
@@ -62,7 +62,7 @@ use crate::{
     logged_user::{LoggedUser, Session},
     FitbitActivityTypesWrapper, FitbitActivityWrapper, FitbitBodyWeightFatUpdateOutputWrapper,
     FitbitBodyWeightFatWrapper, FitbitHeartRateWrapper, FitbitStatisticsSummaryWrapper,
-    GarminConnectActivityWrapper, GarminConnectUserDailySummaryWrapper, RaceResultsWrapper,
+    GarminConnectActivityWrapper, RaceResultsWrapper,
     RaceTypeWrapper, ScaleMeasurementWrapper, StravaActivityWrapper,
 };
 
@@ -340,23 +340,6 @@ async fn save_file(file_path: &str, field: Part) -> Result<u64, anyhow::Error> {
     Ok(file_size)
 }
 
-#[derive(RwebResponse)]
-#[response(description = "Connect Sync")]
-struct ConnectSyncResponse(JsonBase<Vec<String>, Error>);
-
-#[get("/garmin/garmin_connect_sync")]
-pub async fn garmin_connect_sync(
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
-) -> WarpResult<ConnectSyncResponse> {
-    let body = get_connect_activities(&state.db, &state.connect_proxy)
-        .await?
-        .into_iter()
-        .map(|x| x.to_string_lossy().into_owned())
-        .collect();
-    Ok(JsonBase::new(body).into())
-}
-
 #[derive(Serialize, Deserialize, Schema)]
 pub struct GarminConnectHrSyncRequest {
     pub date: DateType,
@@ -365,33 +348,6 @@ pub struct GarminConnectHrSyncRequest {
 #[derive(Serialize, Deserialize, Schema)]
 pub struct GarminConnectHrApiRequest {
     pub date: DateType,
-}
-
-#[derive(RwebResponse)]
-#[response(description = "Connect Heartrate")]
-struct ConnectHrApiResponse(JsonBase<Vec<FitbitHeartRateWrapper>, Error>);
-
-#[get("/garmin/garmin_connect_hr_api")]
-pub async fn garmin_connect_hr_api(
-    query: Query<GarminConnectHrApiRequest>,
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
-) -> WarpResult<ConnectHrApiResponse> {
-    let query = query.into_inner();
-
-    let mut session = state.connect_proxy.lock().await;
-    session.init().await.map_err(Into::<Error>::into)?;
-
-    let heartrate_data = session
-        .get_heartrate(query.date.into())
-        .await
-        .map_err(Into::<Error>::into)?;
-    let hr_vals = FitbitHeartRate::from_garmin_connect_hr(&heartrate_data)
-        .into_iter()
-        .map(Into::into)
-        .collect();
-
-    Ok(JsonBase::new(hr_vals).into())
 }
 
 #[derive(RwebResponse)]
@@ -1271,22 +1227,6 @@ pub async fn fitbit_profile(
 #[response(description = "Garmin Connect Activities")]
 struct GarminConnectActivitiesResponse(JsonBase<Vec<GarminConnectActivityWrapper>, Error>);
 
-#[get("/garmin/garmin_connect_activities")]
-pub async fn garmin_connect_activities(
-    query: Query<GarminConnectActivitiesRequest>,
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
-) -> WarpResult<GarminConnectActivitiesResponse> {
-    let result = query
-        .into_inner()
-        .get_activities(&state.connect_proxy)
-        .await?
-        .into_iter()
-        .map(Into::into)
-        .collect();
-    Ok(JsonBase::new(result).into())
-}
-
 #[get("/garmin/garmin_connect_activities_db")]
 pub async fn garmin_connect_activities_db(
     query: Query<StravaActivitiesRequest>,
@@ -1330,20 +1270,6 @@ pub async fn garmin_connect_activities_db_update(
         .join("\n")
         .into();
     Ok(HtmlBase::new(body).into())
-}
-
-#[derive(RwebResponse)]
-#[response(description = "Garmin Connect User Summary")]
-struct GarminConnectUserSummaryResponse(JsonBase<GarminConnectUserDailySummaryWrapper, Error>);
-
-#[get("/garmin/garmin_connect_user_summary")]
-pub async fn garmin_connect_user_summary(
-    query: Query<GarminConnectUserSummaryRequest>,
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
-) -> WarpResult<GarminConnectUserSummaryResponse> {
-    let js = query.into_inner().get_summary(&state.connect_proxy).await?;
-    Ok(JsonBase::new(js.into()).into())
 }
 
 #[derive(RwebResponse)]

@@ -50,6 +50,7 @@ pub enum GarminCliOptions {
     FileNames(Vec<PathBuf>),
     ImportFileNames(Vec<PathBuf>),
     Connect {
+        data_directory: Option<PathBuf>,
         start_date: Option<Date>,
         end_date: Option<Date>,
     },

@@ -10,10 +10,8 @@ use rweb::{
 };
 use stack_string::format_sstr;
 use std::{net::SocketAddr, sync::Arc};
-use time::{Duration, OffsetDateTime};
-use tokio::{sync::Mutex, task::spawn, time::interval};
+use tokio::{task::spawn, time::interval};
 
-use garmin_connect_lib::garmin_connect_client::GarminConnectClient;
 use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
 
 use crate::{
@@ -23,9 +21,9 @@ use crate::{
         fitbit_activities_db_update, fitbit_activity_types, fitbit_auth, fitbit_bodyweight,
         fitbit_bodyweight_sync, fitbit_callback, fitbit_heartrate_api, fitbit_heartrate_cache,
         fitbit_heartrate_cache_update, fitbit_plots, fitbit_plots_demo, fitbit_profile,
-        fitbit_refresh, fitbit_sync, fitbit_tcx_sync, garmin, garmin_connect_activities,
-        garmin_connect_activities_db, garmin_connect_activities_db_update, garmin_connect_hr_api,
-        garmin_connect_sync, garmin_connect_user_summary, garmin_demo, garmin_scripts_demo_js,
+        fitbit_refresh, fitbit_sync, fitbit_tcx_sync, garmin,
+        garmin_connect_activities_db, garmin_connect_activities_db_update,
+        garmin_demo, garmin_scripts_demo_js,
         garmin_scripts_js, garmin_sync, garmin_upload, heartrate_plots, heartrate_plots_demo,
         heartrate_statistics_plots, heartrate_statistics_plots_demo,
         heartrate_statistics_summary_db, heartrate_statistics_summary_db_update, initialize_map_js,
@@ -39,8 +37,6 @@ use crate::{
     logged_user::{fill_from_db, get_secrets, TRIGGER_DB_UPDATE},
 };
 
-pub type ConnectProxy = Arc<Mutex<GarminConnectClient>>;
-
 /// `AppState` is the application state shared between all the handlers
 /// db can be used to send messages to the database workers, each running on
 /// their own thread `user_list` contains a shared cache of previously
@@ -49,18 +45,7 @@ pub type ConnectProxy = Arc<Mutex<GarminConnectClient>>;
 pub struct AppState {
     pub config: GarminConfig,
     pub db: PgPool,
-    pub connect_proxy: ConnectProxy,
     pub client: Arc<Client>,
-}
-
-/// # Errors
-/// Returns error if call to connect client fails
-pub async fn close_connect_proxy(proxy: &ConnectProxy) -> Result<(), Error> {
-    let mut proxy = proxy.lock().await;
-    if proxy.last_used < OffsetDateTime::now_utc() - Duration::seconds(300) {
-        proxy.close().await?;
-    }
-    Ok(())
 }
 
 /// Create the actix-web server.
@@ -73,11 +58,10 @@ pub async fn close_connect_proxy(proxy: &ConnectProxy) -> Result<(), Error> {
 /// # Errors
 /// Returns error if server init fails
 pub async fn start_app() -> Result<(), Error> {
-    async fn update_db(pool: PgPool, proxy: ConnectProxy) {
+    async fn update_db(pool: PgPool) {
         let mut i = interval(std::time::Duration::from_secs(60));
         loop {
             fill_from_db(&pool).await.unwrap_or(());
-            close_connect_proxy(&proxy).await.unwrap_or(());
             i.tick().await;
         }
     }
@@ -88,17 +72,15 @@ pub async fn start_app() -> Result<(), Error> {
     get_secrets(&config.secret_path, &config.jwt_secret_path).await?;
 
     let pool = PgPool::new(&config.pgurl);
-    let proxy = Arc::new(Mutex::new(GarminConnectClient::new(config.clone())));
 
     spawn({
         let pool = pool.clone();
-        let proxy = proxy.clone();
         async move {
-            update_db(pool, proxy).await;
+            update_db(pool).await;
         }
     });
 
-    run_app(&config, &pool, &proxy).await
+    run_app(&config, &pool).await
 }
 
 fn get_garmin_path(app: &AppState) -> BoxedFilter<(impl Reply,)> {
@@ -106,15 +88,11 @@ fn get_garmin_path(app: &AppState) -> BoxedFilter<(impl Reply,)> {
     let garmin_demo_path = garmin_demo(app.clone()).boxed();
     let garmin_upload_path = garmin_upload(app.clone()).boxed();
     let add_garmin_correction_path = add_garmin_correction(app.clone()).boxed();
-    let garmin_connect_sync_path = garmin_connect_sync(app.clone()).boxed();
-    let garmin_connect_activities_path = garmin_connect_activities(app.clone()).boxed();
     let garmin_connect_activities_db_get = garmin_connect_activities_db(app.clone());
     let garmin_connect_activities_db_post = garmin_connect_activities_db_update(app.clone());
     let garmin_connect_activities_db_path = garmin_connect_activities_db_get
         .or(garmin_connect_activities_db_post)
         .boxed();
-    let garmin_connect_hr_api_path = garmin_connect_hr_api(app.clone()).boxed();
-    let garmin_connect_user_summary_path = garmin_connect_user_summary(app.clone()).boxed();
     let garmin_sync_path = garmin_sync(app.clone()).boxed();
     let strava_sync_path = strava_sync(app.clone()).boxed();
     let fitbit_auth_path = fitbit_auth(app.clone()).boxed();
@@ -217,11 +195,7 @@ fn get_garmin_path(app: &AppState) -> BoxedFilter<(impl Reply,)> {
         .or(garmin_demo_path)
         .or(garmin_upload_path)
         .or(add_garmin_correction_path)
-        .or(garmin_connect_sync_path)
-        .or(garmin_connect_activities_path)
         .or(garmin_connect_activities_db_path)
-        .or(garmin_connect_hr_api_path)
-        .or(garmin_connect_user_summary_path)
         .or(garmin_sync_path)
         .or(strava_sync_path)
         .or(fitbit_path)
@@ -243,11 +217,10 @@ fn get_garmin_path(app: &AppState) -> BoxedFilter<(impl Reply,)> {
         .boxed()
 }
 
-async fn run_app(config: &GarminConfig, pool: &PgPool, proxy: &ConnectProxy) -> Result<(), Error> {
+async fn run_app(config: &GarminConfig, pool: &PgPool) -> Result<(), Error> {
     let app = AppState {
         config: config.clone(),
         db: pool.clone(),
-        connect_proxy: proxy.clone(),
         client: Arc::new(ClientBuilder::new().build()?),
     };
 

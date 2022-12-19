@@ -50,10 +50,9 @@ use crate::{
         create_fitbit_table, fitbit_body, index_new_body, strava_body, table_body, IndexConfig,
     },
     garmin_requests::{
-        AddGarminCorrectionRequest, FitbitActivitiesRequest,
-        FitbitHeartrateCacheRequest, FitbitHeartratePlotRequest, FitbitHeartrateUpdateRequest,
-        FitbitStatisticsPlotRequest, FitbitTcxSyncRequest, GarminConnectActivitiesDBUpdateRequest,
-        GarminHtmlRequest,
+        AddGarminCorrectionRequest, FitbitActivitiesRequest, FitbitHeartrateCacheRequest,
+        FitbitHeartratePlotRequest, FitbitHeartrateUpdateRequest, FitbitStatisticsPlotRequest,
+        FitbitTcxSyncRequest, GarminConnectActivitiesDBUpdateRequest, GarminHtmlRequest,
         HeartrateStatisticsSummaryDBUpdateRequest, ScaleMeasurementPlotRequest,
         ScaleMeasurementRequest, ScaleMeasurementUpdateRequest, StravaActivitiesRequest,
         StravaCreateRequest, StravaSyncRequest, StravaUpdateRequest, StravaUploadRequest,
@@ -62,8 +61,8 @@ use crate::{
     logged_user::{LoggedUser, Session},
     FitbitActivityTypesWrapper, FitbitActivityWrapper, FitbitBodyWeightFatUpdateOutputWrapper,
     FitbitBodyWeightFatWrapper, FitbitHeartRateWrapper, FitbitStatisticsSummaryWrapper,
-    GarminConnectActivityWrapper, RaceResultsWrapper,
-    RaceTypeWrapper, ScaleMeasurementWrapper, StravaActivityWrapper,
+    GarminConnectActivityWrapper, RaceResultsWrapper, RaceTypeWrapper, ScaleMeasurementWrapper,
+    StravaActivityWrapper,
 };
 
 pub type WarpResult<T> = Result<T, Rejection>;

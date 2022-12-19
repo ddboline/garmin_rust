@@ -23,8 +23,8 @@ use garmin_connect_lib::garmin_connect_hr_data::GarminConnectHrData;
 use garmin_lib::{
     common::{
         fitbit_activity::FitbitActivity, garmin_config::GarminConfig,
-        garmin_connect_activity::GarminConnectActivity,
-        pgpool::PgPool, strava_activity::StravaActivity,
+        garmin_connect_activity::GarminConnectActivity, pgpool::PgPool,
+        strava_activity::StravaActivity,
     },
     utils::date_time_wrapper::DateTimeWrapper,
 };
@@ -156,13 +156,11 @@ impl GarminCliOpts {
                 data_directory,
                 start_date,
                 end_date,
-            } => {
-                GarminCliOptions::Connect {
-                    data_directory,
-                    start_date: start_date.map(Into::into),
-                    end_date: end_date.map(Into::into),
-                }
-            }
+            } => GarminCliOptions::Connect {
+                data_directory,
+                start_date: start_date.map(Into::into),
+                end_date: end_date.map(Into::into),
+            },
             Self::Sync { md5sum } => GarminCliOptions::Sync(md5sum),
             Self::SyncAll => {
                 return Ok(());
@@ -443,29 +441,36 @@ impl GarminCliOpts {
         start_date: Option<Date>,
         end_date: Option<Date>,
     ) -> Result<Vec<PathBuf>, Error> {
-        let data_directory = data_directory.as_ref().unwrap_or_else(|| &cli.config.garmin_connect_import_directory);
+        let data_directory = data_directory
+            .as_ref()
+            .unwrap_or(&cli.config.garmin_connect_import_directory);
         let activites_json = data_directory.join("activities.json");
         let mut filenames = Vec::new();
         if activites_json.exists() {
             let file = File::open(activites_json).await?.into_std().await;
             let activities: Vec<GarminConnectActivity> = serde_json::from_reader(file)?;
-            let activities = GarminConnectActivity::merge_new_activities(activities, &cli.pool).await?;
+            let activities =
+                GarminConnectActivity::merge_new_activities(activities, &cli.pool).await?;
             for activity in activities {
-                let filename = cli.config.download_directory.join(format_sstr!("{}.zip", activity.activity_id));
+                let filename = cli
+                    .config
+                    .download_directory
+                    .join(format_sstr!("{}.zip", activity.activity_id));
                 if filename.exists() {
                     filenames.push(filename);
                 }
             }
         }
-        let start_date = start_date
-        .unwrap_or_else(|| (OffsetDateTime::now_utc() - Duration::days(3)).date());
+        let start_date =
+            start_date.unwrap_or_else(|| (OffsetDateTime::now_utc() - Duration::days(3)).date());
         let end_date = end_date.unwrap_or_else(|| OffsetDateTime::now_utc().date());
         let mut date = start_date;
         while date <= end_date {
             info!("get heartrate {date}");
             let heartrate_file = data_directory.join(format_sstr!("{date}.json"));
             if heartrate_file.exists() {
-                let hr_values: GarminConnectHrData = serde_json::from_reader(File::open(heartrate_file).await?.into_std().await)?;
+                let hr_values: GarminConnectHrData =
+                    serde_json::from_reader(File::open(heartrate_file).await?.into_std().await)?;
                 info!("got heartrate {date}");
                 let hr_values = FitbitHeartRate::from_garmin_connect_hr(&hr_values);
                 let config = cli.config.clone();

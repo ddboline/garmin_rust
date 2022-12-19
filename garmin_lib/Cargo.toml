@@ -45,4 +45,5 @@ smallvec = "1.6"
 flate2 = "1.0"
 itertools = "0.10"
 url = "2.3"
+base64 = "0.20"
 stack-string = { version="0.8", features=["postgres_types"] }

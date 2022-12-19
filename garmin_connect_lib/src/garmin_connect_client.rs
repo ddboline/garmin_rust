@@ -280,6 +280,8 @@ pub struct GarminConnectUserDailySummary {
     pub calendar_date: Date,
 }
 
+/// # Errors
+/// Return error if authorize fails
 pub async fn check_version(cmd: &Path, prefix: &str) -> Result<u64, Error> {
     Command::new(cmd)
         .args(["--version"])
@@ -304,10 +306,8 @@ mod tests {
     use anyhow::Error;
     use log::debug;
 
-    use garmin_lib::{
-        common::{
-            garmin_config::GarminConfig, garmin_connect_activity::GarminConnectActivity,
-        },
+    use garmin_lib::common::{
+        garmin_config::GarminConfig, garmin_connect_activity::GarminConnectActivity,
     };
 
     use crate::garmin_connect_client::{check_version, GarminConnectClient};

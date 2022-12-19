@@ -1,15 +1,13 @@
 use anyhow::{format_err, Error};
-use base64::{encode, encode_config, URL_SAFE_NO_PAD};
+use base64::encode;
 use crossbeam_utils::atomic::AtomicCell;
 use futures::{future, future::try_join_all, stream::FuturesUnordered, TryStreamExt};
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use log::debug;
 use maplit::hashmap;
-use rand::{thread_rng, Rng};
 use reqwest::{header::HeaderMap, Client, Response, Url};
 use serde::{Deserialize, Serialize};
-use smallvec::SmallVec;
 use stack_string::{format_sstr, StackString};
 use std::{
     collections::{HashMap, HashSet},
@@ -35,7 +33,7 @@ use garmin_lib::{
         garmin_summary::{get_list_of_activities_from_db, GarminSummary},
         pgpool::PgPool,
     },
-    utils::date_time_wrapper::DateTimeWrapper,
+    utils::{date_time_wrapper::DateTimeWrapper, garmin_util::get_random_string},
 };
 
 use crate::{
@@ -200,11 +198,6 @@ impl FitbitClient {
         Ok(offset)
     }
 
-    fn get_random_string() -> String {
-        let random_bytes: SmallVec<[u8; 16]> = (0..16).map(|_| thread_rng().gen::<u8>()).collect();
-        encode_config(&random_bytes, URL_SAFE_NO_PAD)
-    }
-
     /// # Errors
     /// Returns error if api call fails
     pub fn get_fitbit_auth_url(&self) -> Result<Url, Error> {
@@ -220,7 +213,7 @@ impl FitbitClient {
             "social",
             "weight",
         ];
-        let state = Self::get_random_string();
+        let state = get_random_string();
         let fitbit_oauth_authorize = self
             .config
             .fitbit_endpoint
@@ -237,7 +230,7 @@ impl FitbitClient {
                 ("state", state.as_str()),
             ],
         )?;
-        CSRF_TOKEN.store(Some(state.into()));
+        CSRF_TOKEN.store(Some(state));
         Ok(url)
     }
 

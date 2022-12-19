@@ -30,9 +30,8 @@ use garmin_reports::garmin_constraints::GarminConstraints;
 use strava_lib::strava_client::StravaClient;
 
 use crate::{
-    errors::ServiceError as Error,
-    sport_types_wrapper::SportTypesWrapper, FitbitHeartRateWrapper, FitbitStatisticsSummaryWrapper,
-    GarminConnectActivityWrapper, ScaleMeasurementWrapper,
+    errors::ServiceError as Error, sport_types_wrapper::SportTypesWrapper, FitbitHeartRateWrapper,
+    FitbitStatisticsSummaryWrapper, GarminConnectActivityWrapper, ScaleMeasurementWrapper,
 };
 
 pub struct GarminHtmlRequest {

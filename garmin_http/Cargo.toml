@@ -33,7 +33,7 @@ rayon = "1.5"
 handlebars = "4.0"
 itertools = "0.10"
 cookie = {version="0.16.0-rc.1", features=["percent-encode"]}
-base64 = "0.13"
+base64 = "0.20"
 url = "2.3"
 indexmap = "1.6"
 serde_yaml = "0.9"

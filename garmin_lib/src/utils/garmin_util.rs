@@ -344,6 +344,7 @@ pub async fn get_list_of_telegram_userids(
         .map_err(Into::into)
 }
 
+#[must_use]
 pub fn get_random_string() -> StackString {
     let random_bytes: SmallVec<[u8; 16]> = (0..16).map(|_| thread_rng().gen::<u8>()).collect();
     encode_engine(&random_bytes, &FastPortable::from(&URL_SAFE, NO_PAD)).into()

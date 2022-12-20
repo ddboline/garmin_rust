@@ -10,7 +10,7 @@ use reqwest::{header::HeaderMap, Client, Response, Url};
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
 use std::{
-    collections::{HashMap, HashSet, BTreeSet},
+    collections::{BTreeSet, HashMap, HashSet},
     path::PathBuf,
 };
 use time::{
@@ -431,8 +431,7 @@ impl FitbitClient {
         heartrate_data: &GarminConnectHrData,
     ) -> Result<BTreeSet<Date>, Error> {
         let heartrates = FitbitHeartRate::from_garmin_connect_hr(heartrate_data);
-        spawn_blocking(move || FitbitHeartRate::merge_slice_to_avro(&config, &heartrates))
-            .await?
+        spawn_blocking(move || FitbitHeartRate::merge_slice_to_avro(&config, &heartrates)).await?
     }
 
     /// # Errors

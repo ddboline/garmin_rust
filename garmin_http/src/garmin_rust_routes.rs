@@ -680,7 +680,7 @@ pub async fn fitbit_heartrate_cache(
     content = "html",
     status = "CREATED"
 )]
-struct FitbitHeartrateUpdateResponse(HtmlBase<&'static str, Error>);
+struct FitbitHeartrateUpdateResponse(HtmlBase<StackString, Error>);
 
 #[post("/garmin/fitbit/heartrate_cache")]
 pub async fn fitbit_heartrate_cache_update(
@@ -688,8 +688,8 @@ pub async fn fitbit_heartrate_cache_update(
     #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<FitbitHeartrateUpdateResponse> {
-    payload.into_inner().merge_data(&state.config).await?;
-    Ok(HtmlBase::new("Finished").into())
+    let dates = payload.into_inner().merge_data(&state.config).await?;
+    Ok(HtmlBase::new(format_sstr!("Finished {dates:?}")).into())
 }
 
 #[derive(RwebResponse)]

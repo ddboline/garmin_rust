@@ -3,7 +3,7 @@ use rweb::Schema;
 use rweb_helper::{DateTimeType, DateType};
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
-use std::path::PathBuf;
+use std::{collections::BTreeSet, path::PathBuf};
 use time::{macros::time, Date, Duration, OffsetDateTime};
 use time_tz::OffsetDateTimeExt;
 use tokio::task::spawn_blocking;
@@ -175,7 +175,7 @@ pub struct FitbitHeartrateUpdateRequest {
 impl FitbitHeartrateUpdateRequest {
     /// # Errors
     /// Returns error if db query fails
-    pub async fn merge_data(self, config: &GarminConfig) -> Result<(), Error> {
+    pub async fn merge_data(self, config: &GarminConfig) -> Result<BTreeSet<Date>, Error> {
         let config = config.clone();
         let updates: Vec<_> = self.updates.into_iter().map(Into::into).collect();
         spawn_blocking(move || {

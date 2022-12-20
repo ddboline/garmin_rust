@@ -5,12 +5,12 @@ use itertools::Itertools;
 use log::info;
 use refinery::embed_migrations;
 use stack_string::{format_sstr, StackString};
-use std::path::PathBuf;
+use std::{collections::BTreeSet, path::PathBuf};
 use time::{macros::format_description, Date, Duration, OffsetDateTime};
 use time_tz::OffsetDateTimeExt;
 use tokio::{
     fs::{read_to_string, File},
-    io::{stdin, stdout, AsyncReadExt, AsyncWrite, AsyncWriteExt},
+    io::{stdin, stdout, AsyncBufReadExt, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader},
     task::spawn_blocking,
 };
 
@@ -62,6 +62,14 @@ pub enum GarminCliOpts {
         patterns: Vec<StackString>,
     },
     #[clap(alias = "cnt")]
+    /// Go to the network tab in chrome developer tools,
+    /// Navigate to https://connect.garmin.com/modern/activities,
+    /// find the entry for https://connect.garmin.com/activitylist-service/activities/search/activities,
+    /// go to the response subtab and copy the output to
+    /// ~/Downloads/garmin_connect/activities.json, Next navigate to https://connect.garmin.com/modern/daily-summary/{date} where date is a date e.g. 2022-12-20,
+    /// find the entry https://connect.garmin.com/wellness-service/wellness/dailyHeartRate/ddboline?date=2022-12-18,
+    /// go to the response subtab and copy the output to
+    /// ~/Downloads/garmin_connect/heartrates.json
     Connect {
         #[clap(short, long)]
         data_directory: Option<PathBuf>,
@@ -447,8 +455,8 @@ impl GarminCliOpts {
         let activites_json = data_directory.join("activities.json");
         let mut filenames = Vec::new();
         if activites_json.exists() {
-            let file = File::open(activites_json).await?.into_std().await;
-            let activities: Vec<GarminConnectActivity> = serde_json::from_reader(file)?;
+            let buf = read_to_string(activites_json).await?;
+            let activities: Vec<GarminConnectActivity> = serde_json::from_str(buf.trim())?;
             let activities =
                 GarminConnectActivity::merge_new_activities(activities, &cli.pool).await?;
             for activity in activities {
@@ -459,6 +467,26 @@ impl GarminCliOpts {
                 if filename.exists() {
                     filenames.push(filename);
                 }
+            }
+        }
+        let mut dates = BTreeSet::new();
+        let heartrate_json = data_directory.join("heartrates.json");
+        if heartrate_json.exists() {
+            let mut bufread = BufReader::new(File::open(heartrate_json).await?);
+            let mut buf = Vec::new();
+            while let Ok(bytes_read) = bufread.read_until(b'\n', &mut buf).await {
+                if bytes_read == 0 {
+                    break;
+                }
+                if let Ok(hr_values) = serde_json::from_slice::<GarminConnectHrData>(&buf) {
+                    let hr_values = FitbitHeartRate::from_garmin_connect_hr(&hr_values);
+                    let config = cli.config.clone();
+                    dates = spawn_blocking(move || {
+                        FitbitHeartRate::merge_slice_to_avro(&config, &hr_values)
+                    })
+                    .await??;
+                }
+                buf.clear();
             }
         }
         let start_date =
@@ -474,11 +502,18 @@ impl GarminCliOpts {
                 info!("got heartrate {date}");
                 let hr_values = FitbitHeartRate::from_garmin_connect_hr(&hr_values);
                 let config = cli.config.clone();
-                spawn_blocking(move || FitbitHeartRate::merge_slice_to_avro(&config, &hr_values))
-                    .await??;
-                FitbitHeartRate::calculate_summary_statistics(&cli.config, &cli.pool, date).await?;
+                for d in spawn_blocking(move || {
+                    FitbitHeartRate::merge_slice_to_avro(&config, &hr_values)
+                })
+                .await??
+                {
+                    dates.insert(d);
+                }
             }
             date += Duration::days(1);
+        }
+        for date in dates {
+            FitbitHeartRate::calculate_summary_statistics(&cli.config, &cli.pool, date).await?;
         }
         if !filenames.is_empty() {
             cli.process_filenames(&filenames).await?;

@@ -12,7 +12,7 @@ use serde::{self, Deserialize, Deserializer, Serialize};
 use smallvec::SmallVec;
 use stack_string::{format_sstr, StackString};
 use std::{
-    collections::HashSet,
+    collections::BTreeSet,
     convert::TryInto,
     fs::{rename, File},
     path::Path,
@@ -306,12 +306,17 @@ impl FitbitHeartRate {
 
     /// # Errors
     /// Returns error if `read_avro_by_date` fails
-    pub fn merge_slice_to_avro(config: &GarminConfig, values: &[Self]) -> Result<(), Error> {
-        let dates: HashSet<_> = values
+    pub fn merge_slice_to_avro(
+        config: &GarminConfig,
+        values: &[Self],
+    ) -> Result<BTreeSet<Date>, Error> {
+        let dates: BTreeSet<_> = values
             .iter()
             .map(|entry| entry.datetime.to_timezone(UTC).date())
             .collect();
-        for date in dates {
+        let mut output = Vec::new();
+        for date in &dates {
+            let date = *date;
             let new_values = values.iter().filter_map(|entry| {
                 if entry.datetime.to_timezone(UTC).date() == date {
                     Some(*entry)
@@ -328,8 +333,9 @@ impl FitbitHeartRate {
             let date_str = StackString::from_display(date);
             let input_filename = config.fitbit_cachedir.join(date_str).with_extension("avro");
             Self::dump_to_avro(&merged_values, &input_filename)?;
+            output.push(date);
         }
-        Ok(())
+        Ok(dates)
     }
 
     pub fn from_garmin_connect_hr(hr_data: &GarminConnectHrData) -> Vec<Self> {
@@ -368,10 +374,10 @@ pub fn process_fitbit_json_file(fname: &Path) -> Result<Vec<FitbitHeartRate>, Er
 
 /// # Errors
 /// Returns error if deserialization fails
-pub fn import_fitbit_json_files(directory: &str) -> Result<(), Error> {
+pub fn import_fitbit_json_files(directory: &str) -> Result<BTreeSet<Date>, Error> {
     let config = GarminConfig::get_config(None)?;
     let filenames: Vec<_> = glob(&format_sstr!("{directory}/heart_rate-*.json"))?.collect();
-    filenames
+    let result: Result<Vec<BTreeSet<Date>>, Error> = filenames
         .into_par_iter()
         .map(|fname| {
             let fname = fname?;
@@ -379,7 +385,8 @@ pub fn import_fitbit_json_files(directory: &str) -> Result<(), Error> {
 
             FitbitHeartRate::merge_slice_to_avro(&config, &heartrates)
         })
-        .collect()
+        .collect();
+    result.map(|v| v.into_iter().flatten().collect())
 }
 
 /// # Errors

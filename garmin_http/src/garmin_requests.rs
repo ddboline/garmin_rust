@@ -14,7 +14,6 @@ use fitbit_lib::{
     fitbit_statistics_summary::FitbitStatisticsSummary, scale_measurement::ScaleMeasurement,
 };
 use garmin_cli::garmin_cli::{GarminCli, GarminRequest};
-use garmin_connect_lib::garmin_connect_client::GarminConnectUserDailySummary;
 use garmin_lib::{
     common::{
         fitbit_activity::FitbitActivity,
@@ -31,9 +30,8 @@ use garmin_reports::garmin_constraints::GarminConstraints;
 use strava_lib::strava_client::StravaClient;
 
 use crate::{
-    errors::ServiceError as Error, garmin_rust_app::ConnectProxy,
-    sport_types_wrapper::SportTypesWrapper, FitbitHeartRateWrapper, FitbitStatisticsSummaryWrapper,
-    GarminConnectActivityWrapper, ScaleMeasurementWrapper,
+    errors::ServiceError as Error, sport_types_wrapper::SportTypesWrapper, FitbitHeartRateWrapper,
+    FitbitStatisticsSummaryWrapper, GarminConnectActivityWrapper, ScaleMeasurementWrapper,
 };
 
 pub struct GarminHtmlRequest {
@@ -109,33 +107,6 @@ impl GarminUploadRequest {
         gcli.proc_everything().await?;
         Ok(datetimes)
     }
-}
-
-/// # Errors
-/// Returns error if db query fails
-pub async fn get_connect_activities(
-    pool: &PgPool,
-    proxy: &ConnectProxy,
-) -> Result<Vec<PathBuf>, Error> {
-    let gcli = GarminCli::from_pool(pool)?;
-
-    let max_timestamp = OffsetDateTime::now_utc() - Duration::days(30);
-
-    let mut session = proxy.lock().await;
-    session.init().await?;
-
-    let new_activities = session.get_activities(Some(max_timestamp)).await?;
-
-    let filenames = session
-        .get_and_merge_activity_files(new_activities, pool)
-        .await?;
-    if !filenames.is_empty() {
-        gcli.process_filenames(&filenames).await?;
-        gcli.sync_everything(false).await?;
-        gcli.proc_everything().await?;
-    }
-    GarminConnectActivity::fix_summary_id_in_db(pool).await?;
-    Ok(filenames)
 }
 
 #[derive(Serialize, Deserialize, Schema)]
@@ -575,57 +546,6 @@ impl FitbitActivitiesRequest {
 #[derive(Serialize, Deserialize, Schema)]
 pub struct GarminConnectActivitiesRequest {
     pub start_date: Option<DateType>,
-}
-
-impl GarminConnectActivitiesRequest {
-    /// # Errors
-    /// Returns error if db query fails
-    pub async fn get_activities(
-        &self,
-        proxy: &ConnectProxy,
-    ) -> Result<Vec<GarminConnectActivity>, Error> {
-        let local = DateTimeWrapper::local_tz();
-        let start_date = self.start_date.map_or_else(
-            || {
-                (OffsetDateTime::now_utc() - Duration::days(14))
-                    .to_timezone(local)
-                    .date()
-            },
-            Into::into,
-        );
-        let start_datetime = start_date.with_time(time!(00:00:00)).assume_utc();
-        let mut session = proxy.lock().await;
-        session.init().await?;
-
-        session
-            .get_activities(Some(start_datetime))
-            .await
-            .map_err(Into::into)
-    }
-}
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct GarminConnectUserSummaryRequest {
-    pub date: Option<DateType>,
-}
-
-impl GarminConnectUserSummaryRequest {
-    /// # Errors
-    /// Returns error if db query fails
-    pub async fn get_summary(
-        &self,
-        proxy: &ConnectProxy,
-    ) -> Result<GarminConnectUserDailySummary, Error> {
-        let local = DateTimeWrapper::local_tz();
-        let mut session = proxy.lock().await;
-        session.init().await?;
-
-        let date = self.date.map_or_else(
-            || OffsetDateTime::now_utc().to_timezone(local).date(),
-            Into::into,
-        );
-        session.get_user_summary(date).await.map_err(Into::into)
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Schema)]

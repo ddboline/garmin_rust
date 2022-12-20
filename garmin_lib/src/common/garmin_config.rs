@@ -72,6 +72,8 @@ pub struct GarminConfigInner {
     pub garmin_connect_sso_endpoint: Option<UrlWrapper>,
     #[serde(default = "default_connect_api_endpoint")]
     pub garmin_connect_api_endpoint: Option<UrlWrapper>,
+    #[serde(default = "default_connect_import_directory")]
+    pub garmin_connect_import_directory: PathBuf,
     #[serde(default = "default_webdriver_path")]
     pub webdriver_path: PathBuf,
     #[serde(default = "default_webdriver_port")]
@@ -162,7 +164,10 @@ fn default_connect_sso_endpoint() -> Option<UrlWrapper> {
     "https://connect.garmin.com/signin".try_into().ok()
 }
 fn default_connect_api_endpoint() -> Option<UrlWrapper> {
-    "https://connect.garmin.com/modern".try_into().ok()
+    "https://connect.garmin.com".try_into().ok()
+}
+fn default_connect_import_directory() -> PathBuf {
+    default_home_dir().join("Downloads").join("garmin_connect")
 }
 
 impl Default for GarminConfigInner {

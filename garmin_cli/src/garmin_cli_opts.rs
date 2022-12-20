@@ -19,12 +19,12 @@ use fitbit_lib::{
     fitbit_client::FitbitClient, fitbit_heartrate::FitbitHeartRate,
     fitbit_statistics_summary::FitbitStatisticsSummary, scale_measurement::ScaleMeasurement,
 };
-use garmin_connect_lib::garmin_connect_client::GarminConnectClient;
+use garmin_connect_lib::garmin_connect_hr_data::GarminConnectHrData;
 use garmin_lib::{
     common::{
         fitbit_activity::FitbitActivity, garmin_config::GarminConfig,
-        garmin_connect_activity::GarminConnectActivity, garmin_summary::get_maximum_begin_datetime,
-        pgpool::PgPool, strava_activity::StravaActivity,
+        garmin_connect_activity::GarminConnectActivity, pgpool::PgPool,
+        strava_activity::StravaActivity,
     },
     utils::date_time_wrapper::DateTimeWrapper,
 };
@@ -63,6 +63,8 @@ pub enum GarminCliOpts {
     },
     #[clap(alias = "cnt")]
     Connect {
+        #[clap(short, long)]
+        data_directory: Option<PathBuf>,
         #[clap(short, long)]
         start_date: Option<DateType>,
         #[clap(short, long)]
@@ -114,6 +116,7 @@ impl GarminCliOpts {
 
         if opts == Self::SyncAll {
             Self::Connect {
+                data_directory: None,
                 start_date: None,
                 end_date: None,
             }
@@ -150,17 +153,14 @@ impl GarminCliOpts {
                 return cli.stdout.close().await.map_err(Into::into);
             }
             Self::Connect {
+                data_directory,
                 start_date,
                 end_date,
-            } => {
-                if start_date > end_date {
-                    return Err(format_err!("Invalid date range"));
-                }
-                GarminCliOptions::Connect {
-                    start_date: start_date.map(Into::into),
-                    end_date: end_date.map(Into::into),
-                }
-            }
+            } => GarminCliOptions::Connect {
+                data_directory,
+                start_date: start_date.map(Into::into),
+                end_date: end_date.map(Into::into),
+            },
             Self::Sync { md5sum } => GarminCliOptions::Sync(md5sum),
             Self::SyncAll => {
                 return Ok(());
@@ -396,11 +396,12 @@ impl GarminCliOpts {
     /// Return error if various function fail
     pub async fn garmin_proc(cli: &GarminCli) -> Result<(), Error> {
         if let Some(GarminCliOptions::Connect {
+            data_directory,
             start_date,
             end_date,
         }) = cli.get_opts()
         {
-            Self::sync_with_garmin_connect(cli, *start_date, *end_date).await?;
+            Self::sync_with_garmin_connect(cli, data_directory, *start_date, *end_date).await?;
         }
 
         if let Some(GarminCliOptions::ImportFileNames(filenames)) = cli.get_opts() {
@@ -436,43 +437,55 @@ impl GarminCliOpts {
     /// Return error if various function fail
     pub async fn sync_with_garmin_connect(
         cli: &GarminCli,
+        data_directory: &Option<PathBuf>,
         start_date: Option<Date>,
         end_date: Option<Date>,
     ) -> Result<Vec<PathBuf>, Error> {
-        if let Some(max_datetime) = get_maximum_begin_datetime(&cli.pool).await? {
-            let mut session = GarminConnectClient::new(cli.config.clone());
-            session.init().await?;
-            info!("get activities");
-            let activities = session.get_activities(Some(max_datetime)).await?;
-            info!("got activities");
-            let start_date = start_date
-                .unwrap_or_else(|| (OffsetDateTime::now_utc() - Duration::days(3)).date());
-            let end_date = end_date.unwrap_or_else(|| OffsetDateTime::now_utc().date());
-            let mut date = start_date;
-            while date <= end_date {
-                info!("get heartrate {date}");
-                let hr_values = session.get_heartrate(date).await?;
+        let data_directory = data_directory
+            .as_ref()
+            .unwrap_or(&cli.config.garmin_connect_import_directory);
+        let activites_json = data_directory.join("activities.json");
+        let mut filenames = Vec::new();
+        if activites_json.exists() {
+            let file = File::open(activites_json).await?.into_std().await;
+            let activities: Vec<GarminConnectActivity> = serde_json::from_reader(file)?;
+            let activities =
+                GarminConnectActivity::merge_new_activities(activities, &cli.pool).await?;
+            for activity in activities {
+                let filename = cli
+                    .config
+                    .download_directory
+                    .join(format_sstr!("{}.zip", activity.activity_id));
+                if filename.exists() {
+                    filenames.push(filename);
+                }
+            }
+        }
+        let start_date =
+            start_date.unwrap_or_else(|| (OffsetDateTime::now_utc() - Duration::days(3)).date());
+        let end_date = end_date.unwrap_or_else(|| OffsetDateTime::now_utc().date());
+        let mut date = start_date;
+        while date <= end_date {
+            info!("get heartrate {date}");
+            let heartrate_file = data_directory.join(format_sstr!("{date}.json"));
+            if heartrate_file.exists() {
+                let hr_values: GarminConnectHrData =
+                    serde_json::from_reader(File::open(heartrate_file).await?.into_std().await)?;
                 info!("got heartrate {date}");
                 let hr_values = FitbitHeartRate::from_garmin_connect_hr(&hr_values);
                 let config = cli.config.clone();
                 spawn_blocking(move || FitbitHeartRate::merge_slice_to_avro(&config, &hr_values))
                     .await??;
                 FitbitHeartRate::calculate_summary_statistics(&cli.config, &cli.pool, date).await?;
-                date += Duration::days(1);
             }
-            let filenames = session
-                .get_and_merge_activity_files(activities, &cli.pool)
-                .await?;
-            if !filenames.is_empty() {
-                cli.process_filenames(&filenames).await?;
-                cli.proc_everything().await?;
-                GarminConnectActivity::fix_summary_id_in_db(&cli.pool).await?;
-            }
-            session.close().await?;
-            Ok(filenames)
-        } else {
-            Ok(Vec::new())
+            date += Duration::days(1);
         }
+        if !filenames.is_empty() {
+            cli.process_filenames(&filenames).await?;
+        }
+        cli.proc_everything().await?;
+        GarminConnectActivity::fix_summary_id_in_db(&cli.pool).await?;
+        Ok(filenames)
     }
 
     /// # Errors

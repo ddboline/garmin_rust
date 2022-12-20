@@ -1,4 +1,9 @@
 use anyhow::{format_err, Error};
+use base64::{
+    alphabet::URL_SAFE,
+    encode_engine,
+    engine::fast_portable::{FastPortable, NO_PAD},
+};
 use fitparser::Value;
 use flate2::{read::GzEncoder, Compression};
 use futures::{Stream, TryStreamExt};
@@ -7,7 +12,7 @@ use num_traits::pow::Pow;
 use postgres_query::{query, Error as PqError};
 use rand::{
     distributions::{Alphanumeric, Distribution, Uniform},
-    thread_rng,
+    thread_rng, Rng,
 };
 use smallvec::SmallVec;
 use stack_string::{format_sstr, StackString};
@@ -337,4 +342,10 @@ pub async fn get_list_of_telegram_userids(
             })
         })
         .map_err(Into::into)
+}
+
+#[must_use]
+pub fn get_random_string() -> StackString {
+    let random_bytes: SmallVec<[u8; 16]> = (0..16).map(|_| thread_rng().gen::<u8>()).collect();
+    encode_engine(&random_bytes, &FastPortable::from(&URL_SAFE, NO_PAD)).into()
 }

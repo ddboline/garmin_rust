@@ -1,11 +1,9 @@
 use anyhow::{format_err, Error};
-use base64::{encode_config, URL_SAFE_NO_PAD};
 use crossbeam_utils::atomic::AtomicCell;
 use futures::{future::try_join_all, TryStreamExt};
 use lazy_static::lazy_static;
 use log::warn;
 use maplit::hashmap;
-use rand::{thread_rng, Rng};
 use reqwest::{
     header::HeaderMap,
     multipart::{Form, Part},
@@ -37,7 +35,7 @@ use garmin_lib::{
     },
     utils::{
         date_time_wrapper::{iso8601::convert_datetime_to_str, DateTimeWrapper},
-        garmin_util::gzip_file,
+        garmin_util::{get_random_string, gzip_file},
         sport_types::{self, SportTypes},
     },
 };
@@ -278,16 +276,11 @@ impl StravaClient {
         Ok(())
     }
 
-    fn get_random_string() -> StackString {
-        let random_bytes: SmallVec<[u8; 16]> = (0..16).map(|_| thread_rng().gen::<u8>()).collect();
-        encode_config(&random_bytes, URL_SAFE_NO_PAD).into()
-    }
-
     /// # Errors
     /// Return error if api calls fail
     pub fn get_authorization_url_api(&self) -> Result<Url, Error> {
         let redirect_uri = format_sstr!("https://{}/garmin/strava/callback", self.config.domain);
-        let state = Self::get_random_string();
+        let state = get_random_string();
         let url = self
             .config
             .strava_endpoint

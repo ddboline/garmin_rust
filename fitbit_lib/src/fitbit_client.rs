@@ -1,5 +1,5 @@
 use anyhow::{format_err, Error};
-use base64::encode;
+use base64::{engine::general_purpose::STANDARD, Engine};
 use crossbeam_utils::atomic::AtomicCell;
 use futures::{future, future::try_join_all, stream::FuturesUnordered, TryStreamExt};
 use itertools::Itertools;
@@ -241,7 +241,7 @@ impl FitbitClient {
             "Authorization",
             format_sstr!(
                 "Basic {}",
-                encode(format_sstr!(
+                STANDARD.encode(format_sstr!(
                     "{}:{}",
                     self.config.fitbit_clientid,
                     self.config.fitbit_clientsecret

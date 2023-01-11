@@ -1,6 +1,6 @@
 use dioxus::prelude::{
-    dioxus_elements, format_args_f, inline_props, rsx, Element, LazyNodes, NodeFactory, Props,
-    Scope, VNode, VirtualDom,
+    dioxus_elements, inline_props, rsx, Element, GlobalAttributes, LazyNodes, Props, Scope,
+    VirtualDom,
 };
 use itertools::Itertools;
 use rweb_helper::DateType;
@@ -115,8 +115,8 @@ pub async fn index_new_body(
                     config,
                 },
             );
-            app.rebuild();
-            Ok(dioxus::ssr::render_vdom(&app))
+            drop(app.rebuild());
+            Ok(dioxus_ssr::render(&app))
         }
         IndexConfig::File { gfile } => {
             let report_objs = extract_report_objects_from_file(&gfile);
@@ -166,8 +166,8 @@ pub async fn index_new_body(
                     config,
                 },
             );
-            app.rebuild();
-            Ok(dioxus::ssr::render_vdom(&app))
+            drop(app.rebuild());
+            Ok(dioxus_ssr::render(&app))
         }
         IndexConfig::Scale {
             measurements,
@@ -196,8 +196,8 @@ pub async fn index_new_body(
                     config,
                 },
             );
-            app.rebuild();
-            Ok(dioxus::ssr::render_vdom(&app))
+            drop(app.rebuild());
+            Ok(dioxus_ssr::render(&app))
         }
         IndexConfig::HearRateSummary { stats, offset } => {
             let mut app = VirtualDom::new_with_props(
@@ -223,8 +223,8 @@ pub async fn index_new_body(
                     config,
                 },
             );
-            app.rebuild();
-            Ok(dioxus::ssr::render_vdom(&app))
+            drop(app.rebuild());
+            Ok(dioxus_ssr::render(&app))
         }
         IndexConfig::HeartRate {
             heartrate,
@@ -260,8 +260,8 @@ pub async fn index_new_body(
                     config,
                 },
             );
-            app.rebuild();
-            Ok(dioxus::ssr::render_vdom(&app))
+            drop(app.rebuild());
+            Ok(dioxus_ssr::render(&app))
         }
         IndexConfig::RaceResult { model } => {
             let mut app = VirtualDom::new_with_props(
@@ -287,8 +287,8 @@ pub async fn index_new_body(
                     config,
                 },
             );
-            app.rebuild();
-            Ok(dioxus::ssr::render_vdom(&app))
+            drop(app.rebuild());
+            Ok(dioxus_ssr::render(&app))
         }
     }
 }
@@ -1076,7 +1076,7 @@ fn index_element(
                 content: "no-store",
             }
             style {
-                [include_str!("../../templates/style.css")]
+                include_str!("../../templates/style.css")
             }
         },
         body {
@@ -1739,8 +1739,8 @@ fn create_analysis_plot(model: &RaceResultAnalysis, is_demo: bool) -> LazyNodes 
 
 pub fn create_fitbit_table(heartrate_values: Vec<FitbitHeartRate>) -> String {
     let mut app = VirtualDom::new_with_props(fitbit_table, fitbit_tableProps { heartrate_values });
-    app.rebuild();
-    dioxus::ssr::render_vdom(&app)
+    drop(app.rebuild());
+    dioxus_ssr::render(&app)
 }
 
 #[inline_props]
@@ -1771,8 +1771,8 @@ fn fitbit_table(cx: Scope, heartrate_values: Vec<FitbitHeartRate>) -> Element {
 
 pub fn table_body(body: StackString) -> String {
     let mut app = VirtualDom::new_with_props(table_element, table_elementProps { body });
-    app.rebuild();
-    dioxus::ssr::render_vdom(&app)
+    drop(app.rebuild());
+    dioxus_ssr::render(&app)
 }
 
 #[inline_props]
@@ -1788,8 +1788,8 @@ fn table_element(cx: Scope, body: StackString) -> Element {
 
 pub fn strava_body(athlete: StravaAthlete) -> String {
     let mut app = VirtualDom::new_with_props(strava_element, strava_elementProps { athlete });
-    app.rebuild();
-    dioxus::ssr::render_vdom(&app)
+    drop(app.rebuild());
+    dioxus_ssr::render(&app)
 }
 
 #[inline_props]
@@ -1936,8 +1936,8 @@ fn strava_element(cx: Scope, athlete: StravaAthlete) -> Element {
 
 pub fn fitbit_body(profile: FitbitUserProfile) -> String {
     let mut app = VirtualDom::new_with_props(fitbit_element, fitbit_elementProps { profile });
-    app.rebuild();
-    dioxus::ssr::render_vdom(&app)
+    drop(app.rebuild());
+    dioxus_ssr::render(&app)
 }
 
 #[inline_props]

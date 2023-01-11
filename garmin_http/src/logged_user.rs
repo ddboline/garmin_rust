@@ -2,6 +2,7 @@ pub use authorized_users::{
     get_random_key, get_secrets, token::Token, AuthorizedUser, AUTHORIZED_USERS, JWT_SECRET,
     KEY_LENGTH, SECRET_KEY, TRIGGER_DB_UPDATE,
 };
+use base64::{engine::general_purpose::STANDARD, Engine};
 use cookie::Cookie;
 use log::debug;
 use maplit::hashset;
@@ -151,7 +152,7 @@ pub struct Session {
 impl FromStr for Session {
     type Err = Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let data = base64::decode(s)?;
+        let data = STANDARD.decode(s)?;
         let history_str = String::from_utf8(data)?;
         let history = history_str.split(';').map(Into::into).collect();
         Ok(Session { history })
@@ -162,7 +163,7 @@ impl Session {
     #[must_use]
     pub fn get_jwt_cookie(&self, domain: &str) -> Cookie<'static> {
         let history_str = self.history.join(";");
-        let token = base64::encode(history_str);
+        let token = STANDARD.encode(history_str);
         Cookie::build("session", token)
             .http_only(true)
             .path("/")

@@ -10,7 +10,7 @@ use time::{macros::format_description, Date, Duration, OffsetDateTime};
 use time_tz::OffsetDateTimeExt;
 use tokio::{
     fs::{read_to_string, File},
-    io::{stdin, stdout, AsyncBufReadExt, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader},
+    io::{stdin, stdout, AsyncReadExt, AsyncWrite, AsyncWriteExt},
     task::spawn_blocking,
 };
 
@@ -456,29 +456,30 @@ impl GarminCliOpts {
         let mut filenames = Vec::new();
         if activites_json.exists() {
             let buf = read_to_string(activites_json).await?;
-            let activities: Vec<GarminConnectActivity> = serde_json::from_str(buf.trim())?;
-            let activities =
-                GarminConnectActivity::merge_new_activities(activities, &cli.pool).await?;
-            for activity in activities {
-                let filename = cli
-                    .config
-                    .download_directory
-                    .join(format_sstr!("{}.zip", activity.activity_id));
-                if filename.exists() {
-                    filenames.push(filename);
+            if !buf.is_empty() {
+                let activities: Vec<GarminConnectActivity> = serde_json::from_str(buf.trim())?;
+                let activities =
+                    GarminConnectActivity::merge_new_activities(activities, &cli.pool).await?;
+                for activity in activities {
+                    let filename = cli
+                        .config
+                        .download_directory
+                        .join(format_sstr!("{}.zip", activity.activity_id));
+                    if filename.exists() {
+                        filenames.push(filename);
+                    }
                 }
             }
         }
         let mut dates = BTreeSet::new();
         let heartrate_json = data_directory.join("heartrates.json");
         if heartrate_json.exists() {
-            let mut bufread = BufReader::new(File::open(heartrate_json).await?);
-            let mut buf = Vec::new();
-            while let Ok(bytes_read) = bufread.read_until(b'\n', &mut buf).await {
-                if bytes_read == 0 {
-                    break;
+            let buf = read_to_string(heartrate_json).await?;
+            for line in buf.split('\n') {
+                if line.is_empty() {
+                    continue;
                 }
-                if let Ok(hr_values) = serde_json::from_slice::<GarminConnectHrData>(&buf) {
+                if let Ok(hr_values) = serde_json::from_str::<GarminConnectHrData>(line) {
                     let hr_values = FitbitHeartRate::from_garmin_connect_hr(&hr_values);
                     let config = cli.config.clone();
                     dates = spawn_blocking(move || {
@@ -486,7 +487,6 @@ impl GarminCliOpts {
                     })
                     .await??;
                 }
-                buf.clear();
             }
         }
         let start_date =

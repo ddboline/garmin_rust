@@ -81,7 +81,7 @@ impl FitbitActivity {
         summary_id: Uuid,
     ) -> Result<Option<Self>, Error> {
         let query = query!(
-            "SELECT * FROM fitbit_activities WHERE summary_id = $summary_id",
+            "SELECT * FROM fitbit_activities WHERE summary_id = $summary_id LIMIT 1",
             summary_id = summary_id,
         );
         let conn = pool.get().await?;

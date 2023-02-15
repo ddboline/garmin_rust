@@ -306,27 +306,15 @@ mod tests {
     use anyhow::Error;
     use log::debug;
 
-    use garmin_lib::common::{
-        garmin_config::GarminConfig, garmin_connect_activity::GarminConnectActivity,
-    };
+    use garmin_lib::common::garmin_connect_activity::GarminConnectActivity;
 
-    use crate::garmin_connect_client::{check_version, GarminConnectClient};
+    use crate::garmin_connect_client::GarminConnectClient;
 
     #[test]
     fn test_extract_display_name() -> Result<(), Error> {
         let resp_text = include_str!("../../tests/data/garmin_connect_display_name.html");
         let display_name = GarminConnectClient::extract_display_name(resp_text)?;
         assert_eq!(display_name.as_str(), "ddboline");
-        Ok(())
-    }
-
-    #[tokio::test]
-    #[ignore]
-    async fn test_check_versions() -> Result<(), Error> {
-        let config = GarminConfig::get_config(None)?;
-        let chrome_version = check_version(&config.chrome_path, "Google Chrome ").await?;
-        let driver_version = check_version(&config.webdriver_path, "ChromeDriver ").await?;
-        assert_eq!(chrome_version, driver_version);
         Ok(())
     }
 

@@ -273,7 +273,7 @@ pub fn get_f64(value: &Value) -> Option<f64> {
 #[must_use]
 pub fn get_i64(value: &Value) -> Option<i64> {
     match value {
-        Value::Timestamp(val) => Some(val.unix_timestamp() as i64),
+        Value::Timestamp(val) => Some(val.unix_timestamp()),
         Value::Byte(val) | Value::Enum(val) | Value::UInt8(val) | Value::UInt8z(val) => {
             Some(i64::from(*val))
         }

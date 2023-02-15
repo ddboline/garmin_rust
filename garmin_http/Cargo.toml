@@ -32,7 +32,7 @@ async-trait = "0.1"
 rayon = "1.5"
 handlebars = "4.0"
 itertools = "0.10"
-cookie = {version="0.16.0-rc.1", features=["percent-encode"]}
+cookie = {version="0.17", features=["percent-encode"]}
 base64 = "0.21"
 url = "2.3"
 indexmap = "1.6"
@@ -45,7 +45,7 @@ maplit = "1.0"
 dioxus = "0.3"
 dioxus-ssr = "0.3"
 rweb-helper = { git = "https://github.com/ddboline/rweb_helper.git", tag="0.4.13" }
-authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.10.3"}
+authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.10.4"}
 stack-string = { version="0.8", features=["postgres_types", "rweb-openapi"] }
 reqwest = {version="0.11", features=["cookies", "json", "rustls-tls", "stream"], default_features=false}
 postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.4", features=["deadpool"]}

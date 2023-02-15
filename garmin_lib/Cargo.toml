@@ -27,7 +27,7 @@ deadpool = "0.9"
 deadpool-postgres = "0.10"
 dotenv = "0.15"
 lazy_static = "1.4"
-roxmltree = "0.17"
+roxmltree = "0.18"
 parking_lot = "0.12"
 avro-rs = {version = "0.13", features = ["snappy"]}
 regex = "1.4"

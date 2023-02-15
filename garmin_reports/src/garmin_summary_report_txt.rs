@@ -746,7 +746,7 @@ pub struct MonthSummaryReport {
 
 impl GarminReportTrait for MonthSummaryReport {
     fn get_text_entry(&self) -> Result<Vec<GarminTextEntry>, Error> {
-        let total_days = days_in_month(self.year as i32, self.month as u32);
+        let total_days = days_in_month(self.year, self.month as u32);
 
         debug!("{:?}", self);
 
@@ -1028,7 +1028,7 @@ pub struct YearSummaryReport {
 
 impl GarminReportTrait for YearSummaryReport {
     fn get_text_entry(&self) -> Result<Vec<GarminTextEntry>, Error> {
-        let total_days = days_in_year(self.year as i32);
+        let total_days = days_in_year(self.year);
 
         debug!("{:?}", self);
 

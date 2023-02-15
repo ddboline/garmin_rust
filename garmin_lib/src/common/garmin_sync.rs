@@ -323,7 +323,7 @@ fn get_downloaded(
                                     item.key, md5_, item.etag, item.timestamp, tmod_
                                 );
                                 let file_name = local_dir.join(item.key.as_str());
-                                fs::remove_file(&file_name)?;
+                                fs::remove_file(file_name)?;
                                 do_download = true;
                             }
                         } else if item.size > size_ {
@@ -332,7 +332,7 @@ fn get_downloaded(
                                 "download size {} {} {} {} {}",
                                 item.key, size_, item.size, item.timestamp, tmod_
                             );
-                            fs::remove_file(&file_name)?;
+                            fs::remove_file(file_name)?;
                             do_download = true;
                         }
                     }

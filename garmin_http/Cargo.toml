@@ -1,6 +1,6 @@
 [package]
 name = "garmin_http"
-version = "0.13.6"
+version = "0.13.7"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -14,7 +14,7 @@ garmin_reports = {path="../garmin_reports"}
 race_result_analysis = {path="../race_result_analysis"}
 rweb = {version="0.15", features=["openapi"], default-features=false}
 http = "0.2"
-tokio = {version="1.21", features=["full"]}
+tokio = {version="1.26", features=["full"]}
 tokio-stream = "0.1"
 time = {version="0.3", features=["serde-human-readable", "macros", "formatting", "parsing"]}
 time-tz = {version="1.0", features=["system"]}
@@ -45,7 +45,7 @@ maplit = "1.0"
 dioxus = "0.3"
 dioxus-ssr = "0.3"
 rweb-helper = { git = "https://github.com/ddboline/rweb_helper.git", tag="0.4.13" }
-authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.10.4"}
+authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.10.5"}
 stack-string = { version="0.8", features=["postgres_types", "rweb-openapi"] }
 reqwest = {version="0.11", features=["cookies", "json", "rustls-tls", "stream"], default_features=false}
 postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.4", features=["deadpool"]}

@@ -42,13 +42,16 @@ impl PgPool {
             config.dbname.replace(db.to_string());
         }
 
+        let pool = config
+            .builder(NoTls)
+            .unwrap_or_else(|_| panic!("failed to create builder"))
+            .max_size(4)
+            .build()
+            .unwrap_or_else(|_| panic!("Failed to create pool {}", pgurl));
+
         Self {
             pgurl: Arc::new(pgurl.into()),
-            pool: Some(
-                config
-                    .create_pool(None, NoTls)
-                    .unwrap_or_else(|_| panic!("Failed to create pool {}", pgurl)),
-            ),
+            pool: Some(pool),
         }
     }
 

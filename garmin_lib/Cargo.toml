@@ -35,7 +35,7 @@ postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag =
 bytes = "1.0"
 anyhow = "1.0"
 thiserror = "1.0"
-dirs = "4.0"
+dirs = "5.0"
 tokio = {version="1.26", features=["full"]}
 derive_more = "0.99"
 rustls-native-certs = {version="0.6", default_features=false}

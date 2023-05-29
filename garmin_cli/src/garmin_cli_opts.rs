@@ -9,7 +9,7 @@ use std::{collections::BTreeSet, path::PathBuf};
 use time::{macros::format_description, Date, Duration, OffsetDateTime};
 use time_tz::OffsetDateTimeExt;
 use tokio::{
-    fs::{read_to_string, File},
+    fs::{read_to_string, remove_file, write, File},
     io::{stdin, stdout, AsyncReadExt, AsyncWrite, AsyncWriteExt},
     task::spawn_blocking,
 };
@@ -453,9 +453,10 @@ impl GarminCliOpts {
             .as_ref()
             .unwrap_or(&cli.config.garmin_connect_import_directory);
         let activites_json = data_directory.join("activities.json");
+        let mut input_files = Vec::new();
         let mut filenames = Vec::new();
         if activites_json.exists() {
-            let buf = read_to_string(activites_json).await?;
+            let buf = read_to_string(&activites_json).await?;
             if !buf.is_empty() {
                 let activities: Vec<GarminConnectActivity> = serde_json::from_str(buf.trim())?;
                 let activities =
@@ -470,11 +471,12 @@ impl GarminCliOpts {
                     }
                 }
             }
+            input_files.push(activites_json);
         }
         let mut dates = BTreeSet::new();
         let heartrate_json = data_directory.join("heartrates.json");
         if heartrate_json.exists() {
-            let buf = read_to_string(heartrate_json).await?;
+            let buf = read_to_string(&heartrate_json).await?;
             for line in buf.split('\n') {
                 if line.is_empty() {
                     continue;
@@ -488,6 +490,7 @@ impl GarminCliOpts {
                     .await??;
                 }
             }
+            input_files.push(heartrate_json);
         }
         let start_date =
             start_date.unwrap_or_else(|| (OffsetDateTime::now_utc() - Duration::days(3)).date());
@@ -498,7 +501,7 @@ impl GarminCliOpts {
             let heartrate_file = data_directory.join(format_sstr!("{date}.json"));
             if heartrate_file.exists() {
                 let hr_values: GarminConnectHrData =
-                    serde_json::from_reader(File::open(heartrate_file).await?.into_std().await)?;
+                    serde_json::from_reader(File::open(&heartrate_file).await?.into_std().await)?;
                 info!("got heartrate {date}");
                 let hr_values = FitbitHeartRate::from_garmin_connect_hr(&hr_values);
                 let config = cli.config.clone();
@@ -509,6 +512,7 @@ impl GarminCliOpts {
                 {
                     dates.insert(d);
                 }
+                remove_file(&heartrate_file).await?;
             }
             date += Duration::days(1);
         }
@@ -520,6 +524,9 @@ impl GarminCliOpts {
         }
         cli.proc_everything().await?;
         GarminConnectActivity::fix_summary_id_in_db(&cli.pool).await?;
+        for f in input_files {
+            write(&f, &[]).await?;
+        }
         Ok(filenames)
     }
 

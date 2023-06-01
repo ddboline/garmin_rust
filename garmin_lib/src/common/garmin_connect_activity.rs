@@ -259,12 +259,18 @@ where
     D: Deserializer<'de>,
 {
     let s = String::deserialize(deserializer)?;
+
     if let Ok(dt) = OffsetDateTime::parse(&s, &Rfc3339) {
         Ok(dt.into())
+    } else if let Ok(d) = PrimitiveDateTime::parse(
+        &s,
+        format_description!("[year]-[month]-[day] [hour]:[minute]:[second]"),
+    ) {
+        Ok(d.assume_utc().into())
     } else {
         PrimitiveDateTime::parse(
             &s,
-            format_description!("[year]-[month]-[day] [hour]:[minute]:[second]"),
+            format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]"),
         )
         .map(|d| d.assume_utc().into())
         .map_err(serde::de::Error::custom)

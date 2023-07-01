@@ -1,6 +1,6 @@
 [package]
 name = "garmin_rust"
-version = "0.13.9"
+version = "0.13.10"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -35,7 +35,7 @@ url = "2.3"
 maplit = "1.0"
 serde = {version="1.0", features=["derive"]}
 reqwest = {version="0.11", features=["cookies", "json", "rustls-tls", "stream"], default_features=false}
-stack-string = { version="0.8", features=["postgres_types"] }
+stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", features=["postgres_types"], tag="0.9.1" }
 
 [dev-dependencies]
 approx = "0.5"

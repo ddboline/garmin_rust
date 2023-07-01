@@ -1198,20 +1198,6 @@ mod tests {
 
     #[tokio::test]
     #[ignore]
-    async fn test_get_fitbit_intraday_time_series_heartrate() -> Result<(), Error> {
-        let config = GarminConfig::get_config(None)?;
-        let client = FitbitClient::with_auth(config.clone()).await?;
-        let date = (OffsetDateTime::now_utc() - Duration::days(1)).date();
-        let heartrates = client
-            .get_fitbit_intraday_time_series_heartrate(date)
-            .await?;
-        debug!("{:#?}", heartrates);
-        assert!(heartrates.len() > 10);
-        Ok(())
-    }
-
-    #[tokio::test]
-    #[ignore]
     async fn test_get_fitbit_bodyweightfat() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
         let client = FitbitClient::with_auth(config.clone()).await?;

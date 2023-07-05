@@ -1150,7 +1150,7 @@ pub async fn user(#[filter = "LoggedUser::filter"] user: LoggedUser) -> WarpResu
 }
 
 #[derive(RwebResponse)]
-#[response(description = "Logged in User", content = "html", status = "CREATED")]
+#[response(description = "Add correction", content = "html", status = "CREATED")]
 struct AddGarminCorrectionResponse(HtmlBase<&'static str, Error>);
 
 #[post("/garmin/add_garmin_correction")]

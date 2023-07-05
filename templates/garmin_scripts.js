@@ -235,7 +235,18 @@ function heartrate_plot_date(start_date, end_date) {
     location.replace(url)
 }
 function heartrate_plot_button(start_date, end_date, button_date) {
+    if(document.getElementById("start_date_selector")) {
+        if(document.getElementById("start_date_selector").value) {
+            start_date = document.getElementById("start_date_selector").value;
+        }
+    }
+    if(document.getElementById("end_date_selector")) {
+        if(document.getElementById("end_date_selector").value) {
+            end_date = document.getElementById("end_date_selector").value;
+        }
+    }
     let url = '/garmin/fitbit/heartrate_plots?start_date=' + start_date + '&end_date=' + end_date + '&button_date=' + button_date;
+    console.log(url);
     location.replace(url)
 }
 function heartrate_sync(date) {

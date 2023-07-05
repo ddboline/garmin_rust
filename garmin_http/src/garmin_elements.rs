@@ -390,6 +390,26 @@ fn index_element(
         )
         .unwrap();
         script_body.push_str("}();\n");
+        let date_input = {
+            let start_date: Date = (*start_date).into();
+            let end_date: Date = (*end_date).into();
+            rsx! {
+                input {
+                    "type": "date",
+                    name: "start-date",
+                    id: "start_date_selector",
+                    value: "{start_date}",
+                    "onchange": "heartrate_plot_button('{start_date}', '{end_date}', '{button_date}')",
+                }
+                input {
+                    "type": "date",
+                    name: "end-date",
+                    id: "end_date_selector",
+                    value: "{end_date}",
+                    "onchange": "heartrate_plot_button('{start_date}', '{end_date}', '{button_date}')",
+                }
+            }
+        };
         let date_buttons = (0..5).map(move |i| {
             let date = button_date - Duration::days(i64::from(i));
             let update_button = if *is_demo {
@@ -434,6 +454,9 @@ fn index_element(
             None
         };
         script_box.replace(rsx! {
+            div {
+                date_input,
+            }
             div {
                 date_buttons,
             }

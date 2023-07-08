@@ -249,6 +249,11 @@ function heartrate_plot_button(start_date, end_date, button_date) {
     console.log(url);
     location.replace(url)
 }
+function heartrate_plot_button_single(date, button_date) {
+    let url = '/garmin/fitbit/heartrate_plots?start_date=' + date + '&end_date=' + date + '&button_date=' + button_date;
+    console.log(url);
+    location.replace(url)
+}
 function heartrate_sync(date) {
     let url = '/garmin/fitbit/sync?date=' + date;
     let xmlhttp = new XMLHttpRequest();

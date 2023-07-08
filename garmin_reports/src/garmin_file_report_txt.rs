@@ -252,7 +252,7 @@ pub fn get_splits(
 
     for point in &gfile.points {
         let Some(cur_point_me) = point.distance else {
-            continue
+            continue;
         };
         let cur_point_time = point.duration_from_begin;
         if (cur_point_me - last_point_me) <= 0.0 {

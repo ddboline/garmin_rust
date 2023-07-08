@@ -430,7 +430,7 @@ fn index_element(
                     button {
                         "type": "submit",
                         id: "ID",
-                        "onclick": "heartrate_plot_button('{date}', '{date}', '{button_date}')",
+                        "onclick": "heartrate_plot_button_single('{date}', '{button_date}')",
                         "Plot {date}",
                     },
                     update_button,

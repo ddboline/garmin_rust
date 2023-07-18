@@ -12,7 +12,10 @@ use stack_string::format_sstr;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::{task::spawn, time::interval};
 
-use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
+use garmin_cli::{garmin_cli::GarminCli, garmin_cli_opts::GarminCliOpts};
+use garmin_lib::common::{
+    garmin_config::GarminConfig, garmin_correction_lap::GarminCorrectionMap, pgpool::PgPool,
+};
 
 use crate::{
     errors::error_response,
@@ -57,10 +60,17 @@ pub struct AppState {
 /// # Errors
 /// Returns error if server init fails
 pub async fn start_app() -> Result<(), Error> {
-    async fn update_db(pool: PgPool) {
+    async fn update_db(pool: PgPool, cli: GarminCli) {
         let mut i = interval(std::time::Duration::from_secs(60));
         loop {
             fill_from_db(&pool).await.unwrap_or(());
+            if let Ok((filenames, input_files)) =
+                GarminCliOpts::sync_with_garmin_connect(&cli, &None, None, None).await
+            {
+                if !filenames.is_empty() || !input_files.is_empty() {
+                    cli.sync_everything(false).await.unwrap_or(Vec::new());
+                }
+            }
             i.tick().await;
         }
     }
@@ -74,8 +84,20 @@ pub async fn start_app() -> Result<(), Error> {
 
     spawn({
         let pool = pool.clone();
+        let corr = GarminCorrectionMap::new();
+        let cli = GarminCli {
+            opts: Some(garmin_cli::garmin_cli::GarminCliOptions::Connect {
+                data_directory: None,
+                start_date: None,
+                end_date: None,
+            }),
+            pool: pool.clone(),
+            config: config.clone(),
+            corr,
+            ..GarminCli::default()
+        };
         async move {
-            update_db(pool).await;
+            update_db(pool, cli).await;
         }
     });
 

@@ -403,35 +403,34 @@ impl GarminCliOpts {
     /// # Errors
     /// Return error if various function fail
     pub async fn garmin_proc(cli: &GarminCli) -> Result<(), Error> {
-        if let Some(GarminCliOptions::Connect {
-            data_directory,
-            start_date,
-            end_date,
-        }) = cli.get_opts()
-        {
-            Self::sync_with_garmin_connect(cli, data_directory, *start_date, *end_date).await?;
-        }
-
-        if let Some(GarminCliOptions::ImportFileNames(filenames)) = cli.get_opts() {
-            let filenames = filenames.clone();
-
-            cli.process_filenames(&filenames).await?;
-        }
-
         let results = match cli.get_opts() {
+            Some(GarminCliOptions::ImportFileNames(filenames)) => {
+                let filenames = filenames.clone();
+                cli.process_filenames(&filenames).await?;
+                cli.proc_everything().await
+            }
             Some(GarminCliOptions::Bootstrap) => cli.run_bootstrap().await,
             Some(GarminCliOptions::Sync(check_md5)) => cli.sync_everything(*check_md5).await,
-            Some(GarminCliOptions::Connect { .. }) => {
+            Some(GarminCliOptions::Connect {
+                data_directory,
+                start_date,
+                end_date,
+            }) => {
                 let mut buf = cli.proc_everything().await?;
-                buf.extend_from_slice(&cli.sync_everything(false).await?);
-                if let Ok(client) = FitbitClient::with_auth(cli.config.clone()).await {
-                    let result = client.sync_everything(&cli.pool).await?;
-                    buf.push(format_sstr!(
-                        "Syncing Fitbit Heartrate {hr} Activities {ac} Duplicates {dp}",
-                        hr = result.measurements.len(),
-                        ac = result.activities.len(),
-                        dp = result.duplicates.len(),
-                    ));
+                let (filenames, input_files) =
+                    Self::sync_with_garmin_connect(cli, data_directory, *start_date, *end_date)
+                        .await?;
+                if !filenames.is_empty() || !input_files.is_empty() {
+                    buf.extend_from_slice(&cli.sync_everything(false).await?);
+                    if let Ok(client) = FitbitClient::with_auth(cli.config.clone()).await {
+                        let result = client.sync_everything(&cli.pool).await?;
+                        buf.push(format_sstr!(
+                            "Syncing Fitbit Heartrate {hr} Activities {ac} Duplicates {dp}",
+                            hr = result.measurements.len(),
+                            ac = result.activities.len(),
+                            dp = result.duplicates.len(),
+                        ));
+                    }
                 }
                 Ok(buf)
             }
@@ -448,7 +447,7 @@ impl GarminCliOpts {
         data_directory: &Option<PathBuf>,
         start_date: Option<Date>,
         end_date: Option<Date>,
-    ) -> Result<Vec<PathBuf>, Error> {
+    ) -> Result<(Vec<PathBuf>, Vec<PathBuf>), Error> {
         let data_directory = data_directory
             .as_ref()
             .unwrap_or(&cli.config.garmin_connect_import_directory);
@@ -470,8 +469,8 @@ impl GarminCliOpts {
                         filenames.push(filename);
                     }
                 }
+                input_files.push(activites_json);
             }
-            input_files.push(activites_json);
         }
         let mut dates = BTreeSet::new();
         let heartrate_json = data_directory.join("heartrates.json");
@@ -490,7 +489,9 @@ impl GarminCliOpts {
                     .await??;
                 }
             }
-            input_files.push(heartrate_json);
+            if !buf.is_empty() {
+                input_files.push(heartrate_json);
+            }
         }
         let start_date =
             start_date.unwrap_or_else(|| (OffsetDateTime::now_utc() - Duration::days(3)).date());
@@ -522,12 +523,14 @@ impl GarminCliOpts {
         if !filenames.is_empty() {
             cli.process_filenames(&filenames).await?;
         }
-        cli.proc_everything().await?;
-        GarminConnectActivity::fix_summary_id_in_db(&cli.pool).await?;
-        for f in input_files {
-            write(&f, &[]).await?;
+        if !filenames.is_empty() || !input_files.is_empty() {
+            cli.proc_everything().await?;
+            GarminConnectActivity::fix_summary_id_in_db(&cli.pool).await?;
         }
-        Ok(filenames)
+        for f in &input_files {
+            write(f, &[]).await?;
+        }
+        Ok((filenames, input_files))
     }
 
     /// # Errors

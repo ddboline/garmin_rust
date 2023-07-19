@@ -155,12 +155,22 @@ function fitbitSync() {
     document.getElementById("garminconnectoutput").innerHTML = "syncing";
 }
 function scale_measurement_plots(offset, start_date=null, end_date=null) {
+    if(document.getElementById("start_date_selector_scale")) {
+        if(document.getElementById("start_date_selector_scale").value) {
+            start_date = document.getElementById("start_date_selector_scale").value;
+        }
+    }
+    if(document.getElementById("end_date_selector_scale")) {
+        if(document.getElementById("end_date_selector_scale").value) {
+            end_date = document.getElementById("end_date_selector_scale").value;
+        }
+    }
     let url = '/garmin/fitbit/plots?offset=' + offset;
     if(start_date) {
-        url = url + "&" + start_date;
+        url = url + "&start_date=" + start_date;
     }
     if(end_date) {
-        url = url + "&" + end_date;
+        url = url + "&end_date=" + end_date;
     }
     location.replace(url)
 }
@@ -168,8 +178,24 @@ function heartrate_plot() {
     let url = '/garmin/fitbit/heartrate_plots';
     location.replace(url)
 }
-function heartrate_stat_plot(offset) {
+function heartrate_stat_plot(offset, start_date=null, end_date=null) {
+    if(document.getElementById("start_date_selector_stat")) {
+        if(document.getElementById("start_date_selector_stat").value) {
+            start_date = document.getElementById("start_date_selector_stat").value;
+        }
+    }
+    if(document.getElementById("end_date_selector_stat")) {
+        if(document.getElementById("end_date_selector_stat").value) {
+            end_date = document.getElementById("end_date_selector_stat").value;
+        }
+    }
     let url = '/garmin/fitbit/heartrate_statistics_plots?offset=' + offset;
+    if(start_date) {
+        url = url + "&start_date=" + start_date;
+    }
+    if(end_date) {
+        url = url + "&end_date=" + end_date;
+    }
     location.replace(url)
 }
 function heartrateSync() {
@@ -241,14 +267,14 @@ function heartrate_plot_date(start_date, end_date) {
     location.replace(url)
 }
 function heartrate_plot_button(start_date, end_date, button_date) {
-    if(document.getElementById("start_date_selector")) {
-        if(document.getElementById("start_date_selector").value) {
-            start_date = document.getElementById("start_date_selector").value;
+    if(document.getElementById("start_date_selector_heart")) {
+        if(document.getElementById("start_date_selector_heart").value) {
+            start_date = document.getElementById("start_date_selector_heart").value;
         }
     }
-    if(document.getElementById("end_date_selector")) {
-        if(document.getElementById("end_date_selector").value) {
-            end_date = document.getElementById("end_date_selector").value;
+    if(document.getElementById("end_date_selector_heart")) {
+        if(document.getElementById("end_date_selector_heart").value) {
+            end_date = document.getElementById("end_date_selector_heart").value;
         }
     }
     let url = '/garmin/fitbit/heartrate_plots?start_date=' + start_date + '&end_date=' + end_date + '&button_date=' + button_date;

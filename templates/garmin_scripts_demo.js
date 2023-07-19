@@ -6,8 +6,14 @@ function processFormData() {
     let garmin_filter = document.getElementById( 'garmin_filter' );
     send_command( 'filter=' + garmin_filter.value );
 }
-function scale_measurement_plots(offset) {
+function scale_measurement_plots(offset, start_date=null, end_date=null) {
     let ostr = '/garmin/fitbit/plots_demo?offset=' + offset;
+    if(start_date) {
+        ostr = ostr + "&" + start_date;
+    }
+    if(end_date) {
+        ostr = ostr + "&" + end_date;
+    }
     location.replace(ostr)
 }
 function heartrate_stat_plot(offset) {

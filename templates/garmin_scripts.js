@@ -154,8 +154,14 @@ function fitbitSync() {
     xmlhttp.send(null);
     document.getElementById("garminconnectoutput").innerHTML = "syncing";
 }
-function scale_measurement_plots(offset) {
+function scale_measurement_plots(offset, start_date=null, end_date=null) {
     let url = '/garmin/fitbit/plots?offset=' + offset;
+    if(start_date) {
+        url = url + "&" + start_date;
+    }
+    if(end_date) {
+        url = url + "&" + end_date;
+    }
     location.replace(url)
 }
 function heartrate_plot() {

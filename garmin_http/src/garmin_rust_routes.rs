@@ -835,8 +835,8 @@ pub async fn heartrate_statistics_plots(
         .await
         .map_err(Into::<Error>::into)?;
     let stats: Vec<FitbitStatisticsSummary> = FitbitStatisticsSummary::read_from_db(
-        query.request.start_date.map(Into::into),
-        query.request.end_date.map(Into::into),
+        Some(query.start_date.into()),
+        Some(query.end_date.into()),
         &state.db,
     )
     .await
@@ -852,7 +852,9 @@ pub async fn heartrate_statistics_plots(
         session.history,
         IndexConfig::HearRateSummary {
             stats,
-            offset: query.request.offset,
+            offset: Some(query.offset),
+            start_date: Some(query.start_date),
+            end_date: Some(query.end_date),
         },
     )
     .await?
@@ -871,8 +873,8 @@ pub async fn heartrate_statistics_plots_demo(
     let session = session.unwrap_or_default();
 
     let stats: Vec<FitbitStatisticsSummary> = FitbitStatisticsSummary::read_from_db(
-        query.request.start_date.map(Into::into),
-        query.request.end_date.map(Into::into),
+        Some(query.start_date.into()),
+        Some(query.end_date.into()),
         &state.db,
     )
     .await
@@ -888,7 +890,9 @@ pub async fn heartrate_statistics_plots_demo(
         session.history,
         IndexConfig::HearRateSummary {
             stats,
-            offset: query.request.offset,
+            offset: Some(query.offset),
+            start_date: Some(query.start_date),
+            end_date: Some(query.end_date),
         },
     )
     .await?
@@ -915,8 +919,8 @@ pub async fn fitbit_plots(
 
     let measurements = ScaleMeasurement::read_from_db(
         &state.db,
-        query.request.start_date.map(Into::into),
-        query.request.end_date.map(Into::into),
+        Some(query.start_date.into()),
+        Some(query.end_date.into()),
     )
     .await
     .map_err(Into::<Error>::into)?;
@@ -929,7 +933,9 @@ pub async fn fitbit_plots(
         session.history,
         IndexConfig::Scale {
             measurements,
-            offset: query.request.offset,
+            offset: query.offset,
+            start_date: query.start_date,
+            end_date: query.end_date,
         },
     )
     .await?
@@ -950,8 +956,8 @@ pub async fn fitbit_plots_demo(
 
     let measurements = ScaleMeasurement::read_from_db(
         &state.db,
-        query.request.start_date.map(Into::into),
-        query.request.end_date.map(Into::into),
+        Some(query.start_date.into()),
+        Some(query.end_date.into()),
     )
     .await
     .map_err(Into::<Error>::into)?;
@@ -964,7 +970,9 @@ pub async fn fitbit_plots_demo(
         session.history,
         IndexConfig::Scale {
             measurements,
-            offset: query.request.offset,
+            offset: query.offset,
+            start_date: query.start_date.into(),
+            end_date: query.end_date.into(),
         },
     )
     .await?

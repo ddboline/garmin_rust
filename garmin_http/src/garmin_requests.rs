@@ -265,7 +265,9 @@ impl ScaleMeasurementRequest {
 }
 
 pub struct FitbitStatisticsPlotRequest {
-    pub request: ScaleMeasurementRequest,
+    pub start_date: DateType,
+    pub end_date: DateType,
+    pub offset: usize,
     pub is_demo: bool,
 }
 
@@ -273,14 +275,18 @@ impl From<ScaleMeasurementRequest> for FitbitStatisticsPlotRequest {
     fn from(item: ScaleMeasurementRequest) -> Self {
         let item = item.add_default(365);
         Self {
-            request: item,
+            start_date: item.start_date.expect("this should be impossible"),
+            end_date: item.end_date.expect("this should be impossible"),
+            offset: item.offset.unwrap_or(0),
             is_demo: false,
         }
     }
 }
 
 pub struct ScaleMeasurementPlotRequest {
-    pub request: ScaleMeasurementRequest,
+    pub start_date: DateType,
+    pub end_date: DateType,
+    pub offset: usize,
     pub is_demo: bool,
 }
 
@@ -288,7 +294,9 @@ impl From<ScaleMeasurementRequest> for ScaleMeasurementPlotRequest {
     fn from(item: ScaleMeasurementRequest) -> Self {
         let item = item.add_default(365);
         Self {
-            request: item,
+            start_date: item.start_date.expect("this should be impossible"),
+            end_date: item.end_date.expect("this should be impossible"),
+            offset: item.offset.unwrap_or(0),
             is_demo: false,
         }
     }

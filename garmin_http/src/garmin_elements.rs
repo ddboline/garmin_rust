@@ -46,8 +46,6 @@ use crate::{
 #[derive(PartialEq)]
 struct HeartrateOpts {
     heartrate: Vec<(DateTimeWrapper, i32)>,
-    start_date: DateType,
-    end_date: DateType,
     button_date: Option<DateType>,
 }
 
@@ -60,11 +58,15 @@ pub enum IndexConfig {
     },
     Scale {
         measurements: Vec<ScaleMeasurement>,
-        offset: Option<usize>,
+        offset: usize,
+        start_date: DateType,
+        end_date: DateType,
     },
     HearRateSummary {
         stats: Vec<FitbitStatisticsSummary>,
         offset: Option<usize>,
+        start_date: Option<DateType>,
+        end_date: Option<DateType>,
     },
     HeartRate {
         heartrate: Vec<(DateTimeWrapper, i32)>,
@@ -109,6 +111,8 @@ pub async fn index_new_body(
                     history,
                     measurements: Vec::new(),
                     offset: None,
+                    start_date: None,
+                    end_date: None,
                     heartrate_stats: Vec::new(),
                     heartrate_opts: None,
                     model: None,
@@ -160,6 +164,8 @@ pub async fn index_new_body(
                     history,
                     measurements: Vec::new(),
                     offset: None,
+                    start_date: None,
+                    end_date: None,
                     heartrate_stats: Vec::new(),
                     heartrate_opts: None,
                     model: None,
@@ -172,6 +178,8 @@ pub async fn index_new_body(
         IndexConfig::Scale {
             measurements,
             offset,
+            start_date,
+            end_date,
         } => {
             let mut app = VirtualDom::new_with_props(
                 index_element,
@@ -189,7 +197,9 @@ pub async fn index_new_body(
                     map_api_key,
                     history,
                     measurements,
-                    offset,
+                    offset: Some(offset),
+                    start_date: Some(start_date),
+                    end_date: Some(end_date),
                     heartrate_stats: Vec::new(),
                     heartrate_opts: None,
                     model: None,
@@ -199,7 +209,12 @@ pub async fn index_new_body(
             drop(app.rebuild());
             Ok(dioxus_ssr::render(&app))
         }
-        IndexConfig::HearRateSummary { stats, offset } => {
+        IndexConfig::HearRateSummary {
+            stats,
+            offset,
+            start_date,
+            end_date,
+        } => {
             let mut app = VirtualDom::new_with_props(
                 index_element,
                 index_elementProps {
@@ -217,6 +232,8 @@ pub async fn index_new_body(
                     history,
                     measurements: Vec::new(),
                     offset,
+                    start_date,
+                    end_date,
                     heartrate_stats: stats,
                     heartrate_opts: None,
                     model: None,
@@ -249,11 +266,11 @@ pub async fn index_new_body(
                     history,
                     measurements: Vec::new(),
                     offset: None,
+                    start_date: Some(start_date),
+                    end_date: Some(end_date),
                     heartrate_stats: Vec::new(),
                     heartrate_opts: Some(HeartrateOpts {
                         heartrate,
-                        start_date,
-                        end_date,
                         button_date,
                     }),
                     model: None,
@@ -281,6 +298,8 @@ pub async fn index_new_body(
                     history,
                     measurements: Vec::new(),
                     offset: None,
+                    start_date: None,
+                    end_date: None,
                     heartrate_stats: Vec::new(),
                     heartrate_opts: None,
                     model: Some(model),
@@ -310,6 +329,8 @@ fn index_element(
     history: Vec<StackString>,
     measurements: Vec<ScaleMeasurement>,
     offset: Option<usize>,
+    start_date: Option<DateType>,
+    end_date: Option<DateType>,
     heartrate_stats: Vec<FitbitStatisticsSummary>,
     heartrate_opts: Option<HeartrateOpts>,
     model: Option<RaceResultAnalysis>,
@@ -339,11 +360,22 @@ fn index_element(
     }
     if let Some(HeartrateOpts {
         heartrate,
-        start_date,
-        end_date,
         button_date,
     }) = heartrate_opts
     {
+        let start_date: Date = start_date.map_or_else(
+            || {
+                (OffsetDateTime::now_utc() - Duration::days(3))
+                    .to_timezone(local)
+                    .date()
+                    .into()
+            },
+            Into::into,
+        );
+        let end_date: Date = end_date.map_or_else(
+            || OffsetDateTime::now_utc().to_timezone(local).date(),
+            Into::into,
+        );
         let button_date = button_date.map_or_else(
             || OffsetDateTime::now_utc().to_timezone(local).date(),
             Into::into,
@@ -391,20 +423,18 @@ fn index_element(
         .unwrap();
         script_body.push_str("}();\n");
         let date_input = {
-            let start_date: Date = (*start_date).into();
-            let end_date: Date = (*end_date).into();
             rsx! {
                 input {
                     "type": "date",
                     name: "start-date",
-                    id: "start_date_selector",
+                    id: "start_date_selector_heart",
                     value: "{start_date}",
                     "onchange": "heartrate_plot_button('{start_date}', '{end_date}', '{button_date}')",
                 }
                 input {
                     "type": "date",
                     name: "end-date",
-                    id: "end_date_selector",
+                    id: "end_date_selector_heart",
                     value: "{end_date}",
                     "onchange": "heartrate_plot_button('{start_date}', '{end_date}', '{button_date}')",
                 }
@@ -437,8 +467,6 @@ fn index_element(
                 }
             }
         });
-        let start_date: Date = (*start_date).into();
-        let end_date: Date = (*end_date).into();
         let prev_date = button_date + Duration::days(5);
         let next_date = button_date - Duration::days(5);
         let today = OffsetDateTime::now_utc().to_timezone(local).date();
@@ -474,6 +502,19 @@ fn index_element(
         });
     }
     if !heartrate_stats.is_empty() {
+        let start_date: Date = start_date.map_or_else(
+            || {
+                (OffsetDateTime::now_utc() - Duration::days(365))
+                    .to_timezone(local)
+                    .date()
+                    .into()
+            },
+            Into::into,
+        );
+        let end_date: Date = end_date.map_or_else(
+            || OffsetDateTime::now_utc().to_timezone(local).date(),
+            Into::into,
+        );
         let mut plots = Vec::new();
         let dformat = format_description!("[year]-[month]-[day]T00:00:00Z");
         let min_heartrate: Vec<(String, f64)> = heartrate_stats
@@ -541,7 +582,9 @@ fn index_element(
             }
         });
         let n = heartrate_stats.len();
-        let entries = heartrate_stats[(n - 10 - offset)..(n - offset)]
+        let lower = if offset + 10 <= n { n - 10 - offset } else { 0 };
+        let upper = if offset <= n { n - offset } else { 0 };
+        let entries = heartrate_stats[lower..upper]
             .iter()
             .enumerate()
             .map(|(idx, stat)| {
@@ -566,7 +609,7 @@ fn index_element(
             Some(rsx! {
                 button {
                     "type": "submit",
-                    "onclick": "heartrate_stat_plot({o})",
+                    "onclick": "heartrate_stat_plot({o}, '{start_date}', '{end_date}')",
                     "Previous",
                 }
             })
@@ -577,8 +620,26 @@ fn index_element(
         let next_button = rsx! {
             button {
                 "type": "submit",
-                "onclick": "heartrate_stat_plot({o})",
+                "onclick": "heartrate_stat_plot({o}, '{start_date}', '{end_date}')",
                 "Next",
+            }
+        };
+        let date_input = {
+            rsx! {
+                input {
+                    "type": "date",
+                    name: "start-date",
+                    id: "start_date_selector_stat",
+                    value: "{start_date}",
+                    "onchange": "heartrate_stat_plot({offset}, '{start_date}', '{end_date}')",
+                }
+                input {
+                    "type": "date",
+                    name: "end-date",
+                    id: "end_date_selector_stat",
+                    value: "{end_date}",
+                    "onchange": "heartrate_stat_plot({offset}, '{start_date}', '{end_date}')",
+                }
             }
         };
         script_box.replace(rsx! {
@@ -599,6 +660,9 @@ fn index_element(
                 prev_button,
                 next_button,
             },
+            div {
+                date_input
+            },
             graphs,
         });
     }
@@ -606,6 +670,19 @@ fn index_element(
         let tformat = format_description!(
             "[year]-[month]-[day]T[hour]:[minute]:[second][offset_hour \
              sign:mandatory]:[offset_minute]"
+        );
+        let start_date: Date = start_date.map_or_else(
+            || {
+                (OffsetDateTime::now_utc() - Duration::days(365))
+                    .to_timezone(local)
+                    .date()
+                    .into()
+            },
+            Into::into,
+        );
+        let end_date: Date = end_date.map_or_else(
+            || OffsetDateTime::now_utc().to_timezone(local).date(),
+            Into::into,
         );
 
         let mut plots = Vec::new();
@@ -718,7 +795,9 @@ fn index_element(
             }
         });
         let n = measurements.len();
-        let entries = measurements[(n - 10 - offset)..(n - offset)]
+        let lower = if offset + 10 <= n { n - 10 - offset } else { 0 };
+        let upper = if offset <= n { n - offset } else { 0 };
+        let entries = measurements[lower..upper]
             .iter()
             .enumerate()
             .map(|(idx, meas)| {
@@ -747,7 +826,7 @@ fn index_element(
             Some(rsx! {
                 button {
                     "type": "submit",
-                    "onclick": "scale_measurement_plots({o})",
+                    "onclick": "scale_measurement_plots({o}, '{start_date}', '{end_date}')",
                     "Previous",
                 }
             })
@@ -758,8 +837,26 @@ fn index_element(
         let next_button = rsx! {
             button {
                 "type": "submit",
-                "onclick": "scale_measurement_plots({o})",
+                "onclick": "scale_measurement_plots({o}, '{start_date}', '{end_date}')",
                 "Next",
+            }
+        };
+        let date_input = {
+            rsx! {
+                input {
+                    "type": "date",
+                    name: "start-date",
+                    id: "start_date_selector_scale",
+                    value: "{start_date}",
+                    "onchange": "scale_measurement_plots({offset}, '{start_date}', '{end_date}')",
+                }
+                input {
+                    "type": "date",
+                    name: "end-date",
+                    id: "end_date_selector_scale",
+                    value: "{end_date}",
+                    "onchange": "scale_measurement_plots({offset}, '{start_date}', '{end_date}')",
+                }
             }
         };
         script_box.replace(rsx! {
@@ -787,6 +884,9 @@ fn index_element(
             br {
                 prev_button,
                 next_button,
+            },
+            div {
+                date_input
             },
             graphs,
         });

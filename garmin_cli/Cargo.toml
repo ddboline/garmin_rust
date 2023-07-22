@@ -16,7 +16,7 @@ garmin_reports = {path="../garmin_reports"}
 clap = {version="4.0", features=["derive"]}
 derive_more = "0.99"
 time = {version="0.3", features=["serde-human-readable", "macros", "formatting", "parsing"]}
-time-tz = {version="1.0", features=["system"]}
+time-tz = {version="2.0", features=["system"]}
 anyhow = "1.0"
 thiserror = "1.0"
 tokio = {version="1.26", features=["full"]}

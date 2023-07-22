@@ -429,14 +429,17 @@ fn index_element(
                     name: "start-date",
                     id: "start_date_selector_heart",
                     value: "{start_date}",
-                    "onchange": "heartrate_plot_button('{start_date}', '{end_date}', '{button_date}')",
                 }
                 input {
                     "type": "date",
                     name: "end-date",
                     id: "end_date_selector_heart",
                     value: "{end_date}",
-                    "onchange": "heartrate_plot_button('{start_date}', '{end_date}', '{button_date}')",
+                }
+                button {
+                    "type": "submit",
+                    "onclick": "heartrate_plot_button('{start_date}', '{end_date}', '{button_date}')",
+                    "Update",
                 }
             }
         };
@@ -631,14 +634,17 @@ fn index_element(
                     name: "start-date",
                     id: "start_date_selector_stat",
                     value: "{start_date}",
-                    "onchange": "heartrate_stat_plot({offset}, '{start_date}', '{end_date}')",
                 }
                 input {
                     "type": "date",
                     name: "end-date",
                     id: "end_date_selector_stat",
                     value: "{end_date}",
-                    "onchange": "heartrate_stat_plot({offset}, '{start_date}', '{end_date}')",
+                }
+                button {
+                    "type": "submit",
+                    "onclick": "heartrate_stat_plot({offset}, '{start_date}', '{end_date}')",
+                    "Update",
                 }
             }
         };
@@ -848,14 +854,17 @@ fn index_element(
                     name: "start-date",
                     id: "start_date_selector_scale",
                     value: "{start_date}",
-                    "onchange": "scale_measurement_plots({offset}, '{start_date}', '{end_date}')",
                 }
                 input {
                     "type": "date",
                     name: "end-date",
                     id: "end_date_selector_scale",
                     value: "{end_date}",
-                    "onchange": "scale_measurement_plots({offset}, '{start_date}', '{end_date}')",
+                }
+                button {
+                    "type": "submit",
+                    "onclick": "scale_measurement_plots({offset}, '{start_date}', '{end_date}')",
+                    "Update",
                 }
             }
         };

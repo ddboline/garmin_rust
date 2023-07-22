@@ -1,7 +1,7 @@
 #![allow(clippy::needless_pass_by_value)]
 
 use anyhow::Error;
-use log::debug;
+use log::info;
 use reqwest::{Client, ClientBuilder};
 use rweb::{
     filters::BoxedFilter,
@@ -69,9 +69,9 @@ pub async fn start_app() -> Result<(), Error> {
                 GarminCliOpts::sync_with_garmin_connect(&cli, &None, None, None).await
             {
                 if !filenames.is_empty() || !input_files.is_empty() {
-                    debug!("processed {filenames:?} and {input_files:?}");
+                    info!("processed {filenames:?} and {input_files:?}");
                     for line in cli.sync_everything(false).await.unwrap_or(Vec::new()) {
-                        debug!("{line}");
+                        info!("{line}");
                     }
                 }
             }

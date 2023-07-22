@@ -1,6 +1,7 @@
 #![allow(clippy::needless_pass_by_value)]
 
 use anyhow::Error;
+use log::debug;
 use reqwest::{Client, ClientBuilder};
 use rweb::{
     filters::BoxedFilter,
@@ -11,7 +12,6 @@ use rweb::{
 use stack_string::format_sstr;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::{task::spawn, time::interval};
-use log::debug;
 
 use garmin_cli::{garmin_cli::GarminCli, garmin_cli_opts::GarminCliOpts};
 use garmin_lib::common::{

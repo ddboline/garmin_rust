@@ -971,8 +971,8 @@ pub async fn fitbit_plots_demo(
         IndexConfig::Scale {
             measurements,
             offset: query.offset,
-            start_date: query.start_date.into(),
-            end_date: query.end_date.into(),
+            start_date: query.start_date,
+            end_date: query.end_date,
         },
     )
     .await?

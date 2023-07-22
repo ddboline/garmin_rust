@@ -368,7 +368,6 @@ fn index_element(
                 (OffsetDateTime::now_utc() - Duration::days(3))
                     .to_timezone(local)
                     .date()
-                    .into()
             },
             Into::into,
         );
@@ -510,7 +509,6 @@ fn index_element(
                 (OffsetDateTime::now_utc() - Duration::days(365))
                     .to_timezone(local)
                     .date()
-                    .into()
             },
             Into::into,
         );
@@ -682,7 +680,6 @@ fn index_element(
                 (OffsetDateTime::now_utc() - Duration::days(365))
                     .to_timezone(local)
                     .date()
-                    .into()
             },
             Into::into,
         );

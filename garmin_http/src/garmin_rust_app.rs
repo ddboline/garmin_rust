@@ -11,6 +11,7 @@ use rweb::{
 use stack_string::format_sstr;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::{task::spawn, time::interval};
+use log::debug;
 
 use garmin_cli::{garmin_cli::GarminCli, garmin_cli_opts::GarminCliOpts};
 use garmin_lib::common::{
@@ -68,7 +69,10 @@ pub async fn start_app() -> Result<(), Error> {
                 GarminCliOpts::sync_with_garmin_connect(&cli, &None, None, None).await
             {
                 if !filenames.is_empty() || !input_files.is_empty() {
-                    cli.sync_everything(false).await.unwrap_or(Vec::new());
+                    debug!("processed {filenames:?} and {input_files:?}");
+                    for line in cli.sync_everything(false).await.unwrap_or(Vec::new()) {
+                        debug!("{line}");
+                    }
                 }
             }
             i.tick().await;

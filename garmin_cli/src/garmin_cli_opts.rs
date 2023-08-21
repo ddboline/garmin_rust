@@ -16,8 +16,11 @@ use tokio::{
 
 use derive_more::{From, Into};
 use fitbit_lib::{
-    fitbit_client::FitbitClient, fitbit_heartrate::FitbitHeartRate,
-    fitbit_statistics_summary::FitbitStatisticsSummary, scale_measurement::ScaleMeasurement,
+    fitbit_archive::{archive_fitbit_heartrates, get_heartrate_values},
+    fitbit_client::FitbitClient,
+    fitbit_heartrate::FitbitHeartRate,
+    fitbit_statistics_summary::FitbitStatisticsSummary,
+    scale_measurement::ScaleMeasurement,
 };
 use garmin_connect_lib::garmin_connect_hr_data::GarminConnectHrData;
 use garmin_lib::{
@@ -113,6 +116,20 @@ pub enum GarminCliOpts {
     SyncAll,
     /// Run refinery migrations
     RunMigrations,
+    #[clap(alias = "archive")]
+    FitbitArchive {
+        #[clap(short, long)]
+        all: bool,
+    },
+    #[clap(alias = "fit-archive-read")]
+    FitbitArchiveRead {
+        #[clap(short, long)]
+        start_date: Option<DateType>,
+        #[clap(short, long)]
+        end_date: Option<DateType>,
+        #[clap(short = 't', long)]
+        step_size: Option<u64>,
+    },
 }
 
 impl GarminCliOpts {
@@ -385,6 +402,38 @@ impl GarminCliOpts {
             Self::RunMigrations => {
                 let mut client = pool.get().await?;
                 migrations::runner().run_async(&mut **client).await?;
+                return Ok(());
+            }
+            Self::FitbitArchive { all } => {
+                let result = archive_fitbit_heartrates(&config, &pool, all).await?;
+                stdout().write_all(result.join("\n").as_bytes()).await?;
+                stdout().write_all(b"\n").await?;
+                return Ok(());
+            }
+            Self::FitbitArchiveRead {
+                start_date,
+                end_date,
+                step_size,
+            } => {
+                let start_date = start_date.map_or_else(
+                    || (OffsetDateTime::now_utc() - Duration::days(1)).date(),
+                    Into::into,
+                );
+                let end_date = end_date.map_or_else(
+                    || (OffsetDateTime::now_utc() + Duration::days(1)).date(),
+                    Into::into,
+                );
+                let config = config.clone();
+                let values = spawn_blocking(move || {
+                    get_heartrate_values(&config, start_date, end_date, step_size)
+                })
+                .await??;
+                let values: Vec<_> = values
+                    .into_iter()
+                    .map(|(d, v)| format_sstr!("{d} {v}"))
+                    .collect();
+                stdout().write_all(values.join("\n").as_bytes()).await?;
+                stdout().write_all(b"\n").await?;
                 return Ok(());
             }
         };

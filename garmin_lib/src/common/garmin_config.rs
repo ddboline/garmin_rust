@@ -89,6 +89,10 @@ pub struct GarminConfigInner {
     pub default_time_zone: Option<StravaTz>,
     #[serde(default = "default_height")]
     pub height: f64,
+    #[serde(default = "default_fitbit_archivedir")]
+    pub fitbit_archivedir: PathBuf,
+    #[serde(default = "default_fitbit_archive_bucket")]
+    pub fitbit_archive_bucket: StackString,
 }
 
 fn default_height() -> f64 {
@@ -130,6 +134,9 @@ fn default_cache_dir() -> PathBuf {
 fn default_fitbit_cachedir() -> PathBuf {
     cache_dir().join("fitbit_cache")
 }
+fn default_fitbit_archivedir() -> PathBuf {
+    cache_dir().join("fitbit_archive")
+}
 fn default_fitbit_tokenfile() -> PathBuf {
     default_home_dir().join(".fitbit_tokens")
 }
@@ -168,6 +175,9 @@ fn default_connect_api_endpoint() -> Option<UrlWrapper> {
 }
 fn default_connect_import_directory() -> PathBuf {
     default_home_dir().join("Downloads").join("garmin_connect")
+}
+fn default_fitbit_archive_bucket() -> StackString {
+    "fitbit-archive-ddboline".into()
 }
 
 impl Default for GarminConfigInner {

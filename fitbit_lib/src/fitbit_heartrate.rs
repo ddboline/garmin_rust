@@ -432,7 +432,7 @@ pub fn import_garmin_heartrate_file(filename: &Path) -> Result<(), Error> {
                 for field in record.fields() {
                     if field.name() == "stress_level_time" {
                         if let Value::Timestamp(t) = field.value() {
-                            println!("timestamp {t}");
+                            info!("timestamp {t}");
                             timestamp.replace(t.to_timezone(UTC));
                         }
                     }
@@ -444,7 +444,7 @@ pub fn import_garmin_heartrate_file(filename: &Path) -> Result<(), Error> {
                         if let Some(datetime) = timestamp {
                             if let Some(heartrate) = get_f64(field.value()) {
                                 let value = heartrate as i32;
-                                println!("heartrate {value}");
+                                info!("heartrate {value}");
                                 let datetime = datetime.into();
                                 heartrates.push(FitbitHeartRate { datetime, value });
                             }
@@ -452,7 +452,7 @@ pub fn import_garmin_heartrate_file(filename: &Path) -> Result<(), Error> {
                     }
                 }
             }
-            other => println!("other {other:?}"),
+            other => info!("other {other:?}"),
         }
     }
 

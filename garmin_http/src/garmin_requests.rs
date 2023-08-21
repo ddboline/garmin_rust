@@ -302,6 +302,7 @@ impl From<ScaleMeasurementRequest> for ScaleMeasurementPlotRequest {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct FitbitHeartratePlotRequest {
     pub start_date: DateType,
     pub end_date: DateType,

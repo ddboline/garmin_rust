@@ -5,6 +5,7 @@
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::cast_possible_wrap)]
 
+pub mod fitbit_archive;
 pub mod fitbit_client;
 pub mod fitbit_heartrate;
 pub mod fitbit_statistics_summary;

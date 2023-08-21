@@ -5,7 +5,7 @@ use futures::{future::try_join_all, stream::FuturesUnordered, TryStreamExt};
 use glob::glob;
 use log::{debug, info};
 use rayon::{
-    iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelExtend, ParallelIterator},
+    iter::{IntoParallelIterator, ParallelExtend, ParallelIterator},
     slice::ParallelSliceMut,
 };
 use serde::{self, Deserialize, Deserializer, Serialize};
@@ -15,12 +15,13 @@ use std::{
     collections::BTreeSet,
     convert::TryInto,
     fs::{rename, File},
-    path::Path,
+    path::{Path, PathBuf},
 };
 use time::{
     macros::format_description, Date, Duration, Month, OffsetDateTime, PrimitiveDateTime, Time,
 };
 use time_tz::{timezones::db::UTC, OffsetDateTimeExt, PrimitiveDateTimeExt};
+use tokio::task::spawn_blocking;
 
 use garmin_connect_lib::garmin_connect_hr_data::GarminConnectHrData;
 use garmin_lib::{
@@ -126,7 +127,7 @@ impl FitbitHeartRate {
             .map(|i| start_date + Duration::days(i))
             .collect();
         let fitbit_files: Vec<_> = days
-            .par_iter()
+            .iter()
             .filter_map(|date| {
                 let date_str = StackString::from_display(date);
                 let input_filename = config.fitbit_cachedir.join(date_str).with_extension("avro");
@@ -156,8 +157,16 @@ impl FitbitHeartRate {
             Ok(files)
         });
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
-        let garmin_files: Vec<_> = results?.into_par_iter().flatten().collect();
+        let garmin_files: Vec<_> = results?.into_iter().flatten().collect();
 
+        spawn_blocking(move || Self::read_fitbit_and_garmin_files(&fitbit_files, &garmin_files))
+            .await?
+    }
+
+    fn read_fitbit_and_garmin_files(
+        fitbit_files: &[PathBuf],
+        garmin_files: &[PathBuf],
+    ) -> Result<Vec<(DateTimeWrapper, i32)>, Error> {
         let results: Result<Vec<_>, Error> = fitbit_files
             .into_par_iter()
             .map(|input_path| {

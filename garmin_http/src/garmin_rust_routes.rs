@@ -20,7 +20,7 @@ use tokio::{fs::File, io::AsyncWriteExt, task::spawn_blocking};
 use tokio_stream::StreamExt;
 
 use fitbit_lib::{
-    fitbit_client::FitbitClient, fitbit_heartrate::FitbitHeartRate,
+    fitbit_archive, fitbit_client::FitbitClient, fitbit_heartrate::FitbitHeartRate,
     fitbit_statistics_summary::FitbitStatisticsSummary, scale_measurement::ScaleMeasurement,
 };
 use garmin_cli::garmin_cli::{GarminCli, GarminRequest};
@@ -997,14 +997,42 @@ pub async fn heartrate_plots(
         .await
         .map_err(Into::<Error>::into)?;
 
-    let heartrate = FitbitHeartRate::get_heartrate_values(
+    let parquet_values = fitbit_archive::get_number_of_heartrate_values(
         &state.config,
-        &state.db,
         query.start_date.into(),
         query.end_date.into(),
     )
-    .await
     .map_err(Into::<Error>::into)?;
+    let step_size = if parquet_values < 40_000 {
+        1
+    } else {
+        parquet_values / 40_000
+    };
+    debug!("parquet_values {parquet_values} step size {step_size}");
+
+    let heartrate = if parquet_values == 0 {
+        FitbitHeartRate::get_heartrate_values(
+            &state.config,
+            &state.db,
+            query.start_date.into(),
+            query.end_date.into(),
+        )
+        .await
+    } else {
+        let config = state.config.clone();
+        spawn_blocking(move || {
+            fitbit_archive::get_heartrate_values(
+                &config,
+                query.start_date.into(),
+                query.end_date.into(),
+                Some(step_size),
+            )
+        })
+        .await
+        .map_err(Into::<Error>::into)?
+    }
+    .map_err(Into::<Error>::into)?;
+
     let body = index_new_body(
         state.config.clone(),
         &state.db,

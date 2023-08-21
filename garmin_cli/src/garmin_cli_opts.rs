@@ -128,7 +128,7 @@ pub enum GarminCliOpts {
         #[clap(short, long)]
         end_date: Option<DateType>,
         #[clap(short = 't', long)]
-        step_size: Option<u64>,
+        step_size: Option<usize>,
     },
 }
 
@@ -567,14 +567,24 @@ impl GarminCliOpts {
             date += Duration::days(1);
         }
         for date in dates {
-            FitbitHeartRate::calculate_summary_statistics(&cli.config, &cli.pool, date).await?;
+            if let Some(stat) =
+                FitbitHeartRate::calculate_summary_statistics(&cli.config, &cli.pool, date).await?
+            {
+                info!("update stats {}", stat.date);
+            }
         }
         if !filenames.is_empty() {
-            cli.process_filenames(&filenames).await?;
+            let dates = cli.process_filenames(&filenames).await?;
+            info!("number of files {}", dates.len());
         }
         if !filenames.is_empty() || !input_files.is_empty() {
-            cli.proc_everything().await?;
+            for line in cli.proc_everything().await? {
+                info!("{line}");
+            }
             GarminConnectActivity::fix_summary_id_in_db(&cli.pool).await?;
+        }
+        for line in archive_fitbit_heartrates(&cli.config, &cli.pool, false).await? {
+            info!("{line}");
         }
         for f in &input_files {
             write(f, &[]).await?;

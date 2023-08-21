@@ -4,8 +4,8 @@ use log::info;
 use polars::{
     frame::DataFrame,
     prelude::{
-        Int32Chunked, Int64Chunked, IntoSeries, NewChunkedArray, ParquetReader, ParquetWriter,
-        SerReader, UniqueKeepStrategy,
+        ChunkAgg, Int32Chunked, Int64Chunked, IntoSeries, NewChunkedArray, ParquetReader,
+        ParquetWriter, SerReader, UniqueKeepStrategy,
     },
 };
 use stack_string::{format_sstr, StackString};
@@ -249,10 +249,40 @@ pub fn get_number_of_heartrate_values(
     end_date: Date,
 ) -> Result<usize, Error> {
     let fitbit_files = get_fitbit_parquet_files(config, start_date, end_date)?;
+    let start_timestamp = start_date
+        .with_time(Time::from_hms(0, 0, 0)?)
+        .assume_utc()
+        .unix_timestamp();
+    let end_timestamp = end_date
+        .with_time(Time::from_hms(23, 59, 59)?)
+        .assume_utc()
+        .unix_timestamp();
     let mut value_count = 0;
     for file in fitbit_files {
         let df = ParquetReader::new(File::open(file)?).finish()?;
-        value_count += df.shape().0;
+        if df.shape().0 == 0 {
+            continue;
+        }
+        let min_timestamp = df
+            .column("timestamp")?
+            .i64()?
+            .min()
+            .expect("No minimum timestamp");
+        let max_timestamp = df
+            .column("timestamp")?
+            .i64()?
+            .max()
+            .expect("No maximum timestamp");
+        if min_timestamp >= start_timestamp && max_timestamp <= end_timestamp {
+            value_count += df.shape().0;
+        } else {
+            value_count += df
+                .column("timestamp")?
+                .i64()?
+                .into_iter()
+                .filter(|t| t.is_some() && *t >= Some(start_timestamp) && *t <= Some(end_timestamp))
+                .count();
+        }
     }
     Ok(value_count)
 }
@@ -261,7 +291,7 @@ pub fn get_heartrate_values(
     config: &GarminConfig,
     start_date: Date,
     end_date: Date,
-    step_size: Option<u64>,
+    step_size: Option<usize>,
 ) -> Result<Vec<(DateTimeWrapper, i32)>, Error> {
     let step_size = step_size.unwrap_or(1) as i64;
     let fitbit_files = get_fitbit_parquet_files(config, start_date, end_date)?;

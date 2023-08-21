@@ -246,6 +246,12 @@ impl GarminCli {
                 &self.get_config().fitbit_bucket,
                 check_md5,
             ),
+            (
+                "Syncing Fitbit Archive",
+                &self.get_config().fitbit_archivedir,
+                &self.get_config().fitbit_archive_bucket,
+                check_md5,
+            ),
         ];
 
         let futures = options

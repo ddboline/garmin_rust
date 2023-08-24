@@ -171,7 +171,7 @@ impl FitbitHeartRate {
             .into_par_iter()
             .map(|input_path| {
                 info!("read file {:?}", input_path);
-                let values: Vec<_> = Self::read_avro(&input_path)?
+                let values: Vec<_> = Self::read_avro(input_path)?
                     .into_par_iter()
                     .map(|h| (h.datetime, h.value))
                     .collect();
@@ -184,7 +184,7 @@ impl FitbitHeartRate {
         let results: Result<Vec<_>, Error> = garmin_files
             .into_par_iter()
             .map(|avro_file| {
-                let points: Vec<_> = GarminFile::read_avro(&avro_file)?
+                let points: Vec<_> = GarminFile::read_avro(avro_file)?
                     .points
                     .into_par_iter()
                     .filter_map(|p| p.heart_rate.map(|h| (p.time, h as i32)))

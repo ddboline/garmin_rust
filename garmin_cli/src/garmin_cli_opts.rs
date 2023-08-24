@@ -16,7 +16,9 @@ use tokio::{
 
 use derive_more::{From, Into};
 use fitbit_lib::{
-    fitbit_archive::{archive_fitbit_heartrates, get_heartrate_values},
+    fitbit_archive::{
+        archive_fitbit_heartrates, get_heartrate_values, get_number_of_heartrate_values,
+    },
     fitbit_client::FitbitClient,
     fitbit_heartrate::FitbitHeartRate,
     fitbit_statistics_summary::FitbitStatisticsSummary,
@@ -405,7 +407,7 @@ impl GarminCliOpts {
                 return Ok(());
             }
             Self::FitbitArchive { all } => {
-                let result = archive_fitbit_heartrates(&config, &pool, all).await?;
+                let result = archive_fitbit_heartrates(config, &pool, all).await?;
                 stdout().write_all(result.join("\n").as_bytes()).await?;
                 stdout().write_all(b"\n").await?;
                 return Ok(());
@@ -423,6 +425,13 @@ impl GarminCliOpts {
                     || (OffsetDateTime::now_utc() + Duration::days(1)).date(),
                     Into::into,
                 );
+                let count = {
+                    let config = config.clone();
+                    spawn_blocking(move || {
+                        get_number_of_heartrate_values(&config, start_date, end_date)
+                    })
+                    .await??
+                };
                 let config = config.clone();
                 let values = spawn_blocking(move || {
                     get_heartrate_values(&config, start_date, end_date, step_size)
@@ -432,7 +441,9 @@ impl GarminCliOpts {
                     .into_iter()
                     .map(|(d, v)| format_sstr!("{d} {v}"))
                     .collect();
-                stdout().write_all(values.join("\n").as_bytes()).await?;
+                stdout()
+                    .write_all(format_sstr!("count {count} {}", values.len()).as_bytes())
+                    .await?;
                 stdout().write_all(b"\n").await?;
                 return Ok(());
             }

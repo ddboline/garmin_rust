@@ -41,8 +41,8 @@ bytes = "1.0"
 postgres-types = "0.2"
 uuid = "1.0"
 maplit = "1.0"
-dioxus = "0.3"
-dioxus-ssr = "0.3"
+dioxus = "0.4"
+dioxus-ssr = "0.4"
 rweb = {git = "https://github.com/ddboline/rweb.git", features=["openapi"], default-features=false, tag="0.15.1-1"}
 rweb-helper = { git = "https://github.com/ddboline/rweb_helper.git", tag="0.5.0-1" }
 authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.10.8"}

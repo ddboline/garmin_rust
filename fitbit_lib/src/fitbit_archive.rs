@@ -1,11 +1,11 @@
-use anyhow::Error;
+use anyhow::{format_err, Error};
 use futures::{future::try_join_all, TryStreamExt};
 use log::info;
 use polars::{
-    frame::DataFrame,
+    df as dataframe,
     prelude::{
-        ChunkAgg, Int32Chunked, Int64Chunked, IntoSeries, NewChunkedArray, ParquetReader,
-        ParquetWriter, SerReader, UniqueKeepStrategy,
+        col, ChunkAgg, IntoLazy, NamedFrom, ParquetReader, ParquetWriter, SerReader,
+        UniqueKeepStrategy,
     },
 };
 use stack_string::{format_sstr, StackString};
@@ -72,10 +72,8 @@ async fn get_garmin_avro_file_map(
     start_date: Date,
     end_date: Date,
 ) -> Result<Vec<PathBuf>, Error> {
-    let ndays = (end_date - start_date).whole_days();
-    let days: Vec<_> = (0..=ndays)
-        .map(|i| start_date + Duration::days(i))
-        .collect();
+    let days = (end_date - start_date).whole_days();
+    let days: Vec<_> = (0..=days).map(|i| start_date + Duration::days(i)).collect();
     let futures = days.iter().map(|date| async move {
         let constraint = format_sstr!(
             r#"
@@ -103,21 +101,22 @@ async fn get_garmin_avro_file_map(
 }
 
 fn get_start_date_end_date_for_key(key: &str) -> Result<(Date, Date), Error> {
-    let year: i32 = (&key[0..4]).parse()?;
-    let month: u8 = (&key[5..7]).parse()?;
+    let year: i32 = (key[0..4]).parse()?;
+    let month: u8 = (key[5..7]).parse()?;
     let month: Month = month.try_into()?;
     let start_date = Date::from_calendar_date(year, month, 1)?;
     let mut end_date = start_date;
     while let Some(next_date) = end_date.next_day() {
         if next_date.month() != month {
             break;
-        } else {
-            end_date = next_date
         }
+        end_date = next_date;
     }
     Ok((start_date, end_date))
 }
 
+/// # Errors
+/// Returns error on db query failure
 pub async fn archive_fitbit_heartrates(
     config: &GarminConfig,
     pool: &PgPool,
@@ -156,7 +155,7 @@ fn write_fitbit_heartrate_parquet(
         let (start_date, end_date) = get_start_date_end_date_for_key(key)?;
         let mut heartrates: BTreeMap<i64, Vec<_>> = BTreeMap::new();
         for input_file in input_files {
-            for value in FitbitHeartRate::read_avro(&input_file)? {
+            for value in FitbitHeartRate::read_avro(input_file)? {
                 let d = value.datetime.date();
                 if d < start_date || d > end_date {
                     continue;
@@ -167,7 +166,7 @@ fn write_fitbit_heartrate_parquet(
         }
         if let Some(garmin_files) = garmin_input_files.get(key) {
             for input_file in garmin_files {
-                for (t, h) in GarminFile::read_avro(&input_file)?
+                for (t, h) in GarminFile::read_avro(input_file)?
                     .points
                     .into_iter()
                     .filter_map(|p| p.heart_rate.map(|h| (p.time, h as i32)))
@@ -182,7 +181,7 @@ fn write_fitbit_heartrate_parquet(
             }
         }
         let columns = FitbitColumns {
-            timestamp: heartrates.keys().map(|h| *h).collect(),
+            timestamp: heartrates.keys().copied().collect(),
             value: heartrates
                 .values()
                 .map(|h| {
@@ -195,17 +194,23 @@ fn write_fitbit_heartrate_parquet(
                 })
                 .collect(),
         };
-        let columns = vec![
-            Int64Chunked::from_slice("timestamp", &columns.timestamp).into_series(),
-            Int32Chunked::from_slice("value", &columns.value).into_series(),
-        ];
-        let new_df = DataFrame::new(columns)?;
+        let new_df = dataframe!(
+            "timestamp" => &columns.timestamp,
+            "value" => &columns.value,
+        )?;
         let filename = format_sstr!("{key}.parquet");
         let file = config.fitbit_archivedir.join(&filename);
         let mut df = if file.exists() {
             let df = ParquetReader::new(File::open(&file)?).finish()?;
-            df.vstack(&new_df)?
-                .unique(None, UniqueKeepStrategy::First, None)?
+            let existing_entries = df.shape().0;
+            let updated_df = df
+                .vstack(&new_df)?
+                .unique(None, UniqueKeepStrategy::First, None)?;
+            if existing_entries == updated_df.shape().0 {
+                output.push(format_sstr!("No new entries"));
+                return Ok(output);
+            }
+            updated_df
         } else {
             new_df
         };
@@ -219,7 +224,7 @@ fn get_fitbit_parquet_files(
     config: &GarminConfig,
     start_date: Date,
     end_date: Date,
-) -> Result<Vec<PathBuf>, Error> {
+) -> Vec<PathBuf> {
     let ndays = (end_date - start_date).whole_days();
     let keys: BTreeSet<_> = (0..=ndays)
         .map(|i| {
@@ -240,15 +245,17 @@ fn get_fitbit_parquet_files(
         })
         .collect();
     info!("fitbit_files {:?}", fitbit_files);
-    Ok(fitbit_files)
+    fitbit_files
 }
 
+/// # Errors
+/// Returns error on invalid parquet files
 pub fn get_number_of_heartrate_values(
     config: &GarminConfig,
     start_date: Date,
     end_date: Date,
 ) -> Result<usize, Error> {
-    let fitbit_files = get_fitbit_parquet_files(config, start_date, end_date)?;
+    let fitbit_files = get_fitbit_parquet_files(config, start_date, end_date);
     let start_timestamp = start_date
         .with_time(Time::from_hms(0, 0, 0)?)
         .assume_utc()
@@ -267,26 +274,29 @@ pub fn get_number_of_heartrate_values(
             .column("timestamp")?
             .i64()?
             .min()
-            .expect("No minimum timestamp");
+            .ok_or_else(|| format_err!("No minimum timestamp"))?;
         let max_timestamp = df
             .column("timestamp")?
             .i64()?
             .max()
-            .expect("No maximum timestamp");
+            .ok_or_else(|| format_err!("No maximum timestamp"))?;
         if min_timestamp >= start_timestamp && max_timestamp <= end_timestamp {
             value_count += df.shape().0;
         } else {
             value_count += df
-                .column("timestamp")?
-                .i64()?
-                .into_iter()
-                .filter(|t| t.is_some() && *t >= Some(start_timestamp) && *t <= Some(end_timestamp))
-                .count();
+                .lazy()
+                .filter(col("timestamp").gt_eq(start_timestamp))
+                .filter(col("timestamp").lt_eq(end_timestamp))
+                .collect()?
+                .shape()
+                .0;
         }
     }
     Ok(value_count)
 }
 
+/// # Errors
+/// Returns error on invalid parquet files
 pub fn get_heartrate_values(
     config: &GarminConfig,
     start_date: Date,
@@ -294,7 +304,7 @@ pub fn get_heartrate_values(
     step_size: Option<usize>,
 ) -> Result<Vec<(DateTimeWrapper, i32)>, Error> {
     let step_size = step_size.unwrap_or(1) as i64;
-    let fitbit_files = get_fitbit_parquet_files(config, start_date, end_date)?;
+    let fitbit_files = get_fitbit_parquet_files(config, start_date, end_date);
     let start_timestamp = start_date
         .with_time(Time::from_hms(0, 0, 0)?)
         .assume_utc()

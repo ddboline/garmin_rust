@@ -499,7 +499,7 @@ fn index_element(
                 },
             },
             script {
-                "{script_body}",
+                dangerous_inner_html: "{script_body}",
             },
         });
     }
@@ -578,7 +578,7 @@ fn index_element(
             rsx! {
                 script {
                     key: "scale-script-key-{idx}",
-                    "{script_body}",
+                    dangerous_inner_html: "{script_body}",
                 }
             }
         });
@@ -793,7 +793,7 @@ fn index_element(
             rsx! {
                 script {
                     key: "scale-script-key-{idx}",
-                    "{script_body}",
+                    dangerous_inner_html: "{script_body}",
                 }
             }
         });
@@ -976,7 +976,7 @@ fn index_element(
                         Some(rsx! {
                             script {
                                 key: "plot-key-{idx}",
-                                "{script_body}",
+                                dangerous_inner_html: "{script_body}",
                             }
                         })
                     } else {
@@ -993,7 +993,7 @@ fn index_element(
                         Some(rsx! {
                             script {
                                 key: "plot-key-{idx}",
-                                "{script_body}",
+                                dangerous_inner_html: "{script_body}",
                             }
                         })
                     }
@@ -1127,7 +1127,7 @@ fn index_element(
                 script_body.push_str("}();\n");
                 script_box.replace(rsx! {
                     script {
-                        "{script_body}",
+                        dangerous_inner_html: "{script_body}",
                     }
                 });
                 let file_html = Some(get_file_html(
@@ -1205,7 +1205,7 @@ fn index_element(
                 content: "no-store",
             }
             style {
-                include_str!("../../templates/style.css")
+                dangerous_inner_html: include_str!("../../templates/style.css")
             }
         },
         body {
@@ -1228,10 +1228,10 @@ fn index_element(
                 }
             }
             history_buttons,
-            "<br>",
-            upload_button,
-            button_str,
-            "<br>",
+            br {
+                upload_button,
+                button_str,
+            },
             h1 {
                 style: "text-align: center",
                 b {sport_title},
@@ -1400,64 +1400,65 @@ fn get_file_html<'a>(
             }
         },
         import_button,
-        "<br>",
-        table {
-            "border": "1",
-            class: "dataframe",
-            thead {
-                tr {
-                    "type": "text-align: center;",
-                    labels.iter().enumerate().map(|(idx, label)| {
+        br {
+            table {
+                "border": "1",
+                class: "dataframe",
+                thead {
+                    tr {
+                        "type": "text-align: center;",
+                        labels.iter().enumerate().map(|(idx, label)| {
+                            rsx! {
+                                th {
+                                    key: "label-key-{idx}",
+                                    "{label}"
+                                },
+                            }
+                        })
+                    }
+                },
+                tbody {
+                    gfile.laps.iter().enumerate().map(|(idx, lap)| {
+                        let mut values = vec![
+                            gfile.sport.into(),
+                            format_sstr!("{}", lap.lap_number),
+                            format_sstr!("{:.2} mi", lap.lap_distance / METERS_PER_MILE),
+                            print_h_m_s(lap.lap_duration, true).unwrap_or_else(|_| "".into()),
+                            format_sstr!("{}", lap.lap_calories),
+                            format_sstr!("{:.2} min", lap.lap_duration / 60.),
+                        ];
+                        if lap.lap_distance > 0.0 {
+                            values.push(format_sstr!(
+                                "{} / mi",
+                                print_h_m_s(
+                                    lap.lap_duration / (lap.lap_distance / METERS_PER_MILE),
+                                    false
+                                )
+                                .unwrap_or_else(|_| "".into())
+                            ));
+                            values.push(format_sstr!(
+                                "{} / km",
+                                print_h_m_s(lap.lap_duration / (lap.lap_distance / 1000.), false)
+                                    .unwrap_or_else(|_| "".into())
+                            ));
+                        }
+                        if let Some(lap_avg_hr) = lap.lap_avg_hr {
+                            values.push(format_sstr!("{lap_avg_hr} bpm"));
+                        }
                         rsx! {
-                            th {
-                                key: "label-key-{idx}",
-                                "{label}"
-                            },
+                            tr {
+                                key: "lap-key-{idx}",
+                                "type": "text-align: center;",
+                                values.iter().enumerate().map(|(i, v)| rsx! {
+                                    td {
+                                        key: "v-key-{i}",
+                                        "{v}"
+                                    }
+                                }),
+                            }
                         }
                     })
                 }
-            },
-            tbody {
-                gfile.laps.iter().enumerate().map(|(idx, lap)| {
-                    let mut values = vec![
-                        gfile.sport.into(),
-                        format_sstr!("{}", lap.lap_number),
-                        format_sstr!("{:.2} mi", lap.lap_distance / METERS_PER_MILE),
-                        print_h_m_s(lap.lap_duration, true).unwrap_or_else(|_| "".into()),
-                        format_sstr!("{}", lap.lap_calories),
-                        format_sstr!("{:.2} min", lap.lap_duration / 60.),
-                    ];
-                    if lap.lap_distance > 0.0 {
-                        values.push(format_sstr!(
-                            "{} / mi",
-                            print_h_m_s(
-                                lap.lap_duration / (lap.lap_distance / METERS_PER_MILE),
-                                false
-                            )
-                            .unwrap_or_else(|_| "".into())
-                        ));
-                        values.push(format_sstr!(
-                            "{} / km",
-                            print_h_m_s(lap.lap_duration / (lap.lap_distance / 1000.), false)
-                                .unwrap_or_else(|_| "".into())
-                        ));
-                    }
-                    if let Some(lap_avg_hr) = lap.lap_avg_hr {
-                        values.push(format_sstr!("{lap_avg_hr} bpm"));
-                    }
-                    rsx! {
-                        tr {
-                            key: "lap-key-{idx}",
-                            "type": "text-align: center;",
-                            values.iter().enumerate().map(|(i, v)| rsx! {
-                                td {
-                                    key: "v-key-{i}",
-                                    "{v}"
-                                }
-                            }),
-                        }
-                    }
-                })
             }
         }
     }
@@ -1613,7 +1614,7 @@ fn get_buttons<'a>(demo: bool) -> LazyNodes<'a, 'a> {
         button {
             name: "garminconnectoutput",
             id: "garminconnectoutput",
-            "&nbsp;",
+            dangerous_inner_html: "&nbsp;",
         },
         button {
             "type": "submit",
@@ -1833,19 +1834,20 @@ fn create_analysis_plot(model: &RaceResultAnalysis, is_demo: bool) -> LazyNodes 
                 pace_results,
             }
         },
-        "<br>",
-        table {
-            "border": "1",
-            thead {
-                th {"Distance (mi)"},
-                th {"Time"},
-                th {"Pace (min/mi)"},
-                th {"Date"},
-                th {"Name"},
-                th {"Flag"},
-            },
-            tbody {
-                race_results,
+        br {
+            table {
+                "border": "1",
+                thead {
+                    th {"Distance (mi)"},
+                    th {"Time"},
+                    th {"Pace (min/mi)"},
+                    th {"Date"},
+                    th {"Name"},
+                    th {"Flag"},
+                },
+                tbody {
+                    race_results,
+                }
             }
         }
     };
@@ -1853,7 +1855,7 @@ fn create_analysis_plot(model: &RaceResultAnalysis, is_demo: bool) -> LazyNodes 
     let scripts = rsx! {
         script {src: "/garmin/scripts/scatter_plot_with_lines.js"},
         script {
-            "{script_body}"
+            dangerous_inner_html: "{script_body}"
         },
     };
 

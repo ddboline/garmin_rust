@@ -904,32 +904,29 @@ fn index_element(
             .enumerate()
             .map(|(idx, (text_entries, cmd))| {
                 let entries = text_entries.iter().enumerate().map(|(jdx, (s, u))| {
-                    let entry = u.as_ref().map_or(
-                        rsx! {"{s}"},
-                        |u| match u {
-                            HtmlResult {
-                                text: Some(t),
-                                url: Some(u),
-                            } => rsx! {
-                                a {href: "{u}", target: "_blank", "{t}"},
-                            },
-                            HtmlResult {
-                                text: Some(t),
-                                url: None,
-                            } => rsx! {
-                                div {
-                                    dangerous_inner_html: "{t}",
-                                }
-                            },
-                            HtmlResult {
-                                text: None,
-                                url: Some(u),
-                            } => rsx! {
-                                a {href: "{u}", target: "_blank", "link"},
-                            },
-                            _ => rsx! {""},
+                    let entry = u.as_ref().map_or(rsx! {"{s}"}, |u| match u {
+                        HtmlResult {
+                            text: Some(t),
+                            url: Some(u),
+                        } => rsx! {
+                            a {href: "{u}", target: "_blank", "{t}"},
                         },
-                    );
+                        HtmlResult {
+                            text: Some(t),
+                            url: None,
+                        } => rsx! {
+                            div {
+                                dangerous_inner_html: "{t}",
+                            }
+                        },
+                        HtmlResult {
+                            text: None,
+                            url: Some(u),
+                        } => rsx! {
+                            a {href: "{u}", target: "_blank", "link"},
+                        },
+                        _ => rsx! {""},
+                    });
                     rsx! {
                         td {
                             key: "report-entry-{jdx}",

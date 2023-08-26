@@ -207,13 +207,12 @@ fn write_fitbit_heartrate_parquet(
                 .vstack(&new_df)?
                 .unique(None, UniqueKeepStrategy::First, None)?;
             let new_entries = updated_df.shape().0;
-            if existing_entries == updated_df.shape().0 {
+            let updated_count = new_entries - existing_entries;
+            if updated_count == 0 {
                 output.push(format_sstr!("No new entries for {key}, skipping"));
                 continue;
-            } else {
-                let updated_count = new_entries - existing_entries;
-                output.push(format_sstr!("New entries for {key}: {updated_count}"));
             }
+            output.push(format_sstr!("New entries for {key}: {updated_count}"));
             updated_df
         } else {
             new_df

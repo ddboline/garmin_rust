@@ -13,6 +13,7 @@ use stack_string::format_sstr;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::{task::spawn, time::interval};
 
+use fitbit_lib::fitbit_client::FitbitClient;
 use garmin_cli::{garmin_cli::GarminCli, garmin_cli_opts::GarminCliOpts};
 use garmin_lib::common::{
     garmin_config::GarminConfig, garmin_correction_lap::GarminCorrectionMap, pgpool::PgPool,
@@ -72,6 +73,16 @@ pub async fn start_app() -> Result<(), Error> {
                     info!("processed {filenames:?} and {input_files:?}");
                     for line in cli.sync_everything(false).await.unwrap_or(Vec::new()) {
                         info!("{line}");
+                    }
+                    if let Ok(client) = FitbitClient::with_auth(cli.config.clone()).await {
+                        if let Ok(result) = client.sync_everything(&cli.pool).await {
+                            info!(
+                                "Syncing Fitbit Heartrate {hr} Activities {ac} Duplicates {dp}",
+                                hr = result.measurements.len(),
+                                ac = result.activities.len(),
+                                dp = result.duplicates.len(),
+                            );
+                        }
                     }
                 }
             }

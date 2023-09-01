@@ -5,6 +5,7 @@
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::cast_possible_wrap)]
 #![allow(clippy::similar_names)]
+#![allow(clippy::unsafe_derive_deserialize)]
 
 pub mod common;
 pub mod parsers;

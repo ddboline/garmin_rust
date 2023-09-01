@@ -9,7 +9,7 @@ use anyhow::Error;
 use clap::Parser;
 use std::path::PathBuf;
 
-use fitbit_lib::fitbit_heartrate::import_garmin_json_file;
+use fitbit_lib::fitbit_heartrate::{import_garmin_json_file, import_garmin_heartrate_file};
 use garmin_lib::common::garmin_connect_activity::import_garmin_connect_activity_json_file;
 
 #[derive(Parser, Debug, Clone)]
@@ -28,6 +28,7 @@ enum JsonImportOpts {
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    env_logger::init();
     let opts = JsonImportOpts::parse();
 
     match opts {
@@ -36,7 +37,8 @@ async fn main() -> Result<(), Error> {
         }
         JsonImportOpts::Heartrate { files } => {
             for file in files {
-                import_garmin_json_file(&file)?;
+                // import_garmin_json_file(&file)?;
+                import_garmin_heartrate_file(&file)?;
             }
         }
     }

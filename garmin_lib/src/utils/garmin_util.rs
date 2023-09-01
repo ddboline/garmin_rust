@@ -192,21 +192,12 @@ where
     }
 }
 
-/// # Errors
-/// Return error if unzip fails
-pub fn extract_zip_from_garmin_connect(
-    filename: &Path,
-    ziptmpdir: &Path,
-) -> Result<PathBuf, Error> {
+fn extract_zip(filename: &Path, ziptmpdir: &Path) -> Result<(), Error> {
     if !Path::new("/usr/bin/unzip").exists() {
         return Err(format_err!(
             "md5sum not installed (or not present at /usr/bin/unzip"
         ));
     }
-    let new_filename = filename
-        .file_stem()
-        .ok_or_else(|| format_err!("Bad filename {}", filename.to_string_lossy()))?;
-    let new_filename = format_sstr!("{}_ACTIVITY.fit", new_filename.to_string_lossy());
     let command = format_sstr!(
         "unzip {} -d {}",
         filename.to_string_lossy(),
@@ -222,9 +213,49 @@ pub fn extract_zip_from_garmin_connect(
         }
         return Err(format_err!("Failed with exit status {exit_status:?}"));
     }
+    Ok(())
+}
+
+/// # Errors
+/// Return error if unzip fails
+pub fn extract_zip_from_garmin_connect(
+    filename: &Path,
+    ziptmpdir: &Path,
+) -> Result<PathBuf, Error> {
+    extract_zip(filename, ziptmpdir)?;
+    let new_filename = filename
+        .file_stem()
+        .ok_or_else(|| format_err!("Bad filename {}", filename.to_string_lossy()))?;
+    let new_filename = format_sstr!("{}_ACTIVITY.fit", new_filename.to_string_lossy());
     let new_filename = ziptmpdir.join(new_filename);
+    if !new_filename.exists() {
+        return Err(format_err!("Activity file not found"));
+    }
     remove_file(filename)?;
     Ok(new_filename)
+}
+
+/// # Errors
+/// Return error if unzip fails
+pub fn extract_zip_from_garmin_connect_multiple(
+    filename: &Path,
+    ziptmpdir: &Path,
+) -> Result<Vec<PathBuf>, Error> {
+    extract_zip(filename, ziptmpdir)?;
+    if !Path::new("/usr/bin/unzip").exists() {
+        return Err(format_err!(
+            "unzip not installed (or not present at /usr/bin/unzip"
+        ));
+    }
+    let mut files = Vec::new();
+    for entry in ziptmpdir.read_dir()? {
+        let entry = entry?;
+        files.push(entry.path());
+    }
+    if !files.is_empty() {
+        remove_file(filename)?;
+    }
+    Ok(files)
 }
 
 /// # Errors

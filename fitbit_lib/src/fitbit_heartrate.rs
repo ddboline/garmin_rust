@@ -12,7 +12,7 @@ use serde::{self, Deserialize, Deserializer, Serialize};
 use smallvec::SmallVec;
 use stack_string::{format_sstr, StackString};
 use std::{
-    collections::BTreeSet,
+    collections::{BTreeSet, BTreeMap},
     convert::TryInto,
     fs::{rename, File},
     path::{Path, PathBuf},
@@ -29,7 +29,7 @@ use garmin_lib::{
         garmin_config::GarminConfig, garmin_file::GarminFile,
         garmin_summary::get_list_of_files_from_db, pgpool::PgPool,
     },
-    utils::{date_time_wrapper::DateTimeWrapper, garmin_util::get_f64},
+    utils::date_time_wrapper::DateTimeWrapper,
 };
 
 use crate::fitbit_statistics_summary::FitbitStatisticsSummary;
@@ -383,8 +383,10 @@ pub fn process_fitbit_json_file(fname: &Path) -> Result<Vec<FitbitHeartRate>, Er
 
 /// # Errors
 /// Returns error if deserialization fails
-pub fn import_fitbit_json_files(directory: &str) -> Result<BTreeSet<Date>, Error> {
-    let config = GarminConfig::get_config(None)?;
+pub fn import_fitbit_json_files(
+    config: &GarminConfig,
+    directory: &str,
+) -> Result<BTreeSet<Date>, Error> {
     let filenames: Vec<_> = glob(&format_sstr!("{directory}/heart_rate-*.json"))?.collect();
     let result: Result<Vec<BTreeSet<Date>>, Error> = filenames
         .into_par_iter()
@@ -392,7 +394,7 @@ pub fn import_fitbit_json_files(directory: &str) -> Result<BTreeSet<Date>, Error
             let fname = fname?;
             let heartrates = process_fitbit_json_file(&fname)?;
 
-            FitbitHeartRate::merge_slice_to_avro(&config, &heartrates)
+            FitbitHeartRate::merge_slice_to_avro(config, &heartrates)
         })
         .collect();
     result.map(|v| v.into_iter().flatten().collect())
@@ -400,8 +402,7 @@ pub fn import_fitbit_json_files(directory: &str) -> Result<BTreeSet<Date>, Error
 
 /// # Errors
 /// Returns error if deserialization fails
-pub fn import_garmin_json_file(filename: &Path) -> Result<(), Error> {
-    let config = GarminConfig::get_config(None)?;
+pub fn import_garmin_json_file(config: &GarminConfig, filename: &Path) -> Result<(), Error> {
     if !filename.exists() {
         return Err(format_err!("file {filename:?} does not exist"));
     }
@@ -409,45 +410,60 @@ pub fn import_garmin_json_file(filename: &Path) -> Result<(), Error> {
 
     let heartrates = FitbitHeartRate::from_garmin_connect_hr(&js);
 
-    FitbitHeartRate::merge_slice_to_avro(&config, &heartrates)?;
+    FitbitHeartRate::merge_slice_to_avro(config, &heartrates)?;
 
     Ok(())
 }
 
 /// # Errors
 /// Returns error if deserialization fails
-pub fn import_garmin_heartrate_file(filename: &Path) -> Result<(), Error> {
-    let config = GarminConfig::get_config(None)?;
-
-    let mut timestamp = None;
+pub fn import_garmin_heartrate_file(
+    config: &GarminConfig,
+    filename: &Path,
+) -> Result<BTreeSet<Date>, Error> {
+    let mut timestamps = Vec::new();
     let mut heartrates = Vec::new();
     if !filename.exists() {
         return Err(format_err!("file {filename:?} does not exist"));
     }
     let mut f = File::open(filename)?;
     let records = fitparser::from_reader(&mut f).map_err(|e| format_err!("{e:?}"))?;
-    for record in records {
+    for record in &records {
         match record.kind() {
-            MesgNum::StressLevel => {
+            MesgNum::Monitoring => {
+                let mut timestamp: Option<_> = None;
+                let mut timestamp_16: Option<_> = None;
+                let mut heartrate: Option<u8> = None;
                 for field in record.fields() {
-                    if field.name() == "stress_level_time" {
-                        if let Value::Timestamp(t) = field.value() {
-                            info!("timestamp {t}");
-                            timestamp.replace(t.to_timezone(UTC));
+                    match field.name() {
+                        "timestamp" => {
+                            info!("timestamp {:?}", field.value());
+                            if let Value::Timestamp(t) = field.value() {
+                                timestamp.replace(*t);
+                            }
+                        }
+                        "timestamp_16" => {
+                            info!("timestamp_16 {:?}", field.value());
+                            if let Value::UInt16(v) = field.value() {
+                                timestamp_16.replace(*v);
+                            }
+                        }
+                        "heart_rate" => {
+                            info!("heartrate {:?}", field.value());
+                            if let Value::UInt8(v) = field.value() {
+                                heartrate.replace(*v);
+                            }
+                        }
+                        _ => {
+                            info!("fieldname {} {:?}", field.name(), field.value());
                         }
                     }
-                }
-            }
-            MesgNum::Monitoring => {
-                for field in record.fields() {
-                    if field.name() == "heart_rate" {
-                        if let Some(datetime) = timestamp {
-                            if let Some(heartrate) = get_f64(field.value()) {
-                                let value = heartrate as i32;
-                                info!("heartrate {value}");
-                                let datetime = datetime.into();
-                                heartrates.push(FitbitHeartRate { datetime, value });
-                            }
+                    if let Some(t) = timestamp {
+                        timestamps.push(t);
+                    }
+                    if let Some(t16) = timestamp_16 {
+                        if let Some(h) = heartrate {
+                            heartrates.push((t16, h));
                         }
                     }
                 }
@@ -456,9 +472,38 @@ pub fn import_garmin_heartrate_file(filename: &Path) -> Result<(), Error> {
         }
     }
 
-    FitbitHeartRate::merge_slice_to_avro(&config, &heartrates)?;
+    if timestamps.is_empty() || heartrates.is_empty() {
+        return Ok(BTreeSet::new());
+    }
 
-    Ok(())
+    let min_timestamp = *timestamps.first().expect("No timestamps");
+    let max_timestamp = *timestamps.iter().last().expect("No timestamps");
+    let min_timestamp16 = i64::from(heartrates.first().expect("No heartrates").0);
+    let max_timestamp16 = i64::from(heartrates.iter().last().expect("No heartrates").0);
+
+    info!(
+        "timestamps {} {} heartrates {} {}",
+        min_timestamp, max_timestamp, min_timestamp16, max_timestamp16
+    );
+
+    let heartrates: BTreeMap<i64, FitbitHeartRate> = heartrates
+        .iter()
+        .map(|(t16, h)| {
+            let t16 = i64::from(*t16);
+            let mut diff = t16 - min_timestamp16;
+            if diff < 0 {
+                diff += i64::from(u16::MAX);
+            }
+            let datetime: DateTimeWrapper = (min_timestamp + Duration::seconds(diff)).into();
+            let value = i32::from(*h);
+            let key = datetime.unix_timestamp();
+            (key, FitbitHeartRate { datetime, value })
+        })
+        .collect();
+
+    let heartrates: Vec<FitbitHeartRate> = heartrates.into_values().collect();
+
+    FitbitHeartRate::merge_slice_to_avro(config, &heartrates)
 }
 
 #[derive(Serialize, Deserialize, Debug)]

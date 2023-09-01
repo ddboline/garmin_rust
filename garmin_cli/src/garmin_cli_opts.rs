@@ -6,6 +6,7 @@ use log::info;
 use refinery::embed_migrations;
 use stack_string::{format_sstr, StackString};
 use std::{collections::BTreeSet, path::PathBuf};
+use tempdir::TempDir;
 use time::{macros::format_description, Date, Duration, OffsetDateTime};
 use time_tz::OffsetDateTimeExt;
 use tokio::{
@@ -20,7 +21,7 @@ use fitbit_lib::{
         archive_fitbit_heartrates, get_heartrate_values, get_number_of_heartrate_values,
     },
     fitbit_client::FitbitClient,
-    fitbit_heartrate::FitbitHeartRate,
+    fitbit_heartrate::{import_garmin_heartrate_file, FitbitHeartRate},
     fitbit_statistics_summary::FitbitStatisticsSummary,
     scale_measurement::ScaleMeasurement,
 };
@@ -31,7 +32,9 @@ use garmin_lib::{
         garmin_connect_activity::GarminConnectActivity, pgpool::PgPool,
         strava_activity::StravaActivity,
     },
-    utils::date_time_wrapper::DateTimeWrapper,
+    utils::{
+        date_time_wrapper::DateTimeWrapper, garmin_util::extract_zip_from_garmin_connect_multiple,
+    },
 };
 use race_result_analysis::{race_results::RaceResults, race_type::RaceType};
 use std::str::FromStr;
@@ -574,6 +577,32 @@ impl GarminCliOpts {
                     dates.insert(d);
                 }
                 remove_file(&heartrate_file).await?;
+            }
+            let connect_wellness_file = data_directory.join(format_sstr!("{date}"));
+            let connect_wellness_file = if connect_wellness_file.exists() {
+                connect_wellness_file
+            } else {
+                cli.config.download_directory.join(format_sstr!("{date}"))
+            };
+            if connect_wellness_file.exists() {
+                let tempdir = TempDir::new("garmin_zip")?;
+                let ziptmpdir = tempdir.path().to_path_buf();
+                let wellness_files = spawn_blocking(move || {
+                    extract_zip_from_garmin_connect_multiple(&connect_wellness_file, &ziptmpdir)
+                })
+                .await??;
+                for wellness_file in wellness_files {
+                    let config = cli.config.clone();
+                    if let Ok(new_dates) = spawn_blocking(move || {
+                        import_garmin_heartrate_file(&config, &wellness_file)
+                    })
+                    .await?
+                    {
+                        for d in new_dates {
+                            dates.insert(d);
+                        }
+                    }
+                }
             }
             date += Duration::days(1);
         }

@@ -480,10 +480,10 @@ impl GarminCliOpts {
                 end_date,
             }) => {
                 let mut buf = cli.proc_everything().await?;
-                let (filenames, input_files) =
+                let (filenames, input_files, dates) =
                     Self::sync_with_garmin_connect(cli, data_directory, *start_date, *end_date)
                         .await?;
-                if !filenames.is_empty() || !input_files.is_empty() {
+                if !filenames.is_empty() || !input_files.is_empty() || !dates.is_empty() {
                     buf.extend_from_slice(&cli.sync_everything(false).await?);
                     if let Ok(client) = FitbitClient::with_auth(cli.config.clone()).await {
                         let result = client.sync_everything(&cli.pool).await?;
@@ -510,7 +510,7 @@ impl GarminCliOpts {
         data_directory: &Option<PathBuf>,
         start_date: Option<Date>,
         end_date: Option<Date>,
-    ) -> Result<(Vec<PathBuf>, Vec<PathBuf>), Error> {
+    ) -> Result<(Vec<PathBuf>, Vec<PathBuf>, Vec<Date>), Error> {
         let data_directory = data_directory
             .as_ref()
             .unwrap_or(&cli.config.garmin_connect_import_directory);
@@ -569,13 +569,11 @@ impl GarminCliOpts {
                 info!("got heartrate {date}");
                 let hr_values = FitbitHeartRate::from_garmin_connect_hr(&hr_values);
                 let config = cli.config.clone();
-                for d in spawn_blocking(move || {
+                let mut new_dates = spawn_blocking(move || {
                     FitbitHeartRate::merge_slice_to_avro(&config, &hr_values)
                 })
-                .await??
-                {
-                    dates.insert(d);
-                }
+                .await??;
+                dates.append(&mut new_dates);
                 remove_file(&heartrate_file).await?;
             }
             let connect_wellness_file = data_directory.join(format_sstr!("{date}"));
@@ -593,29 +591,27 @@ impl GarminCliOpts {
                 .await??;
                 for wellness_file in wellness_files {
                     let config = cli.config.clone();
-                    if let Ok(new_dates) = spawn_blocking(move || {
+                    if let Ok(mut new_dates) = spawn_blocking(move || {
                         import_garmin_heartrate_file(&config, &wellness_file)
                     })
                     .await?
                     {
-                        for d in new_dates {
-                            dates.insert(d);
-                        }
+                        dates.append(&mut new_dates);
                     }
                 }
             }
             date += Duration::days(1);
         }
-        for date in dates {
+        for date in &dates {
             if let Some(stat) =
-                FitbitHeartRate::calculate_summary_statistics(&cli.config, &cli.pool, date).await?
+                FitbitHeartRate::calculate_summary_statistics(&cli.config, &cli.pool, *date).await?
             {
                 info!("update stats {}", stat.date);
             }
         }
         if !filenames.is_empty() {
-            let dates = cli.process_filenames(&filenames).await?;
-            info!("number of files {}", dates.len());
+            let datetimes = cli.process_filenames(&filenames).await?;
+            info!("number of files {}", datetimes.len());
         }
         if !filenames.is_empty() || !input_files.is_empty() {
             for line in cli.proc_everything().await? {
@@ -629,7 +625,8 @@ impl GarminCliOpts {
         for f in &input_files {
             write(f, &[]).await?;
         }
-        Ok((filenames, input_files))
+        let dates: Vec<_> = dates.into_iter().collect();
+        Ok((filenames, input_files, dates))
     }
 
     /// # Errors

@@ -66,10 +66,10 @@ pub async fn start_app() -> Result<(), Error> {
         let mut i = interval(std::time::Duration::from_secs(60));
         loop {
             fill_from_db(&pool).await.unwrap_or(());
-            if let Ok((filenames, input_files)) =
+            if let Ok((filenames, input_files, dates)) =
                 GarminCliOpts::sync_with_garmin_connect(&cli, &None, None, None).await
             {
-                if !filenames.is_empty() || !input_files.is_empty() {
+                if !filenames.is_empty() || !input_files.is_empty() || !dates.is_empty() {
                     info!("processed {filenames:?} and {input_files:?}");
                     for line in cli.sync_everything(false).await.unwrap_or(Vec::new()) {
                         info!("{line}");

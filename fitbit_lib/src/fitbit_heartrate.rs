@@ -12,7 +12,7 @@ use serde::{self, Deserialize, Deserializer, Serialize};
 use smallvec::SmallVec;
 use stack_string::{format_sstr, StackString};
 use std::{
-    collections::{BTreeSet, BTreeMap},
+    collections::{BTreeMap, BTreeSet},
     convert::TryInto,
     fs::{rename, File},
     path::{Path, PathBuf},

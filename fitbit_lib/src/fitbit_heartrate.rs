@@ -336,6 +336,7 @@ impl FitbitHeartRate {
             let mut merged_values: Vec<_> = Self::read_avro_by_date(config, date)?
                 .into_iter()
                 .chain(new_values)
+                .filter(|h| h.value > 0)
                 .collect();
             merged_values.par_sort_by_key(|entry| entry.datetime.unix_timestamp());
             merged_values.dedup();
@@ -451,7 +452,9 @@ pub fn import_garmin_heartrate_file(
                         "heart_rate" => {
                             info!("heartrate {:?}", field.value());
                             if let Value::UInt8(v) = field.value() {
-                                heartrate.replace(*v);
+                                if *v > 0 {
+                                    heartrate.replace(*v);
+                                }
                             }
                         }
                         _ => {

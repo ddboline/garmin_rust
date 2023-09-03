@@ -30,8 +30,8 @@ use crate::fitbit_heartrate::FitbitHeartRate;
 
 #[derive(Default)]
 struct FitbitColumns {
-    timestamp: Vec<i64>,
-    value: Vec<i32>,
+    timestamps: Vec<i64>,
+    values: Vec<i32>,
 }
 
 fn get_fitbit_avro_file_map(
@@ -161,7 +161,9 @@ fn write_fitbit_heartrate_parquet(
                     continue;
                 }
                 let timestamp = value.datetime.unix_timestamp();
-                heartrates.entry(timestamp).or_default().push(value.value);
+                if value.value > 0 {
+                    heartrates.entry(timestamp).or_default().push(value.value);
+                }
             }
         }
         if let Some(garmin_files) = garmin_input_files.get(key) {
@@ -181,8 +183,8 @@ fn write_fitbit_heartrate_parquet(
             }
         }
         let columns = FitbitColumns {
-            timestamp: heartrates.keys().copied().collect(),
-            value: heartrates
+            timestamps: heartrates.keys().copied().collect(),
+            values: heartrates
                 .values()
                 .map(|h| {
                     if h.len() == 1 {
@@ -195,8 +197,8 @@ fn write_fitbit_heartrate_parquet(
                 .collect(),
         };
         let new_df = dataframe!(
-            "timestamp" => &columns.timestamp,
-            "value" => &columns.value,
+            "timestamp" => &columns.timestamps,
+            "value" => &columns.values,
         )?;
         let filename = format_sstr!("{key}.parquet");
         let file = config.fitbit_archivedir.join(&filename);

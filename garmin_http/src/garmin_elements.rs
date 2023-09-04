@@ -866,35 +866,43 @@ fn index_element(
             }
         };
         script_box.replace(rsx! {
-            table {
-                "border": "1",
-                thead {
-                    th {"Date"},
-                    th {
-                        a {
-                            href: "https://www.fitbit.com/weight",
-                            target: "_blank",
-                            "Weight",
-                        }
-                    }
-                    th {"Fat %"},
-                    th {"Water %"},
-                    th {"Muscle %"},
-                    th {"Bone %"},
-                    th {"BMI kg/m^2"},
-                },
-                tbody {
-                    entries,
-                },
-            },
-            br {
-                prev_button,
-                next_button,
-            },
+            button {
+                "type": "submit",
+                "onclick": "manualScaleMeasurement();",
+                "Manual Scale Measurement Input",
+            }
             div {
-                date_input
-            },
-            graphs,
+                id: "scale_measurement_box",
+                table {
+                    "border": "1",
+                    thead {
+                        th {"Date"},
+                        th {
+                            a {
+                                href: "https://www.fitbit.com/weight",
+                                target: "_blank",
+                                "Weight",
+                            }
+                        }
+                        th {"Fat %"},
+                        th {"Water %"},
+                        th {"Muscle %"},
+                        th {"Bone %"},
+                        th {"BMI kg/m^2"},
+                    },
+                    tbody {
+                        entries,
+                    },
+                },
+                br {
+                    prev_button,
+                    next_button,
+                },
+                div {
+                    date_input
+                },
+                graphs,
+            }
         });
     }
     let report_str =
@@ -2119,6 +2127,83 @@ fn fitbit_element(cx: Scope, profile: FitbitUserProfile) -> Element {
                 tr {td {"Weight"}, td {"{weight}"}},
                 tr {td {"Weight Unit"}, td {"{weight_unit}"}},
             },
+        }
+    })
+}
+
+pub fn scale_measurement_manual_input_body() -> String {
+    let mut app = VirtualDom::new(scale_measurement_manual_input_element);
+    drop(app.rebuild());
+    dioxus_ssr::render(&app)
+}
+
+fn scale_measurement_manual_input_element(cx: Scope) -> Element {
+    cx.render(rsx! {
+        form {
+            table {
+                tbody {
+                    tr {
+                        td {"Weight (lbs)"}
+                        td {
+                            input {
+                                "type": "text",
+                                name: "weight_in_lbs",
+                                id: "weight_in_lbs",
+                            }
+                        }
+                    }
+                    tr {
+                        td {"Body Fat %)"}
+                        td {
+                            input {
+                                "type": "text",
+                                name: "body_fat_percent",
+                                id: "body_fat_percent",
+                            }
+                        }
+                    }
+                    tr {
+                        td {"Muscle Mass (lbs)"}
+                        td {
+                            input {
+                                "type": "text",
+                                name: "muscle_mass_lbs",
+                                id: "muscle_mass_lbs",
+                            }
+                        }
+                    }
+                    tr {
+                        td {"Body Water %"}
+                        td {
+                            input {
+                                "type": "text",
+                                name: "body_water_percent",
+                                id: "body_water_percent",
+                            }
+                        }
+                    }
+                    tr {
+                        td {"Bone Mass (lbs)"}
+                        td {
+                            input {
+                                "type": "text",
+                                name: "bone_mass_lbs",
+                                id: "bone_mass_lbs",
+                            }
+                        }
+                    }
+                    tr {
+                        td {
+                            input {
+                                "type": "button",
+                                name: "scale_measurement_manual_input",
+                                value: "Submit",
+                                "onclick": "scaleMeasurementManualInput();",
+                            }
+                        }
+                    }
+                }
+            }
         }
     })
 }

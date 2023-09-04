@@ -84,8 +84,8 @@ impl ScaleMeasurement {
         }
         let id = Uuid::new_v4();
         let datetime = OffsetDateTime::now_utc().into();
-        let muscle_pct = muscle_mass_lbs / weight_in_lbs;
-        let bone_pct = bone_mass_lbs / weight_in_lbs;
+        let muscle_pct = (muscle_mass_lbs / weight_in_lbs) * 100.0;
+        let bone_pct = (bone_mass_lbs / weight_in_lbs) * 100.0;
         Ok(Self {
             id,
             datetime,

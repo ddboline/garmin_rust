@@ -33,10 +33,10 @@ use crate::{
         heartrate_statistics_summary_db, heartrate_statistics_summary_db_update, initialize_map_js,
         line_plot_js, race_result_flag, race_result_import, race_result_plot,
         race_result_plot_demo, race_results_db, race_results_db_update, scale_measurement,
-        scale_measurement_update, scatter_plot_js, scatter_plot_with_lines_js, strava_activities,
-        strava_activities_db, strava_activities_db_update, strava_athlete, strava_auth,
-        strava_callback, strava_create, strava_refresh, strava_sync, strava_update, strava_upload,
-        time_series_js, user,
+        scale_measurement_manual, scale_measurement_manual_input, scale_measurement_update,
+        scatter_plot_js, scatter_plot_with_lines_js, strava_activities, strava_activities_db,
+        strava_activities_db_update, strava_athlete, strava_auth, strava_callback, strava_create,
+        strava_refresh, strava_sync, strava_update, strava_upload, time_series_js, user,
     },
     logged_user::{fill_from_db, get_secrets, TRIGGER_DB_UPDATE},
 };
@@ -184,6 +184,8 @@ fn get_garmin_path(app: &AppState) -> BoxedFilter<(impl Reply,)> {
         .boxed();
     let scale_measurements_get = scale_measurement(app.clone());
     let scale_measurements_post = scale_measurement_update(app.clone());
+    let scale_measurement_manual_path = scale_measurement_manual(app.clone()).boxed();
+    let scale_measurement_manual_input_path = scale_measurement_manual_input().boxed();
     let scale_measurements_path = scale_measurements_get.or(scale_measurements_post).boxed();
     let strava_auth_path = strava_auth(app.clone()).boxed();
     let strava_refresh_path = strava_refresh(app.clone()).boxed();
@@ -235,6 +237,8 @@ fn get_garmin_path(app: &AppState) -> BoxedFilter<(impl Reply,)> {
         .or(garmin_sync_path)
         .or(strava_sync_path)
         .or(fitbit_path)
+        .or(scale_measurement_manual_path)
+        .or(scale_measurement_manual_input_path)
         .or(scale_measurements_path)
         .or(strava_path)
         .or(user_path)

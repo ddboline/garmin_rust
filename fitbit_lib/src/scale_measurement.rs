@@ -55,6 +55,50 @@ impl ScaleMeasurement {
 
     /// # Errors
     /// Returns error parsing msg fails
+    pub fn from_fit_plus(
+        weight_in_lbs: f64,
+        body_fat_percent: f64,
+        muscle_mass_lbs: f64,
+        body_water_percent: f64,
+        bone_mass_lbs: f64,
+    ) -> Result<Self, Error> {
+        if [
+            weight_in_lbs,
+            body_fat_percent,
+            muscle_mass_lbs,
+            body_water_percent,
+            bone_mass_lbs,
+        ]
+        .iter()
+        .any(|x| { *x < 0.0 } || { !x.is_finite() })
+        {
+            return Err(format_err!("Values cannot be negative"));
+        }
+        if weight_in_lbs > 1e3 {
+            return Err(format_err!("Invalid Value"));
+        }
+        if muscle_mass_lbs + bone_mass_lbs > weight_in_lbs {
+            return Err(format_err!(
+                "Invalid inputs, muscle and bone masses must be less than total weight"
+            ));
+        }
+        let id = Uuid::new_v4();
+        let datetime = OffsetDateTime::now_utc().into();
+        let muscle_pct = muscle_mass_lbs / weight_in_lbs;
+        let bone_pct = bone_mass_lbs / weight_in_lbs;
+        Ok(Self {
+            id,
+            datetime,
+            mass: weight_in_lbs,
+            fat_pct: body_fat_percent,
+            water_pct: body_water_percent,
+            muscle_pct,
+            bone_pct,
+        })
+    }
+
+    /// # Errors
+    /// Returns error parsing msg fails
     pub fn from_telegram_text(msg: &str) -> Result<Self, Error> {
         let datetime = DateTimeWrapper::now();
         let sep = if msg.contains(',') {

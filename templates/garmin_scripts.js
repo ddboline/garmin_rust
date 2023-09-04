@@ -319,3 +319,41 @@ function raceResultImport(filename) {
     xmlhttp.send(null);
     document.getElementById("garminconnectoutput").innerHTML = "syncing";
 }
+function scaleMeasurementManualInput() {
+    let url = "/garmin/scale_measurements/manual";
+    let xmlhttp = new XMLHttpRequest();
+    xmlhttp.open("POST", url, true);
+    xmlhttp.onload = function() {
+        document.getElementById("garminconnectoutput").innerHTML = "done";
+        document.getElementById("scale_measurement_box").innerHTML = xmlhttp.responseText;
+    }
+    let weight_in_lbs = parseFloat(document.getElementById('weight_in_lbs').value);
+    let body_fat_percent = parseFloat(document.getElementById('body_fat_percent').value);
+    let muscle_mass_lbs = parseFloat(document.getElementById('muscle_mass_lbs').value);
+    let body_water_percent = parseFloat(document.getElementById('body_water_percent').value);
+    let bone_mass_lbs = parseFloat(document.getElementById('bone_mass_lbs').value);
+
+    let data = JSON.stringify(
+        {
+            "weight_in_lbs": weight_in_lbs,
+            "body_fat_percent": body_fat_percent,
+            "muscle_mass_lbs": muscle_mass_lbs,
+            "body_water_percent": body_water_percent,
+            "bone_mass_lbs": bone_mass_lbs
+        }
+    );
+    xmlhttp.setRequestHeader("Content-Type", "application/json");
+    xmlhttp.send(data);
+    document.getElementById("garminconnectoutput").innerHTML = "processing";
+}
+function manualScaleMeasurement() {
+    let url = "/garmin/scale_measurements/manual/input";
+    let xmlhttp = new XMLHttpRequest();
+    xmlhttp.open("GET", url, true);
+    xmlhttp.onload = function() {
+        document.getElementById("garminconnectoutput").innerHTML = "done";
+        document.getElementById("scale_measurement_box").innerHTML = xmlhttp.responseText;
+    }
+    xmlhttp.send(null);
+    document.getElementById("garminconnectoutput").innerHTML = "processing";
+}

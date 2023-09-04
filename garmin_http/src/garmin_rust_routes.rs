@@ -47,7 +47,8 @@ use strava_lib::strava_client::StravaClient;
 use crate::{
     errors::ServiceError as Error,
     garmin_elements::{
-        create_fitbit_table, fitbit_body, index_new_body, strava_body, table_body, IndexConfig,
+        create_fitbit_table, fitbit_body, index_new_body, scale_measurement_manual_input_body,
+        strava_body, table_body, IndexConfig,
     },
     garmin_requests::{
         AddGarminCorrectionRequest, FitbitActivitiesRequest, FitbitHeartrateCacheRequest,
@@ -1146,6 +1147,56 @@ pub async fn scale_measurement_update(
 ) -> WarpResult<ScaleMeasurementsUpdateResponse> {
     measurements.into_inner().run_update(&state.db).await?;
     Ok(HtmlBase::new("Finished").into())
+}
+
+#[derive(Debug, Serialize, Deserialize, Schema)]
+struct ScaleMeasurementManualRequest {
+    weight_in_lbs: f64,
+    body_fat_percent: f64,
+    muscle_mass_lbs: f64,
+    body_water_percent: f64,
+    bone_mass_lbs: f64,
+}
+
+#[derive(RwebResponse)]
+#[response(
+    description = "Scale Measurement Manual Input Post",
+    status = "CREATED"
+)]
+struct ScaleMeasurementManualResponse(JsonBase<ScaleMeasurementWrapper, Error>);
+
+#[post("/garmin/scale_measurements/manual")]
+pub async fn scale_measurement_manual(
+    payload: Json<ScaleMeasurementManualRequest>,
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
+    #[data] state: AppState,
+) -> WarpResult<ScaleMeasurementManualResponse> {
+    let payload = payload.into_inner();
+    let mut measurement = ScaleMeasurement::from_fit_plus(
+        payload.weight_in_lbs,
+        payload.body_fat_percent,
+        payload.muscle_mass_lbs,
+        payload.body_water_percent,
+        payload.bone_mass_lbs,
+    )
+    .map_err(Into::<Error>::into)?;
+    measurement
+        .insert_into_db(&state.db)
+        .await
+        .map_err(Into::<Error>::into)?;
+    Ok(JsonBase::new(measurement.into()).into())
+}
+
+#[derive(RwebResponse)]
+#[response(description = "Scale Measurement Manual Input")]
+struct ScaleMeasurementManualInputResponse(HtmlBase<StackString, Error>);
+
+#[get("/garmin/scale_measurements/manual/input")]
+pub async fn scale_measurement_manual_input(
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
+) -> WarpResult<ScaleMeasurementManualInputResponse> {
+    let body = scale_measurement_manual_input_body();
+    Ok(HtmlBase::new(body.into()).into())
 }
 
 #[derive(Serialize)]

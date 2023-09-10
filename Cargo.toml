@@ -17,31 +17,14 @@ fitbit_lib = {path="fitbit_lib"}
 garmin_cli = {path="garmin_cli"}
 garmin_lib = { path = "garmin_lib" }
 garmin_http = { path = "garmin_http" }
-strava_lib = { path = "strava_lib" }
 fitbit_bot = {path="fitbit_bot"}
-garmin_connect_lib = {path="garmin_connect_lib"}
-race_result_analysis = {path="race_result_analysis"}
-garmin_reports = {path="garmin_reports"}
 log = "0.4"
 env_logger = "0.10"
-crossbeam-utils = "0.8"
 clap = {version="4.0", features=["derive"]}
 anyhow = "1.0"
-thiserror = "1.0"
 tokio = {version="1.26", features=["full"]}
-dirs = "5.0"
-time = {version="0.3", features=["serde-human-readable", "macros", "formatting", "parsing"]}
-url = "2.3"
-maplit = "1.0"
-serde = {version="1.0", features=["derive"]}
-reqwest = {version="0.11", features=["cookies", "json", "rustls-tls", "stream"], default_features=false}
 stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", features=["postgres_types"], tag="0.9.1" }
 tempdir = "0.3"
-
-[dev-dependencies]
-approx = "0.5"
-stdout-channel = "0.6"
-uuid = "1.0"
 
 [workspace]
 members = [

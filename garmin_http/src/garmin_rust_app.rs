@@ -124,8 +124,9 @@ fn get_garmin_path(app: &AppState) -> BoxedFilter<(impl Reply,)> {
     let garmin_demo_path = garmin_demo(app.clone()).boxed();
     let garmin_upload_path = garmin_upload(app.clone()).boxed();
     let add_garmin_correction_path = add_garmin_correction(app.clone()).boxed();
-    let garmin_connect_activities_db_get = garmin_connect_activities_db(app.clone());
-    let garmin_connect_activities_db_post = garmin_connect_activities_db_update(app.clone());
+    let garmin_connect_activities_db_get = garmin_connect_activities_db(app.clone()).boxed();
+    let garmin_connect_activities_db_post =
+        garmin_connect_activities_db_update(app.clone()).boxed();
     let garmin_connect_activities_db_path = garmin_connect_activities_db_get
         .or(garmin_connect_activities_db_post)
         .boxed();
@@ -135,8 +136,8 @@ fn get_garmin_path(app: &AppState) -> BoxedFilter<(impl Reply,)> {
     let fitbit_refresh_path = fitbit_refresh(app.clone()).boxed();
     let fitbit_callback_path = fitbit_callback(app.clone()).boxed();
     let fitbit_heartrate_api_path = fitbit_heartrate_api(app.clone()).boxed();
-    let heartrate_cache_get = fitbit_heartrate_cache(app.clone());
-    let heartrate_cache_post = fitbit_heartrate_cache_update(app.clone());
+    let heartrate_cache_get = fitbit_heartrate_cache(app.clone()).boxed();
+    let heartrate_cache_post = fitbit_heartrate_cache_update(app.clone()).boxed();
     let heartrate_cache_path = heartrate_cache_get.or(heartrate_cache_post).boxed();
     let fitbit_sync_path = fitbit_sync(app.clone()).boxed();
     let fitbit_bodyweight_path = fitbit_bodyweight(app.clone()).boxed();
@@ -150,13 +151,14 @@ fn get_garmin_path(app: &AppState) -> BoxedFilter<(impl Reply,)> {
     let fitbit_tcx_sync_path = fitbit_tcx_sync(app.clone()).boxed();
     let fitbit_activity_types_path = fitbit_activity_types(app.clone()).boxed();
     let fitbit_activities_path = fitbit_activities(app.clone()).boxed();
-    let fitbit_activities_db_get = fitbit_activities_db(app.clone());
-    let fitbit_activities_db_post = fitbit_activities_db_update(app.clone());
+    let fitbit_activities_db_get = fitbit_activities_db(app.clone()).boxed();
+    let fitbit_activities_db_post = fitbit_activities_db_update(app.clone()).boxed();
     let fitbit_activities_db_path = fitbit_activities_db_get
         .or(fitbit_activities_db_post)
         .boxed();
-    let heartrate_statistics_summary_db_get = heartrate_statistics_summary_db(app.clone());
-    let heartrate_statistics_summary_db_post = heartrate_statistics_summary_db_update(app.clone());
+    let heartrate_statistics_summary_db_get = heartrate_statistics_summary_db(app.clone()).boxed();
+    let heartrate_statistics_summary_db_post =
+        heartrate_statistics_summary_db_update(app.clone()).boxed();
     let heartrate_statistics_summary_db_path = heartrate_statistics_summary_db_get
         .or(heartrate_statistics_summary_db_post)
         .boxed();
@@ -182,8 +184,8 @@ fn get_garmin_path(app: &AppState) -> BoxedFilter<(impl Reply,)> {
         .or(heartrate_statistics_summary_db_path)
         .or(fitbit_profile_path)
         .boxed();
-    let scale_measurements_get = scale_measurement(app.clone());
-    let scale_measurements_post = scale_measurement_update(app.clone());
+    let scale_measurements_get = scale_measurement(app.clone()).boxed();
+    let scale_measurements_post = scale_measurement_update(app.clone()).boxed();
     let scale_measurement_manual_path = scale_measurement_manual(app.clone()).boxed();
     let scale_measurement_manual_input_path = scale_measurement_manual_input().boxed();
     let scale_measurements_path = scale_measurements_get.or(scale_measurements_post).boxed();
@@ -192,8 +194,8 @@ fn get_garmin_path(app: &AppState) -> BoxedFilter<(impl Reply,)> {
     let strava_callback_path = strava_callback(app.clone()).boxed();
     let strava_activities_path = strava_activities(app.clone()).boxed();
     let strava_athlete_path = strava_athlete(app.clone()).boxed();
-    let strava_activities_db_get = strava_activities_db(app.clone());
-    let strava_activities_db_post = strava_activities_db_update(app.clone());
+    let strava_activities_db_get = strava_activities_db(app.clone()).boxed();
+    let strava_activities_db_post = strava_activities_db_update(app.clone()).boxed();
     let strava_activities_db_path = strava_activities_db_get
         .or(strava_activities_db_post)
         .boxed();
@@ -217,16 +219,16 @@ fn get_garmin_path(app: &AppState) -> BoxedFilter<(impl Reply,)> {
     let race_result_flag_path = race_result_flag(app.clone()).boxed();
     let race_result_import_path = race_result_import(app.clone()).boxed();
     let race_result_plot_demo_path = race_result_plot_demo(app.clone()).boxed();
-    let race_results_db_get = race_results_db(app.clone());
-    let race_results_db_post = race_results_db_update(app.clone());
+    let race_results_db_get = race_results_db(app.clone()).boxed();
+    let race_results_db_post = race_results_db_update(app.clone()).boxed();
     let race_results_db_path = race_results_db_get.or(race_results_db_post).boxed();
 
-    let garmin_scripts_js_path = garmin_scripts_js();
-    let garmin_scripts_demo_js_path = garmin_scripts_demo_js();
-    let line_plot_js_path = line_plot_js();
-    let scatter_plot_js_path = scatter_plot_js();
-    let scatter_plot_with_lines_js_path = scatter_plot_with_lines_js();
-    let time_series_js_path = time_series_js();
+    let garmin_scripts_js_path = garmin_scripts_js().boxed();
+    let garmin_scripts_demo_js_path = garmin_scripts_demo_js().boxed();
+    let line_plot_js_path = line_plot_js().boxed();
+    let scatter_plot_js_path = scatter_plot_js().boxed();
+    let scatter_plot_with_lines_js_path = scatter_plot_with_lines_js().boxed();
+    let time_series_js_path = time_series_js().boxed();
     let initialize_map_js_path = initialize_map_js().boxed();
 
     index_path

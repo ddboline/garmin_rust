@@ -115,3 +115,42 @@ impl GarminParseTrait for GarminParseGmn {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Error;
+    use approx::assert_abs_diff_eq;
+    use std::path::Path;
+
+    use crate::{
+        common::garmin_correction_lap::GarminCorrectionLap,
+        parsers::{garmin_parse::GarminParseTrait, garmin_parse_gmn},
+        utils::{date_time_wrapper::iso8601::convert_datetime_to_str, sport_types::SportTypes},
+    };
+
+    #[test]
+    #[ignore]
+    fn test_garmin_parse_gmn() -> Result<(), Error> {
+        let corr_map =
+            GarminCorrectionLap::corr_list_from_json("../tests/data/garmin_corrections.json")
+                .unwrap();
+        let gfile = garmin_parse_gmn::GarminParseGmn::new()
+            .with_file(&Path::new("../tests/data/test.gmn"), &corr_map)
+            .unwrap();
+        assert_eq!(&gfile.filename, "test.gmn");
+        assert_eq!(gfile.sport, SportTypes::Running);
+        assert_eq!(&gfile.filetype, "gmn");
+        assert_eq!(
+            convert_datetime_to_str(gfile.begin_datetime.into()),
+            "2011-05-07T19:43:08Z"
+        );
+        assert_eq!(gfile.total_calories, 122);
+        assert_eq!(gfile.laps.len(), 1);
+        assert_eq!(gfile.points.len(), 44);
+        assert_abs_diff_eq!(gfile.total_distance, 1696.85999);
+        assert_abs_diff_eq!(gfile.total_duration, 280.38);
+        assert_abs_diff_eq!(gfile.total_hr_dur, 0.0);
+        assert_abs_diff_eq!(gfile.total_hr_dis, 280.38);
+        Ok(())
+    }
+}

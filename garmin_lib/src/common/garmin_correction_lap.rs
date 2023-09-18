@@ -165,7 +165,9 @@ impl GarminCorrectionLap {
         Self::corr_map_from_buffer(&buffer)
     }
 
-    pub fn add_mislabeled_times_to_corr_list(corr_list_map: &mut GarminCorrectionMap) {
+    /// # Errors
+    /// Returns error if any timestamps are invalid
+    pub fn add_mislabeled_times_to_corr_list(corr_list_map: &mut GarminCorrectionMap) -> Result<(), Error> {
         let mislabeled_times = vec![
             (
                 "biking",
@@ -217,9 +219,7 @@ impl GarminCorrectionLap {
         for (sport, times_list) in mislabeled_times {
             let sport: SportTypes = sport.parse().unwrap_or(SportTypes::None);
             for time in times_list {
-                let time = convert_str_to_datetime(time)
-                    .expect("Invalid time string")
-                    .into();
+                let time = convert_str_to_datetime(time)?.into();
                 let lap_list: Vec<_> = corr_list_map
                     .keys()
                     .filter_map(|(t, n)| if *t == time { Some(*n) } else { None })
@@ -244,6 +244,7 @@ impl GarminCorrectionLap {
                 }
             }
         }
+        Ok(())
     }
 
     /// # Errors
@@ -597,7 +598,7 @@ mod tests {
                 .with_lap_number(1),
         ]);
 
-        GarminCorrectionLap::add_mislabeled_times_to_corr_list(&mut corr_map);
+        GarminCorrectionLap::add_mislabeled_times_to_corr_list(&mut corr_map)?;
 
         writeln!(stdout(), "{:?}", corr_map).unwrap();
 

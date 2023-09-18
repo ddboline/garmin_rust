@@ -55,7 +55,7 @@ pub fn generate_plot_data(opts: &PlotOpts, data: &[(f64, f64)]) -> Option<Scatte
             }
         }
 
-        for (x, y) in data.iter() {
+        for (x, y) in data {
             let xindex = ((x - xmin) / xstep) as u64;
             let yindex = ((y - ymin) / ystep) as u64;
             if let Some(x) = bins.get_mut(&(xindex, yindex)) {

@@ -186,7 +186,7 @@ impl GarminPoint {
     pub fn calculate_durations(point_list: &mut [Self]) {
         let mut time_from_begin = 0.0;
         let mut last_time = None;
-        for point in point_list.iter_mut() {
+        for point in &mut *point_list {
             let point_time: OffsetDateTime = point.time.into();
             let duration_from_last = match last_time.replace(point_time) {
                 None => 0.0,
@@ -202,7 +202,7 @@ impl GarminPoint {
 
 impl fmt::Display for GarminPoint {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let keys = vec![
+        let keys = [
             "time",
             "latitude",
             "longitude",

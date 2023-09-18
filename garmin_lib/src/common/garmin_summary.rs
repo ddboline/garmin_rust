@@ -304,7 +304,7 @@ impl GarminSummary {
 
 impl fmt::Display for GarminSummary {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let keys = vec![
+        let keys = [
             "filename",
             "begin_datetime",
             "sport",
@@ -315,7 +315,7 @@ impl fmt::Display for GarminSummary {
             "total_hr_dis",
             "md5sum",
         ];
-        let vals = vec![
+        let vals = [
             self.filename.clone(),
             convert_datetime_to_str(self.begin_datetime.into()),
             StackString::from_display(self.sport),

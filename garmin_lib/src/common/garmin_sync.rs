@@ -5,7 +5,7 @@ use rand::{
     distributions::{Alphanumeric, DistString},
     thread_rng,
 };
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rusoto_core::Region;
 use rusoto_s3::{GetObjectRequest, Object as S3Object, PutObjectRequest, S3Client};
 use s3_ext::S3Ext;
@@ -13,9 +13,11 @@ use stack_string::{format_sstr, StackString};
 use std::{
     borrow::Borrow,
     collections::{HashMap, HashSet},
+    ffi::OsStr,
     fs,
     hash::{Hash, Hasher},
     path::{Path, PathBuf},
+    sync::Arc,
     time::SystemTime,
 };
 use sts_profile_auth::get_client_sts;
@@ -126,21 +128,28 @@ impl GarminSync {
         s3_bucket: &str,
         check_md5sum: bool,
     ) -> Result<StackString, Error> {
-        let file_list: Result<Vec<_>, Error> = local_dir
-            .read_dir()?
-            .filter_map(|dir_line| {
-                dir_line.ok().map(|entry| entry.path()).map(|f| {
+        let allowed_extensions: HashSet<_> = ["fit", "gmn", "gz", "txt", "avro", "parquet"]
+            .iter()
+            .map(OsStr::new)
+            .collect();
+
+        let mut file_list = Vec::new();
+        for dir_line in local_dir.read_dir()? {
+            let entry = dir_line?;
+            let f = entry.path();
+            if let Some(ext) = f.extension() {
+                if allowed_extensions.contains(&ext) {
                     let metadata = fs::metadata(&f)?;
                     let modified = metadata
                         .modified()?
                         .duration_since(SystemTime::UNIX_EPOCH)?
                         .as_secs() as i64;
                     let size = metadata.len();
-                    Ok((f, modified, size))
-                })
-            })
-            .collect();
-        let file_list = file_list?;
+                    file_list.push((f, modified, size));
+                }
+            }
+        }
+        let file_list = Arc::new(file_list);
         let file_set: HashMap<StackString, _> = file_list
             .iter()
             .filter_map(|(f, t, s)| {
@@ -149,69 +158,31 @@ impl GarminSync {
             })
             .collect();
 
-        let key_list = self.get_list_of_keys(s3_bucket).await?;
+        let key_list = Arc::new(self.get_list_of_keys(s3_bucket).await?);
         let n_keys = key_list.len();
 
-        let key_set: HashSet<&KeyItem> = key_list.iter().collect();
+        let uploaded = spawn_blocking({
+            let file_list = file_list.clone();
+            let key_list = key_list.clone();
+            move || get_uploaded(&file_list, &key_list, check_md5sum)
+        })
+        .await?;
 
-        let uploaded: Vec<_> = file_list
-            .into_par_iter()
-            .filter_map(|(file, tmod, size)| {
-                let file_name: StackString = file.file_name()?.to_string_lossy().as_ref().into();
-                let mut do_upload = false;
-                if let Some(item) = key_set.get(file_name.as_str()) {
-                    if tmod != item.timestamp {
-                        if check_md5sum {
-                            if let Ok(md5) = get_md5sum(&file) {
-                                if item.etag != md5 {
-                                    debug!(
-                                        "upload md5 {} {} {} {} {}",
-                                        file_name, item.etag, md5, item.timestamp, tmod
-                                    );
-                                    do_upload = true;
-                                }
-                            }
-                        } else if size > item.size {
-                            debug!(
-                                "upload size {} {} {} {} {}",
-                                file_name, item.etag, size, item.timestamp, item.size
-                            );
-                            do_upload = true;
-                        }
-                    }
-                    if tmod != item.timestamp && check_md5sum {}
-                } else {
-                    do_upload = true;
-                }
-                if do_upload {
-                    debug!("upload file {}", file_name);
-                    Some((file, file_name))
-                } else {
-                    None
-                }
-            })
-            .collect();
-        let uploaded_files: Vec<_> = uploaded
-            .iter()
-            .map(|(_, filename)| filename.clone())
-            .collect();
-        for (file, filename) in uploaded {
-            self.upload_file(&file, s3_bucket, &filename).await?;
+        let uploaded_files: Vec<_> = uploaded.iter().map(|(_, filename)| filename).collect();
+        for (file, filename) in &uploaded {
+            self.upload_file(file, s3_bucket, filename).await?;
         }
         debug!("uploaded {:?}", uploaded_files);
 
         let downloaded = spawn_blocking({
             let local_dir = local_dir.to_path_buf();
             let s3_bucket: StackString = s3_bucket.into();
-            move || get_downloaded(key_list, check_md5sum, &file_set, &local_dir, &s3_bucket)
+            move || get_downloaded(&key_list, check_md5sum, &file_set, &local_dir, &s3_bucket)
         })
         .await??;
-        let downloaded_files: Vec<_> = downloaded
-            .iter()
-            .map(|(file_name, _)| file_name.clone())
-            .collect();
-        for (file_name, key) in downloaded {
-            self.download_file(&file_name, s3_bucket, &key).await?;
+        let downloaded_files: Vec<_> = downloaded.iter().map(|(file_name, _)| file_name).collect();
+        for (file_name, key) in &downloaded {
+            self.download_file(file_name, s3_bucket, key).await?;
         }
         debug!("downloaded {:?}", downloaded_files);
 
@@ -298,15 +269,60 @@ impl GarminSync {
     }
 }
 
+fn get_uploaded(
+    file_list: &[(PathBuf, i64, u64)],
+    key_list: &[KeyItem],
+    check_md5sum: bool,
+) -> Vec<(PathBuf, StackString)> {
+    let key_set: HashSet<&KeyItem> = key_list.iter().collect();
+    file_list
+        .par_iter()
+        .filter_map(|(file, tmod, size)| {
+            let file_name: StackString = file.file_name()?.to_string_lossy().as_ref().into();
+            let mut do_upload = false;
+            if let Some(item) = key_set.get(file_name.as_str()) {
+                if tmod != &item.timestamp {
+                    if check_md5sum {
+                        if let Ok(md5) = get_md5sum(file) {
+                            if item.etag != md5 {
+                                debug!(
+                                    "upload md5 {} {} {} {} {}",
+                                    file_name, item.etag, md5, item.timestamp, tmod
+                                );
+                                do_upload = true;
+                            }
+                        }
+                    } else if size > &item.size {
+                        debug!(
+                            "upload size {} {} {} {} {}",
+                            file_name, item.etag, size, item.timestamp, item.size
+                        );
+                        do_upload = true;
+                    }
+                }
+                if tmod != &item.timestamp && check_md5sum {}
+            } else {
+                do_upload = true;
+            }
+            if do_upload {
+                debug!("upload file {}", file_name);
+                Some((file.clone(), file_name))
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
 fn get_downloaded(
-    key_list: Vec<KeyItem>,
+    key_list: &[KeyItem],
     check_md5sum: bool,
     file_set: &HashMap<StackString, (i64, u64)>,
     local_dir: &Path,
     s3_bucket: &str,
 ) -> Result<Vec<(PathBuf, StackString)>, Error> {
     key_list
-        .into_par_iter()
+        .par_iter()
         .filter_map(|item| {
             let res = || {
                 let mut do_download = false;
@@ -343,7 +359,7 @@ fn get_downloaded(
                 if do_download {
                     let file_name = local_dir.join(item.key.as_str());
                     debug!("download {} {}", s3_bucket, item.key);
-                    Ok(Some((file_name, item.key)))
+                    Ok(Some((file_name, item.key.clone())))
                 } else {
                     Ok(None)
                 }

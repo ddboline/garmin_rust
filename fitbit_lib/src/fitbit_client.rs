@@ -25,7 +25,6 @@ use tokio::{
     time::sleep,
 };
 
-use garmin_connect_lib::garmin_connect_hr_data::GarminConnectHrData;
 use garmin_lib::{
     common::{
         fitbit_activity::FitbitActivity,
@@ -37,6 +36,7 @@ use garmin_lib::{
 };
 
 use crate::{
+    GarminConnectHrData,
     fitbit_heartrate::{FitbitBodyWeightFat, FitbitHeartRate},
     scale_measurement::ScaleMeasurement,
 };
@@ -711,7 +711,7 @@ impl FitbitClient {
                 id_map.insert(id_str, name);
             }
             if let Some(sub_categories) = category.sub_categories.as_ref() {
-                for sub_category in sub_categories.iter() {
+                for sub_category in sub_categories {
                     let name = format_sstr!("{}/{}", category.name, sub_category.name);
                     let id_str = StackString::from_display(sub_category.id);
                     id_map.insert(id_str, name);

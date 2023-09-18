@@ -23,7 +23,6 @@ use time::{
 use time_tz::{timezones::db::UTC, OffsetDateTimeExt, PrimitiveDateTimeExt};
 use tokio::task::spawn_blocking;
 
-use garmin_connect_lib::garmin_connect_hr_data::GarminConnectHrData;
 use garmin_lib::{
     common::{
         garmin_config::GarminConfig, garmin_file::GarminFile,
@@ -33,6 +32,7 @@ use garmin_lib::{
 };
 
 use crate::fitbit_statistics_summary::FitbitStatisticsSummary;
+use crate::GarminConnectHrData;
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, Eq)]
 pub struct FitbitHeartRate {
@@ -479,10 +479,10 @@ pub fn import_garmin_heartrate_file(
         return Ok(BTreeSet::new());
     }
 
-    let min_timestamp = *timestamps.first().expect("No timestamps");
-    let max_timestamp = *timestamps.iter().last().expect("No timestamps");
-    let min_timestamp16 = i64::from(heartrates.first().expect("No heartrates").0);
-    let max_timestamp16 = i64::from(heartrates.iter().last().expect("No heartrates").0);
+    let min_timestamp = *timestamps.first().ok_or_else(|| format_err!("No timestamps"))?;
+    let max_timestamp = *timestamps.iter().last().ok_or_else(|| format_err!("No timestamps"))?;
+    let min_timestamp16 = i64::from(heartrates.first().ok_or_else(|| format_err!("No timestamps"))?.0);
+    let max_timestamp16 = i64::from(heartrates.iter().last().ok_or_else(|| format_err!("No timestamps"))?.0);
 
     info!(
         "timestamps {} {} heartrates {} {}",

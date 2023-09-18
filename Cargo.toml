@@ -34,7 +34,6 @@ members = [
     "garmin_http",
     "strava_lib",
     "fitbit_bot",
-    "garmin_connect_lib",
     "race_result_analysis",
     "garmin_reports",
 ]

@@ -10,7 +10,6 @@ edition = "2018"
 serde = {version="1.0", features=["derive"]}
 serde_json = "1.0"
 garmin_lib = {path = "../garmin_lib"}
-garmin_connect_lib = {path = "../garmin_connect_lib"}
 time = {version="0.3", features=["serde-human-readable", "macros", "formatting", "parsing"]}
 time-tz = {version="2.0", features=["system"]}
 dotenv = "0.15"
@@ -36,7 +35,8 @@ statistical = "1.0"
 fitparser = {git="https://github.com/ddboline/fitparse-rs.git", branch="time-0.3-0.5.2"}
 smallvec = "1.6"
 crossbeam-utils = "0.8"
-polars = {version="0.32", features=["temporal", "parquet", "lazy"]}
+derive_more = "0.99"
+polars = {version="0.33", features=["temporal", "parquet", "lazy"]}
 stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", features=["postgres_types"], tag="0.9.1" }
 
 [dev-dependencies]

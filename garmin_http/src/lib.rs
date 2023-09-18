@@ -34,7 +34,6 @@ use fitbit_lib::{
     fitbit_statistics_summary::FitbitStatisticsSummary,
     scale_measurement::ScaleMeasurement,
 };
-use garmin_connect_lib::garmin_connect_client::GarminConnectUserDailySummary;
 use garmin_lib::common::{
     fitbit_activity::FitbitActivity, garmin_connect_activity::GarminConnectActivity,
     strava_activity::StravaActivity, strava_timezone::StravaTimeZone,
@@ -227,35 +226,6 @@ struct _GarminConnectActivityWrapper {
     max_hr: Option<f64>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Into, From)]
-pub struct GarminConnectUserDailySummaryWrapper(GarminConnectUserDailySummary);
-
-derive_rweb_schema!(
-    GarminConnectUserDailySummaryWrapper,
-    _GarminConnectUserDailySummaryWrapper
-);
-
-#[allow(dead_code)]
-#[derive(Schema)]
-struct _GarminConnectUserDailySummaryWrapper {
-    #[schema(description = "User Profile ID")]
-    user_profile_id: u64,
-    #[schema(description = "Total Calories (kCal)")]
-    total_kilocalories: Option<f64>,
-    #[schema(description = "Active Calories (kCal)")]
-    active_kilocalories: Option<f64>,
-    #[schema(description = "BMR Calories (kCal)")]
-    bmr_kilocalories: Option<f64>,
-    #[schema(description = "Total Number of Steps")]
-    total_steps: Option<u64>,
-    #[schema(description = "Total Distance (m)")]
-    total_distance_meters: Option<u64>,
-    #[schema(description = "User Daily Summary ID")]
-    user_daily_summary_id: Option<u64>,
-    #[schema(description = "Calendar Date")]
-    calendar_date: DateType,
-}
-
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, Into, From)]
 pub struct FitbitStatisticsSummaryWrapper(FitbitStatisticsSummary);
 
@@ -341,11 +311,11 @@ mod test {
     use crate::{
         FitbitActivityWrapper, FitbitBodyWeightFatUpdateOutputWrapper, FitbitBodyWeightFatWrapper,
         FitbitHeartRateWrapper, FitbitStatisticsSummaryWrapper, GarminConnectActivityWrapper,
-        GarminConnectUserDailySummaryWrapper, RaceResultsWrapper, RaceTypeWrapper,
+        RaceResultsWrapper, RaceTypeWrapper,
         ScaleMeasurementWrapper, StravaActivityWrapper, _FitbitActivityWrapper,
         _FitbitBodyWeightFatUpdateOutputWrapper, _FitbitBodyWeightFatWrapper,
         _FitbitHeartRateWrapper, _FitbitStatisticsSummaryWrapper, _GarminConnectActivityWrapper,
-        _GarminConnectUserDailySummaryWrapper, _RaceResultsWrapper, _RaceTypeWrapper,
+        _RaceResultsWrapper, _RaceTypeWrapper,
         _ScaleMeasurementWrapper, _StravaActivityWrapper,
     };
 
@@ -361,10 +331,6 @@ mod test {
         );
         derive_rweb_test!(FitbitActivityWrapper, _FitbitActivityWrapper);
         derive_rweb_test!(GarminConnectActivityWrapper, _GarminConnectActivityWrapper);
-        derive_rweb_test!(
-            GarminConnectUserDailySummaryWrapper,
-            _GarminConnectUserDailySummaryWrapper
-        );
         derive_rweb_test!(
             FitbitStatisticsSummaryWrapper,
             _FitbitStatisticsSummaryWrapper

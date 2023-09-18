@@ -1373,7 +1373,7 @@ fn get_file_html<'a>(
         None
     };
 
-    let labels = vec![
+    let labels = [
         "Sport",
         "Lap",
         "Distance",
@@ -1481,7 +1481,7 @@ fn get_html_splits<'a>(
     split_distance_in_meters: f64,
     label: &'a str,
 ) -> LazyNodes<'a, 'a> {
-    let labels = vec![
+    let labels = [
         "Split",
         "Time",
         "Pace / mi",
@@ -1669,7 +1669,7 @@ fn create_analysis_plot(model: &RaceResultAnalysis, is_demo: bool) -> LazyNodes 
     let pace_results =
         x_proj
             .into_iter()
-            .zip(y_proj.into_iter())
+            .zip(y_proj)
             .enumerate()
             .map(move |(idx, (x, y))| {
                 let pace = print_h_m_s(y * 60.0, false).unwrap_or_else(|_| "".into());

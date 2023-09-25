@@ -17,7 +17,6 @@ use tokio::{
 
 use derive_more::{From, Into};
 use fitbit_lib::{
-    GarminConnectHrData,
     fitbit_archive::{
         archive_fitbit_heartrates, get_heartrate_values, get_number_of_heartrate_values,
     },
@@ -25,6 +24,7 @@ use fitbit_lib::{
     fitbit_heartrate::{import_garmin_heartrate_file, FitbitHeartRate},
     fitbit_statistics_summary::FitbitStatisticsSummary,
     scale_measurement::ScaleMeasurement,
+    GarminConnectHrData,
 };
 use garmin_lib::{
     common::{

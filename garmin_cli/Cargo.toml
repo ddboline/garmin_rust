@@ -1,6 +1,6 @@
 [package]
 name = "garmin_cli"
-version = "0.13.27"
+version = "0.13.28"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 

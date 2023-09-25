@@ -31,8 +31,7 @@ use garmin_lib::{
     utils::date_time_wrapper::DateTimeWrapper,
 };
 
-use crate::fitbit_statistics_summary::FitbitStatisticsSummary;
-use crate::GarminConnectHrData;
+use crate::{fitbit_statistics_summary::FitbitStatisticsSummary, GarminConnectHrData};
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, Eq)]
 pub struct FitbitHeartRate {
@@ -479,10 +478,26 @@ pub fn import_garmin_heartrate_file(
         return Ok(BTreeSet::new());
     }
 
-    let min_timestamp = *timestamps.first().ok_or_else(|| format_err!("No timestamps"))?;
-    let max_timestamp = *timestamps.iter().last().ok_or_else(|| format_err!("No timestamps"))?;
-    let min_timestamp16 = i64::from(heartrates.first().ok_or_else(|| format_err!("No timestamps"))?.0);
-    let max_timestamp16 = i64::from(heartrates.iter().last().ok_or_else(|| format_err!("No timestamps"))?.0);
+    let min_timestamp = *timestamps
+        .first()
+        .ok_or_else(|| format_err!("No timestamps"))?;
+    let max_timestamp = *timestamps
+        .iter()
+        .last()
+        .ok_or_else(|| format_err!("No timestamps"))?;
+    let min_timestamp16 = i64::from(
+        heartrates
+            .first()
+            .ok_or_else(|| format_err!("No timestamps"))?
+            .0,
+    );
+    let max_timestamp16 = i64::from(
+        heartrates
+            .iter()
+            .last()
+            .ok_or_else(|| format_err!("No timestamps"))?
+            .0,
+    );
 
     info!(
         "timestamps {} {} heartrates {} {}",

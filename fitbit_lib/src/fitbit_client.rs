@@ -36,9 +36,9 @@ use garmin_lib::{
 };
 
 use crate::{
-    GarminConnectHrData,
     fitbit_heartrate::{FitbitBodyWeightFat, FitbitHeartRate},
     scale_measurement::ScaleMeasurement,
+    GarminConnectHrData,
 };
 
 lazy_static! {

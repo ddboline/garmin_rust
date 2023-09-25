@@ -167,7 +167,9 @@ impl GarminCorrectionLap {
 
     /// # Errors
     /// Returns error if any timestamps are invalid
-    pub fn add_mislabeled_times_to_corr_list(corr_list_map: &mut GarminCorrectionMap) -> Result<(), Error> {
+    pub fn add_mislabeled_times_to_corr_list(
+        corr_list_map: &mut GarminCorrectionMap,
+    ) -> Result<(), Error> {
         let mislabeled_times = vec![
             (
                 "biking",

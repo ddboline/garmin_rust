@@ -1,4 +1,4 @@
-use futures::{future::try_join_all, TryStreamExt};
+use futures::future::try_join_all;
 use rweb::Schema;
 use rweb_helper::{DateTimeType, DateType};
 use serde::{Deserialize, Serialize};
@@ -11,17 +11,13 @@ use url::Url;
 
 use fitbit_lib::{
     fitbit_client::FitbitClient, fitbit_heartrate::FitbitHeartRate,
-    fitbit_statistics_summary::FitbitStatisticsSummary, scale_measurement::ScaleMeasurement,
+    fitbit_statistics_summary::FitbitStatisticsSummary,
 };
 use garmin_cli::garmin_cli::{GarminCli, GarminRequest};
 use garmin_lib::{
     common::{
-        fitbit_activity::FitbitActivity,
-        garmin_config::GarminConfig,
-        garmin_connect_activity::GarminConnectActivity,
-        garmin_correction_lap::GarminCorrectionLap,
-        garmin_summary::{get_list_of_files_from_db, GarminSummary},
-        pgpool::PgPool,
+        fitbit_activity::FitbitActivity, garmin_config::GarminConfig,
+        garmin_correction_lap::GarminCorrectionLap, garmin_summary::GarminSummary, pgpool::PgPool,
         strava_activity::StravaActivity,
     },
     utils::date_time_wrapper::DateTimeWrapper,
@@ -39,22 +35,6 @@ pub struct GarminHtmlRequest {
     pub is_demo: bool,
 }
 
-impl GarminHtmlRequest {
-    /// # Errors
-    /// Returns error if db query fails
-    pub async fn get_list_of_files_from_db(
-        &self,
-        pool: &PgPool,
-    ) -> Result<Vec<StackString>, Error> {
-        let result: Vec<_> =
-            get_list_of_files_from_db(&self.request.constraints.to_query_string(), pool)
-                .await?
-                .try_collect()
-                .await?;
-        Ok(result)
-    }
-}
-
 #[derive(Default)]
 pub struct GarminListRequest {
     pub constraints: GarminConstraints,
@@ -65,47 +45,6 @@ impl From<GarminHtmlRequest> for GarminListRequest {
         Self {
             constraints: item.request.constraints,
         }
-    }
-}
-
-impl GarminListRequest {
-    /// # Errors
-    /// Returns error if db query fails
-    pub async fn get_list_of_files_from_db(
-        &self,
-        pool: &PgPool,
-    ) -> Result<Vec<StackString>, Error> {
-        let result: Vec<_> = get_list_of_files_from_db(&self.constraints.to_query_string(), pool)
-            .await?
-            .try_collect()
-            .await?;
-        Ok(result)
-    }
-}
-
-impl GarminListRequest {
-    /// # Errors
-    /// Returns error if db query fails
-    pub async fn handle(&self, pool: &PgPool) -> Result<Vec<StackString>, Error> {
-        self.get_list_of_files_from_db(pool).await
-    }
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct GarminUploadRequest {
-    pub filename: PathBuf,
-}
-
-impl GarminUploadRequest {
-    /// # Errors
-    /// Returns error if db query fails
-    pub async fn handle(self, pool: &PgPool) -> Result<Vec<DateTimeWrapper>, Error> {
-        let gcli = GarminCli::from_pool(pool)?;
-        let filenames = vec![self.filename];
-        let datetimes = gcli.process_filenames(&filenames).await?;
-        gcli.sync_everything(false).await?;
-        gcli.proc_everything().await?;
-        Ok(datetimes)
     }
 }
 
@@ -250,20 +189,6 @@ impl ScaleMeasurementRequest {
     }
 }
 
-impl ScaleMeasurementRequest {
-    /// # Errors
-    /// Returns error if db query fails
-    pub async fn get_measurements(&self, pool: &PgPool) -> Result<Vec<ScaleMeasurement>, Error> {
-        ScaleMeasurement::read_from_db(
-            pool,
-            self.start_date.map(Into::into),
-            self.end_date.map(Into::into),
-        )
-        .await
-        .map_err(Into::into)
-    }
-}
-
 pub struct FitbitStatisticsPlotRequest {
     pub start_date: DateType,
     pub end_date: DateType,
@@ -325,16 +250,6 @@ impl From<ScaleMeasurementRequest> for FitbitHeartratePlotRequest {
 #[derive(Debug, Serialize, Deserialize, Schema)]
 pub struct ScaleMeasurementUpdateRequest {
     pub measurements: Vec<ScaleMeasurementWrapper>,
-}
-
-impl ScaleMeasurementUpdateRequest {
-    /// # Errors
-    /// Returns error if db query fails
-    pub async fn run_update(self, pool: &PgPool) -> Result<(), Error> {
-        let mut measurements: Vec<_> = self.measurements.into_iter().map(Into::into).collect();
-        ScaleMeasurement::merge_updates(&mut measurements, pool).await?;
-        Ok(())
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Schema)]
@@ -560,17 +475,6 @@ pub struct GarminConnectActivitiesRequest {
 #[derive(Debug, Serialize, Deserialize, Schema)]
 pub struct GarminConnectActivitiesDBUpdateRequest {
     pub updates: Vec<GarminConnectActivityWrapper>,
-}
-
-impl GarminConnectActivitiesDBUpdateRequest {
-    /// # Errors
-    /// Returns error if db query fails
-    pub async fn update(self, pool: &PgPool) -> Result<Vec<StackString>, Error> {
-        let updates: Vec<_> = self.updates.into_iter().map(Into::into).collect();
-        let output = GarminConnectActivity::upsert_activities(&updates, pool).await?;
-        GarminConnectActivity::fix_summary_id_in_db(pool).await?;
-        Ok(output)
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Schema)]

@@ -311,11 +311,10 @@ mod test {
     use crate::{
         FitbitActivityWrapper, FitbitBodyWeightFatUpdateOutputWrapper, FitbitBodyWeightFatWrapper,
         FitbitHeartRateWrapper, FitbitStatisticsSummaryWrapper, GarminConnectActivityWrapper,
-        RaceResultsWrapper, RaceTypeWrapper,
-        ScaleMeasurementWrapper, StravaActivityWrapper, _FitbitActivityWrapper,
-        _FitbitBodyWeightFatUpdateOutputWrapper, _FitbitBodyWeightFatWrapper,
-        _FitbitHeartRateWrapper, _FitbitStatisticsSummaryWrapper, _GarminConnectActivityWrapper,
-        _RaceResultsWrapper, _RaceTypeWrapper,
+        RaceResultsWrapper, RaceTypeWrapper, ScaleMeasurementWrapper, StravaActivityWrapper,
+        _FitbitActivityWrapper, _FitbitBodyWeightFatUpdateOutputWrapper,
+        _FitbitBodyWeightFatWrapper, _FitbitHeartRateWrapper, _FitbitStatisticsSummaryWrapper,
+        _GarminConnectActivityWrapper, _RaceResultsWrapper, _RaceTypeWrapper,
         _ScaleMeasurementWrapper, _StravaActivityWrapper,
     };
 

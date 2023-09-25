@@ -176,7 +176,7 @@ async fn get_index_body(
             let sport = titlecase(&sport);
             let dt = gfile.begin_datetime;
             let body = index_new_body(
-                config.clone(),
+                config,
                 pool,
                 format_sstr!("Garmin Event {sport} at {dt}"),
                 is_demo,
@@ -189,7 +189,7 @@ async fn get_index_body(
         _ => {
             let reports = create_report_query(pool, &req.options, &req.constraints).await?;
             let body = index_new_body(
-                config.clone(),
+                config,
                 pool,
                 "Garmin Summary".into(),
                 is_demo,
@@ -846,7 +846,7 @@ pub async fn heartrate_statistics_plots(
     .await
     .map_err(Into::<Error>::into)?;
     let body = index_new_body(
-        state.config.clone(),
+        &state.config,
         &state.db,
         "".into(),
         false,
@@ -884,7 +884,7 @@ pub async fn heartrate_statistics_plots_demo(
     .await
     .map_err(Into::<Error>::into)?;
     let body = index_new_body(
-        state.config.clone(),
+        &state.config,
         &state.db,
         "".into(),
         true,
@@ -927,7 +927,7 @@ pub async fn fitbit_plots(
     .map_err(Into::<Error>::into)?;
 
     let body = index_new_body(
-        state.config.clone(),
+        &state.config,
         &state.db,
         "".into(),
         false,
@@ -964,7 +964,7 @@ pub async fn fitbit_plots_demo(
     .map_err(Into::<Error>::into)?;
 
     let body = index_new_body(
-        state.config.clone(),
+        &state.config,
         &state.db,
         "".into(),
         true,
@@ -1035,7 +1035,7 @@ pub async fn heartrate_plots(
     .map_err(Into::<Error>::into)?;
 
     let body = index_new_body(
-        state.config.clone(),
+        &state.config,
         &state.db,
         "".into(),
         false,
@@ -1072,7 +1072,7 @@ pub async fn heartrate_plots_demo(
     .await
     .map_err(Into::<Error>::into)?;
     let body = index_new_body(
-        state.config.clone(),
+        &state.config,
         &state.db,
         "".into(),
         true,
@@ -1121,13 +1121,18 @@ pub async fn scale_measurement(
     #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<ScaleMeasurementsResponse> {
-    let slist = query
-        .into_inner()
-        .get_measurements(&state.db)
-        .await?
-        .into_iter()
-        .map(Into::into)
-        .collect();
+    let query = query.into_inner();
+    let slist = ScaleMeasurement::read_from_db(
+        &state.db,
+        query.start_date.map(Into::into),
+        query.end_date.map(Into::into),
+    )
+    .await
+    .map_err(Into::<Error>::into)?
+    .into_iter()
+    .map(Into::into)
+    .collect();
+
     Ok(JsonBase::new(slist).into())
 }
 
@@ -1145,7 +1150,15 @@ pub async fn scale_measurement_update(
     #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<ScaleMeasurementsUpdateResponse> {
-    measurements.into_inner().run_update(&state.db).await?;
+    let measurements = measurements.into_inner();
+    let mut measurements: Vec<_> = measurements
+        .measurements
+        .into_iter()
+        .map(Into::into)
+        .collect();
+    ScaleMeasurement::merge_updates(&mut measurements, &state.db)
+        .await
+        .map_err(Into::<Error>::into)?;
     Ok(HtmlBase::new("Finished").into())
 }
 
@@ -1349,10 +1362,11 @@ pub async fn garmin_connect_activities_db_update(
     #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<GarminConnectActivitiesUpdateResponse> {
-    let body = payload
-        .into_inner()
-        .update(&state.db)
-        .await?
+    let payload = payload.into_inner();
+    let updates: Vec<_> = payload.updates.into_iter().map(Into::into).collect();
+    let body: StackString = GarminConnectActivity::upsert_activities(&updates, &state.db)
+        .await
+        .map_err(Into::<Error>::into)?
         .join("\n")
         .into();
     Ok(HtmlBase::new(body).into())
@@ -1482,7 +1496,7 @@ async fn race_result_plot_impl(
     let demo = req.demo.unwrap_or(true);
 
     let body = index_new_body(
-        state.config.clone(),
+        &state.config,
         &state.db,
         "".into(),
         demo,

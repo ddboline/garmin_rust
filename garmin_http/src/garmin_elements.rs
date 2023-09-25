@@ -82,7 +82,7 @@ pub enum IndexConfig {
 /// # Errors
 /// Return error if deserialization fails
 pub async fn index_new_body(
-    config: GarminConfig,
+    config: &GarminConfig,
     pool: &PgPool,
     title: StackString,
     is_demo: bool,
@@ -116,7 +116,7 @@ pub async fn index_new_body(
                     heartrate_stats: Vec::new(),
                     heartrate_opts: None,
                     model: None,
-                    config,
+                    config: config.clone(),
                 },
             );
             drop(app.rebuild());
@@ -169,7 +169,7 @@ pub async fn index_new_body(
                     heartrate_stats: Vec::new(),
                     heartrate_opts: None,
                     model: None,
-                    config,
+                    config: config.clone(),
                 },
             );
             drop(app.rebuild());
@@ -203,7 +203,7 @@ pub async fn index_new_body(
                     heartrate_stats: Vec::new(),
                     heartrate_opts: None,
                     model: None,
-                    config,
+                    config: config.clone(),
                 },
             );
             drop(app.rebuild());
@@ -237,7 +237,7 @@ pub async fn index_new_body(
                     heartrate_stats: stats,
                     heartrate_opts: None,
                     model: None,
-                    config,
+                    config: config.clone(),
                 },
             );
             drop(app.rebuild());
@@ -274,7 +274,7 @@ pub async fn index_new_body(
                         button_date,
                     }),
                     model: None,
-                    config,
+                    config: config.clone(),
                 },
             );
             drop(app.rebuild());
@@ -303,7 +303,7 @@ pub async fn index_new_body(
                     heartrate_stats: Vec::new(),
                     heartrate_opts: None,
                     model: Some(model),
-                    config,
+                    config: config.clone(),
                 },
             );
             drop(app.rebuild());
@@ -1666,23 +1666,22 @@ fn create_analysis_plot(model: &RaceResultAnalysis, is_demo: bool) -> LazyNodes 
     ];
     let xmap: HashMap<_, _> = xticks.iter().zip(xlabels.iter()).collect();
 
-    let pace_results =
-        x_proj
-            .into_iter()
-            .zip(y_proj)
-            .enumerate()
-            .map(move |(idx, (x, y))| {
-                let pace = print_h_m_s(y * 60.0, false).unwrap_or_else(|_| "".into());
-                let time = print_h_m_s(x * y * 60.0, true).unwrap_or_else(|_| "".into());
-                rsx! {
-                    tr {
-                        key: "pace-table-key-{idx}",
-                        td {"{x:02}"},
-                        td {"{pace}"},
-                        td {"{time}"},
-                    }
+    let pace_results = x_proj
+        .into_iter()
+        .zip(y_proj)
+        .enumerate()
+        .map(move |(idx, (x, y))| {
+            let pace = print_h_m_s(y * 60.0, false).unwrap_or_else(|_| "".into());
+            let time = print_h_m_s(x * y * 60.0, true).unwrap_or_else(|_| "".into());
+            rsx! {
+                tr {
+                    key: "pace-table-key-{idx}",
+                    td {"{x:02}"},
+                    td {"{pace}"},
+                    td {"{time}"},
                 }
-            });
+            }
+        });
 
     let race_results = model_data
         .iter()

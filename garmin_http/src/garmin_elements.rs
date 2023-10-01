@@ -43,6 +43,9 @@ use crate::{
     FitbitStatisticsSummary,
 };
 
+const GRAMS_PER_OUNCE: f64 = 28.349_523_125;
+const LBS_PER_KG: f64 = 1_000.0 / (16.0 * GRAMS_PER_OUNCE);
+
 #[derive(PartialEq)]
 struct HeartrateOpts {
     heartrate: Vec<(DateTimeWrapper, i32)>,
@@ -1943,7 +1946,7 @@ fn strava_element(cx: Scope, athlete: StravaAthlete) -> Element {
     let city = &athlete.city;
     let state = &athlete.state;
     let sex = &athlete.sex;
-    let weight = athlete.weight;
+    let weight = athlete.weight * LBS_PER_KG;
     let created_at = athlete.created_at;
     let updated_at = athlete.updated_at;
     let follower_count = athlete.follower_count.map(|follower_count| {
@@ -2063,7 +2066,7 @@ fn strava_element(cx: Scope, athlete: StravaAthlete) -> Element {
                 tr {td {"City"}, td {"{city}"}},
                 tr {td {"State"}, td {"{state}"}},
                 tr {td {"Sex"}, td {"{sex}"}},
-                tr {td {"Weight"}, td {"{weight}"}},
+                tr {td {"Weight"}, td {"{weight} lbs"}},
                 tr {td {"Created At"}, td {"{created_at}"}},
                 tr {td {"Updated At"}, td {"{updated_at}"}},
                 tr {follower_count},
@@ -2103,6 +2106,15 @@ fn fitbit_element(cx: Scope, profile: FitbitUserProfile) -> Element {
     let weight = profile.weight;
     let weight_unit = &profile.weight_unit;
 
+    let offset_positive = offset_from_utc_millis >= 0;
+    let offset_abs_sec = offset_from_utc_millis.abs() / 1000;
+
+    let mut offset_str =
+        print_h_m_s(offset_abs_sec as f64, true).unwrap_or_else(|_| "00:00:00".into());
+    if !offset_positive {
+        offset_str = format_sstr!("-{offset_str}");
+    }
+
     cx.render(rsx! {
         table {
             "border": "1",
@@ -2120,7 +2132,7 @@ fn fitbit_element(cx: Scope, profile: FitbitUserProfile) -> Element {
                 tr {td {"Height"}, td {"{height:0.2}"}},
                 tr {td {"Height Unit"}, td {"{height_unit}"}},
                 tr {td {"Timezone"}, td {"{timezone}"}},
-                tr {td {"Offset"}, td {"{offset_from_utc_millis}"}},
+                tr {td {"Offset"}, td {"{offset_str}"}},
                 tr {td {"Stride Length Running"}, td {"{stride_length_running:0.2}"}},
                 tr {td {"Stride Length Walking"}, td {"{stride_length_walking:0.2}"}},
                 tr {td {"Weight"}, td {"{weight}"}},

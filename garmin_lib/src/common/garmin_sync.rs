@@ -1,14 +1,15 @@
-use anyhow::Error;
-use futures::stream::{StreamExt, TryStreamExt};
+use anyhow::{format_err, Error};
+use aws_config::SdkConfig;
+use aws_sdk_s3::{
+    operation::list_objects::ListObjectsOutput, primitives::ByteStream, types::Object as S3Object,
+    Client as S3Client,
+};
 use log::debug;
 use rand::{
     distributions::{Alphanumeric, DistString},
     thread_rng,
 };
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use rusoto_core::Region;
-use rusoto_s3::{GetObjectRequest, Object as S3Object, PutObjectRequest, S3Client};
-use s3_ext::S3Ext;
 use stack_string::{format_sstr, StackString};
 use std::{
     borrow::Borrow,
@@ -20,16 +21,9 @@ use std::{
     sync::Arc,
     time::SystemTime,
 };
-use sts_profile_auth::get_client_sts;
-use time::{format_description::well_known::Rfc3339, OffsetDateTime};
-use tokio::task::spawn_blocking;
+use tokio::{fs::File, task::spawn_blocking};
 
 use crate::utils::garmin_util::{exponential_retry, get_md5sum};
-
-#[must_use]
-pub fn get_s3_client() -> S3Client {
-    get_client_sts!(S3Client, Region::UsEast1).expect("Failed to obtain client")
-}
 
 #[derive(Clone)]
 pub struct GarminSync {
@@ -67,22 +61,19 @@ impl Borrow<str> for &KeyItem {
 
 impl Default for GarminSync {
     fn default() -> Self {
-        Self::new()
+        let sdk_config = SdkConfig::builder().build();
+        Self::new(&sdk_config)
     }
 }
 
 fn process_s3_item(mut item: S3Object) -> Option<KeyItem> {
     item.key.take().and_then(|key| {
         item.e_tag.take().and_then(|etag| {
-            item.last_modified.as_ref().and_then(|last_mod| {
-                OffsetDateTime::parse(last_mod, &Rfc3339)
-                    .ok()
-                    .map(|lm| KeyItem {
-                        key: key.into(),
-                        etag: etag.trim_matches('"').into(),
-                        timestamp: lm.unix_timestamp(),
-                        size: item.size.unwrap_or(0) as u64,
-                    })
+            item.last_modified.as_ref().map(|last_mod| KeyItem {
+                key: key.into(),
+                etag: etag.trim_matches('"').into(),
+                timestamp: last_mod.as_secs_f64() as i64,
+                size: item.size as u64,
             })
         })
     })
@@ -90,9 +81,9 @@ fn process_s3_item(mut item: S3Object) -> Option<KeyItem> {
 
 impl GarminSync {
     #[must_use]
-    pub fn new() -> Self {
+    pub fn new(sdk_config: &SdkConfig) -> Self {
         Self {
-            s3_client: get_s3_client(),
+            s3_client: S3Client::from_conf(sdk_config.into()),
         }
     }
 
@@ -103,16 +94,39 @@ impl GarminSync {
         }
     }
 
+    async fn list_keys(
+        &self,
+        bucket: &str,
+        marker: Option<impl AsRef<str>>,
+    ) -> Result<ListObjectsOutput, Error> {
+        let mut builder = self.s3_client.list_objects().bucket(bucket);
+        if let Some(marker) = marker {
+            builder = builder.marker(marker.as_ref());
+        }
+        builder.send().await.map_err(Into::into)
+    }
+
     /// # Errors
     /// Return error if s3 api call fails
     pub async fn get_list_of_keys(&self, bucket: &str) -> Result<Vec<KeyItem>, Error> {
         let results: Result<Vec<_>, _> = exponential_retry(|| async move {
-            self.s3_client
-                .stream_objects(bucket)
-                .map(|res| res.map(process_s3_item))
-                .try_collect()
-                .await
-                .map_err(Into::into)
+            let mut marker: Option<String> = None;
+            let mut list_of_keys = Vec::new();
+            loop {
+                let mut output = self.list_keys(bucket, marker.as_ref()).await?;
+                if let Some(contents) = output.contents.take() {
+                    if let Some(last) = contents.last() {
+                        if let Some(key) = &last.key {
+                            marker.replace(key.into());
+                        }
+                    }
+                    list_of_keys.extend(contents.into_iter().map(process_s3_item));
+                }
+                if !output.is_truncated {
+                    break;
+                }
+            }
+            Ok(list_of_keys)
         })
         .await;
         let list_of_keys = results?.into_iter().flatten().collect();
@@ -211,20 +225,20 @@ impl GarminSync {
         let etag: Result<StackString, Error> = exponential_retry(|| {
             let tmp_path = tmp_path.clone();
             async move {
-                let etag = self
+                let resp = self
                     .s3_client
-                    .download_to_file(
-                        GetObjectRequest {
-                            bucket: s3_bucket.to_string(),
-                            key: s3_key.to_string(),
-                            ..GetObjectRequest::default()
-                        },
-                        &tmp_path,
-                    )
-                    .await?
-                    .e_tag
-                    .unwrap_or_default();
-                Ok(etag.into())
+                    .get_object()
+                    .bucket(s3_bucket)
+                    .key(s3_key)
+                    .send()
+                    .await?;
+                let etag: StackString = resp.e_tag().ok_or_else(|| format_err!("No etag"))?.into();
+                tokio::io::copy(
+                    &mut resp.body.into_async_read(),
+                    &mut File::create(tmp_path).await?,
+                )
+                .await?;
+                Ok(etag)
             }
         })
         .await;
@@ -240,30 +254,17 @@ impl GarminSync {
         s3_bucket: &str,
         s3_key: &str,
     ) -> Result<(), Error> {
-        self.upload_file_acl(local_file, s3_bucket, s3_key).await
-    }
-
-    /// # Errors
-    /// Return error if s3 api call fails
-    pub async fn upload_file_acl(
-        &self,
-        local_file: &Path,
-        s3_bucket: &str,
-        s3_key: &str,
-    ) -> Result<(), Error> {
         exponential_retry(|| async move {
+            let body = ByteStream::read_from().path(local_file).build().await?;
             self.s3_client
-                .upload_from_file(
-                    local_file,
-                    PutObjectRequest {
-                        bucket: s3_bucket.to_string(),
-                        key: s3_key.to_string(),
-                        ..PutObjectRequest::default()
-                    },
-                )
+                .put_object()
+                .bucket(s3_bucket)
+                .key(s3_key)
+                .body(body)
+                .send()
                 .await
-                .map_err(Into::into)
                 .map(|_| ())
+                .map_err(Into::into)
         })
         .await
     }

@@ -1,6 +1,6 @@
 [package]
 name = "garmin_cli"
-version = "0.13.28"
+version = "0.14.0"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -18,7 +18,7 @@ time = {version="0.3", features=["serde-human-readable", "macros", "formatting",
 time-tz = {version="2.0", features=["system"]}
 anyhow = "1.0"
 thiserror = "1.0"
-tokio = {version="1.26", features=["full"]}
+tokio = {version="1.32", features=["full"]}
 futures = "0.3"
 lazy_static = "1.4"
 log = "0.4"
@@ -30,5 +30,6 @@ itertools = "0.11"
 smallvec = "1.6"
 tokio-postgres = {version = "0.7", features = ["with-time-0_3"]}
 refinery = {version="0.8", features=["tokio-postgres"]}
-stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", features=["postgres_types"], tag="0.9.1" }
+stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", features=["postgres_types"], tag="0.9.2" }
 stdout-channel = "0.6"
+aws-config = "0.56"

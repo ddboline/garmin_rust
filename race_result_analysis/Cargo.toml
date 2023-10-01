@@ -1,6 +1,6 @@
 [package]
 name = "race_result_analysis"
-version = "0.13.28"
+version = "0.14.0"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -14,10 +14,10 @@ bytes = "1.0"
 anyhow = "1.0"
 serde = {version="1.0", features=["derive"]}
 serde_json = "1.0"
-postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.4", features=["deadpool"]}
+postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.5", features=["deadpool"]}
 time = {version="0.3", features=["serde-human-readable", "macros", "formatting", "parsing"]}
 time-tz = {version="2.0", features=["system"]}
-tokio = {version="1.26", features=["full"]}
+tokio = {version="1.32", features=["full"]}
 ndarray = "0.15"
 log = "0.4"
 parking_lot = "0.12"
@@ -25,6 +25,6 @@ lazy_static = "1.4"
 itertools = "0.11"
 smallvec = "1.6"
 futures = "0.3"
-stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", features=["postgres_types"], tag="0.9.1" }
+stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", features=["postgres_types"], tag="0.9.2" }
 rusfun = { git = "https://github.com/ddboline/rusfun.git" }
 uuid = { version = "1.0", features = ["serde", "v4"] }

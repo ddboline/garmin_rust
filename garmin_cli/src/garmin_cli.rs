@@ -225,7 +225,8 @@ impl GarminCli {
     /// # Errors
     /// Return error if `sync_dir` fails
     pub async fn sync_everything(&self, check_md5: bool) -> Result<Vec<StackString>, Error> {
-        let gsync = GarminSync::new();
+        let sdk_config = aws_config::load_from_env().await;
+        let gsync = GarminSync::new(&sdk_config);
 
         let options = vec![
             (

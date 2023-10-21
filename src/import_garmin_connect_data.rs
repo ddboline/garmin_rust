@@ -7,14 +7,16 @@
 
 use anyhow::Error;
 use clap::Parser;
-use std::path::PathBuf;
+use std::{collections::BTreeSet, path::PathBuf};
 use tempdir::TempDir;
 
-use fitbit_lib::fitbit_heartrate::{import_garmin_heartrate_file, import_garmin_json_file};
+use fitbit_lib::fitbit_heartrate::{
+    import_garmin_heartrate_file, import_garmin_json_file, FitbitHeartRate,
+};
 use garmin_lib::{
     common::{
         garmin_config::GarminConfig,
-        garmin_connect_activity::import_garmin_connect_activity_json_file,
+        garmin_connect_activity::import_garmin_connect_activity_json_file, pgpool::PgPool,
     },
     utils::garmin_util::extract_zip_from_garmin_connect_multiple,
 };
@@ -43,6 +45,8 @@ async fn main() -> Result<(), Error> {
     env_logger::init();
     let config = GarminConfig::get_config(None)?;
     let opts = JsonImportOpts::parse();
+    let pool = PgPool::new(&config.pgurl);
+    let mut dates = BTreeSet::new();
 
     match opts {
         JsonImportOpts::Activities { filename } => {
@@ -52,7 +56,7 @@ async fn main() -> Result<(), Error> {
             for file in files {
                 import_garmin_json_file(&config, &file)?;
                 if import_garmin_json_file(&config, &file).is_err() {
-                    import_garmin_heartrate_file(&config, &file)?;
+                    dates.extend(import_garmin_heartrate_file(&config, &file)?.into_iter());
                 }
             }
         }
@@ -61,11 +65,13 @@ async fn main() -> Result<(), Error> {
             let ziptmpdir = tempdir.path();
             let files = extract_zip_from_garmin_connect_multiple(&file, ziptmpdir)?;
             for file in files {
-                if import_garmin_heartrate_file(&config, &file).is_ok() {
-                    println!("processed {}", file.to_string_lossy());
-                }
+                dates.extend(import_garmin_heartrate_file(&config, &file)?);
+                println!("processed {}", file.to_string_lossy());
             }
         }
+    }
+    for date in dates {
+        FitbitHeartRate::calculate_summary_statistics(&config, &pool, date).await?;
     }
     Ok(())
 }

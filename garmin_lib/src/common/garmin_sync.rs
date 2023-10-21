@@ -59,13 +59,6 @@ impl Borrow<str> for &KeyItem {
     }
 }
 
-impl Default for GarminSync {
-    fn default() -> Self {
-        let sdk_config = SdkConfig::builder().build();
-        Self::new(&sdk_config)
-    }
-}
-
 fn process_s3_item(mut item: S3Object) -> Option<KeyItem> {
     item.key.take().and_then(|key| {
         item.e_tag.take().and_then(|etag| {

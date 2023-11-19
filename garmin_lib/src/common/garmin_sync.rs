@@ -189,7 +189,9 @@ impl GarminSync {
                             key_item.s3_size = Some(key.size.try_into()?);
                             key_item.s3_timestamp = Some(key.timestamp);
 
-                            if key_item.s3_etag == key_item.local_etag || key_item.s3_size == key_item.local_size {
+                            if key_item.s3_etag == key_item.local_etag
+                                || key_item.s3_size == key_item.local_size
+                            {
                                 key_item.do_download = false;
                                 key_item.do_upload = false;
                             } else if key_item.s3_size > key_item.local_size {

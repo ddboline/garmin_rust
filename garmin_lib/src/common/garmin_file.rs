@@ -92,7 +92,7 @@ impl GarminFile {
             GARMIN_LAP_AVRO_SCHEMA,
             r#"}},{"name": "points", "type": {"type": "array", "items": "#,
             GARMIN_POINT_AVRO_SCHEMA,
-            r#"}}]}"#,
+            r"}}]}",
         )
     }
 

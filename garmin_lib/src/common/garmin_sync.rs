@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
 use std::{
     borrow::Borrow,
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     convert::{TryFrom, TryInto},
     ffi::OsStr,
     fs,
@@ -168,6 +168,13 @@ impl GarminSync {
         bucket: &str,
         pool: &PgPool,
     ) -> Result<(usize, usize), Error> {
+        let mut file_map: HashMap<StackString, KeyItemCache> =
+            KeyItemCache::get_files(pool, bucket, None, None)
+                .await?
+                .map_ok(|item| (item.s3_key.clone(), item))
+                .try_collect()
+                .await?;
+
         let mut marker: Option<String> = None;
         let mut total_keys = 0;
         let mut updated_keys = 0;
@@ -180,11 +187,14 @@ impl GarminSync {
                     }
                 }
                 total_keys += contents.len();
+                debug!(
+                    "contents {} marker {marker:?} truncated {:?}",
+                    contents.len(),
+                    output.is_truncated
+                );
                 for object in contents {
                     if let Some(key) = KeyItem::from_s3_object(object) {
-                        if let Some(mut key_item) =
-                            KeyItemCache::get_by_key(pool, &key.key, bucket).await?
-                        {
+                        if let Some(mut key_item) = file_map.remove(&key.key) {
                             key_item.s3_etag = Some(key.etag);
                             key_item.s3_size = Some(key.size.try_into()?);
                             key_item.s3_timestamp = Some(key.timestamp);
@@ -212,7 +222,7 @@ impl GarminSync {
                     }
                 }
             }
-            if output.is_truncated != Some(false) || output.is_truncated.is_none() {
+            if output.is_truncated == Some(false) || output.is_truncated.is_none() {
                 break;
             }
         }
@@ -238,6 +248,13 @@ impl GarminSync {
             .map(OsStr::new)
             .collect();
 
+        let mut file_map: HashMap<StackString, KeyItemCache> =
+            KeyItemCache::get_files(pool, s3_bucket, None, None)
+                .await?
+                .map_ok(|item| (item.s3_key.clone(), item))
+                .try_collect()
+                .await?;
+
         let mut tasks = Vec::new();
 
         for dir_line in local_dir.read_dir()? {
@@ -258,9 +275,7 @@ impl GarminSync {
                     .duration_since(SystemTime::UNIX_EPOCH)?
                     .as_secs() as i64;
                 let size: i64 = metadata.len().try_into()?;
-                if let Some(mut existing) =
-                    KeyItemCache::get_by_key(pool, &filename, s3_bucket).await?
-                {
+                if let Some(mut existing) = file_map.remove(&filename) {
                     if existing.local_timestamp != Some(modified)
                         || existing.local_size != Some(size)
                     {
@@ -317,7 +332,9 @@ impl GarminSync {
         pool: &PgPool,
     ) -> Result<StackString, Error> {
         let number_updated_files = self.process_files(local_dir, s3_bucket, pool).await?;
+        debug!("number_updated_files {number_updated_files}");
         let (total_keys, updated_keys) = self.get_and_process_keys(s3_bucket, pool).await?;
+        debug!("total_keys {total_keys} updated_keys {updated_keys}");
 
         let mut number_uploaded = 0;
         let mut number_downloaded = 0;

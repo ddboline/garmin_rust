@@ -86,10 +86,7 @@ pub enum GarminCliOpts {
         #[clap(short, long)]
         end_date: Option<DateType>,
     },
-    Sync {
-        #[clap(short, long)]
-        md5sum: bool,
-    },
+    Sync,
     #[clap(alias = "fit")]
     Fitbit {
         #[clap(short, long)]
@@ -160,7 +157,7 @@ impl GarminCliOpts {
             .process_opts(&config)
             .await?;
             Self::Strava.process_opts(&config).await?;
-            Self::Sync { md5sum: false }.process_opts(&config).await
+            Self::Sync.process_opts(&config).await
         } else {
             opts.process_opts(&config).await
         }
@@ -191,7 +188,7 @@ impl GarminCliOpts {
                 start_date: start_date.map(Into::into),
                 end_date: end_date.map(Into::into),
             },
-            Self::Sync { md5sum } => GarminCliOptions::Sync(md5sum),
+            Self::Sync => GarminCliOptions::Sync,
             Self::SyncAll => {
                 return Ok(());
             }
@@ -225,7 +222,7 @@ impl GarminCliOpts {
                 let filenames = client.sync_tcx(start_date).await?;
                 if !filenames.is_empty() {
                     let mut buf = cli.proc_everything().await?;
-                    buf.extend_from_slice(&cli.sync_everything(false).await?);
+                    buf.extend_from_slice(&cli.sync_everything().await?);
                 }
                 let filenames = filenames
                     .into_iter()
@@ -473,7 +470,7 @@ impl GarminCliOpts {
                 cli.proc_everything().await
             }
             Some(GarminCliOptions::Bootstrap) => cli.run_bootstrap().await,
-            Some(GarminCliOptions::Sync(check_md5)) => cli.sync_everything(*check_md5).await,
+            Some(GarminCliOptions::Sync) => cli.sync_everything().await,
             Some(GarminCliOptions::Connect {
                 data_directory,
                 start_date,
@@ -484,7 +481,7 @@ impl GarminCliOpts {
                     Self::sync_with_garmin_connect(cli, data_directory, *start_date, *end_date)
                         .await?;
                 if !filenames.is_empty() || !input_files.is_empty() || !dates.is_empty() {
-                    buf.extend_from_slice(&cli.sync_everything(false).await?);
+                    buf.extend_from_slice(&cli.sync_everything().await?);
                     if let Ok(client) = FitbitClient::with_auth(cli.config.clone()).await {
                         let result = client.sync_everything(&cli.pool).await?;
                         buf.push(format_sstr!(

@@ -32,16 +32,16 @@ jobs:
     - name: Clippy
       run: cargo clippy -- -W clippy::pedantic
 
-    - name: Outdated
-      run: |
-        cargo install cargo-outdated && \
-        cargo outdated -d2
+    # - name: Outdated
+    #   run: |
+    #     cargo install cargo-outdated && \
+    #     cargo outdated -d2
 
-    - name: Unused Deps
-      run: |
-        rustup update nightly && \
-        cargo +nightly install cargo-udeps && \
-        cargo +nightly udeps
+    # - name: Unused Deps
+    #   run: |
+    #     rustup update nightly && \
+    #     cargo +nightly install cargo-udeps && \
+    #     cargo +nightly udeps
 
     - name: Build
       run: |

@@ -164,11 +164,11 @@ impl Session {
     pub fn get_jwt_cookie(&self, domain: &str) -> Cookie<'static> {
         let history_str = self.history.join(";");
         let token = STANDARD.encode(history_str);
-        Cookie::build("session", token)
+        Cookie::build(("session", token))
             .http_only(true)
             .path("/")
             .domain(domain.to_string())
-            .finish()
+            .build()
     }
 }
 

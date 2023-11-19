@@ -73,7 +73,7 @@ impl TelegramBot {
             )
             .await
             {
-                Err(_) | Ok(Ok(_)) => FAILURE_COUNT.reset()?,
+                Err(_) | Ok(Ok(())) => FAILURE_COUNT.reset()?,
                 Ok(Err(_)) => FAILURE_COUNT.increment()?,
             }
         }

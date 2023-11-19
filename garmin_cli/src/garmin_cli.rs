@@ -44,7 +44,7 @@ use garmin_reports::{
 
 #[derive(Debug, PartialEq, Clone, Eq)]
 pub enum GarminCliOptions {
-    Sync(bool),
+    Sync,
     All,
     Bootstrap,
     FileNames(Vec<PathBuf>),
@@ -143,7 +143,7 @@ impl GarminCli {
             let pool = self.get_pool();
             GarminSummary::write_summary_to_postgres(&summary_list, &pool)
                 .await
-                .map(|_| Vec::new())
+                .map(|()| Vec::new())
         }
     }
 
@@ -219,12 +219,12 @@ impl GarminCli {
     /// # Errors
     /// Return error if `sync_everything` fails
     pub async fn run_bootstrap(&self) -> Result<Vec<StackString>, Error> {
-        self.sync_everything(true).await
+        self.sync_everything().await
     }
 
     /// # Errors
     /// Return error if `sync_dir` fails
-    pub async fn sync_everything(&self, check_md5: bool) -> Result<Vec<StackString>, Error> {
+    pub async fn sync_everything(&self) -> Result<Vec<StackString>, Error> {
         let sdk_config = aws_config::load_from_env().await;
         let gsync = GarminSync::new(&sdk_config);
 
@@ -233,34 +233,30 @@ impl GarminCli {
                 "Syncing GPS files",
                 &self.get_config().gps_dir,
                 &self.get_config().gps_bucket,
-                check_md5,
             ),
             (
                 "Syncing CACHE files",
                 &self.get_config().cache_dir,
                 &self.get_config().cache_bucket,
-                check_md5,
             ),
             (
                 "Syncing Fitbit Cache",
                 &self.get_config().fitbit_cachedir,
                 &self.get_config().fitbit_bucket,
-                check_md5,
             ),
             (
                 "Syncing Fitbit Archive",
                 &self.get_config().fitbit_archivedir,
                 &self.get_config().fitbit_archive_bucket,
-                check_md5,
             ),
         ];
 
-        let futures = options
-            .into_iter()
-            .map(|(title, local_dir, s3_bucket, check_md5)| {
-                debug!("{}", title);
-                gsync.sync_dir(title, local_dir, s3_bucket, check_md5)
-            });
+        let futures = options.into_iter().map(|(title, local_dir, s3_bucket)| {
+            debug!("{}", title);
+            let pool = self.pool.clone();
+            let gsync = gsync.clone();
+            async move { gsync.sync_dir(title, local_dir, s3_bucket, &pool).await }
+        });
         try_join_all(futures).await
     }
 

@@ -4,26 +4,34 @@ use aws_sdk_s3::{
     operation::list_objects::ListObjectsOutput, primitives::ByteStream, types::Object as S3Object,
     Client as S3Client,
 };
-use log::debug;
+use futures::{Stream, TryStreamExt};
+use log::{debug, error};
+use postgres_query::{query, query_dyn, Error as PgError, FromSqlRow, Parameter};
 use rand::{
     distributions::{Alphanumeric, DistString},
     thread_rng,
 };
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
 use std::{
     borrow::Borrow,
-    collections::{HashMap, HashSet},
+    collections::HashSet,
+    convert::{TryFrom, TryInto},
     ffi::OsStr,
     fs,
     hash::{Hash, Hasher},
-    path::{Path, PathBuf},
-    sync::Arc,
+    path::Path,
     time::SystemTime,
 };
-use tokio::{fs::File, task::spawn_blocking};
+use tokio::{
+    fs::File,
+    task::{spawn, spawn_blocking, JoinHandle},
+};
 
-use crate::utils::garmin_util::{exponential_retry, get_md5sum};
+use crate::{
+    common::pgpool::PgPool,
+    utils::garmin_util::{exponential_retry, get_md5sum},
+};
 
 #[derive(Clone)]
 pub struct GarminSync {
@@ -36,6 +44,35 @@ pub struct KeyItem {
     pub etag: StackString,
     pub timestamp: i64,
     pub size: u64,
+}
+
+impl KeyItem {
+    #[must_use]
+    fn from_s3_object(mut item: S3Object) -> Option<Self> {
+        let key = item.key.take()?.into();
+        let etag = item.e_tag.take()?.trim_matches('"').into();
+        let timestamp = item.last_modified.as_ref()?.as_secs_f64() as i64;
+
+        Some(Self {
+            key,
+            etag,
+            timestamp,
+            size: item.size? as u64,
+        })
+    }
+}
+
+impl TryFrom<KeyItem> for KeyItemCache {
+    type Error = Error;
+    fn try_from(value: KeyItem) -> Result<Self, Self::Error> {
+        Ok(Self {
+            s3_key: value.key,
+            s3_etag: Some(value.etag),
+            s3_timestamp: Some(value.timestamp),
+            s3_size: Some(value.size.try_into()?),
+            ..Self::default()
+        })
+    }
 }
 
 impl PartialEq for KeyItem {
@@ -60,15 +97,15 @@ impl Borrow<str> for &KeyItem {
 }
 
 fn process_s3_item(mut item: S3Object) -> Option<KeyItem> {
-    item.key.take().and_then(|key| {
-        item.e_tag.take().and_then(|etag| {
-            item.last_modified.as_ref().map(|last_mod| KeyItem {
-                key: key.into(),
-                etag: etag.trim_matches('"').into(),
-                timestamp: last_mod.as_secs_f64() as i64,
-                size: item.size as u64,
-            })
-        })
+    let key = item.key.take()?.into();
+    let etag = item.e_tag.take()?.trim_matches('"').into();
+    let timestamp = item.last_modified.as_ref()?.as_secs_f64() as i64;
+    let size = item.size? as u64;
+    Some(KeyItem {
+        key,
+        etag,
+        timestamp,
+        size,
     })
 }
 
@@ -115,7 +152,7 @@ impl GarminSync {
                     }
                     list_of_keys.extend(contents.into_iter().map(process_s3_item));
                 }
-                if !output.is_truncated {
+                if output.is_truncated != Some(false) || output.is_truncated.is_none() {
                     break;
                 }
             }
@@ -126,6 +163,150 @@ impl GarminSync {
         Ok(list_of_keys)
     }
 
+    async fn _get_and_process_keys(
+        &self,
+        bucket: &str,
+        pool: &PgPool,
+    ) -> Result<(usize, usize), Error> {
+        let mut marker: Option<String> = None;
+        let mut total_keys = 0;
+        let mut updated_keys = 0;
+        loop {
+            let mut output = self.list_keys(bucket, marker.as_ref()).await?;
+            if let Some(contents) = output.contents.take() {
+                if let Some(last) = contents.last() {
+                    if let Some(key) = last.key() {
+                        marker.replace(key.into());
+                    }
+                }
+                total_keys += contents.len();
+                for object in contents {
+                    if let Some(key) = KeyItem::from_s3_object(object) {
+                        if let Some(mut key_item) =
+                            KeyItemCache::get_by_key(pool, &key.key, bucket).await?
+                        {
+                            key_item.s3_etag = Some(key.etag);
+                            key_item.s3_size = Some(key.size.try_into()?);
+                            key_item.s3_timestamp = Some(key.timestamp);
+
+                            if key_item.s3_etag == key_item.local_etag
+                                || key_item.s3_size == key_item.local_size
+                            {
+                                key_item.do_download = false;
+                                key_item.do_upload = false;
+                            } else if key_item.s3_size > key_item.local_size {
+                                key_item.do_download = true;
+                                key_item.do_upload = false;
+                                updated_keys += 1;
+                            } else if key_item.s3_size < key_item.local_size {
+                                key_item.do_download = false;
+                                key_item.do_upload = true;
+                                updated_keys += 1;
+                            }
+                            key_item.insert(pool).await?;
+                        } else {
+                            let mut key_item: KeyItemCache = key.try_into()?;
+                            key_item.do_download = true;
+                            key_item.insert(pool).await?;
+                        };
+                    }
+                }
+            }
+            if output.is_truncated != Some(false) || output.is_truncated.is_none() {
+                break;
+            }
+        }
+        Ok((total_keys, updated_keys))
+    }
+
+    async fn get_and_process_keys(
+        &self,
+        bucket: &str,
+        pool: &PgPool,
+    ) -> Result<(usize, usize), Error> {
+        exponential_retry(|| async move { self._get_and_process_keys(bucket, pool).await }).await
+    }
+
+    async fn process_files(
+        &self,
+        local_dir: &Path,
+        s3_bucket: &str,
+        pool: &PgPool,
+    ) -> Result<usize, Error> {
+        let allowed_extensions: HashSet<_> = ["fit", "gmn", "gz", "txt", "avro", "parquet"]
+            .iter()
+            .map(OsStr::new)
+            .collect();
+
+        let mut tasks = Vec::new();
+
+        for dir_line in local_dir.read_dir()? {
+            let entry = dir_line?;
+            let f = entry.path();
+            let filename: StackString = f
+                .file_name()
+                .ok_or_else(|| format_err!("cannot extract filename"))?
+                .to_string_lossy()
+                .into();
+            let ext = f
+                .extension()
+                .ok_or_else(|| format_err!("cannot extract extension"))?;
+            if allowed_extensions.contains(&ext) {
+                let metadata = fs::metadata(&f)?;
+                let modified = metadata
+                    .modified()?
+                    .duration_since(SystemTime::UNIX_EPOCH)?
+                    .as_secs() as i64;
+                let size: i64 = metadata.len().try_into()?;
+                if let Some(mut existing) =
+                    KeyItemCache::get_by_key(pool, &filename, s3_bucket).await?
+                {
+                    if existing.local_timestamp != Some(modified)
+                        || existing.local_size != Some(size)
+                    {
+                        let pool = pool.clone();
+                        let task: JoinHandle<Result<(), Error>> = spawn(async move {
+                            let etag = spawn_blocking(move || get_md5sum(&f)).await??;
+                            existing.local_etag = Some(etag);
+                            existing.local_timestamp = Some(modified);
+                            existing.local_size = Some(size);
+                            existing.do_upload = true;
+                            existing.insert(&pool).await?;
+                            Ok(())
+                        });
+                        tasks.push(task);
+                    }
+                } else {
+                    let pool = pool.clone();
+                    let s3_bucket: StackString = s3_bucket.into();
+                    let task: JoinHandle<Result<(), Error>> = spawn(async move {
+                        let etag = spawn_blocking(move || get_md5sum(&f)).await??;
+                        KeyItemCache {
+                            s3_key: filename,
+                            s3_bucket,
+                            local_etag: Some(etag),
+                            local_timestamp: Some(modified),
+                            local_size: Some(size),
+                            do_upload: true,
+                            ..KeyItemCache::default()
+                        }
+                        .insert(&pool)
+                        .await?;
+                        Ok(())
+                    });
+                    tasks.push(task);
+                }
+            } else {
+                error!("invalid extension {ext:?} for {f:?}");
+            }
+        }
+        let updates = tasks.len();
+        for task in tasks {
+            let _ = task.await?;
+        }
+        Ok(updates)
+    }
+
     /// # Errors
     /// Return error if s3 api call fails
     pub async fn sync_dir(
@@ -133,70 +314,71 @@ impl GarminSync {
         title: &str,
         local_dir: &Path,
         s3_bucket: &str,
-        check_md5sum: bool,
+        pool: &PgPool,
     ) -> Result<StackString, Error> {
-        let allowed_extensions: HashSet<_> = ["fit", "gmn", "gz", "txt", "avro", "parquet"]
-            .iter()
-            .map(OsStr::new)
-            .collect();
+        let number_updated_files = self.process_files(local_dir, s3_bucket, pool).await?;
+        let (total_keys, updated_keys) = self.get_and_process_keys(s3_bucket, pool).await?;
 
-        let mut file_list = Vec::new();
-        for dir_line in local_dir.read_dir()? {
-            let entry = dir_line?;
-            let f = entry.path();
-            if let Some(ext) = f.extension() {
-                if allowed_extensions.contains(&ext) {
-                    let metadata = fs::metadata(&f)?;
-                    let modified = metadata
-                        .modified()?
-                        .duration_since(SystemTime::UNIX_EPOCH)?
-                        .as_secs() as i64;
-                    let size = metadata.len();
-                    file_list.push((f, modified, size));
-                }
+        let mut number_uploaded = 0;
+        let mut number_downloaded = 0;
+
+        let mut stream =
+            Box::pin(KeyItemCache::get_files(pool, s3_bucket, Some(true), None).await?);
+
+        while let Some(mut key_item) = stream.try_next().await? {
+            let local_file = local_dir.join(&key_item.s3_key);
+            self.download_file(&local_file, s3_bucket, &key_item.s3_key)
+                .await?;
+            number_downloaded += 1;
+            let metadata = fs::metadata(&local_file)?;
+            let modified: i64 = metadata
+                .modified()?
+                .duration_since(SystemTime::UNIX_EPOCH)?
+                .as_secs()
+                .try_into()?;
+            let etag = spawn_blocking(move || get_md5sum(&local_file)).await??;
+            key_item.local_etag = Some(etag);
+            key_item.local_size = Some(metadata.len().try_into()?);
+            key_item.local_timestamp = Some(modified);
+            key_item.do_download = false;
+            if key_item.s3_etag != key_item.local_etag {
+                key_item.do_upload = true;
             }
+            key_item.insert(pool).await?;
         }
-        let file_list = Arc::new(file_list);
-        let file_set: HashMap<StackString, _> = file_list
-            .iter()
-            .filter_map(|(f, t, s)| {
-                f.file_name()
-                    .map(|x| (x.to_string_lossy().as_ref().into(), (*t, *s)))
-            })
-            .collect();
 
-        let key_list = Arc::new(self.get_list_of_keys(s3_bucket).await?);
-        let n_keys = key_list.len();
+        let mut stream =
+            Box::pin(KeyItemCache::get_files(pool, s3_bucket, None, Some(true)).await?);
 
-        let uploaded = spawn_blocking({
-            let file_list = file_list.clone();
-            let key_list = key_list.clone();
-            move || get_uploaded(&file_list, &key_list, check_md5sum)
-        })
-        .await?;
-
-        let uploaded_files: Vec<_> = uploaded.iter().map(|(_, filename)| filename).collect();
-        for (file, filename) in &uploaded {
-            self.upload_file(file, s3_bucket, filename).await?;
+        while let Some(mut key_item) = stream.try_next().await? {
+            let local_file = local_dir.join(&key_item.s3_key);
+            if !local_file.exists() {
+                key_item.do_upload = false;
+                key_item.insert(pool).await?;
+                continue;
+            }
+            let s3_etag = self
+                .upload_file(&local_file, s3_bucket, &key_item.s3_key)
+                .await?;
+            if Some(&s3_etag) != key_item.local_etag.as_ref() {
+                return Err(format_err!("Uploaded etag does not match local"));
+            }
+            key_item.s3_etag = Some(s3_etag);
+            key_item.s3_size = key_item.local_size;
+            key_item.s3_timestamp = key_item.local_timestamp;
+            number_uploaded += 1;
+            key_item.do_upload = false;
+            key_item.insert(pool).await?;
         }
-        debug!("uploaded {:?}", uploaded_files);
 
-        let downloaded = spawn_blocking({
-            let local_dir = local_dir.to_path_buf();
-            let s3_bucket: StackString = s3_bucket.into();
-            move || get_downloaded(&key_list, check_md5sum, &file_set, &local_dir, &s3_bucket)
-        })
-        .await??;
-        let downloaded_files: Vec<_> = downloaded.iter().map(|(file_name, _)| file_name).collect();
-        for (file_name, key) in &downloaded {
-            self.download_file(file_name, s3_bucket, key).await?;
-        }
-        debug!("downloaded {:?}", downloaded_files);
+        debug!("uploaded {number_uploaded}");
+
+        debug!("downloaded {number_downloaded}");
 
         let msg = format_sstr!(
-            "{title} {s3_bucket} s3_bucketnkeys {n_keys} uploaded {u} downloaded {d}",
-            u = uploaded_files.len(),
-            d = downloaded_files.len()
+            "{title} {s3_bucket} s3_bucket nkeys {total_keys} updated files \
+             {number_updated_files} updated keys {updated_keys} uploaded {number_uploaded} \
+             downloaded {number_downloaded}",
         );
 
         Ok(msg)
@@ -246,119 +428,139 @@ impl GarminSync {
         local_file: &Path,
         s3_bucket: &str,
         s3_key: &str,
-    ) -> Result<(), Error> {
+    ) -> Result<StackString, Error> {
         exponential_retry(|| async move {
             let body = ByteStream::read_from().path(local_file).build().await?;
-            self.s3_client
+            let etag = self
+                .s3_client
                 .put_object()
                 .bucket(s3_bucket)
                 .key(s3_key)
                 .body(body)
                 .send()
-                .await
-                .map(|_| ())
-                .map_err(Into::into)
+                .await?
+                .e_tag
+                .ok_or_else(|| format_err!("Missing etag"))?
+                .trim_matches('"')
+                .into();
+            Ok(etag)
         })
         .await
     }
 }
 
-fn get_uploaded(
-    file_list: &[(PathBuf, i64, u64)],
-    key_list: &[KeyItem],
-    check_md5sum: bool,
-) -> Vec<(PathBuf, StackString)> {
-    let key_set: HashSet<&KeyItem> = key_list.iter().collect();
-    file_list
-        .par_iter()
-        .filter_map(|(file, tmod, size)| {
-            let file_name: StackString = file.file_name()?.to_string_lossy().as_ref().into();
-            let mut do_upload = false;
-            if let Some(item) = key_set.get(file_name.as_str()) {
-                if tmod != &item.timestamp {
-                    if check_md5sum {
-                        if let Ok(md5) = get_md5sum(file) {
-                            if item.etag != md5 {
-                                debug!(
-                                    "upload md5 {} {} {} {} {}",
-                                    file_name, item.etag, md5, item.timestamp, tmod
-                                );
-                                do_upload = true;
-                            }
-                        }
-                    } else if size > &item.size {
-                        debug!(
-                            "upload size {} {} {} {} {}",
-                            file_name, item.etag, size, item.timestamp, item.size
-                        );
-                        do_upload = true;
-                    }
-                }
-                if tmod != &item.timestamp && check_md5sum {}
-            } else {
-                do_upload = true;
-            }
-            if do_upload {
-                debug!("upload file {}", file_name);
-                Some((file.clone(), file_name))
-            } else {
-                None
-            }
-        })
-        .collect()
+#[derive(FromSqlRow, Serialize, Deserialize, Debug, Clone, Default)]
+pub struct KeyItemCache {
+    pub s3_key: StackString,
+    pub s3_bucket: StackString,
+    pub s3_etag: Option<StackString>,
+    pub s3_timestamp: Option<i64>,
+    pub s3_size: Option<i64>,
+    pub local_etag: Option<StackString>,
+    pub local_timestamp: Option<i64>,
+    pub local_size: Option<i64>,
+    pub do_download: bool,
+    pub do_upload: bool,
 }
 
-fn get_downloaded(
-    key_list: &[KeyItem],
-    check_md5sum: bool,
-    file_set: &HashMap<StackString, (i64, u64)>,
-    local_dir: &Path,
-    s3_bucket: &str,
-) -> Result<Vec<(PathBuf, StackString)>, Error> {
-    key_list
-        .par_iter()
-        .filter_map(|item| {
-            let res = || {
-                let mut do_download = false;
+impl KeyItemCache {
+    /// # Errors
+    /// Return error if db query fails
+    pub async fn get_by_key(
+        pool: &PgPool,
+        s3_key: &str,
+        s3_bucket: &str,
+    ) -> Result<Option<Self>, Error> {
+        let query = query!(
+            r#"
+                SELECT * FROM key_item_cache
+                WHERE s3_key = $s3_key
+                  AND s3_bucket = $s3_bucket
+            "#,
+            s3_key = s3_key,
+            s3_bucket = s3_bucket,
+        );
+        let conn = pool.get().await?;
+        query.fetch_opt(&conn).await.map_err(Into::into)
+    }
 
-                if file_set.contains_key(&item.key) {
-                    let (tmod_, size_) = file_set[&item.key];
-                    if item.timestamp > tmod_ {
-                        if check_md5sum {
-                            let file_name = local_dir.join(item.key.as_str());
-                            let md5_ = get_md5sum(&file_name)?;
-                            if md5_.as_str() != item.etag.as_str() {
-                                debug!(
-                                    "download md5 {} {} {} {} {} ",
-                                    item.key, md5_, item.etag, item.timestamp, tmod_
-                                );
-                                let file_name = local_dir.join(item.key.as_str());
-                                fs::remove_file(file_name)?;
-                                do_download = true;
-                            }
-                        } else if item.size > size_ {
-                            let file_name = local_dir.join(item.key.as_str());
-                            debug!(
-                                "download size {} {} {} {} {}",
-                                item.key, size_, item.size, item.timestamp, tmod_
-                            );
-                            fs::remove_file(file_name)?;
-                            do_download = true;
-                        }
-                    }
-                } else {
-                    do_download = true;
-                };
+    /// # Errors
+    /// Return error if db query fails
+    pub async fn get_files(
+        pool: &PgPool,
+        s3_bucket: &str,
+        do_download: Option<bool>,
+        do_upload: Option<bool>,
+    ) -> Result<impl Stream<Item = Result<Self, PgError>>, Error> {
+        let mut bindings = vec![("s3_bucket", &s3_bucket as Parameter)];
+        let mut constraints = vec![format_sstr!("s3_bucket=$s3_bucket")];
+        if let Some(do_download) = &do_download {
+            constraints.push(format_sstr!("do_download=$do_download"));
+            bindings.push(("do_download", do_download as Parameter));
+        }
+        if let Some(do_upload) = &do_upload {
+            constraints.push(format_sstr!("do_upload=$do_upload"));
+            bindings.push(("do_upload", do_upload as Parameter));
+        }
+        let query = format_sstr!(
+            "SELECT * FROM key_item_cache WHERE {}",
+            constraints.join(" AND ")
+        );
+        let query = query_dyn!(&query, ..bindings)?;
 
-                if do_download {
-                    let file_name = local_dir.join(item.key.as_str());
-                    debug!("download {} {}", s3_bucket, item.key);
-                    Ok(Some((file_name, item.key.clone())))
-                } else {
-                    Ok(None)
-                }
-            };
-            res().transpose()
-        })
-        .collect()
+        let conn = pool.get().await?;
+        query.fetch_streaming(&conn).await.map_err(Into::into)
+    }
+
+    /// # Errors
+    /// Return error if db query fails
+    pub async fn insert(&self, pool: &PgPool) -> Result<u64, Error> {
+        let query = query!(
+            r#"
+                INSERT INTO key_item_cache (
+                    s3_key,
+                    s3_bucket,
+                    s3_etag,
+                    s3_timestamp,
+                    s3_size,
+                    local_etag,
+                    local_timestamp,
+                    local_size,
+                    do_download,
+                    do_upload
+                ) VALUES (
+                    $s3_key,
+                    $s3_bucket,
+                    $s3_etag,
+                    $s3_timestamp,
+                    $s3_size,
+                    $local_etag,
+                    $local_timestamp,
+                    $local_size,
+                    $do_download,
+                    $do_upload
+                ) ON CONFLICT (s3_key, s3_bucket) DO UPDATE
+                    SET s3_etag=$s3_etag,
+                        s3_timestamp=$s3_timestamp,
+                        s3_size=$s3_size,
+                        local_etag=$local_etag,
+                        local_timestamp=$local_timestamp,
+                        local_size=$local_size,
+                        do_download=$do_download,
+                        do_upload=$do_upload
+            "#,
+            s3_key = self.s3_key,
+            s3_bucket = self.s3_bucket,
+            s3_etag = self.s3_etag,
+            s3_timestamp = self.s3_timestamp,
+            s3_size = self.s3_size,
+            local_etag = self.local_etag,
+            local_timestamp = self.local_timestamp,
+            local_size = self.local_size,
+            do_download = self.do_download,
+            do_upload = self.do_upload,
+        );
+        let conn = pool.get().await?;
+        query.execute(&conn).await.map_err(Into::into)
+    }
 }

@@ -8,6 +8,7 @@
 #![allow(clippy::similar_names)]
 #![allow(clippy::unused_async)]
 #![allow(clippy::unsafe_derive_deserialize)]
+#![allow(clippy::ignored_unit_patterns)]
 
 pub mod errors;
 pub mod garmin_elements;

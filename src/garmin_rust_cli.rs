@@ -14,7 +14,7 @@ async fn main() {
     env_logger::init();
 
     match GarminCliOpts::process_args().await {
-        Ok(_) => (),
+        Ok(()) => (),
         Err(e) => {
             if e.to_string().contains("Broken pipe") {
             } else {

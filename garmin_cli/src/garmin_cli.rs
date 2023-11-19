@@ -143,7 +143,7 @@ impl GarminCli {
             let pool = self.get_pool();
             GarminSummary::write_summary_to_postgres(&summary_list, &pool)
                 .await
-                .map(|_| Vec::new())
+                .map(|()| Vec::new())
         }
     }
 

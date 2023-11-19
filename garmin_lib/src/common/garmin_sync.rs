@@ -57,7 +57,7 @@ impl KeyItem {
             key,
             etag,
             timestamp,
-            size: item.size as u64,
+            size: item.size? as u64,
         })
     }
 }
@@ -97,15 +97,15 @@ impl Borrow<str> for &KeyItem {
 }
 
 fn process_s3_item(mut item: S3Object) -> Option<KeyItem> {
-    item.key.take().and_then(|key| {
-        item.e_tag.take().and_then(|etag| {
-            item.last_modified.as_ref().map(|last_mod| KeyItem {
-                key: key.into(),
-                etag: etag.trim_matches('"').into(),
-                timestamp: last_mod.as_secs_f64() as i64,
-                size: item.size as u64,
-            })
-        })
+    let key = item.key.take()?.into();
+    let etag = item.e_tag.take()?.trim_matches('"').into();
+    let timestamp = item.last_modified.as_ref()?.as_secs_f64() as i64;
+    let size = item.size? as u64;
+    Some(KeyItem {
+        key,
+        etag,
+        timestamp,
+        size,
     })
 }
 
@@ -152,7 +152,7 @@ impl GarminSync {
                     }
                     list_of_keys.extend(contents.into_iter().map(process_s3_item));
                 }
-                if !output.is_truncated {
+                if output.is_truncated != Some(false) || output.is_truncated.is_none() {
                     break;
                 }
             }
@@ -212,7 +212,7 @@ impl GarminSync {
                     }
                 }
             }
-            if !output.is_truncated {
+            if output.is_truncated != Some(false) || output.is_truncated.is_none() {
                 break;
             }
         }

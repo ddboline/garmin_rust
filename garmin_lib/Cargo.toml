@@ -7,8 +7,8 @@ edition = "2018"
 [dependencies]
 anyhow = "1.0"
 avro-rs = {version = "0.13", features = ["snappy"]}
-aws-config = "0.56"
-aws-sdk-s3 = "0.31"
+aws-config = "0.101"
+aws-sdk-s3 = "0.38"
 base64 = "0.21"
 bytes = "1.0"
 deadpool = "0.10"
@@ -20,7 +20,7 @@ envy = "0.4"
 fitparser = {git="https://github.com/ddboline/fitparse-rs.git", branch="time-0.3-0.5.2"}
 flate2 = "1.0"
 futures = "0.3"
-itertools = "0.11"
+itertools = "0.12"
 json = "0.12"
 lazy_static = "1.4"
 log = "0.4"
@@ -31,7 +31,7 @@ postgres-types = {version="0.2", features=["with-time-0_3", "with-uuid-1", "with
 rand = "0.8"
 rayon = "1.5"
 regex = "1.4"
-roxmltree = "0.18"
+roxmltree = "0.19"
 rustls-native-certs = {version="0.6", default_features=false}
 serde = {version="1.0", features=["derive"]}
 serde_json = "1.0"

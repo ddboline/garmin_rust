@@ -313,7 +313,7 @@ async fn garmin_upload_body(
     let gcli = GarminCli::from_pool(&state.db)?;
     let filenames = vec![filename];
     let datetimes = gcli.process_filenames(&filenames).await?;
-    gcli.sync_everything(false).await?;
+    gcli.sync_everything().await?;
     gcli.proc_everything().await?;
 
     let query = FilterRequest {
@@ -332,11 +332,16 @@ async fn garmin_upload_body(
 async fn save_file(file_path: &str, field: Part) -> Result<u64, anyhow::Error> {
     let mut file = File::create(file_path).await?;
     let mut stream = field.stream();
+    let mut buf_size = 0usize;
 
     while let Some(chunk) = stream.next().await {
-        file.write_all(chunk?.chunk()).await?;
+        let chunk = chunk?;
+        let chunk = chunk.chunk();
+        buf_size += chunk.len();
+        file.write_all(chunk).await?;
     }
     let file_size = file.metadata().await?.len();
+    debug_assert!(buf_size as u64 == file_size);
     Ok(file_size)
 }
 
@@ -360,10 +365,7 @@ pub async fn garmin_sync(
     #[data] state: AppState,
 ) -> WarpResult<GarminSyncResponse> {
     let gcli = GarminCli::from_pool(&state.db).map_err(Into::<Error>::into)?;
-    let mut body = gcli
-        .sync_everything(false)
-        .await
-        .map_err(Into::<Error>::into)?;
+    let mut body = gcli.sync_everything().await.map_err(Into::<Error>::into)?;
     body.extend_from_slice(&gcli.proc_everything().await.map_err(Into::<Error>::into)?);
     let body = body.join("\n").into();
     let body = table_body(body).into();

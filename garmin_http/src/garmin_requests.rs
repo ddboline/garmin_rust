@@ -80,7 +80,7 @@ impl StravaSyncRequest {
 
         if !filenames.is_empty() {
             gcli.process_filenames(&filenames).await?;
-            gcli.sync_everything(false).await?;
+            gcli.sync_everything().await?;
             gcli.proc_everything().await?;
         }
         StravaActivity::fix_summary_id_in_db(pool).await?;
@@ -145,7 +145,7 @@ impl FitbitTcxSyncRequest {
         let filenames = client.sync_tcx(start_date).await?;
 
         let gcli = GarminCli::from_pool(pool)?;
-        gcli.sync_everything(false).await?;
+        gcli.sync_everything().await?;
         gcli.proc_everything().await?;
         Ok(filenames)
     }

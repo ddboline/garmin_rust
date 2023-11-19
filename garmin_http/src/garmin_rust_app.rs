@@ -71,7 +71,7 @@ pub async fn start_app() -> Result<(), Error> {
             {
                 if !filenames.is_empty() || !input_files.is_empty() || !dates.is_empty() {
                     info!("processed {filenames:?} and {input_files:?}");
-                    for line in cli.sync_everything(false).await.unwrap_or(Vec::new()) {
+                    for line in cli.sync_everything().await.unwrap_or(Vec::new()) {
                         info!("{line}");
                     }
                     if let Ok(client) = FitbitClient::with_auth(cli.config.clone()).await {

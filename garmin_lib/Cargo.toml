@@ -1,14 +1,14 @@
 [package]
 name = "garmin_lib"
-version = "0.14.4"
+version = "0.14.5"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
 [dependencies]
 anyhow = "1.0"
 avro-rs = {version = "0.13", features = ["snappy"]}
-aws-config = "0.101"
-aws-sdk-s3 = "0.38"
+aws-config = {version="1.0", features=["behavior-version-latest"]}
+aws-sdk-s3 = "1.1"
 base64 = "0.21"
 bytes = "1.0"
 deadpool = "0.10"

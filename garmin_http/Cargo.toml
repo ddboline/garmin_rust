@@ -1,6 +1,6 @@
 [package]
 name = "garmin_http"
-version = "0.14.4"
+version = "0.14.5"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -42,7 +42,7 @@ dioxus = "0.4"
 dioxus-ssr = "0.4"
 rweb = {git = "https://github.com/ddboline/rweb.git", features=["openapi"], default-features=false, tag="0.15.1-1"}
 rweb-helper = { git = "https://github.com/ddboline/rweb_helper.git", tag="0.5.0-1" }
-authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.11.0"}
+authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.11.3"}
 stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", features=["postgres_types", "rweb-openapi"], tag="0.9.2" }
 reqwest = {version="0.11", features=["cookies", "json", "rustls-tls", "stream"], default_features=false}
 postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.5", features=["deadpool"]}

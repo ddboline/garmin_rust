@@ -27,6 +27,7 @@ use tokio::{
     fs::File,
     task::{spawn, spawn_blocking, JoinHandle},
 };
+use std::fmt::Write;
 
 use crate::{
     common::pgpool::PgPool,
@@ -152,7 +153,7 @@ impl GarminSync {
                     }
                     list_of_keys.extend(contents.into_iter().map(process_s3_item));
                 }
-                if output.is_truncated != Some(false) || output.is_truncated.is_none() {
+                if output.is_truncated == Some(false) || output.is_truncated.is_none() {
                     break;
                 }
             }
@@ -392,11 +393,20 @@ impl GarminSync {
 
         debug!("downloaded {number_downloaded}");
 
-        let msg = format_sstr!(
-            "{title} {s3_bucket} s3_bucket nkeys {total_keys} updated files \
-             {number_updated_files} updated keys {updated_keys} uploaded {number_uploaded} \
-             downloaded {number_downloaded}",
-        );
+        let mut msg = format_sstr!("{title} {s3_bucket} s3_bucket nkeys {total_keys}");
+
+        if number_updated_files > 0 {
+            write!(&mut msg, " updated {number_updated_files}")?;
+        }
+        if updated_keys > 0 {
+            write!(&mut msg, " updated keys {updated_keys}")?;
+        }
+        if number_uploaded > 0 {
+            write!(&mut msg, " uploaded {number_uploaded}")?;
+        }
+        if number_downloaded > 0 {
+            write!(&mut msg, " downloaded {number_downloaded}")?;
+        }
 
         Ok(msg)
     }

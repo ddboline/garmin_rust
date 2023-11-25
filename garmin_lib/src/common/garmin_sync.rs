@@ -84,19 +84,6 @@ impl Borrow<str> for &KeyItem {
     }
 }
 
-fn process_s3_item(mut item: S3Object) -> Option<KeyItem> {
-    let key = item.key.take()?.into();
-    let etag = item.e_tag.take()?.trim_matches('"').into();
-    let timestamp = item.last_modified.as_ref()?.as_secs_f64() as i64;
-    let size = item.size? as u64;
-    Some(KeyItem {
-        key,
-        etag,
-        timestamp,
-        size,
-    })
-}
-
 impl GarminSync {
     #[must_use]
     pub fn new(sdk_config: &SdkConfig) -> Self {
@@ -122,33 +109,6 @@ impl GarminSync {
             builder = builder.marker(marker.as_ref());
         }
         builder.send().await.map_err(Into::into)
-    }
-
-    /// # Errors
-    /// Return error if s3 api call fails
-    pub async fn get_list_of_keys(&self, bucket: &str) -> Result<Vec<KeyItem>, Error> {
-        let results: Result<Vec<_>, _> = exponential_retry(|| async move {
-            let mut marker: Option<String> = None;
-            let mut list_of_keys = Vec::new();
-            loop {
-                let mut output = self.list_keys(bucket, marker.as_ref()).await?;
-                if let Some(contents) = output.contents.take() {
-                    if let Some(last) = contents.last() {
-                        if let Some(key) = &last.key {
-                            marker.replace(key.into());
-                        }
-                    }
-                    list_of_keys.extend(contents.into_iter().map(process_s3_item));
-                }
-                if output.is_truncated == Some(false) || output.is_truncated.is_none() {
-                    break;
-                }
-            }
-            Ok(list_of_keys)
-        })
-        .await;
-        let list_of_keys = results?.into_iter().flatten().collect();
-        Ok(list_of_keys)
     }
 
     async fn _get_and_process_keys(
@@ -213,6 +173,13 @@ impl GarminSync {
             if output.is_truncated == Some(false) || output.is_truncated.is_none() {
                 break;
             }
+        }
+        for (_, mut missing) in file_map {
+            missing.s3_etag = None;
+            missing.s3_timestamp = None;
+            missing.s3_size = None;
+            missing.do_download = false;
+            missing.insert(pool).await?;
         }
         Ok((total_keys, updated_keys))
     }
@@ -302,6 +269,17 @@ impl GarminSync {
             } else {
                 error!("invalid extension {ext:?} for {f:?}");
             }
+        }
+        for (_, mut missing) in file_map {
+            let missing_path = local_dir.join(&missing.s3_key);
+            if missing_path.exists() {
+                continue;
+            }
+            missing.local_etag = None;
+            missing.local_timestamp = None;
+            missing.local_size = None;
+            missing.do_upload = false;
+            missing.insert(pool).await?;
         }
         let updates = tasks.len();
         for task in tasks {

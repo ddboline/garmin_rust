@@ -16,7 +16,7 @@ use stack_string::{format_sstr, StackString};
 use std::{
     borrow::Borrow,
     collections::{HashMap, HashSet},
-    convert::{TryFrom, TryInto},
+    convert::TryInto,
     ffi::OsStr,
     fmt::Write,
     fs,
@@ -59,19 +59,6 @@ impl KeyItem {
             etag,
             timestamp,
             size: item.size? as u64,
-        })
-    }
-}
-
-impl TryFrom<KeyItem> for KeyItemCache {
-    type Error = Error;
-    fn try_from(value: KeyItem) -> Result<Self, Self::Error> {
-        Ok(Self {
-            s3_key: value.key,
-            s3_etag: Some(value.etag),
-            s3_timestamp: Some(value.timestamp),
-            s3_size: Some(value.size.try_into()?),
-            ..Self::default()
         })
     }
 }
@@ -216,8 +203,7 @@ impl GarminSync {
                             }
                             key_item.insert(pool).await?;
                         } else {
-                            let mut key_item: KeyItemCache = key.try_into()?;
-                            key_item.s3_bucket = bucket.into();
+                            let mut key_item = KeyItemCache::from_keyitem(key, bucket)?;
                             key_item.do_download = true;
                             key_item.insert(pool).await?;
                         };
@@ -492,6 +478,19 @@ pub struct KeyItemCache {
 }
 
 impl KeyItemCache {
+    /// # Errors
+    /// Return error if size is larger than i64::MAX
+    pub fn from_keyitem(value: KeyItem, bucket: &str) -> Result<Self, Error> {
+        Ok(Self {
+            s3_key: value.key,
+            s3_bucket: bucket.into(),
+            s3_etag: Some(value.etag),
+            s3_timestamp: Some(value.timestamp),
+            s3_size: Some(value.size.try_into()?),
+            ..Self::default()
+        })
+    }
+
     /// # Errors
     /// Return error if db query fails
     pub async fn get_by_key(

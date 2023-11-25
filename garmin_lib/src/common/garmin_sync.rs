@@ -217,6 +217,7 @@ impl GarminSync {
                             key_item.insert(pool).await?;
                         } else {
                             let mut key_item: KeyItemCache = key.try_into()?;
+                            key_item.s3_bucket = bucket.into();
                             key_item.do_download = true;
                             key_item.insert(pool).await?;
                         };

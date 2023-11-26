@@ -7,6 +7,6 @@
 #![allow(clippy::similar_names)]
 #![allow(clippy::unsafe_derive_deserialize)]
 
-pub mod common;
-pub mod parsers;
-pub mod utils;
+pub mod garmin_config;
+pub mod strava_timezone;
+pub mod date_time_wrapper;

@@ -25,15 +25,14 @@ use tokio::{
     time::sleep,
 };
 
-use garmin_lib::{
-    common::{
-        fitbit_activity::FitbitActivity,
-        garmin_config::GarminConfig,
-        garmin_summary::{get_list_of_activities_from_db, GarminSummary},
-        pgpool::PgPool,
-    },
-    utils::{date_time_wrapper::DateTimeWrapper, garmin_util::get_random_string},
+use garmin_models::{
+    fitbit_activity::FitbitActivity,
+    garmin_summary::{get_list_of_activities_from_db, GarminSummary},
 };
+use garmin_lib::garmin_config::GarminConfig;
+use garmin_utils::pgpool::PgPool;
+use garmin_lib::date_time_wrapper::DateTimeWrapper;
+use garmin_utils::garmin_util::get_random_string;
 
 use crate::{
     fitbit_heartrate::{FitbitBodyWeightFat, FitbitHeartRate},
@@ -1128,10 +1127,9 @@ mod tests {
     };
     use time_tz::OffsetDateTimeExt;
 
-    use garmin_lib::{
-        common::{garmin_config::GarminConfig, pgpool::PgPool},
-        utils::date_time_wrapper::DateTimeWrapper,
-    };
+    use garmin_lib::garmin_config::GarminConfig;
+    use garmin_utils::pgpool::PgPool;
+    use garmin_lib::date_time_wrapper::DateTimeWrapper;
 
     #[tokio::test]
     #[ignore]

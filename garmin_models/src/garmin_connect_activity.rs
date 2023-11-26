@@ -11,9 +11,11 @@ use time::{
 };
 use uuid::Uuid;
 
-use crate::utils::date_time_wrapper::DateTimeWrapper;
+use garmin_lib::date_time_wrapper::DateTimeWrapper;
 
-use super::{garmin_config::GarminConfig, pgpool::PgPool};
+use garmin_utils::pgpool::PgPool;
+
+use garmin_lib::garmin_config::GarminConfig;
 
 #[derive(Serialize, Deserialize, Debug, FromSqlRow, PartialEq)]
 pub struct GarminConnectActivity {

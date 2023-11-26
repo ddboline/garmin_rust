@@ -8,13 +8,13 @@ use std::collections::HashMap;
 use time::{Date, OffsetDateTime};
 use uuid::Uuid;
 
-use crate::{
-    common::{garmin_summary::GarminSummary, pgpool::PgPool, strava_timezone::StravaTimeZone},
-    utils::{
-        date_time_wrapper::DateTimeWrapper,
-        sport_types::{self, SportTypes},
-    },
-};
+use garmin_utils::pgpool::PgPool;
+use garmin_lib::strava_timezone::StravaTimeZone;
+use garmin_lib::date_time_wrapper::DateTimeWrapper;
+use garmin_utils::sport_types::SportTypes;
+use garmin_utils::sport_types;
+
+use crate::garmin_summary::GarminSummary;
 
 #[derive(Serialize, Deserialize, FromSqlRow, Debug, Clone, PartialEq)]
 pub struct StravaActivity {

@@ -1,12 +1,12 @@
-pub mod date_time_wrapper;
 pub mod garmin_util;
 pub mod plot_graph;
 pub mod plot_opts;
 pub mod sport_types;
+pub mod pgpool;
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::{
+    use crate::{
         date_time_wrapper::iso8601::convert_datetime_to_str,
         garmin_util::{convert_time_string, convert_xml_local_time_to_utc, titlecase},
     };

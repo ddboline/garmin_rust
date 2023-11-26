@@ -1,7 +1,7 @@
 use log::debug;
 use std::collections::HashMap;
 
-use crate::utils::plot_opts::PlotOpts;
+use crate::plot_opts::PlotOpts;
 
 #[derive(PartialEq, Debug)]
 pub struct ScatterPlotData {

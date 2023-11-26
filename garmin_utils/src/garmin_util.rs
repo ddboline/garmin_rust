@@ -25,7 +25,7 @@ use time::{format_description::well_known::Rfc3339, macros::date, Date, Month, O
 use time_tz::{timezones::db::UTC, OffsetDateTimeExt};
 use tokio::time::{sleep, Duration};
 
-use crate::common::pgpool::PgPool;
+use crate::pgpool::PgPool;
 
 pub const METERS_PER_MILE: f64 = 1609.344;
 pub const MARATHON_DISTANCE_M: i32 = 42195;

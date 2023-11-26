@@ -29,10 +29,8 @@ use tokio::{
     task::{spawn, spawn_blocking, JoinHandle},
 };
 
-use crate::{
-    common::pgpool::PgPool,
-    utils::garmin_util::{exponential_retry, get_md5sum},
-};
+use garmin_utils::pgpool::PgPool;
+use garmin_utils::garmin_util::{exponential_retry, get_md5sum};
 
 #[derive(Clone)]
 pub struct GarminSync {
@@ -457,7 +455,7 @@ pub struct KeyItemCache {
 
 impl KeyItemCache {
     /// # Errors
-    /// Return error if size is larger than i64::MAX
+    /// Return error if size is larger than `i64::MAX`
     pub fn from_keyitem(value: KeyItem, bucket: &str) -> Result<Self, Error> {
         Ok(Self {
             s3_key: value.key,

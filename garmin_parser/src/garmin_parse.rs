@@ -22,6 +22,75 @@ impl GarminParse {
     pub fn new() -> Self {
         Self::default()
     }
+
+    /// # Errors
+    /// Return error if parsing or dumping avro fails
+    pub fn process_single_gps_file(
+        filepath: &Path,
+        cache_dir: &Path,
+        corr_map: &HashMap<(DateTimeWrapper, i32), GarminCorrectionLap>,
+    ) -> Result<GarminSummary, Error> {
+        let filename = filepath
+            .file_name()
+            .ok_or_else(|| format_err!("Failed to split filename {filepath:?}"))?
+            .to_string_lossy();
+        let cache_file = cache_dir.join(&format_sstr!("{filename}.avro"));
+
+        debug!("Get md5sum {} ", filename);
+        let md5sum = get_md5sum(filepath)?;
+
+        debug!("{} Found md5sum {} ", filename, md5sum);
+        let gfile = GarminParse::new().with_file(filepath, corr_map)?;
+        let filename = &gfile.filename;
+        match gfile.laps.get(0) {
+            Some(l) if l.lap_start == DateTimeWrapper::sentinel_datetime() => {
+                return Err(format_err!("{filename} has empty lap start?"));
+            }
+            Some(_) => (),
+            None => return Err(format_err!("{filename} has no laps?")),
+        };
+        gfile.dump_avro(&cache_file)?;
+        debug!("{filepath:?} Found md5sum {md5sum} success");
+        Ok(GarminSummary::new(&gfile, &md5sum))
+    }
+
+        /// # Errors
+    /// Return error if parsing or dumping avro fails
+    pub fn process_all_gps_files(
+        gps_dir: &Path,
+        cache_dir: &Path,
+        corr_map: &HashMap<(DateTimeWrapper, i32), GarminCorrectionLap>,
+    ) -> Result<Vec<GarminSummary>, Error> {
+        let path = Path::new(gps_dir);
+
+        get_file_list(path)
+            .into_par_iter()
+            .map(|input_file| {
+                debug!("Process {:?}", &input_file);
+                let filename = input_file
+                    .file_name()
+                    .ok_or_else(|| format_err!("Failed to split input_file {input_file:?}"))?
+                    .to_string_lossy();
+                let cache_file = cache_dir.join(&format_sstr!("{filename}.avro"));
+                let md5sum = get_md5sum(&input_file)?;
+                let gfile = GarminParse::new().with_file(&input_file, corr_map)?;
+                let filename = &gfile.filename;
+                match gfile.laps.get(0) {
+                    Some(l) if l.lap_start == DateTimeWrapper::sentinel_datetime() => {
+                        return Err(format_err!(
+                            "{input_file:?} {filename:?} has empty lap start?"
+                        ));
+                    }
+                    Some(_) => (),
+                    None => {
+                        return Err(format_err!("{input_file:?} {filename:?} has no laps?"));
+                    }
+                };
+                gfile.dump_avro(&cache_file)?;
+                Ok(GarminSummary::new(&gfile, &md5sum))
+            })
+            .collect()
+    }
 }
 
 impl GarminParseTrait for GarminParse {
@@ -81,11 +150,18 @@ mod tests {
     use approx::assert_abs_diff_eq;
     use std::path::Path;
 
-    use crate::{
-        common::garmin_correction_lap::GarminCorrectionLap,
-        parsers::garmin_parse::{GarminParse, GarminParseTrait},
-        utils::{date_time_wrapper::iso8601::convert_datetime_to_str, sport_types::SportTypes},
+    use anyhow::Error;
+    use approx::assert_abs_diff_eq;
+    use std::{
+        io::{stdout, Write},
+        path::Path,
     };
+
+    use garmin_lib::date_time_wrapper::iso8601::convert_datetime_to_str;
+    use garmin_models::{garmin_correction_lap::GarminCorrectionLap, garmin_file};
+    use garmin_utils::sport_types::SportTypes;
+
+    use crate::{garmin_parse::{GarminParseTrait, GarminParse}, garmin_parse_fit};
 
     #[test]
     fn test_invalid_ext() -> Result<(), Error> {
@@ -200,6 +276,48 @@ mod tests {
         assert_abs_diff_eq!(gfile.total_duration, 1451.55);
         assert_abs_diff_eq!(gfile.total_hr_dur, 220635.6);
         assert_abs_diff_eq!(gfile.total_hr_dis, 1451.55);
+        Ok(())
+    }
+
+    #[test]
+    #[ignore]
+    fn test_garmin_file_test_avro() -> Result<(), Error> {
+        let corr_map =
+            GarminCorrectionLap::corr_list_from_json("../tests/data/garmin_corrections.json")?;
+        let gfile = garmin_parse_fit::GarminParseFit::new()
+            .with_file(Path::new("../tests/data/test.fit"), &corr_map)?;
+        match gfile.dump_avro(Path::new("temp.avro")) {
+            Ok(()) => {
+                writeln!(stdout(), "Success")?;
+            }
+            Err(e) => {
+                writeln!(stdout(), "{}", e)?;
+            }
+        }
+
+        match garmin_file::GarminFile::read_avro(Path::new("temp.avro")) {
+            Ok(g) => {
+                writeln!(stdout(), "Success")?;
+                assert_eq!(gfile.sport, g.sport);
+                assert_eq!(gfile.filename, g.filename);
+                assert_eq!(gfile.sport, g.sport);
+                assert_eq!(gfile.filetype, g.filetype);
+                assert_eq!(gfile.begin_datetime, g.begin_datetime);
+                assert_eq!(gfile.total_calories, g.total_calories);
+                assert_eq!(gfile.laps.len(), g.laps.len());
+                assert_eq!(gfile.points.len(), g.points.len());
+                assert_abs_diff_eq!(gfile.total_distance, g.total_distance);
+                assert_abs_diff_eq!(gfile.total_duration, g.total_duration);
+                assert_abs_diff_eq!(gfile.total_hr_dur, g.total_hr_dur);
+                assert_abs_diff_eq!(gfile.total_hr_dis, g.total_hr_dis);
+            }
+            Err(e) => {
+                writeln!(stdout(), "{}", e)?;
+                assert!(false);
+            }
+        }
+
+        std::fs::remove_file("temp.avro")?;
         Ok(())
     }
 }

@@ -266,7 +266,7 @@ impl TryFrom<&str> for UrlWrapper {
 mod tests {
     use std::{env, path::Path};
 
-    use crate::common::garmin_config;
+    use crate::garmin_config;
 
     #[test]
     fn test_garmin_config_new() {

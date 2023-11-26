@@ -218,7 +218,7 @@ mod tests {
     use anyhow::Error;
     use stack_string::format_sstr;
 
-    use crate::common::strava_timezone::StravaTimeZone;
+    use crate::strava_timezone::StravaTimeZone;
 
     #[test]
     fn test_timezone() -> Result<(), Error> {

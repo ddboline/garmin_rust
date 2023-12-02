@@ -8,7 +8,8 @@
 use anyhow::Error;
 
 use fitbit_bot::telegram_bot::TelegramBot;
-use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
+use garmin_lib::garmin_config::GarminConfig;
+use garmin_utils::pgpool::PgPool;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {

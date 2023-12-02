@@ -15,9 +15,9 @@ use tokio::{task::spawn, time::interval};
 
 use fitbit_lib::fitbit_client::FitbitClient;
 use garmin_cli::{garmin_cli::GarminCli, garmin_cli_opts::GarminCliOpts};
-use garmin_lib::common::{
-    garmin_config::GarminConfig, garmin_correction_lap::GarminCorrectionMap, pgpool::PgPool,
-};
+use garmin_lib::garmin_config::GarminConfig;
+use garmin_models::garmin_correction_lap::GarminCorrectionMap;
+use garmin_utils::pgpool::PgPool;
 
 use crate::{
     errors::error_response,

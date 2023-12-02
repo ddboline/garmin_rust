@@ -3,17 +3,17 @@ use fitparser::{profile::field_types::MesgNum, Value};
 use log::debug;
 use std::{collections::HashMap, fs::File, path::Path};
 
-use crate::{
-    common::{
-        garmin_correction_lap::{apply_lap_corrections, GarminCorrectionLap},
-        garmin_file::GarminFile,
-        garmin_lap::GarminLap,
-        garmin_point::GarminPoint,
-    },
-    utils::{date_time_wrapper::DateTimeWrapper, sport_types::SportTypes},
+use garmin_lib::date_time_wrapper::DateTimeWrapper;
+use garmin_utils::sport_types::SportTypes;
+
+use garmin_models::{
+    garmin_correction_lap::{apply_lap_corrections, GarminCorrectionLap},
+    garmin_file::GarminFile,
+    garmin_lap::GarminLap,
+    garmin_point::GarminPoint,
 };
 
-use super::garmin_parse::{GarminParseTrait, ParseOutput};
+use crate::garmin_parse::{GarminParseTrait, ParseOutput};
 
 #[derive(Debug, Default)]
 pub struct GarminParseFit {}
@@ -123,11 +123,11 @@ mod tests {
     use approx::assert_abs_diff_eq;
     use std::path::Path;
 
-    use crate::{
-        common::garmin_correction_lap::GarminCorrectionLap,
-        parsers::{garmin_parse::GarminParseTrait, garmin_parse_fit},
-        utils::{date_time_wrapper::iso8601::convert_datetime_to_str, sport_types::SportTypes},
-    };
+    use garmin_lib::date_time_wrapper::iso8601::convert_datetime_to_str;
+    use garmin_models::garmin_correction_lap::GarminCorrectionLap;
+    use garmin_utils::sport_types::SportTypes;
+
+    use crate::{garmin_parse::GarminParseTrait, garmin_parse_fit};
 
     #[test]
     #[ignore]

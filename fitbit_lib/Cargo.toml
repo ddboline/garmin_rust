@@ -7,37 +7,36 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-serde = {version="1.0", features=["derive"]}
-serde_json = "1.0"
-garmin_lib = {path = "../garmin_lib"}
-time = {version="0.3", features=["serde-human-readable", "macros", "formatting", "parsing"]}
-time-tz = {version="2.0", features=["system"]}
-dotenv = "0.15"
-glob = "0.3"
-rayon = "1.5"
-log = "0.4"
-lazy_static = "1.4"
-parking_lot = "0.12"
-itertools = "0.12"
-avro-rs = {version = "0.13", features = ["snappy"]}
-uuid = { version = "1.0", features = ["serde", "v4"] }
-postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.5", features=["deadpool"]}
 anyhow = "1.0"
-thiserror = "1.0"
-tokio = {version="1.34", features=["rt", "macros", "rt-multi-thread"]}
-futures = "0.3"
-reqwest = {version="0.11", features=["cookies", "json", "rustls-tls", "stream"], default_features=false}
-rand = "0.8"
+avro-rs = {version = "0.13", features = ["snappy"]}
 base64 = "0.21"
-maplit = "1.0"
 bytes = "1.0"
-statistical = "1.0"
-fitparser = {git="https://github.com/ddboline/fitparse-rs.git", branch="time-0.3-0.5.2"}
-smallvec = "1.6"
 crossbeam-utils = "0.8"
 derive_more = "0.99"
+fitparser = {git="https://github.com/ddboline/fitparse-rs.git", branch="time-0.3-0.5.2"}
+futures = "0.3"
+garmin_lib = {path = "../garmin_lib"}
+garmin_models = {path="../garmin_models"}
+garmin_utils = {path="../garmin_utils"}
+glob = "0.3"
+itertools = "0.12"
+lazy_static = "1.4"
+log = "0.4"
+maplit = "1.0"
 polars = {version="0.35", features=["temporal", "parquet", "lazy"]}
+postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.5", features=["deadpool"]}
+rand = "0.8"
+rayon = "1.5"
+reqwest = {version="0.11", features=["cookies", "json", "rustls-tls", "stream"], default_features=false}
+serde = {version="1.0", features=["derive"]}
+serde_json = "1.0"
+smallvec = "1.6"
 stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", features=["postgres_types"], tag="0.9.2" }
+statistical = "1.0"
+time = {version="0.3", features=["serde-human-readable", "macros", "formatting", "parsing"]}
+time-tz = {version="2.0", features=["system"]}
+tokio = {version="1.34", features=["rt", "macros", "rt-multi-thread"]}
+uuid = { version = "1.0", features = ["serde", "v4"] }
 
 [dev-dependencies]
 tempfile = "3.1"

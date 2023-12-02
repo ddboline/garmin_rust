@@ -14,15 +14,13 @@ use fitbit_lib::{
     fitbit_statistics_summary::FitbitStatisticsSummary,
 };
 use garmin_cli::garmin_cli::{GarminCli, GarminRequest};
-use garmin_lib::{
-    common::{
-        fitbit_activity::FitbitActivity, garmin_config::GarminConfig,
-        garmin_correction_lap::GarminCorrectionLap, garmin_summary::GarminSummary, pgpool::PgPool,
-        strava_activity::StravaActivity,
-    },
-    utils::date_time_wrapper::DateTimeWrapper,
+use garmin_lib::{date_time_wrapper::DateTimeWrapper, garmin_config::GarminConfig};
+use garmin_models::{
+    fitbit_activity::FitbitActivity, garmin_correction_lap::GarminCorrectionLap,
+    garmin_summary::GarminSummary, strava_activity::StravaActivity,
 };
 use garmin_reports::garmin_constraints::GarminConstraints;
+use garmin_utils::pgpool::PgPool;
 use strava_lib::strava_client::StravaClient;
 
 use crate::{

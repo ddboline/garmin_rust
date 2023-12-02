@@ -6,7 +6,8 @@ use stack_string::{format_sstr, StackString};
 use time::{format_description::well_known::Rfc3339, macros::format_description, OffsetDateTime};
 use time_tz::{timezones::db::UTC, OffsetDateTimeExt};
 
-use garmin_lib::{common::garmin_config::GarminConfig, utils::sport_types::get_sport_type_map};
+use garmin_lib::garmin_config::GarminConfig;
+use garmin_utils::sport_types::get_sport_type_map;
 
 use crate::garmin_report_options::{GarminReportAgg, GarminReportOptions};
 
@@ -207,7 +208,7 @@ mod tests {
     use anyhow::Error;
     use time::macros::datetime;
 
-    use garmin_lib::common::garmin_config::GarminConfig;
+    use garmin_lib::garmin_config::GarminConfig;
 
     use crate::garmin_constraints::GarminConstraint;
 

@@ -26,16 +26,12 @@ use fitbit_lib::{
     scale_measurement::ScaleMeasurement,
     GarminConnectHrData,
 };
-use garmin_lib::{
-    common::{
-        fitbit_activity::FitbitActivity, garmin_config::GarminConfig,
-        garmin_connect_activity::GarminConnectActivity, pgpool::PgPool,
-        strava_activity::StravaActivity,
-    },
-    utils::{
-        date_time_wrapper::DateTimeWrapper, garmin_util::extract_zip_from_garmin_connect_multiple,
-    },
+use garmin_lib::{date_time_wrapper::DateTimeWrapper, garmin_config::GarminConfig};
+use garmin_models::{
+    fitbit_activity::FitbitActivity, garmin_connect_activity::GarminConnectActivity,
+    strava_activity::StravaActivity,
 };
+use garmin_utils::{garmin_util::extract_zip_from_garmin_connect_multiple, pgpool::PgPool};
 use race_result_analysis::{race_results::RaceResults, race_type::RaceType};
 use std::str::FromStr;
 use strava_lib::strava_client::StravaClient;
@@ -653,14 +649,11 @@ mod tests {
     use anyhow::Error;
     use stdout_channel::StdoutChannel;
 
-    use garmin_lib::{
-        common::{
-            garmin_config::GarminConfig, garmin_correction_lap::GarminCorrectionMap, pgpool::PgPool,
-        },
-        parsers::garmin_parse::GarminParse,
-    };
-
     use crate::garmin_cli::{GarminCli, GarminCliOptions};
+    use garmin_lib::garmin_config::GarminConfig;
+    use garmin_models::garmin_correction_lap::GarminCorrectionMap;
+    use garmin_parser::garmin_parse::GarminParse;
+    use garmin_utils::pgpool::PgPool;
 
     #[tokio::test]
     #[ignore]

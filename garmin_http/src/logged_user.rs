@@ -19,10 +19,8 @@ use std::{
 use url::Url;
 use uuid::Uuid;
 
-use garmin_lib::{
-    common::{garmin_config::GarminConfig, pgpool::PgPool},
-    utils::garmin_util::get_authorized_users,
-};
+use garmin_lib::garmin_config::GarminConfig;
+use garmin_utils::{garmin_util::get_authorized_users, pgpool::PgPool};
 
 use crate::errors::ServiceError as Error;
 

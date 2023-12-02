@@ -7,6 +7,12 @@
 #![allow(clippy::similar_names)]
 #![allow(clippy::unsafe_derive_deserialize)]
 
-pub mod date_time_wrapper;
-pub mod garmin_config;
-pub mod strava_timezone;
+pub mod fitbit_activity;
+pub mod garmin_connect_activity;
+pub mod garmin_correction_lap;
+pub mod garmin_file;
+pub mod garmin_lap;
+pub mod garmin_point;
+pub mod garmin_summary;
+pub mod garmin_sync;
+pub mod strava_activity;

@@ -9,13 +9,11 @@ use stack_string::StackString;
 use std::{collections::HashMap, fs, hash::BuildHasher, path::Path, str};
 use uuid::Uuid;
 
-use crate::utils::{
-    date_time_wrapper::{iso8601::convert_str_to_datetime, DateTimeWrapper},
-    garmin_util::METERS_PER_MILE,
-    sport_types::SportTypes,
-};
+use garmin_lib::date_time_wrapper::{iso8601::convert_str_to_datetime, DateTimeWrapper};
 
-use super::{garmin_lap::GarminLap, pgpool::PgPool};
+use garmin_utils::{garmin_util::METERS_PER_MILE, pgpool::PgPool, sport_types::SportTypes};
+
+use crate::garmin_lap::GarminLap;
 
 #[derive(Debug, Clone, Copy, PartialEq, FromSqlRow)]
 pub struct GarminCorrectionLap {
@@ -422,10 +420,11 @@ mod tests {
     use std::io::{stdout, Write};
     use uuid::Uuid;
 
-    use crate::{
-        common::garmin_correction_lap::GarminCorrectionLap,
-        utils::{date_time_wrapper::iso8601::convert_str_to_datetime, sport_types::SportTypes},
-    };
+    use garmin_lib::date_time_wrapper::iso8601::convert_str_to_datetime;
+
+    use garmin_utils::sport_types::SportTypes;
+
+    use crate::garmin_correction_lap::GarminCorrectionLap;
 
     #[test]
     fn test_garmin_correction_lap_new() {

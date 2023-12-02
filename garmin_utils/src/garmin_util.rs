@@ -25,7 +25,7 @@ use time::{format_description::well_known::Rfc3339, macros::date, Date, Month, O
 use time_tz::{timezones::db::UTC, OffsetDateTimeExt};
 use tokio::time::{sleep, Duration};
 
-use crate::common::pgpool::PgPool;
+use crate::pgpool::PgPool;
 
 pub const METERS_PER_MILE: f64 = 1609.344;
 pub const MARATHON_DISTANCE_M: i32 = 42195;
@@ -86,9 +86,12 @@ pub fn get_md5sum(filename: &Path) -> Result<StackString, Error> {
 /// # Errors
 /// Return error if second is negative
 pub fn print_h_m_s(second: f64, do_hours: bool) -> Result<StackString, Error> {
-    let hours = (second / 3600.0) as i32;
-    let minutes = (second / 60.0) as i32 - hours * 60;
-    let seconds = second as i32 - minutes * 60 - hours * 3600;
+    if second.abs() > (i64::MAX as f64) {
+        return Err(format_err!("Number of seconds is far too large"));
+    }
+    let hours = (second / 3600.0) as i64;
+    let minutes = (second / 60.0) as i64 - hours * 60;
+    let seconds = second as i64 - minutes * 60 - hours * 3600;
     if (hours > 0) | ((hours == 0) & do_hours) {
         Ok(format_sstr!("{hours:02}:{minutes:02}:{seconds:02}"))
     } else if hours == 0 {

@@ -11,9 +11,10 @@ use time::{Date, OffsetDateTime};
 use uuid::Uuid;
 
 use garmin_lib::{
-    common::{garmin_config::GarminConfig, pgpool::PgPool},
-    utils::date_time_wrapper::{iso8601::convert_datetime_to_str, DateTimeWrapper},
+    date_time_wrapper::{iso8601::convert_datetime_to_str, DateTimeWrapper},
+    garmin_config::GarminConfig,
 };
+use garmin_utils::pgpool::PgPool;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Copy, FromSqlRow, PartialEq)]
 pub struct ScaleMeasurement {
@@ -315,7 +316,8 @@ mod tests {
     use time::{macros::datetime, OffsetDateTime};
     use uuid::Uuid;
 
-    use garmin_lib::common::{garmin_config::GarminConfig, pgpool::PgPool};
+    use garmin_lib::garmin_config::GarminConfig;
+    use garmin_utils::pgpool::PgPool;
 
     use crate::scale_measurement::ScaleMeasurement;
 

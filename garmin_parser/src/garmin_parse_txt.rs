@@ -12,18 +12,16 @@ use time::{
     Date, PrimitiveDateTime, Time,
 };
 
-use crate::{
-    common::{
-        garmin_correction_lap::{apply_lap_corrections, GarminCorrectionLap},
-        garmin_file::GarminFile,
-        garmin_lap::GarminLap,
-        garmin_point::GarminPoint,
-    },
-    utils::{
-        date_time_wrapper::DateTimeWrapper,
-        garmin_util::{convert_time_string, METERS_PER_MILE},
-        sport_types::{get_sport_type_map, SportTypes},
-    },
+use garmin_lib::date_time_wrapper::DateTimeWrapper;
+use garmin_models::{
+    garmin_correction_lap::{apply_lap_corrections, GarminCorrectionLap},
+    garmin_file::GarminFile,
+    garmin_lap::GarminLap,
+    garmin_point::GarminPoint,
+};
+use garmin_utils::{
+    garmin_util::{convert_time_string, METERS_PER_MILE},
+    sport_types::{get_sport_type_map, SportTypes},
 };
 
 use super::garmin_parse::{GarminParseTrait, ParseOutput};
@@ -82,20 +80,20 @@ impl GarminParseTrait for GarminParseTxt {
     }
 
     fn parse_file(&self, filename: &Path) -> Result<ParseOutput, Error> {
-        let lap_list: Vec<_> = Self::get_lap_list(filename)?
+        let lap_list = Self::get_lap_list(filename)?
             .into_iter()
             .enumerate()
             .map(|(i, lap)| {
                 let mut new_lap = lap;
-                new_lap.lap_index = i as i32;
+                new_lap.lap_index = i.try_into()?;
                 new_lap.lap_number = if new_lap.lap_number == -1 {
-                    i as i32
+                    i.try_into()?
                 } else {
                     new_lap.lap_number
                 };
-                new_lap
+                Ok(new_lap)
             })
-            .collect();
+            .collect::<Result<Vec<_>, Error>>()?;
 
         let mut time_since_begin = 0.0;
         let mut distance_since_begin = 0.0;
@@ -308,11 +306,11 @@ mod tests {
     use approx::assert_abs_diff_eq;
     use std::path::Path;
 
-    use crate::{
-        common::garmin_correction_lap::GarminCorrectionLap,
-        parsers::{garmin_parse::GarminParseTrait, garmin_parse_txt},
-        utils::{date_time_wrapper::iso8601::convert_datetime_to_str, sport_types::SportTypes},
-    };
+    use garmin_lib::date_time_wrapper::iso8601::convert_datetime_to_str;
+    use garmin_models::garmin_correction_lap::GarminCorrectionLap;
+    use garmin_utils::sport_types::SportTypes;
+
+    use crate::{garmin_parse::GarminParseTrait, garmin_parse_txt};
 
     #[test]
     fn test_garmin_parse_txt() -> Result<(), Error> {

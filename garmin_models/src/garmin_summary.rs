@@ -1,25 +1,21 @@
-use anyhow::{format_err, Error};
+use anyhow::Error;
 use futures::{future::try_join_all, Stream, TryStreamExt};
 use itertools::Itertools;
 use log::debug;
 use postgres_query::{query, query_dyn, Error as PqError, FromSqlRow};
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
-use std::{collections::HashMap, fmt, path::Path, sync::Arc};
+use std::{fmt, sync::Arc};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::{
-    parsers::garmin_parse::{GarminParse, GarminParseTrait},
-    utils::{
-        date_time_wrapper::{iso8601::convert_datetime_to_str, DateTimeWrapper},
-        garmin_util::{generate_random_string, get_file_list, get_md5sum},
-        sport_types::SportTypes,
-    },
-};
+use garmin_lib::date_time_wrapper::{iso8601::convert_datetime_to_str, DateTimeWrapper};
 
-use super::{garmin_correction_lap::GarminCorrectionLap, garmin_file::GarminFile, pgpool::PgPool};
+use garmin_utils::{garmin_util::generate_random_string, sport_types::SportTypes};
+
+use garmin_utils::pgpool::PgPool;
+
+use crate::garmin_file::GarminFile;
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromSqlRow, PartialEq)]
 pub struct GarminSummary {
@@ -50,75 +46,6 @@ impl GarminSummary {
             total_hr_dis: gfile.total_hr_dis,
             md5sum: md5sum.into(),
         }
-    }
-
-    /// # Errors
-    /// Return error if parsing or dumping avro fails
-    pub fn process_single_gps_file(
-        filepath: &Path,
-        cache_dir: &Path,
-        corr_map: &HashMap<(DateTimeWrapper, i32), GarminCorrectionLap>,
-    ) -> Result<Self, Error> {
-        let filename = filepath
-            .file_name()
-            .ok_or_else(|| format_err!("Failed to split filename {filepath:?}"))?
-            .to_string_lossy();
-        let cache_file = cache_dir.join(&format_sstr!("{filename}.avro"));
-
-        debug!("Get md5sum {} ", filename);
-        let md5sum = get_md5sum(filepath)?;
-
-        debug!("{} Found md5sum {} ", filename, md5sum);
-        let gfile = GarminParse::new().with_file(filepath, corr_map)?;
-        let filename = &gfile.filename;
-        match gfile.laps.get(0) {
-            Some(l) if l.lap_start == DateTimeWrapper::sentinel_datetime() => {
-                return Err(format_err!("{filename} has empty lap start?"));
-            }
-            Some(_) => (),
-            None => return Err(format_err!("{filename} has no laps?")),
-        };
-        gfile.dump_avro(&cache_file)?;
-        debug!("{filepath:?} Found md5sum {md5sum} success");
-        Ok(Self::new(&gfile, &md5sum))
-    }
-
-    /// # Errors
-    /// Return error if parsing or dumping avro fails
-    pub fn process_all_gps_files(
-        gps_dir: &Path,
-        cache_dir: &Path,
-        corr_map: &HashMap<(DateTimeWrapper, i32), GarminCorrectionLap>,
-    ) -> Result<Vec<Self>, Error> {
-        let path = Path::new(gps_dir);
-
-        get_file_list(path)
-            .into_par_iter()
-            .map(|input_file| {
-                debug!("Process {:?}", &input_file);
-                let filename = input_file
-                    .file_name()
-                    .ok_or_else(|| format_err!("Failed to split input_file {input_file:?}"))?
-                    .to_string_lossy();
-                let cache_file = cache_dir.join(&format_sstr!("{filename}.avro"));
-                let md5sum = get_md5sum(&input_file)?;
-                let gfile = GarminParse::new().with_file(&input_file, corr_map)?;
-                let filename = &gfile.filename;
-                match gfile.laps.get(0) {
-                    Some(l) if l.lap_start == DateTimeWrapper::sentinel_datetime() => {
-                        return Err(format_err!(
-                            "{input_file:?} {filename:?} has empty lap start?"
-                        ));
-                    }
-                    Some(_) => (),
-                    None => {
-                        return Err(format_err!("{input_file:?} {filename:?} has no laps?"));
-                    }
-                };
-                gfile.dump_avro(&cache_file)?;
-                Ok(GarminSummary::new(&gfile, &md5sum))
-            })
-            .collect()
     }
 
     /// # Errors
@@ -444,10 +371,10 @@ pub async fn get_maximum_begin_datetime(pool: &PgPool) -> Result<Option<OffsetDa
 mod tests {
     use uuid::Uuid;
 
-    use crate::{
-        common::garmin_summary,
-        utils::{date_time_wrapper::iso8601::convert_str_to_datetime, sport_types::SportTypes},
-    };
+    use garmin_lib::date_time_wrapper::iso8601::convert_str_to_datetime;
+    use garmin_utils::sport_types::SportTypes;
+
+    use crate::garmin_summary;
 
     #[test]
     fn test_garmin_file_test_display() {

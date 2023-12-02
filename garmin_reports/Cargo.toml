@@ -7,18 +7,19 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-garmin_lib = {path="../garmin_lib"}
 anyhow = "1.0"
+derive_more = "0.99"
+futures = "0.3"
+garmin_lib = {path="../garmin_lib"}
+garmin_models = {path="../garmin_models"}
+garmin_utils = {path="../garmin_utils"}
+itertools = "0.12"
+lazy_static = "1.4"
+log = "0.4"
+postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.5", features=["deadpool"]}
+regex = "1.4"
+stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", features=["postgres_types", "rweb-openapi"], tag="0.9.2" }
 time = {version="0.3", features=["serde-human-readable", "macros", "formatting", "parsing"]}
 time-tz = {version="2.0", features=["system"]}
-log = "0.4"
-rayon = "1.5"
-lazy_static = "1.4"
-regex = "1.4"
-futures = "0.3"
-postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.5", features=["deadpool"]}
 url = "2.3"
-itertools = "0.12"
-derive_more = "0.99"
-stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", features=["postgres_types", "rweb-openapi"], tag="0.9.2" }
 uuid = { version = "1.0", features = ["serde", "v4"] }

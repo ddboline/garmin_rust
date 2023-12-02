@@ -15,10 +15,8 @@ use tokio::{
 };
 
 use fitbit_lib::scale_measurement::ScaleMeasurement;
-use garmin_lib::{
-    common::{garmin_config::GarminConfig, pgpool::PgPool},
-    utils::garmin_util::get_list_of_telegram_userids,
-};
+use garmin_lib::garmin_config::GarminConfig;
+use garmin_utils::{garmin_util::get_list_of_telegram_userids, pgpool::PgPool};
 
 use super::failure_count::FailureCount;
 
@@ -221,9 +219,9 @@ mod tests {
 
     use fitbit_lib::scale_measurement::ScaleMeasurement;
     use garmin_lib::{
-        common::{garmin_config::GarminConfig, pgpool::PgPool},
-        utils::date_time_wrapper::iso8601::convert_datetime_to_str,
+        date_time_wrapper::iso8601::convert_datetime_to_str, garmin_config::GarminConfig,
     };
+    use garmin_utils::pgpool::PgPool;
 
     use crate::telegram_bot::{TelegramBot, LAST_WEIGHT, USERIDS};
 

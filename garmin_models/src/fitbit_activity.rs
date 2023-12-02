@@ -8,7 +8,9 @@ use std::collections::HashMap;
 use time::Date;
 use uuid::Uuid;
 
-use crate::{common::pgpool::PgPool, utils::date_time_wrapper::DateTimeWrapper};
+use garmin_lib::date_time_wrapper::DateTimeWrapper;
+
+use garmin_utils::pgpool::PgPool;
 
 #[derive(Serialize, Deserialize, Clone, Debug, FromSqlRow, PartialEq)]
 pub struct FitbitActivity {

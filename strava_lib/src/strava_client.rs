@@ -29,15 +29,17 @@ use tokio::{
 use tokio_stream::StreamExt;
 
 use garmin_lib::{
-    common::{
-        garmin_config::GarminConfig, garmin_summary::get_list_of_activities_from_db,
-        pgpool::PgPool, strava_activity::StravaActivity,
-    },
-    utils::{
-        date_time_wrapper::{iso8601::convert_datetime_to_str, DateTimeWrapper},
-        garmin_util::{get_random_string, gzip_file},
-        sport_types::{self, SportTypes},
-    },
+    date_time_wrapper::{iso8601::convert_datetime_to_str, DateTimeWrapper},
+    garmin_config::GarminConfig,
+};
+use garmin_models::{
+    garmin_summary::get_list_of_activities_from_db, strava_activity::StravaActivity,
+};
+use garmin_utils::{
+    garmin_util::{get_random_string, gzip_file},
+    pgpool::PgPool,
+    sport_types,
+    sport_types::SportTypes,
 };
 
 lazy_static! {
@@ -805,10 +807,8 @@ mod tests {
     use std::collections::HashMap;
     use time::macros::datetime;
 
-    use garmin_lib::{
-        common::{garmin_config::GarminConfig, pgpool::PgPool},
-        utils::sport_types::SportTypes,
-    };
+    use garmin_lib::garmin_config::GarminConfig;
+    use garmin_utils::{garmin_util::get_md5sum, pgpool::PgPool, sport_types::SportTypes};
 
     use crate::strava_client::{StravaActivity, StravaClient};
 
@@ -893,7 +893,6 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_webauth() -> Result<(), Error> {
-        use garmin_lib::utils::garmin_util::get_md5sum;
         let config = GarminConfig::get_config(None)?;
         let client = StravaClient::with_auth(config).await?;
         client.webauth().await?;

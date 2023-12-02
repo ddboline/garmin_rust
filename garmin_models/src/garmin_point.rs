@@ -8,11 +8,9 @@ use std::fmt;
 use time::OffsetDateTime;
 use time_tz::{timezones::db::UTC, OffsetDateTimeExt};
 
-use crate::utils::{
-    date_time_wrapper::DateTimeWrapper,
-    garmin_util::{
-        convert_xml_local_time_to_utc, get_degrees_from_semicircles, get_f64, METERS_PER_MILE,
-    },
+use garmin_lib::date_time_wrapper::DateTimeWrapper;
+use garmin_utils::garmin_util::{
+    convert_xml_local_time_to_utc, get_degrees_from_semicircles, get_f64, METERS_PER_MILE,
 };
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]

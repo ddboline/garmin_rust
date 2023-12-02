@@ -25,20 +25,19 @@ use fitbit_lib::{
 };
 use garmin_cli::garmin_cli::{GarminCli, GarminRequest};
 use garmin_lib::{
-    common::{
-        fitbit_activity::FitbitActivity,
-        garmin_config::GarminConfig,
-        garmin_connect_activity::GarminConnectActivity,
-        garmin_correction_lap::GarminCorrectionLap,
-        garmin_file,
-        garmin_summary::{get_list_of_files_from_db, GarminSummary},
-        pgpool::PgPool,
-        strava_activity::StravaActivity,
-    },
-    parsers::garmin_parse::{GarminParse, GarminParseTrait},
-    utils::{date_time_wrapper::iso8601::convert_datetime_to_str, garmin_util::titlecase},
+    date_time_wrapper::iso8601::convert_datetime_to_str, garmin_config::GarminConfig,
 };
+use garmin_models::{
+    fitbit_activity::FitbitActivity,
+    garmin_connect_activity::GarminConnectActivity,
+    garmin_correction_lap::GarminCorrectionLap,
+    garmin_file,
+    garmin_summary::{get_list_of_files_from_db, GarminSummary},
+    strava_activity::StravaActivity,
+};
+use garmin_parser::garmin_parse::{GarminParse, GarminParseTrait};
 use garmin_reports::garmin_summary_report_txt::create_report_query;
+use garmin_utils::{garmin_util::titlecase, pgpool::PgPool};
 use race_result_analysis::{
     race_result_analysis::RaceResultAnalysis, race_results::RaceResults, race_type::RaceType,
 };

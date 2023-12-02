@@ -14,21 +14,22 @@ use fitbit_lib::{
     scale_measurement::ScaleMeasurement,
 };
 use garmin_lib::{
-    common::{
-        fitbit_activity::FitbitActivity, garmin_config::GarminConfig,
-        garmin_connect_activity::GarminConnectActivity, garmin_file::GarminFile,
-        garmin_summary::GarminSummary, pgpool::PgPool, strava_activity::StravaActivity,
-    },
-    utils::{
-        date_time_wrapper::{iso8601::convert_datetime_to_str, DateTimeWrapper},
-        garmin_util::{print_h_m_s, titlecase, MARATHON_DISTANCE_MI, METERS_PER_MILE},
-        plot_graph::{generate_plot_data, ScatterPlotData},
-        sport_types::{get_sport_type_map, SportTypes},
-    },
+    date_time_wrapper::{iso8601::convert_datetime_to_str, DateTimeWrapper},
+    garmin_config::GarminConfig,
+};
+use garmin_models::{
+    fitbit_activity::FitbitActivity, garmin_connect_activity::GarminConnectActivity,
+    garmin_file::GarminFile, garmin_summary::GarminSummary, strava_activity::StravaActivity,
 };
 use garmin_reports::{
     garmin_file_report_txt::get_splits,
     garmin_summary_report_txt::{GarminReportQuery, HtmlResult},
+};
+use garmin_utils::{
+    garmin_util::{print_h_m_s, titlecase, MARATHON_DISTANCE_MI, METERS_PER_MILE},
+    pgpool::PgPool,
+    plot_graph::{generate_plot_data, ScatterPlotData},
+    sport_types::{get_sport_type_map, SportTypes},
 };
 use race_result_analysis::{
     race_result_analysis::{PlotData, RaceResultAnalysis},

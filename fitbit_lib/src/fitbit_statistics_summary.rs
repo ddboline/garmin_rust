@@ -6,7 +6,8 @@ use statistical::{mean, median, standard_deviation};
 use time::{Date, Duration, OffsetDateTime};
 use time_tz::OffsetDateTimeExt;
 
-use garmin_lib::{common::pgpool::PgPool, utils::date_time_wrapper::DateTimeWrapper};
+use garmin_lib::date_time_wrapper::DateTimeWrapper;
+use garmin_utils::pgpool::PgPool;
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, FromSqlRow)]
 pub struct FitbitStatisticsSummary {

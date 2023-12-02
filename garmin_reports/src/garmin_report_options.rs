@@ -1,4 +1,4 @@
-use garmin_lib::utils::sport_types::SportTypes;
+use garmin_utils::sport_types::SportTypes;
 
 #[derive(Debug, Clone, Copy)]
 pub enum GarminReportAgg {

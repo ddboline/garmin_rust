@@ -18,11 +18,9 @@ use std::{
 use time::{Date, Duration, Month, OffsetDateTime, Time};
 use tokio::task::spawn_blocking;
 
-use garmin_lib::garmin_config::GarminConfig;
-use garmin_models::garmin_file::GarminFile;
-use garmin_models::garmin_summary::get_list_of_files_from_db;
+use garmin_lib::{date_time_wrapper::DateTimeWrapper, garmin_config::GarminConfig};
+use garmin_models::{garmin_file::GarminFile, garmin_summary::get_list_of_files_from_db};
 use garmin_utils::pgpool::PgPool;
-use garmin_lib::date_time_wrapper::DateTimeWrapper;
 
 use crate::fitbit_heartrate::FitbitHeartRate;
 

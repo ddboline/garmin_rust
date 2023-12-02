@@ -35,9 +35,10 @@ use fitbit_lib::{
     fitbit_statistics_summary::FitbitStatisticsSummary,
     scale_measurement::ScaleMeasurement,
 };
-use garmin_lib::common::{
+use garmin_lib::strava_timezone::StravaTimeZone;
+use garmin_models::{
     fitbit_activity::FitbitActivity, garmin_connect_activity::GarminConnectActivity,
-    strava_activity::StravaActivity, strava_timezone::StravaTimeZone,
+    strava_activity::StravaActivity,
 };
 use race_result_analysis::{race_results::RaceResults, race_type::RaceType};
 

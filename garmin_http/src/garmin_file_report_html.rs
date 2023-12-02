@@ -1,9 +1,7 @@
 use stack_string::format_sstr;
 
-use garmin_lib::{
-    common::garmin_file::GarminFile,
-    utils::{garmin_util::METERS_PER_MILE, plot_opts::PlotOpts},
-};
+use garmin_models::garmin_file::GarminFile;
+use garmin_utils::{garmin_util::METERS_PER_MILE, plot_opts::PlotOpts};
 
 use garmin_reports::garmin_file_report_txt::get_splits;
 

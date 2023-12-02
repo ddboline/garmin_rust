@@ -16,6 +16,8 @@ Process and display info about gps activity files."""
 fitbit_lib = {path="fitbit_lib"}
 garmin_cli = {path="garmin_cli"}
 garmin_lib = { path = "garmin_lib" }
+garmin_models = {path="garmin_models"}
+garmin_utils = {path="garmin_utils"}
 garmin_http = { path = "garmin_http" }
 fitbit_bot = {path="fitbit_bot"}
 log = "0.4"

@@ -4,7 +4,7 @@ use serde::{de::Deserializer, ser::Serializer, Deserialize, Serialize};
 use stack_string::StackString;
 use std::{convert::TryFrom, fmt, str::FromStr};
 
-use garmin_lib::utils::sport_types::SportTypes;
+use garmin_utils::sport_types::SportTypes;
 
 #[derive(Serialize, Debug, Clone, Copy, Hash, Eq, PartialEq, Schema, Deserialize)]
 #[serde(into = "StackString", try_from = "StackString")]

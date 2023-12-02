@@ -16,30 +16,27 @@ use tempdir::TempDir;
 use time::Date;
 use tokio::task::spawn_blocking;
 
-use garmin_lib::{
-    common::{
-        garmin_config::GarminConfig,
-        garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionMap},
-        garmin_file,
-        garmin_summary::{get_list_of_files_from_db, GarminSummary},
-        garmin_sync::GarminSync,
-        pgpool::PgPool,
-    },
-    parsers::{
-        garmin_parse::{GarminParse, GarminParseTrait},
-        garmin_parse_fit::GarminParseFit,
-        garmin_parse_gmn::GarminParseGmn,
-        garmin_parse_tcx::GarminParseTcx,
-        garmin_parse_txt::GarminParseTxt,
-    },
-    utils::{
-        date_time_wrapper::DateTimeWrapper,
-        garmin_util::{extract_zip_from_garmin_connect, get_file_list},
-    },
+use garmin_lib::{date_time_wrapper::DateTimeWrapper, garmin_config::GarminConfig};
+use garmin_models::{
+    garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionMap},
+    garmin_file,
+    garmin_summary::{get_list_of_files_from_db, GarminSummary},
+    garmin_sync::GarminSync,
+};
+use garmin_parser::{
+    garmin_parse::{GarminParse, GarminParseTrait},
+    garmin_parse_fit::GarminParseFit,
+    garmin_parse_gmn::GarminParseGmn,
+    garmin_parse_tcx::GarminParseTcx,
+    garmin_parse_txt::GarminParseTxt,
 };
 use garmin_reports::{
     garmin_constraints::GarminConstraints, garmin_file_report_txt::generate_txt_report,
     garmin_report_options::GarminReportOptions, garmin_summary_report_txt::create_report_query,
+};
+use garmin_utils::{
+    garmin_util::{extract_zip_from_garmin_connect, get_file_list},
+    pgpool::PgPool,
 };
 
 #[derive(Debug, PartialEq, Clone, Eq)]
@@ -160,14 +157,10 @@ impl GarminCli {
                 .par_iter()
                 .map(|f| {
                     self.stdout.send(format_sstr!("Process {f:?}"));
-                    GarminSummary::process_single_gps_file(
-                        f,
-                        &self.get_config().cache_dir,
-                        corr_map,
-                    )
+                    GarminParse::process_single_gps_file(f, &self.get_config().cache_dir, corr_map)
                 })
                 .collect::<Result<Vec<_>, Error>>()?,
-            Some(GarminCliOptions::All) => GarminSummary::process_all_gps_files(
+            Some(GarminCliOptions::All) => GarminParse::process_all_gps_files(
                 &self.get_config().gps_dir,
                 &self.get_config().cache_dir,
                 corr_map,
@@ -204,7 +197,7 @@ impl GarminCli {
                         }
                     })
                     .map(|f| {
-                        GarminSummary::process_single_gps_file(
+                        GarminParse::process_single_gps_file(
                             &f,
                             &self.get_config().cache_dir,
                             corr_map,

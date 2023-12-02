@@ -1,12 +1,17 @@
 use anyhow::{format_err, Error};
+use log::debug;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use stack_string::format_sstr;
 use std::{collections::HashMap, ffi::OsStr, path::Path};
 
-use crate::{
-    common::{
-        garmin_correction_lap::GarminCorrectionLap, garmin_file::GarminFile, garmin_lap::GarminLap,
-        garmin_point::GarminPoint,
-    },
-    utils::{date_time_wrapper::DateTimeWrapper, sport_types::SportTypes},
+use garmin_lib::date_time_wrapper::DateTimeWrapper;
+use garmin_models::{
+    garmin_correction_lap::GarminCorrectionLap, garmin_file::GarminFile, garmin_lap::GarminLap,
+    garmin_point::GarminPoint, garmin_summary::GarminSummary,
+};
+use garmin_utils::{
+    garmin_util::{get_file_list, get_md5sum},
+    sport_types::SportTypes,
 };
 
 use super::{
@@ -54,7 +59,7 @@ impl GarminParse {
         Ok(GarminSummary::new(&gfile, &md5sum))
     }
 
-        /// # Errors
+    /// # Errors
     /// Return error if parsing or dumping avro fails
     pub fn process_all_gps_files(
         gps_dir: &Path,
@@ -148,10 +153,6 @@ where
 mod tests {
     use anyhow::Error;
     use approx::assert_abs_diff_eq;
-    use std::path::Path;
-
-    use anyhow::Error;
-    use approx::assert_abs_diff_eq;
     use std::{
         io::{stdout, Write},
         path::Path,
@@ -161,7 +162,10 @@ mod tests {
     use garmin_models::{garmin_correction_lap::GarminCorrectionLap, garmin_file};
     use garmin_utils::sport_types::SportTypes;
 
-    use crate::{garmin_parse::{GarminParseTrait, GarminParse}, garmin_parse_fit};
+    use crate::{
+        garmin_parse::{GarminParse, GarminParseTrait},
+        garmin_parse_fit,
+    };
 
     #[test]
     fn test_invalid_ext() -> Result<(), Error> {

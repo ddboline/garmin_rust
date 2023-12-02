@@ -13,12 +13,11 @@ use time::{macros::format_description, Date};
 use time_tz::OffsetDateTimeExt;
 use uuid::Uuid;
 
-use garmin_lib::{
-    common::{garmin_summary::GarminSummary, pgpool::PgPool},
-    utils::{
-        date_time_wrapper::DateTimeWrapper,
-        garmin_util::{print_h_m_s, METERS_PER_MILE},
-    },
+use garmin_lib::date_time_wrapper::DateTimeWrapper;
+use garmin_models::garmin_summary::GarminSummary;
+use garmin_utils::{
+    garmin_util::{print_h_m_s, METERS_PER_MILE},
+    pgpool::PgPool,
 };
 
 use crate::race_type::RaceType;
@@ -455,11 +454,9 @@ mod tests {
     use time::{macros::date, OffsetDateTime};
     use uuid::Uuid;
 
-    use garmin_lib::common::{
-        garmin_config::GarminConfig,
-        garmin_summary::{get_list_of_files_from_db, GarminSummary},
-        pgpool::PgPool,
-    };
+    use garmin_lib::garmin_config::GarminConfig;
+    use garmin_models::garmin_summary::{get_list_of_files_from_db, GarminSummary};
+    use garmin_utils::pgpool::PgPool;
 
     use crate::{race_results::RaceResults, race_type::RaceType};
 

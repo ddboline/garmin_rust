@@ -10,7 +10,7 @@ use clap::Parser;
 use stack_string::StackString;
 
 use fitbit_lib::fitbit_heartrate::import_fitbit_json_files;
-use garmin_lib::common::garmin_config::GarminConfig;
+use garmin_lib::garmin_config::GarminConfig;
 
 #[derive(Parser, Debug, Clone)]
 pub struct JsonImportOpts {

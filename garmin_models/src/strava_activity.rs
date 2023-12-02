@@ -8,11 +8,8 @@ use std::collections::HashMap;
 use time::{Date, OffsetDateTime};
 use uuid::Uuid;
 
-use garmin_utils::pgpool::PgPool;
-use garmin_lib::strava_timezone::StravaTimeZone;
-use garmin_lib::date_time_wrapper::DateTimeWrapper;
-use garmin_utils::sport_types::SportTypes;
-use garmin_utils::sport_types;
+use garmin_lib::{date_time_wrapper::DateTimeWrapper, strava_timezone::StravaTimeZone};
+use garmin_utils::{pgpool::PgPool, sport_types, sport_types::SportTypes};
 
 use crate::garmin_summary::GarminSummary;
 

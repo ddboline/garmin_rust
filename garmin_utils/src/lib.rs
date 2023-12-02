@@ -1,15 +1,22 @@
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_possible_wrap)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::unsafe_derive_deserialize)]
+
 pub mod garmin_util;
+pub mod pgpool;
 pub mod plot_graph;
 pub mod plot_opts;
 pub mod sport_types;
-pub mod pgpool;
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        date_time_wrapper::iso8601::convert_datetime_to_str,
-        garmin_util::{convert_time_string, convert_xml_local_time_to_utc, titlecase},
-    };
+    use crate::garmin_util::{convert_time_string, convert_xml_local_time_to_utc, titlecase};
+    use garmin_lib::date_time_wrapper::iso8601::convert_datetime_to_str;
 
     #[test]
     fn test_convert_time_string() {

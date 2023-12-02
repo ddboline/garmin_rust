@@ -29,8 +29,10 @@ use tokio::{
     task::{spawn, spawn_blocking, JoinHandle},
 };
 
-use garmin_utils::pgpool::PgPool;
-use garmin_utils::garmin_util::{exponential_retry, get_md5sum};
+use garmin_utils::{
+    garmin_util::{exponential_retry, get_md5sum},
+    pgpool::PgPool,
+};
 
 #[derive(Clone)]
 pub struct GarminSync {

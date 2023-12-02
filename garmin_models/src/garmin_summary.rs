@@ -1,23 +1,21 @@
-use anyhow::{format_err, Error};
+use anyhow::Error;
 use futures::{future::try_join_all, Stream, TryStreamExt};
 use itertools::Itertools;
 use log::debug;
 use postgres_query::{query, query_dyn, Error as PqError, FromSqlRow};
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
-use std::{collections::HashMap, fmt, path::Path, sync::Arc};
+use std::{fmt, sync::Arc};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use garmin_lib::date_time_wrapper::{iso8601::convert_datetime_to_str, DateTimeWrapper};
 
-use garmin_utils::garmin_util::{generate_random_string, get_file_list, get_md5sum};
-use garmin_utils::sport_types::SportTypes;
+use garmin_utils::{garmin_util::generate_random_string, sport_types::SportTypes};
 
 use garmin_utils::pgpool::PgPool;
 
-use crate::{garmin_correction_lap::GarminCorrectionLap, garmin_file::GarminFile};
+use crate::garmin_file::GarminFile;
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromSqlRow, PartialEq)]
 pub struct GarminSummary {

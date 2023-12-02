@@ -10,9 +10,11 @@ use std::{collections::HashSet, fmt, sync::Arc};
 use time::{Date, OffsetDateTime};
 use uuid::Uuid;
 
-use garmin_lib::garmin_config::GarminConfig;
+use garmin_lib::{
+    date_time_wrapper::{iso8601::convert_datetime_to_str, DateTimeWrapper},
+    garmin_config::GarminConfig,
+};
 use garmin_utils::pgpool::PgPool;
-use garmin_lib::date_time_wrapper::{iso8601::convert_datetime_to_str, DateTimeWrapper};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Copy, FromSqlRow, PartialEq)]
 pub struct ScaleMeasurement {

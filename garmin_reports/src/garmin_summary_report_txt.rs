@@ -7,17 +7,16 @@ use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
-use garmin_lib::{
-    common::{
-        fitbit_activity::FitbitActivity, garmin_connect_activity::GarminConnectActivity,
-        pgpool::PgPool, strava_activity::StravaActivity,
+use garmin_lib::date_time_wrapper::iso8601::convert_datetime_to_str;
+use garmin_models::{
+    fitbit_activity::FitbitActivity, garmin_connect_activity::GarminConnectActivity,
+    strava_activity::StravaActivity,
+};
+use garmin_utils::{
+    garmin_util::{
+        days_in_month, days_in_year, print_h_m_s, METERS_PER_MILE, MONTH_NAMES, WEEKDAY_NAMES,
     },
-    utils::{
-        date_time_wrapper::iso8601::convert_datetime_to_str,
-        garmin_util::{
-            days_in_month, days_in_year, print_h_m_s, METERS_PER_MILE, MONTH_NAMES, WEEKDAY_NAMES,
-        },
-    },
+    pgpool::PgPool,
 };
 
 use crate::{

@@ -11,11 +11,7 @@ use uuid::Uuid;
 
 use garmin_lib::date_time_wrapper::{iso8601::convert_str_to_datetime, DateTimeWrapper};
 
-use garmin_utils::{
-    garmin_util::METERS_PER_MILE,
-    sport_types::SportTypes,
-    pgpool::PgPool,
-};
+use garmin_utils::{garmin_util::METERS_PER_MILE, pgpool::PgPool, sport_types::SportTypes};
 
 use crate::garmin_lap::GarminLap;
 

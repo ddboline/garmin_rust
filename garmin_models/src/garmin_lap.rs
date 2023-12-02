@@ -7,8 +7,10 @@ use std::fmt;
 use time_tz::{timezones::db::UTC, OffsetDateTimeExt};
 
 use garmin_lib::date_time_wrapper::{iso8601::convert_datetime_to_str, DateTimeWrapper};
-use garmin_utils::garmin_util::{convert_time_string, convert_xml_local_time_to_utc, get_f64, get_i64};
-use garmin_utils::sport_types::SportTypes;
+use garmin_utils::{
+    garmin_util::{convert_time_string, convert_xml_local_time_to_utc, get_f64, get_i64},
+    sport_types::SportTypes,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GarminLap {

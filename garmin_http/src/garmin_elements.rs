@@ -2165,7 +2165,7 @@ fn scale_measurement_manual_input_element(cx: Scope) -> Element {
                         }
                     }
                     tr {
-                        td {"Body Fat %)"}
+                        td {"Body Fat %"}
                         td {
                             input {
                                 "type": "text",

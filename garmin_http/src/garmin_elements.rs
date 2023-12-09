@@ -1,6 +1,6 @@
 use dioxus::prelude::{
-    dioxus_elements, inline_props, rsx, Element, GlobalAttributes, LazyNodes, Props, Scope,
-    VirtualDom,
+    component, dioxus_elements, rsx, Element, GlobalAttributes, IntoDynNode, LazyNodes, Props,
+    Scope, VirtualDom,
 };
 use itertools::Itertools;
 use rweb_helper::DateType;
@@ -316,7 +316,7 @@ pub async fn index_new_body(
     }
 }
 
-#[inline_props]
+#[component(no_case_check)]
 fn index_element(
     cx: Scope,
     title: StackString,
@@ -1889,7 +1889,7 @@ pub fn create_fitbit_table(heartrate_values: Vec<FitbitHeartRate>) -> String {
     dioxus_ssr::render(&app)
 }
 
-#[inline_props]
+#[component(no_case_check)]
 fn fitbit_table(cx: Scope, heartrate_values: Vec<FitbitHeartRate>) -> Element {
     cx.render(rsx! {
         table {
@@ -1921,7 +1921,7 @@ pub fn table_body(body: StackString) -> String {
     dioxus_ssr::render(&app)
 }
 
-#[inline_props]
+#[component(no_case_check)]
 fn table_element(cx: Scope, body: StackString) -> Element {
     cx.render(rsx! {
         textarea {
@@ -1938,7 +1938,7 @@ pub fn strava_body(athlete: StravaAthlete) -> String {
     dioxus_ssr::render(&app)
 }
 
-#[inline_props]
+#[component(no_case_check)]
 fn strava_element(cx: Scope, athlete: StravaAthlete) -> Element {
     let id = athlete.id;
     let username = &athlete.username;
@@ -2086,7 +2086,7 @@ pub fn fitbit_body(profile: FitbitUserProfile) -> String {
     dioxus_ssr::render(&app)
 }
 
-#[inline_props]
+#[component(no_case_check)]
 fn fitbit_element(cx: Scope, profile: FitbitUserProfile) -> Element {
     let average_daily_steps = profile.average_daily_steps;
     let country = &profile.country;

@@ -1,6 +1,6 @@
 [package]
 name = "garmin_utils"
-version = "0.14.6"
+version = "0.14.7"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2021"
 
@@ -10,14 +10,14 @@ edition = "2021"
 anyhow = "1.0"
 base64 = "0.21"
 bytes = "1.0"
-deadpool-postgres = "0.11"
+deadpool-postgres = "0.12"
 fitparser = {git="https://github.com/ddboline/fitparse-rs.git", branch="time-0.3-0.5.2"}
 flate2 = "1.0"
 futures = "0.3"
 lazy_static = "1.4"
 log = "0.4"
 num-traits = "0.2"
-postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.5", features=["deadpool"]}
+postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.6", features=["deadpool"]}
 rand = "0.8"
 serde = {version="1.0", features=["derive"]}
 smallvec = "1.6"

@@ -1,6 +1,6 @@
 [package]
 name = "fitbit_lib"
-version = "0.14.6"
+version = "0.14.7"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -24,7 +24,7 @@ lazy_static = "1.4"
 log = "0.4"
 maplit = "1.0"
 polars = {version="0.35", features=["temporal", "parquet", "lazy"]}
-postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.5", features=["deadpool"]}
+postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.6", features=["deadpool"]}
 rand = "0.8"
 rayon = "1.5"
 reqwest = {version="0.11", features=["cookies", "json", "rustls-tls", "stream"], default_features=false}

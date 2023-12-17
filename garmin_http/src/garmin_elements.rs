@@ -99,8 +99,8 @@ pub async fn index_new_body(
             let url_strings = reports.get_url_strings();
             let reports = reports.get_text_entries().map_err(Into::<Error>::into)?;
             let mut app = VirtualDom::new_with_props(
-                index_element,
-                index_elementProps {
+                IndexElement,
+                IndexElementProps {
                     title,
                     reports,
                     url_strings,
@@ -152,8 +152,8 @@ pub async fn index_new_body(
             };
 
             let mut app = VirtualDom::new_with_props(
-                index_element,
-                index_elementProps {
+                IndexElement,
+                IndexElementProps {
                     title,
                     reports: Vec::new(),
                     url_strings: Vec::new(),
@@ -186,8 +186,8 @@ pub async fn index_new_body(
             end_date,
         } => {
             let mut app = VirtualDom::new_with_props(
-                index_element,
-                index_elementProps {
+                IndexElement,
+                IndexElementProps {
                     title,
                     reports: Vec::new(),
                     url_strings: Vec::new(),
@@ -220,8 +220,8 @@ pub async fn index_new_body(
             end_date,
         } => {
             let mut app = VirtualDom::new_with_props(
-                index_element,
-                index_elementProps {
+                IndexElement,
+                IndexElementProps {
                     title,
                     reports: Vec::new(),
                     url_strings: Vec::new(),
@@ -254,8 +254,8 @@ pub async fn index_new_body(
             button_date,
         } => {
             let mut app = VirtualDom::new_with_props(
-                index_element,
-                index_elementProps {
+                IndexElement,
+                IndexElementProps {
                     title,
                     reports: Vec::new(),
                     url_strings: Vec::new(),
@@ -286,8 +286,8 @@ pub async fn index_new_body(
         }
         IndexConfig::RaceResult { model } => {
             let mut app = VirtualDom::new_with_props(
-                index_element,
-                index_elementProps {
+                IndexElement,
+                IndexElementProps {
                     title,
                     reports: Vec::new(),
                     url_strings: Vec::new(),
@@ -316,8 +316,8 @@ pub async fn index_new_body(
     }
 }
 
-#[component(no_case_check)]
-fn index_element(
+#[component]
+fn IndexElement(
     cx: Scope,
     title: StackString,
     reports: Vec<Vec<(StackString, Option<HtmlResult>)>>,
@@ -1884,13 +1884,13 @@ fn create_analysis_plot(model: &RaceResultAnalysis, is_demo: bool) -> LazyNodes 
 }
 
 pub fn create_fitbit_table(heartrate_values: Vec<FitbitHeartRate>) -> String {
-    let mut app = VirtualDom::new_with_props(fitbit_table, fitbit_tableProps { heartrate_values });
+    let mut app = VirtualDom::new_with_props(FitbitTableElement, FitbitTableElementProps { heartrate_values });
     drop(app.rebuild());
     dioxus_ssr::render(&app)
 }
 
-#[component(no_case_check)]
-fn fitbit_table(cx: Scope, heartrate_values: Vec<FitbitHeartRate>) -> Element {
+#[component]
+fn FitbitTableElement(cx: Scope, heartrate_values: Vec<FitbitHeartRate>) -> Element {
     cx.render(rsx! {
         table {
             "border": "1",
@@ -1916,13 +1916,13 @@ fn fitbit_table(cx: Scope, heartrate_values: Vec<FitbitHeartRate>) -> Element {
 }
 
 pub fn table_body(body: StackString) -> String {
-    let mut app = VirtualDom::new_with_props(table_element, table_elementProps { body });
+    let mut app = VirtualDom::new_with_props(TableElement, TableElementProps { body });
     drop(app.rebuild());
     dioxus_ssr::render(&app)
 }
 
-#[component(no_case_check)]
-fn table_element(cx: Scope, body: StackString) -> Element {
+#[component]
+fn TableElement(cx: Scope, body: StackString) -> Element {
     cx.render(rsx! {
         textarea {
             cols: "100",
@@ -1933,13 +1933,13 @@ fn table_element(cx: Scope, body: StackString) -> Element {
 }
 
 pub fn strava_body(athlete: StravaAthlete) -> String {
-    let mut app = VirtualDom::new_with_props(strava_element, strava_elementProps { athlete });
+    let mut app = VirtualDom::new_with_props(StravaElement, StravaElementProps { athlete });
     drop(app.rebuild());
     dioxus_ssr::render(&app)
 }
 
-#[component(no_case_check)]
-fn strava_element(cx: Scope, athlete: StravaAthlete) -> Element {
+#[component]
+fn StravaElement(cx: Scope, athlete: StravaAthlete) -> Element {
     let id = athlete.id;
     let username = &athlete.username;
     let firstname = &athlete.firstname;
@@ -2081,13 +2081,13 @@ fn strava_element(cx: Scope, athlete: StravaAthlete) -> Element {
 }
 
 pub fn fitbit_body(profile: FitbitUserProfile) -> String {
-    let mut app = VirtualDom::new_with_props(fitbit_element, fitbit_elementProps { profile });
+    let mut app = VirtualDom::new_with_props(FitbitElement, FitbitElementProps { profile });
     drop(app.rebuild());
     dioxus_ssr::render(&app)
 }
 
-#[component(no_case_check)]
-fn fitbit_element(cx: Scope, profile: FitbitUserProfile) -> Element {
+#[component]
+fn FitbitElement(cx: Scope, profile: FitbitUserProfile) -> Element {
     let average_daily_steps = profile.average_daily_steps;
     let country = &profile.country;
     let date_of_birth = &profile.date_of_birth;

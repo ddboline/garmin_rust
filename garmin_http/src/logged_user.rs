@@ -1,6 +1,6 @@
 pub use authorized_users::{
     get_random_key, get_secrets, token::Token, AuthorizedUser, AUTHORIZED_USERS, JWT_SECRET,
-    KEY_LENGTH, SECRET_KEY, TRIGGER_DB_UPDATE,
+    KEY_LENGTH, SECRET_KEY, TRIGGER_DB_UPDATE, LOGIN_HTML
 };
 use base64::{engine::general_purpose::STANDARD, Engine};
 use cookie::Cookie;
@@ -25,6 +25,7 @@ use garmin_utils::{garmin_util::get_authorized_users, pgpool::PgPool};
 use crate::errors::ServiceError as Error;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Schema)]
+#[schema(component="LoggedUser")]
 pub struct LoggedUser {
     #[schema(description = "Email Address")]
     pub email: StackString,

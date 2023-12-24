@@ -68,6 +68,7 @@ derive_rweb_schema!(FitbitHeartRateWrapper, _FitbitHeartRateWrapper);
 
 #[allow(dead_code)]
 #[derive(Schema)]
+#[schema(component="FitbitHeartrate")]
 struct _FitbitHeartRateWrapper {
     #[schema(description = "DateTime")]
     datetime: DateTimeType,
@@ -82,6 +83,7 @@ derive_rweb_schema!(StravaActivityWrapper, _StravaActivityWrapper);
 
 #[allow(dead_code)]
 #[derive(Schema)]
+#[schema(component="StravaActivity")]
 struct _StravaActivityWrapper {
     #[schema(description = "Activity Name")]
     name: StackString,
@@ -114,6 +116,7 @@ derive_rweb_schema!(FitbitBodyWeightFatWrapper, _FitbitBodyWeightFatWrapper);
 
 #[allow(dead_code)]
 #[derive(Schema)]
+#[schema(component="FitbitBodyWeightFat")]
 struct _FitbitBodyWeightFatWrapper {
     #[schema(description = "DateTime")]
     datetime: DateTimeType,
@@ -130,6 +133,7 @@ derive_rweb_schema!(ScaleMeasurementWrapper, _ScaleMeasurementWrapper);
 
 #[allow(dead_code)]
 #[derive(Schema)]
+#[schema(component="ScaleMeasurement")]
 struct _ScaleMeasurementWrapper {
     #[schema(description = "Scale Measurement ID")]
     id: UuidWrapper,
@@ -156,6 +160,7 @@ derive_rweb_schema!(
 );
 
 #[derive(Debug, Serialize, Schema)]
+#[schema(component="FitbitBodyWeightFatUpdate")]
 struct _FitbitBodyWeightFatUpdateOutputWrapper {
     #[schema(description = "Measurements")]
     measurements: Vec<ScaleMeasurementWrapper>,
@@ -171,6 +176,7 @@ pub struct FitbitActivityWrapper(FitbitActivity);
 derive_rweb_schema!(FitbitActivityWrapper, _FitbitActivityWrapper);
 
 #[derive(Serialize, Deserialize, Clone, Debug, Schema)]
+#[schema(component="FitbitActivity")]
 struct _FitbitActivityWrapper {
     #[schema(description = "Log Type")]
     log_type: StackString,
@@ -201,6 +207,7 @@ derive_rweb_schema!(GarminConnectActivityWrapper, _GarminConnectActivityWrapper)
 
 #[allow(dead_code)]
 #[derive(Schema)]
+#[schema(component="GarminConnectActivity")]
 struct _GarminConnectActivityWrapper {
     #[schema(description = "Activity ID")]
     activity_id: i64,
@@ -238,6 +245,7 @@ derive_rweb_schema!(
 
 #[allow(dead_code)]
 #[derive(Schema)]
+#[schema(component="FitbitStatisticsSummary")]
 struct _FitbitStatisticsSummaryWrapper {
     #[schema(description = "Date")]
     date: DateType,
@@ -278,6 +286,7 @@ derive_rweb_schema!(RaceResultsWrapper, _RaceResultsWrapper);
 
 #[allow(dead_code)]
 #[derive(Schema)]
+#[schema(component="RaceResults")]
 struct _RaceResultsWrapper {
     #[schema(description = "Race Result ID")]
     id: UuidWrapper,

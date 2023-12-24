@@ -440,6 +440,7 @@ pub async fn strava_refresh(
 }
 
 #[derive(Debug, Serialize, Deserialize, Schema)]
+#[schema(component="StravaCallbackRequest")]
 pub struct StravaCallbackRequest {
     #[schema(description = "Authorization Code")]
     pub code: StackString,
@@ -517,6 +518,7 @@ pub async fn strava_activities_db(
 }
 
 #[derive(Debug, Serialize, Deserialize, Schema)]
+#[schema(component="StravaActiviesDBUpdateRequest")]
 pub struct StravaActiviesDBUpdateRequest {
     pub updates: Vec<StravaActivityWrapper>,
 }
@@ -756,6 +758,7 @@ pub async fn fitbit_activities(
 }
 
 #[derive(Deserialize, Schema)]
+#[schema(component="FitbitCallbackRequest")]
 pub struct FitbitCallbackRequest {
     #[schema(description = "Authorization Code")]
     code: StackString,
@@ -1164,11 +1167,17 @@ pub async fn scale_measurement_update(
 }
 
 #[derive(Debug, Serialize, Deserialize, Schema)]
+#[schema(component="ScaleMeasurementManualRequest")]
 struct ScaleMeasurementManualRequest {
+    #[schema(description="Weight in lbs", example=r#""189.0""#)]
     weight_in_lbs: f64,
+    #[schema(description="Body fat percent", example=r#""20.3""#)]
     body_fat_percent: f64,
+    #[schema(description="Muscle mass in lbs", example=r#""153.0""#)]
     muscle_mass_lbs: f64,
+    #[schema(description="Body water percent", example=r#""63.0""#)]
     body_water_percent: f64,
+    #[schema(description="Bone mass in lbs", example=r#""63.0""#)]
     bone_mass_lbs: f64,
 }
 
@@ -1481,6 +1490,7 @@ pub async fn heartrate_statistics_summary_db_update(
 }
 
 #[derive(Serialize, Deserialize, Schema)]
+#[schema(component="RaceResultPlotRequest")]
 pub struct RaceResultPlotRequest {
     #[schema(description = "Race Type")]
     pub race_type: RaceTypeWrapper,
@@ -1652,6 +1662,7 @@ pub async fn race_results_db(
 }
 
 #[derive(Serialize, Deserialize, Schema)]
+#[schema(component="RaceResultsDBUpdateRequest")]
 pub struct RaceResultsDBUpdateRequest {
     pub updates: Vec<RaceResultsWrapper>,
 }

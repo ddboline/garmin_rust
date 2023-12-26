@@ -1,6 +1,6 @@
 use anyhow::{format_err, Error};
 use avro_rs::{from_value, Codec, Reader, Schema, Writer};
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
 use std::{collections::HashMap, fs::File, path::Path};
@@ -16,9 +16,7 @@ use crate::{
     garmin_point::{GarminPoint, GARMIN_POINT_AVRO_SCHEMA},
 };
 
-lazy_static! {
-    static ref GARMIN_FILE_AVRO_SCHEMA: StackString = GarminFile::get_avro_schema();
-}
+static GARMIN_FILE_AVRO_SCHEMA: Lazy<StackString> = Lazy::new(GarminFile::get_avro_schema);
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GarminFile {

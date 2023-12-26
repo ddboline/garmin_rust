@@ -1,6 +1,6 @@
 [package]
 name = "garmin_cli"
-version = "0.14.8"
+version = "0.14.9"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -19,7 +19,6 @@ garmin_parser={path="../garmin_parser"}
 garmin_reports = {path="../garmin_reports"}
 garmin_utils={path="../garmin_utils"}
 itertools = "0.12"
-lazy_static = "1.4"
 log = "0.4"
 race_result_analysis = {path="../race_result_analysis"}
 rayon = "1.5"

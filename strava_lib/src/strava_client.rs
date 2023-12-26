@@ -1,7 +1,7 @@
 use anyhow::{format_err, Error};
 use crossbeam_utils::atomic::AtomicCell;
 use futures::{future::try_join_all, TryStreamExt};
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use log::warn;
 use maplit::hashmap;
 use reqwest::{
@@ -42,10 +42,8 @@ use garmin_utils::{
     sport_types::SportTypes,
 };
 
-lazy_static! {
-    static ref CSRF_TOKEN: AtomicCell<Option<StackString>> = AtomicCell::new(None);
-    static ref WEB_CSRF: AtomicCell<Option<WebCsrf>> = AtomicCell::new(None);
-}
+static CSRF_TOKEN: Lazy<AtomicCell<Option<StackString>>> = Lazy::new(|| AtomicCell::new(None));
+static WEB_CSRF: Lazy<AtomicCell<Option<WebCsrf>>> = Lazy::new(|| AtomicCell::new(None));
 
 #[derive(Clone, Debug)]
 struct WebCsrf {

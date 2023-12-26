@@ -1,12 +1,12 @@
 [package]
 name = "garmin_http"
-version = "0.14.8"
+version = "0.14.9"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
 [dependencies]
 anyhow = "1.0"
-authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.11.8"}
+authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.11.9"}
 base64 = "0.21"
 cookie = {version="0.18", features=["percent-encode"]}
 derive_more = "0.99"
@@ -22,7 +22,6 @@ garmin_reports = {path="../garmin_reports"}
 garmin_utils = {path="../garmin_utils"}
 handlebars = "4.0"
 itertools = "0.12"
-lazy_static = "1.4"
 log = "0.4"
 maplit = "1.0"
 parking_lot = "0.12"

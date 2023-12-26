@@ -1,6 +1,6 @@
 use derive_more::Deref;
 use itertools::Itertools;
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use regex::Regex;
 use stack_string::{format_sstr, StackString};
 use time::{format_description::well_known::Rfc3339, macros::format_description, OffsetDateTime};
@@ -11,14 +11,12 @@ use garmin_utils::sport_types::get_sport_type_map;
 
 use crate::garmin_report_options::{GarminReportAgg, GarminReportOptions};
 
-lazy_static! {
-    static ref WEEK_REG: Regex =
-        Regex::new(r"(?P<year>\d{4})w(?P<week>\d{1,2})").expect("Bad regex");
-    static ref YMD_REG: Regex =
-        Regex::new(r"(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})").expect("Bad regex");
-    static ref YM_REG: Regex = Regex::new(r"(?P<year>\d{4})-(?P<month>\d{2})").expect("Bad regex");
-    static ref Y_REG: Regex = Regex::new(r"(?P<year>\d{4})").expect("Bad regex");
-}
+static WEEK_REG: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?P<year>\d{4})w(?P<week>\d{1,2})").expect("Bad regex"));
+static YMD_REG: Lazy<Regex> =
+Lazy::new(|| Regex::new(r"(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})").expect("Bad regex"));
+static YM_REG: Lazy<Regex> = Lazy::new(|| Regex::new(r"(?P<year>\d{4})-(?P<month>\d{2})").expect("Bad regex"));
+static Y_REG: Lazy<Regex> = Lazy::new(|| Regex::new(r"(?P<year>\d{4})").expect("Bad regex"));
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum GarminConstraint {

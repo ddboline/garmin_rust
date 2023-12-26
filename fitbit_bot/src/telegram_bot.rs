@@ -2,7 +2,7 @@ use anyhow::Error;
 use arc_swap::ArcSwap;
 use crossbeam_utils::atomic::AtomicCell;
 use futures::{StreamExt, TryStreamExt};
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use log::debug;
 use stack_string::{format_sstr, StackString};
 use std::{collections::HashSet, sync::Arc};
@@ -23,11 +23,9 @@ use super::failure_count::FailureCount;
 type WeightLock = AtomicCell<Option<ScaleMeasurement>>;
 type Userids = ArcSwap<HashSet<UserId>>;
 
-lazy_static! {
-    static ref LAST_WEIGHT: WeightLock = AtomicCell::new(None);
-    static ref USERIDS: Userids = ArcSwap::new(Arc::new(HashSet::new()));
-    static ref FAILURE_COUNT: FailureCount = FailureCount::new(5);
-}
+static LAST_WEIGHT: Lazy<WeightLock> = Lazy::new(|| AtomicCell::new(None));
+static USERIDS: Lazy<Userids> = Lazy::new(|| ArcSwap::new(Arc::new(HashSet::new())));
+static FAILURE_COUNT: Lazy<FailureCount> = Lazy::new(|| FailureCount::new(5));
 
 #[derive(Clone)]
 pub struct TelegramBot {
@@ -207,7 +205,7 @@ impl TelegramBot {
 #[cfg(test)]
 mod tests {
     use anyhow::Error;
-    use lazy_static::lazy_static;
+    use once_cell::sync::Lazy;
     use maplit::hashset;
     use parking_lot::Mutex;
     use postgres_query::query;
@@ -225,9 +223,7 @@ mod tests {
 
     use crate::telegram_bot::{TelegramBot, LAST_WEIGHT, USERIDS};
 
-    lazy_static! {
-        static ref DB_LOCK: Mutex<()> = Mutex::new(());
-    }
+    static DB_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 
     #[tokio::test]
     async fn test_process_message_text() -> Result<(), Error> {

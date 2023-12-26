@@ -446,7 +446,7 @@ impl From<GarminSummary> for RaceResults {
 mod tests {
     use anyhow::Error;
     use futures::TryStreamExt;
-    use lazy_static::lazy_static;
+    use once_cell::sync::Lazy;
     use log::debug;
     use parking_lot::Mutex;
     use stack_string::format_sstr;
@@ -463,9 +463,7 @@ mod tests {
     const WORLD_RECORD_ENTRIES: usize = 24;
     const TEST_RACE_ENTRIES: usize = 214;
 
-    lazy_static! {
-        static ref DB_LOCK: Mutex<()> = Mutex::new(());
-    }
+    static DB_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 
     fn get_test_race_result() -> RaceResults {
         RaceResults {

@@ -3,7 +3,7 @@ use base64::{engine::general_purpose::STANDARD, Engine};
 use crossbeam_utils::atomic::AtomicCell;
 use futures::{future, future::try_join_all, stream::FuturesUnordered, TryStreamExt};
 use itertools::Itertools;
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use log::debug;
 use maplit::hashmap;
 use reqwest::{header::HeaderMap, Client, Response, Url};
@@ -38,9 +38,7 @@ use crate::{
     GarminConnectHrData,
 };
 
-lazy_static! {
-    static ref CSRF_TOKEN: AtomicCell<Option<StackString>> = AtomicCell::new(None);
-}
+static CSRF_TOKEN: Lazy<AtomicCell<Option<StackString>>> = Lazy::new(|| AtomicCell::new(None));
 
 #[derive(Default, Debug, Clone)]
 pub struct FitbitClient {

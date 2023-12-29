@@ -358,7 +358,7 @@ pub struct GarminConnectHrApiRequest {
 #[response(description = "Garmin Sync", content = "html")]
 struct GarminSyncResponse(HtmlBase<StackString, Error>);
 
-#[get("/garmin/garmin_sync")]
+#[post("/garmin/garmin_sync")]
 pub async fn garmin_sync(
     #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
@@ -375,7 +375,7 @@ pub async fn garmin_sync(
 #[response(description = "Strava Sync", content = "html")]
 struct StravaSyncResponse(HtmlBase<StackString, Error>);
 
-#[get("/garmin/strava_sync")]
+#[post("/garmin/strava_sync")]
 pub async fn strava_sync(
     query: Query<StravaSyncRequest>,
     #[filter = "LoggedUser::filter"] _: LoggedUser,
@@ -722,7 +722,7 @@ pub async fn fitbit_bodyweight(
 #[response(description = "Fitbit Body Weight Sync")]
 struct FitbitBodyWeightFatUpdateResponse(JsonBase<FitbitBodyWeightFatUpdateOutputWrapper, Error>);
 
-#[get("/garmin/fitbit/bodyweight_sync")]
+#[post("/garmin/fitbit/bodyweight_sync")]
 pub async fn fitbit_bodyweight_sync(
     #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
@@ -796,7 +796,7 @@ pub struct FitbitSyncRequest {
 #[response(description = "Fitbit Sync", content = "html")]
 struct FitbitSyncResponse(HtmlBase<StackString, Error>);
 
-#[get("/garmin/fitbit/sync")]
+#[post("/garmin/fitbit/sync")]
 pub async fn fitbit_sync(
     query: Query<FitbitSyncRequest>,
     #[filter = "LoggedUser::filter"] _: LoggedUser,
@@ -1099,7 +1099,7 @@ pub async fn heartrate_plots_demo(
 #[response(description = "Fitbit Tcx Sync")]
 struct FitbitTcxSyncResponse(JsonBase<Vec<String>, Error>);
 
-#[get("/garmin/fitbit/fitbit_tcx_sync")]
+#[post("/garmin/fitbit/fitbit_tcx_sync")]
 pub async fn fitbit_tcx_sync(
     query: Query<FitbitTcxSyncRequest>,
     #[filter = "LoggedUser::filter"] _: LoggedUser,
@@ -1214,7 +1214,7 @@ pub async fn scale_measurement_manual(
 #[response(description = "Scale Measurement Manual Input")]
 struct ScaleMeasurementManualInputResponse(HtmlBase<StackString, Error>);
 
-#[get("/garmin/scale_measurements/manual/input")]
+#[post("/garmin/scale_measurements/manual/input")]
 pub async fn scale_measurement_manual_input(
     #[filter = "LoggedUser::filter"] _: LoggedUser,
 ) -> WarpResult<ScaleMeasurementManualInputResponse> {

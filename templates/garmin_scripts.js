@@ -60,7 +60,7 @@ function processStravaUpdate(activity_id, activity_type, start_time) {
 function garmin_sync() {
     let url = '/garmin/garmin_sync';
     let xmlhttp = new XMLHttpRequest();
-    xmlhttp.open("GET", url, true);
+    xmlhttp.open("POST", url, true);
     xmlhttp.onload = function nothing() {
         document.getElementById("garminconnectoutput").innerHTML = "done";
         document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
@@ -82,7 +82,7 @@ function garmin_connect_sync() {
 function fitbit_tcx_sync() {
     let url = '/garmin/fitbit/fitbit_tcx_sync';
     let xmlhttp = new XMLHttpRequest();
-    xmlhttp.open("GET", url, true);
+    xmlhttp.open("POST", url, true);
     xmlhttp.onload = function nothing() {
         document.getElementById("garminconnectoutput").innerHTML = "done";
         document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
@@ -114,7 +114,7 @@ function stravaAthlete() {
 function strava_sync() {
     let url = '/garmin/strava_sync';
     let xmlhttp = new XMLHttpRequest();
-    xmlhttp.open("GET", url, true);
+    xmlhttp.open("POST", url, true);
     xmlhttp.onload = function nothing() {
         document.getElementById("garminconnectoutput").innerHTML = "done";
         document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
@@ -146,7 +146,7 @@ function fitbitProfile() {
 function fitbitSync() {
     let url = '/garmin/fitbit/bodyweight_sync';
     let xmlhttp = new XMLHttpRequest();
-    xmlhttp.open("GET", url, true);
+    xmlhttp.open("POST", url, true);
     xmlhttp.onload = function nothing() {
         document.getElementById("garminconnectoutput").innerHTML = "done";
         document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
@@ -289,7 +289,7 @@ function heartrate_plot_button_single(date, button_date) {
 function heartrate_sync(date) {
     let url = '/garmin/fitbit/sync?date=' + date;
     let xmlhttp = new XMLHttpRequest();
-    xmlhttp.open("GET", url, true);
+    xmlhttp.open("POST", url, true);
     xmlhttp.onload = function nothing() {
         document.getElementById("garminconnectoutput").innerHTML = "done";
         document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
@@ -349,7 +349,7 @@ function scaleMeasurementManualInput() {
 function manualScaleMeasurement() {
     let url = "/garmin/scale_measurements/manual/input";
     let xmlhttp = new XMLHttpRequest();
-    xmlhttp.open("GET", url, true);
+    xmlhttp.open("POST", url, true);
     xmlhttp.onload = function() {
         document.getElementById("garminconnectoutput").innerHTML = "done";
         document.getElementById("scale_measurement_box").innerHTML = xmlhttp.responseText;

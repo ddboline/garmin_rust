@@ -108,6 +108,7 @@ fn optional_session() -> impl Filter<Extract = (Option<Session>,), Error = Infal
 struct IndexResponse(HtmlBase<StackString, Error>);
 
 #[get("/garmin/index.html")]
+#[openapi(description="Main Page")]
 pub async fn garmin(
     query: Query<FilterRequest>,
     #[filter = "LoggedUser::filter"] user: LoggedUser,
@@ -202,6 +203,7 @@ async fn get_index_body(
 }
 
 #[get("/garmin/demo.html")]
+#[openapi(description="Demo Main Page")]
 pub async fn garmin_demo(
     query: Query<FilterRequest>,
     #[data] state: AppState,
@@ -234,11 +236,13 @@ pub async fn garmin_demo(
 struct JsResponse(HtmlBase<&'static str, Infallible>);
 
 #[get("/garmin/scripts/garmin_scripts.js")]
+#[openapi(description="Scripts")]
 pub async fn garmin_scripts_js() -> WarpResult<JsResponse> {
     Ok(HtmlBase::new(include_str!("../../templates/garmin_scripts.js")).into())
 }
 
 #[get("/garmin/scripts/garmin_scripts_demo.js")]
+#[openapi(description="Demo Scripts")]
 pub async fn garmin_scripts_demo_js() -> WarpResult<JsResponse> {
     Ok(HtmlBase::new(include_str!("../../templates/garmin_scripts_demo.js")).into())
 }

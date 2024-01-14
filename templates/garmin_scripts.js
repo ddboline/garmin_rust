@@ -201,7 +201,7 @@ function heartrate_stat_plot(offset, start_date=null, end_date=null) {
 function heartrateSync() {
     let url = '/sync/sync_garmin';
     let xmlhttp = new XMLHttpRequest();
-    xmlhttp.open("GET", url, true);
+    xmlhttp.open("POST", url, true);
     xmlhttp.onload = function nothing() {
         document.getElementById("garminconnectoutput").innerHTML = "done";
         document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;

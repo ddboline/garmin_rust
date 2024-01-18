@@ -286,7 +286,7 @@ impl GarminCli {
             0 => (),
             1 => {
                 let file_name = file_list
-                    .get(0)
+                    .first()
                     .ok_or_else(|| format_err!("This shouldn't be happening..."))?;
                 debug!("{}", &file_name);
                 let avro_file = self

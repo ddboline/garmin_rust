@@ -47,7 +47,7 @@ impl GarminParse {
         debug!("{} Found md5sum {} ", filename, md5sum);
         let gfile = GarminParse::new().with_file(filepath, corr_map)?;
         let filename = &gfile.filename;
-        match gfile.laps.get(0) {
+        match gfile.laps.first() {
             Some(l) if l.lap_start == DateTimeWrapper::sentinel_datetime() => {
                 return Err(format_err!("{filename} has empty lap start?"));
             }
@@ -80,7 +80,7 @@ impl GarminParse {
                 let md5sum = get_md5sum(&input_file)?;
                 let gfile = GarminParse::new().with_file(&input_file, corr_map)?;
                 let filename = &gfile.filename;
-                match gfile.laps.get(0) {
+                match gfile.laps.first() {
                     Some(l) if l.lap_start == DateTimeWrapper::sentinel_datetime() => {
                         return Err(format_err!(
                             "{input_file:?} {filename:?} has empty lap start?"

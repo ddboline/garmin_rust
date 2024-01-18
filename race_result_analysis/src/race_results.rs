@@ -446,8 +446,8 @@ impl From<GarminSummary> for RaceResults {
 mod tests {
     use anyhow::Error;
     use futures::TryStreamExt;
-    use once_cell::sync::Lazy;
     use log::debug;
+    use once_cell::sync::Lazy;
     use parking_lot::Mutex;
     use stack_string::format_sstr;
     use std::collections::HashMap;

@@ -13,9 +13,11 @@ use crate::garmin_report_options::{GarminReportAgg, GarminReportOptions};
 
 static WEEK_REG: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?P<year>\d{4})w(?P<week>\d{1,2})").expect("Bad regex"));
-static YMD_REG: Lazy<Regex> =
-Lazy::new(|| Regex::new(r"(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})").expect("Bad regex"));
-static YM_REG: Lazy<Regex> = Lazy::new(|| Regex::new(r"(?P<year>\d{4})-(?P<month>\d{2})").expect("Bad regex"));
+static YMD_REG: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})").expect("Bad regex")
+});
+static YM_REG: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?P<year>\d{4})-(?P<month>\d{2})").expect("Bad regex"));
 static Y_REG: Lazy<Regex> = Lazy::new(|| Regex::new(r"(?P<year>\d{4})").expect("Bad regex"));
 
 #[derive(Clone, Debug, PartialEq, Eq)]

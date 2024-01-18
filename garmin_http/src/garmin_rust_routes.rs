@@ -108,7 +108,7 @@ fn optional_session() -> impl Filter<Extract = (Option<Session>,), Error = Infal
 struct IndexResponse(HtmlBase<StackString, Error>);
 
 #[get("/garmin/index.html")]
-#[openapi(description="Main Page")]
+#[openapi(description = "Main Page")]
 pub async fn garmin(
     query: Query<FilterRequest>,
     #[filter = "LoggedUser::filter"] user: LoggedUser,
@@ -157,7 +157,7 @@ async fn get_index_body(
         0 => Ok(String::new()),
         1 => {
             let file_name = file_list
-                .get(0)
+                .first()
                 .ok_or_else(|| format_err!("This shouldn't be happening..."))?;
             debug!("{}", &file_name);
             let avro_file = config.cache_dir.join(file_name.as_str());
@@ -203,7 +203,7 @@ async fn get_index_body(
 }
 
 #[get("/garmin/demo.html")]
-#[openapi(description="Demo Main Page")]
+#[openapi(description = "Demo Main Page")]
 pub async fn garmin_demo(
     query: Query<FilterRequest>,
     #[data] state: AppState,
@@ -236,13 +236,13 @@ pub async fn garmin_demo(
 struct JsResponse(HtmlBase<&'static str, Infallible>);
 
 #[get("/garmin/scripts/garmin_scripts.js")]
-#[openapi(description="Scripts")]
+#[openapi(description = "Scripts")]
 pub async fn garmin_scripts_js() -> WarpResult<JsResponse> {
     Ok(HtmlBase::new(include_str!("../../templates/garmin_scripts.js")).into())
 }
 
 #[get("/garmin/scripts/garmin_scripts_demo.js")]
-#[openapi(description="Demo Scripts")]
+#[openapi(description = "Demo Scripts")]
 pub async fn garmin_scripts_demo_js() -> WarpResult<JsResponse> {
     Ok(HtmlBase::new(include_str!("../../templates/garmin_scripts_demo.js")).into())
 }
@@ -321,7 +321,7 @@ async fn garmin_upload_body(
 
     let query = FilterRequest {
         filter: datetimes
-            .get(0)
+            .first()
             .map(|dt| convert_datetime_to_str((*dt).into())),
     };
 
@@ -444,7 +444,7 @@ pub async fn strava_refresh(
 }
 
 #[derive(Debug, Serialize, Deserialize, Schema)]
-#[schema(component="StravaCallbackRequest")]
+#[schema(component = "StravaCallbackRequest")]
 pub struct StravaCallbackRequest {
     #[schema(description = "Authorization Code")]
     pub code: StackString,
@@ -522,7 +522,7 @@ pub async fn strava_activities_db(
 }
 
 #[derive(Debug, Serialize, Deserialize, Schema)]
-#[schema(component="StravaActiviesDBUpdateRequest")]
+#[schema(component = "StravaActiviesDBUpdateRequest")]
 pub struct StravaActiviesDBUpdateRequest {
     pub updates: Vec<StravaActivityWrapper>,
 }
@@ -762,7 +762,7 @@ pub async fn fitbit_activities(
 }
 
 #[derive(Deserialize, Schema)]
-#[schema(component="FitbitCallbackRequest")]
+#[schema(component = "FitbitCallbackRequest")]
 pub struct FitbitCallbackRequest {
     #[schema(description = "Authorization Code")]
     code: StackString,
@@ -1171,17 +1171,17 @@ pub async fn scale_measurement_update(
 }
 
 #[derive(Debug, Serialize, Deserialize, Schema)]
-#[schema(component="ScaleMeasurementManualRequest")]
+#[schema(component = "ScaleMeasurementManualRequest")]
 struct ScaleMeasurementManualRequest {
-    #[schema(description="Weight in lbs", example=r#""189.0""#)]
+    #[schema(description = "Weight in lbs", example = r#""189.0""#)]
     weight_in_lbs: f64,
-    #[schema(description="Body fat percent", example=r#""20.3""#)]
+    #[schema(description = "Body fat percent", example = r#""20.3""#)]
     body_fat_percent: f64,
-    #[schema(description="Muscle mass in lbs", example=r#""153.0""#)]
+    #[schema(description = "Muscle mass in lbs", example = r#""153.0""#)]
     muscle_mass_lbs: f64,
-    #[schema(description="Body water percent", example=r#""63.0""#)]
+    #[schema(description = "Body water percent", example = r#""63.0""#)]
     body_water_percent: f64,
-    #[schema(description="Bone mass in lbs", example=r#""63.0""#)]
+    #[schema(description = "Bone mass in lbs", example = r#""63.0""#)]
     bone_mass_lbs: f64,
 }
 
@@ -1494,7 +1494,7 @@ pub async fn heartrate_statistics_summary_db_update(
 }
 
 #[derive(Serialize, Deserialize, Schema)]
-#[schema(component="RaceResultPlotRequest")]
+#[schema(component = "RaceResultPlotRequest")]
 pub struct RaceResultPlotRequest {
     #[schema(description = "Race Type")]
     pub race_type: RaceTypeWrapper,
@@ -1666,7 +1666,7 @@ pub async fn race_results_db(
 }
 
 #[derive(Serialize, Deserialize, Schema)]
-#[schema(component="RaceResultsDBUpdateRequest")]
+#[schema(component = "RaceResultsDBUpdateRequest")]
 pub struct RaceResultsDBUpdateRequest {
     pub updates: Vec<RaceResultsWrapper>,
 }

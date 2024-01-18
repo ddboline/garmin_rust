@@ -34,7 +34,7 @@ impl GarminParseTrait for GarminParseFit {
         let fit_output = self.parse_file(filename)?;
         let (lap_list, sport) =
             apply_lap_corrections(&fit_output.lap_list, fit_output.sport, corr_map);
-        let first_lap = lap_list.get(0).ok_or_else(|| format_err!("No laps"))?;
+        let first_lap = lap_list.first().ok_or_else(|| format_err!("No laps"))?;
         let filename = filename
             .file_name()
             .ok_or_else(|| format_err!("filename {filename:?} has no path"))?

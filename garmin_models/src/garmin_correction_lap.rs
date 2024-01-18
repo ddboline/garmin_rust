@@ -121,7 +121,7 @@ impl GarminCorrectionLap {
                                 let corr = Self::new()
                                     .with_start_time(convert_str_to_datetime(key)?.into())
                                     .with_lap_number(lap.parse()?);
-                                let corr = match arr.get(0) {
+                                let corr = match arr.first() {
                                     Some(x) => match x.as_f64() {
                                         Some(r) => corr.with_distance(r),
                                         None => corr,
@@ -357,7 +357,7 @@ pub fn apply_lap_corrections<S: BuildHasher + Sync>(
     corr_map: &HashMap<(DateTimeWrapper, i32), GarminCorrectionLap, S>,
 ) -> (Vec<GarminLap>, SportTypes) {
     let mut new_sport = sport;
-    match lap_list.get(0) {
+    match lap_list.first() {
         Some(l) => {
             let lap_start = l.lap_start;
             for lap in lap_list {
@@ -461,7 +461,7 @@ mod tests {
 
         corr_list.sort_by_key(|i| (i.start_time, i.lap_number));
 
-        assert_eq!(corr_list.get(0).unwrap().distance, Some(3.10685596118667));
+        assert_eq!(corr_list.first().unwrap().distance, Some(3.10685596118667));
 
         let corr_val = GarminCorrectionLap::new();
         assert_eq!(corr_val.lap_number, -1);
@@ -499,7 +499,7 @@ mod tests {
 
         corr_list.sort_by_key(|i| (i.start_time, i.lap_number));
 
-        let first = corr_list.get(0).unwrap();
+        let first = corr_list.first().unwrap();
         let second = corr_list.get(1).unwrap();
         let third = corr_list.get(2).unwrap();
         let fourth = corr_list.get(3).unwrap();

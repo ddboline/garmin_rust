@@ -1884,7 +1884,10 @@ fn create_analysis_plot(model: &RaceResultAnalysis, is_demo: bool) -> LazyNodes 
 }
 
 pub fn create_fitbit_table(heartrate_values: Vec<FitbitHeartRate>) -> String {
-    let mut app = VirtualDom::new_with_props(FitbitTableElement, FitbitTableElementProps { heartrate_values });
+    let mut app = VirtualDom::new_with_props(
+        FitbitTableElement,
+        FitbitTableElementProps { heartrate_values },
+    );
     drop(app.rebuild());
     dioxus_ssr::render(&app)
 }

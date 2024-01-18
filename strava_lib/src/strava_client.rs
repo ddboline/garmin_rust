@@ -1,9 +1,9 @@
 use anyhow::{format_err, Error};
 use crossbeam_utils::atomic::AtomicCell;
 use futures::{future::try_join_all, TryStreamExt};
-use once_cell::sync::Lazy;
 use log::warn;
 use maplit::hashmap;
+use once_cell::sync::Lazy;
 use reqwest::{
     header::HeaderMap,
     multipart::{Form, Part},

@@ -2,8 +2,8 @@ use anyhow::Error;
 use arc_swap::ArcSwap;
 use crossbeam_utils::atomic::AtomicCell;
 use futures::{StreamExt, TryStreamExt};
-use once_cell::sync::Lazy;
 use log::debug;
+use once_cell::sync::Lazy;
 use stack_string::{format_sstr, StackString};
 use std::{collections::HashSet, sync::Arc};
 use telegram_bot::{
@@ -205,8 +205,8 @@ impl TelegramBot {
 #[cfg(test)]
 mod tests {
     use anyhow::Error;
-    use once_cell::sync::Lazy;
     use maplit::hashset;
+    use once_cell::sync::Lazy;
     use parking_lot::Mutex;
     use postgres_query::query;
     use rand::{distributions::Alphanumeric, thread_rng, Rng};

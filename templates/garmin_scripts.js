@@ -22,7 +22,7 @@ function processStravaData(filename, activity_type) {
         xmlhttp2.onload = function() {
             location.reload()
         }
-        xmlhttp2.open("GET", xmlhttp.responseText, true);
+        xmlhttp2.open("POST", xmlhttp.responseText, true);
         xmlhttp2.send(null);
         document.getElementById("garminconnectoutput").innerHTML = "syncing";
     }
@@ -48,7 +48,7 @@ function processStravaUpdate(activity_id, activity_type, start_time) {
         xmlhttp2.onload = function() {
             location.reload()
         }
-        xmlhttp2.open("GET", xmlhttp.responseText, true);
+        xmlhttp2.open("POST", xmlhttp.responseText, true);
         xmlhttp2.send(null);
         document.getElementById("garminconnectoutput").innerHTML = "syncing";
     }

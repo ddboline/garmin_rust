@@ -16,6 +16,7 @@ use tempdir::TempDir;
 use time::Date;
 use tokio::task::spawn_blocking;
 
+use fitbit_lib::fitbit_archive::archive_fitbit_heartrates;
 use garmin_lib::{date_time_wrapper::DateTimeWrapper, garmin_config::GarminConfig};
 use garmin_models::{
     garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionMap},
@@ -252,7 +253,9 @@ impl GarminCli {
             let gsync = gsync.clone();
             async move { gsync.sync_dir(title, local_dir, s3_bucket, &pool).await }
         });
-        try_join_all(futures).await
+        let mut results = try_join_all(futures).await?;
+        results.extend_from_slice(&archive_fitbit_heartrates(&self.config, &self.pool, false).await?);
+        Ok(results)
     }
 
     pub fn process_pattern<T, U>(config: &GarminConfig, patterns: T) -> GarminRequest

@@ -193,11 +193,12 @@ impl TelegramBot {
     }
 
     async fn list_of_telegram_user_ids(&self) -> Result<HashSet<UserId>, Error> {
-        let result = get_list_of_telegram_userids(&self.pool)
+        let mut result: HashSet<_> = get_list_of_telegram_userids(&self.pool)
             .await?
             .map_ok(UserId::new)
             .try_collect()
             .await?;
+        result.shrink_to_fit();
         Ok(result)
     }
 }
@@ -318,9 +319,11 @@ mod tests {
 
     fn get_random_string(size: usize) -> String {
         let mut rng = thread_rng();
-        (0..size)
+        let mut s: String = (0..size)
             .map(|_| char::from(rng.sample(Alphanumeric)))
-            .collect()
+            .collect();
+        s.shrink_to_fit();
+        s
     }
 
     #[tokio::test]

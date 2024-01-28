@@ -65,13 +65,16 @@ impl RaceResultAnalysis {
     /// # Errors
     /// Return error if db queries fail
     pub async fn run_analysis(race_type: RaceType, pool: &PgPool) -> Result<Self, Error> {
-        let data = RaceResults::get_results_by_type(race_type, pool)
+        let mut data: Vec<_> = RaceResults::get_results_by_type(race_type, pool)
             .await?
             .try_collect()
             .await?;
-        let summary_map = RaceResults::get_summary_map(pool).await?;
-        let agg_results =
+        data.shrink_to_fit();
+        let mut summary_map = RaceResults::get_summary_map(pool).await?;
+        summary_map.shrink_to_fit();
+        let mut agg_results =
             RaceResultAggregated::get_aggregated_race_results(race_type, pool).await?;
+        agg_results.shrink_to_fit();
 
         let x_values: Array1<f64> = agg_results
             .iter()
@@ -164,16 +167,19 @@ impl RaceResultAnalysis {
             RaceType::WorldRecordMen => (2, 12),
             RaceType::WorldRecordWomen => (2, 16),
         };
-        let yticks: Vec<i32> = (ymin..ymax).collect();
+        let mut yticks: Vec<i32> = (ymin..ymax).collect();
+        yticks.shrink_to_fit();
 
         let (data, other_data): (Vec<_>, Vec<_>) =
             self.data.iter().partition(|result| result.race_flag);
 
-        let data: Vec<_> = data.into_iter().map(|d| extract_points(d, local)).collect();
-        let other_data: Vec<_> = other_data
+        let mut data: Vec<_> = data.into_iter().map(|d| extract_points(d, local)).collect();
+        data.shrink_to_fit();
+        let mut other_data: Vec<_> = other_data
             .into_iter()
             .map(|d| extract_points(d, local))
             .collect();
+        other_data.shrink_to_fit();
 
         let (xmin, xmax) = match self.race_type {
             RaceType::Personal => (1.0, 100.0),

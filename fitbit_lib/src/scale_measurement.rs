@@ -271,7 +271,9 @@ impl ScaleMeasurement {
                 format_sstr!("WHERE {}", conditions.join(" AND "))
             }
         );
-        let query_bindings: Vec<_> = bindings.iter().map(|(k, v)| (*k, v as Parameter)).collect();
+        let mut query_bindings: Vec<_> =
+            bindings.iter().map(|(k, v)| (*k, v as Parameter)).collect();
+        query_bindings.shrink_to_fit();
         debug!("query:\n{}", query);
         let query = query_dyn!(&query, ..query_bindings)?;
         let conn = pool.get().await?;
@@ -284,11 +286,12 @@ impl ScaleMeasurement {
     where
         T: IntoIterator<Item = &'a mut Self>,
     {
-        let measurement_set: HashSet<_> = ScaleMeasurement::read_from_db(pool, None, None)
+        let mut measurement_set: HashSet<_> = ScaleMeasurement::read_from_db(pool, None, None)
             .await?
             .into_par_iter()
             .map(|d| d.datetime)
             .collect();
+        measurement_set.shrink_to_fit();
         let measurement_set = Arc::new(measurement_set);
         let futures: FuturesUnordered<_> = measurements
             .into_iter()

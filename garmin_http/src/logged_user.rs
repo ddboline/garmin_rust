@@ -153,7 +153,8 @@ impl FromStr for Session {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let data = STANDARD.decode(s)?;
         let history_str = String::from_utf8(data)?;
-        let history = history_str.split(';').map(Into::into).collect();
+        let mut history: Vec<_> = history_str.split(';').map(Into::into).collect();
+        history.shrink_to_fit();
         Ok(Session { history })
     }
 }

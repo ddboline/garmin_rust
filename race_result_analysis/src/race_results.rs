@@ -185,7 +185,8 @@ impl RaceResults {
             JOIN race_results_garmin_summary b ON a.id = b.summary_id
         ";
         let conn = pool.get().await?;
-        conn.query(query, &[])
+        let mut h = conn
+            .query(query, &[])
             .await?
             .into_iter()
             .map(|row| {
@@ -193,7 +194,9 @@ impl RaceResults {
                     .map_err(Into::into)
                     .map(|s| (s.id, s))
             })
-            .collect()
+            .collect::<Result<HashMap<_, _>, Error>>()?;
+        h.shrink_to_fit();
+        Ok(h)
     }
 
     /// # Errors
@@ -338,10 +341,11 @@ impl RaceResults {
     /// # Errors
     /// Return error if db query fails
     pub fn parse_from_race_results_text_file(input: &str) -> Result<Vec<Self>, Error> {
-        let results = input
+        let mut results: Vec<_> = input
             .split('\n')
             .filter_map(|line| {
-                let entries: Vec<_> = line.split_whitespace().collect();
+                let mut entries: Vec<_> = line.split_whitespace().collect();
+                entries.shrink_to_fit();
                 if entries.len() < 6 {
                     return None;
                 }
@@ -373,12 +377,13 @@ impl RaceResults {
                 })
             })
             .collect();
+        results.shrink_to_fit();
         Ok(results)
     }
 
     #[must_use]
     pub fn parse_world_record_text_file(input: &str, race_type: RaceType) -> Vec<Self> {
-        input
+        let mut v: Vec<_> = input
             .split('\n')
             .filter_map(|line| {
                 let entries: SmallVec<[&str; 2]> = line.split_whitespace().take(2).collect();
@@ -402,7 +407,9 @@ impl RaceResults {
                     race_summary_ids: Vec::new(),
                 })
             })
-            .collect()
+            .collect();
+        v.shrink_to_fit();
+        v
     }
 }
 
@@ -550,10 +557,12 @@ mod tests {
             }
         }
 
-        let personal_results: Vec<_> = RaceResults::get_results_by_type(RaceType::Personal, &pool)
-            .await?
-            .try_collect()
-            .await?;
+        let mut personal_results: Vec<_> =
+            RaceResults::get_results_by_type(RaceType::Personal, &pool)
+                .await?
+                .try_collect()
+                .await?;
+        personal_results.shrink_to_fit();
         assert!(personal_results.len() >= TEST_RACE_ENTRIES);
 
         let mut existing_map: HashMap<_, _> =
@@ -570,7 +579,8 @@ mod tests {
                 });
         let input = include_str!("../../tests/data/running_paces_backup1.txt");
         for line in input.split('\n') {
-            let entries: Vec<_> = line.split_whitespace().collect();
+            let mut entries: Vec<_> = line.split_whitespace().collect();
+            entries.shrink_to_fit();
             if entries.len() < 6 {
                 continue;
             }
@@ -592,10 +602,12 @@ mod tests {
             }
         }
 
-        let personal_results: Vec<_> = RaceResults::get_results_by_type(RaceType::Personal, &pool)
-            .await?
-            .try_collect()
-            .await?;
+        let mut personal_results: Vec<_> =
+            RaceResults::get_results_by_type(RaceType::Personal, &pool)
+                .await?
+                .try_collect()
+                .await?;
+        personal_results.shrink_to_fit();
         assert!(personal_results.len() >= TEST_RACE_ENTRIES);
 
         for mut result in personal_results {
@@ -614,10 +626,11 @@ mod tests {
                     "to_char(begin_datetime at time zone 'localtime', 'YYYY-MM-DD%HH24:MI:SS')",
                     race_date,
                 );
-                let filenames: Vec<_> = get_list_of_files_from_db(&constraint, &pool)
+                let mut filenames: Vec<_> = get_list_of_files_from_db(&constraint, &pool)
                     .await?
                     .try_collect()
                     .await?;
+                filenames.shrink_to_fit();
                 if filenames.is_empty() {
                     continue;
                 }
@@ -676,17 +689,19 @@ mod tests {
             }
             result.upsert_db(&pool).await?;
         }
-        let mens_results: Vec<_> =
+        let mut mens_results: Vec<_> =
             RaceResults::get_results_by_type(RaceType::WorldRecordMen, &pool)
                 .await?
                 .try_collect()
                 .await?;
+        mens_results.shrink_to_fit();
         assert_eq!(mens_results.len(), WORLD_RECORD_ENTRIES);
-        let womens_results: Vec<_> =
+        let mut womens_results: Vec<_> =
             RaceResults::get_results_by_type(RaceType::WorldRecordWomen, &pool)
                 .await?
                 .try_collect()
                 .await?;
+        womens_results.shrink_to_fit();
         assert_eq!(womens_results.len(), WORLD_RECORD_ENTRIES);
         Ok(())
     }

@@ -185,7 +185,7 @@ impl TryFrom<StackString> for SportTypes {
 }
 
 fn init_sport_type_map() -> HashMap<&'static str, SportTypes> {
-    [
+    let mut m: HashMap<_, _> = [
         ("running", SportTypes::Running),
         ("run", SportTypes::Running),
         ("bicycle", SportTypes::Biking),
@@ -213,7 +213,9 @@ fn init_sport_type_map() -> HashMap<&'static str, SportTypes> {
     ]
     .iter()
     .map(|(k, v)| (*k, *v))
-    .collect()
+    .collect();
+    m.shrink_to_fit();
+    m
 }
 
 #[must_use]

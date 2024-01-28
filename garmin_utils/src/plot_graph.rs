@@ -68,10 +68,11 @@ pub fn generate_plot_data(opts: &PlotOpts, data: &[(f64, f64)]) -> Option<Scatte
             }
         }
 
-        let data: Vec<(f64, f64, u64)> = bins
+        let mut data: Vec<(f64, f64, u64)> = bins
             .iter()
             .map(|((xb, yb), c)| (*xb as f64 * xstep + xmin, *yb as f64 * ystep + ymin, *c))
             .collect();
+        data.shrink_to_fit();
 
         Some(ScatterPlotData { data, xstep, ystep })
     } else {

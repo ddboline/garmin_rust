@@ -61,7 +61,9 @@ impl FitbitActivity {
                 format_sstr!("WHERE {}", conditions.join(" AND "))
             }
         );
-        let query_bindings: Vec<_> = bindings.iter().map(|(k, v)| (*k, v as Parameter)).collect();
+        let mut query_bindings: Vec<_> =
+            bindings.iter().map(|(k, v)| (*k, v as Parameter)).collect();
+        query_bindings.shrink_to_fit();
         debug!("query:\n{}", query);
         let query = query_dyn!(&query, ..query_bindings)?;
         let conn = pool.get().await?;
@@ -166,11 +168,12 @@ impl FitbitActivity {
         pool: &PgPool,
     ) -> Result<Vec<StackString>, Error> {
         let mut output = Vec::new();
-        let existing_activities: HashMap<_, _> = Self::read_from_db(pool, None, None)
+        let mut existing_activities: HashMap<_, _> = Self::read_from_db(pool, None, None)
             .await?
             .into_iter()
             .map(|activity| (activity.log_id, activity))
             .collect();
+        existing_activities.shrink_to_fit();
 
         let (update_items, insert_items): (Vec<_>, Vec<_>) = activities
             .iter()

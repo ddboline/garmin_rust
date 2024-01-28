@@ -347,11 +347,12 @@ impl GarminCliOpts {
                         let start_date = (OffsetDateTime::now_utc() - Duration::days(7))
                             .to_timezone(local)
                             .date();
-                        let activities: Vec<_> =
+                        let mut activities: Vec<_> =
                             StravaActivity::read_from_db(&pool, Some(start_date), None)
                                 .await?
                                 .try_collect()
                                 .await?;
+                        activities.shrink_to_fit();
                         file.write_all(&serde_json::to_vec(&activities)?).await?;
                     }
                     "fitbit_activities" => {
@@ -366,30 +367,33 @@ impl GarminCliOpts {
                         let start_date = (OffsetDateTime::now_utc() - Duration::days(7))
                             .to_timezone(local)
                             .date();
-                        let entries: Vec<_> =
+                        let mut entries: Vec<_> =
                             FitbitStatisticsSummary::read_from_db(Some(start_date), None, &pool)
                                 .await?
                                 .try_collect()
                                 .await?;
+                        entries.shrink_to_fit();
                         file.write_all(&serde_json::to_vec(&entries)?).await?;
                     }
                     "garmin_connect_activities" => {
                         let start_date = (OffsetDateTime::now_utc() - Duration::days(7))
                             .to_timezone(local)
                             .date();
-                        let activities: Vec<_> =
+                        let mut activities: Vec<_> =
                             GarminConnectActivity::read_from_db(&pool, Some(start_date), None)
                                 .await?
                                 .try_collect()
                                 .await?;
+                        activities.shrink_to_fit();
                         file.write_all(&serde_json::to_vec(&activities)?).await?;
                     }
                     "race_results" => {
-                        let results: Vec<_> =
+                        let mut results: Vec<_> =
                             RaceResults::get_results_by_type(RaceType::Personal, &pool)
                                 .await?
                                 .try_collect()
                                 .await?;
+                        results.shrink_to_fit();
                         file.write_all(&serde_json::to_vec(&results)?).await?;
                     }
                     _ => {}
@@ -433,10 +437,11 @@ impl GarminCliOpts {
                     get_heartrate_values(&config, start_date, end_date, step_size)
                 })
                 .await??;
-                let values: Vec<_> = values
+                let mut values: Vec<_> = values
                     .into_iter()
                     .map(|(d, v)| format_sstr!("{d} {v}"))
                     .collect();
+                values.shrink_to_fit();
                 stdout()
                     .write_all(format_sstr!("count {count} {}", values.len()).as_bytes())
                     .await?;
@@ -618,7 +623,8 @@ impl GarminCliOpts {
         for f in &input_files {
             write(f, &[]).await?;
         }
-        let dates: Vec<_> = dates.into_iter().collect();
+        let mut dates: Vec<_> = dates.into_iter().collect();
+        dates.shrink_to_fit();
         Ok((filenames, input_files, dates))
     }
 

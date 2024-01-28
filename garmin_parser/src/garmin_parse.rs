@@ -68,7 +68,7 @@ impl GarminParse {
     ) -> Result<Vec<GarminSummary>, Error> {
         let path = Path::new(gps_dir);
 
-        get_file_list(path)
+        let mut results = get_file_list(path)
             .into_par_iter()
             .map(|input_file| {
                 debug!("Process {:?}", &input_file);
@@ -94,7 +94,9 @@ impl GarminParse {
                 gfile.dump_avro(&cache_file)?;
                 Ok(GarminSummary::new(&gfile, &md5sum))
             })
-            .collect()
+            .collect::<Result<Vec<GarminSummary>, Error>>()?;
+        results.shrink_to_fit();
+        Ok(results)
     }
 }
 

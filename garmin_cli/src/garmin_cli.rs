@@ -131,7 +131,8 @@ impl GarminCli {
     /// fails
     pub async fn proc_everything(&self) -> Result<Vec<StackString>, Error> {
         let pool = self.get_pool();
-        let corr_map = GarminCorrectionLap::read_corrections_from_db(&pool).await?;
+        let mut corr_map = GarminCorrectionLap::read_corrections_from_db(&pool).await?;
+        corr_map.shrink_to_fit();
         let summary_list = Arc::new(self.get_summary_list(&corr_map).await?);
 
         if summary_list.is_empty() {
@@ -152,7 +153,7 @@ impl GarminCli {
     ) -> Result<Vec<GarminSummary>, Error> {
         let pg_conn = self.get_pool();
 
-        let gsum_list = match self.get_opts() {
+        let mut gsum_list: Vec<_> = match self.get_opts() {
             Some(GarminCliOptions::FileNames(flist)) => flist
                 .par_iter()
                 .map(|f| {
@@ -206,6 +207,7 @@ impl GarminCli {
                     .collect::<Result<Vec<_>, Error>>()?
             }
         };
+        gsum_list.shrink_to_fit();
         Ok(gsum_list)
     }
 
@@ -277,10 +279,12 @@ impl GarminCli {
         constraints: &GarminConstraints,
     ) -> Result<(), Error> {
         let pg_conn = self.get_pool();
-        let file_list: Vec<_> = get_list_of_files_from_db(&constraints.to_query_string(), &pg_conn)
-            .await?
-            .try_collect()
-            .await?;
+        let mut file_list: Vec<_> =
+            get_list_of_files_from_db(&constraints.to_query_string(), &pg_conn)
+                .await?
+                .try_collect()
+                .await?;
+        file_list.shrink_to_fit();
 
         match file_list.len() {
             0 => (),
@@ -295,18 +299,20 @@ impl GarminCli {
                     .join(file_name.as_str())
                     .with_extension("avro");
 
-                let gfile =
-                    if let Ok(g) = garmin_file::GarminFile::read_avro_async(&avro_file).await {
-                        debug!("Cached avro file read: {:?}", &avro_file);
-                        g
-                    } else {
-                        let gps_file = self.get_config().gps_dir.join(file_name.as_str());
-                        let pool = self.get_pool();
-                        let corr_map = GarminCorrectionLap::read_corrections_from_db(&pool).await?;
-                        debug!("Reading gps_file: {:?}", &gps_file);
-                        spawn_blocking(move || GarminParse::new().with_file(&gps_file, &corr_map))
-                            .await??
-                    };
+                let gfile = if let Ok(g) =
+                    garmin_file::GarminFile::read_avro_async(&avro_file).await
+                {
+                    debug!("Cached avro file read: {:?}", &avro_file);
+                    g
+                } else {
+                    let gps_file = self.get_config().gps_dir.join(file_name.as_str());
+                    let pool = self.get_pool();
+                    let mut corr_map = GarminCorrectionLap::read_corrections_from_db(&pool).await?;
+                    corr_map.shrink_to_fit();
+                    debug!("Reading gps_file: {:?}", &gps_file);
+                    spawn_blocking(move || GarminParse::new().with_file(&gps_file, &corr_map))
+                        .await??
+                };
 
                 debug!("gfile {} {}", gfile.laps.len(), gfile.points.len());
                 self.stdout.send(generate_txt_report(&gfile)?.join("\n"));
@@ -352,16 +358,17 @@ impl GarminCli {
         let tempdir = TempDir::new("garmin_zip")?;
         let ziptmpdir = tempdir.path();
 
-        let filenames: Result<Vec<_>, Error> = filenames
+        let mut filenames = filenames
             .into_par_iter()
             .map(|filename| match filename.extension().map(OsStr::to_str) {
                 Some(Some("zip")) => extract_zip_from_garmin_connect(&filename, ziptmpdir),
                 Some(Some("fit" | "tcx" | "txt")) => Ok(filename),
                 _ => Self::transform_file_name(&filename),
             })
-            .collect();
+            .collect::<Result<Vec<_>, Error>>()?;
+        filenames.shrink_to_fit();
 
-        filenames?
+        let mut result = filenames
             .into_par_iter()
             .map(|filename| {
                 assert!(
@@ -392,7 +399,9 @@ impl GarminCli {
                 Ok(Some(gfile.begin_datetime))
             })
             .filter_map(Result::transpose)
-            .collect()
+            .collect::<Result<Vec<_>, Error>>()?;
+        result.shrink_to_fit();
+        Ok(result)
     }
 
     /// # Errors
@@ -405,10 +414,11 @@ impl GarminCli {
         let stdout = self.stdout.clone();
 
         #[allow(clippy::needless_collect)]
-        let filenames: Vec<_> = filenames
+        let mut filenames: Vec<_> = filenames
             .into_iter()
             .map(|s| s.as_ref().to_path_buf())
             .collect();
+        filenames.shrink_to_fit();
 
         spawn_blocking(move || Self::process_filenames_sync(filenames, &stdout, &config)).await?
     }

@@ -67,7 +67,9 @@ impl GarminConnectActivity {
                 format_sstr!("WHERE {}", conditions.join(" AND "))
             }
         );
-        let query_bindings: Vec<_> = bindings.iter().map(|(k, v)| (*k, v as Parameter)).collect();
+        let mut query_bindings: Vec<_> =
+            bindings.iter().map(|(k, v)| (*k, v as Parameter)).collect();
+        query_bindings.shrink_to_fit();
         debug!("query:\n{}", query);
         let query = query_dyn!(&query, ..query_bindings)?;
         let conn = pool.get().await?;
@@ -169,11 +171,12 @@ impl GarminConnectActivity {
         pool: &PgPool,
     ) -> Result<Vec<StackString>, Error> {
         let mut output = Vec::new();
-        let existing_activities: HashMap<_, _> = Self::read_from_db(pool, None, None)
+        let mut existing_activities: HashMap<_, _> = Self::read_from_db(pool, None, None)
             .await?
             .map_ok(|activity| (activity.activity_id, activity))
             .try_collect()
             .await?;
+        existing_activities.shrink_to_fit();
 
         let (update_items, insert_items): (Vec<_>, Vec<_>) = activities
             .iter()
@@ -209,11 +212,12 @@ impl GarminConnectActivity {
         new_activities: Vec<Self>,
         pool: &PgPool,
     ) -> Result<Vec<Self>, Error> {
-        let activities: HashMap<_, _> = GarminConnectActivity::read_from_db(pool, None, None)
+        let mut activities: HashMap<_, _> = GarminConnectActivity::read_from_db(pool, None, None)
             .await?
             .map_ok(|activity| (activity.activity_id, activity))
             .try_collect()
             .await?;
+        activities.shrink_to_fit();
 
         #[allow(clippy::manual_filter_map)]
         let futures = new_activities

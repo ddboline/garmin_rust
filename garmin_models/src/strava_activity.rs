@@ -74,7 +74,9 @@ impl StravaActivity {
                 format_sstr!("WHERE {}", conditions.join(" AND "))
             }
         );
-        let query_bindings: Vec<_> = bindings.iter().map(|(k, v)| (*k, v as Parameter)).collect();
+        let mut query_bindings: Vec<_> =
+            bindings.iter().map(|(k, v)| (*k, v as Parameter)).collect();
+        query_bindings.shrink_to_fit();
         debug!("query:\n{}", query);
         let query = query_dyn!(&query, ..query_bindings)?;
         let conn = pool.get().await?;
@@ -175,11 +177,12 @@ impl StravaActivity {
         pool: &PgPool,
     ) -> Result<Vec<StackString>, Error> {
         let mut output = Vec::new();
-        let existing_activities: HashMap<_, _> = Self::read_from_db(pool, None, None)
+        let mut existing_activities: HashMap<_, _> = Self::read_from_db(pool, None, None)
             .await?
             .map_ok(|activity| (activity.id, activity))
             .try_collect()
             .await?;
+        existing_activities.shrink_to_fit();
 
         let (update_items, insert_items): (Vec<_>, Vec<_>) = activities
             .iter()
@@ -216,6 +219,7 @@ impl StravaActivity {
         });
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
         output.extend_from_slice(&results?);
+        output.shrink_to_fit();
 
         Ok(output)
     }

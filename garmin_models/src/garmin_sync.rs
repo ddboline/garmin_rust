@@ -122,6 +122,7 @@ impl GarminSync {
                 .map_ok(|item| (item.s3_key.clone(), item))
                 .try_collect()
                 .await?;
+        file_map.shrink_to_fit();
 
         let mut marker: Option<String> = None;
         let mut total_keys = 0;
@@ -198,10 +199,11 @@ impl GarminSync {
         s3_bucket: &str,
         pool: &PgPool,
     ) -> Result<usize, Error> {
-        let allowed_extensions: HashSet<_> = ["fit", "gmn", "gz", "txt", "avro", "parquet"]
+        let mut allowed_extensions: HashSet<_> = ["fit", "gmn", "gz", "txt", "avro", "parquet"]
             .iter()
             .map(OsStr::new)
             .collect();
+        allowed_extensions.shrink_to_fit();
 
         let mut file_map: HashMap<StackString, KeyItemCache> =
             KeyItemCache::get_files(pool, s3_bucket, None, None)
@@ -209,6 +211,7 @@ impl GarminSync {
                 .map_ok(|item| (item.s3_key.clone(), item))
                 .try_collect()
                 .await?;
+        file_map.shrink_to_fit();
 
         let mut tasks = Vec::new();
 

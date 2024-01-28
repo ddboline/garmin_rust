@@ -729,11 +729,12 @@ impl StravaClient {
         }
         let constraints = constraints.join(" AND ");
 
-        let old_activities: HashSet<_> = get_list_of_activities_from_db(&constraints, pool)
+        let mut old_activities: HashSet<_> = get_list_of_activities_from_db(&constraints, pool)
             .await?
             .map_ok(|(d, _)| d)
             .try_collect()
             .await?;
+        old_activities.shrink_to_fit();
 
         #[allow(clippy::manual_filter_map)]
         let futures = new_activities
@@ -861,19 +862,21 @@ mod tests {
     async fn test_dump_strava_activities() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
         let pool = PgPool::new(&config.pgurl);
-        let activities: HashMap<_, _> = StravaActivity::read_from_db(&pool, None, None)
+        let mut activities: HashMap<_, _> = StravaActivity::read_from_db(&pool, None, None)
             .await?
             .map_ok(|activity| (activity.id, activity))
             .try_collect()
             .await?;
+        activities.shrink_to_fit();
         let client = StravaClient::with_auth(config).await?;
         let start_date = datetime!(2020-01-01 00:00:00 +00:00);
-        let new_activities: Vec<_> = client
+        let mut new_activities: Vec<_> = client
             .get_all_strava_activites(Some(start_date), None)
             .await?
             .into_iter()
             .filter(|activity| !activities.contains_key(&activity.id))
             .collect();
+        new_activities.shrink_to_fit();
         debug!("{:?}", new_activities);
         let futures = new_activities.iter().map(|activity| {
             let pool = pool.clone();

@@ -114,7 +114,8 @@ impl FitbitHeartrateUpdateRequest {
     /// Returns error if db query fails
     pub async fn merge_data(self, config: &GarminConfig) -> Result<BTreeSet<Date>, Error> {
         let config = config.clone();
-        let updates: Vec<_> = self.updates.into_iter().map(Into::into).collect();
+        let mut updates: Vec<_> = self.updates.into_iter().map(Into::into).collect();
+        updates.shrink_to_fit();
         spawn_blocking(move || {
             FitbitHeartRate::merge_slice_to_avro(&config, &updates).map_err(Into::into)
         })
@@ -400,6 +401,7 @@ impl AddGarminCorrectionRequest {
     /// Returns error if db query fails
     pub async fn add_corrections(self, pool: &PgPool) -> Result<StackString, Error> {
         let mut corr_map = GarminCorrectionLap::read_corrections_from_db(pool).await?;
+        corr_map.shrink_to_fit();
         let start_time: OffsetDateTime = self.start_time.into();
         let start_time = start_time.into();
         let unique_key = (start_time, self.lap_number);

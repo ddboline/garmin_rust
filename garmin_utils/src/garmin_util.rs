@@ -335,7 +335,7 @@ pub fn get_degrees_from_semicircles(s: f64) -> f64 {
 pub async fn get_authorized_users(pool: &PgPool) -> Result<HashSet<StackString>, Error> {
     let query = query!("SELECT email FROM authorized_users");
     let conn = pool.get().await?;
-    query
+    let results: Result<HashSet<StackString>, Error> = query
         .query_streaming(&conn)
         .await?
         .and_then(|row| async move {
@@ -344,7 +344,10 @@ pub async fn get_authorized_users(pool: &PgPool) -> Result<HashSet<StackString>,
         })
         .try_collect()
         .await
-        .map_err(Into::into)
+        .map_err(Into::into);
+    let mut results = results?;
+    results.shrink_to_fit();
+    Ok(results)
 }
 
 /// # Errors

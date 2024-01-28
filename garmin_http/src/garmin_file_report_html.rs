@@ -28,7 +28,7 @@ pub struct ReportObjects {
 #[must_use]
 pub fn extract_report_objects_from_file(gfile: &GarminFile) -> ReportObjects {
     let speed_values = get_splits(gfile, 400., "lap", true);
-    let heart_rate_speed = speed_values
+    let mut heart_rate_speed: Vec<_> = speed_values
         .iter()
         .map(|v| {
             let t = v.time_value;
@@ -36,8 +36,9 @@ pub fn extract_report_objects_from_file(gfile: &GarminFile) -> ReportObjects {
             (h, 4.0 * t / 60.)
         })
         .collect();
+    heart_rate_speed.shrink_to_fit();
 
-    let speed_values = speed_values
+    let mut speed_values: Vec<_> = speed_values
         .into_iter()
         .map(|v| {
             let d = v.split_distance;
@@ -45,8 +46,9 @@ pub fn extract_report_objects_from_file(gfile: &GarminFile) -> ReportObjects {
             (d / 4., 4. * t / 60.)
         })
         .collect();
+    speed_values.shrink_to_fit();
 
-    let mile_split_vals = get_splits(gfile, METERS_PER_MILE, "mi", false)
+    let mut mile_split_vals: Vec<_> = get_splits(gfile, METERS_PER_MILE, "mi", false)
         .into_iter()
         .map(|v| {
             let d = v.split_distance;
@@ -54,6 +56,7 @@ pub fn extract_report_objects_from_file(gfile: &GarminFile) -> ReportObjects {
             (d, t / 60.)
         })
         .collect();
+    mile_split_vals.shrink_to_fit();
 
     let mut report_objs = ReportObjects {
         mile_split_vals,

@@ -118,10 +118,11 @@ impl FitbitHeartRate {
     ) -> Result<Vec<(DateTimeWrapper, i32)>, Error> {
         let ndays = (end_date - start_date).whole_days();
 
-        let days: Vec<_> = (0..=ndays)
+        let mut days: Vec<_> = (0..=ndays)
             .map(|i| start_date + Duration::days(i))
             .collect();
-        let fitbit_files: Vec<_> = days
+        days.shrink_to_fit();
+        let mut fitbit_files: Vec<_> = days
             .iter()
             .filter_map(|date| {
                 let date_str = StackString::from_display(date);
@@ -133,6 +134,7 @@ impl FitbitHeartRate {
                 }
             })
             .collect();
+        fitbit_files.shrink_to_fit();
         info!("fitbit_files {:?}", fitbit_files);
         let futures = days.iter().map(|date| async move {
             let constraint = format_sstr!("date(begin_datetime at time zone 'utc') = '{date}'");
@@ -152,7 +154,8 @@ impl FitbitHeartRate {
             Ok(files)
         });
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
-        let garmin_files: Vec<_> = results?.into_iter().flatten().collect();
+        let mut garmin_files: Vec<_> = results?.into_iter().flatten().collect();
+        garmin_files.shrink_to_fit();
 
         spawn_blocking(move || Self::read_fitbit_and_garmin_files(&fitbit_files, &garmin_files))
             .await?
@@ -175,15 +178,17 @@ impl FitbitHeartRate {
             })
             .collect();
         let mut heartrate_values: Vec<_> = results?.into_par_iter().flatten().collect();
+        heartrate_values.shrink_to_fit();
 
         let results: Result<Vec<_>, Error> = garmin_files
             .into_par_iter()
             .map(|avro_file| {
-                let points: Vec<_> = GarminFile::read_avro(avro_file)?
+                let mut points: Vec<_> = GarminFile::read_avro(avro_file)?
                     .points
                     .into_par_iter()
                     .filter_map(|p| p.heart_rate.map(|h| (p.time, h as i32)))
                     .collect();
+                points.shrink_to_fit();
                 Ok(points)
             })
             .collect();
@@ -234,7 +239,8 @@ impl FitbitHeartRate {
             })
         })
         .collect();
-        let dates = dates?;
+        let mut dates = dates?;
+        dates.shrink_to_fit();
         let futures: FuturesUnordered<_> = dates
             .into_iter()
             .map(|date| {
@@ -333,6 +339,7 @@ impl FitbitHeartRate {
                 .chain(new_values)
                 .filter(|h| h.value > 0)
                 .collect();
+            merged_values.shrink_to_fit();
             merged_values.par_sort_by_key(|entry| entry.datetime.unix_timestamp());
             merged_values.dedup();
             let date_str = StackString::from_display(date);
@@ -348,7 +355,7 @@ impl FitbitHeartRate {
             .heartrate_values
             .as_ref()
             .map_or_else(Vec::new, |hr_vals| {
-                hr_vals
+                let mut result: Vec<_> = hr_vals
                     .iter()
                     .filter_map(|(timestamp, hr_val_opt)| {
                         hr_val_opt.map(|value| {
@@ -357,7 +364,9 @@ impl FitbitHeartRate {
                             Self { datetime, value }
                         })
                     })
-                    .collect()
+                    .collect();
+                result.shrink_to_fit();
+                result
             })
     }
 }
@@ -370,10 +379,11 @@ pub fn process_fitbit_json_file(fname: &Path) -> Result<Vec<FitbitHeartRate>, Er
     }
     let f = File::open(fname)?;
     let result: Vec<JsonHeartRateEntry> = serde_json::from_reader(f)?;
-    let result: Vec<_> = result
+    let mut result: Vec<_> = result
         .into_par_iter()
         .map(FitbitHeartRate::from_json_heartrate_entry)
         .collect();
+    result.shrink_to_fit();
     Ok(result)
 }
 
@@ -383,7 +393,8 @@ pub fn import_fitbit_json_files(
     config: &GarminConfig,
     directory: &str,
 ) -> Result<BTreeSet<Date>, Error> {
-    let filenames: Vec<_> = glob(&format_sstr!("{directory}/heart_rate-*.json"))?.collect();
+    let mut filenames: Vec<_> = glob(&format_sstr!("{directory}/heart_rate-*.json"))?.collect();
+    filenames.shrink_to_fit();
     let result: Result<Vec<BTreeSet<Date>>, Error> = filenames
         .into_par_iter()
         .map(|fname| {
@@ -515,7 +526,8 @@ pub fn import_garmin_heartrate_file(
         })
         .collect();
 
-    let heartrates: Vec<FitbitHeartRate> = heartrates.into_values().collect();
+    let mut heartrates: Vec<FitbitHeartRate> = heartrates.into_values().collect();
+    heartrates.shrink_to_fit();
 
     FitbitHeartRate::merge_slice_to_avro(config, &heartrates)
 }
@@ -548,10 +560,11 @@ mod tests {
         let result = process_fitbit_json_file(&path)?;
         debug!("{}", result.len());
         let local = DateTimeWrapper::local_tz();
-        let dates: HashSet<_> = result
+        let mut dates: HashSet<_> = result
             .iter()
             .map(|entry| entry.datetime.to_timezone(local).date())
             .collect();
+        dates.shrink_to_fit();
         debug!("{:?}", dates);
         let dates = vec![date!(2019 - 11 - 01)];
         assert_eq!(result.len(), 3);

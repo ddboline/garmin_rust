@@ -80,7 +80,7 @@ impl GarminParseTrait for GarminParseTxt {
     }
 
     fn parse_file(&self, filename: &Path) -> Result<ParseOutput, Error> {
-        let lap_list = Self::get_lap_list(filename)?
+        let mut lap_list = Self::get_lap_list(filename)?
             .into_iter()
             .enumerate()
             .map(|(i, lap)| {
@@ -94,10 +94,11 @@ impl GarminParseTrait for GarminParseTxt {
                 Ok(new_lap)
             })
             .collect::<Result<Vec<_>, Error>>()?;
+        lap_list.shrink_to_fit();
 
         let mut time_since_begin = 0.0;
         let mut distance_since_begin = 0.0;
-        let duration_speed_vec: Vec<_> = lap_list
+        let mut duration_speed_vec: Vec<_> = lap_list
             .iter()
             .map(|lap| {
                 let duration_from_last = lap.lap_duration;
@@ -142,8 +143,9 @@ impl GarminParseTrait for GarminParseTxt {
                 )
             })
             .collect();
+        duration_speed_vec.shrink_to_fit();
 
-        let point_list: Vec<_> = lap_list
+        let mut point_list: Vec<_> = lap_list
             .iter()
             .zip(duration_speed_vec.iter())
             .map(
@@ -175,6 +177,7 @@ impl GarminParseTrait for GarminParseTxt {
                 },
             )
             .collect();
+        point_list.shrink_to_fit();
 
         Ok(ParseOutput {
             lap_list,
@@ -208,7 +211,7 @@ impl GarminParseTxt {
     fn parse_line(line: &str) -> Result<GarminLap, Error> {
         let sport_type_map = get_sport_type_map();
 
-        let entry_dict: HashMap<_, _> = line
+        let mut entry_dict: HashMap<_, _> = line
             .split_whitespace()
             .filter_map(|x| {
                 let entries: SmallVec<[&str; 2]> = x.split('=').take(2).collect();
@@ -222,6 +225,7 @@ impl GarminParseTxt {
                 None
             })
             .collect();
+        entry_dict.shrink_to_fit();
 
         let date = match entry_dict.get("date") {
             Some(val) => Date::parse(val, format_description!("[year][month][day]"))?,

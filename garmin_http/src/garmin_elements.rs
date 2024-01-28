@@ -96,8 +96,10 @@ pub async fn index_new_body(
     let map_api_key = config.maps_api_key.clone();
     match index_config {
         IndexConfig::Report { reports } => {
-            let url_strings = reports.get_url_strings();
-            let reports = reports.get_text_entries().map_err(Into::<Error>::into)?;
+            let mut url_strings = reports.get_url_strings();
+            url_strings.shrink_to_fit();
+            let mut reports = reports.get_text_entries().map_err(Into::<Error>::into)?;
+            reports.shrink_to_fit();
             let mut app = VirtualDom::new_with_props(
                 IndexElement,
                 IndexElementProps {
@@ -414,6 +416,7 @@ fn IndexElement(
                 })
             })
             .collect();
+        final_values.shrink_to_fit();
         final_values.sort();
         let data = serde_json::to_string(&final_values).unwrap_or_else(|_| String::new());
         let mut script_body = String::new();
@@ -522,13 +525,14 @@ fn IndexElement(
         );
         let mut plots = Vec::new();
         let dformat = format_description!("[year]-[month]-[day]T00:00:00Z");
-        let min_heartrate: Vec<(String, f64)> = heartrate_stats
+        let mut min_heartrate: Vec<(String, f64)> = heartrate_stats
             .iter()
             .map(|stat| {
                 let key = stat.date.format(dformat).unwrap_or_else(|_| String::new());
                 (key, stat.min_heartrate)
             })
             .collect();
+        min_heartrate.shrink_to_fit();
         plots.push(PlotData {
             data: min_heartrate,
             title: "Minimum Heartrate",
@@ -536,13 +540,14 @@ fn IndexElement(
             yaxis: "Heatrate [bpm]",
             units: "bpm",
         });
-        let max_heartrate: Vec<(String, f64)> = heartrate_stats
+        let mut max_heartrate: Vec<(String, f64)> = heartrate_stats
             .iter()
             .map(|stat| {
                 let key = stat.date.format(dformat).unwrap_or_else(|_| String::new());
                 (key, stat.max_heartrate)
             })
             .collect();
+        max_heartrate.shrink_to_fit();
         plots.push(PlotData {
             data: max_heartrate,
             title: "Maximum Heartrate",
@@ -550,13 +555,14 @@ fn IndexElement(
             yaxis: "Heatrate [bpm]",
             units: "bpm",
         });
-        let mean_heartrate: Vec<(String, f64)> = heartrate_stats
+        let mut mean_heartrate: Vec<(String, f64)> = heartrate_stats
             .iter()
             .map(|stat| {
                 let key = stat.date.format(dformat).unwrap_or_else(|_| String::new());
                 (key, stat.mean_heartrate)
             })
             .collect();
+        mean_heartrate.shrink_to_fit();
         plots.push(PlotData {
             data: mean_heartrate,
             title: "Mean Heartrate",
@@ -694,7 +700,7 @@ fn IndexElement(
 
         let mut plots = Vec::new();
 
-        let mass: Vec<(String, f64)> = measurements
+        let mut mass: Vec<(String, f64)> = measurements
             .iter()
             .map(|meas| {
                 let key = meas
@@ -704,6 +710,7 @@ fn IndexElement(
                 (key, meas.mass)
             })
             .collect();
+        mass.shrink_to_fit();
         plots.push(PlotData {
             data: mass,
             title: "Weight",
@@ -711,7 +718,7 @@ fn IndexElement(
             yaxis: "Weight [lbs]",
             units: "lbs",
         });
-        let fat: Vec<(String, f64)> = measurements
+        let mut fat: Vec<(String, f64)> = measurements
             .iter()
             .map(|meas| {
                 let key = meas
@@ -721,6 +728,7 @@ fn IndexElement(
                 (key, meas.fat_pct)
             })
             .collect();
+        fat.shrink_to_fit();
         plots.push(PlotData {
             data: fat,
             title: "Fat %",
@@ -728,7 +736,7 @@ fn IndexElement(
             yaxis: "Fat %",
             units: "%",
         });
-        let water: Vec<(String, f64)> = measurements
+        let mut water: Vec<(String, f64)> = measurements
             .iter()
             .map(|meas| {
                 let key = meas
@@ -738,6 +746,7 @@ fn IndexElement(
                 (key, meas.water_pct)
             })
             .collect();
+        water.shrink_to_fit();
         plots.push(PlotData {
             data: water,
             title: "Water %",
@@ -745,7 +754,7 @@ fn IndexElement(
             yaxis: "Water %",
             units: "%",
         });
-        let muscle: Vec<(String, f64)> = measurements
+        let mut muscle: Vec<(String, f64)> = measurements
             .iter()
             .map(|meas| {
                 let key = meas
@@ -755,6 +764,7 @@ fn IndexElement(
                 (key, meas.muscle_pct)
             })
             .collect();
+        muscle.shrink_to_fit();
         plots.push(PlotData {
             data: muscle,
             title: "Muscle %",
@@ -762,7 +772,7 @@ fn IndexElement(
             yaxis: "Muscle %",
             units: "%",
         });
-        let bone: Vec<(String, f64)> = measurements
+        let mut bone: Vec<(String, f64)> = measurements
             .iter()
             .map(|meas| {
                 let key = meas
@@ -772,6 +782,7 @@ fn IndexElement(
                 (key, meas.bone_pct)
             })
             .collect();
+        bone.shrink_to_fit();
         plots.push(PlotData {
             data: bone,
             title: "Bone %",
@@ -1293,6 +1304,7 @@ fn get_file_html<'a>(
             .keys()
             .filter_map(|s| if *s == current_sport { None } else { Some(*s) })
             .collect();
+        sport_types.shrink_to_fit();
         sport_types.sort_unstable();
         sport_types.insert(0, current_sport);
         let sport_types = sport_types.into_iter().enumerate().map(|(idx, s)| {
@@ -1668,7 +1680,8 @@ fn create_analysis_plot(model: &RaceResultAnalysis, is_demo: bool) -> LazyNodes 
     let xlabels = [
         "100m", "", "", "800m", "1mi", "5k", "10k", "Half", "Mar", "", "50mi", "100mi", "300mi",
     ];
-    let xmap: HashMap<_, _> = xticks.iter().zip(xlabels.iter()).collect();
+    let mut xmap: HashMap<_, _> = xticks.iter().zip(xlabels.iter()).collect();
+    xmap.shrink_to_fit();
 
     let pace_results = x_proj
         .into_iter()
@@ -1763,21 +1776,24 @@ fn create_analysis_plot(model: &RaceResultAnalysis, is_demo: bool) -> LazyNodes 
         });
 
     let x_vals: Vec<f64> = x_vals.map(|x| x * METERS_PER_MILE).to_vec();
-    let y_nom: Vec<(f64, f64)> = y_nom
+    let mut y_nom: Vec<(f64, f64)> = y_nom
         .iter()
         .zip(x_vals.iter())
         .map(|(y, x)| (*x, *y))
         .collect();
-    let y_neg: Vec<(f64, f64)> = y_neg
+    y_nom.shrink_to_fit();
+    let mut y_neg: Vec<(f64, f64)> = y_neg
         .iter()
         .zip(x_vals.iter())
         .map(|(y, x)| (*x, *y))
         .collect();
-    let y_pos: Vec<(f64, f64)> = y_pos
+    y_neg.shrink_to_fit();
+    let mut y_pos: Vec<(f64, f64)> = y_pos
         .iter()
         .zip(x_vals.iter())
         .map(|(y, x)| (*x, *y))
         .collect();
+    y_pos.shrink_to_fit();
 
     let data = serde_json::to_string(&data).unwrap_or_else(|_| String::new());
     let other_data = serde_json::to_string(&other_data).unwrap_or_else(|_| String::new());

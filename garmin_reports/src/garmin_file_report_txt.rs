@@ -89,7 +89,7 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<StackString>, Error
             None => 0.0,
         })
         .sum();
-    let hr_vals: Vec<_> = gfile
+    let mut hr_vals: Vec<_> = gfile
         .points
         .iter()
         .map(|point| match point.heart_rate {
@@ -103,6 +103,7 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<StackString>, Error
             None => 0.0,
         })
         .collect();
+    hr_vals.shrink_to_fit();
 
     let avg_hr = if sum_time > 0.0 {
         avg_hr / sum_time
@@ -123,7 +124,7 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<StackString>, Error
     let mut cur_alt = 0.0;
     let mut last_alt = 0.0;
 
-    let alt_vals: Vec<_> = gfile
+    let mut alt_vals: Vec<_> = gfile
         .points
         .iter()
         .filter_map(|point| match point.altitude {
@@ -140,6 +141,7 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<StackString>, Error
             None => None,
         })
         .collect();
+    alt_vals.shrink_to_fit();
 
     if !alt_vals.is_empty() {
         return_vec.push(format_sstr!(

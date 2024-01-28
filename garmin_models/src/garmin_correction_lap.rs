@@ -85,15 +85,19 @@ impl GarminCorrectionLap {
     }
 
     pub fn map_from_vec<T: IntoIterator<Item = Self>>(corr_list: T) -> GarminCorrectionMap {
-        corr_list
+        let mut h: HashMap<_, _> = corr_list
             .into_iter()
             .map(|corr| ((corr.start_time, corr.lap_number), corr))
-            .collect()
+            .collect();
+        h.shrink_to_fit();
+        h
     }
 
     #[must_use]
     pub fn get_corr_list(corr_map: &GarminCorrectionMap) -> Vec<Self> {
-        corr_map.values().copied().collect()
+        let mut c: Vec<_> = corr_map.values().copied().collect();
+        c.shrink_to_fit();
+        c
     }
 
     /// # Errors
@@ -101,7 +105,7 @@ impl GarminCorrectionLap {
     pub fn corr_map_from_buffer(buffer: &[u8]) -> Result<GarminCorrectionMap, Error> {
         let jsval = parse(str::from_utf8(buffer)?)?;
 
-        let corr_map = match &jsval {
+        let mut corr_map = match &jsval {
             JsonValue::Object(_) => jsval
                 .entries()
                 .flat_map(|(key, val)| match val {
@@ -151,6 +155,7 @@ impl GarminCorrectionLap {
                 .collect(),
             _ => HashMap::new(),
         };
+        corr_map.shrink_to_fit();
         Ok(corr_map)
     }
 
@@ -220,10 +225,11 @@ impl GarminCorrectionLap {
             let sport: SportTypes = sport.parse().unwrap_or(SportTypes::None);
             for time in times_list {
                 let time = convert_str_to_datetime(time)?.into();
-                let lap_list: Vec<_> = corr_list_map
+                let mut lap_list: Vec<_> = corr_list_map
                     .keys()
                     .filter_map(|(t, n)| if *t == time { Some(*n) } else { None })
                     .collect();
+                lap_list.shrink_to_fit();
 
                 let lap_list = if lap_list.is_empty() {
                     vec![0]
@@ -363,7 +369,7 @@ pub fn apply_lap_corrections<S: BuildHasher + Sync>(
             for lap in lap_list {
                 debug!("lap {} dis {}", lap.lap_number, lap.lap_distance);
             }
-            let new_lap_list: Vec<_> = lap_list
+            let mut new_lap_list: Vec<_> = lap_list
                 .iter()
                 .map(|lap| {
                     let lap_number = lap.lap_number;
@@ -405,6 +411,7 @@ pub fn apply_lap_corrections<S: BuildHasher + Sync>(
                     }
                 })
                 .collect();
+            new_lap_list.shrink_to_fit();
             for lap in &new_lap_list {
                 debug!("lap {} dis {}", lap.lap_number, lap.lap_distance);
             }
@@ -458,7 +465,7 @@ mod tests {
                 .into_iter()
                 .map(|(_, v)| v)
                 .collect();
-
+        corr_list.shrink_to_fit();
         corr_list.sort_by_key(|i| (i.start_time, i.lap_number));
 
         assert_eq!(corr_list.first().unwrap().distance, Some(3.10685596118667));
@@ -496,7 +503,7 @@ mod tests {
             .into_iter()
             .map(|(_, v)| v)
             .collect();
-
+        corr_list.shrink_to_fit();
         corr_list.sort_by_key(|i| (i.start_time, i.lap_number));
 
         let first = corr_list.first().unwrap();

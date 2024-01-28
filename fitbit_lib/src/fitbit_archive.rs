@@ -69,7 +69,8 @@ async fn get_garmin_avro_file_map(
     end_date: Date,
 ) -> Result<Vec<PathBuf>, Error> {
     let days = (end_date - start_date).whole_days();
-    let days: Vec<_> = (0..=days).map(|i| start_date + Duration::days(i)).collect();
+    let mut days: Vec<_> = (0..=days).map(|i| start_date + Duration::days(i)).collect();
+    days.shrink_to_fit();
     let futures = days.iter().map(|date| async move {
         let constraint = format_sstr!(
             r#"
@@ -92,7 +93,8 @@ async fn get_garmin_avro_file_map(
         Ok(files)
     });
     let results: Result<Vec<_>, Error> = try_join_all(futures).await;
-    let garmin_files: Vec<_> = results?.into_iter().flatten().collect();
+    let mut garmin_files: Vec<_> = results?.into_iter().flatten().collect();
+    garmin_files.shrink_to_fit();
     Ok(garmin_files)
 }
 
@@ -178,20 +180,21 @@ fn write_fitbit_heartrate_parquet(
                 }
             }
         }
-        let columns = FitbitColumns {
-            timestamps: heartrates.keys().copied().collect(),
-            values: heartrates
-                .values()
-                .map(|h| {
-                    if h.len() == 1 {
-                        h[0]
-                    } else {
-                        let s: i32 = h.iter().sum();
-                        s / h.len() as i32
-                    }
-                })
-                .collect(),
-        };
+        let mut timestamps: Vec<_> = heartrates.keys().copied().collect();
+        timestamps.shrink_to_fit();
+        let mut values: Vec<_> = heartrates
+            .values()
+            .map(|h| {
+                if h.len() == 1 {
+                    h[0]
+                } else {
+                    let s: i32 = h.iter().sum();
+                    s / h.len() as i32
+                }
+            })
+            .collect();
+        values.shrink_to_fit();
+        let columns = FitbitColumns { timestamps, values };
         let new_df = dataframe!(
             "timestamp" => &columns.timestamps,
             "value" => &columns.values,
@@ -234,7 +237,7 @@ fn get_fitbit_parquet_files(
             format_sstr!("{:04}-{:02}", d.year(), m)
         })
         .collect();
-    let fitbit_files: Vec<_> = keys
+    let mut fitbit_files: Vec<_> = keys
         .iter()
         .filter_map(|key| {
             let input_filename = config.fitbit_archivedir.join(key).with_extension("parquet");
@@ -245,6 +248,7 @@ fn get_fitbit_parquet_files(
             }
         })
         .collect();
+    fitbit_files.shrink_to_fit();
     info!("fitbit_files {:?}", fitbit_files);
     fitbit_files
 }
@@ -342,7 +346,7 @@ pub fn get_heartrate_values(
             values.entry(t).or_default().push(v);
         }
     }
-    let values = values
+    let mut values: Vec<_> = values
         .into_iter()
         .filter_map(|(t, v)| {
             let d: DateTimeWrapper = OffsetDateTime::from_unix_timestamp(t).ok()?.into();
@@ -355,5 +359,6 @@ pub fn get_heartrate_values(
             }
         })
         .collect();
+    values.shrink_to_fit();
     Ok(values)
 }

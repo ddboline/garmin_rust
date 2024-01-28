@@ -385,7 +385,7 @@ impl FitbitClient {
             .json()
             .await?;
         let offset = self.get_offset();
-        dataset
+        let mut result = dataset
             .intraday
             .dataset
             .into_iter()
@@ -404,7 +404,9 @@ impl FitbitClient {
                 let value = entry.value;
                 Ok(FitbitHeartRate { datetime, value })
             })
-            .collect()
+            .collect::<Result<Vec<_>, Error>>()?;
+        result.shrink_to_fit();
+        Ok(result)
     }
 
     /// # Errors
@@ -462,7 +464,7 @@ impl FitbitClient {
             .error_for_status()?
             .json()
             .await?;
-        let result = body_weight
+        let mut result: Vec<_> = body_weight
             .weight
             .into_iter()
             .filter_map(|bw| {
@@ -487,6 +489,7 @@ impl FitbitClient {
                 })
             })
             .collect();
+        result.shrink_to_fit();
         Ok(result)
     }
 
@@ -619,7 +622,7 @@ impl FitbitClient {
     ) -> Result<Vec<(DateTimeWrapper, StackString)>, Error> {
         let activities = self.get_activities(start_date, None).await?;
 
-        activities
+        let mut activities = activities
             .into_iter()
             .filter_map(|entry| {
                 let res = || {
@@ -633,7 +636,9 @@ impl FitbitClient {
                 };
                 res().transpose()
             })
-            .collect()
+            .collect::<Result<Vec<_>, Error>>()?;
+        activities.shrink_to_fit();
+        Ok(activities)
     }
 
     /// # Errors
@@ -801,7 +806,10 @@ impl FitbitClient {
                     Ok(format_sstr!("not fully deleted {log_id}"))
                 }
             });
-        try_join_all(futures).await
+        let result: Result<Vec<_>, Error> = try_join_all(futures).await;
+        let mut result = result?;
+        result.shrink_to_fit();
+        Ok(result)
     }
 
     /// # Errors
@@ -819,7 +827,7 @@ impl FitbitClient {
         let new_activities: Vec<_> = self.get_all_activities(date).await?;
 
         // Get id's for walking and running activities with 0 steps
-        let activities_to_delete: HashSet<_> = new_activities
+        let mut activities_to_delete: HashSet<_> = new_activities
             .iter()
             .filter_map(|activity| {
                 if (activity.steps.unwrap_or(0) == 0)
@@ -832,6 +840,7 @@ impl FitbitClient {
                 }
             })
             .collect();
+        activities_to_delete.shrink_to_fit();
 
         // delete 0 step activities from fitbit and DB
         let futures = activities_to_delete.iter().map(|log_id| {
@@ -849,7 +858,7 @@ impl FitbitClient {
         let results: Result<Vec<()>, Error> = try_join_all(futures).await;
         results?;
 
-        let new_activities: HashMap<_, _> = new_activities
+        let mut new_activities: HashMap<_, _> = new_activities
             .into_iter()
             .filter_map(|activity| {
                 if activities_to_delete.contains(&activity.log_id) {
@@ -863,14 +872,16 @@ impl FitbitClient {
                 }
             })
             .collect();
+        new_activities.shrink_to_fit();
 
         // Get existing activities
-        let existing_activities: HashMap<_, _> =
+        let mut existing_activities: HashMap<_, _> =
             FitbitActivity::read_from_db(pool, Some(date), None)
                 .await?
                 .into_iter()
                 .map(|activity| (activity.log_id, activity))
                 .collect();
+        existing_activities.shrink_to_fit();
 
         let futures: FuturesUnordered<_> = new_activities
             .values()
@@ -886,7 +897,7 @@ impl FitbitClient {
         let results: Result<(), Error> = futures.try_collect().await;
         results?;
 
-        let old_activities: Vec<_> = get_list_of_activities_from_db(
+        let mut old_activities: Vec<_> = get_list_of_activities_from_db(
             &format_sstr!("begin_datetime >= '{begin_datetime}'"),
             pool,
         )
@@ -901,6 +912,7 @@ impl FitbitClient {
         })
         .try_collect()
         .await?;
+        old_activities.shrink_to_fit();
 
         let futures: FuturesUnordered<_> = old_activities
             .into_iter()
@@ -921,10 +933,13 @@ impl FitbitClient {
                 }
             })
             .collect();
-        futures
+        let result: Result<Vec<_>, Error> = futures
             .try_filter_map(|x| async move { Ok(x) })
             .try_collect()
-            .await
+            .await;
+        let mut result = result?;
+        result.shrink_to_fit();
+        Ok(result)
     }
 
     /// # Errors
@@ -958,7 +973,7 @@ impl FitbitClient {
         let start_date: Date = start_datetime.to_offset(offset).date();
         let local = DateTimeWrapper::local_tz();
 
-        let existing_map: HashMap<_, _> = self
+        let mut existing_map: HashMap<_, _> = self
             .get_fitbit_bodyweightfat()
             .await?
             .into_iter()
@@ -967,8 +982,9 @@ impl FitbitClient {
                 (date, entry)
             })
             .collect();
+        existing_map.shrink_to_fit();
 
-        let measurements = ScaleMeasurement::read_from_db(pool, Some(start_date), None)
+        let mut measurements: Vec<_> = ScaleMeasurement::read_from_db(pool, Some(start_date), None)
             .await?
             .into_iter()
             .filter(|entry| {
@@ -976,14 +992,16 @@ impl FitbitClient {
                 !existing_map.contains_key(&date)
             })
             .collect();
+        measurements.shrink_to_fit();
         self.update_fitbit_bodyweightfat(&measurements).await?;
 
-        let activities: Vec<_> = self
+        let mut activities: Vec<_> = self
             .sync_fitbit_activities(start_datetime, pool)
             .await?
             .into_iter()
             .map(Into::into)
             .collect();
+        activities.shrink_to_fit();
         let duplicates = self.remove_duplicate_entries(pool).await?;
         FitbitActivity::fix_summary_id_in_db(pool).await?;
         if !activities.is_empty() {
@@ -1248,18 +1266,20 @@ mod tests {
         let config = GarminConfig::get_config(None)?;
         let client = FitbitClient::with_auth(config.clone()).await?;
         let pool = PgPool::new(&config.pgurl);
-        let activities: HashMap<_, _> = FitbitActivity::read_from_db(&pool, None, None)
+        let mut activities: HashMap<_, _> = FitbitActivity::read_from_db(&pool, None, None)
             .await?
             .into_iter()
             .map(|activity| (activity.log_id, activity))
             .collect();
+        activities.shrink_to_fit();
         let start_date: Date = date!(2020 - 01 - 01);
-        let new_activities: Vec<_> = client
+        let mut new_activities: Vec<_> = client
             .get_all_activities(start_date)
             .await?
             .into_iter()
             .filter(|activity| !activities.contains_key(&activity.log_id))
             .collect();
+        new_activities.shrink_to_fit();
         let futures = new_activities.iter().map(|activity| {
             let pool = pool.clone();
             async move {

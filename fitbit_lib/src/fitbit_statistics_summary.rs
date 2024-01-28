@@ -33,10 +33,11 @@ impl FitbitStatisticsSummary {
             .date();
         let min_heartrate = f64::from(heartrate_values.iter().map(|(_, v)| *v).min()?);
         let max_heartrate = f64::from(heartrate_values.iter().map(|(_, v)| *v).max()?);
-        let values: Vec<_> = heartrate_values
+        let mut values: Vec<_> = heartrate_values
             .iter()
             .map(|(_, v)| f64::from(*v))
             .collect();
+        values.shrink_to_fit();
         let mean_heartrate = mean(&values);
         let median_heartrate = median(&values);
         let stdev_heartrate = standard_deviation(&values, Some(mean_heartrate));

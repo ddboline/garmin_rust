@@ -87,7 +87,8 @@ fn proc_pattern_wrapper<T: AsRef<str>>(
     let filter_iter = filter.split(',');
 
     let req = GarminCli::process_pattern(config, filter_iter);
-    let history = history.iter().map(|s| s.as_ref().into()).collect();
+    let mut history: Vec<_> = history.iter().map(|s| s.as_ref().into()).collect();
+    history.shrink_to_fit();
 
     GarminHtmlRequest {
         request: GarminRequest {
@@ -147,11 +148,12 @@ async fn get_index_body(
     req: &GarminRequest,
     is_demo: bool,
 ) -> HttpResult<String> {
-    let file_list: Vec<StackString> =
+    let mut file_list: Vec<StackString> =
         get_list_of_files_from_db(&req.constraints.to_query_string(), pool)
             .await?
             .try_collect()
             .await?;
+    file_list.shrink_to_fit();
 
     match file_list.len() {
         0 => Ok(String::new()),
@@ -167,7 +169,8 @@ async fn get_index_body(
                 g
             } else {
                 let gps_file = config.gps_dir.join(file_name.as_str());
-                let corr_map = GarminCorrectionLap::read_corrections_from_db(pool).await?;
+                let mut corr_map = GarminCorrectionLap::read_corrections_from_db(pool).await?;
+                corr_map.shrink_to_fit();
 
                 debug!("Reading gps_file: {:?}", &gps_file);
                 spawn_blocking(move || GarminParse::new().with_file(&gps_file, &corr_map)).await??
@@ -489,13 +492,14 @@ pub async fn strava_activities(
     #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<StravaActivitiesResponse> {
-    let alist = query
+    let mut alist: Vec<_> = query
         .into_inner()
         .get_activities(&state.config)
         .await?
         .into_iter()
         .map(Into::into)
         .collect();
+    alist.shrink_to_fit();
     Ok(JsonBase::new(alist).into())
 }
 
@@ -506,7 +510,7 @@ pub async fn strava_activities_db(
     #[data] state: AppState,
 ) -> WarpResult<StravaActivitiesResponse> {
     let query = query.into_inner();
-    let alist = StravaActivity::read_from_db(
+    let mut alist: Vec<_> = StravaActivity::read_from_db(
         &state.db,
         query.start_date.map(Into::into),
         query.end_date.map(Into::into),
@@ -517,6 +521,7 @@ pub async fn strava_activities_db(
     .try_collect()
     .await
     .map_err(Into::<Error>::into)?;
+    alist.shrink_to_fit();
 
     Ok(JsonBase::new(alist).into())
 }
@@ -542,7 +547,8 @@ pub async fn strava_activities_db_update(
     #[data] state: AppState,
 ) -> WarpResult<StravaActivitiesUpdateResponse> {
     let payload = payload.into_inner();
-    let updates: Vec<_> = payload.updates.into_iter().map(Into::into).collect();
+    let mut updates: Vec<_> = payload.updates.into_iter().map(Into::into).collect();
+    updates.shrink_to_fit();
     let body = StravaActivity::upsert_activities(&updates, &state.db)
         .await
         .map_err(Into::<Error>::into)?;
@@ -656,13 +662,14 @@ pub async fn fitbit_heartrate_api(
     let client = FitbitClient::with_auth(state.config.clone())
         .await
         .map_err(Into::<Error>::into)?;
-    let hlist = client
+    let mut hlist: Vec<_> = client
         .get_fitbit_intraday_time_series_heartrate(query.date.into())
         .await
         .map_err(Into::<Error>::into)?
         .into_iter()
         .map(Into::into)
         .collect();
+    hlist.shrink_to_fit();
     Ok(JsonBase::new(hlist).into())
 }
 
@@ -672,13 +679,14 @@ pub async fn fitbit_heartrate_cache(
     #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<FitbitHeartRateResponse> {
-    let hlist = query
+    let mut hlist: Vec<_> = query
         .into_inner()
         .get_cache(&state.config)
         .await?
         .into_iter()
         .map(Into::into)
         .collect();
+    hlist.shrink_to_fit();
     Ok(JsonBase::new(hlist).into())
 }
 
@@ -712,13 +720,14 @@ pub async fn fitbit_bodyweight(
     let client = FitbitClient::with_auth(state.config.clone())
         .await
         .map_err(Into::<Error>::into)?;
-    let hlist = client
+    let mut hlist: Vec<_> = client
         .get_fitbit_bodyweightfat()
         .await
         .map_err(Into::<Error>::into)?
         .into_iter()
         .map(Into::into)
         .collect();
+    hlist.shrink_to_fit();
     Ok(JsonBase::new(hlist).into())
 }
 
@@ -751,13 +760,14 @@ pub async fn fitbit_activities(
     #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<FitbitActivitiesResponse> {
-    let hlist = query
+    let mut hlist: Vec<_> = query
         .into_inner()
         .get_activities(&state.config)
         .await?
         .into_iter()
         .map(Into::into)
         .collect();
+    hlist.shrink_to_fit();
     Ok(JsonBase::new(hlist).into())
 }
 
@@ -843,7 +853,7 @@ pub async fn heartrate_statistics_plots(
         .get_session(&state.client, &state.config)
         .await
         .map_err(Into::<Error>::into)?;
-    let stats: Vec<FitbitStatisticsSummary> = FitbitStatisticsSummary::read_from_db(
+    let mut stats: Vec<FitbitStatisticsSummary> = FitbitStatisticsSummary::read_from_db(
         Some(query.start_date.into()),
         Some(query.end_date.into()),
         &state.db,
@@ -853,6 +863,7 @@ pub async fn heartrate_statistics_plots(
     .try_collect()
     .await
     .map_err(Into::<Error>::into)?;
+    stats.shrink_to_fit();
     let body = index_new_body(
         &state.config,
         &state.db,
@@ -881,7 +892,7 @@ pub async fn heartrate_statistics_plots_demo(
     query.is_demo = true;
     let session = session.unwrap_or_default();
 
-    let stats: Vec<FitbitStatisticsSummary> = FitbitStatisticsSummary::read_from_db(
+    let mut stats: Vec<FitbitStatisticsSummary> = FitbitStatisticsSummary::read_from_db(
         Some(query.start_date.into()),
         Some(query.end_date.into()),
         &state.db,
@@ -891,6 +902,7 @@ pub async fn heartrate_statistics_plots_demo(
     .try_collect()
     .await
     .map_err(Into::<Error>::into)?;
+    stats.shrink_to_fit();
     let body = index_new_body(
         &state.config,
         &state.db,
@@ -1109,13 +1121,14 @@ pub async fn fitbit_tcx_sync(
     #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<FitbitTcxSyncResponse> {
-    let flist = query
+    let mut flist: Vec<_> = query
         .into_inner()
         .process(&state.db, &state.config)
         .await?
         .into_iter()
         .map(|x| x.to_string_lossy().into())
         .collect();
+    flist.shrink_to_fit();
     Ok(JsonBase::new(flist).into())
 }
 
@@ -1130,7 +1143,7 @@ pub async fn scale_measurement(
     #[data] state: AppState,
 ) -> WarpResult<ScaleMeasurementsResponse> {
     let query = query.into_inner();
-    let slist = ScaleMeasurement::read_from_db(
+    let mut slist: Vec<_> = ScaleMeasurement::read_from_db(
         &state.db,
         query.start_date.map(Into::into),
         query.end_date.map(Into::into),
@@ -1140,6 +1153,7 @@ pub async fn scale_measurement(
     .into_iter()
     .map(Into::into)
     .collect();
+    slist.shrink_to_fit();
 
     Ok(JsonBase::new(slist).into())
 }
@@ -1164,6 +1178,7 @@ pub async fn scale_measurement_update(
         .into_iter()
         .map(Into::into)
         .collect();
+    measurements.shrink_to_fit();
     ScaleMeasurement::merge_updates(&mut measurements, &state.db)
         .await
         .map_err(Into::<Error>::into)?;
@@ -1348,7 +1363,7 @@ pub async fn garmin_connect_activities_db(
 ) -> WarpResult<GarminConnectActivitiesResponse> {
     let query = query.into_inner();
 
-    let alist = GarminConnectActivity::read_from_db(
+    let mut alist: Vec<_> = GarminConnectActivity::read_from_db(
         &state.db,
         query.start_date.map(Into::into),
         query.end_date.map(Into::into),
@@ -1359,6 +1374,7 @@ pub async fn garmin_connect_activities_db(
     .try_collect()
     .await
     .map_err(Into::<Error>::into)?;
+    alist.shrink_to_fit();
     Ok(JsonBase::new(alist).into())
 }
 
@@ -1377,7 +1393,8 @@ pub async fn garmin_connect_activities_db_update(
     #[data] state: AppState,
 ) -> WarpResult<GarminConnectActivitiesUpdateResponse> {
     let payload = payload.into_inner();
-    let updates: Vec<_> = payload.updates.into_iter().map(Into::into).collect();
+    let mut updates: Vec<_> = payload.updates.into_iter().map(Into::into).collect();
+    updates.shrink_to_fit();
     let body: StackString = GarminConnectActivity::upsert_activities(&updates, &state.db)
         .await
         .map_err(Into::<Error>::into)?
@@ -1397,7 +1414,7 @@ pub async fn fitbit_activities_db(
     #[data] state: AppState,
 ) -> WarpResult<FitbitActivitiesDBResponse> {
     let query = query.into_inner();
-    let alist = FitbitActivity::read_from_db(
+    let mut alist: Vec<_> = FitbitActivity::read_from_db(
         &state.db,
         query.start_date.map(Into::into),
         query.end_date.map(Into::into),
@@ -1407,6 +1424,7 @@ pub async fn fitbit_activities_db(
     .into_iter()
     .map(Into::into)
     .collect();
+    alist.shrink_to_fit();
     Ok(JsonBase::new(alist).into())
 }
 
@@ -1430,7 +1448,8 @@ pub async fn fitbit_activities_db_update(
     #[data] state: AppState,
 ) -> WarpResult<FitbitActivitiesDBUpdateResponse> {
     let payload = payload.into_inner();
-    let updates: Vec<_> = payload.updates.into_iter().map(Into::into).collect();
+    let mut updates: Vec<_> = payload.updates.into_iter().map(Into::into).collect();
+    updates.shrink_to_fit();
     let body = FitbitActivity::upsert_activities(&updates, &state.db)
         .await
         .map_err(Into::<Error>::into)?;
@@ -1453,7 +1472,7 @@ pub async fn heartrate_statistics_summary_db(
     #[data] state: AppState,
 ) -> WarpResult<HeartrateStatisticsResponse> {
     let query = query.into_inner();
-    let alist = FitbitStatisticsSummary::read_from_db(
+    let mut alist: Vec<_> = FitbitStatisticsSummary::read_from_db(
         query.start_date.map(Into::into),
         query.end_date.map(Into::into),
         &state.db,
@@ -1467,6 +1486,7 @@ pub async fn heartrate_statistics_summary_db(
     .try_collect()
     .await
     .map_err(Into::<Error>::into)?;
+    alist.shrink_to_fit();
     Ok(JsonBase::new(alist).into())
 }
 
@@ -1654,13 +1674,14 @@ pub async fn race_results_db(
     let query = query.into_inner();
 
     let race_type = query.race_type.map_or(RaceType::Personal, Into::into);
-    let results = RaceResults::get_results_by_type(race_type, &state.db)
+    let mut results: Vec<_> = RaceResults::get_results_by_type(race_type, &state.db)
         .await
         .map_err(Into::<Error>::into)?
         .map_ok(Into::into)
         .try_collect()
         .await
         .map_err(Into::<Error>::into)?;
+    results.shrink_to_fit();
 
     Ok(JsonBase::new(results).into())
 }

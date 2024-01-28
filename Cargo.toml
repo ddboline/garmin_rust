@@ -15,7 +15,7 @@ Process and display info about gps activity files."""
 [dependencies]
 anyhow = "1.0"
 clap = {version="4.0", features=["derive"]}
-env_logger = "0.10"
+env_logger = "0.11"
 fitbit_bot = {path="fitbit_bot"}
 fitbit_lib = {path="fitbit_lib"}
 garmin_cli = {path="garmin_cli"}

@@ -199,12 +199,17 @@ function heartrate_stat_plot(offset, start_date=null, end_date=null) {
     location.replace(url)
 }
 function heartrateSync() {
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
     let url = '/sync/sync_garmin';
     let xmlhttp = new XMLHttpRequest();
     xmlhttp.open("POST", url, true);
     xmlhttp.onload = function nothing() {
-        document.getElementById("garminconnectoutput").innerHTML = "done";
         document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
+        if (xmlhttp.responseText == "running") {
+            sleep(1000).then(() => heartrateSync());
+        } else {
+            document.getElementById("garminconnectoutput").innerHTML = "done";
+        }
     }
     xmlhttp.send(null);
     document.getElementById("garminconnectoutput").innerHTML = "syncing";

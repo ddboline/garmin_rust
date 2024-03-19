@@ -1,6 +1,6 @@
 [package]
 name = "garmin_utils"
-version = "0.14.14"
+version = "0.14.15"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2021"
 
@@ -8,7 +8,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0"
-base64 = "0.21"
+base64 = "0.22"
 bytes = "1.0"
 deadpool-postgres = "0.12"
 fitparser = {git="https://github.com/ddboline/fitparse-rs.git", branch="time-0.3-0.5.2"}
@@ -25,7 +25,7 @@ stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", featur
 subprocess = "0.2"
 time = {version="0.3", features=["serde-human-readable", "macros", "formatting", "parsing"]}
 time-tz = {version="2.0", features=["system"]}
-tokio = {version="1.35", features=["rt", "macros", "rt-multi-thread"]}
+tokio = {version="1.36", features=["rt", "macros", "rt-multi-thread"]}
 tokio-postgres = {version = "0.7", features = ["with-time-0_3", "with-uuid-1"]}
 url = "2.3"
 uuid = { version = "1.0", features = ["serde", "v4"] }

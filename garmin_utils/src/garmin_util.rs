@@ -14,7 +14,6 @@ use smallvec::SmallVec;
 use stack_string::{format_sstr, StackString};
 use std::{
     collections::HashSet,
-    convert::TryInto,
     fs::{remove_file, File},
     future::Future,
     io::{BufRead, BufReader, Read},

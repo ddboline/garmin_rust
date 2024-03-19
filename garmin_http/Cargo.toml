@@ -1,13 +1,13 @@
 [package]
 name = "garmin_http"
-version = "0.14.14"
+version = "0.14.15"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
 [dependencies]
 anyhow = "1.0"
-authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.11.9"}
-base64 = "0.21"
+authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.11.12"}
+base64 = "0.22"
 cookie = {version="0.18", features=["percent-encode"]}
 derive_more = "0.99"
 dioxus = "0.4"
@@ -40,7 +40,7 @@ tempdir = "0.3"
 thiserror = "1.0"
 time = {version="0.3", features=["serde-human-readable", "macros", "formatting", "parsing"]}
 time-tz = {version="2.0", features=["system"]}
-tokio = {version="1.35", features=["rt", "macros", "rt-multi-thread"]}
+tokio = {version="1.36", features=["rt", "macros", "rt-multi-thread"]}
 tokio-stream = "0.1"
 url = "2.3"
 uuid = "1.0"

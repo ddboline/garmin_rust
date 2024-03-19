@@ -16,7 +16,6 @@ use stack_string::{format_sstr, StackString};
 use std::{
     borrow::Borrow,
     collections::{HashMap, HashSet},
-    convert::TryInto,
     ffi::OsStr,
     fmt::Write,
     fs,

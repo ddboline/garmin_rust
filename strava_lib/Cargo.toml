@@ -1,12 +1,12 @@
 [package]
 name = "strava_lib"
-version = "0.14.14"
+version = "0.14.15"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
 [dependencies]
 anyhow = "1.0"
-base64 = "0.21"
+base64 = "0.22"
 crossbeam-utils = "0.8"
 futures = "0.3"
 garmin_lib = { path = "../garmin_lib" }
@@ -24,6 +24,6 @@ stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", featur
 tempfile = "3.1"
 time = {version="0.3", features=["serde-human-readable", "macros", "formatting", "parsing"]}
 time-tz = {version="2.0", features=["system"]}
-tokio = {version="1.35", features=["rt", "macros", "rt-multi-thread"]}
+tokio = {version="1.36", features=["rt", "macros", "rt-multi-thread"]}
 tokio-stream = "0.1"
 uuid = "1.0"

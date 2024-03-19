@@ -8,7 +8,7 @@ use rayon::{
     iter::{IntoParallelIterator, ParallelExtend, ParallelIterator},
     slice::ParallelSliceMut,
 };
-use serde::{self, Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use smallvec::SmallVec;
 use stack_string::{format_sstr, StackString};
 use std::{

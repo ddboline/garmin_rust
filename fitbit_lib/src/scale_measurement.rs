@@ -3,7 +3,7 @@ use futures::{stream::FuturesUnordered, TryStreamExt};
 use log::debug;
 use postgres_query::{query, query_dyn, FromSqlRow, Parameter};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use serde::{self, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use stack_string::format_sstr;
 use std::{collections::HashSet, fmt, sync::Arc};

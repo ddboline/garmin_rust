@@ -4,7 +4,7 @@ use log::info;
 use polars::{
     df as dataframe,
     prelude::{
-        col, ChunkAgg, IntoLazy, NamedFrom, ParquetReader, ParquetWriter, SerReader,
+        col, ChunkAgg, IntoLazy, ParquetReader, ParquetWriter, SerReader,
         UniqueKeepStrategy,
     },
 };

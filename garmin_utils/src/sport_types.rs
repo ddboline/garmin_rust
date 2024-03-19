@@ -3,7 +3,7 @@ use bytes::BytesMut;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use stack_string::StackString;
-use std::{collections::HashMap, convert::TryFrom, fmt, str::FromStr};
+use std::{collections::HashMap, fmt, str::FromStr};
 use tokio_postgres::types::{FromSql, IsNull, ToSql, Type};
 
 static SPORT_TYPE_MAP: Lazy<HashMap<&'static str, SportTypes>> = Lazy::new(init_sport_type_map);

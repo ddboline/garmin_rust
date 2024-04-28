@@ -5,7 +5,7 @@ use garmin_utils::{garmin_util::METERS_PER_MILE, plot_opts::PlotOpts};
 
 use garmin_reports::garmin_file_report_txt::get_splits;
 
-#[derive(Default, PartialEq)]
+#[derive(Default, PartialEq, Clone)]
 pub struct ReportObjects {
     pub avg_hr: f64,
     pub sum_time: f64,

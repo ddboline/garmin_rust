@@ -254,7 +254,8 @@ impl GarminCli {
             async move { gsync.sync_dir(title, local_dir, s3_bucket, &pool).await }
         });
         let mut results = try_join_all(futures).await?;
-        results.extend_from_slice(&archive_fitbit_heartrates(&self.config, &self.pool, false).await?);
+        results
+            .extend_from_slice(&archive_fitbit_heartrates(&self.config, &self.pool, false).await?);
         Ok(results)
     }
 

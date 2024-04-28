@@ -17,7 +17,7 @@ use garmin_utils::pgpool::PgPool;
 
 use garmin_lib::garmin_config::GarminConfig;
 
-#[derive(Serialize, Deserialize, Debug, FromSqlRow, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, FromSqlRow, PartialEq, Clone)]
 pub struct GarminConnectActivity {
     #[serde(alias = "activityId")]
     pub activity_id: i64,

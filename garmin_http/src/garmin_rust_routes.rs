@@ -374,7 +374,7 @@ pub async fn garmin_sync(
     let mut body = gcli.sync_everything().await.map_err(Into::<Error>::into)?;
     body.extend_from_slice(&gcli.proc_everything().await.map_err(Into::<Error>::into)?);
     let body = body.join("\n").into();
-    let body = table_body(body).into();
+    let body = table_body(body)?.into();
     Ok(HtmlBase::new(body).into())
 }
 
@@ -396,7 +396,7 @@ pub async fn strava_sync(
         .map(|p| p.to_string_lossy().into_owned())
         .join("\n")
         .into();
-    let body = table_body(body).into();
+    let body = table_body(body)?.into();
     Ok(HtmlBase::new(body).into())
 }
 
@@ -834,7 +834,7 @@ pub async fn fitbit_sync(
         0
     };
     let heartrates = heartrates.split_off(start);
-    let body = create_fitbit_table(heartrates).into();
+    let body = create_fitbit_table(heartrates)?.into();
     Ok(HtmlBase::new(body).into())
 }
 
@@ -1237,7 +1237,7 @@ struct ScaleMeasurementManualInputResponse(HtmlBase<StackString, Error>);
 pub async fn scale_measurement_manual_input(
     #[filter = "LoggedUser::filter"] _: LoggedUser,
 ) -> WarpResult<ScaleMeasurementManualInputResponse> {
-    let body = scale_measurement_manual_input_body();
+    let body = scale_measurement_manual_input_body()?;
     Ok(HtmlBase::new(body.into()).into())
 }
 
@@ -1327,7 +1327,7 @@ pub async fn strava_athlete(
         .get_strava_athlete()
         .await
         .map_err(Into::<Error>::into)?;
-    let body = strava_body(result).into();
+    let body = strava_body(result)?.into();
     Ok(HtmlBase::new(body).into())
 }
 
@@ -1347,7 +1347,7 @@ pub async fn fitbit_profile(
         .get_user_profile()
         .await
         .map_err(Into::<Error>::into)?;
-    let body = fitbit_body(result).into();
+    let body = fitbit_body(result)?.into();
     Ok(HtmlBase::new(body).into())
 }
 

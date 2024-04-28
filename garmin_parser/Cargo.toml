@@ -1,6 +1,6 @@
 [package]
 name = "garmin_parser"
-version = "0.14.15"
+version = "0.14.16"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2021"
 
@@ -22,7 +22,7 @@ roxmltree = "0.19"
 serde = {version="1.0", features=["derive"]}
 serde_json = "1.0"
 smallvec = "1.6"
-stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", features=["postgres_types"], tag="0.9.2" }
+stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", features=["postgres_types"], tag="0.9.3" }
 subprocess = "0.2"
 time = {version="0.3", features=["serde-human-readable", "macros", "formatting", "parsing"]}
 

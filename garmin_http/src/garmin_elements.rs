@@ -1,6 +1,5 @@
 use dioxus::prelude::{
-    component, dioxus_elements, rsx, Element, GlobalAttributes, IntoDynNode, LazyNodes, Props,
-    Scope, VirtualDom,
+    component, dioxus_elements, rsx, Element, GlobalAttributes, IntoDynNode, Props, VirtualDom,
 };
 use itertools::Itertools;
 use rweb_helper::DateType;
@@ -47,7 +46,7 @@ use crate::{
 const GRAMS_PER_OUNCE: f64 = 28.349_523_125;
 const LBS_PER_KG: f64 = 1_000.0 / (16.0 * GRAMS_PER_OUNCE);
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 struct HeartrateOpts {
     heartrate: Vec<(DateTimeWrapper, i32)>,
     button_date: Option<DateType>,
@@ -125,8 +124,13 @@ pub async fn index_new_body(
                     config: config.clone(),
                 },
             );
-            drop(app.rebuild());
-            Ok(dioxus_ssr::render(&app))
+            app.rebuild_in_place();
+            let mut renderer = dioxus_ssr::Renderer::default();
+            let mut buffer = String::new();
+            renderer
+                .render_to(&mut buffer, &app)
+                .map_err(Into::<Error>::into)?;
+            Ok(buffer)
         }
         IndexConfig::File { gfile } => {
             let report_objs = extract_report_objects_from_file(&gfile);
@@ -178,8 +182,13 @@ pub async fn index_new_body(
                     config: config.clone(),
                 },
             );
-            drop(app.rebuild());
-            Ok(dioxus_ssr::render(&app))
+            app.rebuild_in_place();
+            let mut renderer = dioxus_ssr::Renderer::default();
+            let mut buffer = String::new();
+            renderer
+                .render_to(&mut buffer, &app)
+                .map_err(Into::<Error>::into)?;
+            Ok(buffer)
         }
         IndexConfig::Scale {
             measurements,
@@ -212,8 +221,13 @@ pub async fn index_new_body(
                     config: config.clone(),
                 },
             );
-            drop(app.rebuild());
-            Ok(dioxus_ssr::render(&app))
+            app.rebuild_in_place();
+            let mut renderer = dioxus_ssr::Renderer::default();
+            let mut buffer = String::new();
+            renderer
+                .render_to(&mut buffer, &app)
+                .map_err(Into::<Error>::into)?;
+            Ok(buffer)
         }
         IndexConfig::HearRateSummary {
             stats,
@@ -246,8 +260,13 @@ pub async fn index_new_body(
                     config: config.clone(),
                 },
             );
-            drop(app.rebuild());
-            Ok(dioxus_ssr::render(&app))
+            app.rebuild_in_place();
+            let mut renderer = dioxus_ssr::Renderer::default();
+            let mut buffer = String::new();
+            renderer
+                .render_to(&mut buffer, &app)
+                .map_err(Into::<Error>::into)?;
+            Ok(buffer)
         }
         IndexConfig::HeartRate {
             heartrate,
@@ -283,8 +302,13 @@ pub async fn index_new_body(
                     config: config.clone(),
                 },
             );
-            drop(app.rebuild());
-            Ok(dioxus_ssr::render(&app))
+            app.rebuild_in_place();
+            let mut renderer = dioxus_ssr::Renderer::default();
+            let mut buffer = String::new();
+            renderer
+                .render_to(&mut buffer, &app)
+                .map_err(Into::<Error>::into)?;
+            Ok(buffer)
         }
         IndexConfig::RaceResult { model } => {
             let mut app = VirtualDom::new_with_props(
@@ -312,15 +336,19 @@ pub async fn index_new_body(
                     config: config.clone(),
                 },
             );
-            drop(app.rebuild());
-            Ok(dioxus_ssr::render(&app))
+            app.rebuild_in_place();
+            let mut renderer = dioxus_ssr::Renderer::default();
+            let mut buffer = String::new();
+            renderer
+                .render_to(&mut buffer, &app)
+                .map_err(Into::<Error>::into)?;
+            Ok(buffer)
         }
     }
 }
 
 #[component]
 fn IndexElement(
-    cx: Scope,
     title: StackString,
     reports: Vec<Vec<(StackString, Option<HtmlResult>)>>,
     url_strings: Vec<StackString>,
@@ -351,18 +379,18 @@ fn IndexElement(
     }
 
     let offset = offset.unwrap_or(0);
-    let history_buttons = generate_history_buttons(history);
-    let buttons = get_buttons(*is_demo);
-    let mut sport_title: Option<LazyNodes> = None;
-    let mut button_str: Option<LazyNodes> = None;
-    let mut script_box: Option<LazyNodes> = None;
-    let mut text_box: Option<LazyNodes> = None;
-    let mut table_box: Option<LazyNodes> = None;
-    let mut image_box: Option<LazyNodes> = None;
+    let history_buttons = generate_history_buttons(&history);
+    let buttons = get_buttons(is_demo);
+    let mut sport_title: Option<Element> = None;
+    let mut button_str: Option<Element> = None;
+    let mut script_box: Option<Element> = None;
+    let mut text_box: Option<Element> = None;
+    let mut table_box: Option<Element> = None;
+    let mut image_box: Option<Element> = None;
     let local = DateTimeWrapper::local_tz();
 
     if let Some(model) = model {
-        script_box.replace(create_analysis_plot(model, *is_demo));
+        script_box.replace(create_analysis_plot(&model, is_demo));
     }
     if let Some(HeartrateOpts {
         heartrate,
@@ -451,7 +479,7 @@ fn IndexElement(
         };
         let date_buttons = (0..5).map(move |i| {
             let date = button_date - Duration::days(i64::from(i));
-            let update_button = if *is_demo {
+            let update_button = if is_demo {
                 None
             } else {
                 Some(rsx! {
@@ -472,7 +500,7 @@ fn IndexElement(
                         "onclick": "heartrate_plot_button_single('{date}', '{button_date}')",
                         "Plot {date}",
                     },
-                    update_button,
+                    {update_button},
                 }
             }
         });
@@ -492,13 +520,13 @@ fn IndexElement(
         };
         script_box.replace(rsx! {
             div {
-                date_input,
+                {date_input},
             }
             div {
-                date_buttons,
+                {date_buttons},
             }
             br {
-                prev_button,
+                {prev_button},
                 button {
                     "type": "submit",
                     "onclick": "heartrate_plot_button('{start_date}', '{end_date}', '{next_date}');",
@@ -667,17 +695,17 @@ fn IndexElement(
                     th {"Median"},
                 },
                 tbody {
-                    entries,
+                    {entries},
                 },
             },
             br {
-                prev_button,
-                next_button,
+                {prev_button},
+                {next_button},
             },
             div {
-                date_input
+                {date_input}
             },
-            graphs,
+            {graphs},
         });
     }
     if !measurements.is_empty() {
@@ -825,7 +853,7 @@ fn IndexElement(
                 let w = meas.water_pct;
                 let ms = meas.muscle_pct;
                 let b = meas.bone_pct;
-                let bmi = meas.get_bmi(config);
+                let bmi = meas.get_bmi(&config);
                 rsx! {
                     tr {
                         key: "measurement-key-{idx}",
@@ -906,17 +934,17 @@ fn IndexElement(
                         th {"BMI kg/m^2"},
                     },
                     tbody {
-                        entries,
+                        {entries},
                     },
                 },
                 br {
-                    prev_button,
-                    next_button,
+                    {prev_button},
+                    {next_button},
                 },
                 div {
-                    date_input
+                    {date_input}
                 },
-                graphs,
+                {graphs},
             }
         });
     }
@@ -953,7 +981,7 @@ fn IndexElement(
                     rsx! {
                         td {
                             key: "report-entry-{jdx}",
-                            entry
+                            {entry}
                         }
                     }
                 });
@@ -967,7 +995,7 @@ fn IndexElement(
                                 "{cmd}",
                             }
                         },
-                        entries
+                        {entries}
                     },
                 }
             });
@@ -977,7 +1005,7 @@ fn IndexElement(
             & (report_objs.lat_vals.len() == report_objs.lon_vals.len())
         {
             if let Some(gfile) = gfile {
-                let plot_opts = get_plot_opts(report_objs);
+                let plot_opts = get_plot_opts(&report_objs);
                 let graphs = plot_opts.into_iter().enumerate().filter_map(|(idx, opts)| {
                     let data = opts.data.as_ref()?;
                     if data.is_empty() {
@@ -1026,7 +1054,7 @@ fn IndexElement(
                     }
                 });
                 image_box.replace(rsx! {
-                    graphs
+                    {graphs}
                 });
 
                 let minlat = report_objs
@@ -1065,7 +1093,7 @@ fn IndexElement(
                     (10, 0.4),
                 ];
                 let sport_str = gfile.sport.to_str();
-                let sport_title_link = match strava_activity {
+                let sport_title_link = match &strava_activity {
                     Some(strava_activity) => {
                         let id = strava_activity.id;
                         let name = &strava_activity.name;
@@ -1086,7 +1114,7 @@ fn IndexElement(
                 };
                 sport_title.replace(sport_title_link);
                 if !is_demo {
-                    if let Some(strava_activity) = strava_activity {
+                    if let Some(strava_activity) = &strava_activity {
                         let id = strava_activity.id;
                         let s = gfile.sport.to_strava_activity();
                         let dt = convert_datetime_to_str(strava_activity.start_date.into());
@@ -1158,37 +1186,37 @@ fn IndexElement(
                     }
                 });
                 let file_html = Some(get_file_html(
-                    gfile,
-                    strava_activity,
-                    fitbit_activity,
-                    connect_activity,
-                    race_result,
+                    &gfile,
+                    &strava_activity,
+                    &fitbit_activity,
+                    &connect_activity,
+                    &race_result,
                 ));
-                let splits_mi = Some(get_html_splits(gfile, METERS_PER_MILE, "mi"));
-                let splits_5k = Some(get_html_splits(gfile, 5000.0, "km"));
+                let splits_mi = Some(get_html_splits(&gfile, METERS_PER_MILE, "mi"));
+                let splits_5k = Some(get_html_splits(&gfile, 5000.0, "km"));
                 table_box.replace(rsx! {
                     div {
-                        file_html,
-                        splits_mi,
-                        splits_5k,
+                        {file_html},
+                        {splits_mi},
+                        {splits_5k},
                     }
                 });
             }
         } else if let Some(gfile) = gfile {
             let file_html = Some(get_file_html(
-                gfile,
-                strava_activity,
-                fitbit_activity,
-                connect_activity,
-                race_result,
+                &gfile,
+                &strava_activity,
+                &fitbit_activity,
+                &connect_activity,
+                &race_result,
             ));
-            let splits_mi = Some(get_html_splits(gfile, METERS_PER_MILE, "mi"));
-            let splits_5k = Some(get_html_splits(gfile, 5000.0, "km"));
+            let splits_mi = Some(get_html_splits(&gfile, METERS_PER_MILE, "mi"));
+            let splits_5k = Some(get_html_splits(&gfile, 5000.0, "km"));
             text_box.replace(rsx! {
                 div {
-                    file_html,
-                    splits_mi,
-                    splits_5k,
+                    {file_html},
+                    {splits_mi},
+                    {splits_5k},
                 }
             });
         }
@@ -1196,11 +1224,11 @@ fn IndexElement(
         text_box.replace(rsx! {
             table {
                 "border": "0",
-                report_str,
+                {report_str},
             }
         });
     }
-    let upload_button = if *is_demo {
+    let upload_button = if is_demo {
         None
     } else {
         Some(rsx! {
@@ -1217,7 +1245,7 @@ fn IndexElement(
         })
     };
 
-    cx.render(rsx! {
+    rsx! {
         head {
             title {"{title}"},
             meta {
@@ -1237,7 +1265,7 @@ fn IndexElement(
         },
         body {
             h3 {
-                buttons,
+                {buttons},
             },
             form {
                 action: "javascript:processFormData()",
@@ -1254,14 +1282,14 @@ fn IndexElement(
                     "onclick": "processFormData()"
                 }
             }
-            history_buttons,
+            {history_buttons},
             br {
-                upload_button,
-                button_str,
+                {upload_button},
+                {button_str},
             },
             h1 {
                 style: "text-align: center",
-                b {sport_title},
+                b { {sport_title} },
             },
             script {src: "https://d3js.org/d3.v4.min.js"},
             script {src: "/garmin/scripts/garmin_scripts.js"},
@@ -1273,30 +1301,30 @@ fn IndexElement(
                 src: "https://maps.googleapis.com/maps/api/js?key={map_api_key}",
             },
             script {src: "/garmin/scripts/initialize_map.js"},
-            script_box,
+            {script_box},
             div {
                 id: "garmin_text_box",
-                text_box,
+                {text_box},
             },
             div {
                 id: "garmin_table_box",
-                table_box,
+                {table_box},
             },
             div {
                 id: "garmin_image_box",
-                image_box,
+                {image_box},
             },
         }
-    })
+    }
 }
 
-fn get_file_html<'a>(
-    gfile: &'a GarminFile,
-    strava_activity: &'a Option<StravaActivity>,
-    fitbit_activity: &'a Option<FitbitActivity>,
-    connect_activity: &'a Option<GarminConnectActivity>,
-    race_result: &'a Option<RaceResults>,
-) -> LazyNodes<'a, 'a> {
+fn get_file_html(
+    gfile: &GarminFile,
+    strava_activity: &Option<StravaActivity>,
+    fitbit_activity: &Option<FitbitActivity>,
+    connect_activity: &Option<GarminConnectActivity>,
+    race_result: &Option<RaceResults>,
+) -> Element {
     let dt = gfile.begin_datetime;
     let sp = {
         let current_sport = gfile.sport.to_str();
@@ -1319,7 +1347,7 @@ fn get_file_html<'a>(
         rsx! {
             select {
                 id: "sport_select",
-                sport_types,
+                {sport_types},
             }
         }
     };
@@ -1417,17 +1445,17 @@ fn get_file_html<'a>(
                 tr {
                     "style": "text-align: center;",
                     td {"{dt}"},
-                    td {sp},
-                    td {gc},
-                    td {fid},
+                    td { {sp} },
+                    td { {gc} },
+                    td { {fid} },
                     td {"{fstep}"},
-                    td {gid},
+                    td { {gid} },
                     td {"{gstep}"},
-                    td {sid},
+                    td { {sid} },
                 }
             }
         },
-        import_button,
+        {import_button},
         br {
             table {
                 "border": "1",
@@ -1435,18 +1463,18 @@ fn get_file_html<'a>(
                 thead {
                     tr {
                         "type": "text-align: center;",
-                        labels.iter().enumerate().map(|(idx, label)| {
+                        {labels.iter().enumerate().map(|(idx, label)| {
                             rsx! {
                                 th {
                                     key: "label-key-{idx}",
                                     "{label}"
                                 },
                             }
-                        })
+                        })}
                     }
                 },
                 tbody {
-                    gfile.laps.iter().enumerate().map(|(idx, lap)| {
+                    {gfile.laps.iter().enumerate().map(|(idx, lap)| {
                         let mut values = vec![
                             gfile.sport.into(),
                             format_sstr!("{}", lap.lap_number),
@@ -1477,26 +1505,22 @@ fn get_file_html<'a>(
                             tr {
                                 key: "lap-key-{idx}",
                                 "type": "text-align: center;",
-                                values.iter().enumerate().map(|(i, v)| rsx! {
+                                {values.iter().enumerate().map(|(i, v)| rsx! {
                                     td {
                                         key: "v-key-{i}",
                                         "{v}"
                                     }
-                                }),
+                                })},
                             }
                         }
-                    })
+                    })}
                 }
             }
         }
     }
 }
 
-fn get_html_splits<'a>(
-    gfile: &'a GarminFile,
-    split_distance_in_meters: f64,
-    label: &'a str,
-) -> LazyNodes<'a, 'a> {
+fn get_html_splits(gfile: &GarminFile, split_distance_in_meters: f64, label: &str) -> Element {
     let labels = [
         "Split",
         "Time",
@@ -1542,24 +1566,24 @@ fn get_html_splits<'a>(
             thead {
                 tr {
                     "style": "text-align: center;",
-                    labels.iter().enumerate().map(|(idx, label)| {
+                    {labels.iter().enumerate().map(|(idx, label)| {
                         rsx! {
                             th {
                                 key: "label-key-{idx}",
                                 "{label}",
                             }
                         }
-                    }),
+                    })},
                 }
             },
             tbody {
-                values,
+                {values},
             }
         }
     }
 }
 
-fn generate_history_buttons(history_vec: &[StackString]) -> LazyNodes {
+fn generate_history_buttons(history_vec: &[StackString]) -> Element {
     let local = DateTimeWrapper::local_tz();
     let local = OffsetDateTime::now_utc().to_timezone(local).date();
     let year = local.year();
@@ -1575,7 +1599,7 @@ fn generate_history_buttons(history_vec: &[StackString]) -> LazyNodes {
         history.insert(0, default_string);
     }
     rsx! {
-        history.into_iter().enumerate().map(move |(idx, filter)| {
+        {history.into_iter().enumerate().map(move |(idx, filter)| {
             rsx! {
                 button {
                     key: "history-key-{idx}",
@@ -1584,12 +1608,12 @@ fn generate_history_buttons(history_vec: &[StackString]) -> LazyNodes {
                     "{filter}",
                 }
             }
-        })
+        })}
     }
 }
 
-fn get_buttons<'a>(demo: bool) -> LazyNodes<'a, 'a> {
-    let top_buttons: Option<LazyNodes> = if demo {
+fn get_buttons(demo: bool) -> Element {
+    let top_buttons: Option<Element> = if demo {
         None
     } else {
         Some(rsx! {
@@ -1617,7 +1641,7 @@ fn get_buttons<'a>(demo: bool) -> LazyNodes<'a, 'a> {
     };
     rsx! {
         br {
-            top_buttons,
+            {top_buttons},
         }
         button {
             "type": "submit",
@@ -1657,7 +1681,7 @@ fn get_buttons<'a>(demo: bool) -> LazyNodes<'a, 'a> {
     }
 }
 
-fn create_analysis_plot(model: &RaceResultAnalysis, is_demo: bool) -> LazyNodes {
+fn create_analysis_plot(model: &RaceResultAnalysis, is_demo: bool) -> Element {
     let PlotData {
         data,
         other_data,
@@ -1767,10 +1791,10 @@ fn create_analysis_plot(model: &RaceResultAnalysis, is_demo: bool) -> LazyNodes 
                     },
                     td {
                         "align": "center",
-                        date,
+                        {date},
                     },
                     td {"{name}"},
-                    td {flag},
+                    td { {flag} },
                 }
             }
         });
@@ -1862,7 +1886,7 @@ fn create_analysis_plot(model: &RaceResultAnalysis, is_demo: bool) -> LazyNodes 
                 th {"Time"},
             },
             tbody {
-                pace_results,
+                {pace_results},
             }
         },
         br {
@@ -1877,7 +1901,7 @@ fn create_analysis_plot(model: &RaceResultAnalysis, is_demo: bool) -> LazyNodes 
                     th {"Flag"},
                 },
                 tbody {
-                    race_results,
+                    {race_results},
                 }
             }
         }
@@ -1892,25 +1916,32 @@ fn create_analysis_plot(model: &RaceResultAnalysis, is_demo: bool) -> LazyNodes 
 
     rsx! {
         br {
-            buttons,
+            {buttons},
         }
-        scripts,
-        tables,
+        {scripts},
+        {tables},
     }
 }
 
-pub fn create_fitbit_table(heartrate_values: Vec<FitbitHeartRate>) -> String {
+/// # Errors
+/// Returns error if formatting fails
+pub fn create_fitbit_table(heartrate_values: Vec<FitbitHeartRate>) -> Result<String, Error> {
     let mut app = VirtualDom::new_with_props(
         FitbitTableElement,
         FitbitTableElementProps { heartrate_values },
     );
-    drop(app.rebuild());
-    dioxus_ssr::render(&app)
+    app.rebuild_in_place();
+    let mut renderer = dioxus_ssr::Renderer::default();
+    let mut buffer = String::new();
+    renderer
+        .render_to(&mut buffer, &app)
+        .map_err(Into::<Error>::into)?;
+    Ok(buffer)
 }
 
 #[component]
-fn FitbitTableElement(cx: Scope, heartrate_values: Vec<FitbitHeartRate>) -> Element {
-    cx.render(rsx! {
+fn FitbitTableElement(heartrate_values: Vec<FitbitHeartRate>) -> Element {
+    rsx! {
         table {
             "border": "1",
             thead {
@@ -1918,7 +1949,7 @@ fn FitbitTableElement(cx: Scope, heartrate_values: Vec<FitbitHeartRate>) -> Elem
                 th {"Heart Rate"},
             },
             tbody {
-                heartrate_values.iter().enumerate().map(|(idx, entry)| {
+                {heartrate_values.iter().enumerate().map(|(idx, entry)| {
                     let datetime = entry.datetime;
                     let heartrate = entry.value;
                     rsx! {
@@ -1928,37 +1959,51 @@ fn FitbitTableElement(cx: Scope, heartrate_values: Vec<FitbitHeartRate>) -> Elem
                             td {"{heartrate}"},
                         }
                     }
-                }),
+                })},
             }
         }
-    })
+    }
 }
 
-pub fn table_body(body: StackString) -> String {
+/// # Errors
+/// Returns error if formatting fails
+pub fn table_body(body: StackString) -> Result<String, Error> {
     let mut app = VirtualDom::new_with_props(TableElement, TableElementProps { body });
-    drop(app.rebuild());
-    dioxus_ssr::render(&app)
+    app.rebuild_in_place();
+    let mut renderer = dioxus_ssr::Renderer::default();
+    let mut buffer = String::new();
+    renderer
+        .render_to(&mut buffer, &app)
+        .map_err(Into::<Error>::into)?;
+    Ok(buffer)
 }
 
 #[component]
-fn TableElement(cx: Scope, body: StackString) -> Element {
-    cx.render(rsx! {
+fn TableElement(body: StackString) -> Element {
+    rsx! {
         textarea {
             cols: "100",
             rows: "40",
             "{body}"
         }
-    })
+    }
 }
 
-pub fn strava_body(athlete: StravaAthlete) -> String {
+/// # Errors
+/// Returns error if formatting fails
+pub fn strava_body(athlete: StravaAthlete) -> Result<String, Error> {
     let mut app = VirtualDom::new_with_props(StravaElement, StravaElementProps { athlete });
-    drop(app.rebuild());
-    dioxus_ssr::render(&app)
+    app.rebuild_in_place();
+    let mut renderer = dioxus_ssr::Renderer::default();
+    let mut buffer = String::new();
+    renderer
+        .render_to(&mut buffer, &app)
+        .map_err(Into::<Error>::into)?;
+    Ok(buffer)
 }
 
 #[component]
-fn StravaElement(cx: Scope, athlete: StravaAthlete) -> Element {
+fn StravaElement(athlete: StravaAthlete) -> Element {
     let id = athlete.id;
     let username = &athlete.username;
     let firstname = &athlete.firstname;
@@ -2034,7 +2079,7 @@ fn StravaElement(cx: Scope, athlete: StravaAthlete) -> Element {
                     th {"Url"},
                 },
                 tbody {
-                    lines,
+                    {lines},
                 }
             }
         }
@@ -2069,13 +2114,13 @@ fn StravaElement(cx: Scope, athlete: StravaAthlete) -> Element {
                     th {"Distance (mi)"},
                 },
                 tbody {
-                    lines,
+                    {lines},
                 }
             }
         }
     });
 
-    cx.render(rsx! {
+    rsx! {
         table {
             "border": "1",
             tbody {
@@ -2089,24 +2134,31 @@ fn StravaElement(cx: Scope, athlete: StravaAthlete) -> Element {
                 tr {td {"Weight"}, td {"{weight} lbs"}},
                 tr {td {"Created At"}, td {"{created_at}"}},
                 tr {td {"Updated At"}, td {"{updated_at}"}},
-                tr {follower_count},
-                tr {friend_count},
-                tr {measurement_preference},
+                tr { {follower_count} },
+                tr { {friend_count} },
+                tr { {measurement_preference} },
             },
-            clubs,
-            shoes,
+            {clubs},
+            {shoes},
         }
-    })
+    }
 }
 
-pub fn fitbit_body(profile: FitbitUserProfile) -> String {
+/// # Errors
+/// Returns error if formatting fails
+pub fn fitbit_body(profile: FitbitUserProfile) -> Result<String, Error> {
     let mut app = VirtualDom::new_with_props(FitbitElement, FitbitElementProps { profile });
-    drop(app.rebuild());
-    dioxus_ssr::render(&app)
+    app.rebuild_in_place();
+    let mut renderer = dioxus_ssr::Renderer::default();
+    let mut buffer = String::new();
+    renderer
+        .render_to(&mut buffer, &app)
+        .map_err(Into::<Error>::into)?;
+    Ok(buffer)
 }
 
 #[component]
-fn FitbitElement(cx: Scope, profile: FitbitUserProfile) -> Element {
+fn FitbitElement(profile: FitbitUserProfile) -> Element {
     let average_daily_steps = profile.average_daily_steps;
     let country = &profile.country;
     let date_of_birth = &profile.date_of_birth;
@@ -2135,7 +2187,7 @@ fn FitbitElement(cx: Scope, profile: FitbitUserProfile) -> Element {
         offset_str = format_sstr!("-{offset_str}");
     }
 
-    cx.render(rsx! {
+    rsx! {
         table {
             "border": "1",
             tbody {
@@ -2159,17 +2211,24 @@ fn FitbitElement(cx: Scope, profile: FitbitUserProfile) -> Element {
                 tr {td {"Weight Unit"}, td {"{weight_unit}"}},
             },
         }
-    })
+    }
 }
 
-pub fn scale_measurement_manual_input_body() -> String {
+/// # Errors
+/// Returns error if formatting fails
+pub fn scale_measurement_manual_input_body() -> Result<String, Error> {
     let mut app = VirtualDom::new(scale_measurement_manual_input_element);
-    drop(app.rebuild());
-    dioxus_ssr::render(&app)
+    app.rebuild_in_place();
+    let mut renderer = dioxus_ssr::Renderer::default();
+    let mut buffer = String::new();
+    renderer
+        .render_to(&mut buffer, &app)
+        .map_err(Into::<Error>::into)?;
+    Ok(buffer)
 }
 
-fn scale_measurement_manual_input_element(cx: Scope) -> Element {
-    cx.render(rsx! {
+fn scale_measurement_manual_input_element() -> Element {
+    rsx! {
         form {
             table {
                 tbody {
@@ -2236,5 +2295,5 @@ fn scale_measurement_manual_input_element(cx: Scope) -> Element {
                 }
             }
         }
-    })
+    }
 }

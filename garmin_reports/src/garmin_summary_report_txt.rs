@@ -24,7 +24,7 @@ use crate::{
     garmin_report_options::{GarminReportAgg, GarminReportOptions},
 };
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct HtmlResult {
     pub text: Option<StackString>,
     pub url: Option<Url>,

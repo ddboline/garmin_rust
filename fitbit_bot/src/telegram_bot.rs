@@ -55,7 +55,7 @@ impl TelegramBot {
             let bot = self.clone();
             spawn(async move { bot.fill_telegram_user_ids().await })
         };
-        self.telegram_loop().await?;
+        Box::pin(self.telegram_loop()).await?;
         fill_user_ids.await?
     }
 
@@ -63,10 +63,10 @@ impl TelegramBot {
         loop {
             FAILURE_COUNT.check()?;
 
-            match tokio::time::timeout(
+            match Box::pin(tokio::time::timeout(
                 tokio::time::Duration::from_secs(3600),
                 self._telegram_worker(),
-            )
+            ))
             .await
             {
                 Err(_) | Ok(Ok(())) => FAILURE_COUNT.reset()?,

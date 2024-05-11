@@ -3,7 +3,7 @@ use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use fitparser::Value;
 use flate2::{read::GzEncoder, Compression};
 use futures::{Stream, TryStreamExt};
-use log::{debug, error};
+use log::debug;
 use num_traits::pow::Pow;
 use postgres_query::{query, Error as PqError};
 use rand::{
@@ -16,13 +16,14 @@ use std::{
     collections::HashSet,
     fs::{remove_file, File},
     future::Future,
-    io::{BufRead, BufReader, Read},
+    io::{BufRead, BufReader},
     path::{Path, PathBuf},
 };
-use subprocess::{Exec, Redirection};
+use subprocess::Exec;
 use time::{format_description::well_known::Rfc3339, macros::date, Date, Month, OffsetDateTime};
 use time_tz::{timezones::db::UTC, OffsetDateTimeExt};
 use tokio::time::{sleep, Duration};
+use zip::ZipArchive;
 
 use crate::pgpool::PgPool;
 
@@ -200,27 +201,14 @@ fn extract_zip(filename: &Path, ziptmpdir: &Path) -> Result<Vec<PathBuf>, Error>
             "md5sum not installed (or not present at /usr/bin/unzip"
         ));
     }
-    let command = format_sstr!(
-        "unzip {} -d {}",
-        filename.to_string_lossy(),
-        ziptmpdir.to_string_lossy()
-    );
-    let mut process = Exec::shell(command).stdout(Redirection::Pipe).popen()?;
-    let exit_status = process.wait()?;
-    if !exit_status.success() {
-        if let Some(mut f) = process.stdout.as_ref() {
-            let mut buf = String::new();
-            f.read_to_string(&mut buf)?;
-            error!("{}", buf);
-        }
-        return Err(format_err!("Failed with exit status {exit_status:?}"));
-    }
-    let mut files = Vec::new();
-    for entry in ziptmpdir.read_dir()? {
-        let entry = entry?;
-        files.push(entry.path());
-    }
-    Ok(files)
+    let mut zip = ZipArchive::new(File::open(filename)?)?;
+    (0..zip.len()).map(|i| {
+        let mut f = zip.by_index(i)?;
+        let fpath = ziptmpdir.join(f.name());
+        let mut g = File::create(&fpath)?;
+        std::io::copy(&mut f, &mut g)?;
+        Ok(fpath)
+    }).collect()
 }
 
 /// # Errors
@@ -248,21 +236,7 @@ pub fn extract_zip_from_garmin_connect_multiple(
     filename: &Path,
     ziptmpdir: &Path,
 ) -> Result<Vec<PathBuf>, Error> {
-    extract_zip(filename, ziptmpdir)?;
-    if !Path::new("/usr/bin/unzip").exists() {
-        return Err(format_err!(
-            "unzip not installed (or not present at /usr/bin/unzip"
-        ));
-    }
-    let mut files = Vec::new();
-    for entry in ziptmpdir.read_dir()? {
-        let entry = entry?;
-        files.push(entry.path());
-    }
-    if !files.is_empty() {
-        remove_file(filename)?;
-    }
-    Ok(files)
+    extract_zip(filename, ziptmpdir)
 }
 
 /// # Errors
@@ -404,8 +378,6 @@ mod tests {
         assert!(zip_path.exists());
         let files = extract_zip(zip_path, p)?;
         assert!(files.len() == 2);
-        println!("{files:?}");
-        assert!(false);
         Ok(())
     }
 }

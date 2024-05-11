@@ -805,6 +805,7 @@ mod tests {
     use log::debug;
     use std::collections::HashMap;
     use time::macros::datetime;
+    use time::{OffsetDateTime, Duration};
 
     use garmin_lib::garmin_config::GarminConfig;
     use garmin_utils::{garmin_util::get_md5sum, pgpool::PgPool, sport_types::SportTypes};
@@ -817,7 +818,11 @@ mod tests {
         let config = GarminConfig::get_config(None)?;
         let mut client = StravaClient::from_file(config).await?;
         client.refresh_access_token().await?;
-        let activities = client.get_all_strava_activites(None, None).await?;
+
+        let start_datetime = Some(OffsetDateTime::now_utc() - Duration::days(15));
+        let end_datetime = Some(OffsetDateTime::now_utc());
+
+        let activities = client.get_all_strava_activites(start_datetime, end_datetime).await?;
         assert!(activities.len() > 10);
         Ok(())
     }
@@ -827,7 +832,11 @@ mod tests {
     async fn test_update_strava_activity() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
         let client = StravaClient::with_auth(config).await?;
-        let activities = client.get_all_strava_activites(None, None).await?;
+
+        let start_datetime = Some(OffsetDateTime::now_utc() - Duration::days(15));
+        let end_datetime = Some(OffsetDateTime::now_utc());
+
+        let activities = client.get_all_strava_activites(start_datetime, end_datetime).await?;
         if let Some(activity) = activities.into_iter().nth(0) {
             debug!("{} {}", activity.id, activity.name);
             let result = client
@@ -869,9 +878,12 @@ mod tests {
             .await?;
         activities.shrink_to_fit();
         let client = StravaClient::with_auth(config).await?;
-        let start_date = datetime!(2020-01-01 00:00:00 +00:00);
+
+        let start_datetime = Some(OffsetDateTime::now_utc() - Duration::days(15));
+        let end_datetime = Some(OffsetDateTime::now_utc());
+
         let mut new_activities: Vec<_> = client
-            .get_all_strava_activites(Some(start_date), None)
+            .get_all_strava_activites(start_datetime, end_datetime)
             .await?
             .into_iter()
             .filter(|activity| !activities.contains_key(&activity.id))

@@ -194,7 +194,7 @@ where
     }
 }
 
-fn extract_zip(filename: &Path, ziptmpdir: &Path) -> Result<(), Error> {
+fn extract_zip(filename: &Path, ziptmpdir: &Path) -> Result<Vec<PathBuf>, Error> {
     if !Path::new("/usr/bin/unzip").exists() {
         return Err(format_err!(
             "md5sum not installed (or not present at /usr/bin/unzip"
@@ -215,7 +215,12 @@ fn extract_zip(filename: &Path, ziptmpdir: &Path) -> Result<(), Error> {
         }
         return Err(format_err!("Failed with exit status {exit_status:?}"));
     }
-    Ok(())
+    let mut files = Vec::new();
+    for entry in ziptmpdir.read_dir()? {
+        let entry = entry?;
+        files.push(entry.path());
+    }
+    Ok(files)
 }
 
 /// # Errors
@@ -380,4 +385,27 @@ pub async fn get_list_of_telegram_userids(
 pub fn get_random_string() -> StackString {
     let random_bytes: SmallVec<[u8; 16]> = (0..16).map(|_| thread_rng().gen::<u8>()).collect();
     URL_SAFE_NO_PAD.encode(&random_bytes).into()
+}
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Error;
+    use tempdir::TempDir;
+    use std::path::Path;
+
+    use crate::garmin_util::extract_zip;
+
+    #[test]
+    fn test_extract_zip() -> Result<(), Error> {
+        let d = TempDir::new("zip_test")?;
+        let p = d.path();
+
+        let zip_path = Path::new("../tests/data/test.zip");
+        assert!(zip_path.exists());
+        let files = extract_zip(zip_path, p)?;
+        assert!(files.len() == 2);
+        println!("{files:?}");
+        assert!(false);
+        Ok(())
+    }
 }

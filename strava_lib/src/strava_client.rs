@@ -804,7 +804,6 @@ mod tests {
     use futures::{future::try_join_all, TryStreamExt};
     use log::debug;
     use std::collections::HashMap;
-    use time::macros::datetime;
     use time::{OffsetDateTime, Duration};
 
     use garmin_lib::garmin_config::GarminConfig;

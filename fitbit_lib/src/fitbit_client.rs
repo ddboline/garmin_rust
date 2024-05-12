@@ -1272,7 +1272,11 @@ mod tests {
             .map(|activity| (activity.log_id, activity))
             .collect();
         activities.shrink_to_fit();
-        let start_date: Date = date!(2020 - 01 - 01);
+
+        let offset = client.get_offset();
+        let begin_datetime = (OffsetDateTime::now_utc() - Duration::days(7)).to_offset(offset);
+        let start_date = begin_datetime.date();
+
         let mut new_activities: Vec<_> = client
             .get_all_activities(start_date)
             .await?

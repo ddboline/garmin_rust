@@ -202,13 +202,15 @@ fn extract_zip(filename: &Path, ziptmpdir: &Path) -> Result<Vec<PathBuf>, Error>
         ));
     }
     let mut zip = ZipArchive::new(File::open(filename)?)?;
-    (0..zip.len()).map(|i| {
-        let mut f = zip.by_index(i)?;
-        let fpath = ziptmpdir.join(f.name());
-        let mut g = File::create(&fpath)?;
-        std::io::copy(&mut f, &mut g)?;
-        Ok(fpath)
-    }).collect()
+    (0..zip.len())
+        .map(|i| {
+            let mut f = zip.by_index(i)?;
+            let fpath = ziptmpdir.join(f.name());
+            let mut g = File::create(&fpath)?;
+            std::io::copy(&mut f, &mut g)?;
+            Ok(fpath)
+        })
+        .collect()
 }
 
 /// # Errors
@@ -364,8 +366,8 @@ pub fn get_random_string() -> StackString {
 #[cfg(test)]
 mod tests {
     use anyhow::Error;
-    use tempdir::TempDir;
     use std::path::Path;
+    use tempdir::TempDir;
 
     use crate::garmin_util::extract_zip;
 

@@ -804,7 +804,7 @@ mod tests {
     use futures::{future::try_join_all, TryStreamExt};
     use log::debug;
     use std::collections::HashMap;
-    use time::{OffsetDateTime, Duration};
+    use time::{Duration, OffsetDateTime};
 
     use garmin_lib::garmin_config::GarminConfig;
     use garmin_utils::{garmin_util::get_md5sum, pgpool::PgPool, sport_types::SportTypes};
@@ -821,7 +821,9 @@ mod tests {
         let start_datetime = Some(OffsetDateTime::now_utc() - Duration::days(15));
         let end_datetime = Some(OffsetDateTime::now_utc());
 
-        let activities = client.get_all_strava_activites(start_datetime, end_datetime).await?;
+        let activities = client
+            .get_all_strava_activites(start_datetime, end_datetime)
+            .await?;
         assert!(activities.len() > 10);
         Ok(())
     }
@@ -835,7 +837,9 @@ mod tests {
         let start_datetime = Some(OffsetDateTime::now_utc() - Duration::days(15));
         let end_datetime = Some(OffsetDateTime::now_utc());
 
-        let activities = client.get_all_strava_activites(start_datetime, end_datetime).await?;
+        let activities = client
+            .get_all_strava_activites(start_datetime, end_datetime)
+            .await?;
         if let Some(activity) = activities.into_iter().nth(0) {
             debug!("{} {}", activity.id, activity.name);
             let result = client

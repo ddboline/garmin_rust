@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1.0"
-authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.11.13"}
+authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.11.14"}
 base64 = "0.22"
 cookie = {version="0.18", features=["percent-encode"]}
 derive_more = "0.99"

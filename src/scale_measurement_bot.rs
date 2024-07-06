@@ -15,7 +15,7 @@ use garmin_utils::pgpool::PgPool;
 async fn main() -> Result<(), Error> {
     env_logger::init();
     let config = GarminConfig::get_config(None)?;
-    let pool = PgPool::new(config.pgurl.as_str());
+    let pool = PgPool::new(config.pgurl.as_str())?;
     if let Some(telegram_bot_token) = config.telegram_bot_token.as_ref() {
         TelegramBot::new(telegram_bot_token, &pool, &config)
             .run_bot()

@@ -263,7 +263,7 @@ mod tests {
     #[ignore]
     async fn test_get_aggregated_race_results() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
-        let pool = PgPool::new(&config.pgurl);
+        let pool = PgPool::new(&config.pgurl)?;
 
         let results =
             RaceResultAggregated::get_aggregated_race_results(RaceType::Personal, &pool).await?;

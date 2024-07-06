@@ -499,7 +499,7 @@ mod tests {
         let _ = DB_LOCK.lock();
 
         let config = GarminConfig::get_config(None)?;
-        let pool = PgPool::new(&config.pgurl);
+        let pool = PgPool::new(&config.pgurl)?;
         let result = get_test_race_result();
         debug!("{:?}", result);
         result.insert_into_db(&pool).await?;
@@ -530,7 +530,7 @@ mod tests {
         let _ = DB_LOCK.lock();
 
         let config = GarminConfig::get_config(None)?;
-        let pool = PgPool::new(&config.pgurl);
+        let pool = PgPool::new(&config.pgurl)?;
 
         let existing_map: HashMap<_, _> =
             RaceResults::get_results_by_type(RaceType::Personal, &pool)
@@ -676,7 +676,7 @@ mod tests {
         let _ = DB_LOCK.lock();
 
         let config = GarminConfig::get_config(None)?;
-        let pool = PgPool::new(&config.pgurl);
+        let pool = PgPool::new(&config.pgurl)?;
 
         for mut result in mens_results.into_iter().chain(womens_results.into_iter()) {
             let existing =

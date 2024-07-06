@@ -249,7 +249,7 @@ impl GarminConnectActivity {
 /// Return error if serialization fails
 pub async fn import_garmin_connect_activity_json_file(filename: &Path) -> Result<(), Error> {
     let config = GarminConfig::get_config(None)?;
-    let pool = PgPool::new(&config.pgurl);
+    let pool = PgPool::new(&config.pgurl)?;
     if !filename.exists() {
         return Err(format_err!("file {filename:?} does not exist"));
     }

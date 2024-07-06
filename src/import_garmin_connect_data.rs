@@ -41,7 +41,7 @@ async fn main() -> Result<(), Error> {
     env_logger::init();
     let config = GarminConfig::get_config(None)?;
     let opts = JsonImportOpts::parse();
-    let pool = PgPool::new(&config.pgurl);
+    let pool = PgPool::new(&config.pgurl)?;
     let mut dates = BTreeSet::new();
 
     match opts {

@@ -77,7 +77,7 @@ impl GarminCli {
     /// Return error if config init fails
     pub fn with_config() -> Result<Self, Error> {
         let config = GarminConfig::get_config(None)?;
-        let pool = PgPool::new(&config.pgurl);
+        let pool = PgPool::new(&config.pgurl)?;
         let corr = GarminCorrectionMap::new();
         let obj = Self {
             config,
@@ -152,6 +152,7 @@ impl GarminCli {
         &self,
         corr_map: &HashMap<(DateTimeWrapper, i32), GarminCorrectionLap>,
     ) -> Result<Vec<GarminSummary>, Error> {
+        let config = self.get_config();
         let pg_conn = self.get_pool();
 
         let mut gsum_list: Vec<_> = match self.get_opts() {
@@ -159,16 +160,14 @@ impl GarminCli {
                 .par_iter()
                 .map(|f| {
                     self.stdout.send(format_sstr!("Process {f:?}"));
-                    GarminParse::process_single_gps_file(f, &self.get_config().cache_dir, corr_map)
+                    GarminParse::process_single_gps_file(f, &config.cache_dir, corr_map)
                 })
                 .collect::<Result<Vec<_>, Error>>()?,
-            Some(GarminCliOptions::All) => GarminParse::process_all_gps_files(
-                &self.get_config().gps_dir,
-                &self.get_config().cache_dir,
-                corr_map,
-            )?,
+            Some(GarminCliOptions::All) => {
+                GarminParse::process_all_gps_files(&config.gps_dir, &config.cache_dir, corr_map)?
+            }
             _ => {
-                let cacheset: HashSet<StackString> = get_file_list(&self.get_config().cache_dir)
+                let cacheset: HashSet<StackString> = get_file_list(&config.cache_dir)
                     .into_par_iter()
                     .filter_map(|f| {
                         if f.to_string_lossy().contains("garmin_correction.avro") {
@@ -185,7 +184,7 @@ impl GarminCli {
                     .try_collect()
                     .await?;
 
-                get_file_list(&self.get_config().gps_dir)
+                get_file_list(&config.gps_dir)
                     .into_par_iter()
                     .filter_map(|f| f.file_name().map(|x| x.to_string_lossy().to_string()))
                     .filter_map(|f| {
@@ -193,18 +192,12 @@ impl GarminCli {
                         if dbset.contains(f.as_str()) && cacheset.contains(cachefile.as_str()) {
                             None
                         } else {
-                            let gps_path = self.get_config().gps_dir.join(&f);
+                            let gps_path = config.gps_dir.join(&f);
                             debug!("Process {:?}", &gps_path);
                             Some(gps_path)
                         }
                     })
-                    .map(|f| {
-                        GarminParse::process_single_gps_file(
-                            &f,
-                            &self.get_config().cache_dir,
-                            corr_map,
-                        )
-                    })
+                    .map(|f| GarminParse::process_single_gps_file(&f, &config.cache_dir, corr_map))
                     .collect::<Result<Vec<_>, Error>>()?
             }
         };
@@ -221,29 +214,26 @@ impl GarminCli {
     /// # Errors
     /// Return error if `sync_dir` fails
     pub async fn sync_everything(&self) -> Result<Vec<StackString>, Error> {
+        let config = self.get_config();
         let sdk_config = aws_config::load_from_env().await;
         let gsync = GarminSync::new(&sdk_config);
 
         let options = vec![
-            (
-                "Syncing GPS files",
-                &self.get_config().gps_dir,
-                &self.get_config().gps_bucket,
-            ),
+            ("Syncing GPS files", &config.gps_dir, &config.gps_bucket),
             (
                 "Syncing CACHE files",
-                &self.get_config().cache_dir,
-                &self.get_config().cache_bucket,
+                &config.cache_dir,
+                &config.cache_bucket,
             ),
             (
                 "Syncing Fitbit Cache",
-                &self.get_config().fitbit_cachedir,
-                &self.get_config().fitbit_bucket,
+                &config.fitbit_cachedir,
+                &config.fitbit_bucket,
             ),
             (
                 "Syncing Fitbit Archive",
-                &self.get_config().fitbit_archivedir,
-                &self.get_config().fitbit_archive_bucket,
+                &config.fitbit_archivedir,
+                &config.fitbit_archive_bucket,
             ),
         ];
 
@@ -282,6 +272,7 @@ impl GarminCli {
         options: &GarminReportOptions,
         constraints: &GarminConstraints,
     ) -> Result<(), Error> {
+        let config = self.get_config();
         let pg_conn = self.get_pool();
         let mut file_list: Vec<_> =
             get_list_of_files_from_db(&constraints.to_query_string(), &pg_conn)
@@ -309,7 +300,7 @@ impl GarminCli {
                     debug!("Cached avro file read: {:?}", &avro_file);
                     g
                 } else {
-                    let gps_file = self.get_config().gps_dir.join(file_name.as_str());
+                    let gps_file = config.gps_dir.join(file_name.as_str());
                     let pool = self.get_pool();
                     let mut corr_map = GarminCorrectionLap::read_corrections_from_db(&pool).await?;
                     corr_map.shrink_to_fit();

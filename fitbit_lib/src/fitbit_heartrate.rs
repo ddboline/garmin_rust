@@ -585,7 +585,7 @@ mod tests {
     #[ignore]
     async fn test_calculate_summary_statistics() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
-        let pool = PgPool::new(&config.pgurl);
+        let pool = PgPool::new(&config.pgurl)?;
         let start_date = date!(2019 - 08 - 01);
         let result =
             FitbitHeartRate::calculate_summary_statistics(&config, &pool, start_date).await?;

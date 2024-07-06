@@ -236,7 +236,7 @@ mod tests {
         let user: UserId = 8675309.into();
 
         let config = GarminConfig::get_config(None)?;
-        let pool = PgPool::new(&config.pgurl);
+        let pool = PgPool::new(&config.pgurl)?;
 
         let bot = TelegramBot::new("8675309", &pool, &config);
 
@@ -302,7 +302,7 @@ mod tests {
         let mut exp = ScaleMeasurement::from_telegram_text(msg)?;
 
         let config = GarminConfig::get_config(None)?;
-        let pool = PgPool::new(&config.pgurl);
+        let pool = PgPool::new(&config.pgurl)?;
         let bot = TelegramBot::new("8675309", &pool, &config);
 
         exp.insert_into_db(&pool).await?;
@@ -333,7 +333,7 @@ mod tests {
         USERIDS.store(Arc::new(HashSet::new()));
 
         let config = GarminConfig::get_config(None)?;
-        let pool = PgPool::new(&config.pgurl);
+        let pool = PgPool::new(&config.pgurl)?;
         let bot = TelegramBot::new("8675309", &pool, &config);
 
         let email = format_sstr!("user{}@localhost", get_random_string(32));

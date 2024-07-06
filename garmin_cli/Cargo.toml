@@ -1,6 +1,6 @@
 [package]
 name = "garmin_cli"
-version = "0.14.17"
+version = "0.14.18"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -18,7 +18,7 @@ garmin_models={path="../garmin_models"}
 garmin_parser={path="../garmin_parser"}
 garmin_reports = {path="../garmin_reports"}
 garmin_utils={path="../garmin_utils"}
-itertools = "0.12"
+itertools = "0.13"
 log = "0.4"
 race_result_analysis = {path="../race_result_analysis"}
 rayon = "1.5"
@@ -30,7 +30,7 @@ strava_lib = {path="../strava_lib"}
 tempdir = "0.3"
 time = {version="0.3", features=["serde-human-readable", "macros", "formatting", "parsing"]}
 time-tz = {version="2.0", features=["system"]}
-tokio = {version="1.37", features=["rt", "macros", "rt-multi-thread"]}
+tokio = {version="1.38", features=["rt", "macros", "rt-multi-thread"]}
 tokio-postgres = {version = "0.7", features = ["with-time-0_3"]}
 stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", features=["postgres_types"], tag="0.9.3" }
 stdout-channel = "0.6"

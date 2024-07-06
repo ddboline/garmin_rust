@@ -95,7 +95,7 @@ pub async fn start_app() -> Result<(), Error> {
     TRIGGER_DB_UPDATE.set();
     get_secrets(&config.secret_path, &config.jwt_secret_path).await?;
 
-    let pool = PgPool::new(&config.pgurl);
+    let pool = PgPool::new(&config.pgurl)?;
 
     spawn({
         let pool = pool.clone();

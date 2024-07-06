@@ -366,7 +366,7 @@ mod tests {
         };
 
         let config = GarminConfig::get_config(None)?;
-        let pool = PgPool::new(&config.pgurl);
+        let pool = PgPool::new(&config.pgurl)?;
 
         exp.insert_into_db(&pool).await?;
 

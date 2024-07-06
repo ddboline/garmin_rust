@@ -873,7 +873,7 @@ mod tests {
     #[ignore]
     async fn test_dump_strava_activities() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
-        let pool = PgPool::new(&config.pgurl);
+        let pool = PgPool::new(&config.pgurl)?;
         let mut activities: HashMap<_, _> = StravaActivity::read_from_db(&pool, None, None)
             .await?
             .map_ok(|activity| (activity.id, activity))

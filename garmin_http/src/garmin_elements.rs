@@ -415,7 +415,7 @@ fn IndexElement(
         );
         let mut final_values: Vec<_> = heartrate
             .iter()
-            .group_by(|(d, _)| d.unix_timestamp() / (5 * 60))
+            .chunk_by(|(d, _)| d.unix_timestamp() / (5 * 60))
             .into_iter()
             .map(|(_, group)| {
                 let (begin_datetime, entries, heartrate_sum) = group.fold(

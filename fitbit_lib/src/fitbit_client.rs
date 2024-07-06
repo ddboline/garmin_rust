@@ -1135,10 +1135,7 @@ mod tests {
     use log::debug;
     use std::collections::HashMap;
     use tempfile::NamedTempFile;
-    use time::{
-        macros::{date, format_description},
-        Date, Duration, OffsetDateTime,
-    };
+    use time::{macros::format_description, Duration, OffsetDateTime};
     use time_tz::OffsetDateTimeExt;
 
     use garmin_lib::{date_time_wrapper::DateTimeWrapper, garmin_config::GarminConfig};
@@ -1242,7 +1239,7 @@ mod tests {
 
         let begin_datetime = OffsetDateTime::now_utc() - Duration::days(30);
 
-        let pool = PgPool::new(&config.pgurl);
+        let pool = PgPool::new(&config.pgurl)?;
         let dates = client.sync_fitbit_activities(begin_datetime, &pool).await?;
         debug!("{:?}", dates);
         assert_eq!(dates.len(), 0);
@@ -1265,7 +1262,7 @@ mod tests {
     async fn test_dump_fitbit_activities() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
         let client = FitbitClient::with_auth(config.clone()).await?;
-        let pool = PgPool::new(&config.pgurl);
+        let pool = PgPool::new(&config.pgurl)?;
         let mut activities: HashMap<_, _> = FitbitActivity::read_from_db(&pool, None, None)
             .await?
             .into_iter()
@@ -1301,7 +1298,7 @@ mod tests {
     #[ignore]
     async fn test_delete_duplicate_activities() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
-        let pool = PgPool::new(&config.pgurl);
+        let pool = PgPool::new(&config.pgurl)?;
         let client = FitbitClient::with_auth(config.clone()).await?;
 
         let output = client.remove_duplicate_entries(&pool).await?;

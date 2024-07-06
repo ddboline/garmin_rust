@@ -160,7 +160,7 @@ impl GarminCliOpts {
     }
 
     async fn process_opts(self, config: &GarminConfig) -> Result<(), Error> {
-        let pool = PgPool::new(&config.pgurl);
+        let pool = PgPool::new(&config.pgurl)?;
 
         let opts = match self {
             Self::Bootstrap => GarminCliOptions::Bootstrap,
@@ -666,7 +666,7 @@ mod tests {
     async fn test_garmin_file_test_filenames() -> Result<(), Error> {
         let test_config = "tests/data/test.env";
         let config = GarminConfig::get_config(Some(test_config))?;
-        let pool = PgPool::new(&config.pgurl);
+        let pool = PgPool::new(&config.pgurl)?;
         let corr = GarminCorrectionMap::new();
 
         let gcli = GarminCli {

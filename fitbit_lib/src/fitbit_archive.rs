@@ -203,9 +203,9 @@ fn write_fitbit_heartrate_parquet(
         let mut df = if file.exists() {
             let df = ParquetReader::new(File::open(&file)?).finish()?;
             let existing_entries = df.shape().0;
-            let updated_df = df
-                .vstack(&new_df)?
-                .unique_stable(None, UniqueKeepStrategy::First, None)?;
+            let updated_df =
+                df.vstack(&new_df)?
+                    .unique_stable(None, UniqueKeepStrategy::First, None)?;
             let new_entries = updated_df.shape().0;
             let updated_count = new_entries - existing_entries;
             if updated_count == 0 {

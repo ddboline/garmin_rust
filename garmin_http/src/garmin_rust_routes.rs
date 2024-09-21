@@ -15,7 +15,7 @@ use rweb_helper::{
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
 use std::convert::Infallible;
-use tempdir::TempDir;
+use tempfile::TempDir;
 use tokio::{fs::File, io::AsyncWriteExt, task::spawn_blocking};
 use tokio_stream::StreamExt;
 
@@ -298,7 +298,7 @@ async fn garmin_upload_body(
     state: AppState,
     session: Session,
 ) -> HttpResult<StackString> {
-    let tempdir = TempDir::new("garmin")?;
+    let tempdir = TempDir::new()?;
     let tempdir_str = tempdir.path().to_string_lossy();
     let mut fname = StackString::new();
 

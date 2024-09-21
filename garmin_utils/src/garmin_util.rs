@@ -367,13 +367,13 @@ pub fn get_random_string() -> StackString {
 mod tests {
     use anyhow::Error;
     use std::path::Path;
-    use tempdir::TempDir;
+    use tempfile::TempDir;
 
     use crate::garmin_util::extract_zip;
 
     #[test]
     fn test_extract_zip() -> Result<(), Error> {
-        let d = TempDir::new("zip_test")?;
+        let d = TempDir::new()?;
         let p = d.path();
 
         let zip_path = Path::new("../tests/data/test.zip");

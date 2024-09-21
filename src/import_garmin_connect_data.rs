@@ -8,7 +8,7 @@
 use anyhow::Error;
 use clap::Parser;
 use std::{collections::BTreeSet, path::PathBuf};
-use tempdir::TempDir;
+use tempfile::TempDir;
 
 use fitbit_lib::fitbit_heartrate::{
     import_garmin_heartrate_file, import_garmin_json_file, FitbitHeartRate,
@@ -57,7 +57,7 @@ async fn main() -> Result<(), Error> {
             }
         }
         JsonImportOpts::Heartrates { file } => {
-            let tempdir = TempDir::new("garmin_zip")?;
+            let tempdir = TempDir::new()?;
             let ziptmpdir = tempdir.path();
             let files = extract_zip_from_garmin_connect_multiple(&file, ziptmpdir)?;
             for file in files {

@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use stack_string::StackString;
 use std::{
     convert::{TryFrom, TryInto},
-    ops::Deref,
+    ops,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -229,7 +229,7 @@ impl GarminConfig {
     }
 }
 
-impl Deref for GarminConfig {
+impl ops::Deref for GarminConfig {
     type Target = GarminConfigInner;
 
     fn deref(&self) -> &Self::Target {

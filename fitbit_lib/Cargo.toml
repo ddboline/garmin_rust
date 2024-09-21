@@ -1,6 +1,6 @@
 [package]
 name = "fitbit_lib"
-version = "0.14.19"
+version = "0.14.20"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -12,7 +12,7 @@ avro-rs = {version = "0.13", features = ["snappy"]}
 base64 = "0.22"
 bytes = "1.0"
 crossbeam-utils = "0.8"
-derive_more = "0.99"
+derive_more = {version="1.0", features=["full"]}
 fitparser = {git="https://github.com/ddboline/fitparse-rs.git", branch="time-0.3-0.5.2"}
 futures = "0.3"
 garmin_lib = {path = "../garmin_lib"}
@@ -23,7 +23,7 @@ itertools = "0.13"
 log = "0.4"
 maplit = "1.0"
 once_cell = "1.0"
-polars = {version="0.41", features=["temporal", "parquet", "lazy"]}
+polars = {version="0.43", features=["temporal", "parquet", "lazy"]}
 postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.8", features=["deadpool"]}
 rand = "0.8"
 rayon = "1.5"

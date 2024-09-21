@@ -12,7 +12,7 @@ use std::{
     sync::Arc,
 };
 use stdout_channel::StdoutChannel;
-use tempdir::TempDir;
+use tempfile::TempDir;
 use time::Date;
 use tokio::task::spawn_blocking;
 
@@ -350,7 +350,7 @@ impl GarminCli {
         stdout: &StdoutChannel<StackString>,
         config: &GarminConfig,
     ) -> Result<Vec<DateTimeWrapper>, Error> {
-        let tempdir = TempDir::new("garmin_zip")?;
+        let tempdir = TempDir::new()?;
         let ziptmpdir = tempdir.path();
 
         let mut filenames = filenames

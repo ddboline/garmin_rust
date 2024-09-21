@@ -1,6 +1,6 @@
 [package]
 name = "garmin_reports"
-version = "0.14.19"
+version = "0.14.20"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1.0"
-derive_more = "0.99"
+derive_more = {version="1.0", features=["full"]}
 futures = "0.3"
 garmin_lib = {path="../garmin_lib"}
 garmin_models = {path="../garmin_models"}

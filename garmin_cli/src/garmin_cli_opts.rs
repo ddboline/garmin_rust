@@ -6,7 +6,7 @@ use log::info;
 use refinery::embed_migrations;
 use stack_string::{format_sstr, StackString};
 use std::{collections::BTreeSet, ffi::OsStr, path::PathBuf};
-use tempdir::TempDir;
+use tempfile::TempDir;
 use time::{macros::format_description, Date, Duration, OffsetDateTime};
 use time_tz::OffsetDateTimeExt;
 use tokio::{
@@ -602,7 +602,7 @@ impl GarminCliOpts {
                 cli.config.download_directory.join(format_sstr!("{date}"))
             };
             if connect_wellness_file.exists() {
-                let tempdir = TempDir::new("garmin_zip")?;
+                let tempdir = TempDir::new()?;
                 let ziptmpdir = tempdir.path().to_path_buf();
                 let wellness_files = spawn_blocking(move || {
                     extract_zip_from_garmin_connect_multiple(&connect_wellness_file, &ziptmpdir)

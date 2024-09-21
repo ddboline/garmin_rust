@@ -1,4 +1,4 @@
-use anyhow::{format_err, Error};
+use anyhow::Error;
 use serde::Deserialize;
 use stack_string::StackString;
 
@@ -17,18 +17,14 @@ impl GarminConnectHarFile {
     /// # Errors
     /// Return error if serde fails
     pub fn get_activities(&self) -> Result<Vec<GarminConnectActivity>, Error> {
-        if let Some(buf) = self
-            .log
+        self.log
             .entries
             .iter()
             .find(|e| e.request.url.contains(ACTIVITY_URL))
             .and_then(|e| e.response.content.text.as_ref())
-        {
-            let activities: Vec<GarminConnectActivity> = serde_json::from_str(buf.as_str())?;
-            Ok(activities)
-        } else {
-            Err(format_err!("No activity found"))
-        }
+            .map(|buf| serde_json::from_str(buf.as_str()))
+            .unwrap_or(Ok(Vec::new()))
+            .map_err(Into::into)
     }
 
     #[must_use]

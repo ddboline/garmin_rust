@@ -31,6 +31,7 @@ impl GarminConnectHarFile {
         }
     }
 
+    #[must_use]
     pub fn get_heartrates(&self) -> Vec<&str> {
         self.log
             .entries

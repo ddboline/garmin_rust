@@ -70,10 +70,10 @@ pub enum GarminCliOpts {
     /// Navigate to `<https://connect.garmin.com/modern/activities>`,
     /// find the entry for `<https://connect.garmin.com/activitylist-service/activities/search/activities>`,
     /// go to the response subtab and copy the output to
-    /// ~/Downloads/garmin_connect/activities.json, Next navigate to `<https://connect.garmin.com/modern/daily-summary/{date}>` where date is a date e.g. 2022-12-20,
+    /// `~/Downloads/garmin_connect/activities.json`, Next navigate to `<https://connect.garmin.com/modern/daily-summary/{date}>` where date is a date e.g. 2022-12-20,
     /// find the entry `<https://connect.garmin.com/wellness-service/wellness/dailyHeartRate/ddboline?date=2022-12-18>`,
     /// go to the response subtab and copy the output to
-    /// `~/Downloads/garmin_connect/heartrates.json``
+    /// `~/Downloads/garmin_connect/heartrates.json`
     Connect {
         #[clap(short, long)]
         data_directory: Option<PathBuf>,

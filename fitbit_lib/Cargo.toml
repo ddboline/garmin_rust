@@ -27,7 +27,7 @@ polars = {version="0.41", features=["temporal", "parquet", "lazy"]}
 postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.8", features=["deadpool"]}
 rand = "0.8"
 rayon = "1.5"
-reqwest = {version="0.12", features=["cookies", "json", "rustls-tls", "stream"], default_features=false}
+reqwest = {version="0.12", features=["cookies", "json", "rustls-tls", "stream"], default-features=false}
 serde = {version="1.0", features=["derive"]}
 serde_json = "1.0"
 smallvec = "1.6"

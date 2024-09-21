@@ -5,7 +5,7 @@ use itertools::Itertools;
 use log::info;
 use refinery::embed_migrations;
 use stack_string::{format_sstr, StackString};
-use std::{collections::BTreeSet, path::PathBuf};
+use std::{collections::BTreeSet, ffi::OsStr, path::PathBuf};
 use tempdir::TempDir;
 use time::{macros::format_description, Date, Duration, OffsetDateTime};
 use time_tz::OffsetDateTimeExt;
@@ -29,7 +29,7 @@ use fitbit_lib::{
 use garmin_lib::{date_time_wrapper::DateTimeWrapper, garmin_config::GarminConfig};
 use garmin_models::{
     fitbit_activity::FitbitActivity, garmin_connect_activity::GarminConnectActivity,
-    strava_activity::StravaActivity,
+    garmin_connect_har_file::GarminConnectHarFile, strava_activity::StravaActivity,
 };
 use garmin_utils::{garmin_util::extract_zip_from_garmin_connect_multiple, pgpool::PgPool};
 use race_result_analysis::{race_results::RaceResults, race_type::RaceType};
@@ -67,13 +67,13 @@ pub enum GarminCliOpts {
     },
     #[clap(alias = "cnt")]
     /// Go to the network tab in chrome developer tools,
-    /// Navigate to https://connect.garmin.com/modern/activities,
-    /// find the entry for https://connect.garmin.com/activitylist-service/activities/search/activities,
+    /// Navigate to `<https://connect.garmin.com/modern/activities>`,
+    /// find the entry for `<https://connect.garmin.com/activitylist-service/activities/search/activities>`,
     /// go to the response subtab and copy the output to
-    /// ~/Downloads/garmin_connect/activities.json, Next navigate to https://connect.garmin.com/modern/daily-summary/{date} where date is a date e.g. 2022-12-20,
-    /// find the entry https://connect.garmin.com/wellness-service/wellness/dailyHeartRate/ddboline?date=2022-12-18,
+    /// ~/Downloads/garmin_connect/activities.json, Next navigate to `<https://connect.garmin.com/modern/daily-summary/{date}>` where date is a date e.g. 2022-12-20,
+    /// find the entry `<https://connect.garmin.com/wellness-service/wellness/dailyHeartRate/ddboline?date=2022-12-18>`,
     /// go to the response subtab and copy the output to
-    /// ~/Downloads/garmin_connect/heartrates.json
+    /// `~/Downloads/garmin_connect/heartrates.json``
     Connect {
         #[clap(short, long)]
         data_directory: Option<PathBuf>,
@@ -509,31 +509,50 @@ impl GarminCliOpts {
         start_date: Option<Date>,
         end_date: Option<Date>,
     ) -> Result<(Vec<PathBuf>, Vec<PathBuf>, Vec<Date>), Error> {
+        let mut input_files = Vec::new();
+        let mut filenames = Vec::new();
+        let mut activities = Vec::new();
+        let mut dates = BTreeSet::new();
+        let har_file = cli.config.download_directory.join("connect.garmin.com.har");
+        if har_file.exists() {
+            let buf = read_to_string(&har_file).await?;
+            let har: GarminConnectHarFile = serde_json::from_str(buf.trim())?;
+            activities = har.get_activities()?;
+            for buf in har.get_heartrates() {
+                let hr_values: GarminConnectHrData = serde_json::from_str(buf)?;
+                let hr_values = FitbitHeartRate::from_garmin_connect_hr(&hr_values);
+                let config = cli.config.clone();
+                dates.extend(
+                    spawn_blocking(move || {
+                        FitbitHeartRate::merge_slice_to_avro(&config, &hr_values)
+                    })
+                    .await??,
+                );
+            }
+            input_files.push(har_file);
+        }
         let data_directory = data_directory
             .as_ref()
             .unwrap_or(&cli.config.garmin_connect_import_directory);
         let activites_json = data_directory.join("activities.json");
-        let mut input_files = Vec::new();
-        let mut filenames = Vec::new();
-        if activites_json.exists() {
+        if activities.is_empty() && activites_json.exists() {
             let buf = read_to_string(&activites_json).await?;
             if !buf.is_empty() {
-                let activities: Vec<GarminConnectActivity> = serde_json::from_str(buf.trim())?;
-                let activities =
+                activities = serde_json::from_str(buf.trim())?;
+                activities =
                     GarminConnectActivity::merge_new_activities(activities, &cli.pool).await?;
-                for activity in activities {
-                    let filename = cli
-                        .config
-                        .download_directory
-                        .join(format_sstr!("{}.zip", activity.activity_id));
-                    if filename.exists() {
-                        filenames.push(filename);
-                    }
-                }
                 input_files.push(activites_json);
             }
         }
-        let mut dates = BTreeSet::new();
+        for activity in activities {
+            let filename = cli
+                .config
+                .download_directory
+                .join(format_sstr!("{}.zip", activity.activity_id));
+            if filename.exists() {
+                filenames.push(filename);
+            }
+        }
         let heartrate_json = data_directory.join("heartrates.json");
         if heartrate_json.exists() {
             let buf = read_to_string(&heartrate_json).await?;
@@ -544,10 +563,12 @@ impl GarminCliOpts {
                 if let Ok(hr_values) = serde_json::from_str::<GarminConnectHrData>(line) {
                     let hr_values = FitbitHeartRate::from_garmin_connect_hr(&hr_values);
                     let config = cli.config.clone();
-                    dates = spawn_blocking(move || {
-                        FitbitHeartRate::merge_slice_to_avro(&config, &hr_values)
-                    })
-                    .await??;
+                    dates.extend(
+                        spawn_blocking(move || {
+                            FitbitHeartRate::merge_slice_to_avro(&config, &hr_values)
+                        })
+                        .await??,
+                    );
                 }
             }
             if !buf.is_empty() {
@@ -621,7 +642,11 @@ impl GarminCliOpts {
             info!("{line}");
         }
         for f in &input_files {
-            write(f, &[]).await?;
+            if f.extension() == Some(OsStr::new("har")) {
+                remove_file(f).await?;
+            } else {
+                write(f, &[]).await?;
+            }
         }
         let mut dates: Vec<_> = dates.into_iter().collect();
         dates.shrink_to_fit();
@@ -653,11 +678,15 @@ impl GarminCliOpts {
 #[cfg(test)]
 mod tests {
     use anyhow::Error;
+    use std::{ffi::OsStr, path::Path};
     use stdout_channel::StdoutChannel;
 
     use crate::garmin_cli::{GarminCli, GarminCliOptions};
+    use fitbit_lib::GarminConnectHrData;
     use garmin_lib::garmin_config::GarminConfig;
-    use garmin_models::garmin_correction_lap::GarminCorrectionMap;
+    use garmin_models::{
+        garmin_connect_har_file::GarminConnectHarFile, garmin_correction_lap::GarminCorrectionMap,
+    };
     use garmin_parser::garmin_parse::GarminParse;
     use garmin_utils::pgpool::PgPool;
 
@@ -685,6 +714,27 @@ mod tests {
         };
 
         assert!(gcli.opts.is_some());
+        Ok(())
+    }
+
+    #[test]
+    fn test_garmin_connect_har_file() -> Result<(), Error> {
+        let buf = include_str!("../../tests/data/connect.garmin.com.har");
+        let har: GarminConnectHarFile = serde_json::from_str(buf)?;
+        let activities = har.get_activities()?;
+        assert_eq!(activities.len(), 20);
+        let mut total = 0;
+        for buf in har.get_heartrates() {
+            let hr_values: GarminConnectHrData = serde_json::from_str(buf)?;
+            assert!(hr_values.heartrate_values.is_some());
+            let hr_values = hr_values.heartrate_values.unwrap();
+            assert!(hr_values.len() > 0);
+            total += hr_values.len();
+        }
+        assert_eq!(total, 1187);
+
+        let p = Path::new("../../tests/data/connect.garmin.com.har");
+        assert_eq!(p.extension(), Some(OsStr::new("har")));
         Ok(())
     }
 }

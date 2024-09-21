@@ -9,6 +9,7 @@
 
 pub mod fitbit_activity;
 pub mod garmin_connect_activity;
+pub mod garmin_connect_har_file;
 pub mod garmin_correction_lap;
 pub mod garmin_file;
 pub mod garmin_lap;

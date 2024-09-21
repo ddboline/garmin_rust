@@ -539,12 +539,10 @@ impl GarminCliOpts {
             let buf = read_to_string(&activites_json).await?;
             if !buf.is_empty() {
                 activities = serde_json::from_str(buf.trim())?;
-                activities =
-                    GarminConnectActivity::merge_new_activities(activities, &cli.pool).await?;
                 input_files.push(activites_json);
             }
         }
-        for activity in activities {
+        for activity in GarminConnectActivity::merge_new_activities(activities, &cli.pool).await? {
             let filename = cli
                 .config
                 .download_directory

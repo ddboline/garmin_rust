@@ -17,8 +17,8 @@ use garmin_lib::{
     garmin_config::GarminConfig,
 };
 use garmin_models::{
-    fitbit_activity::FitbitActivity, garmin_connect_activity::GarminConnectActivity,
-    garmin_file::GarminFile, garmin_summary::GarminSummary, strava_activity::StravaActivity,
+    garmin_connect_activity::GarminConnectActivity, garmin_file::GarminFile,
+    garmin_summary::GarminSummary, strava_activity::StravaActivity,
 };
 use garmin_reports::{
     garmin_file_report_txt::get_splits,
@@ -108,7 +108,6 @@ pub async fn index_new_body(
                     plot_reports: None,
                     gfile: None,
                     strava_activity: None,
-                    fitbit_activity: None,
                     connect_activity: None,
                     race_result: None,
                     is_demo,
@@ -141,11 +140,6 @@ pub async fn index_new_body(
             } else {
                 None
             };
-            let fitbit_activity = if let Some(s) = &summary {
-                FitbitActivity::get_from_summary_id(pool, s.id).await?
-            } else {
-                None
-            };
             let connect_activity = if let Some(s) = &summary {
                 GarminConnectActivity::get_from_summary_id(pool, s.id).await?
             } else {
@@ -166,7 +160,6 @@ pub async fn index_new_body(
                     plot_reports: Some(report_objs),
                     gfile: Some(gfile),
                     strava_activity,
-                    fitbit_activity,
                     connect_activity,
                     race_result,
                     is_demo,
@@ -205,7 +198,6 @@ pub async fn index_new_body(
                     plot_reports: None,
                     gfile: None,
                     strava_activity: None,
-                    fitbit_activity: None,
                     connect_activity: None,
                     race_result: None,
                     is_demo,
@@ -244,7 +236,6 @@ pub async fn index_new_body(
                     plot_reports: None,
                     gfile: None,
                     strava_activity: None,
-                    fitbit_activity: None,
                     connect_activity: None,
                     race_result: None,
                     is_demo,
@@ -283,7 +274,6 @@ pub async fn index_new_body(
                     plot_reports: None,
                     gfile: None,
                     strava_activity: None,
-                    fitbit_activity: None,
                     connect_activity: None,
                     race_result: None,
                     is_demo,
@@ -320,7 +310,6 @@ pub async fn index_new_body(
                     plot_reports: None,
                     gfile: None,
                     strava_activity: None,
-                    fitbit_activity: None,
                     connect_activity: None,
                     race_result: None,
                     is_demo,
@@ -355,7 +344,6 @@ fn IndexElement(
     plot_reports: Option<ReportObjects>,
     gfile: Option<GarminFile>,
     strava_activity: Option<StravaActivity>,
-    fitbit_activity: Option<FitbitActivity>,
     connect_activity: Option<GarminConnectActivity>,
     race_result: Option<RaceResults>,
     is_demo: bool,
@@ -1188,7 +1176,6 @@ fn IndexElement(
                 let file_html = Some(get_file_html(
                     &gfile,
                     &strava_activity,
-                    &fitbit_activity,
                     &connect_activity,
                     &race_result,
                 ));
@@ -1206,7 +1193,6 @@ fn IndexElement(
             let file_html = Some(get_file_html(
                 &gfile,
                 &strava_activity,
-                &fitbit_activity,
                 &connect_activity,
                 &race_result,
             ));
@@ -1321,7 +1307,6 @@ fn IndexElement(
 fn get_file_html(
     gfile: &GarminFile,
     strava_activity: &Option<StravaActivity>,
-    fitbit_activity: &Option<FitbitActivity>,
     connect_activity: &Option<GarminConnectActivity>,
     race_result: &Option<RaceResults>,
 ) -> Element {
@@ -1380,17 +1365,6 @@ fn get_file_html(
             }
         }
     };
-    let fid = fitbit_activity.as_ref().map(|fitbit_activity| {
-        let id = fitbit_activity.log_id;
-        rsx! {
-            a {
-                href: "https://www.fitbit.com/activities/exercise/{id}",
-                target: "_blank",
-                "{id}",
-            }
-        }
-    });
-    let fstep = fitbit_activity.as_ref().map_or(0, |x| x.steps.unwrap_or(0));
     let gid = connect_activity.as_ref().map(|connect_activity| {
         let activity_id = connect_activity.activity_id;
         rsx! {
@@ -1436,8 +1410,11 @@ fn get_file_html(
             thead {
                 tr {
                     "style": "text-align: center;",
-                    th {"Start Time"}, th {"Sport"}, th {}, th {"FitbitID"},
-                    th {"Fitbit Steps"}, th {"GarminConnectID"}, th {"Garmin Steps"},
+                    th {"Start Time"},
+                    th {"Sport"},
+                    th {},
+                    th {"GarminConnectID"},
+                    th {"Garmin Steps"},
                     th {"StravaID"},
                 }
             },
@@ -1447,8 +1424,6 @@ fn get_file_html(
                     td {"{dt}"},
                     td { {sp} },
                     td { {gc} },
-                    td { {fid} },
-                    td {"{fstep}"},
                     td { {gid} },
                     td {"{gstep}"},
                     td { {sid} },

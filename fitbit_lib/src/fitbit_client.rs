@@ -995,26 +995,7 @@ impl FitbitClient {
         measurements.shrink_to_fit();
         self.update_fitbit_bodyweightfat(&measurements).await?;
 
-        let mut activities: Vec<_> = self
-            .sync_fitbit_activities(start_datetime, pool)
-            .await?
-            .into_iter()
-            .map(Into::into)
-            .collect();
-        activities.shrink_to_fit();
-        let duplicates = self.remove_duplicate_entries(pool).await?;
-        FitbitActivity::fix_summary_id_in_db(pool).await?;
-        if !activities.is_empty() {
-            self.sync_fitbit_activities(start_datetime, pool).await?;
-            self.remove_duplicate_entries(pool).await?;
-            FitbitActivity::fix_summary_id_in_db(pool).await?;
-        }
-
-        Ok(FitbitBodyWeightFatUpdateOutput {
-            measurements,
-            activities,
-            duplicates,
-        })
+        Ok(FitbitBodyWeightFatUpdateOutput { measurements })
     }
 
     /// # Errors
@@ -1055,8 +1036,6 @@ impl FitbitClient {
 #[derive(Debug, Serialize)]
 pub struct FitbitBodyWeightFatUpdateOutput {
     pub measurements: Vec<ScaleMeasurement>,
-    pub activities: Vec<DateTimeWrapper>,
-    pub duplicates: Vec<StackString>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

@@ -57,7 +57,7 @@ async fn main() -> Result<(), Error> {
             }
         }
         JsonImportOpts::Heartrates { file } => {
-            let tempdir = TempDir::new()?;
+            let tempdir = TempDir::with_prefix("garmin_connect")?;
             let ziptmpdir = tempdir.path();
             let files = extract_zip_from_garmin_connect_multiple(&file, ziptmpdir)?;
             for file in files {

@@ -164,10 +164,6 @@ derive_rweb_schema!(
 struct _FitbitBodyWeightFatUpdateOutputWrapper {
     #[schema(description = "Measurements")]
     measurements: Vec<ScaleMeasurementWrapper>,
-    #[schema(description = "Activity DateTimes")]
-    activities: Vec<DateTimeType>,
-    #[schema(description = "Duplicate Messages")]
-    duplicates: Vec<StackString>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Into, From)]

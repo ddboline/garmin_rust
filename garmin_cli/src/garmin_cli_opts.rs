@@ -486,10 +486,8 @@ impl GarminCliOpts {
                     if let Ok(client) = FitbitClient::with_auth(cli.config.clone()).await {
                         let result = client.sync_everything(&cli.pool).await?;
                         buf.push(format_sstr!(
-                            "Syncing Fitbit Heartrate {hr} Activities {ac} Duplicates {dp}",
+                            "Syncing Fitbit Heartrate {hr}",
                             hr = result.measurements.len(),
-                            ac = result.activities.len(),
-                            dp = result.duplicates.len(),
                         ));
                     }
                 }
@@ -600,7 +598,7 @@ impl GarminCliOpts {
                 cli.config.download_directory.join(format_sstr!("{date}"))
             };
             if connect_wellness_file.exists() {
-                let tempdir = TempDir::new()?;
+                let tempdir = TempDir::with_prefix("garmin_cli_opts")?;
                 let ziptmpdir = tempdir.path().to_path_buf();
                 let wellness_files = spawn_blocking(move || {
                     extract_zip_from_garmin_connect_multiple(&connect_wellness_file, &ziptmpdir)

@@ -373,7 +373,7 @@ mod tests {
 
     #[test]
     fn test_extract_zip() -> Result<(), Error> {
-        let d = TempDir::new()?;
+        let d = TempDir::with_prefix("garmin_util")?;
         let p = d.path();
 
         let zip_path = Path::new("../tests/data/test.zip");

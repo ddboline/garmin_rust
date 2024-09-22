@@ -77,10 +77,8 @@ pub async fn start_app() -> Result<(), Error> {
                     if let Ok(client) = FitbitClient::with_auth(cli.config.clone()).await {
                         if let Ok(result) = client.sync_everything(&cli.pool).await {
                             info!(
-                                "Syncing Fitbit Heartrate {hr} Activities {ac} Duplicates {dp}",
+                                "Syncing Fitbit Heartrate {hr}",
                                 hr = result.measurements.len(),
-                                ac = result.activities.len(),
-                                dp = result.duplicates.len(),
                             );
                         }
                     }

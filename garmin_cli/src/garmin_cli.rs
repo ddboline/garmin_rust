@@ -350,7 +350,7 @@ impl GarminCli {
         stdout: &StdoutChannel<StackString>,
         config: &GarminConfig,
     ) -> Result<Vec<DateTimeWrapper>, Error> {
-        let tempdir = TempDir::new()?;
+        let tempdir = TempDir::with_prefix("garmin_cli")?;
         let ziptmpdir = tempdir.path();
 
         let mut filenames = filenames

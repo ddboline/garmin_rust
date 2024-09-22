@@ -298,7 +298,7 @@ async fn garmin_upload_body(
     state: AppState,
     session: Session,
 ) -> HttpResult<StackString> {
-    let tempdir = TempDir::new()?;
+    let tempdir = TempDir::with_prefix("garmin_rust")?;
     let tempdir_str = tempdir.path().to_string_lossy();
     let mut fname = StackString::new();
 

@@ -22,8 +22,7 @@ impl GarminConnectHarFile {
             .iter()
             .find(|e| e.request.url.contains(ACTIVITY_URL))
             .and_then(|e| e.response.content.text.as_ref())
-            .map(|buf| serde_json::from_str(buf.as_str()))
-            .unwrap_or(Ok(Vec::new()))
+            .map_or(Ok(Vec::new()), |buf| serde_json::from_str(buf.as_str()))
             .map_err(Into::into)
     }
 

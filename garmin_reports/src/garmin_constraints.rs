@@ -46,8 +46,7 @@ impl GarminConstraint {
             }
             Self::IsoWeek { year, week } => {
                 format_sstr!(
-                    "(EXTRACT(isoyear from a.begin_datetime at time zone 'localtime') = {year} \
-                     AND
+                    "(EXTRACT(isoyear from a.begin_datetime at time zone 'localtime') = {year} AND
                       EXTRACT(week from a.begin_datetime at time zone 'localtime') = {week})"
                 )
             }

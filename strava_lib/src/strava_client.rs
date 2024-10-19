@@ -874,11 +874,12 @@ mod tests {
     async fn test_dump_strava_activities() -> Result<(), Error> {
         let config = GarminConfig::get_config(None)?;
         let pool = PgPool::new(&config.pgurl)?;
-        let mut activities: HashMap<_, _> = StravaActivity::read_from_db(&pool, None, None)
-            .await?
-            .map_ok(|activity| (activity.id, activity))
-            .try_collect()
-            .await?;
+        let mut activities: HashMap<_, _> =
+            StravaActivity::read_from_db(&pool, None, None, None, None)
+                .await?
+                .map_ok(|activity| (activity.id, activity))
+                .try_collect()
+                .await?;
         activities.shrink_to_fit();
         let client = StravaClient::with_auth(config).await?;
 

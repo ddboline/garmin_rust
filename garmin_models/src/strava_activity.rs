@@ -1,7 +1,7 @@
 use anyhow::Error;
 use futures::{future::try_join_all, Stream, TryStreamExt};
 use log::debug;
-use postgres_query::{query, query_dyn, Error as PqError, FromSqlRow, Parameter};
+use postgres_query::{query, query_dyn, Error as PqError, FromSqlRow, Parameter, Query};
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
 use std::collections::HashMap;
@@ -48,39 +48,82 @@ impl Default for StravaActivity {
 }
 
 impl StravaActivity {
+    fn get_strava_activity_query<'a>(
+        select_str: &'a str,
+        start_date: &'a Option<Date>,
+        end_date: &'a Option<Date>,
+        offset: Option<usize>,
+        limit: Option<usize>,
+        order_str: &'a str,
+    ) -> Result<Query<'a>, PqError> {
+        let mut conditions = Vec::new();
+        let mut query_bindings = Vec::new();
+        if let Some(d) = start_date {
+            conditions.push("date(start_date) >= $start_date");
+            query_bindings.push(("start_date", d as Parameter));
+        }
+        if let Some(d) = end_date {
+            conditions.push("date(start_date) <= $end_date");
+            query_bindings.push(("end_date", d as Parameter));
+        }
+        let mut query = format_sstr!(
+            "SELECT {select_str} FROM strava_activities {} {order_str}",
+            if conditions.is_empty() {
+                "".into()
+            } else {
+                format_sstr!("WHERE {}", conditions.join(" AND "))
+            }
+        );
+        if let Some(offset) = &offset {
+            query.push_str(&format_sstr!(" OFFSET {offset}"));
+        }
+        if let Some(limit) = &limit {
+            query.push_str(&format_sstr!(" LIMIT {limit}"));
+        }
+        query_bindings.shrink_to_fit();
+        debug!("query:\n{}", query);
+        query_dyn!(&query, ..query_bindings)
+    }
+
     /// # Errors
     /// Return error if db query fails
     pub async fn read_from_db(
         pool: &PgPool,
         start_date: Option<Date>,
         end_date: Option<Date>,
+        offset: Option<usize>,
+        limit: Option<usize>,
     ) -> Result<impl Stream<Item = Result<Self, PqError>>, Error> {
-        let query = "SELECT * FROM strava_activities";
-        let mut conditions = Vec::new();
-        let mut bindings = Vec::new();
-        if let Some(d) = start_date {
-            conditions.push("date(start_date) >= $start_date");
-            bindings.push(("start_date", d));
-        }
-        if let Some(d) = end_date {
-            conditions.push("date(start_date) <= $end_date");
-            bindings.push(("end_date", d));
-        }
-        let query = format_sstr!(
-            "{query} {c} ORDER BY start_date",
-            c = if conditions.is_empty() {
-                "".into()
-            } else {
-                format_sstr!("WHERE {}", conditions.join(" AND "))
-            }
-        );
-        let mut query_bindings: Vec<_> =
-            bindings.iter().map(|(k, v)| (*k, v as Parameter)).collect();
-        query_bindings.shrink_to_fit();
-        debug!("query:\n{}", query);
-        let query = query_dyn!(&query, ..query_bindings)?;
+        let query = Self::get_strava_activity_query(
+            "*",
+            &start_date,
+            &end_date,
+            offset,
+            limit,
+            "ORDER BY start_date",
+        )?;
         let conn = pool.get().await?;
         query.fetch_streaming(&conn).await.map_err(Into::into)
+    }
+
+    /// # Errors
+    /// Return error if db query fails
+    pub async fn get_total(
+        pool: &PgPool,
+        start_date: Option<Date>,
+        end_date: Option<Date>,
+    ) -> Result<usize, Error> {
+        #[derive(FromSqlRow)]
+        struct Count {
+            count: i64,
+        }
+
+        let query =
+            Self::get_strava_activity_query("count(*)", &start_date, &end_date, None, None, "")?;
+        let conn = pool.get().await?;
+        let count: Count = query.fetch_one(&conn).await?;
+
+        Ok(count.count.try_into()?)
     }
 
     /// # Errors
@@ -177,11 +220,12 @@ impl StravaActivity {
         pool: &PgPool,
     ) -> Result<Vec<StackString>, Error> {
         let mut output = Vec::new();
-        let mut existing_activities: HashMap<_, _> = Self::read_from_db(pool, None, None)
-            .await?
-            .map_ok(|activity| (activity.id, activity))
-            .try_collect()
-            .await?;
+        let mut existing_activities: HashMap<_, _> =
+            Self::read_from_db(pool, None, None, None, None)
+                .await?
+                .map_ok(|activity| (activity.id, activity))
+                .try_collect()
+                .await?;
         existing_activities.shrink_to_fit();
 
         let (update_items, insert_items): (Vec<_>, Vec<_>) = activities

@@ -1,9 +1,11 @@
 use anyhow::Error;
 use futures::Stream;
-use postgres_query::{query, Error as PqError, FromSqlRow};
+use postgres_query::{query, query_dyn, Error as PqError, FromSqlRow, Parameter, Query};
 use serde::{Deserialize, Serialize};
+use stack_string::format_sstr;
 use statistical::{mean, median, standard_deviation};
-use time::{Date, Duration, OffsetDateTime};
+use std::convert::TryInto;
+use time::Date;
 use time_tz::OffsetDateTimeExt;
 
 use garmin_lib::date_time_wrapper::DateTimeWrapper;
@@ -65,33 +67,81 @@ impl FitbitStatisticsSummary {
         query.fetch_opt(&conn).await.map_err(Into::into)
     }
 
+    fn get_fitbit_statistics_query<'a>(
+        select_str: &'a str,
+        start_date: &'a Option<Date>,
+        end_date: &'a Option<Date>,
+        offset: Option<usize>,
+        limit: Option<usize>,
+        order_str: &'a str,
+    ) -> Result<Query<'a>, PqError> {
+        let mut conditions = Vec::new();
+        let mut query_bindings = Vec::new();
+        if let Some(start_date) = start_date {
+            conditions.push("date >= $start_date");
+            query_bindings.push(("start_date", start_date as Parameter));
+        }
+        if let Some(end_date) = end_date {
+            conditions.push("date <= $end_date");
+            query_bindings.push(("end_date", end_date as Parameter));
+        }
+
+        let mut query = format_sstr!(
+            "SELECT {select_str} FROM heartrate_statistics_summary {} {order_str}",
+            if conditions.is_empty() {
+                "".into()
+            } else {
+                format_sstr!("WHERE {}", conditions.join(" AND "))
+            }
+        );
+        if let Some(offset) = &offset {
+            query.push_str(&format_sstr!(" OFFSET {offset}"));
+        }
+        if let Some(limit) = &limit {
+            query.push_str(&format_sstr!(" LIMIT {limit}"));
+        }
+        query_dyn!(&query, ..query_bindings)
+    }
+
     /// # Errors
     /// Returns error if db query fails
     pub async fn read_from_db(
+        pool: &PgPool,
         start_date: Option<Date>,
         end_date: Option<Date>,
-        pool: &PgPool,
+        offset: Option<usize>,
+        limit: Option<usize>,
     ) -> Result<impl Stream<Item = Result<Self, PqError>>, Error> {
-        let local = DateTimeWrapper::local_tz();
-        let start_date = start_date.unwrap_or_else(|| {
-            (OffsetDateTime::now_utc() - Duration::days(365))
-                .to_timezone(local)
-                .date()
-        });
-        let end_date =
-            end_date.unwrap_or_else(|| OffsetDateTime::now_utc().to_timezone(local).date());
-
-        let query = query!(
-            r#"
-            SELECT * FROM heartrate_statistics_summary
-            WHERE date >= $start_date AND date <= $end_date
-            ORDER BY date
-        "#,
-            start_date = start_date,
-            end_date = end_date
-        );
+        let query = Self::get_fitbit_statistics_query(
+            "*",
+            &start_date,
+            &end_date,
+            offset,
+            limit,
+            "ORDER BY date",
+        )?;
         let conn = pool.get().await?;
         query.fetch_streaming(&conn).await.map_err(Into::into)
+    }
+
+    /// # Errors
+    /// Returns error if db query fails
+    pub async fn get_total(
+        pool: &PgPool,
+        start_date: Option<Date>,
+        end_date: Option<Date>,
+    ) -> Result<usize, Error> {
+        #[derive(FromSqlRow)]
+        struct Count {
+            count: i64,
+        }
+
+        let query =
+            Self::get_fitbit_statistics_query("count(*)", &start_date, &end_date, None, None, "")?;
+        let conn = pool.get().await?;
+        let count: Count = query.fetch_one(&conn).await?;
+
+        Ok(count.count.try_into()?)
     }
 
     /// # Errors

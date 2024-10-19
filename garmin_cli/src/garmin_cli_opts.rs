@@ -339,8 +339,14 @@ impl GarminCliOpts {
                         let start_date = (OffsetDateTime::now_utc() - Duration::days(7))
                             .to_timezone(local)
                             .date();
-                        let measurements =
-                            ScaleMeasurement::read_from_db(&pool, Some(start_date), None).await?;
+                        let measurements = ScaleMeasurement::read_from_db(
+                            &pool,
+                            Some(start_date),
+                            None,
+                            None,
+                            None,
+                        )
+                        .await?;
                         file.write_all(&serde_json::to_vec(&measurements)?).await?;
                     }
                     "strava_activities" => {
@@ -348,7 +354,7 @@ impl GarminCliOpts {
                             .to_timezone(local)
                             .date();
                         let mut activities: Vec<_> =
-                            StravaActivity::read_from_db(&pool, Some(start_date), None)
+                            StravaActivity::read_from_db(&pool, Some(start_date), None, None, None)
                                 .await?
                                 .try_collect()
                                 .await?;
@@ -360,18 +366,24 @@ impl GarminCliOpts {
                             .to_timezone(local)
                             .date();
                         let activities =
-                            FitbitActivity::read_from_db(&pool, Some(start_date), None).await?;
+                            FitbitActivity::read_from_db(&pool, Some(start_date), None, None, None)
+                                .await?;
                         file.write_all(&serde_json::to_vec(&activities)?).await?;
                     }
                     "heartrate_statistics_summary" => {
                         let start_date = (OffsetDateTime::now_utc() - Duration::days(7))
                             .to_timezone(local)
                             .date();
-                        let mut entries: Vec<_> =
-                            FitbitStatisticsSummary::read_from_db(Some(start_date), None, &pool)
-                                .await?
-                                .try_collect()
-                                .await?;
+                        let mut entries: Vec<_> = FitbitStatisticsSummary::read_from_db(
+                            &pool,
+                            Some(start_date),
+                            None,
+                            None,
+                            None,
+                        )
+                        .await?
+                        .try_collect()
+                        .await?;
                         entries.shrink_to_fit();
                         file.write_all(&serde_json::to_vec(&entries)?).await?;
                     }
@@ -379,11 +391,16 @@ impl GarminCliOpts {
                         let start_date = (OffsetDateTime::now_utc() - Duration::days(7))
                             .to_timezone(local)
                             .date();
-                        let mut activities: Vec<_> =
-                            GarminConnectActivity::read_from_db(&pool, Some(start_date), None)
-                                .await?
-                                .try_collect()
-                                .await?;
+                        let mut activities: Vec<_> = GarminConnectActivity::read_from_db(
+                            &pool,
+                            Some(start_date),
+                            None,
+                            None,
+                            None,
+                        )
+                        .await?
+                        .try_collect()
+                        .await?;
                         activities.shrink_to_fit();
                         file.write_all(&serde_json::to_vec(&activities)?).await?;
                     }

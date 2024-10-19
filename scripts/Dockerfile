@@ -19,7 +19,6 @@ COPY src /build/garmin_rust/src
 COPY fitbit_bot /build/garmin_rust/fitbit_bot
 COPY fitbit_lib /build/garmin_rust/fitbit_lib
 COPY garmin_cli /build/garmin_rust/garmin_cli
-COPY garmin_connect_lib /build/garmin_rust/garmin_connect_lib
 COPY garmin_http /build/garmin_rust/garmin_http
 COPY garmin_lib /build/garmin_rust/garmin_lib
 COPY garmin_reports /build/garmin_rust/garmin_reports

@@ -770,7 +770,7 @@ impl FitbitClient {
     /// Returns error if api call fails
     pub async fn remove_duplicate_entries(&self, pool: &PgPool) -> Result<Vec<StackString>, Error> {
         let mut last_entry = None;
-        let futures = FitbitActivity::read_from_db(pool, None, None)
+        let futures = FitbitActivity::read_from_db(pool, None, None, None, None)
             .await?
             .into_iter()
             .map(|activity| {
@@ -876,7 +876,7 @@ impl FitbitClient {
 
         // Get existing activities
         let mut existing_activities: HashMap<_, _> =
-            FitbitActivity::read_from_db(pool, Some(date), None)
+            FitbitActivity::read_from_db(pool, Some(date), None, None, None)
                 .await?
                 .into_iter()
                 .map(|activity| (activity.log_id, activity))
@@ -984,14 +984,15 @@ impl FitbitClient {
             .collect();
         existing_map.shrink_to_fit();
 
-        let mut measurements: Vec<_> = ScaleMeasurement::read_from_db(pool, Some(start_date), None)
-            .await?
-            .into_iter()
-            .filter(|entry| {
-                let date = entry.datetime.to_timezone(local).date();
-                !existing_map.contains_key(&date)
-            })
-            .collect();
+        let mut measurements: Vec<_> =
+            ScaleMeasurement::read_from_db(pool, Some(start_date), None, None, None)
+                .await?
+                .into_iter()
+                .filter(|entry| {
+                    let date = entry.datetime.to_timezone(local).date();
+                    !existing_map.contains_key(&date)
+                })
+                .collect();
         measurements.shrink_to_fit();
         self.update_fitbit_bodyweightfat(&measurements).await?;
 
@@ -1242,11 +1243,12 @@ mod tests {
         let config = GarminConfig::get_config(None)?;
         let client = FitbitClient::with_auth(config.clone()).await?;
         let pool = PgPool::new(&config.pgurl)?;
-        let mut activities: HashMap<_, _> = FitbitActivity::read_from_db(&pool, None, None)
-            .await?
-            .into_iter()
-            .map(|activity| (activity.log_id, activity))
-            .collect();
+        let mut activities: HashMap<_, _> =
+            FitbitActivity::read_from_db(&pool, None, None, None, None)
+                .await?
+                .into_iter()
+                .map(|activity| (activity.log_id, activity))
+                .collect();
         activities.shrink_to_fit();
 
         let offset = client.get_offset();

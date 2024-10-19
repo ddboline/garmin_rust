@@ -556,8 +556,7 @@ async fn day_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<DaySummar
                    a.total_calories,
                    a.total_distance,
                    a.total_duration,
-                   CASE WHEN a.total_hr_dur > 0.0 THEN a.total_hr_dur ELSE 0.0 END AS \
-         total_hr_dur,
+                   CASE WHEN a.total_hr_dur > 0.0 THEN a.total_hr_dur ELSE 0.0 END AS total_hr_dur,
                    CASE WHEN a.total_hr_dur > 0.0 THEN a.total_hr_dis ELSE 0.0 END AS total_hr_dis
             FROM garmin_summary a
             LEFT JOIN strava_activities b ON a.id = b.summary_id
@@ -704,8 +703,7 @@ async fn week_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<WeekSumm
                    a.total_calories,
                    a.total_distance,
                    a.total_duration,
-                   CASE WHEN a.total_hr_dur > 0.0 THEN a.total_hr_dur ELSE 0.0 END AS \
-         total_hr_dur,
+                   CASE WHEN a.total_hr_dur > 0.0 THEN a.total_hr_dur ELSE 0.0 END AS total_hr_dur,
                    CASE WHEN a.total_hr_dur > 0.0 THEN a.total_hr_dis ELSE 0.0 END AS total_hr_dis
             FROM garmin_summary a
             LEFT JOIN strava_activities b ON a.id = b.summary_id
@@ -720,8 +718,7 @@ async fn week_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<WeekSumm
             sum(total_duration) as total_duration,
             sum(total_hr_dur) as total_hr_dur,
             sum(total_hr_dis) as total_hr_dis,
-            count(distinct cast(begin_datetime at time zone 'localtime' as date)) as \
-         number_of_days
+            count(distinct cast(begin_datetime at time zone 'localtime' as date)) as number_of_days
         FROM c
         GROUP BY sport, year, week
         ORDER BY sport, year, week
@@ -857,8 +854,7 @@ async fn month_summary_report(
                    a.total_calories,
                    a.total_distance,
                    a.total_duration,
-                   CASE WHEN a.total_hr_dur > 0.0 THEN a.total_hr_dur ELSE 0.0 END AS \
-         total_hr_dur,
+                   CASE WHEN a.total_hr_dur > 0.0 THEN a.total_hr_dur ELSE 0.0 END AS total_hr_dur,
                    CASE WHEN a.total_hr_dur > 0.0 THEN a.total_hr_dis ELSE 0.0 END AS total_hr_dis
             FROM garmin_summary a
             LEFT JOIN strava_activities b ON a.id = b.summary_id
@@ -873,8 +869,7 @@ async fn month_summary_report(
             sum(total_duration) as total_duration,
             sum(total_hr_dur) as total_hr_dur,
             sum(total_hr_dis) as total_hr_dis,
-            count(distinct cast(begin_datetime at time zone 'localtime' as date)) as \
-         number_of_days
+            count(distinct cast(begin_datetime at time zone 'localtime' as date)) as number_of_days
         FROM c
         GROUP BY sport, year, month
         ORDER BY sport, year, month
@@ -995,8 +990,7 @@ async fn sport_summary_report(
                    a.total_calories,
                    a.total_distance,
                    a.total_duration,
-                   CASE WHEN a.total_hr_dur > 0.0 THEN a.total_hr_dur ELSE 0.0 END AS \
-         total_hr_dur,
+                   CASE WHEN a.total_hr_dur > 0.0 THEN a.total_hr_dur ELSE 0.0 END AS total_hr_dur,
                    CASE WHEN a.total_hr_dur > 0.0 THEN a.total_hr_dis ELSE 0.0 END AS total_hr_dis
             FROM garmin_summary a
             LEFT JOIN strava_activities b ON a.id = b.summary_id
@@ -1138,8 +1132,7 @@ async fn year_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<YearSumm
                    a.total_calories,
                    a.total_distance,
                    a.total_duration,
-                   CASE WHEN a.total_hr_dur > 0.0 THEN a.total_hr_dur ELSE 0.0 END AS \
-         total_hr_dur,
+                   CASE WHEN a.total_hr_dur > 0.0 THEN a.total_hr_dur ELSE 0.0 END AS total_hr_dur,
                    CASE WHEN a.total_hr_dur > 0.0 THEN a.total_hr_dis ELSE 0.0 END AS total_hr_dis
             FROM garmin_summary a
             LEFT JOIN strava_activities b ON a.id = b.summary_id
@@ -1153,8 +1146,7 @@ async fn year_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<YearSumm
             sum(total_duration) as total_duration,
             sum(total_hr_dur) as total_hr_dur,
             sum(total_hr_dis) as total_hr_dis,
-            count(distinct cast(begin_datetime at time zone 'localtime' as date)) as \
-         number_of_days
+            count(distinct cast(begin_datetime at time zone 'localtime' as date)) as number_of_days
         FROM c
         GROUP BY sport, year
         ORDER BY sport, year

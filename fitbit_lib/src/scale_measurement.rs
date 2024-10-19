@@ -1,12 +1,12 @@
 use anyhow::{format_err, Error};
 use futures::{stream::FuturesUnordered, TryStreamExt};
 use log::debug;
-use postgres_query::{query, query_dyn, FromSqlRow, Parameter};
+use postgres_query::{query, query_dyn, Error as PqError, FromSqlRow, Parameter, Query};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use stack_string::format_sstr;
-use std::{collections::HashSet, fmt, sync::Arc};
+use std::{collections::HashSet, convert::TryInto, fmt, sync::Arc};
 use time::{Date, OffsetDateTime};
 use uuid::Uuid;
 
@@ -245,39 +245,82 @@ impl ScaleMeasurement {
         Ok(result)
     }
 
+    fn get_scale_measurement_query<'a>(
+        select_str: &'a str,
+        start_date: &'a Option<Date>,
+        end_date: &'a Option<Date>,
+        offset: Option<usize>,
+        limit: Option<usize>,
+        order_str: &'a str,
+    ) -> Result<Query<'a>, PqError> {
+        let mut conditions = Vec::new();
+        let mut query_bindings = Vec::new();
+        if let Some(d) = start_date {
+            conditions.push("date(datetime) >= $start_date");
+            query_bindings.push(("start_date", d as Parameter));
+        }
+        if let Some(d) = end_date {
+            conditions.push("date(datetime) <= $end_date");
+            query_bindings.push(("end_date", d as Parameter));
+        }
+        let mut query = format_sstr!(
+            "SELECT {select_str} FROM scale_measurements {} {order_str}",
+            if conditions.is_empty() {
+                "".into()
+            } else {
+                format_sstr!("WHERE {}", conditions.join(" AND "))
+            }
+        );
+        if let Some(offset) = offset {
+            query.push_str(&format_sstr!(" OFFSET {offset}"));
+        }
+        if let Some(limit) = limit {
+            query.push_str(&format_sstr!(" LIMIT {limit}"));
+        }
+        query_bindings.shrink_to_fit();
+        debug!("query:\n{}", query);
+        query_dyn!(&query, ..query_bindings)
+    }
+
     /// # Errors
     /// Returns error if db query fails
     pub async fn read_from_db(
         pool: &PgPool,
         start_date: Option<Date>,
         end_date: Option<Date>,
+        offset: Option<usize>,
+        limit: Option<usize>,
     ) -> Result<Vec<Self>, Error> {
-        let query = "SELECT * FROM scale_measurements";
-        let mut conditions = Vec::new();
-        let mut bindings = Vec::new();
-        if let Some(d) = start_date {
-            conditions.push("date(datetime) >= $start_date");
-            bindings.push(("start_date", d));
-        }
-        if let Some(d) = end_date {
-            conditions.push("date(datetime) <= $end_date");
-            bindings.push(("end_date", d));
-        }
-        let query = format_sstr!(
-            "{query} {c} ORDER BY datetime",
-            c = if conditions.is_empty() {
-                "".into()
-            } else {
-                format_sstr!("WHERE {}", conditions.join(" AND "))
-            }
-        );
-        let mut query_bindings: Vec<_> =
-            bindings.iter().map(|(k, v)| (*k, v as Parameter)).collect();
-        query_bindings.shrink_to_fit();
-        debug!("query:\n{}", query);
-        let query = query_dyn!(&query, ..query_bindings)?;
+        let query = Self::get_scale_measurement_query(
+            "*",
+            &start_date,
+            &end_date,
+            offset,
+            limit,
+            "ORDER BY datetime",
+        )?;
         let conn = pool.get().await?;
         query.fetch(&conn).await.map_err(Into::into)
+    }
+
+    /// # Errors
+    /// Return error if db query fails
+    pub async fn get_total(
+        pool: &PgPool,
+        start_date: Option<Date>,
+        end_date: Option<Date>,
+    ) -> Result<usize, Error> {
+        #[derive(FromSqlRow)]
+        struct Count {
+            count: i64,
+        }
+
+        let query =
+            Self::get_scale_measurement_query("count(*)", &start_date, &end_date, None, None, "")?;
+        let conn = pool.get().await?;
+        let count: Count = query.fetch_one(&conn).await?;
+
+        Ok(count.count.try_into()?)
     }
 
     /// # Errors
@@ -286,7 +329,7 @@ impl ScaleMeasurement {
     where
         T: IntoIterator<Item = &'a mut Self>,
     {
-        let mut measurement_set: HashSet<_> = ScaleMeasurement::read_from_db(pool, None, None)
+        let mut measurement_set: HashSet<_> = Self::read_from_db(pool, None, None, None, None)
             .await?
             .into_par_iter()
             .map(|d| d.datetime)
@@ -380,7 +423,7 @@ mod tests {
 
         assert_eq!(exp, obs);
 
-        let measurements = ScaleMeasurement::read_from_db(&pool, None, None).await?;
+        let measurements = ScaleMeasurement::read_from_db(&pool, None, None, None, None).await?;
         assert!(measurements.len() > 0);
         let first = measurements[0];
         debug!("{:#?}", first);

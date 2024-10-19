@@ -503,27 +503,61 @@ pub async fn strava_activities(
     Ok(JsonBase::new(alist).into())
 }
 
+#[derive(Debug, Serialize, Deserialize, Schema)]
+#[schema(component = "Pagination")]
+struct Pagination {
+    #[schema(description = "Total Number of Entries")]
+    total: usize,
+    #[schema(description = "Number of Entries to Skip")]
+    offset: usize,
+    #[schema(description = "Number of Entries Returned")]
+    limit: usize,
+}
+
+#[derive(Debug, Serialize, Deserialize, Schema)]
+#[schema(component = "PaginatedStravaActivity")]
+struct PaginatedStravaActivity {
+    pagination: Pagination,
+    data: Vec<StravaActivityWrapper>,
+}
+
+#[derive(RwebResponse)]
+#[response(description = "Strava DB Activities")]
+struct StravaActivitiesDBResponse(JsonBase<PaginatedStravaActivity, Error>);
+
 #[get("/garmin/strava/activities_db")]
 pub async fn strava_activities_db(
     query: Query<StravaActivitiesRequest>,
     #[filter = "LoggedUser::filter"] _: LoggedUser,
     #[data] state: AppState,
-) -> WarpResult<StravaActivitiesResponse> {
+) -> WarpResult<StravaActivitiesDBResponse> {
     let query = query.into_inner();
-    let mut alist: Vec<_> = StravaActivity::read_from_db(
-        &state.db,
-        query.start_date.map(Into::into),
-        query.end_date.map(Into::into),
-    )
-    .await
-    .map_err(Into::<Error>::into)?
-    .map_ok(Into::into)
-    .try_collect()
-    .await
-    .map_err(Into::<Error>::into)?;
-    alist.shrink_to_fit();
 
-    Ok(JsonBase::new(alist).into())
+    let offset = query.offset.unwrap_or(0);
+    let limit = query.limit.unwrap_or(10);
+    let start_date = query.start_date.map(Into::into);
+    let end_date = query.end_date.map(Into::into);
+
+    let total = StravaActivity::get_total(&state.db, start_date, end_date)
+        .await
+        .map_err(Into::<Error>::into)?;
+    let pagination = Pagination {
+        total,
+        offset,
+        limit,
+    };
+
+    let mut data: Vec<_> =
+        StravaActivity::read_from_db(&state.db, start_date, end_date, Some(offset), Some(limit))
+            .await
+            .map_err(Into::<Error>::into)?
+            .map_ok(Into::into)
+            .try_collect()
+            .await
+            .map_err(Into::<Error>::into)?;
+    data.shrink_to_fit();
+
+    Ok(JsonBase::new(PaginatedStravaActivity { pagination, data }).into())
 }
 
 #[derive(Debug, Serialize, Deserialize, Schema)]
@@ -854,9 +888,11 @@ pub async fn heartrate_statistics_plots(
         .await
         .map_err(Into::<Error>::into)?;
     let mut stats: Vec<FitbitStatisticsSummary> = FitbitStatisticsSummary::read_from_db(
+        &state.db,
         Some(query.start_date.into()),
         Some(query.end_date.into()),
-        &state.db,
+        None,
+        None,
     )
     .await
     .map_err(Into::<Error>::into)?
@@ -893,9 +929,11 @@ pub async fn heartrate_statistics_plots_demo(
     let session = session.unwrap_or_default();
 
     let mut stats: Vec<FitbitStatisticsSummary> = FitbitStatisticsSummary::read_from_db(
+        &state.db,
         Some(query.start_date.into()),
         Some(query.end_date.into()),
-        &state.db,
+        None,
+        None,
     )
     .await
     .map_err(Into::<Error>::into)?
@@ -942,6 +980,8 @@ pub async fn fitbit_plots(
         &state.db,
         Some(query.start_date.into()),
         Some(query.end_date.into()),
+        None,
+        None,
     )
     .await
     .map_err(Into::<Error>::into)?;
@@ -979,6 +1019,8 @@ pub async fn fitbit_plots_demo(
         &state.db,
         Some(query.start_date.into()),
         Some(query.end_date.into()),
+        None,
+        None,
     )
     .await
     .map_err(Into::<Error>::into)?;
@@ -1132,9 +1174,16 @@ pub async fn fitbit_tcx_sync(
     Ok(JsonBase::new(flist).into())
 }
 
+#[derive(Debug, Serialize, Deserialize, Schema)]
+#[schema(component = "PaginatedScaleMeasurement")]
+struct PaginatedScaleMeasurement {
+    pagination: Pagination,
+    data: Vec<ScaleMeasurementWrapper>,
+}
+
 #[derive(RwebResponse)]
 #[response(description = "Scale Measurements")]
-struct ScaleMeasurementsResponse(JsonBase<Vec<ScaleMeasurementWrapper>, Error>);
+struct ScaleMeasurementsResponse(JsonBase<PaginatedScaleMeasurement, Error>);
 
 #[get("/garmin/scale_measurements")]
 pub async fn scale_measurement(
@@ -1143,19 +1192,36 @@ pub async fn scale_measurement(
     #[data] state: AppState,
 ) -> WarpResult<ScaleMeasurementsResponse> {
     let query = query.into_inner();
-    let mut slist: Vec<_> = ScaleMeasurement::read_from_db(
+
+    let offset = query.offset.unwrap_or(0);
+    let limit = query.limit.unwrap_or(10);
+    let start_date = query.start_date.map(Into::into);
+    let end_date = query.end_date.map(Into::into);
+
+    let total = ScaleMeasurement::get_total(&state.db, start_date, end_date)
+        .await
+        .map_err(Into::<Error>::into)?;
+    let pagination = Pagination {
+        total,
+        offset,
+        limit,
+    };
+
+    let mut data: Vec<_> = ScaleMeasurement::read_from_db(
         &state.db,
         query.start_date.map(Into::into),
         query.end_date.map(Into::into),
+        None,
+        None,
     )
     .await
     .map_err(Into::<Error>::into)?
     .into_iter()
     .map(Into::into)
     .collect();
-    slist.shrink_to_fit();
+    data.shrink_to_fit();
 
-    Ok(JsonBase::new(slist).into())
+    Ok(JsonBase::new(PaginatedScaleMeasurement { pagination, data }).into())
 }
 
 #[derive(RwebResponse)]
@@ -1351,9 +1417,16 @@ pub async fn fitbit_profile(
     Ok(HtmlBase::new(body).into())
 }
 
+#[derive(Debug, Serialize, Deserialize, Schema)]
+#[schema(component = "PaginatedGarminConnectActivity")]
+struct PaginatedGarminConnectActivity {
+    pagination: Pagination,
+    data: Vec<GarminConnectActivityWrapper>,
+}
+
 #[derive(RwebResponse)]
 #[response(description = "Garmin Connect Activities")]
-struct GarminConnectActivitiesResponse(JsonBase<Vec<GarminConnectActivityWrapper>, Error>);
+struct GarminConnectActivitiesResponse(JsonBase<PaginatedGarminConnectActivity, Error>);
 
 #[get("/garmin/garmin_connect_activities_db")]
 pub async fn garmin_connect_activities_db(
@@ -1362,11 +1435,27 @@ pub async fn garmin_connect_activities_db(
     #[data] state: AppState,
 ) -> WarpResult<GarminConnectActivitiesResponse> {
     let query = query.into_inner();
+    let offset = query.offset.unwrap_or(0);
+    let limit = query.limit.unwrap_or(10);
+    let start_date = query.start_date.map(Into::into);
+    let end_date = query.end_date.map(Into::into);
 
-    let mut alist: Vec<_> = GarminConnectActivity::read_from_db(
+    let total = GarminConnectActivity::get_total(&state.db, start_date, end_date)
+        .await
+        .map_err(Into::<Error>::into)?;
+
+    let pagination = Pagination {
+        total,
+        offset,
+        limit,
+    };
+
+    let mut data: Vec<_> = GarminConnectActivity::read_from_db(
         &state.db,
-        query.start_date.map(Into::into),
-        query.end_date.map(Into::into),
+        start_date,
+        end_date,
+        Some(offset),
+        Some(limit),
     )
     .await
     .map_err(Into::<Error>::into)?
@@ -1374,8 +1463,8 @@ pub async fn garmin_connect_activities_db(
     .try_collect()
     .await
     .map_err(Into::<Error>::into)?;
-    alist.shrink_to_fit();
-    Ok(JsonBase::new(alist).into())
+    data.shrink_to_fit();
+    Ok(JsonBase::new(PaginatedGarminConnectActivity { pagination, data }).into())
 }
 
 #[derive(RwebResponse)]
@@ -1403,9 +1492,16 @@ pub async fn garmin_connect_activities_db_update(
     Ok(HtmlBase::new(body).into())
 }
 
+#[derive(Debug, Serialize, Deserialize, Schema)]
+#[schema(component = "PaginatedFitbitActivity")]
+struct PaginatedFitbitActivity {
+    pagination: Pagination,
+    data: Vec<FitbitActivityWrapper>,
+}
+
 #[derive(RwebResponse)]
 #[response(description = "Fitbit Activities")]
-struct FitbitActivitiesDBResponse(JsonBase<Vec<FitbitActivityWrapper>, Error>);
+struct FitbitActivitiesDBResponse(JsonBase<PaginatedFitbitActivity, Error>);
 
 #[get("/garmin/fitbit/fitbit_activities_db")]
 pub async fn fitbit_activities_db(
@@ -1414,18 +1510,30 @@ pub async fn fitbit_activities_db(
     #[data] state: AppState,
 ) -> WarpResult<FitbitActivitiesDBResponse> {
     let query = query.into_inner();
-    let mut alist: Vec<_> = FitbitActivity::read_from_db(
-        &state.db,
-        query.start_date.map(Into::into),
-        query.end_date.map(Into::into),
-    )
-    .await
-    .map_err(Into::<Error>::into)?
-    .into_iter()
-    .map(Into::into)
-    .collect();
-    alist.shrink_to_fit();
-    Ok(JsonBase::new(alist).into())
+
+    let offset = query.offset.unwrap_or(0);
+    let limit = query.limit.unwrap_or(10);
+    let start_date = query.start_date.map(Into::into);
+    let end_date = query.end_date.map(Into::into);
+
+    let total = FitbitActivity::get_total(&state.db, start_date, end_date)
+        .await
+        .map_err(Into::<Error>::into)?;
+    let pagination = Pagination {
+        total,
+        offset,
+        limit,
+    };
+
+    let mut data: Vec<_> =
+        FitbitActivity::read_from_db(&state.db, start_date, end_date, Some(offset), Some(limit))
+            .await
+            .map_err(Into::<Error>::into)?
+            .into_iter()
+            .map(Into::into)
+            .collect();
+    data.shrink_to_fit();
+    Ok(JsonBase::new(PaginatedFitbitActivity { pagination, data }).into())
 }
 
 #[derive(Debug, Serialize, Deserialize, Schema)]
@@ -1461,9 +1569,16 @@ pub async fn fitbit_activities_db_update(
     Ok(HtmlBase::new(body).into())
 }
 
+#[derive(Debug, Serialize, Deserialize, Schema)]
+#[schema(component = "PaginatedFitbitStatisticsSummary")]
+struct PaginatedFitbitStatisticsSummary {
+    pagination: Pagination,
+    data: Vec<FitbitStatisticsSummaryWrapper>,
+}
+
 #[derive(RwebResponse)]
 #[response(description = "Heartrate Statistics")]
-struct HeartrateStatisticsResponse(JsonBase<Vec<FitbitStatisticsSummaryWrapper>, Error>);
+struct HeartrateStatisticsResponse(JsonBase<PaginatedFitbitStatisticsSummary, Error>);
 
 #[get("/garmin/fitbit/heartrate_statistics_summary_db")]
 pub async fn heartrate_statistics_summary_db(
@@ -1472,10 +1587,28 @@ pub async fn heartrate_statistics_summary_db(
     #[data] state: AppState,
 ) -> WarpResult<HeartrateStatisticsResponse> {
     let query = query.into_inner();
-    let mut alist: Vec<_> = FitbitStatisticsSummary::read_from_db(
-        query.start_date.map(Into::into),
-        query.end_date.map(Into::into),
+
+    let offset = query.offset.unwrap_or(0);
+    let limit = query.limit.unwrap_or(10);
+    let start_date = query.start_date.map(Into::into);
+    let end_date = query.end_date.map(Into::into);
+
+    let total = FitbitStatisticsSummary::get_total(&state.db, start_date, end_date)
+        .await
+        .map_err(Into::<Error>::into)?;
+
+    let pagination = Pagination {
+        total,
+        offset,
+        limit,
+    };
+
+    let mut data: Vec<_> = FitbitStatisticsSummary::read_from_db(
         &state.db,
+        start_date,
+        end_date,
+        Some(offset),
+        Some(limit),
     )
     .await
     .map_err(Into::<Error>::into)?
@@ -1486,8 +1619,8 @@ pub async fn heartrate_statistics_summary_db(
     .try_collect()
     .await
     .map_err(Into::<Error>::into)?;
-    alist.shrink_to_fit();
-    Ok(JsonBase::new(alist).into())
+    data.shrink_to_fit();
+    Ok(JsonBase::new(PaginatedFitbitStatisticsSummary { pagination, data }).into())
 }
 
 #[derive(RwebResponse)]

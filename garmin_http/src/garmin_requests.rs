@@ -160,6 +160,8 @@ pub struct ScaleMeasurementRequest {
     pub button_date: Option<DateType>,
     #[schema(description = "Offset")]
     pub offset: Option<usize>,
+    #[schema(description = "Limit")]
+    pub limit: Option<usize>,
 }
 
 impl ScaleMeasurementRequest {
@@ -184,6 +186,7 @@ impl ScaleMeasurementRequest {
                 None => Some(OffsetDateTime::now_utc().date().into()),
             },
             offset: self.offset,
+            limit: self.limit,
         }
     }
 }
@@ -257,6 +260,10 @@ pub struct StravaActivitiesRequest {
     pub start_date: Option<DateType>,
     #[schema(description = "End Date")]
     pub end_date: Option<DateType>,
+    #[schema(description = "Offset")]
+    pub offset: Option<usize>,
+    #[schema(description = "Limit")]
+    pub limit: Option<usize>,
 }
 
 impl StravaActivitiesRequest {

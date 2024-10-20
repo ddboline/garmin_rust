@@ -1211,8 +1211,8 @@ pub async fn scale_measurement(
         &state.db,
         query.start_date.map(Into::into),
         query.end_date.map(Into::into),
-        None,
-        None,
+        Some(offset),
+        Some(limit),
     )
     .await
     .map_err(Into::<Error>::into)?

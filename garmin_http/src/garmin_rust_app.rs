@@ -280,7 +280,7 @@ async fn run_app(config: &GarminConfig, pool: &PgPool) -> Result<(), Error> {
             move || rweb::reply::json(spec.as_ref())
         });
 
-    let spec_yaml = serde_yaml::to_string(spec.as_ref())?;
+    let spec_yaml = serde_yml::to_string(spec.as_ref())?;
     let spec_yaml_path = rweb::path!("garmin" / "openapi" / "yaml")
         .and(rweb::path::end())
         .map(move || {

@@ -27,7 +27,7 @@ serde_json = "1.0"
 stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", features=["postgres_types"], tag="0.9.3" }
 time = {version="0.3", features=["serde-human-readable", "macros", "formatting", "parsing"]}
 time-tz = {version="2.0", features=["system"]}
-tokio = {version="1.38", features=["rt", "macros", "rt-multi-thread"]}
+tokio = {version="1.40", features=["rt", "macros", "rt-multi-thread"]}
 uuid = { version = "1.0", features = ["serde", "v4"] }
 url = "2.3"
 

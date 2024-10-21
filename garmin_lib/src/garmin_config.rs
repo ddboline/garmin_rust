@@ -207,12 +207,12 @@ impl GarminConfig {
             _ => &default_fname,
         };
 
-        dotenv::dotenv().ok();
+        dotenvy::dotenv().ok();
 
         if env_file.exists() {
-            dotenv::from_path(env_file).ok();
+            dotenvy::from_path(env_file).ok();
         } else if Path::new("config.env").exists() {
-            dotenv::from_filename("config.env").ok();
+            dotenvy::from_filename("config.env").ok();
         }
 
         let conf: GarminConfigInner = envy::from_env()?;

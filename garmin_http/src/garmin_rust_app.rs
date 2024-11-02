@@ -13,7 +13,6 @@ use stack_string::format_sstr;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::{task::spawn, time::interval};
 
-use fitbit_lib::fitbit_client::FitbitClient;
 use garmin_cli::{garmin_cli::GarminCli, garmin_cli_opts::GarminCliOpts};
 use garmin_lib::garmin_config::GarminConfig;
 use garmin_models::garmin_correction_lap::GarminCorrectionMap;
@@ -22,14 +21,11 @@ use garmin_utils::pgpool::PgPool;
 use crate::{
     errors::error_response,
     garmin_rust_routes::{
-        add_garmin_correction, fitbit_activities, fitbit_activities_db,
-        fitbit_activities_db_update, fitbit_activity_types, fitbit_auth, fitbit_bodyweight,
-        fitbit_bodyweight_sync, fitbit_callback, fitbit_heartrate_api, fitbit_heartrate_cache,
-        fitbit_heartrate_cache_update, fitbit_plots, fitbit_plots_demo, fitbit_profile,
-        fitbit_refresh, fitbit_sync, fitbit_tcx_sync, garmin, garmin_connect_activities_db,
-        garmin_connect_activities_db_update, garmin_demo, garmin_scripts_demo_js,
-        garmin_scripts_js, garmin_sync, garmin_upload, heartrate_plots, heartrate_plots_demo,
-        heartrate_statistics_plots, heartrate_statistics_plots_demo,
+        add_garmin_correction, fitbit_activities_db, fitbit_activities_db_update,
+        fitbit_heartrate_cache, fitbit_heartrate_cache_update, fitbit_plots, fitbit_plots_demo,
+        garmin, garmin_connect_activities_db, garmin_connect_activities_db_update, garmin_demo,
+        garmin_scripts_demo_js, garmin_scripts_js, garmin_sync, garmin_upload, heartrate_plots,
+        heartrate_plots_demo, heartrate_statistics_plots, heartrate_statistics_plots_demo,
         heartrate_statistics_summary_db, heartrate_statistics_summary_db_update, initialize_map_js,
         line_plot_js, race_result_flag, race_result_import, race_result_plot,
         race_result_plot_demo, race_results_db, race_results_db_update, scale_measurement,
@@ -73,14 +69,6 @@ pub async fn start_app() -> Result<(), Error> {
                     info!("processed {filenames:?} and {input_files:?}");
                     for line in cli.sync_everything().await.unwrap_or(Vec::new()) {
                         info!("{line}");
-                    }
-                    if let Ok(client) = FitbitClient::with_auth(cli.config.clone()).await {
-                        if let Ok(result) = client.sync_everything(&cli.pool).await {
-                            info!(
-                                "Syncing Fitbit Heartrate {hr}",
-                                hr = result.measurements.len(),
-                            );
-                        }
                     }
                 }
             }
@@ -130,25 +118,15 @@ fn get_garmin_path(app: &AppState) -> BoxedFilter<(impl Reply,)> {
         .boxed();
     let garmin_sync_path = garmin_sync(app.clone()).boxed();
     let strava_sync_path = strava_sync(app.clone()).boxed();
-    let fitbit_auth_path = fitbit_auth(app.clone()).boxed();
-    let fitbit_refresh_path = fitbit_refresh(app.clone()).boxed();
-    let fitbit_callback_path = fitbit_callback(app.clone()).boxed();
-    let fitbit_heartrate_api_path = fitbit_heartrate_api(app.clone()).boxed();
     let heartrate_cache_get = fitbit_heartrate_cache(app.clone()).boxed();
     let heartrate_cache_post = fitbit_heartrate_cache_update(app.clone()).boxed();
     let heartrate_cache_path = heartrate_cache_get.or(heartrate_cache_post).boxed();
-    let fitbit_sync_path = fitbit_sync(app.clone()).boxed();
-    let fitbit_bodyweight_path = fitbit_bodyweight(app.clone()).boxed();
-    let fitbit_bodyweight_sync_path = fitbit_bodyweight_sync(app.clone()).boxed();
     let fitbit_plots_path = fitbit_plots(app.clone()).boxed();
     let fitbit_plots_demo_path = fitbit_plots_demo(app.clone()).boxed();
     let heartrate_statistics_plots_path = heartrate_statistics_plots(app.clone()).boxed();
     let heartrate_statistics_plots_demo_path = heartrate_statistics_plots_demo(app.clone()).boxed();
     let heartrate_plots_path = heartrate_plots(app.clone()).boxed();
     let heartrate_plots_demo_path = heartrate_plots_demo(app.clone()).boxed();
-    let fitbit_tcx_sync_path = fitbit_tcx_sync(app.clone()).boxed();
-    let fitbit_activity_types_path = fitbit_activity_types(app.clone()).boxed();
-    let fitbit_activities_path = fitbit_activities(app.clone()).boxed();
     let fitbit_activities_db_get = fitbit_activities_db(app.clone()).boxed();
     let fitbit_activities_db_post = fitbit_activities_db_update(app.clone()).boxed();
     let fitbit_activities_db_path = fitbit_activities_db_get
@@ -160,27 +138,15 @@ fn get_garmin_path(app: &AppState) -> BoxedFilter<(impl Reply,)> {
     let heartrate_statistics_summary_db_path = heartrate_statistics_summary_db_get
         .or(heartrate_statistics_summary_db_post)
         .boxed();
-    let fitbit_profile_path = fitbit_profile(app.clone()).boxed();
-    let fitbit_path = fitbit_auth_path
-        .or(fitbit_refresh_path)
-        .or(fitbit_callback_path)
-        .or(fitbit_heartrate_api_path)
-        .or(heartrate_cache_path)
-        .or(fitbit_sync_path)
-        .or(fitbit_bodyweight_path)
-        .or(fitbit_bodyweight_sync_path)
+    let fitbit_path = heartrate_cache_path
         .or(fitbit_plots_path)
         .or(fitbit_plots_demo_path)
         .or(heartrate_statistics_plots_path)
         .or(heartrate_statistics_plots_demo_path)
         .or(heartrate_plots_path)
         .or(heartrate_plots_demo_path)
-        .or(fitbit_tcx_sync_path)
-        .or(fitbit_activity_types_path)
-        .or(fitbit_activities_path)
         .or(fitbit_activities_db_path)
         .or(heartrate_statistics_summary_db_path)
-        .or(fitbit_profile_path)
         .boxed();
     let scale_measurements_get = scale_measurement(app.clone()).boxed();
     let scale_measurements_post = scale_measurement_update(app.clone()).boxed();

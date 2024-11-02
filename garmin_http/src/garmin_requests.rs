@@ -3,21 +3,20 @@ use rweb::Schema;
 use rweb_helper::{DateTimeType, DateType};
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
-use std::{collections::BTreeSet, path::PathBuf};
+use std::collections::BTreeSet;
 use time::{macros::time, Date, Duration, OffsetDateTime};
 use time_tz::OffsetDateTimeExt;
 use tokio::task::spawn_blocking;
 use url::Url;
 
 use fitbit_lib::{
-    fitbit_client::FitbitClient, fitbit_heartrate::FitbitHeartRate,
-    fitbit_statistics_summary::FitbitStatisticsSummary,
+    fitbit_heartrate::FitbitHeartRate, fitbit_statistics_summary::FitbitStatisticsSummary,
 };
 use garmin_cli::garmin_cli::{GarminCli, GarminRequest};
 use garmin_lib::{date_time_wrapper::DateTimeWrapper, garmin_config::GarminConfig};
 use garmin_models::{
-    fitbit_activity::FitbitActivity, garmin_correction_lap::GarminCorrectionLap,
-    garmin_summary::GarminSummary, strava_activity::StravaActivity,
+    garmin_correction_lap::GarminCorrectionLap, garmin_summary::GarminSummary,
+    strava_activity::StravaActivity,
 };
 use garmin_reports::garmin_constraints::GarminConstraints;
 use garmin_utils::pgpool::PgPool;
@@ -59,7 +58,7 @@ impl StravaSyncRequest {
         &self,
         pool: &PgPool,
         config: &GarminConfig,
-    ) -> Result<Vec<PathBuf>, Error> {
+    ) -> Result<Vec<StravaActivity>, Error> {
         let gcli = GarminCli::from_pool(pool)?;
 
         let start_datetime = self
@@ -72,18 +71,17 @@ impl StravaSyncRequest {
             .or_else(|| Some(OffsetDateTime::now_utc()));
 
         let client = StravaClient::with_auth(config.clone()).await?;
-        let filenames = client
+        let activities = client
             .sync_with_client(start_datetime, end_datetime, pool)
             .await?;
 
-        if !filenames.is_empty() {
-            gcli.process_filenames(&filenames).await?;
+        if !activities.is_empty() {
             gcli.sync_everything().await?;
             gcli.proc_everything().await?;
         }
         StravaActivity::fix_summary_id_in_db(pool).await?;
 
-        Ok(filenames)
+        Ok(activities)
     }
 }
 
@@ -126,28 +124,6 @@ impl FitbitHeartrateUpdateRequest {
 #[derive(Serialize, Deserialize, Schema)]
 pub struct FitbitTcxSyncRequest {
     pub start_date: Option<DateType>,
-}
-
-impl FitbitTcxSyncRequest {
-    /// # Errors
-    /// Returns error if db query fails
-    pub async fn process(
-        &self,
-        pool: &PgPool,
-        config: &GarminConfig,
-    ) -> Result<Vec<PathBuf>, Error> {
-        let client = FitbitClient::with_auth(config.clone()).await?;
-        let start_date = self.start_date.map_or_else(
-            || (OffsetDateTime::now_utc() - Duration::days(10)).date(),
-            Into::into,
-        );
-        let filenames = client.sync_tcx(start_date).await?;
-
-        let gcli = GarminCli::from_pool(pool)?;
-        gcli.sync_everything().await?;
-        gcli.proc_everything().await?;
-        Ok(filenames)
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Schema)]
@@ -447,31 +423,6 @@ impl AddGarminCorrectionRequest {
 #[derive(Serialize, Deserialize, Schema)]
 pub struct FitbitActivitiesRequest {
     pub start_date: Option<DateType>,
-}
-
-impl FitbitActivitiesRequest {
-    /// # Errors
-    /// Returns error if db query fails
-    pub async fn get_activities(
-        &self,
-        config: &GarminConfig,
-    ) -> Result<Vec<FitbitActivity>, Error> {
-        let local = DateTimeWrapper::local_tz();
-        let config = config.clone();
-        let client = FitbitClient::with_auth(config).await?;
-        let start_date = self.start_date.map_or_else(
-            || {
-                (OffsetDateTime::now_utc() - Duration::days(14))
-                    .to_timezone(local)
-                    .date()
-            },
-            Into::into,
-        );
-        client
-            .get_all_activities(start_date)
-            .await
-            .map_err(Into::into)
-    }
 }
 
 #[derive(Serialize, Deserialize, Schema)]

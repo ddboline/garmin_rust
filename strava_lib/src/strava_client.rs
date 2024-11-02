@@ -1,6 +1,5 @@
 use anyhow::{format_err, Error};
 use crossbeam_utils::atomic::AtomicCell;
-use futures::{future::try_join_all, TryStreamExt};
 use log::warn;
 use maplit::hashmap;
 use once_cell::sync::Lazy;
@@ -9,32 +8,25 @@ use reqwest::{
     multipart::{Form, Part},
     Client, Url,
 };
-use select::{document::Document, predicate::Attr};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use stack_string::{format_sstr, StackString};
-use std::{
-    collections::HashSet,
-    path::{Path, PathBuf},
-};
+use std::path::Path;
 use tempfile::Builder;
 use time::{macros::format_description, OffsetDateTime};
 use time_tz::{OffsetDateTimeExt, Tz};
 use tokio::{
-    fs::{create_dir_all, File},
+    fs::File,
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     task::spawn_blocking,
     time::sleep,
 };
-use tokio_stream::StreamExt;
 
 use garmin_lib::{
     date_time_wrapper::{iso8601::convert_datetime_to_str, DateTimeWrapper},
     garmin_config::GarminConfig,
 };
-use garmin_models::{
-    garmin_summary::get_list_of_activities_from_db, strava_activity::StravaActivity,
-};
+use garmin_models::strava_activity::StravaActivity;
 use garmin_utils::{
     garmin_util::{get_random_string, gzip_file},
     pgpool::PgPool,
@@ -43,13 +35,6 @@ use garmin_utils::{
 };
 
 static CSRF_TOKEN: Lazy<AtomicCell<Option<StackString>>> = Lazy::new(|| AtomicCell::new(None));
-static WEB_CSRF: Lazy<AtomicCell<Option<WebCsrf>>> = Lazy::new(|| AtomicCell::new(None));
-
-#[derive(Clone, Debug)]
-struct WebCsrf {
-    param: StackString,
-    token: StackString,
-}
 
 #[derive(Debug, Copy, Clone)]
 pub enum StravaAuthType {
@@ -124,136 +109,6 @@ impl StravaClient {
             }
         }
         Ok(client)
-    }
-
-    /// # Errors
-    /// Return error if authorization calls fail
-    pub async fn webauth(&self) -> Result<(), Error> {
-        let strava_endpoint = self
-            .config
-            .strava_endpoint
-            .as_ref()
-            .ok_or_else(|| format_err!("Missing strava url"))?;
-
-        let login_url = strava_endpoint.join("login")?;
-        let session_url = strava_endpoint.join("session")?;
-        let email = self
-            .config
-            .strava_email
-            .as_ref()
-            .ok_or_else(|| format_err!("No Strava Email"))?;
-        let password = self
-            .config
-            .strava_password
-            .as_ref()
-            .ok_or_else(|| format_err!("No Strava Password"))?;
-
-        let text = self
-            .client
-            .get(login_url)
-            .send()
-            .await?
-            .error_for_status()?
-            .text()
-            .await?;
-        let (param, token) = Self::extract_web_csrf(&text)?;
-        let data = hashmap! {
-            "email" => email.as_str(),
-            "password" => password.as_str(),
-            "remember_me" => "on",
-            param.as_str() => token.as_str(),
-        };
-        self.client
-            .post(session_url)
-            .form(&data)
-            .send()
-            .await?
-            .error_for_status()?;
-        WEB_CSRF.store(Some(WebCsrf { param, token }));
-        Ok(())
-    }
-
-    async fn export_original(&self, activity_id: u64) -> Result<PathBuf, Error> {
-        if let Some(web_csrf) = WEB_CSRF.swap(None) {
-            WEB_CSRF.swap(Some(web_csrf));
-        } else {
-            self.webauth().await?;
-        }
-        let url = self
-            .config
-            .strava_endpoint
-            .as_ref()
-            .unwrap()
-            .join(&format_sstr!("activities/{activity_id}/export_original"))?;
-        let resp = self.client.get(url).send().await?.error_for_status()?;
-
-        create_dir_all(&self.config.download_directory).await?;
-
-        let id_str = StackString::from_display(activity_id);
-        let fname = self
-            .config
-            .download_directory
-            .join(id_str)
-            .with_extension("fit");
-
-        let mut f = File::create(&fname).await?;
-        let mut stream = resp.bytes_stream();
-        while let Some(item) = stream.next().await {
-            f.write_all(&item?).await?;
-        }
-
-        Ok(fname)
-    }
-
-    /// # Errors
-    /// Return error if api calls fail
-    pub async fn delete_activity(&self, activity_id: u64) -> Result<(), Error> {
-        let web_csrf = if let Some(web_csrf) = WEB_CSRF.swap(None) {
-            web_csrf
-        } else {
-            self.webauth().await?;
-            if let Some(web_csrf) = WEB_CSRF.swap(None) {
-                web_csrf
-            } else {
-                return Err(format_err!("Auth failure"));
-            }
-        };
-        let url = self
-            .config
-            .strava_endpoint
-            .as_ref()
-            .ok_or_else(|| format_err!("Bad URL"))?
-            .join(&format_sstr!("activities/{activity_id}"))?;
-        let data = hashmap! {
-            "_method" => "delete",
-            web_csrf.param.as_str() => web_csrf.token.as_str(),
-        };
-        self.client
-            .post(url)
-            .form(&data)
-            .send()
-            .await?
-            .error_for_status()?;
-        WEB_CSRF.swap(Some(web_csrf));
-        Ok(())
-    }
-
-    fn extract_web_csrf(text: &str) -> Result<(StackString, StackString), Error> {
-        let document = Document::from(text);
-        if let Some(param) = document
-            .find(Attr("name", "csrf-param"))
-            .next()
-            .and_then(|node| node.attr("content"))
-        {
-            if let Some(token) = document
-                .find(Attr("name", "csrf-token"))
-                .next()
-                .and_then(|node| node.attr("content"))
-            {
-                return Ok((param.into(), token.into()));
-            }
-        }
-        Err(format_err!("No csrf token"))
     }
 
     /// # Errors
@@ -712,7 +567,7 @@ impl StravaClient {
         start_datetime: Option<OffsetDateTime>,
         end_datetime: Option<OffsetDateTime>,
         pool: &PgPool,
-    ) -> Result<Vec<PathBuf>, Error> {
+    ) -> Result<Vec<StravaActivity>, Error> {
         let new_activities: Vec<_> = self
             .get_all_strava_activites(start_datetime, end_datetime)
             .await?;
@@ -720,38 +575,7 @@ impl StravaClient {
         StravaActivity::upsert_activities(&new_activities, pool).await?;
         StravaActivity::fix_summary_id_in_db(pool).await?;
 
-        let mut constraints: SmallVec<[StackString; 2]> = SmallVec::new();
-        if let Some(start_datetime) = start_datetime {
-            constraints.push(format_sstr!("begin_datetime >= '{start_datetime}'"));
-        }
-        if let Some(end_datetime) = end_datetime {
-            constraints.push(format_sstr!("begin_datetime <= '{end_datetime}'"));
-        }
-        let constraints = constraints.join(" AND ");
-
-        let mut old_activities: HashSet<_> = get_list_of_activities_from_db(&constraints, pool)
-            .await?
-            .map_ok(|(d, _)| d)
-            .try_collect()
-            .await?;
-        old_activities.shrink_to_fit();
-
-        #[allow(clippy::manual_filter_map)]
-        let futures = new_activities
-            .into_iter()
-            .filter_map(|activity| {
-                if old_activities.contains(&activity.start_date) {
-                    None
-                } else {
-                    Some(activity.id)
-                }
-            })
-            .map(|activity_id| async move {
-                self.export_original(activity_id as u64)
-                    .await
-                    .map_err(Into::into)
-            });
-        try_join_all(futures).await
+        Ok(new_activities)
     }
 }
 
@@ -807,7 +631,7 @@ mod tests {
     use time::{Duration, OffsetDateTime};
 
     use garmin_lib::garmin_config::GarminConfig;
-    use garmin_utils::{garmin_util::get_md5sum, pgpool::PgPool, sport_types::SportTypes};
+    use garmin_utils::{pgpool::PgPool, sport_types::SportTypes};
 
     use crate::strava_client::{StravaActivity, StravaClient};
 
@@ -904,38 +728,6 @@ mod tests {
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
         results?;
         assert_eq!(new_activities.len(), 0);
-        Ok(())
-    }
-
-    #[tokio::test]
-    #[ignore]
-    async fn test_webauth() -> Result<(), Error> {
-        let config = GarminConfig::get_config(None)?;
-        let client = StravaClient::with_auth(config).await?;
-        client.webauth().await?;
-        client.export_original(3862793062).await?;
-
-        let fname = client
-            .config
-            .download_directory
-            .join("3862793062")
-            .with_extension("fit");
-        assert!(fname.exists());
-        assert_eq!(&get_md5sum(&fname)?, "6365f391e3873cfdfeb5d716195f7271");
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_extract_web_csrf() -> Result<(), Error> {
-        let text = include_str!("../../tests/data/strava_login_page.html");
-        let (name, token) = StravaClient::extract_web_csrf(&text)?;
-        assert_eq!(name.as_str(), "authenticity_token");
-        assert_eq!(
-            token.as_str(),
-            "1YVkvKYefXvFw1a++rprn9XM1xgT88O6A8UumIH99P4OVYl+wm9GyZp0zBrxNc8hRPqa8wzwJcJ/\
-             9YHsQAIZaQ=="
-        );
         Ok(())
     }
 }

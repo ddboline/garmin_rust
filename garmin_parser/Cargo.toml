@@ -1,6 +1,6 @@
 [package]
 name = "garmin_parser"
-version = "0.14.25"
+version = "0.14.26"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2021"
 

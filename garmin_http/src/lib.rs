@@ -30,7 +30,6 @@ use stack_string::StackString;
 use std::{borrow::Cow, collections::HashMap};
 
 use fitbit_lib::{
-    fitbit_client::FitbitBodyWeightFatUpdateOutput,
     fitbit_heartrate::{FitbitBodyWeightFat, FitbitHeartRate},
     fitbit_statistics_summary::FitbitStatisticsSummary,
     scale_measurement::ScaleMeasurement,
@@ -149,21 +148,6 @@ struct _ScaleMeasurementWrapper {
     muscle_pct: f64,
     #[schema(description = "Bone %")]
     bone_pct: f64,
-}
-
-#[derive(Debug, Serialize, Into, From)]
-pub struct FitbitBodyWeightFatUpdateOutputWrapper(FitbitBodyWeightFatUpdateOutput);
-
-derive_rweb_schema!(
-    FitbitBodyWeightFatUpdateOutputWrapper,
-    _FitbitBodyWeightFatUpdateOutputWrapper
-);
-
-#[derive(Debug, Serialize, Schema)]
-#[schema(component = "FitbitBodyWeightFatUpdate")]
-struct _FitbitBodyWeightFatUpdateOutputWrapper {
-    #[schema(description = "Measurements")]
-    measurements: Vec<ScaleMeasurementWrapper>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Into, From)]
@@ -316,10 +300,9 @@ mod test {
     use rweb_helper::derive_rweb_test;
 
     use crate::{
-        FitbitActivityWrapper, FitbitBodyWeightFatUpdateOutputWrapper, FitbitBodyWeightFatWrapper,
-        FitbitHeartRateWrapper, FitbitStatisticsSummaryWrapper, GarminConnectActivityWrapper,
-        RaceResultsWrapper, RaceTypeWrapper, ScaleMeasurementWrapper, StravaActivityWrapper,
-        _FitbitActivityWrapper, _FitbitBodyWeightFatUpdateOutputWrapper,
+        FitbitActivityWrapper, FitbitBodyWeightFatWrapper, FitbitHeartRateWrapper,
+        FitbitStatisticsSummaryWrapper, GarminConnectActivityWrapper, RaceResultsWrapper,
+        RaceTypeWrapper, ScaleMeasurementWrapper, StravaActivityWrapper, _FitbitActivityWrapper,
         _FitbitBodyWeightFatWrapper, _FitbitHeartRateWrapper, _FitbitStatisticsSummaryWrapper,
         _GarminConnectActivityWrapper, _RaceResultsWrapper, _RaceTypeWrapper,
         _ScaleMeasurementWrapper, _StravaActivityWrapper,
@@ -331,10 +314,6 @@ mod test {
         derive_rweb_test!(StravaActivityWrapper, _StravaActivityWrapper);
         derive_rweb_test!(FitbitBodyWeightFatWrapper, _FitbitBodyWeightFatWrapper);
         derive_rweb_test!(ScaleMeasurementWrapper, _ScaleMeasurementWrapper);
-        derive_rweb_test!(
-            FitbitBodyWeightFatUpdateOutputWrapper,
-            _FitbitBodyWeightFatUpdateOutputWrapper
-        );
         derive_rweb_test!(FitbitActivityWrapper, _FitbitActivityWrapper);
         derive_rweb_test!(GarminConnectActivityWrapper, _GarminConnectActivityWrapper);
         derive_rweb_test!(

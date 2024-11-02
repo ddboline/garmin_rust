@@ -20,7 +20,7 @@ use tokio::{fs::File, io::AsyncWriteExt, task::spawn_blocking};
 use tokio_stream::StreamExt;
 
 use fitbit_lib::{
-    fitbit_archive, fitbit_client::FitbitClient, fitbit_heartrate::FitbitHeartRate,
+    fitbit_archive, fitbit_heartrate::FitbitHeartRate,
     fitbit_statistics_summary::FitbitStatisticsSummary, scale_measurement::ScaleMeasurement,
 };
 use garmin_cli::garmin_cli::{GarminCli, GarminRequest};
@@ -46,31 +46,29 @@ use strava_lib::strava_client::StravaClient;
 use crate::{
     errors::ServiceError as Error,
     garmin_elements::{
-        create_fitbit_table, fitbit_body, index_new_body, scale_measurement_manual_input_body,
-        strava_body, table_body, IndexConfig,
+        index_new_body, scale_measurement_manual_input_body, strava_body, table_body, IndexConfig,
     },
     garmin_requests::{
-        AddGarminCorrectionRequest, FitbitActivitiesRequest, FitbitHeartrateCacheRequest,
-        FitbitHeartratePlotRequest, FitbitHeartrateUpdateRequest, FitbitStatisticsPlotRequest,
-        FitbitTcxSyncRequest, GarminConnectActivitiesDBUpdateRequest, GarminHtmlRequest,
+        AddGarminCorrectionRequest, FitbitHeartrateCacheRequest, FitbitHeartratePlotRequest,
+        FitbitHeartrateUpdateRequest, FitbitStatisticsPlotRequest,
+        GarminConnectActivitiesDBUpdateRequest, GarminHtmlRequest,
         HeartrateStatisticsSummaryDBUpdateRequest, ScaleMeasurementPlotRequest,
         ScaleMeasurementRequest, ScaleMeasurementUpdateRequest, StravaActivitiesRequest,
         StravaCreateRequest, StravaSyncRequest, StravaUpdateRequest, StravaUploadRequest,
     },
     garmin_rust_app::AppState,
     logged_user::{LoggedUser, Session},
-    FitbitActivityTypesWrapper, FitbitActivityWrapper, FitbitBodyWeightFatUpdateOutputWrapper,
-    FitbitBodyWeightFatWrapper, FitbitHeartRateWrapper, FitbitStatisticsSummaryWrapper,
-    GarminConnectActivityWrapper, RaceResultsWrapper, RaceTypeWrapper, ScaleMeasurementWrapper,
-    StravaActivityWrapper,
+    FitbitActivityTypesWrapper, FitbitActivityWrapper, FitbitHeartRateWrapper,
+    FitbitStatisticsSummaryWrapper, GarminConnectActivityWrapper, RaceResultsWrapper,
+    RaceTypeWrapper, ScaleMeasurementWrapper, StravaActivityWrapper,
 };
 
 pub type WarpResult<T> = Result<T, Rejection>;
 pub type HttpResult<T> = Result<T, Error>;
 
 #[derive(Deserialize, Schema)]
-pub struct FilterRequest {
-    pub filter: Option<StackString>,
+struct FilterRequest {
+    filter: Option<StackString>,
 }
 
 fn proc_pattern_wrapper<T: AsRef<str>>(
@@ -351,16 +349,6 @@ async fn save_file(file_path: &str, field: Part) -> Result<u64, anyhow::Error> {
     Ok(file_size)
 }
 
-#[derive(Serialize, Deserialize, Schema)]
-pub struct GarminConnectHrSyncRequest {
-    pub date: DateType,
-}
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct GarminConnectHrApiRequest {
-    pub date: DateType,
-}
-
 #[derive(RwebResponse)]
 #[response(description = "Garmin Sync", content = "html")]
 struct GarminSyncResponse(HtmlBase<StackString, Error>);
@@ -393,7 +381,7 @@ pub async fn strava_sync(
         .run_sync(&state.db, &state.config)
         .await?
         .into_iter()
-        .map(|p| p.to_string_lossy().into_owned())
+        .map(|a| a.name)
         .join("\n")
         .into();
     let body = table_body(body)?.into();
@@ -448,11 +436,11 @@ pub async fn strava_refresh(
 
 #[derive(Debug, Serialize, Deserialize, Schema)]
 #[schema(component = "StravaCallbackRequest")]
-pub struct StravaCallbackRequest {
+struct StravaCallbackRequest {
     #[schema(description = "Authorization Code")]
-    pub code: StackString,
+    code: StackString,
     #[schema(description = "CSRF State")]
-    pub state: StackString,
+    state: StackString,
 }
 
 #[derive(RwebResponse)]
@@ -562,8 +550,8 @@ pub async fn strava_activities_db(
 
 #[derive(Debug, Serialize, Deserialize, Schema)]
 #[schema(component = "StravaActiviesDBUpdateRequest")]
-pub struct StravaActiviesDBUpdateRequest {
-    pub updates: Vec<StravaActivityWrapper>,
+struct StravaActiviesDBUpdateRequest {
+    updates: Vec<StravaActivityWrapper>,
 }
 
 #[derive(RwebResponse)]
@@ -641,71 +629,8 @@ pub async fn strava_create(
 }
 
 #[derive(RwebResponse)]
-#[response(description = "Fitbit Auth", content = "html")]
-struct FitbitAuthResponse(HtmlBase<StackString, Error>);
-
-#[get("/garmin/fitbit/auth")]
-pub async fn fitbit_auth(
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
-) -> WarpResult<FitbitAuthResponse> {
-    let client = FitbitClient::from_file(state.config.clone())
-        .await
-        .map_err(Into::<Error>::into)?;
-    let url = client.get_fitbit_auth_url().map_err(Into::<Error>::into)?;
-    let body = url.as_str().into();
-    Ok(HtmlBase::new(body).into())
-}
-
-#[derive(RwebResponse)]
-#[response(description = "Fitbit Refresh Auth", content = "html")]
-struct FitbitRefreshResponse(HtmlBase<StackString, Error>);
-
-#[get("/garmin/fitbit/refresh_auth")]
-pub async fn fitbit_refresh(
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
-) -> WarpResult<FitbitRefreshResponse> {
-    let mut client = FitbitClient::from_file(state.config.clone())
-        .await
-        .map_err(Into::<Error>::into)?;
-    let body = client
-        .refresh_fitbit_access_token()
-        .await
-        .map_err(Into::<Error>::into)?;
-    client.to_file().await.map_err(Into::<Error>::into)?;
-    Ok(HtmlBase::new(body).into())
-}
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct FitbitHeartrateApiRequest {
-    date: DateType,
-}
-
-#[derive(RwebResponse)]
 #[response(description = "Fitbit Heartrate")]
 struct FitbitHeartRateResponse(JsonBase<Vec<FitbitHeartRateWrapper>, Error>);
-
-#[get("/garmin/fitbit/heartrate_api")]
-pub async fn fitbit_heartrate_api(
-    query: Query<FitbitHeartrateApiRequest>,
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
-) -> WarpResult<FitbitHeartRateResponse> {
-    let query = query.into_inner();
-    let client = FitbitClient::with_auth(state.config.clone())
-        .await
-        .map_err(Into::<Error>::into)?;
-    let mut hlist: Vec<_> = client
-        .get_fitbit_intraday_time_series_heartrate(query.date.into())
-        .await
-        .map_err(Into::<Error>::into)?
-        .into_iter()
-        .map(Into::into)
-        .collect();
-    hlist.shrink_to_fit();
-    Ok(JsonBase::new(hlist).into())
-}
 
 #[get("/garmin/fitbit/heartrate_cache")]
 pub async fn fitbit_heartrate_cache(
@@ -743,134 +668,21 @@ pub async fn fitbit_heartrate_cache_update(
 }
 
 #[derive(RwebResponse)]
-#[response(description = "Fitbit Body Weight")]
-struct FitbitBodyWeightFatResponse(JsonBase<Vec<FitbitBodyWeightFatWrapper>, Error>);
-
-#[get("/garmin/fitbit/bodyweight")]
-pub async fn fitbit_bodyweight(
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
-) -> WarpResult<FitbitBodyWeightFatResponse> {
-    let client = FitbitClient::with_auth(state.config.clone())
-        .await
-        .map_err(Into::<Error>::into)?;
-    let mut hlist: Vec<_> = client
-        .get_fitbit_bodyweightfat()
-        .await
-        .map_err(Into::<Error>::into)?
-        .into_iter()
-        .map(Into::into)
-        .collect();
-    hlist.shrink_to_fit();
-    Ok(JsonBase::new(hlist).into())
-}
-
-#[derive(RwebResponse)]
-#[response(description = "Fitbit Body Weight Sync")]
-struct FitbitBodyWeightFatUpdateResponse(JsonBase<FitbitBodyWeightFatUpdateOutputWrapper, Error>);
-
-#[post("/garmin/fitbit/bodyweight_sync")]
-pub async fn fitbit_bodyweight_sync(
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
-) -> WarpResult<FitbitBodyWeightFatUpdateResponse> {
-    let client = FitbitClient::with_auth(state.config.clone())
-        .await
-        .map_err(Into::<Error>::into)?;
-    let hlist = client
-        .sync_everything(&state.db)
-        .await
-        .map_err(Into::<Error>::into)?;
-    Ok(JsonBase::new(hlist.into()).into())
-}
-
-#[derive(RwebResponse)]
 #[response(description = "Fitbit Activities")]
 struct FitbitActivitiesResponse(JsonBase<Vec<FitbitActivityWrapper>, Error>);
-
-#[get("/garmin/fitbit/fitbit_activities")]
-pub async fn fitbit_activities(
-    query: Query<FitbitActivitiesRequest>,
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
-) -> WarpResult<FitbitActivitiesResponse> {
-    let mut hlist: Vec<_> = query
-        .into_inner()
-        .get_activities(&state.config)
-        .await?
-        .into_iter()
-        .map(Into::into)
-        .collect();
-    hlist.shrink_to_fit();
-    Ok(JsonBase::new(hlist).into())
-}
-
-#[derive(Deserialize, Schema)]
-#[schema(component = "FitbitCallbackRequest")]
-pub struct FitbitCallbackRequest {
-    #[schema(description = "Authorization Code")]
-    code: StackString,
-    #[schema(description = "CSRF State")]
-    state: StackString,
-}
 
 #[derive(RwebResponse)]
 #[response(description = "Fitbit Callback", content = "html")]
 struct FitbitCallbackResponse(HtmlBase<StackString, Error>);
 
-#[get("/garmin/fitbit/callback")]
-pub async fn fitbit_callback(
-    query: Query<FitbitCallbackRequest>,
-    #[data] state: AppState,
-) -> WarpResult<FitbitCallbackResponse> {
-    let query = query.into_inner();
-    let mut client = FitbitClient::from_file(state.config.clone())
-        .await
-        .map_err(Into::<Error>::into)?;
-    let body = client
-        .get_fitbit_access_token(&query.code, &query.state)
-        .await
-        .map_err(Into::<Error>::into)?;
-    client.to_file().await.map_err(Into::<Error>::into)?;
-    Ok(HtmlBase::new(body).into())
-}
-
 #[derive(Serialize, Deserialize, Schema)]
-pub struct FitbitSyncRequest {
+struct FitbitSyncRequest {
     date: DateType,
 }
 
 #[derive(RwebResponse)]
 #[response(description = "Fitbit Sync", content = "html")]
 struct FitbitSyncResponse(HtmlBase<StackString, Error>);
-
-#[post("/garmin/fitbit/sync")]
-pub async fn fitbit_sync(
-    query: Query<FitbitSyncRequest>,
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
-) -> WarpResult<FitbitSyncResponse> {
-    let query = query.into_inner();
-    let date = query.date.into();
-    let client = FitbitClient::with_auth(state.config.clone())
-        .await
-        .map_err(Into::<Error>::into)?;
-    let mut heartrates = client
-        .import_fitbit_heartrate(date)
-        .await
-        .map_err(Into::<Error>::into)?;
-    FitbitHeartRate::calculate_summary_statistics(&client.config, &state.db, date)
-        .await
-        .map_err(Into::<Error>::into)?;
-    let start = if heartrates.len() > 20 {
-        heartrates.len() - 20
-    } else {
-        0
-    };
-    let heartrates = heartrates.split_off(start);
-    let body = create_fitbit_table(heartrates)?.into();
-    Ok(HtmlBase::new(body).into())
-}
 
 #[derive(RwebResponse)]
 #[response(description = "Fitbit Heartrate Statistics Plots", content = "html")]
@@ -1157,23 +969,6 @@ pub async fn heartrate_plots_demo(
 #[response(description = "Fitbit Tcx Sync")]
 struct FitbitTcxSyncResponse(JsonBase<Vec<String>, Error>);
 
-#[post("/garmin/fitbit/fitbit_tcx_sync")]
-pub async fn fitbit_tcx_sync(
-    query: Query<FitbitTcxSyncRequest>,
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
-) -> WarpResult<FitbitTcxSyncResponse> {
-    let mut flist: Vec<_> = query
-        .into_inner()
-        .process(&state.db, &state.config)
-        .await?
-        .into_iter()
-        .map(|x| x.to_string_lossy().into())
-        .collect();
-    flist.shrink_to_fit();
-    Ok(JsonBase::new(flist).into())
-}
-
 #[derive(Debug, Serialize, Deserialize, Schema)]
 #[schema(component = "PaginatedScaleMeasurement")]
 struct PaginatedScaleMeasurement {
@@ -1307,33 +1102,6 @@ pub async fn scale_measurement_manual_input(
     Ok(HtmlBase::new(body.into()).into())
 }
 
-#[derive(Serialize)]
-pub struct GpsList {
-    pub gps_list: Vec<StackString>,
-}
-
-#[derive(Serialize)]
-pub struct TimeValue {
-    pub time: StackString,
-    pub value: f64,
-}
-
-#[derive(Serialize)]
-pub struct HrData {
-    pub hr_data: Vec<TimeValue>,
-}
-
-#[derive(Serialize)]
-pub struct HrPace {
-    pub hr: f64,
-    pub pace: f64,
-}
-
-#[derive(Serialize)]
-pub struct HrPaceList {
-    pub hr_pace: Vec<HrPace>,
-}
-
 #[derive(RwebResponse)]
 #[response(description = "Logged in User")]
 struct UserResponse(JsonBase<LoggedUser, Error>);
@@ -1362,21 +1130,6 @@ pub async fn add_garmin_correction(
 #[response(description = "Fitbit Activity Types")]
 struct FitbitActivityTypesResponse(JsonBase<FitbitActivityTypesWrapper, Error>);
 
-#[get("/garmin/fitbit/fitbit_activity_types")]
-pub async fn fitbit_activity_types(
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
-) -> WarpResult<FitbitActivityTypesResponse> {
-    let client = FitbitClient::with_auth(state.config)
-        .await
-        .map_err(Into::<Error>::into)?;
-    let result = client
-        .get_fitbit_activity_types()
-        .await
-        .map_err(Into::<Error>::into)?;
-    Ok(JsonBase::new(result.into()).into())
-}
-
 #[derive(RwebResponse)]
 #[response(description = "Strava Athlete")]
 struct StravaAthleteResponse(HtmlBase<StackString, Error>);
@@ -1400,22 +1153,6 @@ pub async fn strava_athlete(
 #[derive(RwebResponse)]
 #[response(description = "Fitbit Profile")]
 struct FitbitProfileResponse(HtmlBase<StackString, Error>);
-
-#[get("/garmin/fitbit/profile")]
-pub async fn fitbit_profile(
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
-) -> WarpResult<FitbitProfileResponse> {
-    let client = FitbitClient::with_auth(state.config)
-        .await
-        .map_err(Into::<Error>::into)?;
-    let result = client
-        .get_user_profile()
-        .await
-        .map_err(Into::<Error>::into)?;
-    let body = fitbit_body(result)?.into();
-    Ok(HtmlBase::new(body).into())
-}
 
 #[derive(Debug, Serialize, Deserialize, Schema)]
 #[schema(component = "PaginatedGarminConnectActivity")]
@@ -1537,8 +1274,8 @@ pub async fn fitbit_activities_db(
 }
 
 #[derive(Debug, Serialize, Deserialize, Schema)]
-pub struct FitbitActivitiesDBUpdateRequest {
-    pub updates: Vec<FitbitActivityWrapper>,
+struct FitbitActivitiesDBUpdateRequest {
+    updates: Vec<FitbitActivityWrapper>,
 }
 
 #[derive(RwebResponse)]
@@ -1648,11 +1385,11 @@ pub async fn heartrate_statistics_summary_db_update(
 
 #[derive(Serialize, Deserialize, Schema)]
 #[schema(component = "RaceResultPlotRequest")]
-pub struct RaceResultPlotRequest {
+struct RaceResultPlotRequest {
     #[schema(description = "Race Type")]
-    pub race_type: RaceTypeWrapper,
+    race_type: RaceTypeWrapper,
     #[schema(description = "Demo Flag")]
-    pub demo: Option<bool>,
+    demo: Option<bool>,
 }
 
 async fn race_result_plot_impl(
@@ -1710,8 +1447,8 @@ pub async fn race_result_plot_demo(
 }
 
 #[derive(Serialize, Deserialize, Schema)]
-pub struct RaceResultFlagRequest {
-    pub id: UuidWrapper,
+struct RaceResultFlagRequest {
+    id: UuidWrapper,
 }
 
 #[derive(RwebResponse)]
@@ -1744,8 +1481,8 @@ pub async fn race_result_flag(
 }
 
 #[derive(Serialize, Deserialize, Schema)]
-pub struct RaceResultImportRequest {
-    pub filename: StackString,
+struct RaceResultImportRequest {
+    filename: StackString,
 }
 
 #[derive(RwebResponse)]
@@ -1789,9 +1526,9 @@ pub async fn race_result_import(
 }
 
 #[derive(Serialize, Deserialize, Schema)]
-pub struct RaceResultsDBRequest {
+struct RaceResultsDBRequest {
     #[schema(description = "Race Type")]
-    pub race_type: Option<RaceTypeWrapper>,
+    race_type: Option<RaceTypeWrapper>,
 }
 
 #[derive(RwebResponse)]
@@ -1821,8 +1558,8 @@ pub async fn race_results_db(
 
 #[derive(Serialize, Deserialize, Schema)]
 #[schema(component = "RaceResultsDBUpdateRequest")]
-pub struct RaceResultsDBUpdateRequest {
-    pub updates: Vec<RaceResultsWrapper>,
+struct RaceResultsDBUpdateRequest {
+    updates: Vec<RaceResultsWrapper>,
 }
 
 #[derive(RwebResponse)]

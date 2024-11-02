@@ -8,10 +8,7 @@ use std::{collections::HashMap, fmt::Write};
 use time::{macros::format_description, Date, Duration, OffsetDateTime};
 use time_tz::OffsetDateTimeExt;
 
-use fitbit_lib::{
-    fitbit_client::FitbitUserProfile, fitbit_heartrate::FitbitHeartRate,
-    scale_measurement::ScaleMeasurement,
-};
+use fitbit_lib::{fitbit_heartrate::FitbitHeartRate, scale_measurement::ScaleMeasurement};
 use garmin_lib::{
     date_time_wrapper::{iso8601::convert_datetime_to_str, DateTimeWrapper},
     garmin_config::GarminConfig,
@@ -1604,11 +1601,6 @@ fn get_buttons(demo: bool) -> Element {
             },
             button {
                 "type": "submit",
-                "onclick": "fitbitProfile();",
-                "Fitbit Profile",
-            },
-            button {
-                "type": "submit",
                 "onclick": "heartrateSync();",
                 "Scale sync",
             },
@@ -2115,76 +2107,6 @@ fn StravaElement(athlete: StravaAthlete) -> Element {
             },
             {clubs},
             {shoes},
-        }
-    }
-}
-
-/// # Errors
-/// Returns error if formatting fails
-pub fn fitbit_body(profile: FitbitUserProfile) -> Result<String, Error> {
-    let mut app = VirtualDom::new_with_props(FitbitElement, FitbitElementProps { profile });
-    app.rebuild_in_place();
-    let mut renderer = dioxus_ssr::Renderer::default();
-    let mut buffer = String::new();
-    renderer
-        .render_to(&mut buffer, &app)
-        .map_err(Into::<Error>::into)?;
-    Ok(buffer)
-}
-
-#[component]
-fn FitbitElement(profile: FitbitUserProfile) -> Element {
-    let average_daily_steps = profile.average_daily_steps;
-    let country = &profile.country;
-    let date_of_birth = &profile.date_of_birth;
-    let display_name = &profile.display_name;
-    let distance_unit = &profile.distance_unit;
-    let encoded_id = &profile.encoded_id;
-    let first_name = &profile.first_name;
-    let last_name = &profile.last_name;
-    let full_name = &profile.full_name;
-    let gender = &profile.gender;
-    let height = profile.height;
-    let height_unit = &profile.height_unit;
-    let timezone = &profile.timezone;
-    let offset_from_utc_millis = profile.offset_from_utc_millis;
-    let stride_length_running = profile.stride_length_running;
-    let stride_length_walking = profile.stride_length_walking;
-    let weight = profile.weight;
-    let weight_unit = &profile.weight_unit;
-
-    let offset_positive = offset_from_utc_millis >= 0;
-    let offset_abs_sec = offset_from_utc_millis.abs() / 1000;
-
-    let mut offset_str =
-        print_h_m_s(offset_abs_sec as f64, true).unwrap_or_else(|_| "00:00:00".into());
-    if !offset_positive {
-        offset_str = format_sstr!("-{offset_str}");
-    }
-
-    rsx! {
-        table {
-            "border": "1",
-            tbody {
-                tr {td {"Encoded ID"}, td {"{encoded_id}"}},
-                tr {td {"First Name"}, td {"{first_name}"}},
-                tr {td {"Last Name"}, td {"{last_name}"}},
-                tr {td {"Full Name"}, td {"{full_name}"}},
-                tr {td {"Avg Daily Steps"}, td {"{average_daily_steps}"}},
-                tr {td {"Country"}, td {"{country}"}},
-                tr {td {"DOB"}, td {"{date_of_birth}"}},
-                tr {td {"Display Name"}, td {"{display_name}"}},
-                tr {td {"Distance Unit"}, td {"{distance_unit}"}},
-                tr {td {"Gender"}, td {"{gender}"}},
-                tr {td {"Height"}, td {"{height:0.2}"}},
-                tr {td {"Height Unit"}, td {"{height_unit}"}},
-                tr {td {"Timezone"}, td {"{timezone}"}},
-                tr {td {"Offset"}, td {"{offset_str}"}},
-                tr {td {"Stride Length Running"}, td {"{stride_length_running:0.2}"}},
-                tr {td {"Stride Length Walking"}, td {"{stride_length_walking:0.2}"}},
-                tr {td {"Weight"}, td {"{weight}"}},
-                tr {td {"Weight Unit"}, td {"{weight_unit}"}},
-            },
         }
     }
 }

@@ -1,4 +1,4 @@
-use anyhow::{format_err, Error};
+use anyhow::Error;
 use clap::Parser;
 use futures::{future::try_join_all, TryStreamExt};
 use itertools::Itertools;
@@ -25,7 +25,6 @@ use fitbit_lib::{
     fitbit_archive::{
         archive_fitbit_heartrates, get_heartrate_values, get_number_of_heartrate_values,
     },
-    fitbit_client::FitbitClient,
     fitbit_heartrate::{import_garmin_heartrate_file, FitbitHeartRate},
     fitbit_statistics_summary::FitbitStatisticsSummary,
     scale_measurement::ScaleMeasurement,
@@ -88,15 +87,6 @@ pub enum GarminCliOpts {
         end_date: Option<DateType>,
     },
     Sync,
-    #[clap(alias = "fit")]
-    Fitbit {
-        #[clap(short, long)]
-        all: bool,
-        #[clap(short, long)]
-        start_date: Option<DateType>,
-        #[clap(short, long)]
-        end_date: Option<DateType>,
-    },
     Strava,
     Import {
         #[clap(short, long)]
@@ -150,13 +140,6 @@ impl GarminCliOpts {
             }
             .process_opts(&config)
             .await?;
-            Self::Fitbit {
-                all: false,
-                start_date: None,
-                end_date: None,
-            }
-            .process_opts(&config)
-            .await?;
             Self::Strava.process_opts(&config).await?;
             Self::Sync.process_opts(&config).await
         } else {
@@ -193,57 +176,14 @@ impl GarminCliOpts {
             Self::SyncAll => {
                 return Ok(());
             }
-            Self::Fitbit {
-                all,
-                start_date,
-                end_date,
-            } => {
-                if start_date > end_date {
-                    return Err(format_err!("Invalid date range"));
-                }
-                let cli = GarminCli::with_config()?;
-                let client = FitbitClient::with_auth(config.clone()).await?;
-                let updates = client.sync_everything(&pool).await?;
-                let start_date = start_date.map_or_else(
-                    || (OffsetDateTime::now_utc() - Duration::days(3)).date(),
-                    Into::into,
-                );
-                let end_date =
-                    end_date.map_or_else(|| OffsetDateTime::now_utc().date(), Into::into);
-                let mut date = start_date;
-                while date <= end_date {
-                    client.import_fitbit_heartrate(date).await?;
-                    FitbitHeartRate::calculate_summary_statistics(&client.config, &pool, date)
-                        .await?;
-                    date += Duration::days(1);
-                }
-                cli.stdout.send(format_sstr!("{updates:?}"));
-
-                let start_date = (OffsetDateTime::now_utc() - Duration::days(10)).date();
-                let filenames = client.sync_tcx(start_date).await?;
-                if !filenames.is_empty() {
-                    let mut buf = cli.proc_everything().await?;
-                    buf.extend_from_slice(&cli.sync_everything().await?);
-                }
-                let filenames = filenames
-                    .into_iter()
-                    .map(|p| p.to_string_lossy().into_owned())
-                    .join("\n");
-                cli.stdout.send(filenames);
-
-                if all {
-                    FitbitHeartRate::get_all_summary_statistics(&client.config, &pool).await?;
-                }
-                return cli.stdout.close().await.map_err(Into::into);
-            }
             Self::Strava => {
                 let cli = GarminCli::with_config()?;
-                let filenames = Self::sync_with_strava(&cli)
+                let activity_names = Self::sync_with_strava(&cli)
                     .await?
                     .into_iter()
-                    .map(|p| p.to_string_lossy().into_owned())
+                    .map(|a| a.name)
                     .join("\n");
-                cli.stdout.send(filenames);
+                cli.stdout.send(activity_names);
                 return cli.stdout.close().await.map_err(Into::into);
             }
             Self::Import { table, filepath } => {
@@ -510,13 +450,6 @@ impl GarminCliOpts {
                 .await?;
                 if !filenames.is_empty() || !input_files.is_empty() || !dates.is_empty() {
                     buf.extend_from_slice(&cli.sync_everything().await?);
-                    if let Ok(client) = FitbitClient::with_auth(cli.config.clone()).await {
-                        let result = client.sync_everything(&cli.pool).await?;
-                        buf.push(format_sstr!(
-                            "Syncing Fitbit Heartrate {hr}",
-                            hr = result.measurements.len(),
-                        ));
-                    }
                 }
                 Ok(buf)
             }
@@ -694,23 +627,21 @@ impl GarminCliOpts {
 
     /// # Errors
     /// Return error if various function fail
-    pub async fn sync_with_strava(cli: &GarminCli) -> Result<Vec<PathBuf>, Error> {
+    pub async fn sync_with_strava(cli: &GarminCli) -> Result<Vec<StravaActivity>, Error> {
         let config = cli.config.clone();
         let start_datetime = Some(OffsetDateTime::now_utc() - Duration::days(15));
         let end_datetime = Some(OffsetDateTime::now_utc());
 
         let client = StravaClient::with_auth(config).await?;
-        let filenames = client
+        let activities = client
             .sync_with_client(start_datetime, end_datetime, &cli.pool)
             .await?;
 
-        if !filenames.is_empty() {
-            cli.process_filenames(&filenames).await?;
-            StravaActivity::fix_summary_id_in_db(&cli.pool).await?;
+        if !activities.is_empty() {
             cli.proc_everything().await?;
         }
 
-        Ok(filenames)
+        Ok(activities)
     }
 }
 

@@ -474,11 +474,17 @@ impl GarminCliOpts {
                 .map_or_else(|_| false, |m| m.size() > 0)
         }
 
+        let har_file = cli.config.download_directory.join("connect.garmin.com.har");
+        let data_directory = data_directory
+            .as_ref()
+            .unwrap_or(&cli.config.garmin_connect_import_directory);
+        let activites_json = data_directory.join("activities.json");
+        let heartrate_json = data_directory.join("heartrates.json");
+
         let mut input_files = Vec::new();
         let mut filenames = Vec::new();
         let mut activities = Vec::new();
         let mut dates = BTreeSet::new();
-        let har_file = cli.config.download_directory.join("connect.garmin.com.har");
         if exists_and_is_not_empty(&har_file).await {
             let buf = read_to_string(&har_file).await?;
             if !buf.is_empty() {
@@ -498,10 +504,6 @@ impl GarminCliOpts {
                 input_files.push(har_file);
             }
         }
-        let data_directory = data_directory
-            .as_ref()
-            .unwrap_or(&cli.config.garmin_connect_import_directory);
-        let activites_json = data_directory.join("activities.json");
         if activities.is_empty() && exists_and_is_not_empty(&activites_json).await {
             let buf = read_to_string(&activites_json).await?;
             if !buf.is_empty() {
@@ -522,7 +524,6 @@ impl GarminCliOpts {
                 }
             }
         }
-        let heartrate_json = data_directory.join("heartrates.json");
         if exists_and_is_not_empty(&heartrate_json).await {
             let buf = read_to_string(&heartrate_json).await?;
             for line in buf.split('\n') {
@@ -621,7 +622,15 @@ impl GarminCliOpts {
             }
         }
         let mut dates: Vec<_> = dates.into_iter().collect();
+
+        filenames.sort();
+        input_files.sort();
+        dates.sort();
+
+        filenames.shrink_to_fit();
+        input_files.shrink_to_fit();
         dates.shrink_to_fit();
+
         Ok((filenames, input_files, dates))
     }
 

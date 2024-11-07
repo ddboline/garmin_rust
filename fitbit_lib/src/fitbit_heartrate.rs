@@ -1,5 +1,5 @@
 use anyhow::{format_err, Error};
-use avro_rs::{from_value, Codec, Reader, Schema, Writer};
+use apache_avro::{from_value, Codec, Reader, Schema, Writer};
 use fitparser::{profile::field_types::MesgNum, Value};
 use futures::{future::try_join_all, stream::FuturesUnordered, TryStreamExt};
 use glob::glob;

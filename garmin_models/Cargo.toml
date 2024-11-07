@@ -1,6 +1,6 @@
 [package]
 name = "garmin_models"
-version = "0.14.26"
+version = "0.14.27"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2021"
 
@@ -8,7 +8,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0"
-avro-rs = {version = "0.13", features = ["snappy"]}
+apache-avro = {version = "0.17", features = ["snappy"]}
 aws-config = {version="1.0", features=["behavior-version-latest"]}
 aws-sdk-s3 = "1.1"
 fitparser = {git="https://github.com/ddboline/fitparse-rs.git", branch="time-0.3-0.5.2"}

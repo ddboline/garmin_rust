@@ -1,7 +1,12 @@
 #![allow(clippy::needless_pass_by_value)]
 
 use anyhow::Error;
-use log::info;
+use log::{error, info};
+use maplit::hashset;
+use notify::{
+    recommended_watcher, Event, EventHandler, EventKind, RecursiveMode, Result as NotifyResult,
+    Watcher,
+};
 use reqwest::{Client, ClientBuilder};
 use rweb::{
     filters::BoxedFilter,
@@ -10,8 +15,12 @@ use rweb::{
     Filter, Reply,
 };
 use stack_string::format_sstr;
-use std::{net::SocketAddr, sync::Arc};
-use tokio::{task::spawn, time::interval};
+use std::{collections::HashSet, net::SocketAddr, path::PathBuf, sync::Arc};
+use tokio::{
+    sync::watch::{channel, Receiver, Sender},
+    task::spawn,
+    time::{interval, sleep, Duration},
+};
 
 use garmin_cli::{garmin_cli::GarminCli, garmin_cli_opts::GarminCliOpts};
 use garmin_lib::garmin_config::GarminConfig;
@@ -48,7 +57,48 @@ pub struct AppState {
     pub client: Arc<Client>,
 }
 
-/// Create the actix-web server.
+struct Notifier {
+    paths_to_check: HashSet<PathBuf>,
+    send: Sender<HashSet<PathBuf>>,
+}
+
+impl Notifier {
+    fn new(config: &GarminConfig, send: Sender<HashSet<PathBuf>>) -> Self {
+        let har_file = config.download_directory.join("connect.garmin.com.har");
+        let data_directory = &config.garmin_connect_import_directory;
+        let activites_json = data_directory.join("activities.json");
+        let heartrate_json = data_directory.join("heartrates.json");
+        let paths_to_check = hashset! {har_file, activites_json, heartrate_json};
+        Self {
+            paths_to_check,
+            send,
+        }
+    }
+}
+
+impl EventHandler for Notifier {
+    fn handle_event(&mut self, event: NotifyResult<Event>) {
+        match event {
+            Ok(event) => match event.kind {
+                EventKind::Any | EventKind::Create(_) | EventKind::Modify(_) => {
+                    if event.paths.iter().any(|p| self.paths_to_check.contains(p)) {
+                        info!("got event kind {:?} paths {:?}", event.kind, event.paths);
+                        let new_paths: HashSet<_> = event
+                            .paths
+                            .into_iter()
+                            .filter(|p| self.paths_to_check.contains(p))
+                            .collect();
+                        self.send.send_replace(new_paths);
+                    }
+                }
+                _ => (),
+            },
+            Err(e) => error!("Error {e}"),
+        }
+    }
+}
+
+/// Create the server.
 /// Configuration is done through environment variables, see `GarminConfig` for
 /// more information. `PgPool` is a wrapper around a connection pool.
 /// We create several routes:
@@ -58,21 +108,31 @@ pub struct AppState {
 /// # Errors
 /// Returns error if server init fails
 pub async fn start_app() -> Result<(), Error> {
-    async fn update_db(pool: PgPool, cli: GarminCli) {
+    async fn update_db(pool: PgPool) {
         let mut i = interval(std::time::Duration::from_secs(60));
         loop {
             fill_from_db(&pool).await.unwrap_or(());
-            if let Ok((filenames, input_files, dates)) =
-                GarminCliOpts::sync_with_garmin_connect(&cli, &None, None, None, false).await
-            {
-                if !filenames.is_empty() || !input_files.is_empty() || !dates.is_empty() {
-                    info!("processed {filenames:?} and {input_files:?}");
-                    for line in cli.sync_everything().await.unwrap_or(Vec::new()) {
-                        info!("{line}");
-                    }
+            i.tick().await;
+        }
+    }
+    async fn run_connect_sync(cli: &GarminCli) {
+        if let Ok((filenames, input_files, dates)) =
+            GarminCliOpts::sync_with_garmin_connect(&cli, &None, None, None, false).await
+        {
+            if !filenames.is_empty() || !input_files.is_empty() || !dates.is_empty() {
+                info!("processed filenames {filenames:?} from {input_files:?} and dates {dates:?}");
+                for line in cli.sync_everything().await.unwrap_or(Vec::new()) {
+                    info!("{line}");
                 }
             }
-            i.tick().await;
+        }
+    }
+    async fn check_downloads(cli: GarminCli, mut recv: Receiver<HashSet<PathBuf>>) {
+        run_connect_sync(&cli).await;
+        while recv.changed().await.is_ok() {
+            sleep(Duration::from_secs(10)).await;
+            run_connect_sync(&cli).await;
+            recv.mark_changed();
         }
     }
 
@@ -83,6 +143,19 @@ pub async fn start_app() -> Result<(), Error> {
 
     let pool = PgPool::new(&config.pgurl)?;
 
+    let (send, recv) = channel::<HashSet<PathBuf>>(HashSet::new());
+
+    let send = Notifier::new(&config, send);
+
+    let mut watcher = recommended_watcher(send)?;
+    watcher.watch(&config.download_directory, RecursiveMode::Recursive)?;
+
+    spawn({
+        let pool = pool.clone();
+        async move {
+            update_db(pool).await;
+        }
+    });
     spawn({
         let pool = pool.clone();
         let corr = GarminCorrectionMap::new();
@@ -98,7 +171,7 @@ pub async fn start_app() -> Result<(), Error> {
             ..GarminCli::default()
         };
         async move {
-            update_db(pool, cli).await;
+            check_downloads(cli, recv).await;
         }
     });
 

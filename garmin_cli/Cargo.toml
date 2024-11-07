@@ -1,6 +1,6 @@
 [package]
 name = "garmin_cli"
-version = "0.14.26"
+version = "0.14.27"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -20,6 +20,7 @@ garmin_reports = {path="../garmin_reports"}
 garmin_utils={path="../garmin_utils"}
 itertools = "0.13"
 log = "0.4"
+notify = "7.0"
 race_result_analysis = {path="../race_result_analysis"}
 rayon = "1.5"
 refinery = {version="0.8", features=["tokio-postgres"]}

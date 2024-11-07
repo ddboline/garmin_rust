@@ -1,5 +1,5 @@
 use anyhow::{format_err, Error};
-use avro_rs::{from_value, Codec, Reader, Schema, Writer};
+use apache_avro::{from_value, Codec, Reader, Schema, Writer};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};

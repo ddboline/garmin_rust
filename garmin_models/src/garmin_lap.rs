@@ -291,19 +291,19 @@ pub const GARMIN_LAP_AVRO_SCHEMA: &str = r#"
         "type": "record",
         "name": "GarminLap",
         "fields": [
-            {"name": "lap_type", "type": ["string", "null"]},
+            {"name": "lap_type", "type": ["null", "string"]},
             {"name": "lap_index", "type": "int"},
             {"name": "lap_start", "type": "string"},
             {"name": "lap_duration", "type": "double"},
             {"name": "lap_distance", "type": "double"},
-            {"name": "lap_trigger", "type": ["string", "null"]},
-            {"name": "lap_max_speed", "type": ["double", "null"]},
+            {"name": "lap_trigger", "type": ["null", "string"]},
+            {"name": "lap_max_speed", "type": ["null", "double"]},
             {"name": "lap_calories", "type": "int"},
-            {"name": "lap_avg_hr", "type": ["double", "null"]},
-            {"name": "lap_max_hr", "type": ["int", "null"]},
-            {"name": "lap_intensity", "type": ["string", "null"]},
+            {"name": "lap_avg_hr", "type": ["null", "double"]},
+            {"name": "lap_max_hr", "type": ["null", "int"]},
+            {"name": "lap_intensity", "type": ["null", "string"]},
             {"name": "lap_number", "type": "int"},
-            {"name": "lap_start_string", "type": ["string", "null"]}
+            {"name": "lap_start_string", "type": ["null", "string"]}
         ]
     }
 "#;

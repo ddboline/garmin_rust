@@ -117,7 +117,7 @@ pub async fn start_app() -> Result<(), Error> {
     }
     async fn run_connect_sync(cli: &GarminCli) {
         if let Ok((filenames, input_files, dates)) =
-            GarminCliOpts::sync_with_garmin_connect(&cli, &None, None, None, false).await
+            GarminCliOpts::sync_with_garmin_connect(cli, &None, None, None, false).await
         {
             if !filenames.is_empty() || !input_files.is_empty() || !dates.is_empty() {
                 info!("processed filenames {filenames:?} from {input_files:?} and dates {dates:?}");

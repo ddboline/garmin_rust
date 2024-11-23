@@ -5,7 +5,7 @@ use flate2::{read::GzEncoder, Compression};
 use futures::{Stream, TryStreamExt};
 use log::debug;
 use num_traits::pow::Pow;
-use postgres_query::{query, Error as PqError};
+use postgres_query::{query, Error as PqError, FromSqlRow};
 use rand::{
     distributions::{Alphanumeric, Distribution, Uniform},
     thread_rng, Rng,
@@ -13,7 +13,6 @@ use rand::{
 use smallvec::SmallVec;
 use stack_string::{format_sstr, StackString};
 use std::{
-    collections::HashSet,
     fs::{remove_file, File},
     future::Future,
     io::{BufRead, BufReader},
@@ -310,24 +309,45 @@ pub fn get_degrees_from_semicircles(s: f64) -> f64 {
     s * 180.0 / (2_147_483_648.0)
 }
 
-/// # Errors
-/// Return error if db query fails
-pub async fn get_authorized_users(pool: &PgPool) -> Result<HashSet<StackString>, Error> {
-    let query = query!("SELECT email FROM authorized_users");
-    let conn = pool.get().await?;
-    let results: Result<HashSet<StackString>, Error> = query
-        .query_streaming(&conn)
-        .await?
-        .and_then(|row| async move {
-            let email: StackString = row.try_get(0).map_err(PqError::BeginTransaction)?;
-            Ok(email)
-        })
-        .try_collect()
-        .await
-        .map_err(Into::into);
-    let mut results = results?;
-    results.shrink_to_fit();
-    Ok(results)
+#[derive(FromSqlRow, Clone, Debug)]
+pub struct AuthorizedUsers {
+    pub email: StackString,
+    pub telegram_userid: Option<i64>,
+    pub created_at: OffsetDateTime,
+}
+
+impl AuthorizedUsers {
+    /// # Errors
+    /// Return error if db query fails
+    pub async fn get_authorized_users(
+        pool: &PgPool,
+    ) -> Result<impl Stream<Item = Result<Self, PqError>>, Error> {
+        let query = query!("SELECT * FROM authorized_users WHERE deleted_at IS NULL");
+        let conn = pool.get().await?;
+        query.fetch_streaming(&conn).await.map_err(Into::into)
+    }
+
+    /// # Errors
+    /// Returns error if db query fails
+    pub async fn get_most_recent(
+        pool: &PgPool,
+    ) -> Result<(Option<OffsetDateTime>, Option<OffsetDateTime>), Error> {
+        #[derive(FromSqlRow)]
+        struct CreatedDeleted {
+            created_at: Option<OffsetDateTime>,
+            deleted_at: Option<OffsetDateTime>,
+        }
+
+        let query = query!(
+            "SELECT max(created_at) as created_at, max(deleted_at) as deleted_at FROM users"
+        );
+        let conn = pool.get().await?;
+        let result: Option<CreatedDeleted> = query.fetch_opt(&conn).await?;
+        match result {
+            Some(result) => Ok((result.created_at, result.deleted_at)),
+            None => Ok((None, None)),
+        }
+    }
 }
 
 /// # Errors
@@ -340,6 +360,7 @@ pub async fn get_list_of_telegram_userids(
     SELECT distinct telegram_userid
     FROM authorized_users
     WHERE telegram_userid IS NOT NULL
+      AND deleted_at IS NULL
     "
     );
     let conn = pool.get().await?;

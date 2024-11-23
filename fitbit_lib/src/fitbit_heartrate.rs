@@ -141,7 +141,7 @@ impl FitbitHeartRate {
             let files: Vec<_> = get_list_of_files_from_db(&constraint, pool)
                 .await?
                 .try_filter_map(|filename| async move {
-                    let avro_file = config.cache_dir.join(&format_sstr!("{filename}.avro"));
+                    let avro_file = config.cache_dir.join(format_sstr!("{filename}.avro"));
                     if avro_file.exists() {
                         Ok(Some(avro_file))
                     } else {

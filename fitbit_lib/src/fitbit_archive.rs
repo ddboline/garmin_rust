@@ -47,9 +47,7 @@ fn get_fitbit_avro_file_map(
             if let Some(date) = file_name.split(".avro").next() {
                 let key = format_sstr!("{}", &date[0..7]);
                 if let Some(min_date) = &min_date {
-                    let file = config
-                        .fitbit_archivedir
-                        .join(&format_sstr!("{key}.parquet"));
+                    let file = config.fitbit_archivedir.join(format_sstr!("{key}.parquet"));
                     if file.exists() && date < min_date.as_str() {
                         continue;
                     }
@@ -79,7 +77,7 @@ async fn get_garmin_avro_file_map(
         let files: Vec<_> = get_list_of_files_from_db(&constraint, pool)
             .await?
             .try_filter_map(|filename| async move {
-                let avro_file = config.cache_dir.join(&format_sstr!("{filename}.avro"));
+                let avro_file = config.cache_dir.join(format_sstr!("{filename}.avro"));
                 if avro_file.exists() {
                     Ok(Some(avro_file))
                 } else {

@@ -39,7 +39,7 @@ impl GarminParse {
             .file_name()
             .ok_or_else(|| format_err!("Failed to split filename {filepath:?}"))?
             .to_string_lossy();
-        let cache_file = cache_dir.join(&format_sstr!("{filename}.avro"));
+        let cache_file = cache_dir.join(format_sstr!("{filename}.avro"));
 
         debug!("Get md5sum {} ", filename);
         let md5sum = get_md5sum(filepath)?;
@@ -76,7 +76,7 @@ impl GarminParse {
                     .file_name()
                     .ok_or_else(|| format_err!("Failed to split input_file {input_file:?}"))?
                     .to_string_lossy();
-                let cache_file = cache_dir.join(&format_sstr!("{filename}.avro"));
+                let cache_file = cache_dir.join(format_sstr!("{filename}.avro"));
                 let md5sum = get_md5sum(&input_file)?;
                 let gfile = GarminParse::new().with_file(&input_file, corr_map)?;
                 let filename = &gfile.filename;

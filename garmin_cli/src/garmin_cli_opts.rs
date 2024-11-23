@@ -199,32 +199,22 @@ impl GarminCliOpts {
                     "scale_measurements" => {
                         let mut measurements: Vec<ScaleMeasurement> = serde_json::from_str(&data)?;
                         ScaleMeasurement::merge_updates(&mut measurements, &pool).await?;
-                        stdout()
-                            .write_all(
-                                format_sstr!("scale_measurements {}\n", measurements.len())
-                                    .as_bytes(),
-                            )
-                            .await?;
+                        let s = format_sstr!("scale_measurements {}\n", measurements.len());
+                        stdout().write_all(s.as_bytes()).await?;
                     }
                     "strava_activities" => {
                         let activities: Vec<StravaActivity> = serde_json::from_str(&data)?;
                         StravaActivity::upsert_activities(&activities, &pool).await?;
                         StravaActivity::fix_summary_id_in_db(&pool).await?;
-                        stdout()
-                            .write_all(
-                                format_sstr!("strava_activities {}\n", activities.len()).as_bytes(),
-                            )
-                            .await?;
+                        let s = format_sstr!("strava_activities {}\n", activities.len());
+                        stdout().write_all(s.as_bytes()).await?;
                     }
                     "fitbit_activities" => {
                         let activities: Vec<FitbitActivity> = serde_json::from_str(&data)?;
                         FitbitActivity::upsert_activities(&activities, &pool).await?;
                         FitbitActivity::fix_summary_id_in_db(&pool).await?;
-                        stdout()
-                            .write_all(
-                                format_sstr!("fitbit_activities {}\n", activities.len()).as_bytes(),
-                            )
-                            .await?;
+                        let s = format_sstr!("fitbit_activities {}\n", activities.len());
+                        stdout().write_all(s.as_bytes()).await?;
                     }
                     "heartrate_statistics_summary" => {
                         let entries: Vec<FitbitStatisticsSummary> = serde_json::from_str(&data)?;
@@ -236,23 +226,15 @@ impl GarminCliOpts {
                             }
                         });
                         let results: Result<Vec<()>, Error> = try_join_all(futures).await;
-                        stdout()
-                            .write_all(
-                                format_sstr!("heartrate_statistics_summary {}\n", results?.len())
-                                    .as_bytes(),
-                            )
-                            .await?;
+                        let s = format_sstr!("heartrate_statistics_summary {}\n", results?.len());
+                        stdout().write_all(s.as_bytes()).await?;
                     }
                     "garmin_connect_activities" => {
                         let activities: Vec<GarminConnectActivity> = serde_json::from_str(&data)?;
                         GarminConnectActivity::upsert_activities(&activities, &pool).await?;
                         GarminConnectActivity::fix_summary_id_in_db(&pool).await?;
-                        stdout()
-                            .write_all(
-                                format_sstr!("garmin_connect_activities {}\n", activities.len())
-                                    .as_bytes(),
-                            )
-                            .await?;
+                        let s = format_sstr!("garmin_connect_activities {}\n", activities.len());
+                        stdout().write_all(s.as_bytes()).await?;
                     }
                     "race_results" => {
                         let results: Vec<RaceResults> = serde_json::from_str(&data)?;
@@ -264,9 +246,8 @@ impl GarminCliOpts {
                             }
                         });
                         let results: Result<Vec<()>, Error> = try_join_all(futures).await;
-                        stdout()
-                            .write_all(format_sstr!("race_results {}\n", results?.len()).as_bytes())
-                            .await?;
+                        let s = format_sstr!("race_results {}\n", results?.len());
+                        stdout().write_all(s.as_bytes()).await?;
                     }
                     _ => {}
                 }
@@ -292,7 +273,8 @@ impl GarminCliOpts {
                             None,
                         )
                         .await?;
-                        file.write_all(&serde_json::to_vec(&measurements)?).await?;
+                        let v = serde_json::to_vec(&measurements)?;
+                        file.write_all(&v).await?;
                     }
                     "strava_activities" => {
                         let start_date = (OffsetDateTime::now_utc() - Duration::days(7))
@@ -304,7 +286,8 @@ impl GarminCliOpts {
                                 .try_collect()
                                 .await?;
                         activities.shrink_to_fit();
-                        file.write_all(&serde_json::to_vec(&activities)?).await?;
+                        let v = serde_json::to_vec(&activities)?;
+                        file.write_all(&v).await?;
                     }
                     "fitbit_activities" => {
                         let start_date = (OffsetDateTime::now_utc() - Duration::days(7))
@@ -313,7 +296,8 @@ impl GarminCliOpts {
                         let activities =
                             FitbitActivity::read_from_db(&pool, Some(start_date), None, None, None)
                                 .await?;
-                        file.write_all(&serde_json::to_vec(&activities)?).await?;
+                        let v = serde_json::to_vec(&activities)?;
+                        file.write_all(&v).await?;
                     }
                     "heartrate_statistics_summary" => {
                         let start_date = (OffsetDateTime::now_utc() - Duration::days(7))
@@ -330,7 +314,8 @@ impl GarminCliOpts {
                         .try_collect()
                         .await?;
                         entries.shrink_to_fit();
-                        file.write_all(&serde_json::to_vec(&entries)?).await?;
+                        let v = serde_json::to_vec(&entries)?;
+                        file.write_all(&v).await?;
                     }
                     "garmin_connect_activities" => {
                         let start_date = (OffsetDateTime::now_utc() - Duration::days(7))
@@ -347,7 +332,8 @@ impl GarminCliOpts {
                         .try_collect()
                         .await?;
                         activities.shrink_to_fit();
-                        file.write_all(&serde_json::to_vec(&activities)?).await?;
+                        let v = serde_json::to_vec(&activities)?;
+                        file.write_all(&v).await?;
                     }
                     "race_results" => {
                         let mut results: Vec<_> =
@@ -356,7 +342,8 @@ impl GarminCliOpts {
                                 .try_collect()
                                 .await?;
                         results.shrink_to_fit();
-                        file.write_all(&serde_json::to_vec(&results)?).await?;
+                        let v = serde_json::to_vec(&results)?;
+                        file.write_all(&v).await?;
                     }
                     _ => {}
                 }
@@ -404,9 +391,8 @@ impl GarminCliOpts {
                     .map(|(d, v)| format_sstr!("{d} {v}"))
                     .collect();
                 values.shrink_to_fit();
-                stdout()
-                    .write_all(format_sstr!("count {count} {}", values.len()).as_bytes())
-                    .await?;
+                let s = format_sstr!("count {count} {}", values.len());
+                stdout().write_all(s.as_bytes()).await?;
                 stdout().write_all(b"\n").await?;
                 return Ok(());
             }

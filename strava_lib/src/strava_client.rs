@@ -116,17 +116,17 @@ impl StravaClient {
     pub async fn to_file(&self) -> Result<(), Error> {
         let mut f = File::create(&self.config.strava_tokenfile).await?;
         f.write_all(b"[API]\n").await?;
-        f.write_all(format_sstr!("client_id = {}\n", self.client_id).as_bytes())
-            .await?;
-        f.write_all(format_sstr!("client_secret = {}\n", self.client_secret).as_bytes())
-            .await?;
+        let s = format_sstr!("client_id = {}\n", self.client_id);
+        f.write_all(s.as_bytes()).await?;
+        let s = format_sstr!("client_secret = {}\n", self.client_secret);
+        f.write_all(s.as_bytes()).await?;
         if let Some(token) = self.access_token.as_ref() {
-            f.write_all(format_sstr!("access_token = {token}\n").as_bytes())
-                .await?;
+            let s = format_sstr!("access_token = {token}\n");
+            f.write_all(s.as_bytes()).await?;
         }
         if let Some(token) = self.refresh_token.as_ref() {
-            f.write_all(format_sstr!("refresh_token = {token}\n").as_bytes())
-                .await?;
+            let s = format_sstr!("refresh_token = {token}\n");
+            f.write_all(s.as_bytes()).await?;
         }
         Ok(())
     }
@@ -642,12 +642,13 @@ mod tests {
         let mut client = StravaClient::from_file(config).await?;
         client.refresh_access_token().await?;
 
-        let start_datetime = Some(OffsetDateTime::now_utc() - Duration::days(15));
+        let start_datetime = Some(OffsetDateTime::now_utc() - Duration::days(30));
         let end_datetime = Some(OffsetDateTime::now_utc());
 
         let activities = client
             .get_all_strava_activites(start_datetime, end_datetime)
             .await?;
+        println!("{}", activities.len());
         assert!(activities.len() > 10);
         Ok(())
     }

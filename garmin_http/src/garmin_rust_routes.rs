@@ -176,10 +176,11 @@ async fn get_index_body(
             let sport: StackString = gfile.sport.into();
             let sport = titlecase(&sport);
             let dt = gfile.begin_datetime;
+            let title = format_sstr!("Garmin Event {sport} at {dt}");
             let body = index_new_body(
                 config,
                 pool,
-                format_sstr!("Garmin Event {sport} at {dt}"),
+                title,
                 is_demo,
                 req.history.clone(),
                 IndexConfig::File { gfile },

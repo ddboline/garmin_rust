@@ -1,6 +1,6 @@
 [package]
 name = "garmin_rust"
-version = "0.14.27"
+version = "0.15.0"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -14,7 +14,7 @@ Process and display info about gps activity files."""
 
 [dependencies]
 anyhow = "1.0"
-clap = {version="4.0", features=["derive"]}
+clap = {version="4.5", features=["derive"]}
 env_logger = {version="0.11", features=["color", "humantime", "regex"], default-features = false}
 fitbit_bot = {path="fitbit_bot"}
 fitbit_lib = {path="fitbit_lib"}
@@ -24,9 +24,9 @@ garmin_lib = { path = "garmin_lib" }
 garmin_models = {path="garmin_models"}
 garmin_utils = {path="garmin_utils"}
 log = "0.4"
-stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", features=["postgres_types"], tag="0.9.3" }
-tempfile = "3.12"
-tokio = {version="1.40", features=["rt", "macros", "rt-multi-thread"]}
+stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", features=["postgres_types"], tag="1.0.2" }
+tempfile = "3.14"
+tokio = {version="1.41", features=["rt", "macros", "rt-multi-thread"]}
 
 [workspace]
 members = [

@@ -339,7 +339,7 @@ impl AuthorizedUsers {
         }
 
         let query = query!(
-            "SELECT max(created_at) as created_at, max(deleted_at) as deleted_at FROM users"
+            "SELECT max(created_at) as created_at, max(deleted_at) as deleted_at FROM authorized_users"
         );
         let conn = pool.get().await?;
         let result: Option<CreatedDeleted> = query.fetch_opt(&conn).await?;

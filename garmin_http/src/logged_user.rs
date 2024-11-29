@@ -1,6 +1,6 @@
 pub use authorized_users::{
     get_random_key, get_secrets, token::Token, AuthorizedUser as ExternalUser, AUTHORIZED_USERS,
-    JWT_SECRET, KEY_LENGTH, LOGIN_HTML, SECRET_KEY, TRIGGER_DB_UPDATE,
+    JWT_SECRET, KEY_LENGTH, LOGIN_HTML, SECRET_KEY,
 };
 use base64::{engine::general_purpose::STANDARD, Engine};
 use cookie::Cookie;
@@ -9,7 +9,7 @@ use log::debug;
 use maplit::hashmap;
 use reqwest::Client;
 use rweb::{filters::cookie::cookie, Filter, Rejection, Schema};
-use rweb_helper::UuidWrapper;
+use rweb_helper::{DateTimeType, UuidWrapper};
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
 use std::{
@@ -36,6 +36,8 @@ pub struct LoggedUser {
     pub session: UuidWrapper,
     #[schema(description = "Secret Key")]
     pub secret_key: StackString,
+    #[schema(description = "User Created At")]
+    pub created_at: DateTimeType,
 }
 
 impl LoggedUser {
@@ -119,6 +121,7 @@ impl From<ExternalUser> for LoggedUser {
             email: user.email,
             session: user.session.into(),
             secret_key: user.secret_key,
+            created_at: user.created_at.into(),
         }
     }
 }

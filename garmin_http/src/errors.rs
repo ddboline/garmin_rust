@@ -21,7 +21,7 @@ use std::{
 use thiserror::Error;
 use tokio::task::JoinError;
 
-use crate::logged_user::{LOGIN_HTML, TRIGGER_DB_UPDATE};
+use crate::logged_user::LOGIN_HTML;
 
 #[derive(Error, Debug)]
 pub enum ServiceError {
@@ -72,11 +72,9 @@ pub async fn error_response(err: Rejection) -> Result<Box<dyn Reply>, Infallible
         code = StatusCode::NOT_FOUND;
         message = "NOT FOUND";
     } else if err.find::<InvalidHeader>().is_some() {
-        TRIGGER_DB_UPDATE.set();
         return Ok(Box::new(login_html()));
     } else if let Some(missing_cookie) = err.find::<MissingCookie>() {
         if missing_cookie.name() == "jwt" {
-            TRIGGER_DB_UPDATE.set();
             return Ok(Box::new(login_html()));
         }
         code = StatusCode::INTERNAL_SERVER_ERROR;
@@ -88,7 +86,6 @@ pub async fn error_response(err: Rejection) -> Result<Box<dyn Reply>, Infallible
                 message = msg.as_str();
             }
             ServiceError::Unauthorized => {
-                TRIGGER_DB_UPDATE.set();
                 return Ok(Box::new(login_html()));
             }
             _ => {

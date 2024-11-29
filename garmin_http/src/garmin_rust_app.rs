@@ -4,8 +4,8 @@ use anyhow::Error;
 use log::{error, info};
 use maplit::hashset;
 use notify::{
-    recommended_watcher, Event, EventHandler, EventKind, RecursiveMode, Result as NotifyResult,
-    Watcher,
+    recommended_watcher, Event, EventHandler, EventKind, INotifyWatcher, RecursiveMode,
+    Result as NotifyResult, Watcher,
 };
 use reqwest::{Client, ClientBuilder};
 use rweb::{
@@ -15,7 +15,12 @@ use rweb::{
     Filter, Reply,
 };
 use stack_string::format_sstr;
-use std::{collections::HashSet, net::SocketAddr, path::PathBuf, sync::Arc};
+use std::{
+    collections::HashSet,
+    net::SocketAddr,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 use tokio::{
     sync::watch::{channel, Receiver, Sender},
     task::spawn,
@@ -43,7 +48,7 @@ use crate::{
         strava_activities_db_update, strava_athlete, strava_auth, strava_callback, strava_create,
         strava_refresh, strava_sync, strava_update, strava_upload, time_series_js, user,
     },
-    logged_user::{fill_from_db, get_secrets, TRIGGER_DB_UPDATE},
+    logged_user::{fill_from_db, get_secrets},
 };
 
 /// `AppState` is the application state shared between all the handlers
@@ -57,22 +62,35 @@ pub struct AppState {
     pub client: Arc<Client>,
 }
 
+#[derive(Clone)]
 struct Notifier {
     paths_to_check: HashSet<PathBuf>,
     send: Sender<HashSet<PathBuf>>,
+    recv: Receiver<HashSet<PathBuf>>,
+    watcher: Option<Arc<INotifyWatcher>>,
 }
 
 impl Notifier {
-    fn new(config: &GarminConfig, send: Sender<HashSet<PathBuf>>) -> Self {
+    fn new(config: &GarminConfig) -> Self {
         let har_file = config.download_directory.join("connect.garmin.com.har");
         let data_directory = &config.garmin_connect_import_directory;
         let activites_json = data_directory.join("activities.json");
         let heartrate_json = data_directory.join("heartrates.json");
         let paths_to_check = hashset! {har_file, activites_json, heartrate_json};
+        let (send, recv) = channel::<HashSet<PathBuf>>(HashSet::new());
         Self {
             paths_to_check,
             send,
+            recv,
+            watcher: None,
         }
+    }
+
+    fn set_watcher(mut self, directory: &Path) -> Result<Self, Error> {
+        let watcher = recommended_watcher(self.clone())
+            .and_then(|mut w| w.watch(directory, RecursiveMode::Recursive).map(|()| w))?;
+        self.watcher = Some(Arc::new(watcher));
+        Ok(self)
     }
 }
 
@@ -127,28 +145,22 @@ pub async fn start_app() -> Result<(), Error> {
             }
         }
     }
-    async fn check_downloads(cli: GarminCli, mut recv: Receiver<HashSet<PathBuf>>) {
+    async fn check_downloads(cli: GarminCli, mut notifier: Notifier) {
         run_connect_sync(&cli).await;
-        while recv.changed().await.is_ok() {
+        while notifier.recv.changed().await.is_ok() {
             sleep(Duration::from_secs(10)).await;
             run_connect_sync(&cli).await;
-            recv.mark_changed();
+            notifier.recv.mark_changed();
         }
     }
 
     let config = GarminConfig::get_config(None)?;
 
-    TRIGGER_DB_UPDATE.set();
     get_secrets(&config.secret_path, &config.jwt_secret_path).await?;
 
     let pool = PgPool::new(&config.pgurl)?;
 
-    let (send, recv) = channel::<HashSet<PathBuf>>(HashSet::new());
-
-    let send = Notifier::new(&config, send);
-
-    let mut watcher = recommended_watcher(send)?;
-    watcher.watch(&config.download_directory, RecursiveMode::Recursive)?;
+    let notifier = Notifier::new(&config).set_watcher(&config.download_directory)?;
 
     spawn({
         let pool = pool.clone();
@@ -171,7 +183,7 @@ pub async fn start_app() -> Result<(), Error> {
             ..GarminCli::default()
         };
         async move {
-            check_downloads(cli, recv).await;
+            check_downloads(cli, notifier).await;
         }
     });
 

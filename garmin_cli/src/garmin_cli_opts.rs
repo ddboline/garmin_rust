@@ -33,7 +33,8 @@ use fitbit_lib::{
 use garmin_lib::{date_time_wrapper::DateTimeWrapper, garmin_config::GarminConfig};
 use garmin_models::{
     fitbit_activity::FitbitActivity, garmin_connect_activity::GarminConnectActivity,
-    garmin_connect_har_file::GarminConnectHarFile, strava_activity::StravaActivity,
+    garmin_connect_har_file::GarminConnectHarFile,
+    strava_activities_har_file::StravaActivityHarFile, strava_activity::StravaActivity,
 };
 use garmin_utils::{garmin_util::extract_zip_from_garmin_connect_multiple, pgpool::PgPool};
 use race_result_analysis::{race_results::RaceResults, race_type::RaceType};
@@ -600,6 +601,24 @@ impl GarminCliOpts {
                 info!("{line}");
             }
         }
+
+        let har_file = cli.config.download_directory.join("www.strava.com.har");
+        if exists_and_is_not_empty(&har_file).await {
+            let buf = read_to_string(&har_file).await?;
+            if !buf.is_empty() {
+                let har: StravaActivityHarFile = serde_json::from_str(&buf)?;
+                let activities: Vec<StravaActivity> =
+                    har.get_activities()?.map_or(Vec::new(), |a| {
+                        a.models.into_iter().map(Into::into).collect()
+                    });
+                if !activities.is_empty() {
+                    StravaActivity::upsert_activities(&activities, &cli.pool).await?;
+                    StravaActivity::fix_summary_id_in_db(&cli.pool).await?;
+                }
+                input_files.push(har_file);
+            }
+        }
+
         for f in &input_files {
             if f.extension() == Some(OsStr::new("har")) {
                 remove_file(f).await?;
@@ -624,7 +643,7 @@ impl GarminCliOpts {
     /// Return error if various function fail
     pub async fn sync_with_strava(cli: &GarminCli) -> Result<Vec<StravaActivity>, Error> {
         let config = cli.config.clone();
-        let start_datetime = Some(OffsetDateTime::now_utc() - Duration::days(15));
+        let start_datetime = Some(OffsetDateTime::now_utc() - Duration::days(30));
         let end_datetime = Some(OffsetDateTime::now_utc());
 
         let client = StravaClient::with_auth(config).await?;
@@ -651,6 +670,7 @@ mod tests {
     use garmin_lib::garmin_config::GarminConfig;
     use garmin_models::{
         garmin_connect_har_file::GarminConnectHarFile, garmin_correction_lap::GarminCorrectionMap,
+        strava_activities_har_file::StravaActivityHarFile, strava_activity::StravaActivity,
     };
     use garmin_parser::garmin_parse::GarminParse;
     use garmin_utils::pgpool::PgPool;
@@ -700,6 +720,21 @@ mod tests {
 
         let p = Path::new("../../tests/data/connect.garmin.com.har");
         assert_eq!(p.extension(), Some(OsStr::new("har")));
+        Ok(())
+    }
+
+    #[test]
+    fn test_strava_activites_har_file() -> Result<(), Error> {
+        let buf = include_str!("../../tests/data/www.strava.com.har");
+        let har: StravaActivityHarFile = serde_json::from_str(buf)?;
+        let js = har.get_activities()?;
+        assert!(js.is_some());
+        let js = js.unwrap();
+        let activities: Vec<StravaActivity> = js.models.into_iter().map(Into::into).collect();
+        let first_activity = activities.first().unwrap();
+        assert_eq!(first_activity.name, "Hunter's Point");
+        assert_eq!(first_activity.id, 13162225358);
+        assert_eq!(first_activity.moving_time, Some(5185));
         Ok(())
     }
 }

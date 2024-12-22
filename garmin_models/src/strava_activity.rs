@@ -2,10 +2,10 @@ use anyhow::Error;
 use futures::{future::try_join_all, Stream, TryStreamExt};
 use log::debug;
 use postgres_query::{query, query_dyn, Error as PqError, FromSqlRow, Parameter, Query};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use stack_string::{format_sstr, StackString};
 use std::collections::HashMap;
-use time::{Date, OffsetDateTime};
+use time::{macros::format_description, Date, OffsetDateTime};
 use uuid::Uuid;
 
 use garmin_lib::{date_time_wrapper::DateTimeWrapper, strava_timezone::StravaTimeZone};
@@ -293,5 +293,77 @@ impl From<GarminSummary> for StravaActivity {
             activity_type: item.sport,
             ..Self::default()
         }
+    }
+}
+
+#[derive(Deserialize, Debug)]
+pub struct StravaActivityHarJson {
+    pub models: Vec<StravaActivityHarModel>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct StravaActivityHarModel {
+    pub id: i64,
+    pub name: StackString,
+    #[serde(with = "sport_types")]
+    pub sport_type: SportTypes,
+    pub display_type: StackString,
+    pub activity_type_display_name: StackString,
+    #[serde(deserialize_with = "deserialize_start_time")]
+    pub start_time: DateTimeWrapper,
+    pub distance_raw: Option<f64>,
+    pub moving_time_raw: Option<i64>,
+    pub elapsed_time_raw: i64,
+    pub elevation_gain_raw: Option<f64>,
+}
+
+impl From<StravaActivityHarModel> for StravaActivity {
+    fn from(value: StravaActivityHarModel) -> Self {
+        Self {
+            name: value.name,
+            start_date: value.start_time,
+            id: value.id,
+            distance: value.distance_raw,
+            moving_time: value.moving_time_raw,
+            elapsed_time: value.elapsed_time_raw,
+            total_elevation_gain: value.elevation_gain_raw,
+            activity_type: value.sport_type,
+            ..StravaActivity::default()
+        }
+    }
+}
+
+/// # Errors
+/// Return error if deserialize fails
+pub fn deserialize_start_time<'de, D>(deserializer: D) -> Result<DateTimeWrapper, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+
+    OffsetDateTime::parse(
+        &s,
+        format_description!(
+            "[year]-[month]-[day]T[hour]:[minute]:[second]+[offset_hour][offset_minute]"
+        ),
+    )
+    .map(Into::into)
+    .map_err(serde::de::Error::custom)
+}
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Error;
+
+    use crate::strava_activity::{StravaActivity, StravaActivityHarJson};
+
+    #[test]
+    fn test_strava_activity_har_activity_model() -> Result<(), Error> {
+        let buf = include_str!("../../tests/data/strava_training_activities.json");
+        let js: StravaActivityHarJson = serde_json::from_str(buf)?;
+        let activities: Vec<StravaActivity> = js.models.into_iter().map(Into::into).collect();
+        println!("{activities:#?}");
+        assert!(false);
+        Ok(())
     }
 }

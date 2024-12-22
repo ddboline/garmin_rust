@@ -73,10 +73,11 @@ struct Notifier {
 impl Notifier {
     fn new(config: &GarminConfig) -> Self {
         let har_file = config.download_directory.join("connect.garmin.com.har");
+        let strava_har_file = config.download_directory.join("www.strava.com.har");
         let data_directory = &config.garmin_connect_import_directory;
         let activites_json = data_directory.join("activities.json");
         let heartrate_json = data_directory.join("heartrates.json");
-        let paths_to_check = hashset! {har_file, activites_json, heartrate_json};
+        let paths_to_check = hashset! {har_file, activites_json, heartrate_json, strava_har_file};
         let (send, recv) = channel::<HashSet<PathBuf>>(HashSet::new());
         Self {
             paths_to_check,

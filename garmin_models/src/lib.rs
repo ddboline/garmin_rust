@@ -16,4 +16,5 @@ pub mod garmin_lap;
 pub mod garmin_point;
 pub mod garmin_summary;
 pub mod garmin_sync;
+pub mod strava_activities_har_file;
 pub mod strava_activity;

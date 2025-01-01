@@ -110,7 +110,7 @@ impl GarminSync {
         builder.send().await.map_err(Into::into)
     }
 
-    async fn _get_and_process_keys(
+    async fn get_and_process_keys_impl(
         &self,
         bucket: &str,
         pool: &PgPool,
@@ -189,7 +189,7 @@ impl GarminSync {
         bucket: &str,
         pool: &PgPool,
     ) -> Result<(usize, usize), Error> {
-        exponential_retry(|| async move { self._get_and_process_keys(bucket, pool).await }).await
+        exponential_retry(|| async move { self.get_and_process_keys_impl(bucket, pool).await }).await
     }
 
     async fn process_files(

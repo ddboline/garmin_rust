@@ -43,8 +43,8 @@ pub struct GarminConnectActivity {
 impl GarminConnectActivity {
     fn garmin_connect_activity_query<'a>(
         select_str: &'a str,
-        start_date: &'a Option<Date>,
-        end_date: &'a Option<Date>,
+        start_date: Option<&'a Date>,
+        end_date: Option<&'a Date>,
         offset: Option<usize>,
         limit: Option<usize>,
         order_str: &'a str,
@@ -88,8 +88,8 @@ impl GarminConnectActivity {
     ) -> Result<impl Stream<Item = Result<Self, PqError>>, Error> {
         let query = Self::garmin_connect_activity_query(
             "*",
-            &start_date,
-            &end_date,
+            start_date.as_ref(),
+            end_date.as_ref(),
             offset,
             limit,
             "ORDER BY start_time_gmt",
@@ -112,8 +112,8 @@ impl GarminConnectActivity {
 
         let query = Self::garmin_connect_activity_query(
             "count(*)",
-            &start_date,
-            &end_date,
+            start_date.as_ref(),
+            end_date.as_ref(),
             None,
             None,
             "",

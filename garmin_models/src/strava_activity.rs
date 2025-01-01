@@ -50,8 +50,8 @@ impl Default for StravaActivity {
 impl StravaActivity {
     fn get_strava_activity_query<'a>(
         select_str: &'a str,
-        start_date: &'a Option<Date>,
-        end_date: &'a Option<Date>,
+        start_date: Option<&'a Date>,
+        end_date: Option<&'a Date>,
         offset: Option<usize>,
         limit: Option<usize>,
         order_str: &'a str,
@@ -96,8 +96,8 @@ impl StravaActivity {
     ) -> Result<impl Stream<Item = Result<Self, PqError>>, Error> {
         let query = Self::get_strava_activity_query(
             "*",
-            &start_date,
-            &end_date,
+            start_date.as_ref(),
+            end_date.as_ref(),
             offset,
             limit,
             "ORDER BY start_date",
@@ -119,7 +119,7 @@ impl StravaActivity {
         }
 
         let query =
-            Self::get_strava_activity_query("count(*)", &start_date, &end_date, None, None, "")?;
+            Self::get_strava_activity_query("count(*)", start_date.as_ref(), end_date.as_ref(), None, None, "")?;
         let conn = pool.get().await?;
         let count: Count = query.fetch_one(&conn).await?;
 

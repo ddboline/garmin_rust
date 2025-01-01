@@ -1,5 +1,6 @@
 use dioxus::prelude::{
-    component, dioxus_elements, rsx, Element, GlobalAttributes, IntoDynNode, Props, VirtualDom,
+    component, dioxus_elements, rsx, Element, GlobalSignal, IntoDynNode, Props, Readable,
+    VirtualDom,
 };
 use itertools::Itertools;
 use rweb_helper::DateType;
@@ -606,8 +607,8 @@ fn IndexElement(
             }
         });
         let n = heartrate_stats.len();
-        let lower = if offset + 10 <= n { n - 10 - offset } else { 0 };
-        let upper = if offset <= n { n - offset } else { 0 };
+        let lower = n.saturating_sub(offset + 10);
+        let upper = n.saturating_sub(offset);
         let entries = heartrate_stats[lower..upper]
             .iter()
             .enumerate()
@@ -826,8 +827,8 @@ fn IndexElement(
             }
         });
         let n = measurements.len();
-        let lower = if offset + 10 <= n { n - 10 - offset } else { 0 };
-        let upper = if offset <= n { n - offset } else { 0 };
+        let lower = n.saturating_sub(offset + 10);
+        let upper = n.saturating_sub(offset);
         let entries = measurements[lower..upper]
             .iter()
             .enumerate()
@@ -1078,24 +1079,21 @@ fn IndexElement(
                     (10, 0.4),
                 ];
                 let sport_str = gfile.sport.to_str();
-                let sport_title_link = match &strava_activity {
-                    Some(strava_activity) => {
-                        let id = strava_activity.id;
-                        let name = &strava_activity.name;
-                        let dt = gfile.begin_datetime;
-                        rsx! {
-                            a {
-                                href: "https://www.strava.com/activities/{id}",
-                                target: "_blank",
-                                "{name} {dt}",
-                            }
+                let sport_title_link = if let Some(strava_activity) = &strava_activity {
+                    let id = strava_activity.id;
+                    let name = &strava_activity.name;
+                    let dt = gfile.begin_datetime;
+                    rsx! {
+                        a {
+                            href: "https://www.strava.com/activities/{id}",
+                            target: "_blank",
+                            "{name} {dt}",
                         }
                     }
-                    None => {
-                        let s = titlecase(sport_str);
-                        let dt = gfile.begin_datetime;
-                        rsx! {"Garmin Event {s} on {dt}"}
-                    }
+                } else {
+                    let s = titlecase(sport_str);
+                    let dt = gfile.begin_datetime;
+                    rsx! {"Garmin Event {s} on {dt}"}
                 };
                 sport_title.replace(sport_title_link);
                 if !is_demo {
@@ -1172,9 +1170,9 @@ fn IndexElement(
                 });
                 let file_html = Some(get_file_html(
                     &gfile,
-                    &strava_activity,
-                    &connect_activity,
-                    &race_result,
+                    strava_activity.as_ref(),
+                    connect_activity.as_ref(),
+                    race_result.as_ref(),
                 ));
                 let splits_mi = Some(get_html_splits(&gfile, METERS_PER_MILE, "mi"));
                 let splits_5k = Some(get_html_splits(&gfile, 5000.0, "km"));
@@ -1189,9 +1187,9 @@ fn IndexElement(
         } else if let Some(gfile) = gfile {
             let file_html = Some(get_file_html(
                 &gfile,
-                &strava_activity,
-                &connect_activity,
-                &race_result,
+                strava_activity.as_ref(),
+                connect_activity.as_ref(),
+                race_result.as_ref(),
             ));
             let splits_mi = Some(get_html_splits(&gfile, METERS_PER_MILE, "mi"));
             let splits_5k = Some(get_html_splits(&gfile, 5000.0, "km"));
@@ -1303,9 +1301,9 @@ fn IndexElement(
 
 fn get_file_html(
     gfile: &GarminFile,
-    strava_activity: &Option<StravaActivity>,
-    connect_activity: &Option<GarminConnectActivity>,
-    race_result: &Option<RaceResults>,
+    strava_activity: Option<&StravaActivity>,
+    connect_activity: Option<&GarminConnectActivity>,
+    race_result: Option<&RaceResults>,
 ) -> Element {
     let dt = gfile.begin_datetime;
     let sp = {

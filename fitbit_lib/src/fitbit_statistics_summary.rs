@@ -69,8 +69,8 @@ impl FitbitStatisticsSummary {
 
     fn get_fitbit_statistics_query<'a>(
         select_str: &'a str,
-        start_date: &'a Option<Date>,
-        end_date: &'a Option<Date>,
+        start_date: Option<&'a Date>,
+        end_date: Option<&'a Date>,
         offset: Option<usize>,
         limit: Option<usize>,
         order_str: &'a str,
@@ -114,8 +114,8 @@ impl FitbitStatisticsSummary {
     ) -> Result<impl Stream<Item = Result<Self, PqError>>, Error> {
         let query = Self::get_fitbit_statistics_query(
             "*",
-            &start_date,
-            &end_date,
+            start_date.as_ref(),
+            end_date.as_ref(),
             offset,
             limit,
             "ORDER BY date",
@@ -137,7 +137,7 @@ impl FitbitStatisticsSummary {
         }
 
         let query =
-            Self::get_fitbit_statistics_query("count(*)", &start_date, &end_date, None, None, "")?;
+            Self::get_fitbit_statistics_query("count(*)", start_date.as_ref(), end_date.as_ref(), None, None, "")?;
         let conn = pool.get().await?;
         let count: Count = query.fetch_one(&conn).await?;
 

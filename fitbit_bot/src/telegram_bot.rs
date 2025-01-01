@@ -65,7 +65,7 @@ impl TelegramBot {
 
             match Box::pin(tokio::time::timeout(
                 tokio::time::Duration::from_secs(3600),
-                self._telegram_worker(),
+                self.telegram_worker(),
             ))
             .await
             {
@@ -75,7 +75,7 @@ impl TelegramBot {
         }
     }
 
-    async fn _telegram_worker(&self) -> Result<(), Error> {
+    async fn telegram_worker(&self) -> Result<(), Error> {
         let api = Api::new(&self.telegram_bot_token);
         let mut stream = api.stream();
         while let Some(update) = stream.next().await {

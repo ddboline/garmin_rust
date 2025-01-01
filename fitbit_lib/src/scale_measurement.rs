@@ -247,8 +247,8 @@ impl ScaleMeasurement {
 
     fn get_scale_measurement_query<'a>(
         select_str: &'a str,
-        start_date: &'a Option<Date>,
-        end_date: &'a Option<Date>,
+        start_date: Option<&'a Date>,
+        end_date: Option<&'a Date>,
         offset: Option<usize>,
         limit: Option<usize>,
         order_str: &'a str,
@@ -293,8 +293,8 @@ impl ScaleMeasurement {
     ) -> Result<Vec<Self>, Error> {
         let query = Self::get_scale_measurement_query(
             "*",
-            &start_date,
-            &end_date,
+            start_date.as_ref(),
+            end_date.as_ref(),
             offset,
             limit,
             "ORDER BY datetime",
@@ -316,7 +316,7 @@ impl ScaleMeasurement {
         }
 
         let query =
-            Self::get_scale_measurement_query("count(*)", &start_date, &end_date, None, None, "")?;
+            Self::get_scale_measurement_query("count(*)", start_date.as_ref(), end_date.as_ref(), None, None, "")?;
         let conn = pool.get().await?;
         let count: Count = query.fetch_one(&conn).await?;
 

@@ -118,7 +118,7 @@ pub mod iso8601 {
     }
 }
 
-impl<'a> FromSql<'a> for DateTimeWrapper {
+impl FromSql<'_> for DateTimeWrapper {
     fn from_sql(
         type_: &Type,
         raw: &[u8],

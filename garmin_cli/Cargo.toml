@@ -1,6 +1,6 @@
 [package]
 name = "garmin_cli"
-version = "0.15.3"
+version = "0.15.4"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1.0"
-aws-config = {version="1.0", features=["behavior-version-latest"]}
+aws-config = {version="1.5", features=["behavior-version-latest"]}
 clap = {version="4.0", features=["derive"]}
 derive_more = {version="1.0", features=["full"]}
 fitbit_lib = {path="../fitbit_lib"}
@@ -18,7 +18,7 @@ garmin_models={path="../garmin_models"}
 garmin_parser={path="../garmin_parser"}
 garmin_reports = {path="../garmin_reports"}
 garmin_utils={path="../garmin_utils"}
-itertools = "0.13"
+itertools = "0.14"
 log = "0.4"
 notify = "7.0"
 race_result_analysis = {path="../race_result_analysis"}
@@ -31,7 +31,7 @@ strava_lib = {path="../strava_lib"}
 tempfile = "3.12"
 time = {version="0.3", features=["serde-human-readable", "macros", "formatting", "parsing"]}
 time-tz = {version="2.0", features=["system"]}
-tokio = {version="1.41", features=["rt", "macros", "rt-multi-thread"]}
+tokio = {version="1.42", features=["rt", "macros", "rt-multi-thread"]}
 tokio-postgres = {version = "0.7", features = ["with-time-0_3"]}
 stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", features=["postgres_types"], tag="1.0.2" }
 stdout-channel = "0.6"

@@ -118,8 +118,14 @@ impl StravaActivity {
             count: i64,
         }
 
-        let query =
-            Self::get_strava_activity_query("count(*)", start_date.as_ref(), end_date.as_ref(), None, None, "")?;
+        let query = Self::get_strava_activity_query(
+            "count(*)",
+            start_date.as_ref(),
+            end_date.as_ref(),
+            None,
+            None,
+            "",
+        )?;
         let conn = pool.get().await?;
         let count: Count = query.fetch_one(&conn).await?;
 
@@ -362,8 +368,7 @@ mod tests {
         let buf = include_str!("../../tests/data/strava_training_activities.json");
         let js: StravaActivityHarJson = serde_json::from_str(buf)?;
         let activities: Vec<StravaActivity> = js.models.into_iter().map(Into::into).collect();
-        println!("{activities:#?}");
-        assert!(false);
+        assert_eq!(activities.len(), 20);
         Ok(())
     }
 }

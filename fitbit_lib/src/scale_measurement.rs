@@ -315,8 +315,14 @@ impl ScaleMeasurement {
             count: i64,
         }
 
-        let query =
-            Self::get_scale_measurement_query("count(*)", start_date.as_ref(), end_date.as_ref(), None, None, "")?;
+        let query = Self::get_scale_measurement_query(
+            "count(*)",
+            start_date.as_ref(),
+            end_date.as_ref(),
+            None,
+            None,
+            "",
+        )?;
         let conn = pool.get().await?;
         let count: Count = query.fetch_one(&conn).await?;
 

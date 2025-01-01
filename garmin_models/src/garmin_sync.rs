@@ -189,7 +189,8 @@ impl GarminSync {
         bucket: &str,
         pool: &PgPool,
     ) -> Result<(usize, usize), Error> {
-        exponential_retry(|| async move { self.get_and_process_keys_impl(bucket, pool).await }).await
+        exponential_retry(|| async move { self.get_and_process_keys_impl(bucket, pool).await })
+            .await
     }
 
     async fn process_files(

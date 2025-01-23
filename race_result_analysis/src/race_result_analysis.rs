@@ -136,10 +136,7 @@ impl RaceResultAnalysis {
     /// Return error if template rendering fails
     #[must_use]
     pub fn get_data(&self) -> PlotData {
-        fn extract_points(
-            result: &RaceResults,
-            tz: &Tz,
-        ) -> RacePoint {
+        fn extract_points(result: &RaceResults, tz: &Tz) -> RacePoint {
             let distance = f64::from(result.race_distance) / METERS_PER_MILE;
             let duration = result.race_time / 60.0;
             let x = result.race_distance;

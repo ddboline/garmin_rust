@@ -2,7 +2,7 @@ use log::debug;
 use serde::Serialize;
 use std::collections::HashMap;
 
-use crate::plot_opts::{PlotOpts, DataPoint};
+use crate::plot_opts::{DataPoint, PlotOpts};
 
 #[derive(PartialEq, Debug, Serialize)]
 pub struct ScatterDataPoint {
@@ -59,7 +59,7 @@ pub fn generate_plot_data(opts: &PlotOpts, data: &[DataPoint]) -> Option<Scatter
             }
         }
 
-        for DataPoint { x, y} in data {
+        for DataPoint { x, y } in data {
             let xindex = ((x - xmin) / xstep) as u64;
             let yindex = ((y - ymin) / ystep) as u64;
             if let Some(x) = bins.get_mut(&(xindex, yindex)) {
@@ -74,7 +74,11 @@ pub fn generate_plot_data(opts: &PlotOpts, data: &[DataPoint]) -> Option<Scatter
 
         let mut data: Vec<ScatterDataPoint> = bins
             .iter()
-            .map(|((xb, yb), c)| ScatterDataPoint{x: *xb as f64 * xstep + xmin, y: *yb as f64 * ystep + ymin, c: *c})
+            .map(|((xb, yb), c)| ScatterDataPoint {
+                x: *xb as f64 * xstep + xmin,
+                y: *yb as f64 * ystep + ymin,
+                c: *c,
+            })
             .collect();
         data.shrink_to_fit();
 

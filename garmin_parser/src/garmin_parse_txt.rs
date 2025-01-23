@@ -12,9 +12,10 @@ use time::{
     Date, PrimitiveDateTime, Time,
 };
 
-use garmin_lib::date_time_wrapper::DateTimeWrapper;
 use garmin_models::{
-    garmin_correction_lap::{apply_lap_corrections, GarminCorrectionLap},
+    garmin_correction_lap::{
+        apply_lap_corrections, CorrectedOutput, CorrectionKey, GarminCorrectionLap,
+    },
     garmin_file::GarminFile,
     garmin_lap::GarminLap,
     garmin_point::GarminPoint,
@@ -41,7 +42,7 @@ impl GarminParseTrait for GarminParseTxt {
     fn with_file(
         self,
         filename: &Path,
-        corr_map: &HashMap<(DateTimeWrapper, i32), GarminCorrectionLap>,
+        corr_map: &HashMap<CorrectionKey, GarminCorrectionLap>,
     ) -> Result<GarminFile, Error> {
         let file_name = filename
             .file_name()
@@ -58,7 +59,10 @@ impl GarminParseTrait for GarminParseTxt {
             .as_ref()
             .and_then(|s| s.parse().ok())
             .unwrap_or(SportTypes::None);
-        let (lap_list, sport) = apply_lap_corrections(&txt_output.lap_list, sport, corr_map);
+        let CorrectedOutput {
+            laps: lap_list,
+            sport,
+        } = apply_lap_corrections(&txt_output.lap_list, sport, corr_map);
         let first_lap = lap_list.first().ok_or_else(|| format_err!("No laps"))?;
         let gfile = GarminFile {
             filename: file_name,

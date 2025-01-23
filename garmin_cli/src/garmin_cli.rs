@@ -19,7 +19,7 @@ use tokio::task::spawn_blocking;
 use fitbit_lib::fitbit_archive::archive_fitbit_heartrates;
 use garmin_lib::{date_time_wrapper::DateTimeWrapper, garmin_config::GarminConfig};
 use garmin_models::{
-    garmin_correction_lap::{GarminCorrectionLap, GarminCorrectionMap},
+    garmin_correction_lap::{CorrectionKey, GarminCorrectionLap, GarminCorrectionMap},
     garmin_file,
     garmin_summary::{get_list_of_files_from_db, GarminSummary},
     garmin_sync::GarminSync,
@@ -150,7 +150,7 @@ impl GarminCli {
     /// Return error if reading summary list fails
     pub async fn get_summary_list(
         &self,
-        corr_map: &HashMap<(DateTimeWrapper, i32), GarminCorrectionLap>,
+        corr_map: &HashMap<CorrectionKey, GarminCorrectionLap>,
     ) -> Result<Vec<GarminSummary>, Error> {
         let config = self.get_config();
         let pg_conn = self.get_pool();

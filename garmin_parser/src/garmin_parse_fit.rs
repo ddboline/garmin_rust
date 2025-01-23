@@ -3,11 +3,12 @@ use fitparser::{profile::field_types::MesgNum, Value};
 use log::debug;
 use std::{collections::HashMap, fs::File, path::Path};
 
-use garmin_lib::date_time_wrapper::DateTimeWrapper;
 use garmin_utils::sport_types::SportTypes;
 
 use garmin_models::{
-    garmin_correction_lap::{apply_lap_corrections, GarminCorrectionLap},
+    garmin_correction_lap::{
+        apply_lap_corrections, CorrectedOutput, CorrectionKey, GarminCorrectionLap,
+    },
     garmin_file::GarminFile,
     garmin_lap::GarminLap,
     garmin_point::GarminPoint,
@@ -29,11 +30,13 @@ impl GarminParseTrait for GarminParseFit {
     fn with_file(
         self,
         filename: &Path,
-        corr_map: &HashMap<(DateTimeWrapper, i32), GarminCorrectionLap>,
+        corr_map: &HashMap<CorrectionKey, GarminCorrectionLap>,
     ) -> Result<GarminFile, Error> {
         let fit_output = self.parse_file(filename)?;
-        let (lap_list, sport) =
-            apply_lap_corrections(&fit_output.lap_list, fit_output.sport, corr_map);
+        let CorrectedOutput {
+            laps: lap_list,
+            sport,
+        } = apply_lap_corrections(&fit_output.lap_list, fit_output.sport, corr_map);
         let first_lap = lap_list.first().ok_or_else(|| format_err!("No laps"))?;
         let filename = filename
             .file_name()

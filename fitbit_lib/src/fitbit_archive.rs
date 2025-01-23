@@ -304,7 +304,7 @@ pub fn get_heartrate_values(
     start_date: Date,
     end_date: Date,
     step_size: Option<usize>,
-) -> Result<Vec<(DateTimeWrapper, i32)>, Error> {
+) -> Result<Vec<FitbitHeartRate>, Error> {
     let step_size = step_size.unwrap_or(1) as i64;
     let fitbit_files = get_fitbit_parquet_files(config, start_date, end_date);
     let start_timestamp = start_date
@@ -346,13 +346,19 @@ pub fn get_heartrate_values(
     let mut values: Vec<_> = values
         .into_iter()
         .filter_map(|(t, v)| {
-            let d: DateTimeWrapper = OffsetDateTime::from_unix_timestamp(t).ok()?.into();
+            let datetime: DateTimeWrapper = OffsetDateTime::from_unix_timestamp(t).ok()?.into();
             let v_len = v.len();
             if v_len == 1 {
-                Some((d, v[0]))
+                Some(FitbitHeartRate {
+                    datetime,
+                    value: v[0],
+                })
             } else {
                 let v: i32 = v.iter().sum();
-                Some((d, v / v_len as i32))
+                Some(FitbitHeartRate {
+                    datetime,
+                    value: v / v_len as i32,
+                })
             }
         })
         .collect();

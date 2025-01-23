@@ -15,7 +15,8 @@ use fitbit_lib::{
 use garmin_cli::garmin_cli::{GarminCli, GarminRequest};
 use garmin_lib::{date_time_wrapper::DateTimeWrapper, garmin_config::GarminConfig};
 use garmin_models::{
-    garmin_correction_lap::GarminCorrectionLap, garmin_summary::GarminSummary,
+    garmin_correction_lap::{CorrectionKey, GarminCorrectionLap},
+    garmin_summary::GarminSummary,
     strava_activity::StravaActivity,
 };
 use garmin_reports::garmin_constraints::GarminConstraints;
@@ -387,7 +388,10 @@ impl AddGarminCorrectionRequest {
         corr_map.shrink_to_fit();
         let start_time: OffsetDateTime = self.start_time.into();
         let start_time = start_time.into();
-        let unique_key = (start_time, self.lap_number);
+        let unique_key = CorrectionKey {
+            datetime: start_time,
+            lap_number: self.lap_number,
+        };
 
         let mut new_corr = corr_map.get(&unique_key).map_or_else(
             || {

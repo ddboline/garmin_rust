@@ -1,11 +1,17 @@
 use serde::Serialize;
 use stack_string::StackString;
 
+#[derive(Serialize, Default, PartialEq, Clone, Copy)]
+pub struct DataPoint {
+    pub x: f64,
+    pub y: f64,
+}
+
 #[derive(Serialize, Default)]
 pub struct PlotOpts<'a> {
     pub name: StackString,
     pub title: StackString,
-    pub data: Option<&'a [(f64, f64)]>,
+    pub data: Option<&'a [DataPoint]>,
     pub do_scatter: bool,
     pub marker: Option<StackString>,
     pub xlabel: StackString,
@@ -40,7 +46,7 @@ impl<'a> PlotOpts<'a> {
     }
 
     #[must_use]
-    pub fn with_data(mut self, data: &'a [(f64, f64)]) -> PlotOpts<'a> {
+    pub fn with_data(mut self, data: &'a [DataPoint]) -> PlotOpts<'a> {
         self.data = Some(data);
         self
     }

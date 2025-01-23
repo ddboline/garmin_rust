@@ -9,8 +9,8 @@ function scatter_plot_with_lines(
         width = 600 - margin.left - margin.right,
         height = 400 - margin.top - margin.bottom;
 
-    var xmax = d3.max(data, function(d) {return d[0]});
-    var xmin = d3.min(data, function(d) {return d[0]});
+    var xmax = d3.max(data, function(d) {return d.x});
+    var xmin = d3.min(data, function(d) {return d.x});
 
     xmax = xmax + 0.1 * Math.abs(xmax);
     xmin = xmin - 0.1 * Math.abs(xmin);
@@ -68,8 +68,8 @@ function scatter_plot_with_lines(
         .data(data)
         .enter()
         .append("circle")
-            .attr("cx", function(d) {return x(d[0]);})
-            .attr("cy", function(d) {return y(d[1]);})
+            .attr("cx", function(d) {return x(d.x);})
+            .attr("cy", function(d) {return y(d.y);})
             .attr("r", 4)
             .style("fill", "blue")
             .on("mouseover", handleMouseOverData)
@@ -80,8 +80,8 @@ function scatter_plot_with_lines(
         .data(other_data)
         .enter()
         .append("circle")
-            .attr("cx", function(d) {return x(d[0]);})
-            .attr("cy", function(d) {return y(d[1]);})
+            .attr("cx", function(d) {return x(d.x);})
+            .attr("cy", function(d) {return y(d.y);})
             .attr("r", 3)
             .style("fill", "green")
             .on("mouseover", handleMouseOverOtherData)
@@ -101,17 +101,17 @@ function scatter_plot_with_lines(
             .attr("id", 'data' + i)
             .attr("x", function() {return x(xmin) + 30;})
             .attr("y", function() {return y(ymax) + 15;})
-            .text(function() {return data[i][2];});
+            .text(function() {return data[i].name;});
         svg.append('text')
             .attr("id", 'data_date' + i)
             .attr("x", function() {return x(xmin) + 30;})
             .attr("y", function() {return y(ymax) + 30;})
-            .text(function() {return data[i][3];});
+            .text(function() {return data[i].date;});
         svg.append('text')
             .attr("id", 'data_time' + i)
             .attr("x", function() {return x(xmin) + 30;})
             .attr("y", function() {return y(ymax) + 45;})
-            .text(function() {return data[i][4];});
+            .text(function() {return data[i].label;});
     }
 
     function handleMouseOutData(d, i) {
@@ -125,17 +125,17 @@ function scatter_plot_with_lines(
             .attr("id", 'otherdata' + i)
             .attr("x", function() {return x(xmin) + 30;})
             .attr("y", function() {return y(ymax) + 15;})
-            .text(function() {return other_data[i][2];});
+            .text(function() {return other_data[i].name;});
         svg.append('text')
             .attr("id", 'otherdata_date' + i)
             .attr("x", function() {return x(xmin) + 30;})
             .attr("y", function() {return y(ymax) + 30;})
-            .text(function() {return other_data[i][3];});
+            .text(function() {return other_data[i].date;});
         svg.append('text')
             .attr("id", 'otherdata_time' + i)
             .attr("x", function() {return x(xmin) + 30;})
             .attr("y", function() {return y(ymax) + 45;})
-            .text(function() {return other_data[i][4];});
+            .text(function() {return other_data[i].label;});
     }
 
     function handleMouseOutOtherData(d, i) {

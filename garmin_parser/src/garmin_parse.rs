@@ -6,8 +6,11 @@ use std::{collections::HashMap, ffi::OsStr, path::Path};
 
 use garmin_lib::date_time_wrapper::DateTimeWrapper;
 use garmin_models::{
-    garmin_correction_lap::GarminCorrectionLap, garmin_file::GarminFile, garmin_lap::GarminLap,
-    garmin_point::GarminPoint, garmin_summary::GarminSummary,
+    garmin_correction_lap::{CorrectionKey, GarminCorrectionLap},
+    garmin_file::GarminFile,
+    garmin_lap::GarminLap,
+    garmin_point::GarminPoint,
+    garmin_summary::GarminSummary,
 };
 use garmin_utils::{
     garmin_util::{get_file_list, get_md5sum},
@@ -18,6 +21,30 @@ use super::{
     garmin_parse_fit::GarminParseFit, garmin_parse_gmn::GarminParseGmn,
     garmin_parse_tcx::GarminParseTcx, garmin_parse_txt::GarminParseTxt,
 };
+
+#[derive(Default)]
+pub struct ParseOutput {
+    pub lap_list: Vec<GarminLap>,
+    pub point_list: Vec<GarminPoint>,
+    pub sport: SportTypes,
+}
+
+pub trait GarminParseTrait
+where
+    Self: Send + Sync,
+{
+    /// # Errors
+    /// May return error if parsing and loading file fails
+    fn with_file(
+        self,
+        filename: &Path,
+        corr_map: &HashMap<CorrectionKey, GarminCorrectionLap>,
+    ) -> Result<GarminFile, Error>;
+
+    /// # Errors
+    /// May return error if parsing file fails
+    fn parse_file(&self, filename: &Path) -> Result<ParseOutput, Error>;
+}
 
 #[derive(Default, Debug)]
 pub struct GarminParse {}
@@ -33,7 +60,7 @@ impl GarminParse {
     pub fn process_single_gps_file(
         filepath: &Path,
         cache_dir: &Path,
-        corr_map: &HashMap<(DateTimeWrapper, i32), GarminCorrectionLap>,
+        corr_map: &HashMap<CorrectionKey, GarminCorrectionLap>,
     ) -> Result<GarminSummary, Error> {
         let filename = filepath
             .file_name()
@@ -64,7 +91,7 @@ impl GarminParse {
     pub fn process_all_gps_files(
         gps_dir: &Path,
         cache_dir: &Path,
-        corr_map: &HashMap<(DateTimeWrapper, i32), GarminCorrectionLap>,
+        corr_map: &HashMap<CorrectionKey, GarminCorrectionLap>,
     ) -> Result<Vec<GarminSummary>, Error> {
         let path = Path::new(gps_dir);
 
@@ -104,7 +131,7 @@ impl GarminParseTrait for GarminParse {
     fn with_file(
         self,
         filename: &Path,
-        corr_map: &HashMap<(DateTimeWrapper, i32), GarminCorrectionLap>,
+        corr_map: &HashMap<CorrectionKey, GarminCorrectionLap>,
     ) -> Result<GarminFile, Error> {
         match filename.extension().and_then(OsStr::to_str) {
             Some("txt") => GarminParseTxt::new().with_file(filename, corr_map),
@@ -125,30 +152,6 @@ impl GarminParseTrait for GarminParse {
     fn parse_file(&self, _: &Path) -> Result<ParseOutput, Error> {
         Ok(ParseOutput::default())
     }
-}
-
-#[derive(Default)]
-pub struct ParseOutput {
-    pub lap_list: Vec<GarminLap>,
-    pub point_list: Vec<GarminPoint>,
-    pub sport: SportTypes,
-}
-
-pub trait GarminParseTrait
-where
-    Self: Send + Sync,
-{
-    /// # Errors
-    /// May return error if parsing and loading file fails
-    fn with_file(
-        self,
-        filename: &Path,
-        corr_map: &HashMap<(DateTimeWrapper, i32), GarminCorrectionLap>,
-    ) -> Result<GarminFile, Error>;
-
-    /// # Errors
-    /// May return error if parsing file fails
-    fn parse_file(&self, filename: &Path) -> Result<ParseOutput, Error>;
 }
 
 #[cfg(test)]

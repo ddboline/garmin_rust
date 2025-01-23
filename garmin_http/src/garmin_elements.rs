@@ -46,7 +46,7 @@ const LBS_PER_KG: f64 = 1_000.0 / (16.0 * GRAMS_PER_OUNCE);
 
 #[derive(PartialEq, Clone)]
 struct HeartrateOpts {
-    heartrate: Vec<(DateTimeWrapper, i32)>,
+    heartrate: Vec<FitbitHeartRate>,
     button_date: Option<DateType>,
 }
 
@@ -70,7 +70,7 @@ pub enum IndexConfig {
         end_date: Option<DateType>,
     },
     HeartRate {
-        heartrate: Vec<(DateTimeWrapper, i32)>,
+        heartrate: Vec<FitbitHeartRate>,
         start_date: DateType,
         end_date: DateType,
         button_date: Option<DateType>,
@@ -401,12 +401,16 @@ fn IndexElement(
         );
         let mut final_values: Vec<_> = heartrate
             .iter()
-            .chunk_by(|(d, _)| d.unix_timestamp() / (5 * 60))
+            .chunk_by(|hv| hv.datetime.unix_timestamp() / (5 * 60))
             .into_iter()
             .map(|(_, group)| {
                 let (begin_datetime, entries, heartrate_sum) = group.fold(
                     (None, 0, 0),
-                    |(begin_datetime, entries, heartrate_sum), (datetime, heartrate)| {
+                    |(begin_datetime, entries, heartrate_sum),
+                     FitbitHeartRate {
+                         datetime,
+                         value: heartrate,
+                     }| {
                         (
                             if begin_datetime.is_none() || begin_datetime < Some(datetime) {
                                 Some(datetime)
@@ -1885,48 +1889,6 @@ fn create_analysis_plot(model: &RaceResultAnalysis, is_demo: bool) -> Element {
         }
         {scripts},
         {tables},
-    }
-}
-
-/// # Errors
-/// Returns error if formatting fails
-pub fn create_fitbit_table(heartrate_values: Vec<FitbitHeartRate>) -> Result<String, Error> {
-    let mut app = VirtualDom::new_with_props(
-        FitbitTableElement,
-        FitbitTableElementProps { heartrate_values },
-    );
-    app.rebuild_in_place();
-    let mut renderer = dioxus_ssr::Renderer::default();
-    let mut buffer = String::new();
-    renderer
-        .render_to(&mut buffer, &app)
-        .map_err(Into::<Error>::into)?;
-    Ok(buffer)
-}
-
-#[component]
-fn FitbitTableElement(heartrate_values: Vec<FitbitHeartRate>) -> Element {
-    rsx! {
-        table {
-            "border": "1",
-            thead {
-                th {"Datetime"},
-                th {"Heart Rate"},
-            },
-            tbody {
-                {heartrate_values.iter().enumerate().map(|(idx, entry)| {
-                    let datetime = entry.datetime;
-                    let heartrate = entry.value;
-                    rsx! {
-                        tr {
-                            key: "heartrate-values-key-{idx}",
-                            td {"{datetime}"},
-                            td {"{heartrate}"},
-                        }
-                    }
-                })},
-            }
-        }
     }
 }
 

@@ -3,6 +3,7 @@ use futures::TryStreamExt;
 use ndarray::{array, Array1};
 use postgres_query::{query, FromSqlRow};
 use rusfun::{curve_fit::Minimizer, func1d::Func1D};
+use serde::Serialize;
 use stack_string::StackString;
 use std::collections::HashMap;
 use time::{Date, OffsetDateTime};
@@ -17,6 +18,15 @@ use garmin_utils::{
 };
 
 use crate::{race_results::RaceResults, race_type::RaceType};
+
+#[derive(Serialize)]
+pub struct RacePoint {
+    pub x: i32,
+    pub y: f64,
+    pub name: StackString,
+    pub date: Date,
+    pub label: StackString,
+}
 
 #[derive(PartialEq, Clone)]
 pub struct RaceResultAnalysis {
@@ -47,8 +57,8 @@ pub enum ParamType {
 }
 
 pub struct PlotData {
-    pub data: Vec<(i32, f64, StackString, Date, StackString)>,
-    pub other_data: Vec<(i32, f64, StackString, Date, StackString)>,
+    pub data: Vec<RacePoint>,
+    pub other_data: Vec<RacePoint>,
     pub x_proj: Array1<f64>,
     pub y_proj: Array1<f64>,
     pub x_vals: Array1<f64>,
@@ -129,21 +139,21 @@ impl RaceResultAnalysis {
         fn extract_points(
             result: &RaceResults,
             tz: &Tz,
-        ) -> (i32, f64, StackString, Date, StackString) {
+        ) -> RacePoint {
             let distance = f64::from(result.race_distance) / METERS_PER_MILE;
             let duration = result.race_time / 60.0;
             let x = result.race_distance;
             let y = duration / distance;
-            (
+            RacePoint {
                 x,
                 y,
-                result.race_name.clone().unwrap_or_else(|| "".into()),
-                result.race_date.map_or_else(
+                name: result.race_name.clone().unwrap_or_else(|| "".into()),
+                date: result.race_date.map_or_else(
                     || OffsetDateTime::now_utc().to_timezone(tz).date(),
                     Into::into,
                 ),
-                print_h_m_s(result.race_time, true).unwrap_or_else(|_| "".into()),
-            )
+                label: print_h_m_s(result.race_time, true).unwrap_or_else(|_| "".into()),
+            }
         }
         let local = DateTimeWrapper::local_tz();
         let xticks = vec![

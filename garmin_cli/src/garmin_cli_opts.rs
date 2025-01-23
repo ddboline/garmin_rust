@@ -57,6 +57,12 @@ impl FromStr for DateType {
     }
 }
 
+pub struct GarminConnectSynctOutput {
+    pub filenames: Vec<PathBuf>,
+    pub input_files: Vec<PathBuf>,
+    pub dates: Vec<Date>,
+}
+
 #[derive(Parser, PartialEq, Eq)]
 pub enum GarminCliOpts {
     #[clap(alias = "boot")]
@@ -389,7 +395,7 @@ impl GarminCliOpts {
                 .await??;
                 let mut values: Vec<_> = values
                     .into_iter()
-                    .map(|(d, v)| format_sstr!("{d} {v}"))
+                    .map(|hr| format_sstr!("{d} {v}", d = hr.datetime, v = hr.value))
                     .collect();
                 values.shrink_to_fit();
                 let s = format_sstr!("count {count} {}", values.len());
@@ -427,7 +433,11 @@ impl GarminCliOpts {
                 end_date,
             }) => {
                 let mut buf = cli.proc_everything().await?;
-                let (filenames, input_files, dates) = Self::sync_with_garmin_connect(
+                let GarminConnectSynctOutput {
+                    filenames,
+                    input_files,
+                    dates,
+                } = Self::sync_with_garmin_connect(
                     cli,
                     data_directory,
                     *start_date,
@@ -454,7 +464,7 @@ impl GarminCliOpts {
         start_date: Option<Date>,
         end_date: Option<Date>,
         check_for_date_json: bool,
-    ) -> Result<(Vec<PathBuf>, Vec<PathBuf>, Vec<Date>), Error> {
+    ) -> Result<GarminConnectSynctOutput, Error> {
         async fn exists_and_is_not_empty(path: &Path) -> bool {
             metadata(path)
                 .await
@@ -636,7 +646,11 @@ impl GarminCliOpts {
         input_files.shrink_to_fit();
         dates.shrink_to_fit();
 
-        Ok((filenames, input_files, dates))
+        Ok(GarminConnectSynctOutput {
+            filenames,
+            input_files,
+            dates,
+        })
     }
 
     /// # Errors

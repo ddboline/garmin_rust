@@ -1,7 +1,7 @@
 use stack_string::format_sstr;
 
 use garmin_models::garmin_file::GarminFile;
-use garmin_utils::{garmin_util::METERS_PER_MILE, plot_opts::PlotOpts};
+use garmin_utils::{garmin_util::METERS_PER_MILE, plot_opts::{PlotOpts, DataPoint}};
 
 use garmin_reports::garmin_file_report_txt::get_splits;
 
@@ -12,17 +12,17 @@ pub struct ReportObjects {
     pub max_hr: f64,
 
     pub hr_vals: Vec<f64>,
-    pub hr_values: Vec<(f64, f64)>,
+    pub hr_values: Vec<DataPoint>,
     pub alt_vals: Vec<f64>,
-    pub alt_values: Vec<(f64, f64)>,
-    pub mph_speed_values: Vec<(f64, f64)>,
-    pub avg_speed_values: Vec<(f64, f64)>,
-    pub avg_mph_speed_values: Vec<(f64, f64)>,
+    pub alt_values: Vec<DataPoint>,
+    pub mph_speed_values: Vec<DataPoint>,
+    pub avg_speed_values: Vec<DataPoint>,
+    pub avg_mph_speed_values: Vec<DataPoint>,
     pub lat_vals: Vec<f64>,
     pub lon_vals: Vec<f64>,
-    pub mile_split_vals: Vec<(f64, f64)>,
-    pub speed_values: Vec<(f64, f64)>,
-    pub heart_rate_speed: Vec<(f64, f64)>,
+    pub mile_split_vals: Vec<DataPoint>,
+    pub speed_values: Vec<DataPoint>,
+    pub heart_rate_speed: Vec<DataPoint>,
 }
 
 #[must_use]
@@ -33,7 +33,7 @@ pub fn extract_report_objects_from_file(gfile: &GarminFile) -> ReportObjects {
         .map(|v| {
             let t = v.time_value;
             let h = v.avg_heart_rate.unwrap_or(0.0);
-            (h, 4.0 * t / 60.)
+            DataPoint { x: h, y: 4.0 * t / 60.}
         })
         .collect();
     heart_rate_speed.shrink_to_fit();
@@ -43,7 +43,7 @@ pub fn extract_report_objects_from_file(gfile: &GarminFile) -> ReportObjects {
         .map(|v| {
             let d = v.split_distance;
             let t = v.time_value;
-            (d / 4., 4. * t / 60.)
+            DataPoint { x: d / 4., y: 4. * t / 60.}
         })
         .collect();
     speed_values.shrink_to_fit();
@@ -53,7 +53,7 @@ pub fn extract_report_objects_from_file(gfile: &GarminFile) -> ReportObjects {
         .map(|v| {
             let d = v.split_distance;
             let t = v.time_value;
-            (d, t / 60.)
+            DataPoint {x: d, y: t / 60.}
         })
         .collect();
     mile_split_vals.shrink_to_fit();
@@ -76,28 +76,28 @@ pub fn extract_report_objects_from_file(gfile: &GarminFile) -> ReportObjects {
                     report_objs.avg_hr += hr * point.duration_from_last;
                     report_objs.sum_time += point.duration_from_last;
                     report_objs.hr_vals.push(hr);
-                    report_objs.hr_values.push((xval, hr));
+                    report_objs.hr_values.push(DataPoint {x: xval, y: hr});
                 }
             }
         };
         if let Some(alt) = point.altitude {
             if (alt > 0.0) & (alt < 10000.0) {
                 report_objs.alt_vals.push(alt);
-                report_objs.alt_values.push((xval, alt));
+                report_objs.alt_values.push(DataPoint { x: xval, y: alt});
             }
         };
         if (point.speed_mph > 0.0) & (point.speed_mph < 20.0) {
-            report_objs.mph_speed_values.push((xval, point.speed_mph));
+            report_objs.mph_speed_values.push(DataPoint {x: xval, y: point.speed_mph});
         };
         if (point.avg_speed_value_permi > 0.0) & (point.avg_speed_value_permi < 20.0) {
             report_objs
                 .avg_speed_values
-                .push((xval, point.avg_speed_value_permi));
+                .push(DataPoint {x: xval, y: point.avg_speed_value_permi});
         };
         if point.avg_speed_value_mph > 0.0 {
             report_objs
                 .avg_mph_speed_values
-                .push((xval, point.avg_speed_value_mph));
+                .push(DataPoint { x: xval, y: point.avg_speed_value_mph});
         };
         if let Some(lat) = point.latitude {
             if let Some(lon) = point.longitude {
@@ -188,10 +188,10 @@ pub fn get_plot_opts(report_objs: &ReportObjects) -> Vec<PlotOpts> {
     };
 
     if !report_objs.avg_speed_values.is_empty() {
-        let (_, avg_speed_value) = report_objs.avg_speed_values.last().unwrap_or(&(0.0, 0.0));
-        let avg_speed_value_min = *avg_speed_value as i32;
+        let avg_speed_value = report_objs.avg_speed_values.last().map_or(0f64, |d| d.y);
+        let avg_speed_value_min = avg_speed_value as i32;
         let avg_speed_value_sec =
-            ((*avg_speed_value - f64::from(avg_speed_value_min)) * 60.0) as i32;
+            ((avg_speed_value - f64::from(avg_speed_value_min)) * 60.0) as i32;
 
         plot_opts.push(
             PlotOpts::new()
@@ -208,10 +208,10 @@ pub fn get_plot_opts(report_objs: &ReportObjects) -> Vec<PlotOpts> {
     };
 
     if !report_objs.avg_mph_speed_values.is_empty() {
-        let (_, avg_mph_speed_value) = report_objs
+        let avg_mph_speed_value = report_objs
             .avg_mph_speed_values
             .last()
-            .unwrap_or(&(0.0, 0.0));
+            .map_or(0f64, |d| d.y);
 
         plot_opts.push(
             PlotOpts::new()

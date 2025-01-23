@@ -27,7 +27,10 @@ use tokio::{
     time::{interval, sleep, Duration},
 };
 
-use garmin_cli::{garmin_cli::GarminCli, garmin_cli_opts::GarminCliOpts};
+use garmin_cli::{
+    garmin_cli::GarminCli,
+    garmin_cli_opts::{GarminCliOpts, GarminConnectSynctOutput},
+};
 use garmin_lib::garmin_config::GarminConfig;
 use garmin_models::garmin_correction_lap::GarminCorrectionMap;
 use garmin_utils::pgpool::PgPool;
@@ -135,8 +138,11 @@ pub async fn start_app() -> Result<(), Error> {
         }
     }
     async fn run_connect_sync(cli: &GarminCli) {
-        if let Ok((filenames, input_files, dates)) =
-            GarminCliOpts::sync_with_garmin_connect(cli, &None, None, None, false).await
+        if let Ok(GarminConnectSynctOutput {
+            filenames,
+            input_files,
+            dates,
+        }) = GarminCliOpts::sync_with_garmin_connect(cli, &None, None, None, false).await
         {
             if !filenames.is_empty() || !input_files.is_empty() || !dates.is_empty() {
                 info!("processed filenames {filenames:?} from {input_files:?} and dates {dates:?}");

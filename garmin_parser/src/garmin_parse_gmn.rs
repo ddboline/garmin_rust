@@ -4,9 +4,10 @@ use stack_string::format_sstr;
 use std::{collections::HashMap, path::Path};
 use subprocess::{Exec, Redirection};
 
-use garmin_lib::date_time_wrapper::DateTimeWrapper;
 use garmin_models::{
-    garmin_correction_lap::{apply_lap_corrections, GarminCorrectionLap},
+    garmin_correction_lap::{
+        apply_lap_corrections, CorrectedOutput, CorrectionKey, GarminCorrectionLap,
+    },
     garmin_file::GarminFile,
     garmin_lap::GarminLap,
     garmin_point::GarminPoint,
@@ -29,7 +30,7 @@ impl GarminParseTrait for GarminParseGmn {
     fn with_file(
         self,
         filename: &Path,
-        corr_map: &HashMap<(DateTimeWrapper, i32), GarminCorrectionLap>,
+        corr_map: &HashMap<CorrectionKey, GarminCorrectionLap>,
     ) -> Result<GarminFile, Error> {
         let gmn_output = self.parse_file(filename)?;
         let filename = filename
@@ -38,8 +39,10 @@ impl GarminParseTrait for GarminParseGmn {
             .to_string_lossy()
             .to_string()
             .into();
-        let (lap_list, sport) =
-            apply_lap_corrections(&gmn_output.lap_list, gmn_output.sport, corr_map);
+        let CorrectedOutput {
+            laps: lap_list,
+            sport,
+        } = apply_lap_corrections(&gmn_output.lap_list, gmn_output.sport, corr_map);
         let first_lap = lap_list.first().ok_or_else(|| format_err!("No laps"))?;
         let gfile = GarminFile {
             filename,

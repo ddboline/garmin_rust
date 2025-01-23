@@ -118,7 +118,7 @@ fn default_n_db_workers() -> usize {
 }
 fn default_secret_path() -> PathBuf {
     dirs::config_dir()
-        .unwrap()
+        .unwrap_or_else(|| "/home/ubuntu/.config".into())
         .join("aws_app_rust")
         .join("secret.bin")
 }
@@ -183,7 +183,7 @@ fn default_fitbit_archive_bucket() -> StackString {
 impl Default for GarminConfigInner {
     fn default() -> Self {
         let default = r#"{"pgurl":""}"#;
-        serde_json::from_str(default).unwrap()
+        serde_json::from_str(default).expect("Cannot deserialize default")
     }
 }
 

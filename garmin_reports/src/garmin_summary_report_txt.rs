@@ -353,6 +353,7 @@ impl GarminReportTrait for FileSummaryReport {
         }
         Ok(tmp_vec)
     }
+
     fn generate_url_string(&self) -> StackString {
         convert_datetime_to_str(self.datetime)
     }

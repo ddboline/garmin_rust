@@ -50,10 +50,10 @@ function line_plot(data, title, xaxis, yaxis) {
             .style("font-size", "16px")
             .text(yaxis);
 
-    let xmax = d3.max(data, function(d) {return d[0]});
-    let xmin = d3.min(data, function(d) {return d[0]});
-    let ymax = d3.max(data, function(d) {return d[1]});
-    let ymin = d3.min(data, function(d) {return d[1]});
+    let xmax = d3.max(data, function(d) {return d.x});
+    let xmin = d3.min(data, function(d) {return d.x});
+    let ymax = d3.max(data, function(d) {return d.y});
+    let ymin = d3.min(data, function(d) {return d.y});
 
     xmax = xmax + 0.1 * Math.abs(xmax);
     xmin = xmin - 0.1 * Math.abs(xmin);

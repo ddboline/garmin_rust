@@ -26,7 +26,13 @@ pub struct GarminCorrectionLap {
     pub summary_id: Option<Uuid>,
 }
 
-pub type GarminCorrectionMap = HashMap<(DateTimeWrapper, i32), GarminCorrectionLap>;
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub struct CorrectionKey {
+    pub datetime: DateTimeWrapper,
+    pub lap_number: i32,
+}
+
+pub type GarminCorrectionMap = HashMap<CorrectionKey, GarminCorrectionLap>;
 
 impl Default for GarminCorrectionLap {
     fn default() -> Self {
@@ -87,7 +93,15 @@ impl GarminCorrectionLap {
     pub fn map_from_vec<T: IntoIterator<Item = Self>>(corr_list: T) -> GarminCorrectionMap {
         let mut h: HashMap<_, _> = corr_list
             .into_iter()
-            .map(|corr| ((corr.start_time, corr.lap_number), corr))
+            .map(|corr| {
+                (
+                    CorrectionKey {
+                        datetime: corr.start_time,
+                        lap_number: corr.lap_number,
+                    },
+                    corr,
+                )
+            })
             .collect();
         h.shrink_to_fit();
         h
@@ -146,7 +160,13 @@ impl GarminCorrectionLap {
                     _ => Vec::new(),
                 })
                 .filter_map(|x| match x {
-                    Ok(corr) => Some(((corr.start_time, corr.lap_number), corr)),
+                    Ok(corr) => Some((
+                        CorrectionKey {
+                            datetime: corr.start_time,
+                            lap_number: corr.lap_number,
+                        },
+                        corr,
+                    )),
                     Err(e) => {
                         debug!("Error {}", e);
                         None
@@ -227,7 +247,12 @@ impl GarminCorrectionLap {
                 let time = convert_str_to_datetime(time)?.into();
                 let mut lap_list: Vec<_> = corr_list_map
                     .keys()
-                    .filter_map(|(t, n)| if *t == time { Some(*n) } else { None })
+                    .filter_map(
+                        |CorrectionKey {
+                             datetime: t,
+                             lap_number: n,
+                         }| if *t == time { Some(*n) } else { None },
+                    )
                     .collect();
                 lap_list.shrink_to_fit();
 
@@ -238,7 +263,11 @@ impl GarminCorrectionLap {
                 };
 
                 for lap_number in lap_list {
-                    let new_corr = match corr_list_map.get(&(time, lap_number)) {
+                    let key = CorrectionKey {
+                        datetime: time,
+                        lap_number,
+                    };
+                    let new_corr = match corr_list_map.get(&key) {
                         Some(v) => v.with_sport(sport),
                         None => Self::new()
                             .with_start_time(time)
@@ -246,7 +275,7 @@ impl GarminCorrectionLap {
                             .with_sport(sport),
                     };
 
-                    corr_list_map.insert((time, lap_number), new_corr);
+                    corr_list_map.insert(key, new_corr);
                 }
             }
         }
@@ -322,7 +351,15 @@ impl GarminCorrectionLap {
     pub async fn read_corrections_from_db(pool: &PgPool) -> Result<GarminCorrectionMap, Error> {
         Self::_read_corrections_from_db(pool)
             .await?
-            .map_ok(|corr| ((corr.start_time, corr.lap_number), corr))
+            .map_ok(|corr| {
+                (
+                    CorrectionKey {
+                        datetime: corr.start_time,
+                        lap_number: corr.lap_number,
+                    },
+                    corr,
+                )
+            })
             .try_collect()
             .await
             .map_err(Into::into)
@@ -357,11 +394,16 @@ impl GarminCorrectionLap {
     }
 }
 
+pub struct CorrectedOutput {
+    pub laps: Vec<GarminLap>,
+    pub sport: SportTypes,
+}
+
 pub fn apply_lap_corrections<S: BuildHasher + Sync>(
     lap_list: &[GarminLap],
     sport: SportTypes,
-    corr_map: &HashMap<(DateTimeWrapper, i32), GarminCorrectionLap, S>,
-) -> (Vec<GarminLap>, SportTypes) {
+    corr_map: &HashMap<CorrectionKey, GarminCorrectionLap, S>,
+) -> CorrectedOutput {
     let mut new_sport = sport;
     match lap_list.first() {
         Some(l) => {
@@ -373,7 +415,11 @@ pub fn apply_lap_corrections<S: BuildHasher + Sync>(
                 .iter()
                 .map(|lap| {
                     let lap_number = lap.lap_number;
-                    match &corr_map.get(&(lap_start, lap_number)) {
+                    let key = CorrectionKey {
+                        datetime: lap_start,
+                        lap_number,
+                    };
+                    match &corr_map.get(&key) {
                         Some(corr) => {
                             let mut new_lap = lap.clone();
                             match corr.sport {
@@ -415,9 +461,15 @@ pub fn apply_lap_corrections<S: BuildHasher + Sync>(
             for lap in &new_lap_list {
                 debug!("lap {} dis {}", lap.lap_number, lap.lap_distance);
             }
-            (new_lap_list, new_sport)
+            CorrectedOutput {
+                laps: new_lap_list,
+                sport: new_sport,
+            }
         }
-        None => (Vec::new(), new_sport),
+        None => CorrectedOutput {
+            laps: Vec::new(),
+            sport: new_sport,
+        },
     }
 }
 
@@ -431,7 +483,7 @@ mod tests {
 
     use garmin_utils::sport_types::SportTypes;
 
-    use crate::garmin_correction_lap::GarminCorrectionLap;
+    use crate::garmin_correction_lap::{CorrectionKey, GarminCorrectionLap};
 
     #[test]
     fn test_garmin_correction_lap_new() {
@@ -612,15 +664,15 @@ mod tests {
 
         assert_eq!(corr_map.len(), 26);
 
+        let key = CorrectionKey {
+            datetime: convert_str_to_datetime("2010-11-20T19:55:34Z")
+                .unwrap()
+                .into(),
+            lap_number: 0,
+        };
+
         assert_eq!(
-            corr_map
-                .get(&(
-                    convert_str_to_datetime("2010-11-20T19:55:34Z")
-                        .unwrap()
-                        .into(),
-                    0
-                ))
-                .unwrap(),
+            corr_map.get(&key).unwrap(),
             &GarminCorrectionLap {
                 id: id_0,
                 start_time: convert_str_to_datetime("2010-11-20T19:55:34Z")
@@ -633,15 +685,14 @@ mod tests {
                 ..GarminCorrectionLap::default()
             }
         );
+        let key = CorrectionKey {
+            datetime: convert_str_to_datetime("2010-11-20T19:55:34Z")
+                .unwrap()
+                .into(),
+            lap_number: 1,
+        };
         assert_eq!(
-            corr_map
-                .get(&(
-                    convert_str_to_datetime("2010-11-20T19:55:34Z")
-                        .unwrap()
-                        .into(),
-                    1
-                ))
-                .unwrap(),
+            corr_map.get(&key).unwrap(),
             &GarminCorrectionLap {
                 id: id_1,
                 start_time: convert_str_to_datetime("2010-11-20T19:55:34Z")

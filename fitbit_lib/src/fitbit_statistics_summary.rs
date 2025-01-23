@@ -11,6 +11,8 @@ use time_tz::OffsetDateTimeExt;
 use garmin_lib::date_time_wrapper::DateTimeWrapper;
 use garmin_utils::pgpool::PgPool;
 
+use crate::fitbit_heartrate::FitbitHeartRate;
+
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, FromSqlRow)]
 pub struct FitbitStatisticsSummary {
     pub date: Date,
@@ -24,20 +26,20 @@ pub struct FitbitStatisticsSummary {
 
 impl FitbitStatisticsSummary {
     #[must_use]
-    pub fn from_heartrate_values(heartrate_values: &[(DateTimeWrapper, i32)]) -> Option<Self> {
+    pub fn from_heartrate_values(heartrate_values: &[FitbitHeartRate]) -> Option<Self> {
         let local = DateTimeWrapper::local_tz();
         if heartrate_values.len() < 2 {
             return None;
         }
         let date = heartrate_values[heartrate_values.len() / 2]
-            .0
+            .datetime
             .to_timezone(local)
             .date();
-        let min_heartrate = f64::from(heartrate_values.iter().map(|(_, v)| *v).min()?);
-        let max_heartrate = f64::from(heartrate_values.iter().map(|(_, v)| *v).max()?);
+        let min_heartrate = f64::from(heartrate_values.iter().map(|hv| hv.value).min()?);
+        let max_heartrate = f64::from(heartrate_values.iter().map(|hv| hv.value).max()?);
         let mut values: Vec<_> = heartrate_values
             .iter()
-            .map(|(_, v)| f64::from(*v))
+            .map(|hv| f64::from(hv.value))
             .collect();
         values.shrink_to_fit();
         let mean_heartrate = mean(&values);

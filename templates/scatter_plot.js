@@ -17,9 +17,9 @@ function scatter_plot(data, title, xlabel, ylabel, xStep, yStep) {
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
     // Compute the scale domains.
-    x.domain(d3.extent(data, function(d) { return d[0]; }));
-    y.domain(d3.extent(data, function(d) { return d[1]; }));
-    z.domain([0, d3.max(data, function(d) { return d[2]; })]);
+    x.domain(d3.extent(data, function(d) { return d.x; }));
+    y.domain(d3.extent(data, function(d) { return d.y; }));
+    z.domain([0, d3.max(data, function(d) { return d.c; })]);
 
     // Extend the x- and y-domain to fit the last bucket.
     // For example, the y-bucket 3200 corresponds to values [3200, 3300].
@@ -32,11 +32,11 @@ function scatter_plot(data, title, xlabel, ylabel, xStep, yStep) {
         .data(data)
     .enter().append("rect")
         .attr("class", "tile")
-        .attr("x", function(d) { return x(d[0]); })
-        .attr("y", function(d) { return y(d[1] + yStep); })
+        .attr("x", function(d) { return x(d.x); })
+        .attr("y", function(d) { return y(d.y + yStep); })
         .attr("width", x(xStep) - x(0))
         .attr("height",  y(0) - y(yStep))
-        .style("fill", function(d) { return z(d[2]); });
+        .style("fill", function(d) { return z(d.c); });
 
     // Add a legend for the color values.
     var legend = svg.selectAll(".legend")

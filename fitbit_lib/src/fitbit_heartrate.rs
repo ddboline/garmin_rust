@@ -29,7 +29,7 @@ use garmin_utils::pgpool::PgPool;
 
 use crate::{fitbit_statistics_summary::FitbitStatisticsSummary, GarminConnectHrData};
 
-#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FitbitHeartRate {
     pub datetime: DateTimeWrapper,
     pub value: i32,
@@ -115,7 +115,7 @@ impl FitbitHeartRate {
         pool: &PgPool,
         start_date: Date,
         end_date: Date,
-    ) -> Result<Vec<(DateTimeWrapper, i32)>, Error> {
+    ) -> Result<Vec<FitbitHeartRate>, Error> {
         let ndays = (end_date - start_date).whole_days();
 
         let mut days: Vec<_> = (0..=ndays)
@@ -164,15 +164,12 @@ impl FitbitHeartRate {
     fn read_fitbit_and_garmin_files(
         fitbit_files: &[PathBuf],
         garmin_files: &[PathBuf],
-    ) -> Result<Vec<(DateTimeWrapper, i32)>, Error> {
+    ) -> Result<Vec<FitbitHeartRate>, Error> {
         let results: Result<Vec<_>, Error> = fitbit_files
             .into_par_iter()
             .map(|input_path| {
                 info!("read file {:?}", input_path);
-                let values: Vec<_> = Self::read_avro(input_path)?
-                    .into_par_iter()
-                    .map(|h| (h.datetime, h.value))
-                    .collect();
+                let values = Self::read_avro(input_path)?;
                 info!("values {:?} {}", input_path, values.len());
                 Ok(values)
             })
@@ -186,7 +183,12 @@ impl FitbitHeartRate {
                 let mut points: Vec<_> = GarminFile::read_avro(avro_file)?
                     .points
                     .into_par_iter()
-                    .filter_map(|p| p.heart_rate.map(|h| (p.time, h as i32)))
+                    .filter_map(|p| {
+                        p.heart_rate.map(|h| FitbitHeartRate {
+                            datetime: p.time,
+                            value: h as i32,
+                        })
+                    })
                     .collect();
                 points.shrink_to_fit();
                 Ok(points)

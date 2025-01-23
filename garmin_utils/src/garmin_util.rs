@@ -246,13 +246,7 @@ pub fn extract_zip_from_garmin_connect_multiple(
 ///     * opening it fails
 ///     * creating the output file fails
 ///     * writing to the file fails
-pub fn gzip_file<T, U>(input_filename: T, output_filename: U) -> Result<(), Error>
-where
-    T: AsRef<Path>,
-    U: AsRef<Path>,
-{
-    let input_filename = input_filename.as_ref();
-    let output_filename = output_filename.as_ref();
+pub fn gzip_file(input_filename: &Path, output_filename: &Path) -> Result<(), Error> {
     if !input_filename.exists() {
         return Err(format_err!("File {input_filename:?} does not exist"));
     }

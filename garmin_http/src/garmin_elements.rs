@@ -4,6 +4,7 @@ use dioxus::prelude::{
 };
 use itertools::Itertools;
 use rweb_helper::DateType;
+use serde::Serialize;
 use stack_string::{format_sstr, StackString};
 use std::{collections::HashMap, fmt::Write};
 use time::{macros::format_description, Date, Duration, OffsetDateTime};
@@ -356,8 +357,20 @@ fn IndexElement(
     model: Option<RaceResultAnalysis>,
     config: GarminConfig,
 ) -> Element {
-    struct PlotData {
-        data: Vec<(String, f64)>,
+    #[derive(Serialize, PartialEq, Eq, PartialOrd, Ord)]
+    struct HeartRatePoint {
+        x: StackString,
+        y: i32,
+    }
+
+    #[derive(Serialize)]
+    struct TimeSeriesPoint {
+        x: StackString,
+        y: f64,
+    }
+
+    struct TimeSeriesData {
+        data: Vec<TimeSeriesPoint>,
         title: &'static str,
         xaxis: &'static str,
         yaxis: &'static str,
@@ -403,7 +416,7 @@ fn IndexElement(
             .iter()
             .chunk_by(|hv| hv.datetime.unix_timestamp() / (5 * 60))
             .into_iter()
-            .map(|(_, group)| {
+            .filter_map(|(_, group)| {
                 let (begin_datetime, entries, heartrate_sum) = group.fold(
                     (None, 0, 0),
                     |(begin_datetime, entries, heartrate_sum),
@@ -429,8 +442,12 @@ fn IndexElement(
                             "[year]-[month]-[day]T[hour]:[minute]:[second][offset_hour \
                              sign:mandatory]:[offset_minute]"
                         ))
-                        .unwrap_or_else(|_| String::new());
-                    (begin_datetime_str, average_heartrate)
+                        .unwrap_or_else(|_| String::new())
+                        .into();
+                    HeartRatePoint {
+                        x: begin_datetime_str,
+                        y: average_heartrate,
+                    }
                 })
             })
             .collect();
@@ -543,45 +560,66 @@ fn IndexElement(
         );
         let mut plots = Vec::new();
         let dformat = format_description!("[year]-[month]-[day]T00:00:00Z");
-        let mut min_heartrate: Vec<(String, f64)> = heartrate_stats
+        let mut min_heartrate: Vec<TimeSeriesPoint> = heartrate_stats
             .iter()
             .map(|stat| {
-                let key = stat.date.format(dformat).unwrap_or_else(|_| String::new());
-                (key, stat.min_heartrate)
+                let x = stat
+                    .date
+                    .format(dformat)
+                    .unwrap_or_else(|_| String::new())
+                    .into();
+                TimeSeriesPoint {
+                    x,
+                    y: stat.min_heartrate,
+                }
             })
             .collect();
         min_heartrate.shrink_to_fit();
-        plots.push(PlotData {
+        plots.push(TimeSeriesData {
             data: min_heartrate,
             title: "Minimum Heartrate",
             xaxis: "Date",
             yaxis: "Heatrate [bpm]",
             units: "bpm",
         });
-        let mut max_heartrate: Vec<(String, f64)> = heartrate_stats
+        let mut max_heartrate: Vec<TimeSeriesPoint> = heartrate_stats
             .iter()
             .map(|stat| {
-                let key = stat.date.format(dformat).unwrap_or_else(|_| String::new());
-                (key, stat.max_heartrate)
+                let x = stat
+                    .date
+                    .format(dformat)
+                    .unwrap_or_else(|_| String::new())
+                    .into();
+                TimeSeriesPoint {
+                    x,
+                    y: stat.max_heartrate,
+                }
             })
             .collect();
         max_heartrate.shrink_to_fit();
-        plots.push(PlotData {
+        plots.push(TimeSeriesData {
             data: max_heartrate,
             title: "Maximum Heartrate",
             xaxis: "Date",
             yaxis: "Heatrate [bpm]",
             units: "bpm",
         });
-        let mut mean_heartrate: Vec<(String, f64)> = heartrate_stats
+        let mut mean_heartrate: Vec<TimeSeriesPoint> = heartrate_stats
             .iter()
             .map(|stat| {
-                let key = stat.date.format(dformat).unwrap_or_else(|_| String::new());
-                (key, stat.mean_heartrate)
+                let x = stat
+                    .date
+                    .format(dformat)
+                    .unwrap_or_else(|_| String::new())
+                    .into();
+                TimeSeriesPoint {
+                    x,
+                    y: stat.mean_heartrate,
+                }
             })
             .collect();
         mean_heartrate.shrink_to_fit();
-        plots.push(PlotData {
+        plots.push(TimeSeriesData {
             data: mean_heartrate,
             title: "Mean Heartrate",
             xaxis: "Date",
@@ -718,90 +756,104 @@ fn IndexElement(
 
         let mut plots = Vec::new();
 
-        let mut mass: Vec<(String, f64)> = measurements
+        let mut mass: Vec<TimeSeriesPoint> = measurements
             .iter()
             .map(|meas| {
-                let key = meas
+                let x = meas
                     .datetime
                     .format(tformat)
-                    .unwrap_or_else(|_| String::new());
-                (key, meas.mass)
+                    .unwrap_or_else(|_| String::new())
+                    .into();
+                TimeSeriesPoint { x, y: meas.mass }
             })
             .collect();
         mass.shrink_to_fit();
-        plots.push(PlotData {
+        plots.push(TimeSeriesData {
             data: mass,
             title: "Weight",
             xaxis: "Date",
             yaxis: "Weight [lbs]",
             units: "lbs",
         });
-        let mut fat: Vec<(String, f64)> = measurements
+        let mut fat: Vec<TimeSeriesPoint> = measurements
             .iter()
             .map(|meas| {
-                let key = meas
+                let x = meas
                     .datetime
                     .format(tformat)
-                    .unwrap_or_else(|_| String::new());
-                (key, meas.fat_pct)
+                    .unwrap_or_else(|_| String::new())
+                    .into();
+                TimeSeriesPoint { x, y: meas.fat_pct }
             })
             .collect();
         fat.shrink_to_fit();
-        plots.push(PlotData {
+        plots.push(TimeSeriesData {
             data: fat,
             title: "Fat %",
             xaxis: "Date",
             yaxis: "Fat %",
             units: "%",
         });
-        let mut water: Vec<(String, f64)> = measurements
+        let mut water: Vec<TimeSeriesPoint> = measurements
             .iter()
             .map(|meas| {
-                let key = meas
+                let x = meas
                     .datetime
                     .format(tformat)
-                    .unwrap_or_else(|_| String::new());
-                (key, meas.water_pct)
+                    .unwrap_or_else(|_| String::new())
+                    .into();
+                TimeSeriesPoint {
+                    x,
+                    y: meas.water_pct,
+                }
             })
             .collect();
         water.shrink_to_fit();
-        plots.push(PlotData {
+        plots.push(TimeSeriesData {
             data: water,
             title: "Water %",
             xaxis: "Date",
             yaxis: "Water %",
             units: "%",
         });
-        let mut muscle: Vec<(String, f64)> = measurements
+        let mut muscle: Vec<TimeSeriesPoint> = measurements
             .iter()
             .map(|meas| {
-                let key = meas
+                let x = meas
                     .datetime
                     .format(tformat)
-                    .unwrap_or_else(|_| String::new());
-                (key, meas.muscle_pct)
+                    .unwrap_or_else(|_| String::new())
+                    .into();
+                TimeSeriesPoint {
+                    x,
+                    y: meas.muscle_pct,
+                }
             })
             .collect();
         muscle.shrink_to_fit();
-        plots.push(PlotData {
+        plots.push(TimeSeriesData {
             data: muscle,
             title: "Muscle %",
             xaxis: "Date",
             yaxis: "Muscle %",
             units: "%",
         });
-        let mut bone: Vec<(String, f64)> = measurements
+        let mut bone: Vec<TimeSeriesPoint> = measurements
             .iter()
             .map(|meas| {
-                let key = meas
+                let x = meas
                     .datetime
                     .format(tformat)
-                    .unwrap_or_else(|_| String::new());
-                (key, meas.bone_pct)
+                    .unwrap_or_else(|_| String::new())
+                    .into();
+                TimeSeriesPoint {
+                    x,
+                    y: meas.bone_pct,
+                }
             })
             .collect();
         bone.shrink_to_fit();
-        plots.push(PlotData {
+        plots.push(TimeSeriesData {
             data: bone,
             title: "Bone %",
             xaxis: "Date",

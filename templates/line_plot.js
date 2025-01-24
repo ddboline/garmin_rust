@@ -15,8 +15,8 @@ function line_plot(data, title, xaxis, yaxis) {
 
     // Define the line
     let valueline = d3.line()
-        .x(function(d) { return x(d[0]); })
-        .y(function(d) { return y(d[1]); });
+        .x(function(d) { return x(d.x); })
+        .y(function(d) { return y(d.y); });
         
     // Adds the svg canvas
     let svg = d3.select("body")

@@ -49,24 +49,24 @@ function time_series(data, title, xaxis, yaxis, units) {
             .text(yaxis);
 
     data.forEach(function(d) {
-        d[0] = parseDateTime(d[0]);
+        d.x = parseDateTime(d.x);
     });
 
-    let xmax = d3.max(data, function(d) {return d[0]});
-    let xmin = d3.min(data, function(d) {return d[0]});
-    let ymax = d3.max(data, function(d) {return d[1]});
-    let ymin = d3.min(data, function(d) {return d[1]});
+    let xmax = d3.max(data, function(d) {return d.x});
+    let xmin = d3.min(data, function(d) {return d.x});
+    let ymax = d3.max(data, function(d) {return d.y});
+    let ymin = d3.min(data, function(d) {return d.y});
 
     ymax = ymax + 0.1 * Math.abs(ymax);
     ymin = ymin - 0.1 * Math.abs(ymin);
 
-    x.domain(d3.extent(data, function(d) {return d[0]; }));
+    x.domain(d3.extent(data, function(d) {return d.x; }));
     y.domain([ymin, ymax]);
 
     // Define the line
     var valueline = d3.line()
-        .x(function(d) { return x(d[0]); })
-        .y(function(d) { return y(d[1]); });
+        .x(function(d) { return x(d.x); })
+        .y(function(d) { return y(d.y); });
 
     svg.append("path").attr("class", "line").attr("d", valueline(data));
 

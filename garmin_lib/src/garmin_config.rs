@@ -74,6 +74,10 @@ pub struct GarminConfigInner {
     pub garmin_connect_api_endpoint: Option<UrlWrapper>,
     #[serde(default = "default_connect_import_directory")]
     pub garmin_connect_import_directory: PathBuf,
+    pub garmin_connect_oauth_consumer_key: Option<StackString>,
+    pub garmin_connect_oauth_consumer_secret: Option<StackString>,
+    #[serde(default = "default_garmin_connect_tokenfile")]
+    pub garmin_connect_tokenfile: PathBuf,
     #[serde(default = "default_webdriver_path")]
     pub webdriver_path: PathBuf,
     #[serde(default = "default_webdriver_port")]
@@ -139,6 +143,9 @@ fn default_fitbit_archivedir() -> PathBuf {
 }
 fn default_fitbit_tokenfile() -> PathBuf {
     default_home_dir().join(".fitbit_tokens")
+}
+fn default_garmin_connect_tokenfile() -> PathBuf {
+    default_home_dir().join(".garmin_connect_tokens")
 }
 fn default_strava_tokenfile() -> PathBuf {
     default_home_dir().join(".stravacli")

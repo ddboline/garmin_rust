@@ -6,7 +6,7 @@ use log::info;
 use refinery::embed_migrations;
 use stack_string::{format_sstr, StackString};
 use std::{
-    collections::BTreeSet,
+    collections::{BTreeSet, HashMap},
     ffi::OsStr,
     os::unix::fs::MetadataExt,
     path::{Path, PathBuf},
@@ -30,6 +30,7 @@ use fitbit_lib::{
     scale_measurement::ScaleMeasurement,
     GarminConnectHrData,
 };
+use garmin_connect_lib::garmin_connect_client::GarminConnectClient;
 use garmin_lib::{date_time_wrapper::DateTimeWrapper, garmin_config::GarminConfig};
 use garmin_models::{
     fitbit_activity::FitbitActivity, garmin_connect_activity::GarminConnectActivity,
@@ -57,7 +58,8 @@ impl FromStr for DateType {
     }
 }
 
-pub struct GarminConnectSynctOutput {
+#[derive(Default)]
+pub struct GarminConnectSyncOutput {
     pub filenames: Vec<PathBuf>,
     pub input_files: Vec<PathBuf>,
     pub dates: Vec<Date>,
@@ -433,18 +435,23 @@ impl GarminCliOpts {
                 end_date,
             }) => {
                 let mut buf = cli.proc_everything().await?;
-                let GarminConnectSynctOutput {
+                let output = if data_directory.is_some() {
+                    Self::sync_with_garmin_connect(
+                        cli,
+                        data_directory,
+                        *start_date,
+                        *end_date,
+                        true,
+                    )
+                    .await?
+                } else {
+                    Self::sync_with_garmin_connect_api(cli, *start_date, *end_date).await?
+                };
+                let GarminConnectSyncOutput {
                     filenames,
                     input_files,
                     dates,
-                } = Self::sync_with_garmin_connect(
-                    cli,
-                    data_directory,
-                    *start_date,
-                    *end_date,
-                    true,
-                )
-                .await?;
+                } = output;
                 if !filenames.is_empty() || !input_files.is_empty() || !dates.is_empty() {
                     buf.extend_from_slice(&cli.sync_everything().await?);
                 }
@@ -464,7 +471,7 @@ impl GarminCliOpts {
         start_date: Option<Date>,
         end_date: Option<Date>,
         check_for_date_json: bool,
-    ) -> Result<GarminConnectSynctOutput, Error> {
+    ) -> Result<GarminConnectSyncOutput, Error> {
         async fn exists_and_is_not_empty(path: &Path) -> bool {
             metadata(path)
                 .await
@@ -646,7 +653,7 @@ impl GarminCliOpts {
         input_files.shrink_to_fit();
         dates.shrink_to_fit();
 
-        Ok(GarminConnectSynctOutput {
+        Ok(GarminConnectSyncOutput {
             filenames,
             input_files,
             dates,
@@ -670,6 +677,84 @@ impl GarminCliOpts {
         }
 
         Ok(activities)
+    }
+
+    /// # Errors
+    /// Returns error on various
+    pub async fn sync_with_garmin_connect_api(
+        cli: &GarminCli,
+        start_date: Option<Date>,
+        end_date: Option<Date>,
+    ) -> Result<GarminConnectSyncOutput, Error> {
+        let mut dates = BTreeSet::new();
+        let mut filenames = Vec::new();
+        let mut activities = Vec::new();
+
+        let mut client = GarminConnectClient::new(cli.config.clone())?;
+        client.init().await?;
+
+        let new_activities = client.get_activities(Some(0), Some(10)).await?;
+        let new_activities =
+            GarminConnectActivity::merge_new_activities(new_activities, &cli.pool).await?;
+        activities.extend(&new_activities);
+        let missing_activities: HashMap<_, _> =
+            GarminConnectActivity::activities_to_download(&cli.pool)
+                .await?
+                .map_ok(|activity| (activity.activity_id, activity))
+                .try_collect()
+                .await?;
+
+        for activity in new_activities {
+            if missing_activities.contains_key(&activity.activity_id) {
+                filenames.push(client.download_activity(activity.activity_id).await?);
+            }
+        }
+
+        let now = OffsetDateTime::now_utc();
+        let start_date = start_date.unwrap_or_else(|| (now - Duration::days(3)).date());
+        let end_date = end_date.unwrap_or_else(|| now.date());
+
+        let mut date = start_date;
+
+        while date <= end_date {
+            let hr_values = client.get_heartrate(date).await?;
+            let hr_values = FitbitHeartRate::from_garmin_connect_hr(&hr_values);
+            let config = cli.config.clone();
+            dates.extend(
+                spawn_blocking(move || FitbitHeartRate::merge_slice_to_avro(&config, &hr_values))
+                    .await??,
+            );
+            date += Duration::days(1);
+        }
+
+        if !filenames.is_empty() {
+            let datetimes = cli.process_filenames(&filenames).await?;
+            info!("number of files {}", datetimes.len());
+        }
+
+        if !filenames.is_empty() {
+            for line in cli.proc_everything().await? {
+                info!("{line}");
+            }
+            GarminConnectActivity::fix_summary_id_in_db(&cli.pool).await?;
+            for line in archive_fitbit_heartrates(&cli.config, &cli.pool, false).await? {
+                info!("{line}");
+            }
+        }
+
+        let mut dates: Vec<_> = dates.into_iter().collect();
+
+        filenames.sort();
+        dates.sort();
+
+        filenames.shrink_to_fit();
+        dates.shrink_to_fit();
+
+        Ok(GarminConnectSyncOutput {
+            filenames,
+            input_files: Vec::new(),
+            dates,
+        })
     }
 }
 

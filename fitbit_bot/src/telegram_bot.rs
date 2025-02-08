@@ -210,7 +210,7 @@ mod tests {
     use once_cell::sync::Lazy;
     use parking_lot::Mutex;
     use postgres_query::query;
-    use rand::{distributions::Alphanumeric, thread_rng, Rng};
+    use rand::{distr::Alphanumeric, rng, Rng};
     use stack_string::{format_sstr, StackString};
     use std::{collections::HashSet, sync::Arc};
     use telegram_bot::UserId;
@@ -318,7 +318,7 @@ mod tests {
     }
 
     fn get_random_string(size: usize) -> String {
-        let mut rng = thread_rng();
+        let mut rng = rng();
         let mut s: String = (0..size)
             .map(|_| char::from(rng.sample(Alphanumeric)))
             .collect();

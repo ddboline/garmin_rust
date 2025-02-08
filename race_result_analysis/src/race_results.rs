@@ -416,15 +416,9 @@ impl RaceResults {
 fn parse_time_string(s: &str) -> Option<f64> {
     let times: SmallVec<[&str; 3]> = s.split(':').rev().take(3).collect();
 
-    let seconds: f64 = match times.first().and_then(|t| t.parse().ok()) {
-        Some(t) => t,
-        None => return None,
-    };
+    let seconds: f64 = times.first().and_then(|t| t.parse().ok())?;
 
-    let minutes: f64 = match times.get(1).and_then(|t| t.parse().ok()) {
-        Some(t) => t,
-        None => return None,
-    };
+    let minutes: f64 = times.get(1).and_then(|t| t.parse().ok())?;
 
     let hours: f64 = match times.get(2).and_then(|t| t.parse().ok()) {
         Some(t) => t,

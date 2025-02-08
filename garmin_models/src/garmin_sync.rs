@@ -8,8 +8,8 @@ use futures::{Stream, TryStreamExt};
 use log::{debug, error};
 use postgres_query::{query, query_dyn, Error as PgError, FromSqlRow, Parameter};
 use rand::{
-    distributions::{Alphanumeric, DistString},
-    thread_rng,
+    distr::{Alphanumeric, SampleString},
+    rng,
 };
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
@@ -388,7 +388,7 @@ impl GarminSync {
         s3_key: &str,
     ) -> Result<StackString, Error> {
         let tmp_path = {
-            let mut rng = thread_rng();
+            let mut rng = rng();
             let rand_str = Alphanumeric.sample_string(&mut rng, 8);
             local_file.with_file_name(format_sstr!(".tmp_{rand_str}"))
         };

@@ -50,12 +50,12 @@ impl Default for StravaAuthType {
 
 #[derive(Default, Debug)]
 pub struct StravaClient {
-    pub config: GarminConfig,
-    pub client_id: StackString,
+    config: GarminConfig,
+    client_id: StackString,
     pub client_secret: StackString,
     pub access_token: Option<StackString>,
     pub refresh_token: Option<StackString>,
-    pub client: Client,
+    client: Client,
 }
 
 impl StravaClient {

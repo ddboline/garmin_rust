@@ -262,13 +262,13 @@ impl FitbitHeartRate {
     /// Returns error if serialize to avro file fails
     pub fn dump_to_avro(values: &[Self], output_filename: impl AsRef<Path>) -> Result<(), Error> {
         use rand::{
-            distributions::{Alphanumeric, DistString},
-            thread_rng,
+            distr::{Alphanumeric, SampleString},
+            rng,
         };
         let schema = Schema::parse_str(FITBITHEARTRATE_SCHEMA)?;
 
         let tmp_path = {
-            let mut rng = thread_rng();
+            let mut rng = rng();
             let rand_str = Alphanumeric.sample_string(&mut rng, 8);
             output_filename
                 .as_ref()

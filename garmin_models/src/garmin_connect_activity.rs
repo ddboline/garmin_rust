@@ -293,6 +293,24 @@ impl GarminConnectActivity {
         conn.execute(query, &[]).await?;
         Ok(())
     }
+
+    /// # Errors
+    /// Return error if db query fails
+    pub async fn activities_to_download(
+        pool: &PgPool,
+    ) -> Result<impl Stream<Item = Result<Self, PqError>>, Error> {
+        let query = query!(
+            "
+            SELECT gca.*
+            FROM garmin_connect_activities gca
+            LEFT JOIN garmin_summary gs ON gs.id = gca.summary_id
+            WHERE gs.id IS NULL
+            LIMIT 10
+        "
+        );
+        let conn = pool.get().await?;
+        query.fetch_streaming(&conn).await.map_err(Into::into)
+    }
 }
 
 /// # Errors

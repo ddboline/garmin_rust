@@ -2,7 +2,7 @@
 name = "race_result_analysis"
 version = "0.15.5"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

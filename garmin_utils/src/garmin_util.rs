@@ -7,8 +7,8 @@ use log::debug;
 use num_traits::pow::Pow;
 use postgres_query::{query, Error as PqError, FromSqlRow};
 use rand::{
-    distributions::{Alphanumeric, Distribution, Uniform},
-    thread_rng, Rng,
+    distr::{Alphanumeric, Distribution, Uniform},
+    rng, Rng,
 };
 use smallvec::SmallVec;
 use stack_string::{format_sstr, StackString};
@@ -147,7 +147,7 @@ pub fn titlecase(input: &str) -> StackString {
 
 #[must_use]
 pub fn generate_random_string(nchar: usize) -> StackString {
-    let mut rng = thread_rng();
+    let mut rng = rng();
     Alphanumeric
         .sample_iter(&mut rng)
         .take(nchar)
@@ -179,13 +179,13 @@ where
     F: Future<Output = Result<U, Error>>,
 {
     let mut timeout: f64 = 1.0;
-    let range = Uniform::from(0..1000);
+    let range = Uniform::try_from(0..1000)?;
     loop {
         match f().await {
             Ok(resp) => return Ok(resp),
             Err(err) => {
                 sleep(Duration::from_millis((timeout * 1000.0) as u64)).await;
-                timeout *= 4.0 * f64::from(range.sample(&mut thread_rng())) / 1000.0;
+                timeout *= 4.0 * f64::from(range.sample(&mut rng())) / 1000.0;
                 if timeout >= 64.0 {
                     return Err(err);
                 }
@@ -375,7 +375,7 @@ pub async fn get_list_of_telegram_userids(
 
 #[must_use]
 pub fn get_random_string() -> StackString {
-    let random_bytes: SmallVec<[u8; 16]> = (0..16).map(|_| thread_rng().gen::<u8>()).collect();
+    let random_bytes: SmallVec<[u8; 16]> = (0..16).map(|_| rng().random::<u8>()).collect();
     URL_SAFE_NO_PAD.encode(&random_bytes).into()
 }
 

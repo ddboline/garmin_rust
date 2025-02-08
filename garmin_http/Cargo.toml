@@ -2,14 +2,14 @@
 name = "garmin_http"
 version = "0.15.5"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 anyhow = "1.0"
 authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.12.3"}
 base64 = "0.22"
 cookie = {version="0.18", features=["percent-encode"]}
-derive_more = {version="1.0", features=["full"]}
+derive_more = {version="2.0", features=["full"]}
 dioxus = "0.6"
 dioxus-core = "0.6"
 dioxus-ssr = "0.6"

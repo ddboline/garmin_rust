@@ -29,7 +29,7 @@ use tokio::{
 
 use garmin_cli::{
     garmin_cli::GarminCli,
-    garmin_cli_opts::{GarminCliOpts, GarminConnectSynctOutput},
+    garmin_cli_opts::{GarminCliOpts, GarminConnectSyncOutput},
 };
 use garmin_lib::garmin_config::GarminConfig;
 use garmin_models::garmin_correction_lap::GarminCorrectionMap;
@@ -138,7 +138,7 @@ pub async fn start_app() -> Result<(), Error> {
         }
     }
     async fn run_connect_sync(cli: &GarminCli) {
-        if let Ok(GarminConnectSynctOutput {
+        if let Ok(GarminConnectSyncOutput {
             filenames,
             input_files,
             dates,

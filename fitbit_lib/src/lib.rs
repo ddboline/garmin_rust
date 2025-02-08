@@ -14,7 +14,7 @@ use derive_more::{Display, Into};
 use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};
 
-#[derive(Into, Copy, Clone, Serialize, Deserialize, Display)]
+#[derive(Into, Copy, Clone, Serialize, Deserialize, Display, Debug)]
 #[serde(from = "i64")]
 pub struct GarminConnectTimestamp(OffsetDateTime);
 

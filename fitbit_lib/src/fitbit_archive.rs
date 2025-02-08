@@ -70,10 +70,10 @@ async fn get_garmin_avro_file_map(
     days.shrink_to_fit();
     let futures = days.iter().map(|date| async move {
         let constraint = format_sstr!(
-            r#"
+            r"
                 date(begin_datetime at time zone 'utc') >= '{date}' AND
                 date(begin_datetime at time zone 'utc' + ('1 second'::interval * total_duration)) <= '{date}'
-            "#);
+            ");
         let files: Vec<_> = get_list_of_files_from_db(&constraint, pool)
             .await?
             .try_filter_map(|filename| async move {

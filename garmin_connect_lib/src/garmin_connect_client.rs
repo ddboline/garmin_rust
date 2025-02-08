@@ -487,14 +487,12 @@ impl GarminConnectClient {
 #[cfg(test)]
 mod tests {
     use anyhow::Error;
-    use stack_string::format_sstr;
     use time::{Duration, OffsetDateTime};
     use tokio::fs::remove_file;
-    use url::Url;
 
     use garmin_lib::garmin_config::GarminConfig;
 
-    use crate::garmin_connect_client::{GarminConnectClient, API_URLBASE};
+    use crate::garmin_connect_client::GarminConnectClient;
 
     #[tokio::test]
     #[ignore]
@@ -569,13 +567,6 @@ mod tests {
 
     #[test]
     fn test_get_ticket() -> Result<(), Error> {
-        let path = "/userprofile-service/socialProfile";
-        let url = format_sstr!("{API_URLBASE}{path}");
-        println!("{url}");
-        let url: Url = format_sstr!("{API_URLBASE}{path}").parse()?;
-        println!("{url}");
-        assert!(false);
-
         let text = include_str!("../../tests/data/garmin_connect_title_page.html");
 
         let ticket = GarminConnectClient::get_ticket(&text).unwrap();

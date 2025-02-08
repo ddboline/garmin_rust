@@ -165,9 +165,7 @@ impl GarminConnectClient {
             "redirectAfterAccountLoginUrl" => sso_embed.as_str(),
             "redirectAfterAccountCreationUrl" => sso_embed.as_str(),
         };
-        println!("url0");
         let mut url = Url::parse(&format_sstr!("{SSO_URLBASE}/sso/signin"))?;
-        println!("url0 {url}");
         for (k, v) in &signin_params {
             url.query_pairs_mut().append_pair(k, v);
         }
@@ -325,9 +323,7 @@ impl GarminConnectClient {
     }
 
     async fn api_request(&self, path: &str) -> Result<Response, Error> {
-        println!("url1");
         let url: Url = format_sstr!("{API_URLBASE}{path}").parse()?;
-        println!("url1 {url}");
 
         let oauth2_token = self
             .oauth2_token
@@ -370,9 +366,7 @@ impl GarminConnectClient {
 
     async fn init_cookies(&self) -> Result<StackString, Error> {
         let sso = format_sstr!("{SSO_URLBASE}/sso");
-        println!("url2 {sso}");
         let mut url = Url::parse(&format_sstr!("{sso}/embed"))?;
-        println!("url2 {url}");
         url.query_pairs_mut()
             .append_pair("id", "gauth-widget")
             .append_pair("embedWidged", "true")
@@ -390,9 +384,7 @@ impl GarminConnectClient {
             oauth1_token.oauth_token_secret.as_str(),
         );
         let base_url = format_sstr!("{API_URLBASE}/oauth-service/oauth/");
-        println!("url3 {base_url}");
         let url: Url = format_sstr!("{base_url}exchange/user/2.0").parse()?;
-        println!("url3 {url}");
         let mut headers = HeaderMap::new();
         headers.insert("User-Agent", SSO_USER_AGENT.parse()?);
         headers.insert("Content-Type", "application/x-www-form-urlencoded".parse()?);
@@ -440,9 +432,7 @@ impl GarminConnectClient {
     async fn get_oauth1_token(&self, ticket: &str) -> Result<OAuth1Token, Error> {
         let base_url = format_sstr!("{API_URLBASE}/oauth-service/oauth/");
         let login_url = "https://sso.garmin.com/sso/embed";
-        println!("url4 {base_url}");
         let mut url: Url = format_sstr!("{base_url}preauthorized").parse()?;
-        println!("url4 {url}");
         url.query_pairs_mut()
             .append_pair("ticket", ticket)
             .append_pair("login-url", login_url)
@@ -521,7 +511,6 @@ mod tests {
         let oauth2_token = client.oauth2_token.as_ref().unwrap();
 
         if oauth2_token.expired() {
-            println!("refresh auth");
             client.refresh_oauth2().await?;
         }
         let activities = client.get_activities(Some(0), Some(5)).await?;

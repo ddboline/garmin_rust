@@ -50,7 +50,6 @@ async fn main() -> Result<(), Error> {
         }
         JsonImportOpts::Heartrate { files } => {
             for file in files {
-                import_garmin_json_file(&config, &file)?;
                 if import_garmin_json_file(&config, &file).is_err() {
                     dates.extend(import_garmin_heartrate_file(&config, &file)?.into_iter());
                 }

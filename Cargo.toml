@@ -32,6 +32,7 @@ tokio = {version="1.43", features=["rt", "macros", "rt-multi-thread"]}
 members = [
     "fitbit_lib",
     "garmin_cli",
+    "garmin_connect_lib",
     "garmin_lib",
     "garmin_http",
     "garmin_models",

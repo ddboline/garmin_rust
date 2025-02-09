@@ -1,6 +1,6 @@
 [package]
 name = "race_result_analysis"
-version = "0.15.6"
+version = "0.15.7"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2021"
 

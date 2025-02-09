@@ -16,7 +16,9 @@ use garmin_lib::{
 };
 use garmin_utils::pgpool::PgPool;
 
-pub const GRAMS_PER_POUND: f64 = 453.592;
+pub const GRAMS_PER_OUNCE: f64 = 28.349_523_125;
+pub const LBS_PER_KG: f64 = 1_000.0 / (16.0 * GRAMS_PER_OUNCE);
+pub const GRAMS_PER_POUND: f64 = GRAMS_PER_OUNCE * 16.0;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Copy, FromSqlRow, PartialEq)]
 pub struct ScaleMeasurement {

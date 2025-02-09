@@ -10,7 +10,7 @@ use std::{collections::HashMap, fmt::Write};
 use time::{macros::format_description, Date, Duration, OffsetDateTime};
 use time_tz::OffsetDateTimeExt;
 
-use fitbit_lib::{fitbit_heartrate::FitbitHeartRate, scale_measurement::ScaleMeasurement};
+use fitbit_lib::{fitbit_heartrate::FitbitHeartRate, scale_measurement::{ScaleMeasurement, LBS_PER_KG}};
 use garmin_lib::{
     date_time_wrapper::{iso8601::convert_datetime_to_str, DateTimeWrapper},
     garmin_config::GarminConfig,
@@ -43,9 +43,6 @@ use crate::{
     garmin_file_report_html::{extract_report_objects_from_file, get_plot_opts, ReportObjects},
     FitbitStatisticsSummary,
 };
-
-const GRAMS_PER_OUNCE: f64 = 28.349_523_125;
-const LBS_PER_KG: f64 = 1_000.0 / (16.0 * GRAMS_PER_OUNCE);
 
 #[derive(PartialEq, Clone)]
 struct HeartrateOpts {

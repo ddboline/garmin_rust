@@ -26,3 +26,12 @@ INSERT INTO race_results_garmin_summary (race_id, summary_id)
         ON c.summary_id = b.id
     WHERE a.race_filename IS NOT NULL
         AND c.id IS NULL;
+
+
+
+DELETE FROM scale_measurements
+WHERE id IN (
+    SELECT id FROM (
+        SELECT *, row_number() OVER (PARTITION BY date(datetime at time zone 'utc'), mass ORDER BY datetime) FROM scale_measurements
+    ) WHERE row_number > 1
+);

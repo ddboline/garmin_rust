@@ -15,12 +15,13 @@ use time::{macros::format_description, Date, Duration as TimeDuration, OffsetDat
 use tokio::{fs, fs::File, io::AsyncWriteExt};
 use tokio_stream::StreamExt;
 use url::{form_urlencoded, Url};
+use time_tz::OffsetDateTimeExt;
 
 use fitbit_lib::{
     scale_measurement::{ScaleMeasurement, GRAMS_PER_POUND},
     GarminConnectHrData,
 };
-use garmin_lib::garmin_config::GarminConfig;
+use garmin_lib::{garmin_config::GarminConfig, date_time_wrapper::DateTimeWrapper};
 use garmin_models::garmin_connect_activity::{GarminConnectActivity, GarminConnectSocialProfile};
 
 const HTTP_USER_AGENT: &str = "GCM-iOS-5.7.2.1";
@@ -86,8 +87,10 @@ impl TryFrom<&ScaleMeasurement> for GarminConnectWeightPayload {
     type Error = Error;
 
     fn try_from(value: &ScaleMeasurement) -> Result<Self, Self::Error> {
+        let local = DateTimeWrapper::local_tz();
+
         let datetimestamp = value
-            .datetime
+            .datetime.to_timezone(local)
             .format(format_description!(
                 "[year]-[month]-[day]T[hour]:[minute]:[second].00"
             ))?
@@ -724,8 +727,6 @@ mod tests {
             }
         }
 
-        assert!(false);
-
         let mut weights = client.get_weights(None, None).await?;
         assert!(weights.daily_weight_summaries.len() > 0);
         let weight = weights.daily_weight_summaries.pop().unwrap();
@@ -740,7 +741,6 @@ mod tests {
         );
         assert_eq!(weight.latest_weight.weight, new_weight.weight);
         println!("{new_weight:?}");
-        assert!(false);
         Ok(())
     }
 
@@ -787,7 +787,7 @@ mod tests {
         let text = serde_json::to_string(&payload)?;
         assert_eq!(
             text,
-            r#"{"dateTimestamp":"2016-02-24T09:00:00","gmtTimestamp":"2016-02-24T09:00:00","unitKey":"lbs","value":174.8}"#
+            r#"{"dateTimestamp":"2016-02-24T04:00:00.00","gmtTimestamp":"2016-02-24T09:00:00.00","unitKey":"lbs","value":174.8}"#
         );
         Ok(())
     }

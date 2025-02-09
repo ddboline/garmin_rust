@@ -12,7 +12,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use tempfile::TempDir;
-use time::{macros::format_description, Date, Duration, OffsetDateTime};
+use time::{macros::format_description, Date, Duration, OffsetDateTime, UtcOffset};
 use time_tz::OffsetDateTimeExt;
 use tokio::{
     fs::{metadata, read_to_string, remove_file, write, File},
@@ -714,6 +714,13 @@ impl GarminCliOpts {
         let start_date = start_date.unwrap_or_else(|| (now - Duration::days(3)).date());
         let end_date = end_date.unwrap_or_else(|| now.date());
 
+        let mut measurement_map: HashMap<_, _> =
+            ScaleMeasurement::read_from_db(&cli.pool, Some(start_date), Some(end_date), None, None)
+                .await?
+                .into_iter()
+                .map(|m| (m.datetime.to_offset(UtcOffset::UTC).date(), m))
+                .collect();
+
         let mut date = start_date;
 
         while date <= end_date {
@@ -724,6 +731,31 @@ impl GarminCliOpts {
                 spawn_blocking(move || FitbitHeartRate::merge_slice_to_avro(&config, &hr_values))
                     .await??,
             );
+            let weights = client.get_weight(date).await?;
+            if !weights.date_weight_list.is_empty() {
+                let weight = &weights.date_weight_list[0];
+                if let Some(measurement) = measurement_map.get_mut(&date) {
+                    if measurement.connect_primary_key.is_none() {
+                        println!("set weight {weight:?}");
+                        measurement
+                            .set_connect_primary_key(weight.sample_primary_key, &cli.pool)
+                            .await?;
+                    }
+                }
+            } else if let Some(measurement) = measurement_map.get_mut(&date) {
+                println!("set connect weight");
+                client.upload_weight(measurement).await?;
+                let weight = client.get_weight(date).await?;
+                if !weight.date_weight_list.is_empty()
+                    && (weight.date_weight_list[0].weight - measurement.mass_in_grams()) < 1.0
+                {
+                    let primary_key = weight.date_weight_list[0].sample_primary_key;
+                    println!("set weight {weight:?}");
+                    measurement
+                        .set_connect_primary_key(primary_key, &cli.pool)
+                        .await?;
+                }
+            }
             date += Duration::days(1);
         }
 

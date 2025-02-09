@@ -256,13 +256,13 @@ function flipRaceResultFlag(id) {
     xmlhttp.send(null);
     document.getElementById("garminconnectoutput").innerHTML = "updating";
 }
-function garminConnectUserSummary() {
-    let url = "/garmin/garmin_connect_user_summary";
+function garminConnectProfile() {
+    let url = "/garmin/connect/profile";
     let xmlhttp = new XMLHttpRequest();
     xmlhttp.open("GET", url, true);
     xmlhttp.onload = function nothing() {
         document.getElementById("garminconnectoutput").innerHTML = "done";
-        document.getElementById("garmin_text_box").innerHTML = JSON.stringify(JSON.parse(xmlhttp.responseText),null,2);
+        document.getElementById("garmin_text_box").innerHTML = xmlhttp.responseText;
     }
     xmlhttp.send(null);
     document.getElementById("garminconnectoutput").innerHTML = "updating";

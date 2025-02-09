@@ -7,36 +7,114 @@ use reqwest_oauth1::{OAuthClientProvider, Secrets};
 use select::{document::Document, predicate::Name};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
-use std::path::{Path, PathBuf};
-use time::{Date, OffsetDateTime};
+use std::{
+    convert::TryFrom,
+    path::{Path, PathBuf},
+};
+use time::{macros::format_description, Date, Duration as TimeDuration, OffsetDateTime, UtcOffset};
 use tokio::{fs, fs::File, io::AsyncWriteExt};
 use tokio_stream::StreamExt;
 use url::{form_urlencoded, Url};
-use uuid::Uuid;
 
-use fitbit_lib::GarminConnectHrData;
+use fitbit_lib::{
+    scale_measurement::{ScaleMeasurement, GRAMS_PER_POUND},
+    GarminConnectHrData,
+};
 use garmin_lib::garmin_config::GarminConfig;
-use garmin_models::garmin_connect_activity::GarminConnectActivity;
+use garmin_models::garmin_connect_activity::{GarminConnectActivity, GarminConnectSocialProfile};
 
 const HTTP_USER_AGENT: &str = "GCM-iOS-5.7.2.1";
 const SSO_USER_AGENT: &str = "com.garmin.android.apps.connectmobile";
 const SSO_URLBASE: &str = "https://sso.garmin.com";
 const API_URLBASE: &str = "https://connectapi.garmin.com";
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct SocialProfile {
-    pub id: u64,
-    #[serde(rename = "displayName")]
-    pub display_name: StackString,
-    #[serde(rename = "profileId")]
-    pub profile_id: u64,
-    #[serde(rename = "garminGUID")]
-    pub garmin_guid: Uuid,
-    #[serde(rename = "fullName")]
-    pub full_name: StackString,
-    #[serde(rename = "userName")]
-    pub username: StackString,
-    pub location: StackString,
+#[derive(Deserialize, Debug)]
+pub struct GarminConnectWeightEntry {
+    #[serde(rename = "samplePk")]
+    pub sample_primary_key: i64,
+    #[serde(rename = "calendarDate")]
+    pub calendar_date: Date,
+    pub date: u64,
+    #[serde(rename = "timestampGMT")]
+    pub timestamp_gmt: u64,
+    pub weight: f64,
+}
+
+impl GarminConnectWeightEntry {
+    #[must_use]
+    pub fn weight_in_lbs(&self) -> f64 {
+        self.weight / GRAMS_PER_POUND
+    }
+}
+
+#[derive(Deserialize, Debug)]
+pub struct DailyWeightView {
+    #[serde(rename = "startDate")]
+    pub start_date: Date,
+    #[serde(rename = "endDate")]
+    pub end_date: Date,
+    #[serde(rename = "dateWeightList")]
+    pub date_weight_list: Vec<GarminConnectWeightEntry>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct DailyWeightSummaries {
+    #[serde(rename = "summaryDate")]
+    pub summary_date: Date,
+    #[serde(rename = "latestWeight")]
+    pub latest_weight: GarminConnectWeightEntry,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct GarminConnectWeightSummaries {
+    #[serde(rename = "dailyWeightSummaries")]
+    pub daily_weight_summaries: Vec<DailyWeightSummaries>,
+}
+
+#[derive(Serialize, Debug)]
+struct GarminConnectWeightPayload {
+    #[serde(rename = "dateTimestamp")]
+    datetimestamp: StackString,
+    #[serde(rename = "gmtTimestamp")]
+    gmt_timestamp: StackString,
+    #[serde(rename = "unitKey")]
+    unit_key: StackString,
+    value: f64,
+}
+
+impl TryFrom<&ScaleMeasurement> for GarminConnectWeightPayload {
+    type Error = Error;
+
+    fn try_from(value: &ScaleMeasurement) -> Result<Self, Self::Error> {
+        let datetimestamp = value
+            .datetime
+            .format(format_description!(
+                "[year]-[month]-[day]T[hour]:[minute]:[second].00"
+            ))?
+            .into();
+        let gmt_timestamp = value
+            .datetime
+            .to_offset(UtcOffset::UTC)
+            .format(format_description!(
+                "[year]-[month]-[day]T[hour]:[minute]:[second].00"
+            ))?
+            .into();
+        let value = value.mass;
+        Ok(Self {
+            datetimestamp,
+            gmt_timestamp,
+            unit_key: "lbs".into(),
+            value,
+        })
+    }
+}
+
+impl TryFrom<ScaleMeasurement> for GarminConnectWeightPayload {
+    type Error = Error;
+
+    fn try_from(value: ScaleMeasurement) -> Result<Self, Self::Error> {
+        Self::try_from(&value)
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, PartialOrd)]
@@ -132,7 +210,7 @@ impl GarminConnectClient {
     /// # Errors
     /// Returns error in login fails or oauth2 token not found or refersh token
     /// fails
-    pub async fn init(&mut self) -> Result<SocialProfile, Error> {
+    pub async fn init(&mut self) -> Result<GarminConnectSocialProfile, Error> {
         if self.load().await.is_err() {
             let profile = self.login().await?;
             self.dump().await?;
@@ -152,7 +230,7 @@ impl GarminConnectClient {
 
     /// # Errors
     /// Returns error if login fails
-    pub async fn login(&mut self) -> Result<SocialProfile, Error> {
+    pub async fn login(&mut self) -> Result<GarminConnectSocialProfile, Error> {
         let referer = self.init_cookies().await?;
 
         let sso_embed = format_sstr!("{SSO_URLBASE}/sso/embed");
@@ -278,7 +356,7 @@ impl GarminConnectClient {
 
     /// # Errors
     /// Returns error if api call fails or deserialization fails
-    pub async fn get_user_profile(&self) -> Result<SocialProfile, Error> {
+    pub async fn get_user_profile(&self) -> Result<GarminConnectSocialProfile, Error> {
         self.api_json("/userprofile-service/socialProfile").await
     }
 
@@ -322,9 +400,40 @@ impl GarminConnectClient {
         Ok(output)
     }
 
-    async fn api_request(&self, path: &str) -> Result<Response, Error> {
-        let url: Url = format_sstr!("{API_URLBASE}{path}").parse()?;
+    /// # Errors
+    /// Returns error if api call fails or deserialization fails
+    pub async fn upload_weight(&self, measurement: &ScaleMeasurement) -> Result<(), Error> {
+        let payload: GarminConnectWeightPayload = measurement.try_into()?;
+        println!("{}", serde_json::to_string(&payload)?);
 
+        self.api_post("/weight-service/user-weight", &payload)
+            .await
+            .map_err(Into::into)
+    }
+
+    /// # Errors
+    /// Returns error if api call fails or deserialization fails
+    pub async fn get_weight(&self, date: Date) -> Result<DailyWeightView, Error> {
+        let path = format_sstr!("/weight-service/weight/dayview/{date}");
+        self.api_json(&path).await.map_err(Into::into)
+    }
+
+    /// # Errors
+    /// Returns error if api call fails or deserialization fails
+    pub async fn get_weights(
+        &self,
+        start_date: Option<Date>,
+        end_date: Option<Date>,
+    ) -> Result<GarminConnectWeightSummaries, Error> {
+        let today = OffsetDateTime::now_utc().date();
+        let start_date = start_date.unwrap_or_else(|| today - TimeDuration::days(7));
+        let end_date = end_date.unwrap_or(today);
+        let path =
+            format_sstr!("/weight-service/weight/range/{start_date}/{end_date}?includeAll=true");
+        self.api_json(&path).await.map_err(Into::into)
+    }
+
+    fn get_api_headers(&self) -> Result<HeaderMap, Error> {
         let oauth2_token = self
             .oauth2_token
             .as_ref()
@@ -335,6 +444,12 @@ impl GarminConnectClient {
         let mut headers = HeaderMap::new();
         headers.insert("Authorization", oauth2_token.auth_header().parse()?);
         headers.insert("User-Agent", HTTP_USER_AGENT.parse()?);
+        Ok(headers)
+    }
+
+    async fn api_request(&self, path: &str) -> Result<Response, Error> {
+        let url: Url = format_sstr!("{API_URLBASE}{path}").parse()?;
+        let headers = self.get_api_headers()?;
 
         self.client
             .get(url)
@@ -343,6 +458,26 @@ impl GarminConnectClient {
             .await?
             .error_for_status()
             .map_err(Into::into)
+    }
+
+    async fn api_post<T: Serialize>(&self, path: &str, payload: &T) -> Result<(), Error> {
+        let url: Url = format_sstr!("{API_URLBASE}{path}").parse()?;
+        let headers = self.get_api_headers()?;
+        let response = self
+            .client
+            .post(url)
+            .headers(headers)
+            .json(payload)
+            .send()
+            .await?
+            .error_for_status()?;
+        if response.status().as_u16() != 204 {
+            return Err(format_err!(
+                "Unexpected resposne {}",
+                response.status().as_str()
+            ));
+        }
+        Ok(())
     }
 
     async fn api_json<T: DeserializeOwned>(&self, path: &str) -> Result<T, Error> {
@@ -477,12 +612,17 @@ impl GarminConnectClient {
 #[cfg(test)]
 mod tests {
     use anyhow::Error;
-    use time::{Duration, OffsetDateTime};
+    use fitbit_lib::scale_measurement::ScaleMeasurement;
+    use std::{collections::HashMap, convert::TryInto};
+    use time::{Duration, OffsetDateTime, UtcOffset};
     use tokio::fs::remove_file;
 
     use garmin_lib::garmin_config::GarminConfig;
+    use garmin_utils::pgpool::PgPool;
 
-    use crate::garmin_connect_client::GarminConnectClient;
+    use crate::garmin_connect_client::{
+        GarminConnectClient, GarminConnectWeightPayload, GRAMS_PER_POUND,
+    };
 
     #[tokio::test]
     #[ignore]
@@ -534,6 +674,76 @@ mod tests {
         Ok(())
     }
 
+    #[tokio::test]
+    #[ignore]
+    async fn test_weight() -> Result<(), Error> {
+        let config = GarminConfig::get_config(None)?;
+        let pool = PgPool::new(&config.pgurl)?;
+
+        let mut client = GarminConnectClient::new(config)?;
+        let profile = client.init().await?;
+        assert_eq!(profile.username, "ddboline");
+
+        let weights = client.get_weights(None, None).await?;
+        let mut start_date = None;
+        let mut end_date = None;
+        for dws in &weights.daily_weight_summaries {
+            let d = dws.latest_weight.calendar_date;
+            if start_date.is_none() {
+                start_date.replace(d);
+            }
+            if end_date.is_none() {
+                end_date.replace(d);
+            }
+            start_date = start_date.min(Some(d));
+            end_date = end_date.max(Some(d));
+        }
+        let start_date = start_date.unwrap();
+        let end_date = end_date.unwrap();
+        println!("{start_date} {end_date}");
+
+        let measurements =
+            ScaleMeasurement::read_from_db(&pool, Some(start_date), Some(end_date), None, None)
+                .await?;
+        let mut measurement_map: HashMap<_, _> = measurements
+            .into_iter()
+            .map(|m| (m.datetime.to_offset(UtcOffset::UTC).date(), m))
+            .collect();
+
+        for dws in &weights.daily_weight_summaries {
+            let d = dws.latest_weight.calendar_date;
+
+            if let Some(measurement) = measurement_map.get_mut(&d) {
+                if (dws.latest_weight.weight - (measurement.mass * GRAMS_PER_POUND)).abs() < 1.0
+                    && measurement.connect_primary_key.is_none()
+                {
+                    measurement
+                        .set_connect_primary_key(dws.latest_weight.sample_primary_key, &pool)
+                        .await?;
+                }
+            }
+        }
+
+        assert!(false);
+
+        let mut weights = client.get_weights(None, None).await?;
+        assert!(weights.daily_weight_summaries.len() > 0);
+        let weight = weights.daily_weight_summaries.pop().unwrap();
+        let date = weight.latest_weight.calendar_date;
+
+        let mut weight_view = client.get_weight(date).await?;
+        assert_eq!(weight_view.date_weight_list.len(), 1);
+        let new_weight = weight_view.date_weight_list.pop().unwrap();
+        assert_eq!(
+            weight.latest_weight.sample_primary_key,
+            new_weight.sample_primary_key
+        );
+        assert_eq!(weight.latest_weight.weight, new_weight.weight);
+        println!("{new_weight:?}");
+        assert!(false);
+        Ok(())
+    }
+
     #[test]
     fn test_get_csrf() -> Result<(), Error> {
         let text = include_str!("../../tests/data/garmin_connect_signin.html");
@@ -561,6 +771,24 @@ mod tests {
         let ticket = GarminConnectClient::get_ticket(&text).unwrap();
 
         assert_eq!(ticket, "ST-01661298-T7v2orXQYEtXD5G3Buvq-cas");
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_post_weight() -> Result<(), Error> {
+        let config = GarminConfig::get_config(None)?;
+        let pool = PgPool::new(&config.pgurl)?;
+        let mut measurements =
+            ScaleMeasurement::read_from_db(&pool, None, None, Some(0), Some(1)).await?;
+        assert_eq!(measurements.len(), 1);
+        let measurement = measurements.pop().unwrap();
+        let payload: GarminConnectWeightPayload = measurement.try_into()?;
+        let text = serde_json::to_string(&payload)?;
+        assert_eq!(
+            text,
+            r#"{"dateTimestamp":"2016-02-24T09:00:00","gmtTimestamp":"2016-02-24T09:00:00","unitKey":"lbs","value":174.8}"#
+        );
         Ok(())
     }
 }

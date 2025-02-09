@@ -17,6 +17,22 @@ use garmin_utils::pgpool::PgPool;
 
 use garmin_lib::garmin_config::GarminConfig;
 
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct GarminConnectSocialProfile {
+    pub id: u64,
+    #[serde(rename = "displayName")]
+    pub display_name: StackString,
+    #[serde(rename = "profileId")]
+    pub profile_id: u64,
+    #[serde(rename = "garminGUID")]
+    pub garmin_guid: Uuid,
+    #[serde(rename = "fullName")]
+    pub full_name: StackString,
+    #[serde(rename = "userName")]
+    pub username: StackString,
+    pub location: StackString,
+}
+
 #[derive(Serialize, Deserialize, Debug, FromSqlRow, PartialEq, Clone)]
 pub struct GarminConnectActivity {
     #[serde(alias = "activityId")]

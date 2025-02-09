@@ -1,0 +1,1 @@
+ALTER TABLE scale_measurements ADD COLUMN connect_primary_key BIGINT;

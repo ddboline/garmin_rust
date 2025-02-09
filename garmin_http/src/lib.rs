@@ -148,6 +148,8 @@ struct _ScaleMeasurementWrapper {
     muscle_pct: f64,
     #[schema(description = "Bone %")]
     bone_pct: f64,
+    #[schema(description = "Connect Primary Key")]
+    connect_primary_key: Option<i64>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Into, From)]

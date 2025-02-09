@@ -24,6 +24,7 @@ use fitbit_lib::{
     fitbit_statistics_summary::FitbitStatisticsSummary, scale_measurement::ScaleMeasurement,
 };
 use garmin_cli::garmin_cli::{GarminCli, GarminRequest};
+use garmin_connect_lib::garmin_connect_client::GarminConnectClient;
 use garmin_lib::{
     date_time_wrapper::iso8601::convert_datetime_to_str, garmin_config::GarminConfig,
 };
@@ -46,7 +47,8 @@ use strava_lib::strava_client::StravaClient;
 use crate::{
     errors::ServiceError as Error,
     garmin_elements::{
-        index_new_body, scale_measurement_manual_input_body, strava_body, table_body, IndexConfig,
+        garmin_connect_profile_body, index_new_body, scale_measurement_manual_input_body,
+        strava_body, table_body, IndexConfig,
     },
     garmin_requests::{
         AddGarminCorrectionRequest, FitbitHeartrateCacheRequest, FitbitHeartratePlotRequest,
@@ -1587,4 +1589,19 @@ pub async fn race_results_db_update(
     let results: Result<Vec<()>, Error> = try_join_all(futures).await;
     results?;
     Ok(HtmlBase::new("Finished").into())
+}
+
+#[derive(RwebResponse)]
+#[response(description = "Garmin Connect Profile")]
+struct GarminConnectProfileResponse(HtmlBase<StackString, Error>);
+
+#[get("/garmin/connect/profile")]
+pub async fn garmin_connect_profile(
+    #[filter = "LoggedUser::filter"] _: LoggedUser,
+    #[data] state: AppState,
+) -> WarpResult<GarminConnectProfileResponse> {
+    let mut client = GarminConnectClient::new(state.config).map_err(Into::<Error>::into)?;
+    let profile = client.init().await.map_err(Into::<Error>::into)?;
+    let body = garmin_connect_profile_body(profile)?.into();
+    Ok(HtmlBase::new(body).into())
 }

@@ -40,9 +40,10 @@ use crate::{
     garmin_rust_routes::{
         add_garmin_correction, fitbit_activities_db, fitbit_activities_db_update,
         fitbit_heartrate_cache, fitbit_heartrate_cache_update, fitbit_plots, fitbit_plots_demo,
-        garmin, garmin_connect_activities_db, garmin_connect_activities_db_update, garmin_demo,
-        garmin_scripts_demo_js, garmin_scripts_js, garmin_sync, garmin_upload, heartrate_plots,
-        heartrate_plots_demo, heartrate_statistics_plots, heartrate_statistics_plots_demo,
+        garmin, garmin_connect_activities_db, garmin_connect_activities_db_update,
+        garmin_connect_profile, garmin_demo, garmin_scripts_demo_js, garmin_scripts_js,
+        garmin_sync, garmin_upload, heartrate_plots, heartrate_plots_demo,
+        heartrate_statistics_plots, heartrate_statistics_plots_demo,
         heartrate_statistics_summary_db, heartrate_statistics_summary_db_update, initialize_map_js,
         line_plot_js, race_result_flag, race_result_import, race_result_plot,
         race_result_plot_demo, race_results_db, race_results_db_update, scale_measurement,
@@ -250,6 +251,7 @@ fn get_garmin_path(app: &AppState) -> BoxedFilter<(impl Reply,)> {
     let strava_callback_path = strava_callback(app.clone()).boxed();
     let strava_activities_path = strava_activities(app.clone()).boxed();
     let strava_athlete_path = strava_athlete(app.clone()).boxed();
+    let garmin_connect_profile_path = garmin_connect_profile(app.clone()).boxed();
     let strava_activities_db_get = strava_activities_db(app.clone()).boxed();
     let strava_activities_db_post = strava_activities_db_update(app.clone()).boxed();
     let strava_activities_db_path = strava_activities_db_get
@@ -264,6 +266,7 @@ fn get_garmin_path(app: &AppState) -> BoxedFilter<(impl Reply,)> {
         .or(strava_callback_path)
         .or(strava_activities_path)
         .or(strava_athlete_path)
+        .or(garmin_connect_profile_path)
         .or(strava_activities_db_path)
         .or(strava_upload_path)
         .or(strava_update_path)

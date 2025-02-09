@@ -8,6 +8,7 @@ anyhow = "1.0"
 convert_case = "0.7"
 garmin_lib = { path = "../garmin_lib" }
 garmin_models = { path = "../garmin_models" }
+garmin_utils = { path = "../garmin_utils" }
 fitbit_lib = { path = "../fitbit_lib" }
 log = "0.4"
 maplit = "1.0"

@@ -16,8 +16,10 @@ use garmin_lib::{
     garmin_config::GarminConfig,
 };
 use garmin_models::{
-    garmin_connect_activity::GarminConnectActivity, garmin_file::GarminFile,
-    garmin_summary::GarminSummary, strava_activity::StravaActivity,
+    garmin_connect_activity::{GarminConnectActivity, GarminConnectSocialProfile},
+    garmin_file::GarminFile,
+    garmin_summary::GarminSummary,
+    strava_activity::StravaActivity,
 };
 use garmin_reports::{
     garmin_file_report_txt::get_splits,
@@ -964,7 +966,7 @@ fn IndexElement(
                         th {"Date"},
                         th {
                             a {
-                                href: "https://www.fitbit.com/weight",
+                                href: "https://connect.garmin.com/modern/weight",
                                 target: "_blank",
                                 "Weight",
                             }
@@ -1655,6 +1657,11 @@ fn get_buttons(demo: bool) -> Element {
             },
             button {
                 "type": "submit",
+                "onclick": "garminConnectProfile();",
+                "Garmin Connect Profile",
+            }
+            button {
+                "type": "submit",
                 "onclick": "heartrateSync();",
                 "Scale sync",
             },
@@ -2202,6 +2209,48 @@ fn scale_measurement_manual_input_element() -> Element {
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/// # Errors
+/// Returns error if formatting fails
+pub fn garmin_connect_profile_body(profile: GarminConnectSocialProfile) -> Result<String, Error> {
+    let mut app = VirtualDom::new_with_props(
+        GarminConnectProfileElement,
+        GarminConnectProfileElementProps { profile },
+    );
+    app.rebuild_in_place();
+    let mut renderer = dioxus_ssr::Renderer::default();
+    let mut buffer = String::new();
+    renderer
+        .render_to(&mut buffer, &app)
+        .map_err(Into::<Error>::into)?;
+    Ok(buffer)
+}
+
+#[component]
+fn GarminConnectProfileElement(profile: GarminConnectSocialProfile) -> Element {
+    let id = profile.id;
+    let display_name = &profile.display_name;
+    let profile_id = profile.profile_id;
+    let garmin_guid = profile.garmin_guid;
+    let full_name = &profile.full_name;
+    let username = &profile.username;
+    let location = &profile.location;
+
+    rsx! {
+        table {
+            "border": "1",
+            tbody {
+                tr { td  {"ID"}, td {"{id}"}},
+                tr { td  {"Display Name"}, td {"{display_name}"}},
+                tr { td  {"Profile ID"}, td {"{profile_id}"}},
+                tr { td  {"Garmin GUID"}, td {"{garmin_guid}"}},
+                tr { td  {"Full Name"}, td {"{full_name}"}},
+                tr { td  {"Username"}, td {"{username}"}},
+                tr { td  {"Location"}, td {"{location}"}},
             }
         }
     }

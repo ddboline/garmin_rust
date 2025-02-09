@@ -16,6 +16,7 @@ dioxus-ssr = "0.6"
 fitbit_lib = {path="../fitbit_lib/"}
 futures = "0.3"
 garmin_cli = {path = "../garmin_cli"}
+garmin_connect_lib = {path = "../garmin_connect_lib"}
 garmin_lib = {path = "../garmin_lib"}
 garmin_models = {path="../garmin_models"}
 garmin_parser = {path="../garmin_parser"}

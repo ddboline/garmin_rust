@@ -16,6 +16,8 @@ use garmin_lib::{
 };
 use garmin_utils::pgpool::PgPool;
 
+pub const GRAMS_PER_POUND: f64 = 453.592;
+
 #[derive(Debug, Clone, Serialize, Deserialize, Copy, FromSqlRow, PartialEq)]
 pub struct ScaleMeasurement {
     pub id: Uuid,
@@ -25,6 +27,7 @@ pub struct ScaleMeasurement {
     pub water_pct: f64,
     pub muscle_pct: f64,
     pub bone_pct: f64,
+    pub connect_primary_key: Option<i64>,
 }
 
 impl fmt::Display for ScaleMeasurement {
@@ -45,6 +48,11 @@ impl fmt::Display for ScaleMeasurement {
 }
 
 impl ScaleMeasurement {
+    #[must_use]
+    pub fn mass_in_grams(&self) -> f64 {
+        self.mass * GRAMS_PER_POUND
+    }
+
     #[must_use]
     pub fn get_bmi(&self, config: &GarminConfig) -> f64 {
         // Mass in Kg
@@ -95,6 +103,7 @@ impl ScaleMeasurement {
             water_pct: body_water_percent,
             muscle_pct,
             bone_pct,
+            connect_primary_key: None,
         })
     }
 
@@ -136,6 +145,7 @@ impl ScaleMeasurement {
             water_pct: values[2],
             muscle_pct: values[3],
             bone_pct: values[4],
+            connect_primary_key: None,
         })
     }
 
@@ -144,28 +154,32 @@ impl ScaleMeasurement {
     pub async fn get_by_id(id: Uuid, pool: &PgPool) -> Result<Option<Self>, Error> {
         let query = query!("SELECT * FROM scale_measurements WHERE id = $id", id = id);
         let conn = pool.get().await?;
-        let result = conn
-            .query_opt(query.sql(), query.parameters())
-            .await?
-            .map(|row| Self::from_row(&row))
-            .transpose()?;
-        Ok(result)
+        query.fetch_opt(&conn).await.map_err(Into::into)
+    }
+
+    /// # Errors
+    /// Returns error if db query fails
+    pub async fn get_by_connect_primary_key(
+        key: i64,
+        pool: &PgPool,
+    ) -> Result<Option<Self>, Error> {
+        let query = query!(
+            "SELECT * FROM scale_measurements WHERE connect_primary_key = $key LIMIT 1",
+            key = key
+        );
+        let conn = pool.get().await?;
+        query.fetch_opt(&conn).await.map_err(Into::into)
     }
 
     /// # Errors
     /// Returns error if db query fails
     pub async fn get_by_datetime(dt: OffsetDateTime, pool: &PgPool) -> Result<Option<Self>, Error> {
         let query = query!(
-            "SELECT * FROM scale_measurements WHERE datetime = $dt",
+            "SELECT * FROM scale_measurements WHERE datetime = $dt LIMIT 1",
             dt = dt
         );
         let conn = pool.get().await?;
-        let result = conn
-            .query_opt(query.sql(), query.parameters())
-            .await?
-            .map(|row| Self::from_row(&row))
-            .transpose()?;
-        Ok(result)
+        query.fetch_opt(&conn).await.map_err(Into::into)
     }
 
     /// # Errors
@@ -175,10 +189,28 @@ impl ScaleMeasurement {
             "DELETE FROM scale_measurements WHERE id = $id",
             id = self.id
         );
-        pool.get()
-            .await?
-            .execute(query.sql(), query.parameters())
-            .await?;
+        let conn = pool.get().await?;
+        query.execute(&conn).await?;
+        Ok(())
+    }
+
+    /// # Errors
+    /// Returns error if db query fails
+    pub async fn set_connect_primary_key(
+        &mut self,
+        primary_key: i64,
+        pool: &PgPool,
+    ) -> Result<(), Error> {
+        self.connect_primary_key.replace(primary_key);
+
+        let query = query!(
+            "UPDATE scale_measurements SET connect_primary_key = $connect_primary_key WHERE id = \
+             $id",
+            id = self.id,
+            connect_primary_key = self.connect_primary_key,
+        );
+        let conn = pool.get().await?;
+        query.execute(&conn).await?;
         Ok(())
     }
 
@@ -188,9 +220,9 @@ impl ScaleMeasurement {
         let query = query!(
             "
                 INSERT INTO scale_measurements (
-                    datetime, mass, fat_pct, water_pct, muscle_pct, bone_pct
+                    datetime, mass, fat_pct, water_pct, muscle_pct, bone_pct, connect_primary_key
                 )
-                VALUES ($datetime,$mass,$fat,$water,$muscle,$bone)
+                VALUES ($datetime,$mass,$fat,$water,$muscle,$bone,$connect_primary_key)
             ",
             datetime = self.datetime,
             mass = self.mass,
@@ -198,11 +230,11 @@ impl ScaleMeasurement {
             water = self.water_pct,
             muscle = self.muscle_pct,
             bone = self.bone_pct,
+            connect_primary_key = self.connect_primary_key,
         );
 
         let conn = pool.get().await?;
-
-        conn.execute(query.sql(), query.parameters()).await?;
+        query.execute(&conn).await?;
 
         let query = query!(
             "
@@ -222,7 +254,7 @@ impl ScaleMeasurement {
             muscle = self.muscle_pct,
             bone = self.bone_pct,
         );
-        let result = conn.query_one(query.sql(), query.parameters()).await?;
+        let result = query.query_one(&conn).await?;
         self.id = result.try_get("id")?;
 
         Ok(())
@@ -385,6 +417,7 @@ mod tests {
             water_pct: 59.6,
             muscle_pct: 40.4,
             bone_pct: 4.2,
+            connect_primary_key: None,
         };
         exp.datetime = obs.datetime;
         assert_eq!(obs, exp);
@@ -412,6 +445,7 @@ mod tests {
             water_pct: 59.6,
             muscle_pct: 40.4,
             bone_pct: 4.2,
+            connect_primary_key: None,
         };
 
         let config = GarminConfig::get_config(None)?;

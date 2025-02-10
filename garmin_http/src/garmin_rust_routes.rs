@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
 use std::convert::Infallible;
 use tempfile::TempDir;
+use time_tz::OffsetDateTimeExt;
 use tokio::{fs::File, io::AsyncWriteExt, task::spawn_blocking};
 use tokio_stream::StreamExt;
 
@@ -25,7 +26,8 @@ use fitbit_lib::{
 use garmin_cli::garmin_cli::{GarminCli, GarminRequest};
 use garmin_connect_lib::garmin_connect_client::GarminConnectClient;
 use garmin_lib::{
-    date_time_wrapper::iso8601::convert_datetime_to_str, errors::GarminError,
+    date_time_wrapper::{iso8601::convert_datetime_to_str, DateTimeWrapper},
+    errors::GarminError,
     garmin_config::GarminConfig,
 };
 use garmin_models::{
@@ -1090,6 +1092,27 @@ pub async fn scale_measurement_manual(
         .insert_into_db(&state.db)
         .await
         .map_err(Into::<Error>::into)?;
+    let local = DateTimeWrapper::local_tz();
+    let date = measurement.datetime.to_timezone(local).date();
+    if let Ok(mut client) = GarminConnectClient::new(state.config) {
+        if client.init().await.is_ok() && client.upload_weight(&measurement).await.is_ok() {
+            if let Ok(weight) = client.get_weight(date).await {
+                for dwl in &weight.date_weight_list {
+                    if (dwl.weight - measurement.mass_in_grams()) < 1.0 {
+                        let primary_key = dwl.sample_primary_key;
+                        if measurement
+                            .set_connect_primary_key(primary_key, &state.db)
+                            .await
+                            .is_ok()
+                        {
+                            debug!("set weight {weight:?}");
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
     Ok(JsonBase::new(measurement.into()).into())
 }
 

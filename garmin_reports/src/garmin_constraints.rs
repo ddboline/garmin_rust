@@ -205,10 +205,9 @@ impl GarminConstraints {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Error;
     use time::macros::datetime;
 
-    use garmin_lib::garmin_config::GarminConfig;
+    use garmin_lib::{errors::GarminError as Error, garmin_config::GarminConfig};
 
     use crate::garmin_constraints::GarminConstraint;
 

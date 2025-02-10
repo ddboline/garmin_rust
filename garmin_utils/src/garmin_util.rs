@@ -1,4 +1,3 @@
-use anyhow::{format_err, Error};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use fitparser::Value;
 use flate2::{read::GzEncoder, Compression};
@@ -23,6 +22,8 @@ use time::{format_description::well_known::Rfc3339, macros::date, Date, Month, O
 use time_tz::{timezones::db::UTC, OffsetDateTimeExt};
 use tokio::time::{sleep, Duration};
 use zip::ZipArchive;
+
+use garmin_lib::errors::GarminError as Error;
 
 use crate::pgpool::PgPool;
 
@@ -64,8 +65,8 @@ pub fn convert_xml_local_time_to_utc(xml_local_time: &str) -> Result<OffsetDateT
 /// Return error if running `md5sum` fails
 pub fn get_md5sum(filename: &Path) -> Result<StackString, Error> {
     if !Path::new("/usr/bin/md5sum").exists() {
-        return Err(format_err!(
-            "md5sum not installed (or not present at /usr/bin/md5sum)"
+        return Err(Error::StaticCustomError(
+            "md5sum not installed (or not present at /usr/bin/md5sum)",
         ));
     }
     let command = format_sstr!("md5sum {}", filename.to_string_lossy());
@@ -86,7 +87,9 @@ pub fn get_md5sum(filename: &Path) -> Result<StackString, Error> {
 /// Return error if second is negative
 pub fn print_h_m_s(second: f64, do_hours: bool) -> Result<StackString, Error> {
     if second.abs() > (i64::MAX as f64) {
-        return Err(format_err!("Number of seconds is far too large"));
+        return Err(Error::StaticCustomError(
+            "Number of seconds is far too large",
+        ));
     }
     let hours = (second / 3600.0) as i64;
     let minutes = (second / 60.0) as i64 - hours * 60;
@@ -96,7 +99,7 @@ pub fn print_h_m_s(second: f64, do_hours: bool) -> Result<StackString, Error> {
     } else if hours == 0 {
         Ok(format_sstr!("{minutes:02}:{seconds:02}"))
     } else {
-        Err(format_err!("Negative result!"))
+        Err(Error::StaticCustomError("Negative result!"))
     }
 }
 
@@ -173,10 +176,11 @@ pub fn get_file_list(path: &Path) -> Vec<PathBuf> {
 
 /// # Errors
 /// Return error if closure fails
-pub async fn exponential_retry<T, U, F>(f: T) -> Result<U, Error>
+pub async fn exponential_retry<T, U, F, E>(f: T) -> Result<U, E>
 where
     T: Fn() -> F,
-    F: Future<Output = Result<U, Error>>,
+    F: Future<Output = Result<U, E>>,
+    E: From<rand::distr::uniform::Error>,
 {
     let mut timeout: f64 = 1.0;
     let range = Uniform::try_from(0..1000)?;
@@ -196,8 +200,8 @@ where
 
 fn extract_zip(filename: &Path, ziptmpdir: &Path) -> Result<Vec<PathBuf>, Error> {
     if !Path::new("/usr/bin/unzip").exists() {
-        return Err(format_err!(
-            "md5sum not installed (or not present at /usr/bin/unzip"
+        return Err(Error::StaticCustomError(
+            "md5sum not installed (or not present at /usr/bin/unzip",
         ));
     }
     let mut zip = ZipArchive::new(File::open(filename)?)?;
@@ -219,13 +223,13 @@ pub fn extract_zip_from_garmin_connect(
     ziptmpdir: &Path,
 ) -> Result<PathBuf, Error> {
     extract_zip(filename, ziptmpdir)?;
-    let new_filename = filename
-        .file_stem()
-        .ok_or_else(|| format_err!("Bad filename {}", filename.to_string_lossy()))?;
+    let new_filename = filename.file_stem().ok_or_else(|| {
+        Error::CustomError(format_sstr!("Bad filename {}", filename.to_string_lossy()))
+    })?;
     let new_filename = format_sstr!("{}_ACTIVITY.fit", new_filename.to_string_lossy());
     let new_filename = ziptmpdir.join(new_filename);
     if !new_filename.exists() {
-        return Err(format_err!("Activity file not found"));
+        return Err(Error::StaticCustomError("Activity file not found"));
     }
     remove_file(filename)?;
     Ok(new_filename)
@@ -248,7 +252,9 @@ pub fn extract_zip_from_garmin_connect_multiple(
 ///     * writing to the file fails
 pub fn gzip_file(input_filename: &Path, output_filename: &Path) -> Result<(), Error> {
     if !input_filename.exists() {
-        return Err(format_err!("File {input_filename:?} does not exist"));
+        return Err(Error::CustomError(format_sstr!(
+            "File {input_filename:?} does not exist"
+        )));
     }
     std::io::copy(
         &mut GzEncoder::new(File::open(input_filename)?, Compression::fast()),
@@ -381,9 +387,10 @@ pub fn get_random_string() -> StackString {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Error;
     use std::path::Path;
     use tempfile::TempDir;
+
+    use garmin_lib::errors::GarminError as Error;
 
     use crate::garmin_util::extract_zip;
 

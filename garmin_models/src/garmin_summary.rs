@@ -1,4 +1,3 @@
-use anyhow::Error;
 use futures::{future::try_join_all, Stream, TryStreamExt};
 use itertools::Itertools;
 use log::debug;
@@ -9,11 +8,12 @@ use std::{fmt, sync::Arc};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use garmin_lib::date_time_wrapper::{iso8601::convert_datetime_to_str, DateTimeWrapper};
+use garmin_lib::{
+    date_time_wrapper::{iso8601::convert_datetime_to_str, DateTimeWrapper},
+    errors::GarminError as Error,
+};
 
-use garmin_utils::{garmin_util::generate_random_string, sport_types::SportTypes};
-
-use garmin_utils::pgpool::PgPool;
+use garmin_utils::{garmin_util::generate_random_string, pgpool::PgPool, sport_types::SportTypes};
 
 use crate::garmin_file::GarminFile;
 

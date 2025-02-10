@@ -65,7 +65,6 @@ impl fmt::Display for DateTimeWrapper {
 }
 
 pub mod iso8601 {
-    use anyhow::Error;
     use serde::{de, Deserialize, Deserializer, Serializer};
     use stack_string::StackString;
     use std::borrow::Cow;
@@ -73,6 +72,8 @@ pub mod iso8601 {
         format_description::well_known::Rfc3339, macros::format_description, OffsetDateTime,
         UtcOffset,
     };
+
+    use crate::errors::GarminError as Error;
 
     #[must_use]
     pub fn convert_datetime_to_str(datetime: OffsetDateTime) -> StackString {

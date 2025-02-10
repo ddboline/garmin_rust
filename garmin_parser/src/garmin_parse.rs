@@ -1,10 +1,9 @@
-use anyhow::{format_err, Error};
 use log::debug;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use stack_string::format_sstr;
 use std::{collections::HashMap, ffi::OsStr, path::Path};
 
-use garmin_lib::date_time_wrapper::DateTimeWrapper;
+use garmin_lib::{date_time_wrapper::DateTimeWrapper, errors::GarminError as Error};
 use garmin_models::{
     garmin_correction_lap::{CorrectionKey, GarminCorrectionLap},
     garmin_file::GarminFile,
@@ -64,7 +63,9 @@ impl GarminParse {
     ) -> Result<GarminSummary, Error> {
         let filename = filepath
             .file_name()
-            .ok_or_else(|| format_err!("Failed to split filename {filepath:?}"))?
+            .ok_or_else(|| {
+                Error::CustomError(format_sstr!("Failed to split filename {filepath:?}"))
+            })?
             .to_string_lossy();
         let cache_file = cache_dir.join(format_sstr!("{filename}.avro"));
 
@@ -76,10 +77,12 @@ impl GarminParse {
         let filename = &gfile.filename;
         match gfile.laps.first() {
             Some(l) if l.lap_start == DateTimeWrapper::sentinel_datetime() => {
-                return Err(format_err!("{filename} has empty lap start?"));
+                return Err(Error::CustomError(format_sstr!(
+                    "{filename} has empty lap start?"
+                )));
             }
             Some(_) => (),
-            None => return Err(format_err!("{filename} has no laps?")),
+            None => return Err(Error::CustomError(format_sstr!("{filename} has no laps?"))),
         };
         gfile.dump_avro(&cache_file)?;
         debug!("{filepath:?} Found md5sum {md5sum} success");
@@ -101,7 +104,11 @@ impl GarminParse {
                 debug!("Process {:?}", &input_file);
                 let filename = input_file
                     .file_name()
-                    .ok_or_else(|| format_err!("Failed to split input_file {input_file:?}"))?
+                    .ok_or_else(|| {
+                        Error::CustomError(format_sstr!(
+                            "Failed to split input_file {input_file:?}"
+                        ))
+                    })?
                     .to_string_lossy();
                 let cache_file = cache_dir.join(format_sstr!("{filename}.avro"));
                 let md5sum = get_md5sum(&input_file)?;
@@ -109,13 +116,15 @@ impl GarminParse {
                 let filename = &gfile.filename;
                 match gfile.laps.first() {
                     Some(l) if l.lap_start == DateTimeWrapper::sentinel_datetime() => {
-                        return Err(format_err!(
+                        return Err(Error::CustomError(format_sstr!(
                             "{input_file:?} {filename:?} has empty lap start?"
-                        ));
+                        )));
                     }
                     Some(_) => (),
                     None => {
-                        return Err(format_err!("{input_file:?} {filename:?} has no laps?"));
+                        return Err(Error::CustomError(format_sstr!(
+                            "{input_file:?} {filename:?} has no laps?"
+                        )));
                     }
                 };
                 gfile.dump_avro(&cache_file)?;
@@ -142,10 +151,10 @@ impl GarminParseTrait for GarminParse {
                 if filename.to_string_lossy().ends_with("tcx.gz") {
                     GarminParseTcx::new().with_file(filename, corr_map)
                 } else {
-                    Err(format_err!("Invalid extension"))
+                    Err(Error::StaticCustomError("Invalid extension"))
                 }
             }
-            _ => Err(format_err!("Invalid extension")),
+            _ => Err(Error::StaticCustomError("Invalid extension")),
         }
     }
 
@@ -156,14 +165,15 @@ impl GarminParseTrait for GarminParse {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Error;
     use approx::assert_abs_diff_eq;
     use std::{
         io::{stdout, Write},
         path::Path,
     };
 
-    use garmin_lib::date_time_wrapper::iso8601::convert_datetime_to_str;
+    use garmin_lib::{
+        date_time_wrapper::iso8601::convert_datetime_to_str, errors::GarminError as Error,
+    };
     use garmin_models::{garmin_correction_lap::GarminCorrectionLap, garmin_file};
     use garmin_utils::sport_types::SportTypes;
 

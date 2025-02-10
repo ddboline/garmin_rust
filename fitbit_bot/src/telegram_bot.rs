@@ -1,4 +1,3 @@
-use anyhow::Error;
 use arc_swap::ArcSwap;
 use crossbeam_utils::atomic::AtomicCell;
 use futures::{StreamExt, TryStreamExt};
@@ -15,7 +14,7 @@ use tokio::{
 };
 
 use fitbit_lib::scale_measurement::ScaleMeasurement;
-use garmin_lib::garmin_config::GarminConfig;
+use garmin_lib::{errors::GarminError as Error, garmin_config::GarminConfig};
 use garmin_utils::{garmin_util::get_list_of_telegram_userids, pgpool::PgPool};
 
 use super::failure_count::FailureCount;
@@ -205,7 +204,6 @@ impl TelegramBot {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Error;
     use maplit::hashset;
     use once_cell::sync::Lazy;
     use parking_lot::Mutex;
@@ -218,7 +216,8 @@ mod tests {
 
     use fitbit_lib::scale_measurement::ScaleMeasurement;
     use garmin_lib::{
-        date_time_wrapper::iso8601::convert_datetime_to_str, garmin_config::GarminConfig,
+        date_time_wrapper::iso8601::convert_datetime_to_str, errors::GarminError as Error,
+        garmin_config::GarminConfig,
     };
     use garmin_utils::pgpool::PgPool;
 

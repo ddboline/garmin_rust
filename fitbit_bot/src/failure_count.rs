@@ -1,5 +1,7 @@
-use anyhow::{format_err, Error};
+use stack_string::format_sstr;
 use std::sync::atomic::{AtomicUsize, Ordering};
+
+use garmin_lib::errors::GarminError as Error;
 
 pub struct FailureCount {
     max_count: usize,
@@ -19,10 +21,10 @@ impl FailureCount {
     /// Returns error if more than `max_count` errors are encountered
     pub fn check(&self) -> Result<(), Error> {
         if self.counter.load(Ordering::SeqCst) > self.max_count {
-            Err(format_err!(
+            Err(Error::CustomError(format_sstr!(
                 "Failed after retrying {} times",
                 self.max_count
-            ))
+            )))
         } else {
             Ok(())
         }
@@ -32,10 +34,10 @@ impl FailureCount {
     /// Returns error if more than `max_count` errors are encountered
     pub fn reset(&self) -> Result<(), Error> {
         if self.counter.swap(0, Ordering::SeqCst) > self.max_count {
-            Err(format_err!(
+            Err(Error::CustomError(format_sstr!(
                 "Failed after retrying {} times",
                 self.max_count
-            ))
+            )))
         } else {
             Ok(())
         }
@@ -45,10 +47,10 @@ impl FailureCount {
     /// Returns error if more than `max_count` errors are encountered
     pub fn increment(&self) -> Result<(), Error> {
         if self.counter.fetch_add(1, Ordering::SeqCst) > self.max_count {
-            Err(format_err!(
+            Err(Error::CustomError(format_sstr!(
                 "Failed after retrying {} times",
                 self.max_count
-            ))
+            )))
         } else {
             Ok(())
         }
@@ -57,7 +59,7 @@ impl FailureCount {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Error;
+    use garmin_lib::errors::GarminError as Error;
 
     use crate::failure_count::FailureCount;
 

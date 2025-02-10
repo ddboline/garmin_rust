@@ -1,4 +1,3 @@
-use anyhow::Error as AnyhowError;
 use base64::DecodeError;
 use handlebars::RenderError;
 use log::error;
@@ -21,6 +20,9 @@ use std::{
 use thiserror::Error;
 use tokio::task::JoinError;
 
+use authorized_users::errors::AuthUsersError;
+use garmin_lib::errors::GarminError;
+
 use crate::logged_user::LOGIN_HTML;
 
 #[derive(Error, Debug)]
@@ -31,8 +33,8 @@ pub enum ServiceError {
     BadRequest(String),
     #[error("Unauthorized")]
     Unauthorized,
-    #[error("Anyhow error {0}")]
-    AnyhowError(#[from] AnyhowError),
+    #[error("AuthUsersError {0}")]
+    AuthUsersError(#[from] AuthUsersError),
     #[error("io Error {0}")]
     IoError(#[from] std::io::Error),
     #[error("blocking error {0}")]
@@ -51,6 +53,8 @@ pub enum ServiceError {
     FmtError(#[from] FmtError),
     #[error("PqError {0}")]
     PqError(#[from] PqError),
+    #[error("GarminError {0}")]
+    GarminError(#[from] GarminError),
 }
 
 impl Reject for ServiceError {}
@@ -152,19 +156,20 @@ impl ResponseEntity for ServiceError {
 
 #[cfg(test)]
 mod test {
-    use anyhow::Error;
     use rweb::Reply;
+
+    use garmin_lib::errors::GarminError as Error;
 
     use crate::errors::{error_response, ServiceError};
 
     #[tokio::test]
     async fn test_service_error() -> Result<(), Error> {
         let err = ServiceError::BadRequest("TEST ERROR".into()).into();
-        let resp = error_response(err).await?.into_response();
+        let resp = error_response(err).await.unwrap().into_response();
         assert_eq!(resp.status().as_u16(), 400);
 
         let err = ServiceError::InternalServerError.into();
-        let resp = error_response(err).await?.into_response();
+        let resp = error_response(err).await.unwrap().into_response();
         assert_eq!(resp.status().as_u16(), 500);
         Ok(())
     }

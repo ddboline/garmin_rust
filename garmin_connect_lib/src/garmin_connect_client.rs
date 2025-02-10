@@ -1,4 +1,3 @@
-use anyhow::{format_err, Error};
 use convert_case::{Case, Casing};
 use log::debug;
 use maplit::hashmap;
@@ -12,16 +11,18 @@ use std::{
     path::{Path, PathBuf},
 };
 use time::{macros::format_description, Date, Duration as TimeDuration, OffsetDateTime, UtcOffset};
+use time_tz::OffsetDateTimeExt;
 use tokio::{fs, fs::File, io::AsyncWriteExt};
 use tokio_stream::StreamExt;
 use url::{form_urlencoded, Url};
-use time_tz::OffsetDateTimeExt;
 
 use fitbit_lib::{
     scale_measurement::{ScaleMeasurement, GRAMS_PER_POUND},
     GarminConnectHrData,
 };
-use garmin_lib::{garmin_config::GarminConfig, date_time_wrapper::DateTimeWrapper};
+use garmin_lib::{
+    date_time_wrapper::DateTimeWrapper, errors::GarminError as Error, garmin_config::GarminConfig,
+};
 use garmin_models::garmin_connect_activity::{GarminConnectActivity, GarminConnectSocialProfile};
 
 const HTTP_USER_AGENT: &str = "GCM-iOS-5.7.2.1";
@@ -90,7 +91,8 @@ impl TryFrom<&ScaleMeasurement> for GarminConnectWeightPayload {
         let local = DateTimeWrapper::local_tz();
 
         let datetimestamp = value
-            .datetime.to_timezone(local)
+            .datetime
+            .to_timezone(local)
             .format(format_description!(
                 "[year]-[month]-[day]T[hour]:[minute]:[second].00"
             ))?
@@ -195,11 +197,11 @@ impl GarminConnectClient {
         let consumer_key = config
             .garmin_connect_oauth_consumer_key
             .clone()
-            .ok_or_else(|| format_err!("No consumer key"))?;
+            .ok_or_else(|| Error::StaticCustomError("No consumer key"))?;
         let consumer_secret = config
             .garmin_connect_oauth_consumer_secret
             .clone()
-            .ok_or_else(|| format_err!("No consumer secret"))?;
+            .ok_or_else(|| Error::StaticCustomError("No consumer secret"))?;
 
         Ok(Self {
             config,
@@ -222,7 +224,7 @@ impl GarminConnectClient {
             let oauth2_token = self
                 .oauth2_token
                 .as_ref()
-                .ok_or_else(|| format_err!("No Oauth2 Token"))?;
+                .ok_or_else(|| Error::StaticCustomError("No Oauth2 Token"))?;
             if oauth2_token.expired() {
                 self.refresh_oauth2().await?;
                 self.dump().await?;
@@ -264,8 +266,8 @@ impl GarminConnectClient {
             .error_for_status()?
             .text()
             .await?;
-        let csrf_token =
-            Self::extract_csrf(&buf).ok_or_else(|| format_err!("Failed to extract csrf"))?;
+        let csrf_token = Self::extract_csrf(&buf)
+            .ok_or_else(|| Error::StaticCustomError("Failed to extract csrf"))?;
 
         debug!("csrf_token {csrf_token}");
 
@@ -292,10 +294,11 @@ impl GarminConnectClient {
             .await?;
         let title = Self::get_title(&text);
         if title != Some("Success".into()) {
-            return Err(format_err!("Login failed"));
+            return Err(Error::StaticCustomError("Login failed"));
         }
 
-        let ticket = Self::get_ticket(&text).ok_or_else(|| format_err!("Ticket not found"))?;
+        let ticket =
+            Self::get_ticket(&text).ok_or_else(|| Error::StaticCustomError("Ticket not found"))?;
         let oauth1_token = self.get_oauth1_token(&ticket).await?;
         let oauth2_token = self.exchange(&oauth1_token).await?;
 
@@ -312,11 +315,11 @@ impl GarminConnectClient {
         let oauth1_token = self
             .oauth1_token
             .clone()
-            .ok_or_else(|| format_err!("No Oauth1 Token"))?;
+            .ok_or_else(|| Error::StaticCustomError("No Oauth1 Token"))?;
         let oauth2_token = self
             .oauth2_token
             .clone()
-            .ok_or_else(|| format_err!("No Oauth2 Token"))?;
+            .ok_or_else(|| Error::StaticCustomError("No Oauth2 Token"))?;
         let tokens = Tokens {
             oauth1_token,
             oauth2_token,
@@ -344,7 +347,7 @@ impl GarminConnectClient {
         let oauth1_token = self
             .oauth1_token
             .as_ref()
-            .ok_or_else(|| format_err!("No Oauth1 Token"))?;
+            .ok_or_else(|| Error::StaticCustomError("No Oauth1 Token"))?;
         self.oauth2_token
             .replace(self.exchange(oauth1_token).await?);
         Ok(())
@@ -397,7 +400,7 @@ impl GarminConnectClient {
         let total_bytes = self.api_download(&path, &output).await?;
 
         if total_bytes == 0 || !output.exists() {
-            return Err(format_err!("Download failed"));
+            return Err(Error::StaticCustomError("Download failed"));
         }
 
         Ok(output)
@@ -440,9 +443,9 @@ impl GarminConnectClient {
         let oauth2_token = self
             .oauth2_token
             .as_ref()
-            .ok_or_else(|| format_err!("No Oauth2 Token"))?;
+            .ok_or_else(|| Error::StaticCustomError("No Oauth2 Token"))?;
         if oauth2_token.expired() {
-            return Err(format_err!("Oauth2 Token Expired"));
+            return Err(Error::StaticCustomError("Oauth2 Token Expired"));
         }
         let mut headers = HeaderMap::new();
         headers.insert("Authorization", oauth2_token.auth_header().parse()?);
@@ -475,10 +478,10 @@ impl GarminConnectClient {
             .await?
             .error_for_status()?;
         if response.status().as_u16() != 204 {
-            return Err(format_err!(
-                "Unexpected resposne {}",
+            return Err(Error::CustomError(format_sstr!(
+                "Unexpected response {}",
                 response.status().as_str()
-            ));
+            )));
         }
         Ok(())
     }
@@ -601,9 +604,9 @@ impl GarminConnectClient {
                 oauth_token_secret.replace(v.into());
             }
         }
-        let oauth_token = oauth_token.ok_or_else(|| format_err!("no oauth token"))?;
+        let oauth_token = oauth_token.ok_or_else(|| Error::StaticCustomError("no oauth token"))?;
         let oauth_token_secret =
-            oauth_token_secret.ok_or_else(|| format_err!("no oauth token secret"))?;
+            oauth_token_secret.ok_or_else(|| Error::StaticCustomError("no oauth token secret"))?;
 
         Ok(OAuth1Token {
             oauth_token,
@@ -614,13 +617,12 @@ impl GarminConnectClient {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Error;
     use fitbit_lib::scale_measurement::ScaleMeasurement;
     use std::{collections::HashMap, convert::TryInto};
     use time::{Duration, OffsetDateTime, UtcOffset};
     use tokio::fs::remove_file;
 
-    use garmin_lib::garmin_config::GarminConfig;
+    use garmin_lib::{errors::GarminError as Error, garmin_config::GarminConfig};
     use garmin_utils::pgpool::PgPool;
 
     use crate::garmin_connect_client::{

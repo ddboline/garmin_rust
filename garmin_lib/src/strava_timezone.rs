@@ -1,9 +1,8 @@
-use anyhow::{format_err, Error};
 use bytes::BytesMut;
 use derive_more::Into;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
-use stack_string::StackString;
+use stack_string::{format_sstr, StackString};
 use std::{convert::TryFrom, fmt, ops::Deref, str::FromStr};
 use time::UtcOffset;
 use time_tz::{
@@ -11,6 +10,8 @@ use time_tz::{
     TimeZone, Tz,
 };
 use tokio_postgres::types::{FromSql, IsNull, ToSql, Type};
+
+use crate::errors::GarminError as Error;
 
 #[derive(Into, Debug, PartialEq, Copy, Clone, Eq, Serialize, Deserialize)]
 #[serde(into = "String", try_from = "&str")]
@@ -40,7 +41,7 @@ impl FromStr for StravaTz {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         get_by_name(s)
             .map(Self)
-            .ok_or_else(|| format_err!("{s} is not a valid timezone"))
+            .ok_or_else(|| Error::CustomError(format_sstr!("{s} is not a valid timezone")))
     }
 }
 
@@ -148,7 +149,9 @@ impl StravaTimeZone {
         let tz_strs: SmallVec<[&str; 2]> = s.split_whitespace().take(2).collect();
         if let Some(tz) = tz_strs.first() {
             if tz.get(1..=3) != Some("GMT") {
-                return Err(format_err!("Time string isn't GMT: {tz}"));
+                return Err(Error::CustomError(format_sstr!(
+                    "Time string isn't GMT: {tz}"
+                )));
             }
             if let Some(hours) = tz.get(4..=6).and_then(|s| s.parse::<i32>().ok()) {
                 if let Some(minutes) = tz.get(8..=9).and_then(|s| s.parse::<i32>().ok()) {
@@ -160,11 +163,12 @@ impl StravaTimeZone {
             }
         }
         if let Some(tz) = tz_strs.get(1) {
-            let tz = get_by_name(tz).ok_or_else(|| format_err!("{tz} is not a valid timezone"))?;
-            let offset = offset.ok_or_else(|| format_err!("Bad offset"))?;
+            let tz = get_by_name(tz)
+                .ok_or_else(|| Error::CustomError(format_sstr!("{tz} is not a valid timezone")))?;
+            let offset = offset.ok_or_else(|| Error::StaticCustomError("Bad offset"))?;
             Ok(Self(offset, tz))
         } else {
-            Err(format_err!("Bad Timezone String"))
+            Err(Error::StaticCustomError("Bad Timezone String"))
         }
     }
 }
@@ -215,10 +219,9 @@ impl ToSql for StravaTimeZone {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Error;
     use stack_string::format_sstr;
 
-    use crate::strava_timezone::StravaTimeZone;
+    use crate::{errors::GarminError as Error, strava_timezone::StravaTimeZone};
 
     #[test]
     fn test_timezone() -> Result<(), Error> {

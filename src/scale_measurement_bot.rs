@@ -5,10 +5,8 @@
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::cast_possible_wrap)]
 
-use anyhow::Error;
-
 use fitbit_bot::telegram_bot::TelegramBot;
-use garmin_lib::garmin_config::GarminConfig;
+use garmin_lib::{errors::GarminError as Error, garmin_config::GarminConfig};
 use garmin_utils::pgpool::PgPool;
 
 #[tokio::main]

@@ -1,4 +1,3 @@
-use anyhow::{format_err, Error};
 use futures::{stream::FuturesUnordered, TryStreamExt};
 use log::debug;
 use postgres_query::{query, query_dyn, Error as PqError, FromSqlRow, Parameter, Query};
@@ -12,6 +11,7 @@ use uuid::Uuid;
 
 use garmin_lib::{
     date_time_wrapper::{iso8601::convert_datetime_to_str, DateTimeWrapper},
+    errors::GarminError as Error,
     garmin_config::GarminConfig,
 };
 use garmin_utils::pgpool::PgPool;
@@ -83,14 +83,14 @@ impl ScaleMeasurement {
         .iter()
         .any(|x| { *x < 0.0 } || { !x.is_finite() })
         {
-            return Err(format_err!("Values cannot be negative"));
+            return Err(Error::StaticCustomError("Values cannot be negative"));
         }
         if weight_in_lbs > 1e3 {
-            return Err(format_err!("Invalid Value"));
+            return Err(Error::StaticCustomError("Invalid Value"));
         }
         if muscle_mass_lbs + bone_mass_lbs > weight_in_lbs {
-            return Err(format_err!(
-                "Invalid inputs, muscle and bone masses must be less than total weight"
+            return Err(Error::StaticCustomError(
+                "Invalid inputs, muscle and bone masses must be less than total weight",
             ));
         }
         let id = Uuid::new_v4();
@@ -120,7 +120,7 @@ impl ScaleMeasurement {
         } else if msg.contains('=') {
             '='
         } else {
-            return Err(format_err!("Bad message"));
+            return Err(Error::StaticCustomError("Bad message"));
         };
 
         let values = msg
@@ -128,7 +128,7 @@ impl ScaleMeasurement {
             .map(|x| {
                 let y: i32 = x.parse()?;
                 if y < 0 {
-                    return Err(format_err!("Bad message"));
+                    return Err(Error::StaticCustomError("Bad message"));
                 }
                 Ok(f64::from(y) / 10.)
             })
@@ -136,7 +136,7 @@ impl ScaleMeasurement {
             .collect::<Result<SmallVec<[f64; 5]>, Error>>()?;
 
         if values.len() < 5 {
-            return Err(format_err!("Bad message"));
+            return Err(Error::StaticCustomError("Bad message"));
         }
 
         Ok(Self {
@@ -397,12 +397,11 @@ impl ScaleMeasurement {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Error;
     use log::debug;
     use time::{macros::datetime, OffsetDateTime};
     use uuid::Uuid;
 
-    use garmin_lib::garmin_config::GarminConfig;
+    use garmin_lib::{errors::GarminError as Error, garmin_config::GarminConfig};
     use garmin_utils::pgpool::PgPool;
 
     use crate::scale_measurement::ScaleMeasurement;

@@ -1,4 +1,3 @@
-use anyhow::{format_err, Error};
 use apache_avro::{from_value, Codec, Reader, Schema, Writer};
 use fitparser::{profile::field_types::MesgNum, Value};
 use futures::{future::try_join_all, stream::FuturesUnordered, TryStreamExt};
@@ -23,7 +22,9 @@ use time::{
 use time_tz::{timezones::db::UTC, OffsetDateTimeExt, PrimitiveDateTimeExt};
 use tokio::task::spawn_blocking;
 
-use garmin_lib::{date_time_wrapper::DateTimeWrapper, garmin_config::GarminConfig};
+use garmin_lib::{
+    date_time_wrapper::DateTimeWrapper, errors::GarminError as Error, garmin_config::GarminConfig,
+};
 use garmin_models::{garmin_file::GarminFile, garmin_summary::get_list_of_files_from_db};
 use garmin_utils::pgpool::PgPool;
 
@@ -233,7 +234,7 @@ impl FitbitHeartRate {
             x.map_err(Into::into).and_then(|f| {
                 let date = Date::parse(
                     &f.file_stem()
-                        .ok_or_else(|| format_err!("No name"))?
+                        .ok_or_else(|| Error::StaticCustomError("No name"))?
                         .to_string_lossy(),
                     format_description!("[year]-[month]-[day]"),
                 )?;
@@ -302,10 +303,10 @@ impl FitbitHeartRate {
     /// Returns error if file read fails
     pub fn read_avro(input_filename: impl AsRef<Path>) -> Result<Vec<Self>, Error> {
         if !input_filename.as_ref().exists() {
-            return Err(format_err!(
+            return Err(Error::CustomError(format_sstr!(
                 "file {:?} does not exist",
                 input_filename.as_ref()
-            ));
+            )));
         }
         let input_file = File::open(input_filename)?;
         Reader::new(input_file)?
@@ -377,7 +378,9 @@ impl FitbitHeartRate {
 /// Returns error if deserialization fails
 pub fn process_fitbit_json_file(fname: &Path) -> Result<Vec<FitbitHeartRate>, Error> {
     if !fname.exists() {
-        return Err(format_err!("file {fname:?} does not exist"));
+        return Err(Error::CustomError(format_sstr!(
+            "file {fname:?} does not exist"
+        )));
     }
     let f = File::open(fname)?;
     let result: Vec<JsonHeartRateEntry> = serde_json::from_reader(f)?;
@@ -413,7 +416,9 @@ pub fn import_fitbit_json_files(
 /// Returns error if deserialization fails
 pub fn import_garmin_json_file(config: &GarminConfig, filename: &Path) -> Result<(), Error> {
     if !filename.exists() {
-        return Err(format_err!("file {filename:?} does not exist"));
+        return Err(Error::CustomError(format_sstr!(
+            "file {filename:?} does not exist"
+        )));
     }
     let js: GarminConnectHrData = serde_json::from_reader(File::open(filename)?)?;
 
@@ -433,10 +438,12 @@ pub fn import_garmin_heartrate_file(
     let mut timestamps = Vec::new();
     let mut heartrates = Vec::new();
     if !filename.exists() {
-        return Err(format_err!("file {filename:?} does not exist"));
+        return Err(Error::CustomError(format_sstr!(
+            "file {filename:?} does not exist"
+        )));
     }
     let mut f = File::open(filename)?;
-    let records = fitparser::from_reader(&mut f).map_err(|e| format_err!("{e:?}"))?;
+    let records = fitparser::from_reader(&mut f)?;
     for record in &records {
         match record.kind() {
             MesgNum::Monitoring => {
@@ -489,22 +496,22 @@ pub fn import_garmin_heartrate_file(
 
     let min_timestamp = *timestamps
         .first()
-        .ok_or_else(|| format_err!("No timestamps"))?;
+        .ok_or_else(|| Error::StaticCustomError("No timestamps"))?;
     let max_timestamp = *timestamps
         .iter()
         .last()
-        .ok_or_else(|| format_err!("No timestamps"))?;
+        .ok_or_else(|| Error::StaticCustomError("No timestamps"))?;
     let min_timestamp16 = i64::from(
         heartrates
             .first()
-            .ok_or_else(|| format_err!("No timestamps"))?
+            .ok_or_else(|| Error::StaticCustomError("No timestamps"))?
             .0,
     );
     let max_timestamp16 = i64::from(
         heartrates
             .iter()
             .last()
-            .ok_or_else(|| format_err!("No timestamps"))?
+            .ok_or_else(|| Error::StaticCustomError("No timestamps"))?
             .0,
     );
 
@@ -543,13 +550,15 @@ pub struct FitbitBodyWeightFat {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Error;
     use log::debug;
     use std::{collections::HashSet, path::Path};
     use time::macros::date;
     use time_tz::OffsetDateTimeExt;
 
-    use garmin_lib::{date_time_wrapper::DateTimeWrapper, garmin_config::GarminConfig};
+    use garmin_lib::{
+        date_time_wrapper::DateTimeWrapper, errors::GarminError as Error,
+        garmin_config::GarminConfig,
+    };
     use garmin_utils::pgpool::PgPool;
 
     use crate::fitbit_heartrate::{process_fitbit_json_file, FitbitHeartRate};

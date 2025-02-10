@@ -1,4 +1,3 @@
-use anyhow::{format_err, Error};
 use bytes::BytesMut;
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
@@ -8,6 +7,8 @@ use std::{
     str::FromStr,
 };
 use tokio_postgres::types::{FromSql, IsNull, ToSql, Type};
+
+use garmin_lib::errors::GarminError as Error;
 
 #[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize, Eq)]
 #[serde(into = "String", try_from = "String")]
@@ -70,7 +71,7 @@ impl FromStr for RaceType {
             "personal" => Ok(Self::Personal),
             "world_record_men" => Ok(Self::WorldRecordMen),
             "world_record_women" => Ok(Self::WorldRecordWomen),
-            _ => Err(format_err!("Invalid Race Type")),
+            _ => Err(Error::StaticCustomError("Invalid Race Type")),
         }
     }
 }

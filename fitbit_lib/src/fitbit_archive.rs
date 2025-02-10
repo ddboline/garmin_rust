@@ -1,4 +1,3 @@
-use anyhow::{format_err, Error};
 use futures::{future::try_join_all, TryStreamExt};
 use log::info;
 use polars::{
@@ -17,7 +16,9 @@ use std::{
 use time::{Date, Duration, Month, OffsetDateTime, Time};
 use tokio::task::spawn_blocking;
 
-use garmin_lib::{date_time_wrapper::DateTimeWrapper, garmin_config::GarminConfig};
+use garmin_lib::{
+    date_time_wrapper::DateTimeWrapper, errors::GarminError as Error, garmin_config::GarminConfig,
+};
 use garmin_models::{garmin_file::GarminFile, garmin_summary::get_list_of_files_from_db};
 use garmin_utils::pgpool::PgPool;
 
@@ -276,12 +277,12 @@ pub fn get_number_of_heartrate_values(
             .column("timestamp")?
             .i64()?
             .min()
-            .ok_or_else(|| format_err!("No minimum timestamp"))?;
+            .ok_or_else(|| Error::StaticCustomError("No minimum timestamp"))?;
         let max_timestamp = df
             .column("timestamp")?
             .i64()?
             .max()
-            .ok_or_else(|| format_err!("No maximum timestamp"))?;
+            .ok_or_else(|| Error::StaticCustomError("No maximum timestamp"))?;
         if min_timestamp >= start_timestamp && max_timestamp <= end_timestamp {
             value_count += df.shape().0;
         } else {

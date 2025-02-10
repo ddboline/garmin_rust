@@ -1,6 +1,5 @@
-use anyhow::{format_err, Error};
 use smallvec::SmallVec;
-use stack_string::StackString;
+use stack_string::{format_sstr, StackString};
 use std::{
     collections::HashMap,
     fs::File,
@@ -12,6 +11,7 @@ use time::{
     Date, PrimitiveDateTime, Time,
 };
 
+use garmin_lib::errors::GarminError as Error;
 use garmin_models::{
     garmin_correction_lap::{
         apply_lap_corrections, CorrectedOutput, CorrectionKey, GarminCorrectionLap,
@@ -46,7 +46,7 @@ impl GarminParseTrait for GarminParseTxt {
     ) -> Result<GarminFile, Error> {
         let file_name = filename
             .file_name()
-            .ok_or_else(|| format_err!("filename {filename:?} has no path"))?
+            .ok_or_else(|| Error::CustomError(format_sstr!("filename {filename:?} has no path")))?
             .to_string_lossy()
             .to_string()
             .into();
@@ -54,7 +54,7 @@ impl GarminParseTrait for GarminParseTxt {
         let sport: SportTypes = txt_output
             .lap_list
             .first()
-            .ok_or_else(|| format_err!("No laps"))?
+            .ok_or_else(|| Error::StaticCustomError("No laps"))?
             .lap_type
             .as_ref()
             .and_then(|s| s.parse().ok())
@@ -63,7 +63,9 @@ impl GarminParseTrait for GarminParseTxt {
             laps: lap_list,
             sport,
         } = apply_lap_corrections(&txt_output.lap_list, sport, corr_map);
-        let first_lap = lap_list.first().ok_or_else(|| format_err!("No laps"))?;
+        let first_lap = lap_list
+            .first()
+            .ok_or_else(|| Error::StaticCustomError("No laps"))?;
         let gfile = GarminFile {
             filename: file_name,
             filetype: "txt".into(),
@@ -194,7 +196,9 @@ impl GarminParseTrait for GarminParseTxt {
 impl GarminParseTxt {
     fn get_lap_list(filename: &Path) -> Result<Vec<GarminLap>, Error> {
         if !filename.exists() {
-            return Err(format_err!("file {filename:?} does not exist"));
+            return Err(Error::CustomError(format_sstr!(
+                "file {filename:?} does not exist"
+            )));
         }
         let file = File::open(filename)?;
         let mut reader = BufReader::new(file);
@@ -233,7 +237,7 @@ impl GarminParseTxt {
 
         let date = match entry_dict.get("date") {
             Some(val) => Date::parse(val, format_description!("[year][month][day]"))?,
-            None => return Err(format_err!("No date value")),
+            None => return Err(Error::StaticCustomError("No date value")),
         };
 
         let time = if let Some(val) = entry_dict.get("time") {
@@ -265,13 +269,13 @@ impl GarminParseTxt {
                     let dis: f64 = v
                         .split("mi")
                         .next()
-                        .ok_or_else(|| format_err!("shouldn't be possible"))?
+                        .ok_or_else(|| Error::StaticCustomError("shouldn't be possible"))?
                         .parse()?;
                     dis * METERS_PER_MILE
                 } else if v.contains('m') {
                     v.split('m')
                         .next()
-                        .ok_or_else(|| format_err!("shouldn't be possible"))?
+                        .ok_or_else(|| Error::StaticCustomError("shouldn't be possible"))?
                         .parse()?
                 } else {
                     v.parse()?
@@ -310,11 +314,12 @@ impl GarminParseTxt {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Error;
     use approx::assert_abs_diff_eq;
     use std::path::Path;
 
-    use garmin_lib::date_time_wrapper::iso8601::convert_datetime_to_str;
+    use garmin_lib::{
+        date_time_wrapper::iso8601::convert_datetime_to_str, errors::GarminError as Error,
+    };
     use garmin_models::garmin_correction_lap::GarminCorrectionLap;
     use garmin_utils::sport_types::SportTypes;
 

@@ -22,7 +22,7 @@ use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
-use garmin_lib::garmin_config::GarminConfig;
+use garmin_lib::{errors::GarminError, garmin_config::GarminConfig};
 use garmin_utils::{garmin_util::AuthorizedUsers, pgpool::PgPool};
 
 use crate::errors::ServiceError as Error;
@@ -68,13 +68,15 @@ impl LoggedUser {
         &self,
         client: &Client,
         config: &GarminConfig,
-    ) -> Result<Session, anyhow::Error> {
+    ) -> Result<Session, Error> {
         #[derive(Deserialize, Debug)]
         struct SessionResponse {
             history: Option<Vec<StackString>>,
         }
 
-        let base_url: Url = format_sstr!("https://{}", config.domain).parse()?;
+        let base_url: Url = format_sstr!("https://{}", config.domain)
+            .parse()
+            .map_err(Into::<GarminError>::into)?;
         let session: Option<SessionResponse> = ExternalUser::get_session_data(
             &base_url,
             self.session.into(),
@@ -100,8 +102,10 @@ impl LoggedUser {
         client: &Client,
         config: &GarminConfig,
         session: &Session,
-    ) -> Result<(), anyhow::Error> {
-        let base_url: Url = format_sstr!("https://{}", config.domain).parse()?;
+    ) -> Result<(), Error> {
+        let base_url: Url = format_sstr!("https://{}", config.domain)
+            .parse()
+            .map_err(Into::<GarminError>::into)?;
         ExternalUser::set_session_data(
             &base_url,
             self.session.into(),

@@ -1,10 +1,11 @@
-use anyhow::{format_err, Error};
 use bytes::BytesMut;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use stack_string::StackString;
+use stack_string::{format_sstr, StackString};
 use std::{collections::HashMap, fmt, str::FromStr};
 use tokio_postgres::types::{FromSql, IsNull, ToSql, Type};
+
+use garmin_lib::errors::GarminError as Error;
 
 static SPORT_TYPE_MAP: Lazy<HashMap<&'static str, SportTypes>> = Lazy::new(init_sport_type_map);
 
@@ -118,7 +119,7 @@ impl SportTypes {
             "Swim" => Ok(Self::Swimming),
             "Snowshoe" => Ok(Self::Snowshoeing),
             "NordicSki" => Ok(Self::Skiing),
-            _ => Err(format_err!("Invalid activity type")),
+            _ => Err(Error::StaticCustomError("Invalid activity type")),
         }
     }
 
@@ -165,7 +166,7 @@ impl FromStr for SportTypes {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match SPORT_TYPE_MAP.get(s.to_lowercase().as_str()) {
             Some(sport) => Ok(*sport),
-            None => Err(format_err!("Invalid Sport Type {s}")),
+            None => Err(Error::CustomError(format_sstr!("Invalid Sport Type {s}"))),
         }
     }
 }

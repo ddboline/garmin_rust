@@ -10,7 +10,10 @@ use std::{collections::HashMap, fmt::Write};
 use time::{macros::format_description, Date, Duration, OffsetDateTime};
 use time_tz::OffsetDateTimeExt;
 
-use fitbit_lib::{fitbit_heartrate::FitbitHeartRate, scale_measurement::{ScaleMeasurement, LBS_PER_KG}};
+use fitbit_lib::{
+    fitbit_heartrate::FitbitHeartRate,
+    scale_measurement::{ScaleMeasurement, LBS_PER_KG},
+};
 use garmin_lib::{
     date_time_wrapper::{iso8601::convert_datetime_to_str, DateTimeWrapper},
     garmin_config::GarminConfig,

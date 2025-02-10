@@ -1,9 +1,9 @@
-use anyhow::{format_err, Error};
 use roxmltree::{Document, NodeType};
 use stack_string::format_sstr;
 use std::{collections::HashMap, path::Path};
 use subprocess::{Exec, Redirection};
 
+use garmin_lib::errors::GarminError as Error;
 use garmin_models::{
     garmin_correction_lap::{
         apply_lap_corrections, CorrectedOutput, CorrectionKey, GarminCorrectionLap,
@@ -35,7 +35,7 @@ impl GarminParseTrait for GarminParseGmn {
         let gmn_output = self.parse_file(filename)?;
         let filename = filename
             .file_name()
-            .ok_or_else(|| format_err!("filename {filename:?} has no path"))?
+            .ok_or_else(|| Error::CustomError(format_sstr!("filename {filename:?} has no path")))?
             .to_string_lossy()
             .to_string()
             .into();
@@ -43,7 +43,9 @@ impl GarminParseTrait for GarminParseGmn {
             laps: lap_list,
             sport,
         } = apply_lap_corrections(&gmn_output.lap_list, gmn_output.sport, corr_map);
-        let first_lap = lap_list.first().ok_or_else(|| format_err!("No laps"))?;
+        let first_lap = lap_list
+            .first()
+            .ok_or_else(|| Error::StaticCustomError("No laps"))?;
         let gfile = GarminFile {
             filename,
             filetype: "gmn".into(),
@@ -77,7 +79,7 @@ impl GarminParseTrait for GarminParseGmn {
             .stdout(Redirection::Pipe)
             .capture()?
             .stdout_str();
-        let doc = Document::parse(&output).map_err(|e| format_err!("{e}"))?;
+        let doc = Document::parse(&output)?;
 
         let mut lap_list = Vec::new();
         let mut point_list = Vec::new();
@@ -120,12 +122,13 @@ impl GarminParseTrait for GarminParseGmn {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Error;
     use approx::assert_abs_diff_eq;
     use std::path::Path;
 
     use crate::{garmin_parse::GarminParseTrait, garmin_parse_gmn};
-    use garmin_lib::date_time_wrapper::iso8601::convert_datetime_to_str;
+    use garmin_lib::{
+        date_time_wrapper::iso8601::convert_datetime_to_str, errors::GarminError as Error,
+    };
     use garmin_models::garmin_correction_lap::GarminCorrectionLap;
     use garmin_utils::sport_types::SportTypes;
 

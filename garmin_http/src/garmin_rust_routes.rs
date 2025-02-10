@@ -1,5 +1,4 @@
 #![allow(clippy::needless_pass_by_value)]
-use anyhow::format_err;
 use futures::{future::try_join_all, TryStreamExt};
 use itertools::Itertools;
 use log::debug;
@@ -26,7 +25,8 @@ use fitbit_lib::{
 use garmin_cli::garmin_cli::{GarminCli, GarminRequest};
 use garmin_connect_lib::garmin_connect_client::GarminConnectClient;
 use garmin_lib::{
-    date_time_wrapper::iso8601::convert_datetime_to_str, garmin_config::GarminConfig,
+    date_time_wrapper::iso8601::convert_datetime_to_str, errors::GarminError,
+    garmin_config::GarminConfig,
 };
 use garmin_models::{
     fitbit_activity::FitbitActivity,
@@ -160,7 +160,7 @@ async fn get_index_body(
         1 => {
             let file_name = file_list
                 .first()
-                .ok_or_else(|| format_err!("This shouldn't be happening..."))?;
+                .ok_or_else(|| GarminError::StaticCustomError("This shouldn't be happening..."))?;
             debug!("{}", &file_name);
             let avro_file = config.cache_dir.join(file_name.as_str());
 
@@ -336,7 +336,7 @@ async fn garmin_upload_body(
     Ok(body)
 }
 
-async fn save_file(file_path: &str, field: Part) -> Result<u64, anyhow::Error> {
+async fn save_file(file_path: &str, field: Part) -> Result<u64, Error> {
     let mut file = File::create(file_path).await?;
     let mut stream = field.stream();
     let mut buf_size = 0usize;

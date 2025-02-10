@@ -1,4 +1,3 @@
-use anyhow::Error;
 use clap::Parser;
 use futures::{future::try_join_all, TryStreamExt};
 use itertools::Itertools;
@@ -31,7 +30,9 @@ use fitbit_lib::{
     GarminConnectHrData,
 };
 use garmin_connect_lib::garmin_connect_client::GarminConnectClient;
-use garmin_lib::{date_time_wrapper::DateTimeWrapper, garmin_config::GarminConfig};
+use garmin_lib::{
+    date_time_wrapper::DateTimeWrapper, errors::GarminError as Error, garmin_config::GarminConfig,
+};
 use garmin_models::{
     fitbit_activity::FitbitActivity, garmin_connect_activity::GarminConnectActivity,
     garmin_connect_har_file::GarminConnectHarFile,
@@ -737,7 +738,9 @@ impl GarminCliOpts {
             if !weights.date_weight_list.is_empty() {
                 let weight = &weights.date_weight_list[0];
                 if let Some(measurement) = measurement_map.get_mut(&date) {
-                    if measurement.connect_primary_key.is_none() && (weight.weight - measurement.mass_in_grams()) < 1.0 {
+                    if measurement.connect_primary_key.is_none()
+                        && (weight.weight - measurement.mass_in_grams()) < 1.0
+                    {
                         println!("set weight {weight:?}");
                         measurement
                             .set_connect_primary_key(weight.sample_primary_key, &cli.pool)
@@ -793,13 +796,12 @@ impl GarminCliOpts {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Error;
     use std::{ffi::OsStr, path::Path};
     use stdout_channel::StdoutChannel;
 
     use crate::garmin_cli::{GarminCli, GarminCliOptions};
     use fitbit_lib::GarminConnectHrData;
-    use garmin_lib::garmin_config::GarminConfig;
+    use garmin_lib::{errors::GarminError as Error, garmin_config::GarminConfig};
     use garmin_models::{
         garmin_connect_har_file::GarminConnectHarFile, garmin_correction_lap::GarminCorrectionMap,
         strava_activities_har_file::StravaActivityHarFile, strava_activity::StravaActivity,

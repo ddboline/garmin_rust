@@ -1,4 +1,3 @@
-use anyhow::Error;
 use futures::Stream;
 use postgres_query::{query, query_dyn, Error as PqError, FromSqlRow, Parameter, Query};
 use serde::{Deserialize, Serialize};
@@ -8,7 +7,7 @@ use std::convert::TryInto;
 use time::Date;
 use time_tz::OffsetDateTimeExt;
 
-use garmin_lib::date_time_wrapper::DateTimeWrapper;
+use garmin_lib::{date_time_wrapper::DateTimeWrapper, errors::GarminError as Error};
 use garmin_utils::pgpool::PgPool;
 
 use crate::fitbit_heartrate::FitbitHeartRate;

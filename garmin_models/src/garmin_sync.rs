@@ -1,4 +1,3 @@
-use anyhow::{format_err, Error};
 use aws_config::SdkConfig;
 use aws_sdk_s3::{
     operation::list_objects::ListObjectsOutput, primitives::ByteStream, types::Object as S3Object,
@@ -27,6 +26,8 @@ use tokio::{
     fs::File,
     task::{spawn, spawn_blocking, JoinHandle},
 };
+
+use garmin_lib::errors::GarminError as Error;
 
 use garmin_utils::{
     garmin_util::{exponential_retry, get_md5sum},
@@ -220,12 +221,12 @@ impl GarminSync {
             let f = entry.path();
             let filename: StackString = f
                 .file_name()
-                .ok_or_else(|| format_err!("cannot extract filename"))?
+                .ok_or_else(|| Error::StaticCustomError("cannot extract filename"))?
                 .to_string_lossy()
                 .into();
             let ext = f
                 .extension()
-                .ok_or_else(|| format_err!("cannot extract extension"))?;
+                .ok_or_else(|| Error::StaticCustomError("cannot extract extension"))?;
             if allowed_extensions.contains(&ext) {
                 let metadata = fs::metadata(&f)?;
                 let modified = metadata
@@ -347,7 +348,9 @@ impl GarminSync {
                 .upload_file(&local_file, s3_bucket, &key_item.s3_key)
                 .await?;
             if Some(&s3_etag) != key_item.local_etag.as_ref() {
-                return Err(format_err!("Uploaded etag does not match local"));
+                return Err(Error::StaticCustomError(
+                    "Uploaded etag does not match local",
+                ));
             }
             key_item.s3_etag = Some(s3_etag);
             key_item.s3_size = key_item.local_size;
@@ -402,7 +405,10 @@ impl GarminSync {
                     .key(s3_key)
                     .send()
                     .await?;
-                let etag: StackString = resp.e_tag().ok_or_else(|| format_err!("No etag"))?.into();
+                let etag: StackString = resp
+                    .e_tag()
+                    .ok_or_else(|| Error::StaticCustomError("No etag"))?
+                    .into();
                 tokio::io::copy(
                     &mut resp.body.into_async_read(),
                     &mut File::create(tmp_path).await?,
@@ -435,7 +441,7 @@ impl GarminSync {
                 .send()
                 .await?
                 .e_tag
-                .ok_or_else(|| format_err!("Missing etag"))?
+                .ok_or_else(|| Error::StaticCustomError("Missing etag"))?
                 .trim_matches('"')
                 .into();
             Ok(etag)

@@ -5,7 +5,6 @@
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::cast_possible_wrap)]
 
-use anyhow::Error;
 use clap::Parser;
 use std::{collections::BTreeSet, path::PathBuf};
 use tempfile::TempDir;
@@ -13,7 +12,7 @@ use tempfile::TempDir;
 use fitbit_lib::fitbit_heartrate::{
     import_garmin_heartrate_file, import_garmin_json_file, FitbitHeartRate,
 };
-use garmin_lib::garmin_config::GarminConfig;
+use garmin_lib::{errors::GarminError as Error, garmin_config::GarminConfig};
 use garmin_models::garmin_connect_activity::import_garmin_connect_activity_json_file;
 use garmin_utils::{garmin_util::extract_zip_from_garmin_connect_multiple, pgpool::PgPool};
 

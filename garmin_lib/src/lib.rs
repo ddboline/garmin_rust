@@ -8,5 +8,6 @@
 #![allow(clippy::unsafe_derive_deserialize)]
 
 pub mod date_time_wrapper;
+pub mod errors;
 pub mod garmin_config;
 pub mod strava_timezone;

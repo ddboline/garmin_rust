@@ -1,4 +1,3 @@
-use anyhow::{format_err, Error};
 use crossbeam_utils::atomic::AtomicCell;
 use log::warn;
 use maplit::hashmap;
@@ -24,6 +23,7 @@ use tokio::{
 
 use garmin_lib::{
     date_time_wrapper::{iso8601::convert_datetime_to_str, DateTimeWrapper},
+    errors::GarminError as Error,
     garmin_config::GarminConfig,
 };
 use garmin_models::strava_activity::StravaActivity;
@@ -85,7 +85,9 @@ impl StravaClient {
         };
         let filename = &client.config.strava_tokenfile;
         if !filename.exists() {
-            return Err(format_err!("file {filename:?} does not exist"));
+            return Err(Error::CustomError(format_sstr!(
+                "file {filename:?} does not exist"
+            )));
         }
         let f = File::open(filename).await?;
         let mut b = BufReader::new(f);
@@ -140,7 +142,7 @@ impl StravaClient {
             .config
             .strava_endpoint
             .as_ref()
-            .ok_or_else(|| format_err!("Bad URL"))?
+            .ok_or_else(|| Error::StaticCustomError("Bad URL"))?
             .join("oauth/authorize")?;
         let url = Url::parse_with_params(
             url.as_str(),
@@ -168,13 +170,13 @@ impl StravaClient {
 
         if let Some(current_state) = CSRF_TOKEN.swap(None) {
             if state != current_state.as_str() {
-                return Err(format_err!("Incorrect state"));
+                return Err(Error::StaticCustomError("Incorrect state"));
             }
             let url = self
                 .config
                 .strava_endpoint
                 .as_ref()
-                .ok_or_else(|| format_err!("Bad URL"))?
+                .ok_or_else(|| Error::StaticCustomError("Bad URL"))?
                 .join("oauth/token")?;
             let data = hashmap! {
                 "client_id" => self.client_id.as_str(),
@@ -195,7 +197,7 @@ impl StravaClient {
             self.refresh_token.replace(resp.refresh_token);
             Ok(())
         } else {
-            Err(format_err!("No state"))
+            Err(Error::StaticCustomError("No state"))
         }
     }
 
@@ -208,34 +210,35 @@ impl StravaClient {
             refresh_token: StackString,
         }
 
-        if let Some(refresh_token) = self.refresh_token.as_ref() {
-            let url = self
-                .config
-                .strava_endpoint
-                .as_ref()
-                .ok_or_else(|| format_err!("Bad URL"))?
-                .join("oauth/token")?;
-            let data = hashmap! {
-                "client_id" => self.client_id.as_str(),
-                "client_secret" => self.client_secret.as_str(),
-                "refresh_token" => refresh_token.as_str(),
-                "grant_type" => "refresh_token",
-            };
-            let resp: TokenResponse = self
-                .client
-                .post(url)
-                .form(&data)
-                .send()
-                .await?
-                .error_for_status()?
-                .json()
-                .await?;
-            self.access_token.replace(resp.access_token);
-            self.refresh_token.replace(resp.refresh_token);
-            Ok(())
-        } else {
-            Err(format_err!("No refresh token"))
-        }
+        let refresh_token = self
+            .refresh_token
+            .as_ref()
+            .ok_or_else(|| Error::StaticCustomError("No refresh token"))?;
+
+        let url = self
+            .config
+            .strava_endpoint
+            .as_ref()
+            .ok_or_else(|| Error::StaticCustomError("Bad URL"))?
+            .join("oauth/token")?;
+        let data = hashmap! {
+            "client_id" => self.client_id.as_str(),
+            "client_secret" => self.client_secret.as_str(),
+            "refresh_token" => refresh_token.as_str(),
+            "grant_type" => "refresh_token",
+        };
+        let resp: TokenResponse = self
+            .client
+            .post(url)
+            .form(&data)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+        self.access_token.replace(resp.access_token);
+        self.refresh_token.replace(resp.refresh_token);
+        Ok(())
     }
 
     fn get_auth_headers(&self) -> Result<HeaderMap, Error> {
@@ -243,7 +246,7 @@ impl StravaClient {
         let access_token = self
             .access_token
             .as_ref()
-            .ok_or_else(|| format_err!("no access token"))?;
+            .ok_or_else(|| Error::StaticCustomError("no access token"))?;
         headers.insert(
             "Authorization",
             format_sstr!("Bearer {access_token}").parse()?,
@@ -258,7 +261,7 @@ impl StravaClient {
             .config
             .strava_endpoint
             .as_ref()
-            .ok_or_else(|| format_err!("Bad URL"))?
+            .ok_or_else(|| Error::StaticCustomError("Bad URL"))?
             .join("api/v3/athlete")?;
         let headers = self.get_auth_headers()?;
         self.client
@@ -296,7 +299,7 @@ impl StravaClient {
             .config
             .strava_endpoint
             .as_ref()
-            .ok_or_else(|| format_err!("Bad URL"))?
+            .ok_or_else(|| Error::StaticCustomError("Bad URL"))?
             .join("api/v3/athlete/activities")?;
 
         let url = Url::parse_with_params(url.as_str(), &params)?;
@@ -384,7 +387,7 @@ impl StravaClient {
             .config
             .strava_endpoint
             .as_ref()
-            .ok_or_else(|| format_err!("Bad URL"))?
+            .ok_or_else(|| Error::StaticCustomError("Bad URL"))?
             .join("api/v3/activities")?;
         let resp: CreateActivityResp = self
             .client
@@ -410,7 +413,7 @@ impl StravaClient {
     ) -> Result<StackString, Error> {
         let ext = filepath
             .extension()
-            .ok_or_else(|| format_err!("No extension"))?
+            .ok_or_else(|| Error::StaticCustomError("No extension"))?
             .to_string_lossy()
             .into_owned();
 
@@ -447,7 +450,7 @@ impl StravaClient {
         } else if filename.ends_with("tcx.gz") {
             "tcx.gz"
         } else {
-            return Err(format_err!("Bad extension {filename}"));
+            return Err(Error::CustomError(format_sstr!("Bad extension {filename}")));
         };
         let part = Part::bytes(tokio::fs::read(&filename).await?).file_name(filename);
         let form = Form::new()
@@ -464,7 +467,7 @@ impl StravaClient {
             .config
             .strava_endpoint
             .as_ref()
-            .ok_or_else(|| format_err!("Missing strava url"))?;
+            .ok_or_else(|| Error::StaticCustomError("Missing strava url"))?;
         let url = strava_endpoint.join("api/v3/uploads")?;
         let result: UploadResponse = self
             .client
@@ -535,7 +538,7 @@ impl StravaClient {
             .config
             .strava_endpoint
             .as_ref()
-            .ok_or_else(|| format_err!("Bad URL"))?
+            .ok_or_else(|| Error::StaticCustomError("Bad URL"))?
             .join(&format_sstr!("api/v3/activities/{activity_id}"))?;
         self.client
             .put(url)
@@ -624,13 +627,12 @@ pub struct StravaGear {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Error;
     use futures::{future::try_join_all, TryStreamExt};
     use log::debug;
     use std::collections::HashMap;
     use time::{Duration, OffsetDateTime};
 
-    use garmin_lib::garmin_config::GarminConfig;
+    use garmin_lib::{errors::GarminError as Error, garmin_config::GarminConfig};
     use garmin_utils::{pgpool::PgPool, sport_types::SportTypes};
 
     use crate::strava_client::{StravaActivity, StravaClient};

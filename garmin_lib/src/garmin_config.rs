@@ -1,7 +1,6 @@
 #![allow(clippy::wrong_self_convention)]
 #![allow(clippy::cognitive_complexity)]
 
-use anyhow::{format_err, Error};
 use derive_more::{Deref, Into};
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
@@ -14,6 +13,8 @@ use std::{
 use url::Url;
 
 use super::strava_timezone::StravaTz;
+
+use crate::errors::GarminError as Error;
 
 /// `GarminConfig` holds configuration information which can be set either
 /// through environment variables or the config.env file, see the dotenv crate
@@ -206,7 +207,8 @@ impl GarminConfig {
     /// # Errors
     /// Returns error if init of config fails
     pub fn get_config(fname: Option<&str>) -> Result<Self, Error> {
-        let config_dir = dirs::config_dir().ok_or_else(|| format_err!("No CONFIG directory"))?;
+        let config_dir =
+            dirs::config_dir().ok_or_else(|| Error::StaticCustomError("No CONFIG directory"))?;
         let default_fname = config_dir.join("garmin_rust").join("config.env");
 
         let env_file = match fname.map(Path::new) {
@@ -225,11 +227,11 @@ impl GarminConfig {
         let conf: GarminConfigInner = envy::from_env()?;
 
         if &conf.pgurl == "" {
-            Err(format_err!("No PGURL specified"))
+            Err(Error::StaticCustomError("No PGURL specified"))
         } else if &conf.gps_bucket == "" {
-            Err(format_err!("No GPS_BUCKET specified"))
+            Err(Error::StaticCustomError("No GPS_BUCKET specified"))
         } else if &conf.cache_bucket == "" {
-            Err(format_err!("No CACHE_BUCKET specified"))
+            Err(Error::StaticCustomError("No CACHE_BUCKET specified"))
         } else {
             Ok(Self(Arc::new(conf)))
         }

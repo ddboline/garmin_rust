@@ -13,7 +13,6 @@ extended-description = """\
 Process and display info about gps activity files."""
 
 [dependencies]
-anyhow = "1.0"
 clap = {version="4.5", features=["derive"]}
 env_logger = {version="0.11", features=["color", "humantime", "regex"], default-features = false}
 fitbit_bot = {path="fitbit_bot"}

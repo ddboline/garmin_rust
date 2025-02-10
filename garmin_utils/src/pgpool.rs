@@ -1,11 +1,11 @@
-use anyhow::{format_err, Error};
 use deadpool_postgres::{Client, Config, Pool};
+use stack_string::StackString;
 use std::{fmt, sync::Arc};
 use tokio_postgres::{Config as PgConfig, NoTls};
 
 pub use tokio_postgres::Transaction as PgTransaction;
 
-use stack_string::StackString;
+use garmin_lib::errors::GarminError as Error;
 
 #[derive(Clone, Default)]
 pub struct PgPool {
@@ -56,7 +56,7 @@ impl PgPool {
     pub async fn get(&self) -> Result<Client, Error> {
         self.pool
             .as_ref()
-            .ok_or_else(|| format_err!("No Pool Exists"))?
+            .ok_or_else(|| Error::StaticCustomError("No Pool Exists"))?
             .get()
             .await
             .map_err(Into::into)

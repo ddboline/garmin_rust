@@ -1,4 +1,3 @@
-use anyhow::Error;
 use futures::TryStreamExt;
 use ndarray::{array, Array1};
 use postgres_query::{query, FromSqlRow};
@@ -10,7 +9,7 @@ use time::{Date, OffsetDateTime};
 use time_tz::{OffsetDateTimeExt, Tz};
 use uuid::Uuid;
 
-use garmin_lib::date_time_wrapper::DateTimeWrapper;
+use garmin_lib::{date_time_wrapper::DateTimeWrapper, errors::GarminError as Error};
 use garmin_models::garmin_summary::GarminSummary;
 use garmin_utils::{
     garmin_util::{print_h_m_s, MARATHON_DISTANCE_M, METERS_PER_MILE},
@@ -258,10 +257,9 @@ impl RaceResultAggregated {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Error;
     use log::debug;
 
-    use garmin_lib::garmin_config::GarminConfig;
+    use garmin_lib::{errors::GarminError as Error, garmin_config::GarminConfig};
     use garmin_utils::pgpool::PgPool;
 
     use crate::{race_result_analysis::RaceResultAggregated, race_type::RaceType};

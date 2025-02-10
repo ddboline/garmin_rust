@@ -1,4 +1,3 @@
-use anyhow::Error;
 use futures::{future::try_join_all, Stream, TryStreamExt};
 use log::debug;
 use postgres_query::{query, query_dyn, Error as PqError, FromSqlRow, Parameter, Query};
@@ -8,7 +7,11 @@ use std::collections::HashMap;
 use time::{macros::format_description, Date, OffsetDateTime};
 use uuid::Uuid;
 
-use garmin_lib::{date_time_wrapper::DateTimeWrapper, strava_timezone::StravaTimeZone};
+use garmin_lib::{
+    date_time_wrapper::DateTimeWrapper, errors::GarminError as Error,
+    strava_timezone::StravaTimeZone,
+};
+
 use garmin_utils::{pgpool::PgPool, sport_types, sport_types::SportTypes};
 
 use crate::garmin_summary::GarminSummary;
@@ -359,7 +362,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Error;
+    use garmin_lib::errors::GarminError as Error;
 
     use crate::strava_activity::{StravaActivity, StravaActivityHarJson};
 

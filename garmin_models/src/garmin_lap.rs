@@ -1,4 +1,3 @@
-use anyhow::Error;
 use fitparser::{FitDataField, Value};
 use roxmltree::{Node, NodeType};
 use serde::{Deserialize, Serialize};
@@ -6,7 +5,11 @@ use stack_string::{format_sstr, StackString};
 use std::fmt;
 use time_tz::{timezones::db::UTC, OffsetDateTimeExt};
 
-use garmin_lib::date_time_wrapper::{iso8601::convert_datetime_to_str, DateTimeWrapper};
+use garmin_lib::{
+    date_time_wrapper::{iso8601::convert_datetime_to_str, DateTimeWrapper},
+    errors::GarminError as Error,
+};
+
 use garmin_utils::{
     garmin_util::{convert_time_string, convert_xml_local_time_to_utc, get_f64, get_i64},
     sport_types::SportTypes,

@@ -1,10 +1,9 @@
-use anyhow::{format_err, Error};
 use fitparser::{profile::field_types::MesgNum, Value};
 use log::debug;
+use stack_string::format_sstr;
 use std::{collections::HashMap, fs::File, path::Path};
 
-use garmin_utils::sport_types::SportTypes;
-
+use garmin_lib::errors::GarminError as Error;
 use garmin_models::{
     garmin_correction_lap::{
         apply_lap_corrections, CorrectedOutput, CorrectionKey, GarminCorrectionLap,
@@ -13,6 +12,7 @@ use garmin_models::{
     garmin_lap::GarminLap,
     garmin_point::GarminPoint,
 };
+use garmin_utils::sport_types::SportTypes;
 
 use crate::garmin_parse::{GarminParseTrait, ParseOutput};
 
@@ -37,10 +37,12 @@ impl GarminParseTrait for GarminParseFit {
             laps: lap_list,
             sport,
         } = apply_lap_corrections(&fit_output.lap_list, fit_output.sport, corr_map);
-        let first_lap = lap_list.first().ok_or_else(|| format_err!("No laps"))?;
+        let first_lap = lap_list
+            .first()
+            .ok_or_else(|| Error::StaticCustomError("No laps"))?;
         let filename = filename
             .file_name()
-            .ok_or_else(|| format_err!("filename {filename:?} has no path"))?
+            .ok_or_else(|| Error::CustomError(format_sstr!("filename {filename:?} has no path")))?
             .to_string_lossy()
             .to_string()
             .into();
@@ -65,10 +67,12 @@ impl GarminParseTrait for GarminParseFit {
 
     fn parse_file(&self, filename: &Path) -> Result<ParseOutput, Error> {
         if !filename.exists() {
-            return Err(format_err!("file {filename:?} does not exist"));
+            return Err(Error::CustomError(format_sstr!(
+                "file {filename:?} does not exist"
+            )));
         }
         let mut f = File::open(filename)?;
-        let records = fitparser::from_reader(&mut f).map_err(|e| format_err!("{e:?}"))?;
+        let records = fitparser::from_reader(&mut f)?;
 
         let mut lap_list = Vec::new();
         let mut point_list = Vec::new();
@@ -122,11 +126,12 @@ impl GarminParseTrait for GarminParseFit {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Error;
     use approx::assert_abs_diff_eq;
     use std::path::Path;
 
-    use garmin_lib::date_time_wrapper::iso8601::convert_datetime_to_str;
+    use garmin_lib::{
+        date_time_wrapper::iso8601::convert_datetime_to_str, errors::GarminError as Error,
+    };
     use garmin_models::garmin_correction_lap::GarminCorrectionLap;
     use garmin_utils::sport_types::SportTypes;
 

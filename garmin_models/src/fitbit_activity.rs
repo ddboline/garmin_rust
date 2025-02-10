@@ -1,4 +1,3 @@
-use anyhow::Error;
 use futures::future::try_join_all;
 use log::debug;
 use postgres_query::{query, query_dyn, Error as PqError, FromSqlRow, Parameter, Query};
@@ -8,7 +7,7 @@ use std::collections::HashMap;
 use time::Date;
 use uuid::Uuid;
 
-use garmin_lib::date_time_wrapper::DateTimeWrapper;
+use garmin_lib::{date_time_wrapper::DateTimeWrapper, errors::GarminError as Error};
 
 use garmin_utils::pgpool::PgPool;
 

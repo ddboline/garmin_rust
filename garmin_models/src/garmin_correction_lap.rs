@@ -1,15 +1,17 @@
 #![allow(clippy::wrong_self_convention)]
 
-use anyhow::{format_err, Error};
 use futures::{Stream, TryStreamExt};
 use json::{parse, JsonValue};
 use log::debug;
 use postgres_query::{query, Error as PqError, FromSqlRow};
-use stack_string::StackString;
+use stack_string::{format_sstr, StackString};
 use std::{collections::HashMap, fs, hash::BuildHasher, path::Path, str};
 use uuid::Uuid;
 
-use garmin_lib::date_time_wrapper::{iso8601::convert_str_to_datetime, DateTimeWrapper};
+use garmin_lib::{
+    date_time_wrapper::{iso8601::convert_str_to_datetime, DateTimeWrapper},
+    errors::GarminError as Error,
+};
 
 use garmin_utils::{garmin_util::METERS_PER_MILE, pgpool::PgPool, sport_types::SportTypes};
 
@@ -154,7 +156,9 @@ impl GarminCorrectionLap {
                                     None => corr,
                                 })
                             }
-                            _ => Err(format_err!("something unexpected {result}")),
+                            _ => Err(Error::CustomError(format_sstr!(
+                                "something unexpected {result}"
+                            ))),
                         })
                         .collect(),
                     _ => Vec::new(),
@@ -475,11 +479,12 @@ pub fn apply_lap_corrections<S: BuildHasher + Sync>(
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Error;
     use std::io::{stdout, Write};
     use uuid::Uuid;
 
-    use garmin_lib::date_time_wrapper::iso8601::convert_str_to_datetime;
+    use garmin_lib::{
+        date_time_wrapper::iso8601::convert_str_to_datetime, errors::GarminError as Error,
+    };
 
     use garmin_utils::sport_types::SportTypes;
 

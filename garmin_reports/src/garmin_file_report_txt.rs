@@ -1,8 +1,8 @@
-use anyhow::Error;
 use itertools::Itertools;
 use log::debug;
 use stack_string::{format_sstr, StackString};
 
+use garmin_lib::errors::GarminError as Error;
 use garmin_models::{garmin_file::GarminFile, garmin_lap::GarminLap};
 use garmin_utils::{
     garmin_util::{print_h_m_s, MARATHON_DISTANCE_MI, METERS_PER_MILE},

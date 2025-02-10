@@ -4,7 +4,6 @@ version = "0.15.8"
 edition = "2021"
 
 [dependencies]
-anyhow = "1.0"
 convert_case = "0.7"
 garmin_lib = { path = "../garmin_lib" }
 garmin_models = { path = "../garmin_models" }

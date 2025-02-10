@@ -1,4 +1,3 @@
-use anyhow::{format_err, Error};
 use futures::{future::try_join_all, TryStreamExt};
 use itertools::Itertools;
 use log::debug;
@@ -17,7 +16,9 @@ use time::Date;
 use tokio::task::spawn_blocking;
 
 use fitbit_lib::fitbit_archive::archive_fitbit_heartrates;
-use garmin_lib::{date_time_wrapper::DateTimeWrapper, garmin_config::GarminConfig};
+use garmin_lib::{
+    date_time_wrapper::DateTimeWrapper, errors::GarminError as Error, garmin_config::GarminConfig,
+};
 use garmin_models::{
     garmin_correction_lap::{CorrectionKey, GarminCorrectionLap, GarminCorrectionMap},
     garmin_file,
@@ -143,6 +144,7 @@ impl GarminCli {
             GarminSummary::write_summary_to_postgres(&summary_list, &pool)
                 .await
                 .map(|()| Vec::new())
+                .map_err(Into::into)
         }
     }
 
@@ -161,6 +163,7 @@ impl GarminCli {
                 .map(|f| {
                     self.stdout.send(format_sstr!("Process {f:?}"));
                     GarminParse::process_single_gps_file(f, &config.cache_dir, corr_map)
+                        .map_err(Into::into)
                 })
                 .collect::<Result<Vec<_>, Error>>()?,
             Some(GarminCliOptions::All) => {
@@ -197,7 +200,10 @@ impl GarminCli {
                             Some(gps_path)
                         }
                     })
-                    .map(|f| GarminParse::process_single_gps_file(&f, &config.cache_dir, corr_map))
+                    .map(|f| {
+                        GarminParse::process_single_gps_file(&f, &config.cache_dir, corr_map)
+                            .map_err(Into::into)
+                    })
                     .collect::<Result<Vec<_>, Error>>()?
             }
         };
@@ -286,7 +292,7 @@ impl GarminCli {
             1 => {
                 let file_name = file_list
                     .first()
-                    .ok_or_else(|| format_err!("This shouldn't be happening..."))?;
+                    .ok_or_else(|| Error::StaticCustomError("This shouldn't be happening..."))?;
                 debug!("{}", &file_name);
                 let avro_file = self
                     .get_config()
@@ -342,7 +348,10 @@ impl GarminCli {
         check_filename!("txt", GarminParseTxt::new());
         check_filename!("gmn", GarminParseGmn::new());
 
-        Err(format_err!("Bad filename {:?}", filename))
+        Err(Error::CustomError(format_sstr!(
+            "Bad filename {:?}",
+            filename
+        )))
     }
 
     fn process_filenames_sync(
@@ -356,7 +365,9 @@ impl GarminCli {
         let mut filenames = filenames
             .into_par_iter()
             .map(|filename| match filename.extension().map(OsStr::to_str) {
-                Some(Some("zip")) => extract_zip_from_garmin_connect(&filename, ziptmpdir),
+                Some(Some("zip")) => {
+                    extract_zip_from_garmin_connect(&filename, ziptmpdir).map_err(Into::into)
+                }
                 Some(Some("fit" | "tcx" | "txt")) => Ok(filename),
                 _ => Self::transform_file_name(&filename),
             })
@@ -376,7 +387,12 @@ impl GarminCli {
                     Some("tcx") => "tcx",
                     Some("txt") => "txt",
                     Some("gmn") => "gmn",
-                    _ => return Err(format_err!("Bad filename {:?}", filename)),
+                    _ => {
+                        return Err(Error::CustomError(format_sstr!(
+                            "Bad filename {:?}",
+                            filename
+                        )))
+                    }
                 };
                 let gfile = GarminParse::new().with_file(&filename, &HashMap::new())?;
 

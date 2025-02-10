@@ -1,4 +1,3 @@
-use anyhow::{format_err, Error};
 use fitparser::{FitDataField, Value};
 use itertools::Itertools;
 use roxmltree::{Node, NodeType};
@@ -8,7 +7,8 @@ use std::fmt;
 use time::OffsetDateTime;
 use time_tz::{timezones::db::UTC, OffsetDateTimeExt};
 
-use garmin_lib::date_time_wrapper::DateTimeWrapper;
+use garmin_lib::{date_time_wrapper::DateTimeWrapper, errors::GarminError as Error};
+
 use garmin_utils::garmin_util::{
     convert_xml_local_time_to_utc, get_degrees_from_semicircles, get_f64, METERS_PER_MILE,
 };
@@ -99,7 +99,8 @@ impl GarminPoint {
                 match d.tag_name().name() {
                     "Time" => {
                         new_point.time = convert_xml_local_time_to_utc(
-                            d.text().ok_or_else(|| format_err!("Malformed time"))?,
+                            d.text()
+                                .ok_or_else(|| Error::StaticCustomError("Malformed time"))?,
                         )?
                         .into();
                     }

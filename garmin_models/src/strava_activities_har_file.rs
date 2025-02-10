@@ -1,6 +1,7 @@
-use anyhow::Error;
 use serde::Deserialize;
 use stack_string::StackString;
+
+use garmin_lib::errors::GarminError as Error;
 
 use crate::strava_activity::StravaActivityHarJson;
 

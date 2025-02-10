@@ -1,4 +1,3 @@
-use anyhow::{format_err, Error};
 use apache_avro::{from_value, Codec, Reader, Schema, Writer};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
@@ -7,7 +6,7 @@ use std::{collections::HashMap, fs::File, path::Path};
 use time::macros::format_description;
 use tokio::task::spawn_blocking;
 
-use garmin_lib::date_time_wrapper::DateTimeWrapper;
+use garmin_lib::{date_time_wrapper::DateTimeWrapper, errors::GarminError as Error};
 
 use garmin_utils::sport_types::SportTypes;
 
@@ -121,7 +120,9 @@ impl GarminFile {
     /// Return error if open file fails, or reader fails
     pub fn read_avro(input_filename: &Path) -> Result<Self, Error> {
         if !input_filename.exists() {
-            return Err(format_err!("file {input_filename:?} does not exist"));
+            return Err(Error::CustomError(format_sstr!(
+                "file {input_filename:?} does not exist"
+            )));
         }
         let input_file = File::open(input_filename)?;
 
@@ -130,7 +131,7 @@ impl GarminFile {
         if let Some(record) = reader.next() {
             return from_value::<Self>(&record?).map_err(Into::into);
         }
-        Err(format_err!("Failed to find file"))
+        Err(Error::StaticCustomError("Failed to find file"))
     }
 
     #[must_use]

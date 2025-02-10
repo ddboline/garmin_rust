@@ -1,4 +1,3 @@
-use anyhow::Error;
 use futures::future::try_join_all;
 use log::debug;
 use postgres_query::{query_dyn, FromSqlRow};
@@ -7,7 +6,9 @@ use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
-use garmin_lib::date_time_wrapper::iso8601::convert_datetime_to_str;
+use garmin_lib::{
+    date_time_wrapper::iso8601::convert_datetime_to_str, errors::GarminError as Error,
+};
 use garmin_models::{
     fitbit_activity::FitbitActivity, garmin_connect_activity::GarminConnectActivity,
     strava_activity::StravaActivity,

@@ -1,4 +1,3 @@
-use anyhow::{format_err, Error};
 use futures::{future::try_join_all, Stream, TryStreamExt};
 use log::debug;
 use postgres_query::{query, query_dyn, Error as PqError, FromSqlRow, Parameter, Query};
@@ -11,7 +10,7 @@ use time::{
 };
 use uuid::Uuid;
 
-use garmin_lib::date_time_wrapper::DateTimeWrapper;
+use garmin_lib::{date_time_wrapper::DateTimeWrapper, errors::GarminError as Error};
 
 use garmin_utils::pgpool::PgPool;
 
@@ -335,7 +334,9 @@ pub async fn import_garmin_connect_activity_json_file(filename: &Path) -> Result
     let config = GarminConfig::get_config(None)?;
     let pool = PgPool::new(&config.pgurl)?;
     if !filename.exists() {
-        return Err(format_err!("file {filename:?} does not exist"));
+        return Err(Error::CustomError(format_sstr!(
+            "file {filename:?} does not exist"
+        )));
     }
     let activities = serde_json::from_reader(File::open(filename)?)?;
     GarminConnectActivity::merge_new_activities(activities, &pool).await?;

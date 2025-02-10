@@ -1,6 +1,5 @@
 #![allow(clippy::needless_pass_by_value)]
 
-use anyhow::Error;
 use log::{error, info};
 use maplit::hashset;
 use notify::{
@@ -31,12 +30,12 @@ use garmin_cli::{
     garmin_cli::GarminCli,
     garmin_cli_opts::{GarminCliOpts, GarminConnectSyncOutput},
 };
-use garmin_lib::garmin_config::GarminConfig;
+use garmin_lib::{errors::GarminError, garmin_config::GarminConfig};
 use garmin_models::garmin_correction_lap::GarminCorrectionMap;
 use garmin_utils::pgpool::PgPool;
 
 use crate::{
-    errors::error_response,
+    errors::{error_response, ServiceError},
     garmin_rust_routes::{
         add_garmin_correction, fitbit_activities_db, fitbit_activities_db_update,
         fitbit_heartrate_cache, fitbit_heartrate_cache_update, fitbit_plots, fitbit_plots_demo,
@@ -91,7 +90,7 @@ impl Notifier {
         }
     }
 
-    fn set_watcher(mut self, directory: &Path) -> Result<Self, Error> {
+    fn set_watcher(mut self, directory: &Path) -> Result<Self, GarminError> {
         let watcher = recommended_watcher(self.clone())
             .and_then(|mut w| w.watch(directory, RecursiveMode::Recursive).map(|()| w))?;
         self.watcher = Some(Arc::new(watcher));
@@ -130,7 +129,7 @@ impl EventHandler for Notifier {
 /// `/garmin/get_hr_pace` return structured json intended for separate analysis
 /// # Errors
 /// Returns error if server init fails
-pub async fn start_app() -> Result<(), Error> {
+pub async fn start_app() -> Result<(), ServiceError> {
     async fn update_db(pool: PgPool) {
         let mut i = interval(std::time::Duration::from_secs(60));
         loop {
@@ -195,7 +194,7 @@ pub async fn start_app() -> Result<(), Error> {
         }
     });
 
-    run_app(&config, &pool).await
+    run_app(&config, &pool).await.map_err(Into::into)
 }
 
 fn get_garmin_path(app: &AppState) -> BoxedFilter<(impl Reply,)> {
@@ -318,7 +317,7 @@ fn get_garmin_path(app: &AppState) -> BoxedFilter<(impl Reply,)> {
         .boxed()
 }
 
-async fn run_app(config: &GarminConfig, pool: &PgPool) -> Result<(), Error> {
+async fn run_app(config: &GarminConfig, pool: &PgPool) -> Result<(), GarminError> {
     let app = AppState {
         config: config.clone(),
         db: pool.clone(),

@@ -898,10 +898,23 @@ fn IndexElement(
                 let ms = meas.muscle_pct;
                 let b = meas.bone_pct;
                 let bmi = meas.get_bmi(&config);
+                let date_element = if meas.connect_primary_key.is_some() {
+                    rsx! {
+                        a {
+                            href: "https://connect.garmin.com/modern/weight/{date}/3",
+                            target: "_blank",
+                            "{date}",
+                        }
+                    }
+                } else {
+                    rsx! { "{date}" }
+                };
                 rsx! {
                     tr {
                         key: "measurement-key-{idx}",
-                        td {"{date}"},
+                        td {
+                            {date_element},
+                        },
                         td {"{m:3.1}"},
                         td {"{f:2.1}"},
                         td {"{w:2.1}"},

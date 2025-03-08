@@ -144,7 +144,6 @@ impl GarminCli {
             GarminSummary::write_summary_to_postgres(&summary_list, &pool)
                 .await
                 .map(|()| Vec::new())
-                .map_err(Into::into)
         }
     }
 
@@ -163,7 +162,6 @@ impl GarminCli {
                 .map(|f| {
                     self.stdout.send(format_sstr!("Process {f:?}"));
                     GarminParse::process_single_gps_file(f, &config.cache_dir, corr_map)
-                        .map_err(Into::into)
                 })
                 .collect::<Result<Vec<_>, Error>>()?,
             Some(GarminCliOptions::All) => {
@@ -200,10 +198,7 @@ impl GarminCli {
                             Some(gps_path)
                         }
                     })
-                    .map(|f| {
-                        GarminParse::process_single_gps_file(&f, &config.cache_dir, corr_map)
-                            .map_err(Into::into)
-                    })
+                    .map(|f| GarminParse::process_single_gps_file(&f, &config.cache_dir, corr_map))
                     .collect::<Result<Vec<_>, Error>>()?
             }
         };
@@ -365,9 +360,7 @@ impl GarminCli {
         let mut filenames = filenames
             .into_par_iter()
             .map(|filename| match filename.extension().map(OsStr::to_str) {
-                Some(Some("zip")) => {
-                    extract_zip_from_garmin_connect(&filename, ziptmpdir).map_err(Into::into)
-                }
+                Some(Some("zip")) => extract_zip_from_garmin_connect(&filename, ziptmpdir),
                 Some(Some("fit" | "tcx" | "txt")) => Ok(filename),
                 _ => Self::transform_file_name(&filename),
             })

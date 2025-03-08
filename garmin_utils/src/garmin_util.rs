@@ -1,4 +1,5 @@
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+use checksums::{hash_file, Algorithm};
 use fitparser::Value;
 use flate2::{read::GzEncoder, Compression};
 use futures::{Stream, TryStreamExt};
@@ -20,7 +21,6 @@ use time::{format_description::well_known::Rfc3339, macros::date, Date, Month, O
 use time_tz::{timezones::db::UTC, OffsetDateTimeExt};
 use tokio::time::{sleep, Duration};
 use zip::ZipArchive;
-use checksums::{hash_file, Algorithm};
 
 use garmin_lib::errors::GarminError as Error;
 

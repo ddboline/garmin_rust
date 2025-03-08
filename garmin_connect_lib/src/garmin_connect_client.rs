@@ -412,16 +412,14 @@ impl GarminConnectClient {
         let payload: GarminConnectWeightPayload = measurement.try_into()?;
         println!("{}", serde_json::to_string(&payload)?);
 
-        self.api_post("/weight-service/user-weight", &payload)
-            .await
-            .map_err(Into::into)
+        self.api_post("/weight-service/user-weight", &payload).await
     }
 
     /// # Errors
     /// Returns error if api call fails or deserialization fails
     pub async fn get_weight(&self, date: Date) -> Result<DailyWeightView, Error> {
         let path = format_sstr!("/weight-service/weight/dayview/{date}");
-        self.api_json(&path).await.map_err(Into::into)
+        self.api_json(&path).await
     }
 
     /// # Errors
@@ -436,7 +434,7 @@ impl GarminConnectClient {
         let end_date = end_date.unwrap_or(today);
         let path =
             format_sstr!("/weight-service/weight/range/{start_date}/{end_date}?includeAll=true");
-        self.api_json(&path).await.map_err(Into::into)
+        self.api_json(&path).await
     }
 
     fn get_api_headers(&self) -> Result<HeaderMap, Error> {

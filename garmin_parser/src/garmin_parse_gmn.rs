@@ -1,7 +1,6 @@
 use roxmltree::{Document, NodeType};
 use stack_string::format_sstr;
-use std::{collections::HashMap, path::Path};
-use std::process::Command;
+use std::{collections::HashMap, path::Path, process::Command};
 
 use garmin_lib::errors::GarminError as Error;
 use garmin_models::{
@@ -68,9 +67,10 @@ impl GarminParseTrait for GarminParseGmn {
     fn parse_file(&self, filename: &Path) -> Result<ParseOutput, Error> {
         assert!(Path::new("/usr/bin/garmin_dump").exists());
 
-        let buf = Command::new("/usr/bin/garmin_dump").args([
-            filename,
-        ]).output()?.stdout;
+        let buf = Command::new("/usr/bin/garmin_dump")
+            .args([filename])
+            .output()?
+            .stdout;
 
         let mut output = String::with_capacity(buf.len() + 20);
 

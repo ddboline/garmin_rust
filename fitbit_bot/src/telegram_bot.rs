@@ -257,7 +257,7 @@ mod tests {
 
         assert_eq!(
             result,
-            "Parse error invalid digit found in string".to_string()
+            "Parse error ParseIntError invalid digit found in string".to_string()
         );
 
         let msg = "1880=206=596=404=42";

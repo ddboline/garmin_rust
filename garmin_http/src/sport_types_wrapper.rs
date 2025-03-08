@@ -118,15 +118,13 @@ impl From<SportTypesWrapper> for StackString {
 impl TryFrom<&str> for SportTypesWrapper {
     type Error = Error;
     fn try_from(s: &str) -> Result<Self, Self::Error> {
-        SportTypes::from_str(s).map(Into::into).map_err(Into::into)
+        SportTypes::from_str(s).map(Into::into)
     }
 }
 
 impl TryFrom<StackString> for SportTypesWrapper {
     type Error = Error;
     fn try_from(s: StackString) -> Result<Self, Self::Error> {
-        SportTypes::from_str(s.as_str())
-            .map(Into::into)
-            .map_err(Into::into)
+        SportTypes::from_str(s.as_str()).map(Into::into)
     }
 }

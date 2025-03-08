@@ -119,10 +119,7 @@ pub async fn garmin(
 ) -> WarpResult<IndexResponse> {
     let query = query.into_inner();
 
-    let mut session = user
-        .get_session(&state.client, &state.config)
-        .await
-        .map_err(Into::<Error>::into)?;
+    let mut session = user.get_session(&state.client, &state.config).await?;
 
     let grec = proc_pattern_wrapper(&state.config, query, &session.history, false);
     if !session.history.contains(&grec.request.filter) {
@@ -133,13 +130,11 @@ pub async fn garmin(
     }
 
     let body = get_index_body(&state.db, &state.config, &grec.request, false)
-        .await
-        .map_err(Into::<Error>::into)?
+        .await?
         .into();
 
     user.set_session(&state.client, &state.config, &session)
-        .await
-        .map_err(Into::<Error>::into)?;
+        .await?;
 
     Ok(HtmlBase::new(body).into())
 }
@@ -228,8 +223,7 @@ pub async fn garmin_demo(
     }
 
     let body = get_index_body(&state.db, &state.config, &grec.request, true)
-        .await
-        .map_err(Into::<Error>::into)?
+        .await?
         .into();
 
     let jwt = session.get_jwt_cookie(&state.config.domain);
@@ -288,10 +282,7 @@ pub async fn garmin_upload(
     #[filter = "LoggedUser::filter"] user: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<UploadResponse> {
-    let session = user
-        .get_session(&state.client, &state.config)
-        .await
-        .map_err(Into::<Error>::into)?;
+    let session = user.get_session(&state.client, &state.config).await?;
     let body = garmin_upload_body(form, state, session).await?;
     Ok(HtmlBase::new(body).into())
 }
@@ -700,10 +691,7 @@ pub async fn heartrate_statistics_plots(
     #[data] state: AppState,
 ) -> WarpResult<FitbitStatisticsPlotResponse> {
     let query: FitbitStatisticsPlotRequest = query.into_inner().into();
-    let session = user
-        .get_session(&state.client, &state.config)
-        .await
-        .map_err(Into::<Error>::into)?;
+    let session = user.get_session(&state.client, &state.config).await?;
     let mut stats: Vec<FitbitStatisticsSummary> = FitbitStatisticsSummary::read_from_db(
         &state.db,
         Some(query.start_date.into()),
@@ -787,10 +775,7 @@ pub async fn fitbit_plots(
     #[filter = "LoggedUser::filter"] user: LoggedUser,
     #[data] state: AppState,
 ) -> WarpResult<ScaleMeasurementResponse> {
-    let session = user
-        .get_session(&state.client, &state.config)
-        .await
-        .map_err(Into::<Error>::into)?;
+    let session = user.get_session(&state.client, &state.config).await?;
     let query: ScaleMeasurementPlotRequest = query.into_inner().into();
 
     let measurements = ScaleMeasurement::read_from_db(
@@ -872,10 +857,7 @@ pub async fn heartrate_plots(
     #[data] state: AppState,
 ) -> WarpResult<FitbitHeartratePlotResponse> {
     let query: FitbitHeartratePlotRequest = query.into_inner().into();
-    let session = user
-        .get_session(&state.client, &state.config)
-        .await
-        .map_err(Into::<Error>::into)?;
+    let session = user.get_session(&state.client, &state.config).await?;
 
     let parquet_values = fitbit_archive::get_number_of_heartrate_values(
         &state.config,
@@ -926,8 +908,7 @@ pub async fn heartrate_plots(
             button_date: query.button_date,
         },
     )
-    .await
-    .map_err(Into::<Error>::into)?
+    .await?
     .into();
     Ok(HtmlBase::new(body).into())
 }
@@ -963,8 +944,7 @@ pub async fn heartrate_plots_demo(
             button_date: query.button_date,
         },
     )
-    .await
-    .map_err(Into::<Error>::into)?
+    .await?
     .into();
 
     Ok(HtmlBase::new(body).into())
@@ -1451,10 +1431,7 @@ pub async fn race_result_plot(
 ) -> WarpResult<RaceResultPlotResponse> {
     let mut query = query.into_inner();
     query.demo = Some(false);
-    let session = user
-        .get_session(&state.client, &state.config)
-        .await
-        .map_err(Into::<Error>::into)?;
+    let session = user.get_session(&state.client, &state.config).await?;
     let body = race_result_plot_impl(query, state, session).await?;
     Ok(HtmlBase::new(body).into())
 }

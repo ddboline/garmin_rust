@@ -23,7 +23,7 @@ mod tests {
         assert_eq!(convert_time_string("07:03:12.2").unwrap(), 25392.2);
         assert_eq!(
             format!("{}", convert_time_string("07:AB:12.2").err().unwrap()),
-            "invalid digit found in string"
+            "ParseIntError invalid digit found in string"
         );
     }
 

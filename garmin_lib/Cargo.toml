@@ -38,7 +38,6 @@ serde_yml = "0.0.12"
 smallvec = "1.6"
 stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", features=["postgres_types"], tag="1.0.2" }
 stdout-channel = "0.6"
-subprocess = "0.2"
 thiserror = "2.0"
 telegram-bot = {git = "https://github.com/ddboline/telegram-bot.git", tag="0.9.0-4", default-features=false}
 time = {version="0.3", features=["serde-human-readable", "macros", "formatting", "parsing"]}

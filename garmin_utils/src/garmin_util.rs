@@ -14,14 +14,13 @@ use stack_string::{format_sstr, StackString};
 use std::{
     fs::{remove_file, File},
     future::Future,
-    io::{BufRead, BufReader},
     path::{Path, PathBuf},
 };
-use subprocess::Exec;
 use time::{format_description::well_known::Rfc3339, macros::date, Date, Month, OffsetDateTime};
 use time_tz::{timezones::db::UTC, OffsetDateTimeExt};
 use tokio::time::{sleep, Duration};
 use zip::ZipArchive;
+use checksums::{hash_file, Algorithm};
 
 use garmin_lib::errors::GarminError as Error;
 
@@ -64,23 +63,7 @@ pub fn convert_xml_local_time_to_utc(xml_local_time: &str) -> Result<OffsetDateT
 /// # Errors
 /// Return error if running `md5sum` fails
 pub fn get_md5sum(filename: &Path) -> Result<StackString, Error> {
-    if !Path::new("/usr/bin/md5sum").exists() {
-        return Err(Error::StaticCustomError(
-            "md5sum not installed (or not present at /usr/bin/md5sum)",
-        ));
-    }
-    let command = format_sstr!("md5sum {}", filename.to_string_lossy());
-
-    let stream = Exec::shell(command).stream_stdout()?;
-
-    let reader = BufReader::new(stream);
-
-    if let Some(line) = reader.lines().next() {
-        if let Some(entry) = line?.split_whitespace().next() {
-            return Ok(entry.into());
-        }
-    }
-    Ok("".into())
+    Ok(hash_file(filename, Algorithm::MD5).to_lowercase().into())
 }
 
 /// # Errors

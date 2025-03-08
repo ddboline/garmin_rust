@@ -1,7 +1,7 @@
 use roxmltree::{Document, NodeType};
 use stack_string::format_sstr;
 use std::{collections::HashMap, path::Path};
-use subprocess::{Exec, Redirection};
+use std::process::Command;
 
 use garmin_lib::errors::GarminError as Error;
 use garmin_models::{
@@ -66,19 +66,18 @@ impl GarminParseTrait for GarminParseGmn {
     }
 
     fn parse_file(&self, filename: &Path) -> Result<ParseOutput, Error> {
-        let filename = filename.to_string_lossy().to_string();
         assert!(Path::new("/usr/bin/garmin_dump").exists());
-        let command = format_sstr!(
-            "echo \"{}\" `garmin_dump {}` \"{}\"",
-            "<root>",
-            filename,
-            "</root>"
-        );
 
-        let output = Exec::shell(command)
-            .stdout(Redirection::Pipe)
-            .capture()?
-            .stdout_str();
+        let buf = Command::new("/usr/bin/garmin_dump").args([
+            filename,
+        ]).output()?.stdout;
+
+        let mut output = String::with_capacity(buf.len() + 20);
+
+        output.push_str("<root>\n");
+        output.push_str(&String::from_utf8(buf)?);
+        output.push_str("</root>");
+
         let doc = Document::parse(&output)?;
 
         let mut lap_list = Vec::new();

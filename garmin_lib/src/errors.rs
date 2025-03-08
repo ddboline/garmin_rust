@@ -32,7 +32,6 @@ use std::{
     time::SystemTimeError,
 };
 use stdout_channel::StdoutChannelError;
-use subprocess::PopenError;
 use telegram_bot::Error as TelegramBotError;
 use thiserror::Error;
 use time::error::{
@@ -113,8 +112,6 @@ pub enum GarminError {
     ZipError(#[from] ZipError),
     #[error("RandUniformError {0}")]
     RandUniformError(#[from] RandUniformError),
-    #[error("PopenError {0}")]
-    PopenError(#[from] PopenError),
     #[error("ParseIntError {0}")]
     ParseIntError(#[from] ParseIntError),
     #[error("ParseFloatError {0}")]

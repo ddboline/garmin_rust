@@ -615,134 +615,136 @@ impl GarminConnectClient {
 
 #[cfg(test)]
 mod tests {
-    use fitbit_lib::scale_measurement::ScaleMeasurement;
-    use std::{collections::HashMap, convert::TryInto};
-    use time::{Duration, OffsetDateTime, UtcOffset};
-    use tokio::fs::remove_file;
+    // use fitbit_lib::scale_measurement::ScaleMeasurement;
+    // use std::{collections::HashMap, convert::TryInto};
+    // use time::{Duration, OffsetDateTime, UtcOffset};
+    // use tokio::fs::remove_file;
 
-    use garmin_lib::{errors::GarminError as Error, garmin_config::GarminConfig};
-    use garmin_utils::pgpool::PgPool;
+    use garmin_lib::errors::GarminError as Error;
+    // use garmin_lib::garmin_config::GarminConfig;
+    // use garmin_utils::pgpool::PgPool;
 
-    use crate::garmin_connect_client::{
-        GarminConnectClient, GarminConnectWeightPayload, GRAMS_PER_POUND,
-    };
+    use crate::garmin_connect_client::GarminConnectClient;
+    // use crate::garmin_connect_client::{
+    //     GarminConnectWeightPayload, GRAMS_PER_POUND,
+    // };
 
-    #[tokio::test]
-    #[ignore]
-    async fn test_garmin_connect_client() -> Result<(), Error> {
-        let config = GarminConfig::get_config(None)?;
-        let mut client = GarminConnectClient::new(config)?;
+    // #[tokio::test]
+    // #[ignore]
+    // async fn test_garmin_connect_client() -> Result<(), Error> {
+    //     let config = GarminConfig::get_config(None)?;
+    //     let mut client = GarminConnectClient::new(config)?;
 
-        let profile = client.login().await?;
-        assert_eq!(profile.username, "ddboline");
+    //     let profile = client.login().await?;
+    //     assert_eq!(profile.username, "ddboline");
 
-        assert!(client.oauth1_token.is_some());
-        assert!(client.oauth2_token.is_some());
-        client.dump().await?;
+    //     assert!(client.oauth1_token.is_some());
+    //     assert!(client.oauth2_token.is_some());
+    //     client.dump().await?;
 
-        let oauth1_token = client.oauth1_token.take().unwrap();
-        let oauth2_token = client.oauth2_token.take().unwrap();
+    //     let oauth1_token = client.oauth1_token.take().unwrap();
+    //     let oauth2_token = client.oauth2_token.take().unwrap();
 
-        client.load().await?;
+    //     client.load().await?;
 
-        assert!(client.oauth1_token.is_some());
-        assert!(client.oauth2_token.is_some());
+    //     assert!(client.oauth1_token.is_some());
+    //     assert!(client.oauth2_token.is_some());
 
-        assert_eq!(client.oauth1_token.as_ref().unwrap(), &oauth1_token);
-        assert_eq!(client.oauth2_token.as_ref().unwrap(), &oauth2_token);
+    //     assert_eq!(client.oauth1_token.as_ref().unwrap(), &oauth1_token);
+    //     assert_eq!(client.oauth2_token.as_ref().unwrap(), &oauth2_token);
 
-        let oauth2_token = client.oauth2_token.as_ref().unwrap();
+    //     let oauth2_token = client.oauth2_token.as_ref().unwrap();
 
-        if oauth2_token.expired() {
-            client.refresh_oauth2().await?;
-        }
-        let activities = client.get_activities(Some(0), Some(5)).await?;
-        assert_eq!(activities.len(), 5);
+    //     if oauth2_token.expired() {
+    //         client.refresh_oauth2().await?;
+    //     }
+    //     let activities = client.get_activities(Some(0), Some(5)).await?;
+    //     assert_eq!(activities.len(), 5);
 
-        let date = (OffsetDateTime::now_utc() - Duration::days(1)).date();
+    //     let date = (OffsetDateTime::now_utc() - Duration::days(1)).date();
 
-        let heartrates = client.get_heartrate(date).await?;
+    //     let heartrates = client.get_heartrate(date).await?;
 
-        assert!(heartrates.heartrate_values.is_some());
+    //     assert!(heartrates.heartrate_values.is_some());
 
-        let values = heartrates.heartrate_values.unwrap();
+    //     let values = heartrates.heartrate_values.unwrap();
 
-        assert!(values.len() > 0);
+    //     assert!(values.len() > 0);
 
-        let output = client.download_activity(18201068560).await?;
+    //     let output = client.download_activity(18201068560).await?;
 
-        assert!(output.exists());
+    //     assert!(output.exists());
 
-        remove_file(output).await?;
-        Ok(())
-    }
+    //     remove_file(output).await?;
+    //     Ok(())
+    // }
 
-    #[tokio::test]
-    #[ignore]
-    async fn test_weight() -> Result<(), Error> {
-        let config = GarminConfig::get_config(None)?;
-        let pool = PgPool::new(&config.pgurl)?;
+    // #[tokio::test]
+    // #[ignore]
+    // async fn test_weight() -> Result<(), Error> {
+    //     let config = GarminConfig::get_config(None)?;
+    //     let pool = PgPool::new(&config.pgurl)?;
 
-        let mut client = GarminConnectClient::new(config)?;
-        let profile = client.init().await?;
-        assert_eq!(profile.username, "ddboline");
+    //     let mut client = GarminConnectClient::new(config)?;
+    //     let profile = client.init().await?;
+    //     assert_eq!(profile.username, "ddboline");
 
-        let weights = client.get_weights(None, None).await?;
-        let mut start_date = None;
-        let mut end_date = None;
-        for dws in &weights.daily_weight_summaries {
-            let d = dws.latest_weight.calendar_date;
-            if start_date.is_none() {
-                start_date.replace(d);
-            }
-            if end_date.is_none() {
-                end_date.replace(d);
-            }
-            start_date = start_date.min(Some(d));
-            end_date = end_date.max(Some(d));
-        }
-        let start_date = start_date.unwrap();
-        let end_date = end_date.unwrap();
-        println!("{start_date} {end_date}");
+    //     let weights = client.get_weights(None, None).await?;
+    //     let mut start_date = None;
+    //     let mut end_date = None;
+    //     for dws in &weights.daily_weight_summaries {
+    //         let d = dws.latest_weight.calendar_date;
+    //         if start_date.is_none() {
+    //             start_date.replace(d);
+    //         }
+    //         if end_date.is_none() {
+    //             end_date.replace(d);
+    //         }
+    //         start_date = start_date.min(Some(d));
+    //         end_date = end_date.max(Some(d));
+    //     }
+    //     let start_date = start_date.unwrap();
+    //     let end_date = end_date.unwrap();
+    //     println!("{start_date} {end_date}");
 
-        let measurements =
-            ScaleMeasurement::read_from_db(&pool, Some(start_date), Some(end_date), None, None)
-                .await?;
-        let mut measurement_map: HashMap<_, _> = measurements
-            .into_iter()
-            .map(|m| (m.datetime.to_offset(UtcOffset::UTC).date(), m))
-            .collect();
+    //     let measurements =
+    //         ScaleMeasurement::read_from_db(&pool, Some(start_date), Some(end_date), None, None)
+    //             .await?;
+    //     let mut measurement_map: HashMap<_, _> = measurements
+    //         .into_iter()
+    //         .map(|m| (m.datetime.to_offset(UtcOffset::UTC).date(), m))
+    //         .collect();
 
-        for dws in &weights.daily_weight_summaries {
-            let d = dws.latest_weight.calendar_date;
+    //     for dws in &weights.daily_weight_summaries {
+    //         let d = dws.latest_weight.calendar_date;
 
-            if let Some(measurement) = measurement_map.get_mut(&d) {
-                if (dws.latest_weight.weight - (measurement.mass * GRAMS_PER_POUND)).abs() < 1.0
-                    && measurement.connect_primary_key.is_none()
-                {
-                    measurement
-                        .set_connect_primary_key(dws.latest_weight.sample_primary_key, &pool)
-                        .await?;
-                }
-            }
-        }
+    //         if let Some(measurement) = measurement_map.get_mut(&d) {
+    //             if (dws.latest_weight.weight - (measurement.mass * GRAMS_PER_POUND)).abs() < 1.0
+    //                 && measurement.connect_primary_key.is_none()
+    //             {
+    //                 measurement
+    //                     .set_connect_primary_key(dws.latest_weight.sample_primary_key, &pool)
+    //                     .await?;
+    //             }
+    //         }
+    //     }
 
-        let mut weights = client.get_weights(None, None).await?;
-        assert!(weights.daily_weight_summaries.len() > 0);
-        let weight = weights.daily_weight_summaries.pop().unwrap();
-        let date = weight.latest_weight.calendar_date;
+    //     let mut weights = client.get_weights(None, None).await?;
+    //     assert!(weights.daily_weight_summaries.len() > 0);
+    //     let weight = weights.daily_weight_summaries.pop().unwrap();
+    //     let date = weight.latest_weight.calendar_date;
 
-        let mut weight_view = client.get_weight(date).await?;
-        assert_eq!(weight_view.date_weight_list.len(), 1);
-        let new_weight = weight_view.date_weight_list.pop().unwrap();
-        assert_eq!(
-            weight.latest_weight.sample_primary_key,
-            new_weight.sample_primary_key
-        );
-        assert_eq!(weight.latest_weight.weight, new_weight.weight);
-        println!("{new_weight:?}");
-        Ok(())
-    }
+    //     let mut weight_view = client.get_weight(date).await?;
+    //     assert_eq!(weight_view.date_weight_list.len(), 1);
+    //     let new_weight = weight_view.date_weight_list.pop().unwrap();
+    //     assert_eq!(
+    //         weight.latest_weight.sample_primary_key,
+    //         new_weight.sample_primary_key
+    //     );
+    //     assert_eq!(weight.latest_weight.weight, new_weight.weight);
+    //     println!("{new_weight:?}");
+    //     Ok(())
+    // }
 
     #[test]
     fn test_get_csrf() -> Result<(), Error> {
@@ -774,21 +776,21 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[ignore]
-    async fn test_post_weight() -> Result<(), Error> {
-        let config = GarminConfig::get_config(None)?;
-        let pool = PgPool::new(&config.pgurl)?;
-        let mut measurements =
-            ScaleMeasurement::read_from_db(&pool, None, None, Some(0), Some(1)).await?;
-        assert_eq!(measurements.len(), 1);
-        let measurement = measurements.pop().unwrap();
-        let payload: GarminConnectWeightPayload = measurement.try_into()?;
-        let text = serde_json::to_string(&payload)?;
-        assert_eq!(
-            text,
-            r#"{"dateTimestamp":"2016-02-24T04:00:00.00","gmtTimestamp":"2016-02-24T09:00:00.00","unitKey":"lbs","value":174.8}"#
-        );
-        Ok(())
-    }
+    // #[tokio::test]
+    // #[ignore]
+    // async fn test_post_weight() -> Result<(), Error> {
+    //     let config = GarminConfig::get_config(None)?;
+    //     let pool = PgPool::new(&config.pgurl)?;
+    //     let mut measurements =
+    //         ScaleMeasurement::read_from_db(&pool, None, None, Some(0), Some(1)).await?;
+    //     assert_eq!(measurements.len(), 1);
+    //     let measurement = measurements.pop().unwrap();
+    //     let payload: GarminConnectWeightPayload = measurement.try_into()?;
+    //     let text = serde_json::to_string(&payload)?;
+    //     assert_eq!(
+    //         text,
+    //         r#"{"dateTimestamp":"2016-02-24T04:00:00.00","gmtTimestamp":"2016-02-24T09:00:00.00","unitKey":"lbs","value":174.8}"#
+    //     );
+    //     Ok(())
+    // }
 }

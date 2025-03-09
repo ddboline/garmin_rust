@@ -45,16 +45,16 @@ jobs:
 
     - name: Build
       run: |
-        cargo build && \
+        cargo build --release && \
         target/debug/garmin-rust-cli run-migrations
       env:
         PGURL: postgresql://postgres:2UtcMAAvNuBHPqK9@localhost:5432/garmin_summary
 
     - name: Run tests / create coverage report
       run: |
-        cargo test --verbose --all
+        cargo test --verbose --all --release
         cargo install cargo-tarpaulin --version 0.18.0-alpha3 && \
-        cargo tarpaulin --verbose --all-features --workspace --out Xml --avoid-cfg-tarpaulin
+        cargo tarpaulin --verbose --all-features --workspace --out Xml --avoid-cfg-tarpaulin --release
       env:
         PGURL: postgresql://postgres:2UtcMAAvNuBHPqK9@localhost:5432/garmin_summary
 

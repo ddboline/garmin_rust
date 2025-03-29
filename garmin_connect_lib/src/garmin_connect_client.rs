@@ -708,8 +708,8 @@ mod tests {
     //     println!("{start_date} {end_date}");
 
     //     let measurements =
-    //         ScaleMeasurement::read_from_db(&pool, Some(start_date), Some(end_date), None, None)
-    //             .await?;
+    //         ScaleMeasurement::read_from_db(&pool, Some(start_date),
+    // Some(end_date), None, None)             .await?;
     //     let mut measurement_map: HashMap<_, _> = measurements
     //         .into_iter()
     //         .map(|m| (m.datetime.to_offset(UtcOffset::UTC).date(), m))
@@ -719,11 +719,12 @@ mod tests {
     //         let d = dws.latest_weight.calendar_date;
 
     //         if let Some(measurement) = measurement_map.get_mut(&d) {
-    //             if (dws.latest_weight.weight - (measurement.mass * GRAMS_PER_POUND)).abs() < 1.0
-    //                 && measurement.connect_primary_key.is_none()
-    //             {
+    //             if (dws.latest_weight.weight - (measurement.mass *
+    // GRAMS_PER_POUND)).abs() < 1.0                 &&
+    // measurement.connect_primary_key.is_none()             {
     //                 measurement
-    //                     .set_connect_primary_key(dws.latest_weight.sample_primary_key, &pool)
+    //
+    // .set_connect_primary_key(dws.latest_weight.sample_primary_key, &pool)
     //                     .await?;
     //             }
     //         }
@@ -782,15 +783,15 @@ mod tests {
     //     let config = GarminConfig::get_config(None)?;
     //     let pool = PgPool::new(&config.pgurl)?;
     //     let mut measurements =
-    //         ScaleMeasurement::read_from_db(&pool, None, None, Some(0), Some(1)).await?;
-    //     assert_eq!(measurements.len(), 1);
+    //         ScaleMeasurement::read_from_db(&pool, None, None, Some(0),
+    // Some(1)).await?;     assert_eq!(measurements.len(), 1);
     //     let measurement = measurements.pop().unwrap();
     //     let payload: GarminConnectWeightPayload = measurement.try_into()?;
     //     let text = serde_json::to_string(&payload)?;
     //     assert_eq!(
     //         text,
-    //         r#"{"dateTimestamp":"2016-02-24T04:00:00.00","gmtTimestamp":"2016-02-24T09:00:00.00","unitKey":"lbs","value":174.8}"#
-    //     );
+    //         r#"{"dateTimestamp":"2016-02-24T04:00:00.00","gmtTimestamp":"
+    // 2016-02-24T09:00:00.00","unitKey":"lbs","value":174.8}"#     );
     //     Ok(())
     // }
 }

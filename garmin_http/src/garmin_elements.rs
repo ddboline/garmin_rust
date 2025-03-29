@@ -3,7 +3,6 @@ use dioxus::prelude::{
     VirtualDom,
 };
 use itertools::Itertools;
-use rweb_helper::DateType;
 use serde::Serialize;
 use stack_string::{format_sstr, StackString};
 use std::{collections::HashMap, fmt::Write};
@@ -50,7 +49,7 @@ use crate::{
 #[derive(PartialEq, Clone)]
 struct HeartrateOpts {
     heartrate: Vec<FitbitHeartRate>,
-    button_date: Option<DateType>,
+    button_date: Option<Date>,
 }
 
 pub enum IndexConfig {
@@ -63,20 +62,20 @@ pub enum IndexConfig {
     Scale {
         measurements: Vec<ScaleMeasurement>,
         offset: usize,
-        start_date: DateType,
-        end_date: DateType,
+        start_date: Date,
+        end_date: Date,
     },
     HearRateSummary {
         stats: Vec<FitbitStatisticsSummary>,
         offset: Option<usize>,
-        start_date: Option<DateType>,
-        end_date: Option<DateType>,
+        start_date: Option<Date>,
+        end_date: Option<Date>,
     },
     HeartRate {
         heartrate: Vec<FitbitHeartRate>,
-        start_date: DateType,
-        end_date: DateType,
-        button_date: Option<DateType>,
+        start_date: Date,
+        end_date: Date,
+        button_date: Option<Date>,
     },
     RaceResult {
         model: RaceResultAnalysis,
@@ -352,8 +351,8 @@ fn IndexElement(
     history: Vec<StackString>,
     measurements: Vec<ScaleMeasurement>,
     offset: Option<usize>,
-    start_date: Option<DateType>,
-    end_date: Option<DateType>,
+    start_date: Option<Date>,
+    end_date: Option<Date>,
     heartrate_stats: Vec<FitbitStatisticsSummary>,
     heartrate_opts: Option<HeartrateOpts>,
     model: Option<RaceResultAnalysis>,

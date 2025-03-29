@@ -1,18 +1,13 @@
 #![allow(clippy::needless_pass_by_value)]
 
-use log::{error, info};
+use axum::http::{Method, StatusCode};
+use log::{debug, error, info};
 use maplit::hashset;
 use notify::{
     recommended_watcher, Event, EventHandler, EventKind, INotifyWatcher, RecursiveMode,
     Result as NotifyResult, Watcher,
 };
 use reqwest::{Client, ClientBuilder};
-use rweb::{
-    filters::BoxedFilter,
-    http::header::CONTENT_TYPE,
-    openapi::{self, Info},
-    Filter, Reply,
-};
 use stack_string::format_sstr;
 use std::{
     collections::HashSet,
@@ -21,10 +16,14 @@ use std::{
     sync::Arc,
 };
 use tokio::{
+    net::TcpListener,
     sync::watch::{channel, Receiver, Sender},
     task::spawn,
     time::{interval, sleep, Duration},
 };
+use tower_http::cors::{Any, CorsLayer};
+use utoipa::OpenApi;
+use utoipa_axum::router::OpenApiRouter;
 
 use garmin_cli::{
     garmin_cli::GarminCli,
@@ -35,22 +34,8 @@ use garmin_models::garmin_correction_lap::GarminCorrectionMap;
 use garmin_utils::pgpool::PgPool;
 
 use crate::{
-    errors::{error_response, ServiceError},
-    garmin_rust_routes::{
-        add_garmin_correction, fitbit_activities_db, fitbit_activities_db_update,
-        fitbit_heartrate_cache, fitbit_heartrate_cache_update, fitbit_plots, fitbit_plots_demo,
-        garmin, garmin_connect_activities_db, garmin_connect_activities_db_update,
-        garmin_connect_profile, garmin_demo, garmin_scripts_demo_js, garmin_scripts_js,
-        garmin_sync, garmin_upload, heartrate_plots, heartrate_plots_demo,
-        heartrate_statistics_plots, heartrate_statistics_plots_demo,
-        heartrate_statistics_summary_db, heartrate_statistics_summary_db_update, initialize_map_js,
-        line_plot_js, race_result_flag, race_result_import, race_result_plot,
-        race_result_plot_demo, race_results_db, race_results_db_update, scale_measurement,
-        scale_measurement_manual, scale_measurement_manual_input, scale_measurement_update,
-        scatter_plot_js, scatter_plot_with_lines_js, strava_activities, strava_activities_db,
-        strava_activities_db_update, strava_athlete, strava_auth, strava_callback, strava_create,
-        strava_refresh, strava_sync, strava_update, strava_upload, time_series_js, user,
-    },
+    errors::ServiceError as Error,
+    garmin_rust_routes::{get_garmin_path, ApiDoc},
     logged_user::{fill_from_db, get_secrets},
 };
 
@@ -129,7 +114,7 @@ impl EventHandler for Notifier {
 /// `/garmin/get_hr_pace` return structured json intended for separate analysis
 /// # Errors
 /// Returns error if server init fails
-pub async fn start_app() -> Result<(), ServiceError> {
+pub async fn start_app() -> Result<(), Error> {
     async fn update_db(pool: PgPool) {
         let mut i = interval(std::time::Duration::from_secs(60));
         loop {
@@ -197,162 +182,55 @@ pub async fn start_app() -> Result<(), ServiceError> {
     run_app(&config, &pool).await.map_err(Into::into)
 }
 
-fn get_garmin_path(app: &AppState) -> BoxedFilter<(impl Reply,)> {
-    let index_path = garmin(app.clone()).boxed();
-    let garmin_demo_path = garmin_demo(app.clone()).boxed();
-    let garmin_upload_path = garmin_upload(app.clone()).boxed();
-    let add_garmin_correction_path = add_garmin_correction(app.clone()).boxed();
-    let garmin_connect_activities_db_get = garmin_connect_activities_db(app.clone()).boxed();
-    let garmin_connect_activities_db_post =
-        garmin_connect_activities_db_update(app.clone()).boxed();
-    let garmin_connect_activities_db_path = garmin_connect_activities_db_get
-        .or(garmin_connect_activities_db_post)
-        .boxed();
-    let garmin_sync_path = garmin_sync(app.clone()).boxed();
-    let strava_sync_path = strava_sync(app.clone()).boxed();
-    let heartrate_cache_get = fitbit_heartrate_cache(app.clone()).boxed();
-    let heartrate_cache_post = fitbit_heartrate_cache_update(app.clone()).boxed();
-    let heartrate_cache_path = heartrate_cache_get.or(heartrate_cache_post).boxed();
-    let fitbit_plots_path = fitbit_plots(app.clone()).boxed();
-    let fitbit_plots_demo_path = fitbit_plots_demo(app.clone()).boxed();
-    let heartrate_statistics_plots_path = heartrate_statistics_plots(app.clone()).boxed();
-    let heartrate_statistics_plots_demo_path = heartrate_statistics_plots_demo(app.clone()).boxed();
-    let heartrate_plots_path = heartrate_plots(app.clone()).boxed();
-    let heartrate_plots_demo_path = heartrate_plots_demo(app.clone()).boxed();
-    let fitbit_activities_db_get = fitbit_activities_db(app.clone()).boxed();
-    let fitbit_activities_db_post = fitbit_activities_db_update(app.clone()).boxed();
-    let fitbit_activities_db_path = fitbit_activities_db_get
-        .or(fitbit_activities_db_post)
-        .boxed();
-    let heartrate_statistics_summary_db_get = heartrate_statistics_summary_db(app.clone()).boxed();
-    let heartrate_statistics_summary_db_post =
-        heartrate_statistics_summary_db_update(app.clone()).boxed();
-    let heartrate_statistics_summary_db_path = heartrate_statistics_summary_db_get
-        .or(heartrate_statistics_summary_db_post)
-        .boxed();
-    let fitbit_path = heartrate_cache_path
-        .or(fitbit_plots_path)
-        .or(fitbit_plots_demo_path)
-        .or(heartrate_statistics_plots_path)
-        .or(heartrate_statistics_plots_demo_path)
-        .or(heartrate_plots_path)
-        .or(heartrate_plots_demo_path)
-        .or(fitbit_activities_db_path)
-        .or(heartrate_statistics_summary_db_path)
-        .boxed();
-    let scale_measurements_get = scale_measurement(app.clone()).boxed();
-    let scale_measurements_post = scale_measurement_update(app.clone()).boxed();
-    let scale_measurement_manual_path = scale_measurement_manual(app.clone()).boxed();
-    let scale_measurement_manual_input_path = scale_measurement_manual_input().boxed();
-    let scale_measurements_path = scale_measurements_get.or(scale_measurements_post).boxed();
-    let strava_auth_path = strava_auth(app.clone()).boxed();
-    let strava_refresh_path = strava_refresh(app.clone()).boxed();
-    let strava_callback_path = strava_callback(app.clone()).boxed();
-    let strava_activities_path = strava_activities(app.clone()).boxed();
-    let strava_athlete_path = strava_athlete(app.clone()).boxed();
-    let garmin_connect_profile_path = garmin_connect_profile(app.clone()).boxed();
-    let strava_activities_db_get = strava_activities_db(app.clone()).boxed();
-    let strava_activities_db_post = strava_activities_db_update(app.clone()).boxed();
-    let strava_activities_db_path = strava_activities_db_get
-        .or(strava_activities_db_post)
-        .boxed();
-    let strava_upload_path = strava_upload(app.clone()).boxed();
-    let strava_update_path = strava_update(app.clone()).boxed();
-    let strava_create_path = strava_create(app.clone()).boxed();
-
-    let strava_path = strava_auth_path
-        .or(strava_refresh_path)
-        .or(strava_callback_path)
-        .or(strava_activities_path)
-        .or(strava_athlete_path)
-        .or(garmin_connect_profile_path)
-        .or(strava_activities_db_path)
-        .or(strava_upload_path)
-        .or(strava_update_path)
-        .or(strava_create_path)
-        .boxed();
-
-    let user_path = user().boxed();
-    let race_result_plot_path = race_result_plot(app.clone()).boxed();
-    let race_result_flag_path = race_result_flag(app.clone()).boxed();
-    let race_result_import_path = race_result_import(app.clone()).boxed();
-    let race_result_plot_demo_path = race_result_plot_demo(app.clone()).boxed();
-    let race_results_db_get = race_results_db(app.clone()).boxed();
-    let race_results_db_post = race_results_db_update(app.clone()).boxed();
-    let race_results_db_path = race_results_db_get.or(race_results_db_post).boxed();
-
-    let garmin_scripts_js_path = garmin_scripts_js().boxed();
-    let garmin_scripts_demo_js_path = garmin_scripts_demo_js().boxed();
-    let line_plot_js_path = line_plot_js().boxed();
-    let scatter_plot_js_path = scatter_plot_js().boxed();
-    let scatter_plot_with_lines_js_path = scatter_plot_with_lines_js().boxed();
-    let time_series_js_path = time_series_js().boxed();
-    let initialize_map_js_path = initialize_map_js().boxed();
-
-    index_path
-        .or(garmin_demo_path)
-        .or(garmin_upload_path)
-        .or(add_garmin_correction_path)
-        .or(garmin_connect_activities_db_path)
-        .or(garmin_sync_path)
-        .or(strava_sync_path)
-        .or(fitbit_path)
-        .or(scale_measurement_manual_path)
-        .or(scale_measurement_manual_input_path)
-        .or(scale_measurements_path)
-        .or(strava_path)
-        .or(user_path)
-        .or(race_result_plot_path)
-        .or(race_result_flag_path)
-        .or(race_result_import_path)
-        .or(race_result_plot_demo_path)
-        .or(race_results_db_path)
-        .or(garmin_scripts_js_path)
-        .or(garmin_scripts_demo_js_path)
-        .or(line_plot_js_path)
-        .or(scatter_plot_js_path)
-        .or(scatter_plot_with_lines_js_path)
-        .or(time_series_js_path)
-        .or(initialize_map_js_path)
-        .boxed()
-}
-
-async fn run_app(config: &GarminConfig, pool: &PgPool) -> Result<(), GarminError> {
+async fn run_app(config: &GarminConfig, pool: &PgPool) -> Result<(), Error> {
     let app = AppState {
         config: config.clone(),
         db: pool.clone(),
-        client: Arc::new(ClientBuilder::new().build()?),
+        client: Arc::new(
+            ClientBuilder::new()
+                .build()
+                .map_err(Into::<GarminError>::into)?,
+        ),
     };
 
-    let (spec, garmin_path) = openapi::spec()
-        .info(Info {
-            title: "Fitness Activity WebApp".into(),
-            description: "Web Frontend for Fitness Activities".into(),
-            version: env!("CARGO_PKG_VERSION").into(),
-            ..Info::default()
-        })
-        .build(|| get_garmin_path(&app));
-    let spec = Arc::new(spec);
-    let spec_json_path = rweb::path!("garmin" / "openapi" / "json")
-        .and(rweb::path::end())
-        .map({
-            let spec = spec.clone();
-            move || rweb::reply::json(spec.as_ref())
-        });
+    let cors = CorsLayer::new()
+        .allow_methods([Method::GET, Method::POST])
+        .allow_headers(["content-type".try_into()?, "jwt".try_into()?])
+        .allow_origin(Any);
 
-    let spec_yaml = serde_yml::to_string(spec.as_ref())?;
-    let spec_yaml_path = rweb::path!("garmin" / "openapi" / "yaml")
-        .and(rweb::path::end())
-        .map(move || {
-            let reply = rweb::reply::html(spec_yaml.clone());
-            rweb::reply::with_header(reply, CONTENT_TYPE, "text/yaml")
-        });
+    let (router, api) = OpenApiRouter::with_openapi(ApiDoc::openapi())
+        .merge(get_garmin_path(&app))
+        .split_for_parts();
 
-    let routes = garmin_path
-        .or(spec_json_path)
-        .or(spec_yaml_path)
-        .recover(error_response);
-    let addr: SocketAddr = format_sstr!("{}:{}", config.host, config.port).parse()?;
-    rweb::serve(routes).bind(addr).await;
-    Ok(())
+    let spec_json = serde_json::to_string_pretty(&api).map_err(Into::<GarminError>::into)?;
+    let spec_yaml = serde_yml::to_string(&api).map_err(Into::<GarminError>::into)?;
+
+    let router = router
+        .route(
+            "/garmin/openapi/json",
+            axum::routing::get(|| async move {
+                (
+                    StatusCode::OK,
+                    [("content-type", "application/json")],
+                    spec_json,
+                )
+            }),
+        )
+        .route(
+            "/garmin/openapi/yaml",
+            axum::routing::get(|| async move {
+                (StatusCode::OK, [("content-type", "text/yaml")], spec_yaml)
+            }),
+        )
+        .layer(cors);
+
+    let host = &config.host;
+    let port = config.port;
+
+    let addr: SocketAddr = format_sstr!("{host}:{port}").parse()?;
+    debug!("{addr:?}");
+    let listener = TcpListener::bind(&addr).await?;
+    axum::serve(listener, router.into_make_service())
+        .await
+        .map_err(Into::into)
 }

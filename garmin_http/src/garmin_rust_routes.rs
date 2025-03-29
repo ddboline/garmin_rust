@@ -1,23 +1,24 @@
 #![allow(clippy::needless_pass_by_value)]
+use axum::extract::{multipart::Field, Json, Multipart, Query, State};
+use derive_more::{From, Into};
 use futures::{future::try_join_all, TryStreamExt};
 use itertools::Itertools;
 use log::debug;
-use rweb::{
-    get,
-    multipart::{FormData, Part},
-    post, Buf, Filter, Json, Query, Rejection, Schema,
-};
-use rweb_helper::{
-    html_response::HtmlResponse as HtmlBase, json_response::JsonResponse as JsonBase, DateType,
-    RwebResponse, UuidWrapper,
-};
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
-use std::convert::Infallible;
+use std::sync::Arc;
 use tempfile::TempDir;
+use time::Date;
 use time_tz::OffsetDateTimeExt;
 use tokio::{fs::File, io::AsyncWriteExt, task::spawn_blocking};
 use tokio_stream::StreamExt;
+use utoipa::{OpenApi, ToSchema};
+use utoipa_axum::{router::OpenApiRouter, routes};
+use utoipa_helper::{
+    html_response::HtmlResponse as HtmlBase, json_response::JsonResponse as JsonBase,
+    UtoipaResponse,
+};
+use uuid::Uuid;
 
 use fitbit_lib::{
     fitbit_archive, fitbit_heartrate::FitbitHeartRate,
@@ -45,6 +46,7 @@ use race_result_analysis::{
     race_result_analysis::RaceResultAnalysis, race_results::RaceResults, race_type::RaceType,
 };
 use strava_lib::strava_client::StravaClient;
+use utoipa::PartialSchema;
 
 use crate::{
     errors::ServiceError as Error,
@@ -67,10 +69,9 @@ use crate::{
     RaceTypeWrapper, ScaleMeasurementWrapper, StravaActivityWrapper,
 };
 
-pub type WarpResult<T> = Result<T, Rejection>;
-pub type HttpResult<T> = Result<T, Error>;
+type WarpResult<T> = Result<T, Error>;
 
-#[derive(Deserialize, Schema)]
+#[derive(Deserialize, ToSchema)]
 struct FilterRequest {
     filter: Option<StackString>,
 }
@@ -102,22 +103,19 @@ fn proc_pattern_wrapper<T: AsRef<str>>(
     }
 }
 
-fn optional_session() -> impl Filter<Extract = (Option<Session>,), Error = Infallible> + Copy {
-    rweb::cookie::optional("session")
-}
+#[derive(UtoipaResponse)]
+#[response(description = "Main Page", content = "text/html")]
+#[rustfmt::skip]
+struct IndexResponse(HtmlBase::<StackString>);
 
-#[derive(RwebResponse)]
-#[response(description = "Main Page", content = "html")]
-struct IndexResponse(HtmlBase<StackString, Error>);
-
-#[get("/garmin/index.html")]
-#[openapi(description = "Main Page")]
-pub async fn garmin(
+#[utoipa::path(get, path = "/garmin/index.html", responses(IndexResponse, Error))]
+// Main Page")]
+async fn garmin(
+    state: State<Arc<AppState>>,
     query: Query<FilterRequest>,
-    #[filter = "LoggedUser::filter"] user: LoggedUser,
-    #[data] state: AppState,
+    user: LoggedUser,
 ) -> WarpResult<IndexResponse> {
-    let query = query.into_inner();
+    let Query(query) = query;
 
     let mut session = user.get_session(&state.client, &state.config).await?;
 
@@ -144,7 +142,7 @@ async fn get_index_body(
     config: &GarminConfig,
     req: &GarminRequest,
     is_demo: bool,
-) -> HttpResult<String> {
+) -> WarpResult<String> {
     let mut file_list: Vec<StackString> =
         get_list_of_files_from_db(&req.constraints.to_query_string(), pool)
             .await?
@@ -203,14 +201,14 @@ async fn get_index_body(
     }
 }
 
-#[get("/garmin/demo.html")]
-#[openapi(description = "Demo Main Page")]
-pub async fn garmin_demo(
+#[utoipa::path(get, path = "/garmin/demo.html", responses(IndexResponse, Error))]
+// Demo Main Page")]
+async fn garmin_demo(
+    state: State<Arc<AppState>>,
     query: Query<FilterRequest>,
-    #[data] state: AppState,
-    #[filter = "optional_session"] session: Option<Session>,
+    session: Option<Session>,
 ) -> WarpResult<IndexResponse> {
-    let query = query.into_inner();
+    let Query(query) = query;
 
     let mut session = session.unwrap_or_default();
 
@@ -231,74 +229,83 @@ pub async fn garmin_demo(
     Ok(HtmlBase::new(body).with_cookie(&jwt_str).into())
 }
 
-#[derive(RwebResponse)]
-#[response(description = "Javascript", content = "js")]
-struct JsResponse(HtmlBase<&'static str, Infallible>);
+#[derive(UtoipaResponse)]
+#[response(description = "Javascript", content = "text/javascript")]
+#[rustfmt::skip]
+struct JsResponse(HtmlBase::<&'static str>);
 
-#[get("/garmin/scripts/garmin_scripts.js")]
-#[openapi(description = "Scripts")]
-pub async fn garmin_scripts_js() -> WarpResult<JsResponse> {
-    Ok(HtmlBase::new(include_str!("../../templates/garmin_scripts.js")).into())
+#[utoipa::path(get, path = "/garmin/scripts/garmin_scripts.js", responses(JsResponse))]
+// Scripts")]
+async fn garmin_scripts_js() -> JsResponse {
+    HtmlBase::new(include_str!("../../templates/garmin_scripts.js")).into()
 }
 
-#[get("/garmin/scripts/garmin_scripts_demo.js")]
-#[openapi(description = "Demo Scripts")]
-pub async fn garmin_scripts_demo_js() -> WarpResult<JsResponse> {
-    Ok(HtmlBase::new(include_str!("../../templates/garmin_scripts_demo.js")).into())
+#[utoipa::path(
+    get,
+    path = "/garmin/scripts/garmin_scripts_demo.js",
+    responses(JsResponse)
+)]
+// Demo Scripts")]
+async fn garmin_scripts_demo_js() -> JsResponse {
+    HtmlBase::new(include_str!("../../templates/garmin_scripts_demo.js")).into()
 }
 
-#[get("/garmin/scripts/line_plot.js")]
-pub async fn line_plot_js() -> WarpResult<JsResponse> {
-    Ok(HtmlBase::new(include_str!("../../templates/line_plot.js")).into())
+#[utoipa::path(get, path = "/garmin/scripts/line_plot.js", responses(JsResponse))]
+async fn line_plot_js() -> JsResponse {
+    HtmlBase::new(include_str!("../../templates/line_plot.js")).into()
 }
 
-#[get("/garmin/scripts/scatter_plot.js")]
-pub async fn scatter_plot_js() -> WarpResult<JsResponse> {
-    Ok(HtmlBase::new(include_str!("../../templates/scatter_plot.js")).into())
+#[utoipa::path(get, path = "/garmin/scripts/scatter_plot.js", responses(JsResponse))]
+async fn scatter_plot_js() -> JsResponse {
+    HtmlBase::new(include_str!("../../templates/scatter_plot.js")).into()
 }
 
-#[get("/garmin/scripts/scatter_plot_with_lines.js")]
-pub async fn scatter_plot_with_lines_js() -> WarpResult<JsResponse> {
-    Ok(HtmlBase::new(include_str!("../../templates/scatter_plot_with_lines.js")).into())
+#[utoipa::path(
+    get,
+    path = "/garmin/scripts/scatter_plot_with_lines.js",
+    responses(JsResponse)
+)]
+async fn scatter_plot_with_lines_js() -> JsResponse {
+    HtmlBase::new(include_str!("../../templates/scatter_plot_with_lines.js")).into()
 }
 
-#[get("/garmin/scripts/time_series.js")]
-pub async fn time_series_js() -> WarpResult<JsResponse> {
-    Ok(HtmlBase::new(include_str!("../../templates/time_series.js")).into())
+#[utoipa::path(get, path = "/garmin/scripts/time_series.js", responses(JsResponse))]
+async fn time_series_js() -> JsResponse {
+    HtmlBase::new(include_str!("../../templates/time_series.js")).into()
 }
 
-#[get("/garmin/scripts/initialize_map.js")]
-pub async fn initialize_map_js() -> WarpResult<JsResponse> {
-    Ok(HtmlBase::new(include_str!("../../templates/initialize_map.js")).into())
+#[utoipa::path(get, path = "/garmin/scripts/initialize_map.js", responses(JsResponse))]
+async fn initialize_map_js() -> JsResponse {
+    HtmlBase::new(include_str!("../../templates/initialize_map.js")).into()
 }
 
-#[derive(RwebResponse)]
-#[response(description = "Upload Response", content = "html", status = "CREATED")]
-struct UploadResponse(HtmlBase<StackString, Error>);
+#[derive(UtoipaResponse)]
+#[response(description = "Upload Response", content = "text/html", status = "CREATED")]
+#[rustfmt::skip]
+struct UploadResponse(HtmlBase::<StackString>);
 
-#[post("/garmin/upload_file")]
-pub async fn garmin_upload(
-    #[filter = "rweb::multipart::form"] form: FormData,
-    #[filter = "LoggedUser::filter"] user: LoggedUser,
-    #[data] state: AppState,
+#[utoipa::path(post, path = "/garmin/upload_file", responses(UploadResponse, Error))]
+async fn garmin_upload(
+    state: State<Arc<AppState>>,
+    user: LoggedUser,
+    form: Multipart,
 ) -> WarpResult<UploadResponse> {
     let session = user.get_session(&state.client, &state.config).await?;
-    let body = garmin_upload_body(form, state, session).await?;
+    let body = garmin_upload_body(form, &state, session).await?;
     Ok(HtmlBase::new(body).into())
 }
 
 async fn garmin_upload_body(
-    mut form: FormData,
-    state: AppState,
+    mut form: Multipart,
+    state: &AppState,
     session: Session,
-) -> HttpResult<StackString> {
+) -> WarpResult<StackString> {
     let tempdir = TempDir::with_prefix("garmin_rust")?;
     let tempdir_str = tempdir.path().to_string_lossy();
     let mut fname = StackString::new();
 
-    while let Some(item) = form.next().await {
-        let item = item?;
-        let filename = item.filename().unwrap_or("");
+    while let Some(item) = form.next_field().await? {
+        let filename = item.file_name().unwrap_or("");
         if filename.is_empty() {
             return Err(Error::BadRequest("Empty Filename".into()));
         }
@@ -329,31 +336,31 @@ async fn garmin_upload_body(
     Ok(body)
 }
 
-async fn save_file(file_path: &str, field: Part) -> Result<u64, Error> {
+async fn save_file<'a>(file_path: &'a str, mut field: Field<'a>) -> Result<u64, Error> {
     let mut file = File::create(file_path).await?;
-    let mut stream = field.stream();
     let mut buf_size = 0usize;
 
-    while let Some(chunk) = stream.next().await {
+    while let Some(chunk) = field.next().await {
         let chunk = chunk?;
-        let chunk = chunk.chunk();
         buf_size += chunk.len();
-        file.write_all(chunk).await?;
+        file.write_all(&chunk).await?;
     }
     let file_size = file.metadata().await?.len();
     debug_assert!(buf_size as u64 == file_size);
     Ok(file_size)
 }
 
-#[derive(RwebResponse)]
-#[response(description = "Garmin Sync", content = "html")]
-struct GarminSyncResponse(HtmlBase<StackString, Error>);
+#[derive(UtoipaResponse)]
+#[response(description = "Garmin Sync", content = "text/html")]
+#[rustfmt::skip]
+struct GarminSyncResponse(HtmlBase::<StackString>);
 
-#[post("/garmin/garmin_sync")]
-pub async fn garmin_sync(
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
-) -> WarpResult<GarminSyncResponse> {
+#[utoipa::path(
+    post,
+    path = "/garmin/garmin_sync",
+    responses(GarminSyncResponse, Error)
+)]
+async fn garmin_sync(state: State<Arc<AppState>>, _: LoggedUser) -> WarpResult<GarminSyncResponse> {
     let gcli = GarminCli::from_pool(&state.db).map_err(Into::<Error>::into)?;
     let mut body = gcli.sync_everything().await.map_err(Into::<Error>::into)?;
     body.extend_from_slice(&gcli.proc_everything().await.map_err(Into::<Error>::into)?);
@@ -362,18 +369,22 @@ pub async fn garmin_sync(
     Ok(HtmlBase::new(body).into())
 }
 
-#[derive(RwebResponse)]
-#[response(description = "Strava Sync", content = "html")]
-struct StravaSyncResponse(HtmlBase<StackString, Error>);
+#[derive(UtoipaResponse)]
+#[response(description = "Strava Sync", content = "text/html")]
+#[rustfmt::skip]
+struct StravaSyncResponse(HtmlBase::<StackString>);
 
-#[post("/garmin/strava_sync")]
-pub async fn strava_sync(
+#[utoipa::path(
+    post,
+    path = "/garmin/strava_sync",
+    responses(StravaSyncResponse, Error)
+)]
+async fn strava_sync(
+    state: State<Arc<AppState>>,
     query: Query<StravaSyncRequest>,
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
+    _: LoggedUser,
 ) -> WarpResult<StravaSyncResponse> {
     let body = query
-        .into_inner()
         .run_sync(&state.db, &state.config)
         .await?
         .into_iter()
@@ -384,15 +395,17 @@ pub async fn strava_sync(
     Ok(HtmlBase::new(body).into())
 }
 
-#[derive(RwebResponse)]
-#[response(description = "Strava Auth", content = "html")]
-struct StravaAuthResponse(HtmlBase<StackString, Error>);
+#[derive(UtoipaResponse)]
+#[response(description = "Strava Auth", content = "text/html")]
+#[rustfmt::skip]
+struct StravaAuthResponse(HtmlBase::<StackString>);
 
-#[get("/garmin/strava/auth")]
-pub async fn strava_auth(
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
-) -> WarpResult<StravaAuthResponse> {
+#[utoipa::path(
+    get,
+    path = "/garmin/strava/auth",
+    responses(StravaAuthResponse, Error)
+)]
+async fn strava_auth(state: State<Arc<AppState>>, _: LoggedUser) -> WarpResult<StravaAuthResponse> {
     let client = StravaClient::from_file(state.config.clone())
         .await
         .map_err(Into::<Error>::into)?;
@@ -404,14 +417,19 @@ pub async fn strava_auth(
     Ok(HtmlBase::new(body).into())
 }
 
-#[derive(RwebResponse)]
-#[response(description = "Strava Refresh Auth", content = "html")]
-struct StravaRefreshResponse(HtmlBase<StackString, Error>);
+#[derive(UtoipaResponse)]
+#[response(description = "Strava Refresh Auth", content = "text/html")]
+#[rustfmt::skip]
+struct StravaRefreshResponse(HtmlBase::<StackString>);
 
-#[get("/garmin/strava/refresh_auth")]
-pub async fn strava_refresh(
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
+#[utoipa::path(
+    get,
+    path = "/garmin/strava/refresh_auth",
+    responses(StravaRefreshResponse, Error)
+)]
+async fn strava_refresh(
+    state: State<Arc<AppState>>,
+    _: LoggedUser,
 ) -> WarpResult<StravaRefreshResponse> {
     let mut client = StravaClient::from_file(state.config.clone())
         .await
@@ -430,26 +448,31 @@ pub async fn strava_refresh(
     Ok(HtmlBase::new(body).into())
 }
 
-#[derive(Debug, Serialize, Deserialize, Schema)]
-#[schema(component = "StravaCallbackRequest")]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+// StravaCallbackRequest")]
 struct StravaCallbackRequest {
-    #[schema(description = "Authorization Code")]
+    // Authorization Code")]
     code: StackString,
-    #[schema(description = "CSRF State")]
+    // CSRF State")]
     state: StackString,
 }
 
-#[derive(RwebResponse)]
-#[response(description = "Strava Callback", content = "html")]
-struct StravaCallbackResponse(HtmlBase<StackString, Error>);
+#[derive(UtoipaResponse)]
+#[response(description = "Strava Callback", content = "text/html")]
+#[rustfmt::skip]
+struct StravaCallbackResponse(HtmlBase::<StackString>);
 
-#[get("/garmin/strava/callback")]
-pub async fn strava_callback(
+#[utoipa::path(
+    get,
+    path = "/garmin/strava/callback",
+    responses(StravaCallbackResponse, Error)
+)]
+async fn strava_callback(
+    state: State<Arc<AppState>>,
     query: Query<StravaCallbackRequest>,
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
+    _: LoggedUser,
 ) -> WarpResult<StravaCallbackResponse> {
-    let query = query.into_inner();
+    let Query(query) = query;
     let mut client = StravaClient::from_file(state.config.clone())
         .await
         .map_err(Into::<Error>::into)?;
@@ -466,56 +489,68 @@ pub async fn strava_callback(
     Ok(HtmlBase::new(body).into())
 }
 
-#[derive(RwebResponse)]
-#[response(description = "Strava Activities")]
-struct StravaActivitiesResponse(JsonBase<Vec<StravaActivityWrapper>, Error>);
+#[derive(ToSchema, Serialize, Into, From)]
+struct StravaActivityList(Vec<StravaActivityWrapper>);
 
-#[get("/garmin/strava/activities")]
-pub async fn strava_activities(
+#[derive(UtoipaResponse)]
+#[response(description = "Strava Activities")]
+#[rustfmt::skip]
+struct StravaActivitiesResponse(JsonBase::<StravaActivityList>);
+
+#[utoipa::path(
+    get,
+    path = "/garmin/strava/activities",
+    responses(StravaActivitiesResponse, Error)
+)]
+async fn strava_activities(
+    state: State<Arc<AppState>>,
     query: Query<StravaActivitiesRequest>,
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
+    _: LoggedUser,
 ) -> WarpResult<StravaActivitiesResponse> {
     let mut alist: Vec<_> = query
-        .into_inner()
         .get_activities(&state.config)
         .await?
         .into_iter()
         .map(Into::into)
         .collect();
     alist.shrink_to_fit();
-    Ok(JsonBase::new(alist).into())
+    Ok(JsonBase::new(alist.into()).into())
 }
 
-#[derive(Debug, Serialize, Deserialize, Schema)]
-#[schema(component = "Pagination")]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+// Pagination")]
 struct Pagination {
-    #[schema(description = "Total Number of Entries")]
+    // Total Number of Entries")]
     total: usize,
-    #[schema(description = "Number of Entries to Skip")]
+    // Number of Entries to Skip")]
     offset: usize,
-    #[schema(description = "Number of Entries Returned")]
+    // Number of Entries Returned")]
     limit: usize,
 }
 
-#[derive(Debug, Serialize, Deserialize, Schema)]
-#[schema(component = "PaginatedStravaActivity")]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+// PaginatedStravaActivity")]
 struct PaginatedStravaActivity {
     pagination: Pagination,
     data: Vec<StravaActivityWrapper>,
 }
 
-#[derive(RwebResponse)]
+#[derive(UtoipaResponse)]
 #[response(description = "Strava DB Activities")]
-struct StravaActivitiesDBResponse(JsonBase<PaginatedStravaActivity, Error>);
+#[rustfmt::skip]
+struct StravaActivitiesDBResponse(JsonBase::<PaginatedStravaActivity>);
 
-#[get("/garmin/strava/activities_db")]
-pub async fn strava_activities_db(
+#[utoipa::path(
+    get,
+    path = "/garmin/strava/activities_db",
+    responses(StravaActivitiesDBResponse, Error)
+)]
+async fn strava_activities_db(
+    state: State<Arc<AppState>>,
     query: Query<StravaActivitiesRequest>,
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
+    _: LoggedUser,
 ) -> WarpResult<StravaActivitiesDBResponse> {
-    let query = query.into_inner();
+    let Query(query) = query;
 
     let offset = query.offset.unwrap_or(0);
     let limit = query.limit.unwrap_or(10);
@@ -544,27 +579,32 @@ pub async fn strava_activities_db(
     Ok(JsonBase::new(PaginatedStravaActivity { pagination, data }).into())
 }
 
-#[derive(Debug, Serialize, Deserialize, Schema)]
-#[schema(component = "StravaActiviesDBUpdateRequest")]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+// StravaActiviesDBUpdateRequest")]
 struct StravaActiviesDBUpdateRequest {
     updates: Vec<StravaActivityWrapper>,
 }
 
-#[derive(RwebResponse)]
+#[derive(UtoipaResponse)]
 #[response(
     description = "Strava Activities Update",
     status = "CREATED",
-    content = "html"
+    content = "text/html"
 )]
-struct StravaActivitiesUpdateResponse(HtmlBase<StackString, Error>);
+#[rustfmt::skip]
+struct StravaActivitiesUpdateResponse(HtmlBase::<StackString>);
 
-#[post("/garmin/strava/activities_db")]
-pub async fn strava_activities_db_update(
+#[utoipa::path(
+    post,
+    path = "/garmin/strava/activities_db",
+    responses(StravaActivitiesUpdateResponse, Error)
+)]
+async fn strava_activities_db_update(
+    state: State<Arc<AppState>>,
+    _: LoggedUser,
     payload: Json<StravaActiviesDBUpdateRequest>,
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
 ) -> WarpResult<StravaActivitiesUpdateResponse> {
-    let payload = payload.into_inner();
+    let Json(payload) = payload;
     let mut updates: Vec<_> = payload.updates.into_iter().map(Into::into).collect();
     updates.shrink_to_fit();
     let body = StravaActivity::upsert_activities(&updates, &state.db)
@@ -578,119 +618,159 @@ pub async fn strava_activities_db_update(
     Ok(HtmlBase::new(body).into())
 }
 
-#[derive(RwebResponse)]
-#[response(description = "Strava Upload", status = "CREATED", content = "html")]
-struct StravaUploadResponse(HtmlBase<StackString, Error>);
+#[derive(UtoipaResponse)]
+#[response(description = "Strava Upload", status = "CREATED", content = "text/html")]
+#[rustfmt::skip]
+struct StravaUploadResponse(HtmlBase::<StackString>);
 
-#[post("/garmin/strava/upload")]
-pub async fn strava_upload(
+#[utoipa::path(
+    post,
+    path = "/garmin/strava/upload",
+    responses(StravaUploadResponse, Error)
+)]
+async fn strava_upload(
+    state: State<Arc<AppState>>,
+    _: LoggedUser,
     payload: Json<StravaUploadRequest>,
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
 ) -> WarpResult<StravaUploadResponse> {
-    let body = payload.into_inner().run_upload(&state.config).await?;
+    let Json(payload) = payload;
+    let body = payload.run_upload(&state.config).await?;
     Ok(HtmlBase::new(body).into())
 }
 
-#[derive(RwebResponse)]
-#[response(description = "Strava Update", status = "CREATED", content = "html")]
-struct StravaUpdateResponse(HtmlBase<StackString, Error>);
+#[derive(UtoipaResponse)]
+#[response(description = "Strava Update", status = "CREATED", content = "text/html")]
+#[rustfmt::skip]
+struct StravaUpdateResponse(HtmlBase::<StackString>);
 
-#[post("/garmin/strava/update")]
-pub async fn strava_update(
+#[utoipa::path(
+    post,
+    path = "/garmin/strava/update",
+    responses(StravaUpdateResponse, Error)
+)]
+async fn strava_update(
+    state: State<Arc<AppState>>,
+    _: LoggedUser,
     payload: Json<StravaUpdateRequest>,
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
 ) -> WarpResult<StravaUpdateResponse> {
-    let body = payload.into_inner().run_update(&state.config).await?;
+    let Json(payload) = payload;
+    let body = payload.run_update(&state.config).await?;
     Ok(HtmlBase::new(body.as_str().into()).into())
 }
 
-#[derive(RwebResponse)]
-#[response(description = "Strava Create", status = "CREATED", content = "html")]
-struct StravaCreateResponse(HtmlBase<StackString, Error>);
+#[derive(UtoipaResponse)]
+#[response(description = "Strava Create", status = "CREATED", content = "text/html")]
+#[rustfmt::skip]
+struct StravaCreateResponse(HtmlBase::<StackString>);
 
-#[post("/garmin/strava/create")]
-pub async fn strava_create(
+#[utoipa::path(
+    post,
+    path = "/garmin/strava/create",
+    responses(StravaCreateResponse, Error)
+)]
+async fn strava_create(
+    state: State<Arc<AppState>>,
     query: Query<StravaCreateRequest>,
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
+    _: LoggedUser,
 ) -> WarpResult<StravaCreateResponse> {
-    let activity_id = query
-        .into_inner()
-        .create_activity(&state.db, &state.config)
-        .await?;
+    let activity_id = query.create_activity(&state.db, &state.config).await?;
     let body = activity_id.map_or_else(|| "".into(), StackString::from_display);
     Ok(HtmlBase::new(body).into())
 }
 
-#[derive(RwebResponse)]
-#[response(description = "Fitbit Heartrate")]
-struct FitbitHeartRateResponse(JsonBase<Vec<FitbitHeartRateWrapper>, Error>);
+#[derive(ToSchema, Serialize, Into, From)]
+struct FitbitHeartRateList(Vec<FitbitHeartRateWrapper>);
 
-#[get("/garmin/fitbit/heartrate_cache")]
-pub async fn fitbit_heartrate_cache(
+#[derive(UtoipaResponse)]
+#[response(description = "Fitbit Heartrate")]
+#[rustfmt::skip]
+struct FitbitHeartRateResponse(JsonBase::<FitbitHeartRateList>);
+
+#[utoipa::path(
+    get,
+    path = "/garmin/fitbit/heartrate_cache",
+    responses(FitbitHeartRateResponse, Error)
+)]
+async fn fitbit_heartrate_cache(
+    state: State<Arc<AppState>>,
     query: Query<FitbitHeartrateCacheRequest>,
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
+    _: LoggedUser,
 ) -> WarpResult<FitbitHeartRateResponse> {
+    let Query(query) = query;
     let mut hlist: Vec<_> = query
-        .into_inner()
         .get_cache(&state.config)
         .await?
         .into_iter()
         .map(Into::into)
         .collect();
     hlist.shrink_to_fit();
-    Ok(JsonBase::new(hlist).into())
+    Ok(JsonBase::new(hlist.into()).into())
 }
 
-#[derive(RwebResponse)]
+#[derive(UtoipaResponse)]
 #[response(
     description = "Fitbit Heartrate Update",
-    content = "html",
+    content = "text/html",
     status = "CREATED"
 )]
-struct FitbitHeartrateUpdateResponse(HtmlBase<StackString, Error>);
+#[rustfmt::skip]
+struct FitbitHeartrateUpdateResponse(HtmlBase::<StackString>);
 
-#[post("/garmin/fitbit/heartrate_cache")]
-pub async fn fitbit_heartrate_cache_update(
+#[utoipa::path(
+    post,
+    path = "/garmin/fitbit/heartrate_cache",
+    responses(FitbitHeartrateUpdateResponse, Error)
+)]
+async fn fitbit_heartrate_cache_update(
+    state: State<Arc<AppState>>,
+    _: LoggedUser,
     payload: Json<FitbitHeartrateUpdateRequest>,
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
 ) -> WarpResult<FitbitHeartrateUpdateResponse> {
-    let dates = payload.into_inner().merge_data(&state.config).await?;
+    let Json(payload) = payload;
+    let dates = payload.merge_data(&state.config).await?;
     Ok(HtmlBase::new(format_sstr!("Finished {dates:?}")).into())
 }
 
-#[derive(RwebResponse)]
+#[derive(ToSchema, Serialize, Into, From)]
+struct FitbitActivityList(Vec<FitbitActivityWrapper>);
+
+#[derive(UtoipaResponse)]
 #[response(description = "Fitbit Activities")]
-struct FitbitActivitiesResponse(JsonBase<Vec<FitbitActivityWrapper>, Error>);
+#[rustfmt::skip]
+struct FitbitActivitiesResponse(JsonBase::<FitbitActivityList>);
 
-#[derive(RwebResponse)]
-#[response(description = "Fitbit Callback", content = "html")]
-struct FitbitCallbackResponse(HtmlBase<StackString, Error>);
+#[derive(UtoipaResponse)]
+#[response(description = "Fitbit Callback", content = "text/html")]
+#[rustfmt::skip]
+struct FitbitCallbackResponse(HtmlBase::<StackString>);
 
-#[derive(Serialize, Deserialize, Schema)]
+#[derive(Serialize, Deserialize, ToSchema)]
 struct FitbitSyncRequest {
-    date: DateType,
+    date: Date,
 }
 
-#[derive(RwebResponse)]
-#[response(description = "Fitbit Sync", content = "html")]
-struct FitbitSyncResponse(HtmlBase<StackString, Error>);
+#[derive(UtoipaResponse)]
+#[response(description = "Fitbit Sync", content = "text/html")]
+#[rustfmt::skip]
+struct FitbitSyncResponse(HtmlBase::<StackString>);
 
-#[derive(RwebResponse)]
-#[response(description = "Fitbit Heartrate Statistics Plots", content = "html")]
-struct FitbitStatisticsPlotResponse(HtmlBase<StackString, Error>);
+#[derive(UtoipaResponse)]
+#[response(description = "Fitbit Heartrate Statistics Plots", content = "text/html")]
+#[rustfmt::skip]
+struct FitbitStatisticsPlotResponse(HtmlBase::<StackString>);
 
-#[get("/garmin/fitbit/heartrate_statistics_plots")]
-pub async fn heartrate_statistics_plots(
+#[utoipa::path(
+    get,
+    path = "/garmin/fitbit/heartrate_statistics_plots",
+    responses(FitbitStatisticsPlotResponse, Error)
+)]
+async fn heartrate_statistics_plots(
+    state: State<Arc<AppState>>,
     query: Query<ScaleMeasurementRequest>,
-    #[filter = "LoggedUser::filter"] user: LoggedUser,
-    #[data] state: AppState,
+    user: LoggedUser,
 ) -> WarpResult<FitbitStatisticsPlotResponse> {
-    let query: FitbitStatisticsPlotRequest = query.into_inner().into();
+    let Query(query) = query;
+    let query: FitbitStatisticsPlotRequest = query.into();
     let session = user.get_session(&state.client, &state.config).await?;
     let mut stats: Vec<FitbitStatisticsSummary> = FitbitStatisticsSummary::read_from_db(
         &state.db,
@@ -723,13 +803,18 @@ pub async fn heartrate_statistics_plots(
     Ok(HtmlBase::new(body).into())
 }
 
-#[get("/garmin/fitbit/heartrate_statistics_plots_demo")]
-pub async fn heartrate_statistics_plots_demo(
+#[utoipa::path(
+    get,
+    path = "/garmin/fitbit/heartrate_statistics_plots_demo",
+    responses(FitbitStatisticsPlotResponse, Error)
+)]
+async fn heartrate_statistics_plots_demo(
+    state: State<Arc<AppState>>,
     query: Query<ScaleMeasurementRequest>,
-    #[data] state: AppState,
-    #[filter = "optional_session"] session: Option<Session>,
+    session: Option<Session>,
 ) -> WarpResult<FitbitStatisticsPlotResponse> {
-    let mut query: FitbitStatisticsPlotRequest = query.into_inner().into();
+    let Query(query) = query;
+    let mut query: FitbitStatisticsPlotRequest = query.into();
     query.is_demo = true;
     let session = session.unwrap_or_default();
 
@@ -765,18 +850,24 @@ pub async fn heartrate_statistics_plots_demo(
     Ok(HtmlBase::new(body).into())
 }
 
-#[derive(RwebResponse)]
-#[response(description = "Scale Measurement Plots", content = "html")]
-struct ScaleMeasurementResponse(HtmlBase<StackString, Error>);
+#[derive(UtoipaResponse)]
+#[response(description = "Scale Measurement Plots", content = "text/html")]
+#[rustfmt::skip]
+struct ScaleMeasurementResponse(HtmlBase::<StackString>);
 
-#[get("/garmin/fitbit/plots")]
-pub async fn fitbit_plots(
+#[utoipa::path(
+    get,
+    path = "/garmin/fitbit/plots",
+    responses(ScaleMeasurementResponse, Error)
+)]
+async fn fitbit_plots(
+    state: State<Arc<AppState>>,
     query: Query<ScaleMeasurementRequest>,
-    #[filter = "LoggedUser::filter"] user: LoggedUser,
-    #[data] state: AppState,
+    user: LoggedUser,
 ) -> WarpResult<ScaleMeasurementResponse> {
     let session = user.get_session(&state.client, &state.config).await?;
-    let query: ScaleMeasurementPlotRequest = query.into_inner().into();
+    let Query(query) = query;
+    let query: ScaleMeasurementPlotRequest = query.into();
 
     let measurements = ScaleMeasurement::read_from_db(
         &state.db,
@@ -807,14 +898,19 @@ pub async fn fitbit_plots(
     Ok(HtmlBase::new(body).into())
 }
 
-#[get("/garmin/fitbit/plots_demo")]
-pub async fn fitbit_plots_demo(
+#[utoipa::path(
+    get,
+    path = "/garmin/fitbit/plots_demo",
+    responses(ScaleMeasurementResponse, Error)
+)]
+async fn fitbit_plots_demo(
+    state: State<Arc<AppState>>,
     query: Query<ScaleMeasurementRequest>,
-    #[data] state: AppState,
-    #[filter = "optional_session"] session: Option<Session>,
+    session: Option<Session>,
 ) -> WarpResult<ScaleMeasurementResponse> {
     let session = session.unwrap_or_default();
-    let mut query: ScaleMeasurementPlotRequest = query.into_inner().into();
+    let Query(query) = query;
+    let mut query: ScaleMeasurementPlotRequest = query.into();
     query.is_demo = true;
 
     let measurements = ScaleMeasurement::read_from_db(
@@ -846,17 +942,23 @@ pub async fn fitbit_plots_demo(
     Ok(HtmlBase::new(body).into())
 }
 
-#[derive(RwebResponse)]
-#[response(description = "Fitbit Heartrate Plots", content = "html")]
-struct FitbitHeartratePlotResponse(HtmlBase<StackString, Error>);
+#[derive(UtoipaResponse)]
+#[response(description = "Fitbit Heartrate Plots", content = "text/html")]
+#[rustfmt::skip]
+struct FitbitHeartratePlotResponse(HtmlBase::<StackString>);
 
-#[get("/garmin/fitbit/heartrate_plots")]
-pub async fn heartrate_plots(
+#[utoipa::path(
+    get,
+    path = "/garmin/fitbit/heartrate_plots",
+    responses(FitbitHeartratePlotResponse, Error)
+)]
+async fn heartrate_plots(
+    state: State<Arc<AppState>>,
     query: Query<ScaleMeasurementRequest>,
-    #[filter = "LoggedUser::filter"] user: LoggedUser,
-    #[data] state: AppState,
+    user: LoggedUser,
 ) -> WarpResult<FitbitHeartratePlotResponse> {
-    let query: FitbitHeartratePlotRequest = query.into_inner().into();
+    let Query(query) = query;
+    let query: FitbitHeartratePlotRequest = query.into();
     let session = user.get_session(&state.client, &state.config).await?;
 
     let parquet_values = fitbit_archive::get_number_of_heartrate_values(
@@ -913,13 +1015,18 @@ pub async fn heartrate_plots(
     Ok(HtmlBase::new(body).into())
 }
 
-#[get("/garmin/fitbit/heartrate_plots_demo")]
-pub async fn heartrate_plots_demo(
+#[utoipa::path(
+    get,
+    path = "/garmin/fitbit/heartrate_plots_demo",
+    responses(FitbitHeartratePlotResponse, Error)
+)]
+async fn heartrate_plots_demo(
+    state: State<Arc<AppState>>,
     query: Query<ScaleMeasurementRequest>,
-    #[data] state: AppState,
-    #[filter = "optional_session"] session: Option<Session>,
+    session: Option<Session>,
 ) -> WarpResult<FitbitHeartratePlotResponse> {
-    let mut query: FitbitHeartratePlotRequest = query.into_inner().into();
+    let Query(query) = query;
+    let mut query: FitbitHeartratePlotRequest = query.into();
     query.is_demo = true;
     let session = session.unwrap_or_default();
 
@@ -950,28 +1057,34 @@ pub async fn heartrate_plots_demo(
     Ok(HtmlBase::new(body).into())
 }
 
-#[derive(RwebResponse)]
+#[derive(UtoipaResponse)]
 #[response(description = "Fitbit Tcx Sync")]
-struct FitbitTcxSyncResponse(JsonBase<Vec<String>, Error>);
+#[rustfmt::skip]
+struct FitbitTcxSyncResponse(JsonBase::<Vec<String>>);
 
-#[derive(Debug, Serialize, Deserialize, Schema)]
-#[schema(component = "PaginatedScaleMeasurement")]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+// PaginatedScaleMeasurement")]
 struct PaginatedScaleMeasurement {
     pagination: Pagination,
     data: Vec<ScaleMeasurementWrapper>,
 }
 
-#[derive(RwebResponse)]
+#[derive(UtoipaResponse)]
 #[response(description = "Scale Measurements")]
-struct ScaleMeasurementsResponse(JsonBase<PaginatedScaleMeasurement, Error>);
+#[rustfmt::skip]
+struct ScaleMeasurementsResponse(JsonBase::<PaginatedScaleMeasurement>);
 
-#[get("/garmin/scale_measurements")]
-pub async fn scale_measurement(
+#[utoipa::path(
+    get,
+    path = "/garmin/scale_measurements",
+    responses(ScaleMeasurementsResponse, Error)
+)]
+async fn scale_measurement(
+    state: State<Arc<AppState>>,
     query: Query<ScaleMeasurementRequest>,
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
+    _: LoggedUser,
 ) -> WarpResult<ScaleMeasurementsResponse> {
-    let query = query.into_inner();
+    let Query(query) = query;
 
     let offset = query.offset.unwrap_or(0);
     let limit = query.limit.unwrap_or(10);
@@ -1004,21 +1117,26 @@ pub async fn scale_measurement(
     Ok(JsonBase::new(PaginatedScaleMeasurement { pagination, data }).into())
 }
 
-#[derive(RwebResponse)]
+#[derive(UtoipaResponse)]
 #[response(
     description = "Scale Measurements Update",
-    content = "html",
+    content = "text/html",
     status = "CREATED"
 )]
-struct ScaleMeasurementsUpdateResponse(HtmlBase<&'static str, Error>);
+#[rustfmt::skip]
+struct ScaleMeasurementsUpdateResponse(HtmlBase::<&'static str>);
 
-#[post("/garmin/scale_measurements")]
-pub async fn scale_measurement_update(
+#[utoipa::path(
+    post,
+    path = "/garmin/scale_measurements",
+    responses(ScaleMeasurementsUpdateResponse, Error)
+)]
+async fn scale_measurement_update(
+    state: State<Arc<AppState>>,
+    _: LoggedUser,
     measurements: Json<ScaleMeasurementUpdateRequest>,
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
 ) -> WarpResult<ScaleMeasurementsUpdateResponse> {
-    let measurements = measurements.into_inner();
+    let Json(measurements) = measurements;
     let mut measurements: Vec<_> = measurements
         .measurements
         .into_iter()
@@ -1031,35 +1149,40 @@ pub async fn scale_measurement_update(
     Ok(HtmlBase::new("Finished").into())
 }
 
-#[derive(Debug, Serialize, Deserialize, Schema)]
-#[schema(component = "ScaleMeasurementManualRequest")]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+// ScaleMeasurementManualRequest")]
 struct ScaleMeasurementManualRequest {
-    #[schema(description = "Weight in lbs", example = r#""189.0""#)]
+    // Weight in lbs", example = r#""189.0""#)]
     weight_in_lbs: f64,
-    #[schema(description = "Body fat percent", example = r#""20.3""#)]
+    // Body fat percent", example = r#""20.3""#)]
     body_fat_percent: f64,
-    #[schema(description = "Muscle mass in lbs", example = r#""153.0""#)]
+    // Muscle mass in lbs", example = r#""153.0""#)]
     muscle_mass_lbs: f64,
-    #[schema(description = "Body water percent", example = r#""63.0""#)]
+    // Body water percent", example = r#""63.0""#)]
     body_water_percent: f64,
-    #[schema(description = "Bone mass in lbs", example = r#""63.0""#)]
+    // Bone mass in lbs", example = r#""63.0""#)]
     bone_mass_lbs: f64,
 }
 
-#[derive(RwebResponse)]
+#[derive(UtoipaResponse)]
 #[response(
     description = "Scale Measurement Manual Input Post",
     status = "CREATED"
 )]
-struct ScaleMeasurementManualResponse(JsonBase<ScaleMeasurementWrapper, Error>);
+#[rustfmt::skip]
+struct ScaleMeasurementManualResponse(JsonBase::<ScaleMeasurementWrapper>);
 
-#[post("/garmin/scale_measurements/manual")]
-pub async fn scale_measurement_manual(
+#[utoipa::path(
+    post,
+    path = "/garmin/scale_measurements/manual",
+    responses(ScaleMeasurementManualResponse, Error)
+)]
+async fn scale_measurement_manual(
+    state: State<Arc<AppState>>,
+    _: LoggedUser,
     payload: Json<ScaleMeasurementManualRequest>,
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
 ) -> WarpResult<ScaleMeasurementManualResponse> {
-    let payload = payload.into_inner();
+    let Json(payload) = payload;
     let mut measurement = ScaleMeasurement::from_fit_plus(
         payload.weight_in_lbs,
         payload.body_fat_percent,
@@ -1074,7 +1197,7 @@ pub async fn scale_measurement_manual(
         .map_err(Into::<Error>::into)?;
     let local = DateTimeWrapper::local_tz();
     let date = measurement.datetime.to_timezone(local).date();
-    if let Ok(mut client) = GarminConnectClient::new(state.config) {
+    if let Ok(mut client) = GarminConnectClient::new(state.config.clone()) {
         if client.init().await.is_ok() && client.upload_weight(&measurement).await.is_ok() {
             if let Ok(weight) = client.get_weight(date).await {
                 for dwl in &weight.date_weight_list {
@@ -1096,56 +1219,74 @@ pub async fn scale_measurement_manual(
     Ok(JsonBase::new(measurement.into()).into())
 }
 
-#[derive(RwebResponse)]
+#[derive(UtoipaResponse)]
 #[response(description = "Scale Measurement Manual Input")]
-struct ScaleMeasurementManualInputResponse(HtmlBase<StackString, Error>);
+#[rustfmt::skip]
+struct ScaleMeasurementManualInputResponse(HtmlBase::<StackString>);
 
-#[post("/garmin/scale_measurements/manual/input")]
-pub async fn scale_measurement_manual_input(
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
+#[utoipa::path(
+    post,
+    path = "/garmin/scale_measurements/manual/input",
+    responses(ScaleMeasurementManualInputResponse, Error)
+)]
+async fn scale_measurement_manual_input(
+    _: LoggedUser,
 ) -> WarpResult<ScaleMeasurementManualInputResponse> {
     let body = scale_measurement_manual_input_body()?;
     Ok(HtmlBase::new(body.into()).into())
 }
 
-#[derive(RwebResponse)]
+#[derive(UtoipaResponse)]
 #[response(description = "Logged in User")]
-struct UserResponse(JsonBase<LoggedUser, Error>);
+#[rustfmt::skip]
+struct UserResponse(JsonBase::<LoggedUser>);
 
 #[allow(clippy::unused_async)]
-#[get("/garmin/user")]
-pub async fn user(#[filter = "LoggedUser::filter"] user: LoggedUser) -> WarpResult<UserResponse> {
-    Ok(JsonBase::new(user).into())
+#[utoipa::path(get, path = "/garmin/user", responses(UserResponse))]
+async fn user(user: LoggedUser) -> UserResponse {
+    JsonBase::new(user).into()
 }
 
-#[derive(RwebResponse)]
-#[response(description = "Add correction", content = "html", status = "CREATED")]
-struct AddGarminCorrectionResponse(HtmlBase<&'static str, Error>);
+#[derive(UtoipaResponse)]
+#[response(description = "Add correction", content = "text/html", status = "CREATED")]
+#[rustfmt::skip]
+struct AddGarminCorrectionResponse(HtmlBase::<&'static str>);
 
-#[post("/garmin/add_garmin_correction")]
-pub async fn add_garmin_correction(
+#[utoipa::path(
+    post,
+    path = "/garmin/add_garmin_correction",
+    responses(AddGarminCorrectionResponse, Error)
+)]
+async fn add_garmin_correction(
+    state: State<Arc<AppState>>,
+    _: LoggedUser,
     payload: Json<AddGarminCorrectionRequest>,
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
 ) -> WarpResult<AddGarminCorrectionResponse> {
-    payload.into_inner().add_corrections(&state.db).await?;
+    let Json(payload) = payload;
+    payload.add_corrections(&state.db).await?;
     Ok(HtmlBase::new("finised").into())
 }
 
-#[derive(RwebResponse)]
+#[derive(UtoipaResponse)]
 #[response(description = "Fitbit Activity Types")]
-struct FitbitActivityTypesResponse(JsonBase<FitbitActivityTypesWrapper, Error>);
+#[rustfmt::skip]
+struct FitbitActivityTypesResponse(JsonBase::<FitbitActivityTypesWrapper>);
 
-#[derive(RwebResponse)]
+#[derive(UtoipaResponse)]
 #[response(description = "Strava Athlete")]
-struct StravaAthleteResponse(HtmlBase<StackString, Error>);
+#[rustfmt::skip]
+struct StravaAthleteResponse(HtmlBase::<StackString>);
 
-#[get("/garmin/strava/athlete")]
-pub async fn strava_athlete(
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
+#[utoipa::path(
+    get,
+    path = "/garmin/strava/athlete",
+    responses(StravaAthleteResponse, Error)
+)]
+async fn strava_athlete(
+    state: State<Arc<AppState>>,
+    _: LoggedUser,
 ) -> WarpResult<StravaAthleteResponse> {
-    let client = StravaClient::with_auth(state.config)
+    let client = StravaClient::with_auth(state.config.clone())
         .await
         .map_err(Into::<Error>::into)?;
     let result = client
@@ -1156,28 +1297,34 @@ pub async fn strava_athlete(
     Ok(HtmlBase::new(body).into())
 }
 
-#[derive(RwebResponse)]
+#[derive(UtoipaResponse)]
 #[response(description = "Fitbit Profile")]
-struct FitbitProfileResponse(HtmlBase<StackString, Error>);
+#[rustfmt::skip]
+struct FitbitProfileResponse(HtmlBase::<StackString>);
 
-#[derive(Debug, Serialize, Deserialize, Schema)]
-#[schema(component = "PaginatedGarminConnectActivity")]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+// PaginatedGarminConnectActivity")]
 struct PaginatedGarminConnectActivity {
     pagination: Pagination,
     data: Vec<GarminConnectActivityWrapper>,
 }
 
-#[derive(RwebResponse)]
+#[derive(UtoipaResponse)]
 #[response(description = "Garmin Connect Activities")]
-struct GarminConnectActivitiesResponse(JsonBase<PaginatedGarminConnectActivity, Error>);
+#[rustfmt::skip]
+struct GarminConnectActivitiesResponse(JsonBase::<PaginatedGarminConnectActivity>);
 
-#[get("/garmin/garmin_connect_activities_db")]
-pub async fn garmin_connect_activities_db(
+#[utoipa::path(
+    get,
+    path = "/garmin/garmin_connect_activities_db",
+    responses(GarminConnectActivitiesResponse, Error)
+)]
+async fn garmin_connect_activities_db(
+    state: State<Arc<AppState>>,
     query: Query<StravaActivitiesRequest>,
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
+    _: LoggedUser,
 ) -> WarpResult<GarminConnectActivitiesResponse> {
-    let query = query.into_inner();
+    let Query(query) = query;
     let offset = query.offset.unwrap_or(0);
     let limit = query.limit.unwrap_or(10);
     let start_date = query.start_date.map(Into::into);
@@ -1210,21 +1357,26 @@ pub async fn garmin_connect_activities_db(
     Ok(JsonBase::new(PaginatedGarminConnectActivity { pagination, data }).into())
 }
 
-#[derive(RwebResponse)]
+#[derive(UtoipaResponse)]
 #[response(
     description = "Garmin Connect Activities",
-    content = "html",
+    content = "text/html",
     status = "CREATED"
 )]
-struct GarminConnectActivitiesUpdateResponse(HtmlBase<StackString, Error>);
+#[rustfmt::skip]
+struct GarminConnectActivitiesUpdateResponse(HtmlBase::<StackString>);
 
-#[post("/garmin/garmin_connect_activities_db")]
-pub async fn garmin_connect_activities_db_update(
+#[utoipa::path(
+    post,
+    path = "/garmin/garmin_connect_activities_db",
+    responses(GarminConnectActivitiesUpdateResponse, Error)
+)]
+async fn garmin_connect_activities_db_update(
+    state: State<Arc<AppState>>,
+    _: LoggedUser,
     payload: Json<GarminConnectActivitiesDBUpdateRequest>,
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
 ) -> WarpResult<GarminConnectActivitiesUpdateResponse> {
-    let payload = payload.into_inner();
+    let Json(payload) = payload;
     let mut updates: Vec<_> = payload.updates.into_iter().map(Into::into).collect();
     updates.shrink_to_fit();
     let body: StackString = GarminConnectActivity::upsert_activities(&updates, &state.db)
@@ -1235,24 +1387,29 @@ pub async fn garmin_connect_activities_db_update(
     Ok(HtmlBase::new(body).into())
 }
 
-#[derive(Debug, Serialize, Deserialize, Schema)]
-#[schema(component = "PaginatedFitbitActivity")]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+// PaginatedFitbitActivity")]
 struct PaginatedFitbitActivity {
     pagination: Pagination,
     data: Vec<FitbitActivityWrapper>,
 }
 
-#[derive(RwebResponse)]
+#[derive(UtoipaResponse)]
 #[response(description = "Fitbit Activities")]
-struct FitbitActivitiesDBResponse(JsonBase<PaginatedFitbitActivity, Error>);
+#[rustfmt::skip]
+struct FitbitActivitiesDBResponse(JsonBase::<PaginatedFitbitActivity>);
 
-#[get("/garmin/fitbit/fitbit_activities_db")]
-pub async fn fitbit_activities_db(
+#[utoipa::path(
+    get,
+    path = "/garmin/fitbit/fitbit_activities_db",
+    responses(FitbitActivitiesDBResponse, Error)
+)]
+async fn fitbit_activities_db(
+    state: State<Arc<AppState>>,
     query: Query<StravaActivitiesRequest>,
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
+    _: LoggedUser,
 ) -> WarpResult<FitbitActivitiesDBResponse> {
-    let query = query.into_inner();
+    let Query(query) = query;
 
     let offset = query.offset.unwrap_or(0);
     let limit = query.limit.unwrap_or(10);
@@ -1279,26 +1436,31 @@ pub async fn fitbit_activities_db(
     Ok(JsonBase::new(PaginatedFitbitActivity { pagination, data }).into())
 }
 
-#[derive(Debug, Serialize, Deserialize, Schema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 struct FitbitActivitiesDBUpdateRequest {
     updates: Vec<FitbitActivityWrapper>,
 }
 
-#[derive(RwebResponse)]
+#[derive(UtoipaResponse)]
 #[response(
     description = "Fitbit Activities Update",
-    content = "html",
+    content = "text/html",
     status = "CREATED"
 )]
-struct FitbitActivitiesDBUpdateResponse(HtmlBase<StackString, Error>);
+#[rustfmt::skip]
+struct FitbitActivitiesDBUpdateResponse(HtmlBase::<StackString>);
 
-#[post("/garmin/fitbit/fitbit_activities_db")]
-pub async fn fitbit_activities_db_update(
+#[utoipa::path(
+    post,
+    path = "/garmin/fitbit/fitbit_activities_db",
+    responses(FitbitActivitiesDBUpdateResponse, Error)
+)]
+async fn fitbit_activities_db_update(
+    state: State<Arc<AppState>>,
+    _: LoggedUser,
     payload: Json<FitbitActivitiesDBUpdateRequest>,
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
 ) -> WarpResult<FitbitActivitiesDBUpdateResponse> {
-    let payload = payload.into_inner();
+    let Json(payload) = payload;
     let mut updates: Vec<_> = payload.updates.into_iter().map(Into::into).collect();
     updates.shrink_to_fit();
     let body = FitbitActivity::upsert_activities(&updates, &state.db)
@@ -1312,24 +1474,29 @@ pub async fn fitbit_activities_db_update(
     Ok(HtmlBase::new(body).into())
 }
 
-#[derive(Debug, Serialize, Deserialize, Schema)]
-#[schema(component = "PaginatedFitbitStatisticsSummary")]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+// PaginatedFitbitStatisticsSummary")]
 struct PaginatedFitbitStatisticsSummary {
     pagination: Pagination,
     data: Vec<FitbitStatisticsSummaryWrapper>,
 }
 
-#[derive(RwebResponse)]
+#[derive(UtoipaResponse)]
 #[response(description = "Heartrate Statistics")]
-struct HeartrateStatisticsResponse(JsonBase<PaginatedFitbitStatisticsSummary, Error>);
+#[rustfmt::skip]
+struct HeartrateStatisticsResponse(JsonBase::<PaginatedFitbitStatisticsSummary>);
 
-#[get("/garmin/fitbit/heartrate_statistics_summary_db")]
-pub async fn heartrate_statistics_summary_db(
+#[utoipa::path(
+    get,
+    path = "/garmin/fitbit/heartrate_statistics_summary_db",
+    responses(HeartrateStatisticsResponse, Error)
+)]
+async fn heartrate_statistics_summary_db(
+    state: State<Arc<AppState>>,
     query: Query<StravaActivitiesRequest>,
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
+    _: LoggedUser,
 ) -> WarpResult<HeartrateStatisticsResponse> {
-    let query = query.into_inner();
+    let Query(query) = query;
 
     let offset = query.offset.unwrap_or(0);
     let limit = query.limit.unwrap_or(10);
@@ -1366,41 +1533,42 @@ pub async fn heartrate_statistics_summary_db(
     Ok(JsonBase::new(PaginatedFitbitStatisticsSummary { pagination, data }).into())
 }
 
-#[derive(RwebResponse)]
+#[derive(UtoipaResponse)]
 #[response(
     description = "Heartrate Statistics Update",
-    content = "html",
+    content = "text/html",
     status = "CREATED"
 )]
-struct HeartrateStatisticsUpdateResponse(HtmlBase<StackString, Error>);
+#[rustfmt::skip]
+struct HeartrateStatisticsUpdateResponse(HtmlBase::<StackString>);
 
-#[post("/garmin/fitbit/heartrate_statistics_summary_db")]
-pub async fn heartrate_statistics_summary_db_update(
+#[utoipa::path(
+    post,
+    path = "/garmin/fitbit/heartrate_statistics_summary_db",
+    responses(HeartrateStatisticsUpdateResponse, Error)
+)]
+async fn heartrate_statistics_summary_db_update(
+    state: State<Arc<AppState>>,
+    _: LoggedUser,
     payload: Json<HeartrateStatisticsSummaryDBUpdateRequest>,
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
 ) -> WarpResult<HeartrateStatisticsUpdateResponse> {
-    let body = payload
-        .into_inner()
-        .process_updates(&state.db)
-        .await?
-        .join("\n")
-        .into();
+    let Json(payload) = payload;
+    let body = payload.process_updates(&state.db).await?.join("\n").into();
     Ok(HtmlBase::new(body).into())
 }
 
-#[derive(Serialize, Deserialize, Schema)]
-#[schema(component = "RaceResultPlotRequest")]
+#[derive(Serialize, Deserialize, ToSchema)]
+// RaceResultPlotRequest")]
 struct RaceResultPlotRequest {
-    #[schema(description = "Race Type")]
+    // Race Type")]
     race_type: RaceTypeWrapper,
-    #[schema(description = "Demo Flag")]
+    // Demo Flag")]
     demo: Option<bool>,
 }
 
 async fn race_result_plot_impl(
     req: RaceResultPlotRequest,
-    state: AppState,
+    state: &AppState,
     session: Session,
 ) -> Result<StackString, Error> {
     let model = RaceResultAnalysis::run_analysis(req.race_type.into(), &state.db).await?;
@@ -1419,52 +1587,66 @@ async fn race_result_plot_impl(
     Ok(body)
 }
 
-#[derive(RwebResponse)]
-#[response(description = "Race Result Plot", content = "html")]
-struct RaceResultPlotResponse(HtmlBase<StackString, Error>);
+#[derive(UtoipaResponse)]
+#[response(description = "Race Result Plot", content = "text/html")]
+#[rustfmt::skip]
+struct RaceResultPlotResponse(HtmlBase::<StackString>);
 
-#[get("/garmin/race_result_plot")]
-pub async fn race_result_plot(
+#[utoipa::path(
+    get,
+    path = "/garmin/race_result_plot",
+    responses(RaceResultPlotResponse, Error)
+)]
+async fn race_result_plot(
+    state: State<Arc<AppState>>,
     query: Query<RaceResultPlotRequest>,
-    #[filter = "LoggedUser::filter"] user: LoggedUser,
-    #[data] state: AppState,
+    user: LoggedUser,
 ) -> WarpResult<RaceResultPlotResponse> {
-    let mut query = query.into_inner();
+    let Query(mut query) = query;
     query.demo = Some(false);
     let session = user.get_session(&state.client, &state.config).await?;
-    let body = race_result_plot_impl(query, state, session).await?;
+    let body = race_result_plot_impl(query, &state, session).await?;
     Ok(HtmlBase::new(body).into())
 }
 
-#[get("/garmin/race_result_plot_demo")]
-pub async fn race_result_plot_demo(
+#[utoipa::path(
+    get,
+    path = "/garmin/race_result_plot_demo",
+    responses(RaceResultPlotResponse, Error)
+)]
+async fn race_result_plot_demo(
     query: Query<RaceResultPlotRequest>,
-    #[data] state: AppState,
-    #[filter = "optional_session"] session: Option<Session>,
+    state: State<Arc<AppState>>,
+    session: Option<Session>,
 ) -> WarpResult<RaceResultPlotResponse> {
-    let mut query = query.into_inner();
+    let Query(mut query) = query;
     query.demo = Some(true);
     let session = session.unwrap_or_default();
-    let body = race_result_plot_impl(query, state, session).await?;
+    let body = race_result_plot_impl(query, &state, session).await?;
     Ok(HtmlBase::new(body).into())
 }
 
-#[derive(Serialize, Deserialize, Schema)]
+#[derive(Serialize, Deserialize, ToSchema)]
 struct RaceResultFlagRequest {
-    id: UuidWrapper,
+    id: Uuid,
 }
 
-#[derive(RwebResponse)]
-#[response(description = "Race Result Plot", content = "html")]
-struct RaceResultFlagResponse(HtmlBase<StackString, Error>);
+#[derive(UtoipaResponse)]
+#[response(description = "Race Result Plot", content = "text/html")]
+#[rustfmt::skip]
+struct RaceResultFlagResponse(HtmlBase::<StackString>);
 
-#[get("/garmin/race_result_flag")]
-pub async fn race_result_flag(
+#[utoipa::path(
+    get,
+    path = "/garmin/race_result_flag",
+    responses(RaceResultFlagResponse, Error)
+)]
+async fn race_result_flag(
     query: Query<RaceResultFlagRequest>,
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
+    _: LoggedUser,
+    state: State<Arc<AppState>>,
 ) -> WarpResult<RaceResultFlagResponse> {
-    let query = query.into_inner();
+    let Query(query) = query;
 
     let result = if let Some(mut result) = RaceResults::get_result_by_id(query.id.into(), &state.db)
         .await
@@ -1483,22 +1665,27 @@ pub async fn race_result_flag(
     Ok(HtmlBase::new(result).into())
 }
 
-#[derive(Serialize, Deserialize, Schema)]
+#[derive(Serialize, Deserialize, ToSchema)]
 struct RaceResultImportRequest {
     filename: StackString,
 }
 
-#[derive(RwebResponse)]
-#[response(description = "Race Result Import", content = "html")]
-struct RaceResultImportResponse(HtmlBase<&'static str, Error>);
+#[derive(UtoipaResponse)]
+#[response(description = "Race Result Import", content = "text/html")]
+#[rustfmt::skip]
+struct RaceResultImportResponse(HtmlBase::<&'static str>);
 
-#[get("/garmin/race_result_import")]
-pub async fn race_result_import(
+#[utoipa::path(
+    get,
+    path = "/garmin/race_result_import",
+    responses(RaceResultImportResponse, Error)
+)]
+async fn race_result_import(
     query: Query<RaceResultImportRequest>,
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
+    _: LoggedUser,
+    state: State<Arc<AppState>>,
 ) -> WarpResult<RaceResultImportResponse> {
-    let query = query.into_inner();
+    let Query(query) = query;
 
     if let Some(summary) = GarminSummary::get_by_filename(&state.db, query.filename.as_str())
         .await
@@ -1528,23 +1715,31 @@ pub async fn race_result_import(
     Ok(HtmlBase::new("Finished").into())
 }
 
-#[derive(Serialize, Deserialize, Schema)]
+#[derive(Serialize, Deserialize, ToSchema)]
 struct RaceResultsDBRequest {
-    #[schema(description = "Race Type")]
+    // Race Type")]
     race_type: Option<RaceTypeWrapper>,
 }
 
-#[derive(RwebResponse)]
-#[response(description = "Race Results")]
-struct RaceResultsResponse(JsonBase<Vec<RaceResultsWrapper>, Error>);
+#[derive(ToSchema, Serialize, Into, From)]
+struct RaceResultsList(Vec<RaceResultsWrapper>);
 
-#[get("/garmin/race_results_db")]
-pub async fn race_results_db(
+#[derive(UtoipaResponse)]
+#[response(description = "Race Results")]
+#[rustfmt::skip]
+struct RaceResultsResponse(JsonBase::<RaceResultsList>);
+
+#[utoipa::path(
+    get,
+    path = "/garmin/race_results_db",
+    responses(RaceResultsResponse, Error)
+)]
+async fn race_results_db(
     query: Query<RaceResultsDBRequest>,
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
+    _: LoggedUser,
+    state: State<Arc<AppState>>,
 ) -> WarpResult<RaceResultsResponse> {
-    let query = query.into_inner();
+    let Query(query) = query;
 
     let race_type = query.race_type.map_or(RaceType::Personal, Into::into);
     let mut results: Vec<_> = RaceResults::get_results_by_type(race_type, &state.db)
@@ -1556,30 +1751,35 @@ pub async fn race_results_db(
         .map_err(Into::<Error>::into)?;
     results.shrink_to_fit();
 
-    Ok(JsonBase::new(results).into())
+    Ok(JsonBase::new(results.into()).into())
 }
 
-#[derive(Serialize, Deserialize, Schema)]
-#[schema(component = "RaceResultsDBUpdateRequest")]
+#[derive(Serialize, Deserialize, ToSchema)]
+// RaceResultsDBUpdateRequest")]
 struct RaceResultsDBUpdateRequest {
     updates: Vec<RaceResultsWrapper>,
 }
 
-#[derive(RwebResponse)]
+#[derive(UtoipaResponse)]
 #[response(
     description = "Race Results Update",
     status = "CREATED",
-    content = "html"
+    content = "text/html"
 )]
-struct RaceResultsUpdateResponse(HtmlBase<&'static str, Error>);
+#[rustfmt::skip]
+struct RaceResultsUpdateResponse(HtmlBase::<&'static str>);
 
-#[post("/garmin/race_results_db")]
-pub async fn race_results_db_update(
+#[utoipa::path(
+    post,
+    path = "/garmin/race_results_db",
+    responses(RaceResultsUpdateResponse, Error)
+)]
+async fn race_results_db_update(
+    state: State<Arc<AppState>>,
+    _: LoggedUser,
     payload: Json<RaceResultsDBUpdateRequest>,
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
 ) -> WarpResult<RaceResultsUpdateResponse> {
-    let payload = payload.into_inner();
+    let Json(payload) = payload;
 
     let futures = payload.updates.into_iter().map(|result| {
         let pool = state.db.clone();
@@ -1591,17 +1791,88 @@ pub async fn race_results_db_update(
     Ok(HtmlBase::new("Finished").into())
 }
 
-#[derive(RwebResponse)]
+#[derive(UtoipaResponse)]
 #[response(description = "Garmin Connect Profile")]
-struct GarminConnectProfileResponse(HtmlBase<StackString, Error>);
+#[rustfmt::skip]
+struct GarminConnectProfileResponse(HtmlBase::<StackString>);
 
-#[get("/garmin/connect/profile")]
-pub async fn garmin_connect_profile(
-    #[filter = "LoggedUser::filter"] _: LoggedUser,
-    #[data] state: AppState,
+#[utoipa::path(
+    get,
+    path = "/garmin/connect/profile",
+    responses(GarminConnectProfileResponse, Error)
+)]
+async fn garmin_connect_profile(
+    _: LoggedUser,
+    state: State<Arc<AppState>>,
 ) -> WarpResult<GarminConnectProfileResponse> {
-    let mut client = GarminConnectClient::new(state.config).map_err(Into::<Error>::into)?;
+    let mut client = GarminConnectClient::new(state.config.clone()).map_err(Into::<Error>::into)?;
     let profile = client.init().await.map_err(Into::<Error>::into)?;
     let body = garmin_connect_profile_body(profile)?.into();
     Ok(HtmlBase::new(body).into())
 }
+
+pub fn get_garmin_path(app: &AppState) -> OpenApiRouter {
+    let app = Arc::new(app.clone());
+
+    OpenApiRouter::new()
+        .routes(routes!(garmin))
+        .routes(routes!(garmin_demo))
+        .routes(routes!(garmin_upload))
+        .routes(routes!(add_garmin_correction))
+        .routes(routes!(garmin_connect_activities_db))
+        .routes(routes!(garmin_connect_activities_db_update))
+        .routes(routes!(garmin_sync))
+        .routes(routes!(strava_sync))
+        .routes(routes!(fitbit_heartrate_cache))
+        .routes(routes!(fitbit_heartrate_cache_update))
+        .routes(routes!(fitbit_plots))
+        .routes(routes!(fitbit_plots_demo))
+        .routes(routes!(heartrate_statistics_plots))
+        .routes(routes!(heartrate_statistics_plots_demo))
+        .routes(routes!(heartrate_plots))
+        .routes(routes!(heartrate_plots_demo))
+        .routes(routes!(fitbit_activities_db))
+        .routes(routes!(fitbit_activities_db_update))
+        .routes(routes!(heartrate_statistics_summary_db))
+        .routes(routes!(heartrate_statistics_summary_db_update))
+        .routes(routes!(scale_measurement))
+        .routes(routes!(scale_measurement_update))
+        .routes(routes!(scale_measurement_manual))
+        .routes(routes!(scale_measurement_manual_input))
+        .routes(routes!(strava_auth))
+        .routes(routes!(strava_refresh))
+        .routes(routes!(strava_callback))
+        .routes(routes!(strava_activities))
+        .routes(routes!(strava_athlete))
+        .routes(routes!(garmin_connect_profile))
+        .routes(routes!(strava_activities_db))
+        .routes(routes!(strava_activities_db_update))
+        .routes(routes!(strava_upload))
+        .routes(routes!(strava_update))
+        .routes(routes!(strava_create))
+        .routes(routes!(user))
+        .routes(routes!(race_result_plot))
+        .routes(routes!(race_result_flag))
+        .routes(routes!(race_result_import))
+        .routes(routes!(race_result_plot_demo))
+        .routes(routes!(race_results_db))
+        .routes(routes!(race_results_db_update))
+        .routes(routes!(garmin_scripts_js))
+        .routes(routes!(garmin_scripts_demo_js))
+        .routes(routes!(line_plot_js))
+        .routes(routes!(scatter_plot_js))
+        .routes(routes!(scatter_plot_with_lines_js))
+        .routes(routes!(time_series_js))
+        .routes(routes!(initialize_map_js))
+        .with_state(app)
+}
+
+#[derive(OpenApi)]
+#[openapi(
+    info(
+        title = "Fitness Activity WebApp",
+        description = "Web Frontend for Fitness Activities",
+    ),
+    components(schemas(LoggedUser))
+)]
+pub struct ApiDoc;

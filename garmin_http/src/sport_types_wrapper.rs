@@ -1,12 +1,12 @@
-use rweb::Schema;
 use serde::{de::Deserializer, ser::Serializer, Deserialize, Serialize};
 use stack_string::StackString;
 use std::{convert::TryFrom, fmt, str::FromStr};
+use utoipa::ToSchema;
 
 use garmin_lib::errors::GarminError as Error;
 use garmin_utils::sport_types::SportTypes;
 
-#[derive(Serialize, Debug, Clone, Copy, Hash, Eq, PartialEq, Schema, Deserialize)]
+#[derive(Serialize, Debug, Clone, Copy, Hash, Eq, PartialEq, ToSchema, Deserialize)]
 #[serde(into = "StackString", try_from = "StackString")]
 pub enum SportTypesWrapper {
     #[serde(rename = "running")]

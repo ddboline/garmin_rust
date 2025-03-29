@@ -2,14 +2,18 @@ pub use authorized_users::{
     get_random_key, get_secrets, token::Token, AuthorizedUser as ExternalUser, AUTHORIZED_USERS,
     JWT_SECRET, KEY_LENGTH, LOGIN_HTML, SECRET_KEY,
 };
+use axum::{
+    extract::{FromRequestParts, OptionalFromRequestParts},
+    http::request::Parts,
+};
+use axum_extra::extract::CookieJar;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use cookie::Cookie;
+use derive_more::{From, Into};
 use futures::TryStreamExt;
 use log::debug;
 use maplit::hashmap;
 use reqwest::Client;
-use rweb::{filters::cookie::cookie, Filter, Rejection, Schema};
-use rweb_helper::{DateTimeType, UuidWrapper};
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
 use std::{
@@ -20,6 +24,7 @@ use std::{
 };
 use time::OffsetDateTime;
 use url::Url;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 use garmin_lib::{errors::GarminError, garmin_config::GarminConfig};
@@ -27,39 +32,42 @@ use garmin_utils::{garmin_util::AuthorizedUsers, pgpool::PgPool};
 
 use crate::errors::ServiceError as Error;
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Schema)]
-#[schema(component = "LoggedUser")]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone, ToSchema)]
+// LoggedUser
 pub struct LoggedUser {
-    #[schema(description = "Email Address")]
+    // Email Address
     pub email: StackString,
-    #[schema(description = "Session UUID")]
-    pub session: UuidWrapper,
-    #[schema(description = "Secret Key")]
+    // Session UUID
+    pub session: Uuid,
+    // Secret Key
     pub secret_key: StackString,
-    #[schema(description = "User Created At")]
-    pub created_at: DateTimeType,
+    // User Created At
+    pub created_at: OffsetDateTime,
 }
 
 impl LoggedUser {
     /// # Errors
     /// Returns error if `session_id` does not match `self.session`
-    pub fn verify_session_id(&self, session_id: Uuid) -> Result<(), Error> {
+    pub fn verify_session_id(self, session_id: Uuid) -> Result<Self, Error> {
         if self.session == session_id {
-            Ok(())
+            Ok(self)
         } else {
             Err(Error::Unauthorized)
         }
     }
 
-    #[must_use]
-    pub fn filter() -> impl Filter<Extract = (Self,), Error = Rejection> + Copy {
-        cookie("session-id")
-            .and(cookie("jwt"))
-            .and_then(|id: Uuid, user: Self| async move {
-                user.verify_session_id(id)
-                    .map(|_| user)
-                    .map_err(rweb::reject::custom)
-            })
+    fn extract_user_from_cookies(cookie_jar: &CookieJar) -> Option<LoggedUser> {
+        let session_id: Uuid = StackString::from_display(cookie_jar.get("session-id")?.encoded())
+            .strip_prefix("session-id=")?
+            .parse()
+            .ok()?;
+        debug!("session_id {session_id:?}");
+        let user: LoggedUser = StackString::from_display(cookie_jar.get("jwt")?.encoded())
+            .strip_prefix("jwt=")?
+            .parse()
+            .ok()?;
+        debug!("user {user:?}");
+        user.verify_session_id(session_id).ok()
     }
 
     /// # Errors
@@ -153,7 +161,26 @@ impl FromStr for LoggedUser {
     }
 }
 
-#[derive(Default, Serialize, Deserialize, Debug)]
+impl<S> FromRequestParts<S> for LoggedUser
+where
+    S: Send + Sync,
+{
+    type Rejection = Error;
+
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let cookie_jar = CookieJar::from_request_parts(parts, state)
+            .await
+            .expect("extract failed");
+        debug!("cookie_jar {cookie_jar:?}");
+        let user = LoggedUser::extract_user_from_cookies(&cookie_jar)
+            .ok_or_else(|| Error::Unauthorized)?;
+        Ok(user)
+    }
+}
+
+#[derive(
+    Into, From, Debug, Serialize, Deserialize, PartialEq, Eq, Clone, ToSchema, Hash, Default,
+)]
 pub struct Session {
     pub history: Vec<StackString>,
 }
@@ -166,6 +193,21 @@ impl FromStr for Session {
         let mut history: Vec<_> = history_str.split(';').map(Into::into).collect();
         history.shrink_to_fit();
         Ok(Session { history })
+    }
+}
+
+impl<S> OptionalFromRequestParts<S> for Session
+where
+    S: Send + Sync,
+{
+    type Rejection = Error;
+
+    async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Option<Self>, Self::Rejection> {
+        let Some(value) = parts.headers.get("session") else {
+            return Ok(None);
+        };
+        let session: Session = value.to_str()?.parse()?;
+        Ok(Some(session))
     }
 }
 

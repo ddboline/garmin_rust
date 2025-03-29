@@ -20,14 +20,16 @@ pub mod logged_user;
 pub mod sport_types_wrapper;
 
 use derive_more::{From, Into};
-use rweb::{
-    openapi::{self, ComponentDescriptor, ComponentOrInlineSchema, Entity},
-    Schema,
-};
-use rweb_helper::{derive_rweb_schema, DateTimeType, DateType, UuidWrapper};
 use serde::{Deserialize, Serialize};
 use stack_string::StackString;
-use std::{borrow::Cow, collections::HashMap};
+use std::collections::HashMap;
+use time::{Date, OffsetDateTime};
+use utoipa::{
+    openapi::{ObjectBuilder, Type},
+    PartialSchema, ToSchema,
+};
+use utoipa_helper::derive_utoipa_schema;
+use uuid::Uuid;
 
 use fitbit_lib::{
     fitbit_heartrate::{FitbitBodyWeightFat, FitbitHeartRate},
@@ -46,212 +48,216 @@ use crate::sport_types_wrapper::SportTypesWrapper;
 #[derive(Into, From, Debug, PartialEq, Copy, Clone, Eq, Serialize, Deserialize)]
 pub struct StravaTimeZoneWrapper(StravaTimeZone);
 
-impl Entity for StravaTimeZoneWrapper {
-    fn type_name() -> Cow<'static, str> {
-        "timezone".into()
+impl PartialSchema for StravaTimeZoneWrapper {
+    fn schema() -> utoipa::openapi::RefOr<utoipa::openapi::schema::Schema> {
+        ObjectBuilder::new()
+            .format(Some(utoipa::openapi::SchemaFormat::Custom(
+                "timezone".into(),
+            )))
+            .schema_type(Type::String)
+            .build()
+            .into()
     }
-    fn describe(_: &mut ComponentDescriptor) -> ComponentOrInlineSchema {
-        use rweb::openapi::Schema;
-        ComponentOrInlineSchema::Inline(Schema {
-            schema_type: Some(openapi::Type::String),
-            format: "timezone".into(),
-            ..Schema::default()
-        })
+}
+
+impl ToSchema for StravaTimeZoneWrapper {
+    fn name() -> std::borrow::Cow<'static, str> {
+        "timezone".into()
     }
 }
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, Into, From, Eq)]
 pub struct FitbitHeartRateWrapper(FitbitHeartRate);
 
-derive_rweb_schema!(FitbitHeartRateWrapper, _FitbitHeartRateWrapper);
+derive_utoipa_schema!(FitbitHeartRateWrapper, _FitbitHeartRateWrapper);
 
 #[allow(dead_code)]
-#[derive(Schema)]
-#[schema(component = "FitbitHeartrate")]
+#[derive(ToSchema)]
+// FitbitHeartrate")]
 struct _FitbitHeartRateWrapper {
-    #[schema(description = "DateTime")]
-    datetime: DateTimeType,
-    #[schema(description = "Heartrate Value (bpm)")]
+    // DateTime")]
+    datetime: OffsetDateTime,
+    // Heartrate Value (bpm)")]
     value: i32,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Into, From)]
 pub struct StravaActivityWrapper(StravaActivity);
 
-derive_rweb_schema!(StravaActivityWrapper, _StravaActivityWrapper);
+derive_utoipa_schema!(StravaActivityWrapper, _StravaActivityWrapper);
 
 #[allow(dead_code)]
-#[derive(Schema)]
-#[schema(component = "StravaActivity")]
+#[derive(ToSchema)]
+// StravaActivity")]
 struct _StravaActivityWrapper {
-    #[schema(description = "Activity Name")]
+    // Activity Name")]
     name: StackString,
-    #[schema(description = "Start Date")]
-    start_date: DateTimeType,
-    #[schema(description = "Activity ID")]
+    // Start Date")]
+    start_date: OffsetDateTime,
+    // Activity ID")]
     id: i64,
-    #[schema(description = "Distance (m)")]
+    // Distance (m)")]
     distance: Option<f64>,
-    #[schema(description = "Moving Time (s)")]
+    // Moving Time (s)")]
     moving_time: Option<i64>,
-    #[schema(description = "Elapsed Time (s)")]
+    // Elapsed Time (s)")]
     elapsed_time: i64,
-    #[schema(description = "Total Elevation Gain (m)")]
+    // Total Elevation Gain (m)")]
     total_elevation_gain: Option<f64>,
-    #[schema(description = "Maximum Elevation")]
+    // Maximum Elevation")]
     elev_high: Option<f64>,
-    #[schema(description = "Minimum Elevation")]
+    // Minimum Elevation")]
     elev_low: Option<f64>,
-    #[schema(description = "Activity Type")]
+    // Activity Type")]
     activity_type: SportTypesWrapper,
-    #[schema(description = "Time Zone")]
+    // Time Zone")]
     timezone: StravaTimeZoneWrapper,
 }
 
 #[derive(Serialize, Deserialize, Debug, Into, From)]
 pub struct FitbitBodyWeightFatWrapper(FitbitBodyWeightFat);
 
-derive_rweb_schema!(FitbitBodyWeightFatWrapper, _FitbitBodyWeightFatWrapper);
+derive_utoipa_schema!(FitbitBodyWeightFatWrapper, _FitbitBodyWeightFatWrapper);
 
 #[allow(dead_code)]
-#[derive(Schema)]
-#[schema(component = "FitbitBodyWeightFat")]
+#[derive(ToSchema)]
+// FitbitBodyWeightFat")]
 struct _FitbitBodyWeightFatWrapper {
-    #[schema(description = "DateTime")]
-    datetime: DateTimeType,
-    #[schema(description = "Weight (lbs)")]
+    // DateTime")]
+    datetime: OffsetDateTime,
+    // Weight (lbs)")]
     weight: f64,
-    #[schema(description = "Fat %")]
+    // Fat %")]
     fat: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Copy, PartialEq, Into, From)]
 pub struct ScaleMeasurementWrapper(ScaleMeasurement);
 
-derive_rweb_schema!(ScaleMeasurementWrapper, _ScaleMeasurementWrapper);
+derive_utoipa_schema!(ScaleMeasurementWrapper, _ScaleMeasurementWrapper);
 
 #[allow(dead_code)]
-#[derive(Schema)]
-#[schema(component = "ScaleMeasurement")]
+#[derive(ToSchema)]
+// ScaleMeasurement")]
 struct _ScaleMeasurementWrapper {
-    #[schema(description = "Scale Measurement ID")]
-    id: UuidWrapper,
-    #[schema(description = "DateTime")]
-    datetime: DateTimeType,
-    #[schema(description = "Mass (lbs)")]
+    // Scale Measurement ID")]
+    id: Uuid,
+    // DateTime")]
+    datetime: OffsetDateTime,
+    // Mass (lbs)")]
     mass: f64,
-    #[schema(description = "Fat %")]
+    // Fat %")]
     fat_pct: f64,
-    #[schema(description = "Water %")]
+    // Water %")]
     water_pct: f64,
-    #[schema(description = "Muscle %")]
+    // Muscle %")]
     muscle_pct: f64,
-    #[schema(description = "Bone %")]
+    // Bone %")]
     bone_pct: f64,
-    #[schema(description = "Connect Primary Key")]
+    // Connect Primary Key")]
     connect_primary_key: Option<i64>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Into, From)]
 pub struct FitbitActivityWrapper(FitbitActivity);
 
-derive_rweb_schema!(FitbitActivityWrapper, _FitbitActivityWrapper);
+derive_utoipa_schema!(FitbitActivityWrapper, _FitbitActivityWrapper);
 
-#[derive(Serialize, Deserialize, Clone, Debug, Schema)]
-#[schema(component = "FitbitActivity")]
+#[derive(Serialize, Deserialize, Clone, Debug, ToSchema)]
+// FitbitActivity")]
 struct _FitbitActivityWrapper {
-    #[schema(description = "Log Type")]
+    // Log Type")]
     log_type: StackString,
-    #[schema(description = "Start Datetime")]
-    start_time: DateTimeType,
-    #[schema(description = "TCX Link")]
+    // Start Datetime")]
+    start_time: OffsetDateTime,
+    // TCX Link")]
     tcx_link: Option<StackString>,
-    #[schema(description = "Activity Type ID")]
+    // Activity Type ID")]
     activity_type_id: Option<i64>,
-    #[schema(description = "Activity Name")]
+    // Activity Name")]
     activity_name: Option<StackString>,
-    #[schema(description = "Duration (ms)")]
+    // Duration (ms)")]
     duration: i64,
-    #[schema(description = "Distance (mi)")]
+    // Distance (mi)")]
     distance: Option<f64>,
-    #[schema(description = "Distance Unit")]
+    // Distance Unit")]
     distance_unit: Option<StackString>,
-    #[schema(description = "Number of Steps")]
+    // Number of Steps")]
     steps: Option<i64>,
-    #[schema(description = "Log ID")]
+    // Log ID")]
     log_id: i64,
 }
 
 #[derive(Serialize, Deserialize, Debug, Into, From)]
 pub struct GarminConnectActivityWrapper(GarminConnectActivity);
 
-derive_rweb_schema!(GarminConnectActivityWrapper, _GarminConnectActivityWrapper);
+derive_utoipa_schema!(GarminConnectActivityWrapper, _GarminConnectActivityWrapper);
 
 #[allow(dead_code)]
-#[derive(Schema)]
-#[schema(component = "GarminConnectActivity")]
+#[derive(ToSchema)]
+// GarminConnectActivity")]
 struct _GarminConnectActivityWrapper {
-    #[schema(description = "Activity ID")]
+    // Activity ID")]
     activity_id: i64,
-    #[schema(description = "Activity Name")]
+    // Activity Name")]
     activity_name: Option<StackString>,
-    #[schema(description = "Description")]
+    // Description")]
     description: Option<StackString>,
-    #[schema(description = "Start Time UTC")]
-    start_time_gmt: DateTimeType,
-    #[schema(description = "Distance (m)")]
+    // Start Time UTC")]
+    start_time_gmt: OffsetDateTime,
+    // Distance (m)")]
     distance: Option<f64>,
-    #[schema(description = "Duration (s)")]
+    // Duration (s)")]
     duration: f64,
-    #[schema(description = "Elapsed Duration (s)")]
+    // Elapsed Duration (s)")]
     elapsed_duration: Option<f64>,
-    #[schema(description = "Moving Duration (s)")]
+    // Moving Duration (s)")]
     moving_duration: Option<f64>,
-    #[schema(description = "Number of Steps")]
+    // Number of Steps")]
     steps: Option<i64>,
-    #[schema(description = "Calories (kCal)")]
+    // Calories (kCal)")]
     calories: Option<f64>,
-    #[schema(description = "Average Heartrate")]
+    // Average Heartrate")]
     average_hr: Option<f64>,
-    #[schema(description = "Max Heartrate")]
+    // Max Heartrate")]
     max_hr: Option<f64>,
 }
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, Into, From)]
 pub struct FitbitStatisticsSummaryWrapper(FitbitStatisticsSummary);
 
-derive_rweb_schema!(
+derive_utoipa_schema!(
     FitbitStatisticsSummaryWrapper,
     _FitbitStatisticsSummaryWrapper
 );
 
 #[allow(dead_code)]
-#[derive(Schema)]
-#[schema(component = "FitbitStatisticsSummary")]
+#[derive(ToSchema)]
+// FitbitStatisticsSummary")]
 struct _FitbitStatisticsSummaryWrapper {
-    #[schema(description = "Date")]
-    date: DateType,
-    #[schema(description = "Minimum Heartrate")]
+    // Date")]
+    date: Date,
+    // Minimum Heartrate")]
     min_heartrate: f64,
-    #[schema(description = "Maximum Heartrate")]
+    // Maximum Heartrate")]
     max_heartrate: f64,
-    #[schema(description = "Mean Heartrate")]
+    // Mean Heartrate")]
     mean_heartrate: f64,
-    #[schema(description = "Median Heartrate")]
+    // Median Heartrate")]
     median_heartrate: f64,
-    #[schema(description = "Heartrate Standard Deviation")]
+    // Heartrate Standard Deviation")]
     stdev_heartrate: f64,
-    #[schema(description = "Number of Entries")]
+    // Number of Entries")]
     number_of_entries: i32,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize, Into, From, Eq)]
 pub struct RaceTypeWrapper(RaceType);
 
-derive_rweb_schema!(RaceTypeWrapper, _RaceTypeWrapper);
+derive_utoipa_schema!(RaceTypeWrapper, _RaceTypeWrapper);
 
 #[allow(dead_code)]
-#[derive(Serialize, Schema)]
+#[derive(Serialize, ToSchema)]
 enum _RaceTypeWrapper {
     #[serde(rename = "personal")]
     Personal,
@@ -264,42 +270,42 @@ enum _RaceTypeWrapper {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Into, From)]
 pub struct RaceResultsWrapper(RaceResults);
 
-derive_rweb_schema!(RaceResultsWrapper, _RaceResultsWrapper);
+derive_utoipa_schema!(RaceResultsWrapper, _RaceResultsWrapper);
 
 #[allow(dead_code)]
-#[derive(Schema)]
-#[schema(component = "RaceResults")]
+#[derive(ToSchema)]
+// RaceResults")]
 struct _RaceResultsWrapper {
-    #[schema(description = "Race Result ID")]
-    id: UuidWrapper,
-    #[schema(description = "Race Type")]
+    // Race Result ID")]
+    id: Uuid,
+    // Race Type")]
     race_type: RaceTypeWrapper,
-    #[schema(description = "Race Date")]
-    race_date: Option<DateType>,
-    #[schema(description = "Race Name")]
+    // Race Date")]
+    race_date: Option<Date>,
+    // Race Name")]
     race_name: Option<StackString>,
-    #[schema(description = "Race Distance (m)")]
+    // Race Distance (m)")]
     race_distance: i32, // distance in meters
-    #[schema(description = "Race Duration (s)")]
+    // Race Duration (s)")]
     race_time: f64,
-    #[schema(description = "Race Flag")]
+    // Race Flag")]
     race_flag: bool,
-    #[schema(description = "Race Summary IDs")]
-    race_summary_ids: Vec<Option<UuidWrapper>>,
+    // Race Summary IDs")]
+    race_summary_ids: Vec<Option<Uuid>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Into, From, Eq)]
 pub struct FitbitActivityTypesWrapper(HashMap<StackString, StackString>);
 
-derive_rweb_schema!(FitbitActivityTypesWrapper, _FitbitActivityTypesWrapper);
+derive_utoipa_schema!(FitbitActivityTypesWrapper, _FitbitActivityTypesWrapper);
 
 #[allow(dead_code)]
-#[derive(Schema)]
+#[derive(ToSchema)]
 struct _FitbitActivityTypesWrapper(HashMap<String, StackString>);
 
 #[cfg(test)]
 mod test {
-    use rweb_helper::derive_rweb_test;
+    use utoipa_helper::derive_utoipa_test;
 
     use crate::{
         FitbitActivityWrapper, FitbitBodyWeightFatWrapper, FitbitHeartRateWrapper,
@@ -312,17 +318,17 @@ mod test {
 
     #[test]
     fn test_types() {
-        derive_rweb_test!(FitbitHeartRateWrapper, _FitbitHeartRateWrapper);
-        derive_rweb_test!(StravaActivityWrapper, _StravaActivityWrapper);
-        derive_rweb_test!(FitbitBodyWeightFatWrapper, _FitbitBodyWeightFatWrapper);
-        derive_rweb_test!(ScaleMeasurementWrapper, _ScaleMeasurementWrapper);
-        derive_rweb_test!(FitbitActivityWrapper, _FitbitActivityWrapper);
-        derive_rweb_test!(GarminConnectActivityWrapper, _GarminConnectActivityWrapper);
-        derive_rweb_test!(
+        derive_utoipa_test!(FitbitHeartRateWrapper, _FitbitHeartRateWrapper);
+        derive_utoipa_test!(StravaActivityWrapper, _StravaActivityWrapper);
+        derive_utoipa_test!(FitbitBodyWeightFatWrapper, _FitbitBodyWeightFatWrapper);
+        derive_utoipa_test!(ScaleMeasurementWrapper, _ScaleMeasurementWrapper);
+        derive_utoipa_test!(FitbitActivityWrapper, _FitbitActivityWrapper);
+        derive_utoipa_test!(GarminConnectActivityWrapper, _GarminConnectActivityWrapper);
+        derive_utoipa_test!(
             FitbitStatisticsSummaryWrapper,
             _FitbitStatisticsSummaryWrapper
         );
-        derive_rweb_test!(RaceTypeWrapper, _RaceTypeWrapper);
-        derive_rweb_test!(RaceResultsWrapper, _RaceResultsWrapper);
+        derive_utoipa_test!(RaceTypeWrapper, _RaceTypeWrapper);
+        derive_utoipa_test!(RaceResultsWrapper, _RaceResultsWrapper);
     }
 }

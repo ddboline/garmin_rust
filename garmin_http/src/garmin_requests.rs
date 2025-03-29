@@ -1,6 +1,4 @@
 use futures::future::try_join_all;
-use rweb::Schema;
-use rweb_helper::{DateTimeType, DateType};
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
 use std::collections::BTreeSet;
@@ -8,6 +6,7 @@ use time::{macros::time, Date, Duration, OffsetDateTime};
 use time_tz::OffsetDateTimeExt;
 use tokio::task::spawn_blocking;
 use url::Url;
+use utoipa::ToSchema;
 
 use fitbit_lib::{
     fitbit_heartrate::FitbitHeartRate, fitbit_statistics_summary::FitbitStatisticsSummary,
@@ -46,10 +45,10 @@ impl From<GarminHtmlRequest> for GarminListRequest {
     }
 }
 
-#[derive(Serialize, Deserialize, Schema)]
+#[derive(Serialize, Deserialize, ToSchema)]
 pub struct StravaSyncRequest {
-    pub start_datetime: Option<DateTimeType>,
-    pub end_datetime: Option<DateTimeType>,
+    pub start_datetime: Option<OffsetDateTime>,
+    pub end_datetime: Option<OffsetDateTime>,
 }
 
 impl StravaSyncRequest {
@@ -86,9 +85,9 @@ impl StravaSyncRequest {
     }
 }
 
-#[derive(Serialize, Deserialize, Schema)]
+#[derive(Serialize, Deserialize, ToSchema)]
 pub struct FitbitHeartrateCacheRequest {
-    date: DateType,
+    date: Date,
 }
 
 impl FitbitHeartrateCacheRequest {
@@ -103,7 +102,7 @@ impl FitbitHeartrateCacheRequest {
     }
 }
 
-#[derive(Serialize, Deserialize, Schema)]
+#[derive(Serialize, Deserialize, ToSchema)]
 pub struct FitbitHeartrateUpdateRequest {
     updates: Vec<FitbitHeartRateWrapper>,
 }
@@ -122,22 +121,22 @@ impl FitbitHeartrateUpdateRequest {
     }
 }
 
-#[derive(Serialize, Deserialize, Schema)]
+#[derive(Serialize, Deserialize, ToSchema)]
 pub struct FitbitTcxSyncRequest {
-    pub start_date: Option<DateType>,
+    pub start_date: Option<Date>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, Schema)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, ToSchema)]
 pub struct ScaleMeasurementRequest {
-    #[schema(description = "Start Date")]
-    pub start_date: Option<DateType>,
-    #[schema(description = "End Date")]
-    pub end_date: Option<DateType>,
-    #[schema(description = "Button Date")]
-    pub button_date: Option<DateType>,
-    #[schema(description = "Offset")]
+    // Start Date")]
+    pub start_date: Option<Date>,
+    // End Date")]
+    pub end_date: Option<Date>,
+    // Button Date")]
+    pub button_date: Option<Date>,
+    // Offset")]
     pub offset: Option<usize>,
-    #[schema(description = "Limit")]
+    // Limit")]
     pub limit: Option<usize>,
 }
 
@@ -169,8 +168,8 @@ impl ScaleMeasurementRequest {
 }
 
 pub struct FitbitStatisticsPlotRequest {
-    pub start_date: DateType,
-    pub end_date: DateType,
+    pub start_date: Date,
+    pub end_date: Date,
     pub offset: usize,
     pub is_demo: bool,
 }
@@ -188,8 +187,8 @@ impl From<ScaleMeasurementRequest> for FitbitStatisticsPlotRequest {
 }
 
 pub struct ScaleMeasurementPlotRequest {
-    pub start_date: DateType,
-    pub end_date: DateType,
+    pub start_date: Date,
+    pub end_date: Date,
     pub offset: usize,
     pub is_demo: bool,
 }
@@ -208,9 +207,9 @@ impl From<ScaleMeasurementRequest> for ScaleMeasurementPlotRequest {
 
 #[derive(Clone, Copy)]
 pub struct FitbitHeartratePlotRequest {
-    pub start_date: DateType,
-    pub end_date: DateType,
-    pub button_date: Option<DateType>,
+    pub start_date: Date,
+    pub end_date: Date,
+    pub button_date: Option<Date>,
     pub is_demo: bool,
 }
 
@@ -226,20 +225,20 @@ impl From<ScaleMeasurementRequest> for FitbitHeartratePlotRequest {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Schema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ScaleMeasurementUpdateRequest {
     pub measurements: Vec<ScaleMeasurementWrapper>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Schema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct StravaActivitiesRequest {
-    #[schema(description = "Start Date")]
-    pub start_date: Option<DateType>,
-    #[schema(description = "End Date")]
-    pub end_date: Option<DateType>,
-    #[schema(description = "Offset")]
+    // Start Date")]
+    pub start_date: Option<Date>,
+    // End Date")]
+    pub end_date: Option<Date>,
+    // Offset")]
     pub offset: Option<usize>,
-    #[schema(description = "Limit")]
+    // Limit")]
     pub limit: Option<usize>,
 }
 
@@ -266,17 +265,17 @@ impl StravaActivitiesRequest {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Schema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct StravaUploadRequest {
-    #[schema(description = "File Name")]
+    // File Name")]
     pub filename: StackString,
-    #[schema(description = "Title")]
+    // Title")]
     pub title: StackString,
-    #[schema(description = "Activity Type")]
+    // Activity Type")]
     pub activity_type: StackString,
-    #[schema(description = "Description")]
+    // Description")]
     pub description: Option<StackString>,
-    #[schema(description = "Privacy Flag")]
+    // Privacy Flag")]
     pub is_private: Option<bool>,
 }
 
@@ -301,20 +300,20 @@ impl StravaUploadRequest {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Schema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct StravaUpdateRequest {
-    #[schema(description = "Strava Activity ID")]
+    // Strava Activity ID")]
     pub activity_id: u64,
-    #[schema(description = "Title")]
+    // Title")]
     pub title: StackString,
-    #[schema(description = "Activity Type")]
+    // Activity Type")]
     pub activity_type: StackString,
-    #[schema(description = "Description")]
+    // Description")]
     pub description: Option<StackString>,
-    #[schema(description = "Privacy Flag")]
+    // Privacy Flag")]
     pub is_private: Option<bool>,
-    #[schema(description = "Start DateTime")]
-    pub start_time: Option<DateTimeType>,
+    // Start DateTime")]
+    pub start_time: Option<OffsetDateTime>,
 }
 
 impl StravaUpdateRequest {
@@ -338,7 +337,7 @@ impl StravaUpdateRequest {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Schema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct StravaCreateRequest {
     pub filename: StackString,
 }
@@ -366,17 +365,17 @@ impl StravaCreateRequest {
     }
 }
 
-#[derive(Serialize, Deserialize, Schema)]
+#[derive(Serialize, Deserialize, ToSchema)]
 pub struct AddGarminCorrectionRequest {
-    #[schema(description = "Start DateTime")]
-    pub start_time: DateTimeType,
-    #[schema(description = "Lap Number")]
+    // Start DateTime")]
+    pub start_time: OffsetDateTime,
+    // Lap Number")]
     pub lap_number: i32,
-    #[schema(description = "Distance (m)")]
+    // Distance (m)")]
     pub distance: Option<f64>,
-    #[schema(description = "Duration (s)")]
+    // Duration (s)")]
     pub duration: Option<f64>,
-    #[schema(description = "Sport")]
+    // Sport")]
     pub sport: Option<SportTypesWrapper>,
 }
 
@@ -424,22 +423,22 @@ impl AddGarminCorrectionRequest {
     }
 }
 
-#[derive(Serialize, Deserialize, Schema)]
+#[derive(Serialize, Deserialize, ToSchema)]
 pub struct FitbitActivitiesRequest {
-    pub start_date: Option<DateType>,
+    pub start_date: Option<Date>,
 }
 
-#[derive(Serialize, Deserialize, Schema)]
+#[derive(Serialize, Deserialize, ToSchema)]
 pub struct GarminConnectActivitiesRequest {
-    pub start_date: Option<DateType>,
+    pub start_date: Option<Date>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Schema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct GarminConnectActivitiesDBUpdateRequest {
     pub updates: Vec<GarminConnectActivityWrapper>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Schema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct HeartrateStatisticsSummaryDBUpdateRequest {
     pub updates: Vec<FitbitStatisticsSummaryWrapper>,
 }

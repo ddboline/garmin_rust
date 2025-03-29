@@ -1,11 +1,13 @@
 [package]
 name = "garmin_http"
-version = "0.15.11"
+version = "0.16.0"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2021"
 
 [dependencies]
-authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.12.3"}
+authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.13.0"}
+axum = { version = "0.8", features = ["multipart"] }
+axum-extra = {version="0.10", features=["cookie"]}
 base64 = "0.22"
 cookie = {version="0.18", features=["percent-encode"]}
 derive_more = {version="2.0", features=["full"]}
@@ -30,19 +32,21 @@ parking_lot = "0.12"
 postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.8", features=["deadpool"]}
 race_result_analysis = {path="../race_result_analysis"}
 reqwest = {version="0.12", features=["cookies", "json", "rustls-tls", "stream"], default-features=false}
-rweb = {git = "https://github.com/ddboline/rweb.git", features=["openapi"], default-features=false, tag="0.15.2"}
-rweb-helper = { git = "https://github.com/ddboline/rweb_helper.git", tag="0.5.3" }
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
 serde_yml = "0.0.12"
-stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", features=["postgres_types", "rweb-openapi"], tag="1.0.2" }
+stack-string = { version="1.1", features=["postgres_types", "utoipa_types", "axum_types"] }
 strava_lib = {path="../strava_lib/"}
 tempfile = "3.12"
 thiserror = "2.0"
 time = {version="0.3", features=["serde-human-readable", "macros", "formatting", "parsing"]}
 time-tz = {version="2.0", features=["system"]}
-tokio = {version="1.43", features=["rt", "macros", "rt-multi-thread"]}
+tokio = {version="1.44", features=["rt", "macros", "rt-multi-thread"]}
 tokio-stream = "0.1"
+tower-http = {version="0.6", features=["cors"]}
 url = "2.3"
+utoipa = { version = "5.3", features = ["axum_extras", "yaml", "time", "uuid", "smallvec", "url", "openapi_extensions", "decimal"] }
+utoipa-helper = "0.1"
+utoipa-axum = { version = "0.2" }
 uuid = "1.0"

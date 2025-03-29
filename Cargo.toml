@@ -1,6 +1,6 @@
 [package]
 name = "garmin_rust"
-version = "0.15.11"
+version = "0.16.0"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2021"
 
@@ -23,9 +23,9 @@ garmin_lib = { path = "garmin_lib" }
 garmin_models = {path="garmin_models"}
 garmin_utils = {path="garmin_utils"}
 log = "0.4"
-stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", features=["postgres_types"], tag="1.0.2" }
-tempfile = "3.16"
-tokio = {version="1.43", features=["rt", "macros", "rt-multi-thread"]}
+stack-string = { version="1.1", features=["postgres_types"] }
+tempfile = "3.19"
+tokio = {version="1.44", features=["rt", "macros", "rt-multi-thread"]}
 
 [workspace]
 members = [

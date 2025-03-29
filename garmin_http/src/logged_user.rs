@@ -87,7 +87,7 @@ impl LoggedUser {
             .map_err(Into::<GarminError>::into)?;
         let session: Option<SessionResponse> = ExternalUser::get_session_data(
             &base_url,
-            self.session.into(),
+            self.session,
             &self.secret_key,
             client,
             "garmin",
@@ -116,7 +116,7 @@ impl LoggedUser {
             .map_err(Into::<GarminError>::into)?;
         ExternalUser::set_session_data(
             &base_url,
-            self.session.into(),
+            self.session,
             &self.secret_key,
             client,
             "garmin",
@@ -131,9 +131,9 @@ impl From<ExternalUser> for LoggedUser {
     fn from(user: ExternalUser) -> Self {
         Self {
             email: user.email,
-            session: user.session.into(),
+            session: user.session,
             secret_key: user.secret_key,
-            created_at: user.created_at.into(),
+            created_at: user.created_at,
         }
     }
 }

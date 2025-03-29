@@ -554,8 +554,8 @@ async fn strava_activities_db(
 
     let offset = query.offset.unwrap_or(0);
     let limit = query.limit.unwrap_or(10);
-    let start_date = query.start_date.map(Into::into);
-    let end_date = query.end_date.map(Into::into);
+    let start_date = query.start_date;
+    let end_date = query.end_date;
 
     let total = StravaActivity::get_total(&state.db, start_date, end_date)
         .await
@@ -774,8 +774,8 @@ async fn heartrate_statistics_plots(
     let session = user.get_session(&state.client, &state.config).await?;
     let mut stats: Vec<FitbitStatisticsSummary> = FitbitStatisticsSummary::read_from_db(
         &state.db,
-        Some(query.start_date.into()),
-        Some(query.end_date.into()),
+        Some(query.start_date),
+        Some(query.end_date),
         None,
         None,
     )
@@ -820,8 +820,8 @@ async fn heartrate_statistics_plots_demo(
 
     let mut stats: Vec<FitbitStatisticsSummary> = FitbitStatisticsSummary::read_from_db(
         &state.db,
-        Some(query.start_date.into()),
-        Some(query.end_date.into()),
+        Some(query.start_date),
+        Some(query.end_date),
         None,
         None,
     )
@@ -871,8 +871,8 @@ async fn fitbit_plots(
 
     let measurements = ScaleMeasurement::read_from_db(
         &state.db,
-        Some(query.start_date.into()),
-        Some(query.end_date.into()),
+        Some(query.start_date),
+        Some(query.end_date),
         None,
         None,
     )
@@ -915,8 +915,8 @@ async fn fitbit_plots_demo(
 
     let measurements = ScaleMeasurement::read_from_db(
         &state.db,
-        Some(query.start_date.into()),
-        Some(query.end_date.into()),
+        Some(query.start_date),
+        Some(query.end_date),
         None,
         None,
     )
@@ -963,8 +963,8 @@ async fn heartrate_plots(
 
     let parquet_values = fitbit_archive::get_number_of_heartrate_values(
         &state.config,
-        query.start_date.into(),
-        query.end_date.into(),
+        query.start_date,
+        query.end_date,
     )
     .map_err(Into::<Error>::into)?;
     let step_size = if parquet_values < 40_000 {
@@ -978,8 +978,8 @@ async fn heartrate_plots(
         FitbitHeartRate::get_heartrate_values(
             &state.config,
             &state.db,
-            query.start_date.into(),
-            query.end_date.into(),
+            query.start_date,
+            query.end_date,
         )
         .await
     } else {
@@ -987,8 +987,8 @@ async fn heartrate_plots(
         spawn_blocking(move || {
             fitbit_archive::get_heartrate_values(
                 &config,
-                query.start_date.into(),
-                query.end_date.into(),
+                query.start_date,
+                query.end_date,
                 Some(step_size),
             )
         })
@@ -1033,8 +1033,8 @@ async fn heartrate_plots_demo(
     let heartrate = FitbitHeartRate::get_heartrate_values(
         &state.config,
         &state.db,
-        query.start_date.into(),
-        query.end_date.into(),
+        query.start_date,
+        query.end_date,
     )
     .await
     .map_err(Into::<Error>::into)?;
@@ -1088,8 +1088,8 @@ async fn scale_measurement(
 
     let offset = query.offset.unwrap_or(0);
     let limit = query.limit.unwrap_or(10);
-    let start_date = query.start_date.map(Into::into);
-    let end_date = query.end_date.map(Into::into);
+    let start_date = query.start_date;
+    let end_date = query.end_date;
 
     let total = ScaleMeasurement::get_total(&state.db, start_date, end_date)
         .await
@@ -1102,8 +1102,8 @@ async fn scale_measurement(
 
     let mut data: Vec<_> = ScaleMeasurement::read_from_db(
         &state.db,
-        query.start_date.map(Into::into),
-        query.end_date.map(Into::into),
+        query.start_date,
+        query.end_date,
         Some(offset),
         Some(limit),
     )
@@ -1327,8 +1327,8 @@ async fn garmin_connect_activities_db(
     let Query(query) = query;
     let offset = query.offset.unwrap_or(0);
     let limit = query.limit.unwrap_or(10);
-    let start_date = query.start_date.map(Into::into);
-    let end_date = query.end_date.map(Into::into);
+    let start_date = query.start_date;
+    let end_date = query.end_date;
 
     let total = GarminConnectActivity::get_total(&state.db, start_date, end_date)
         .await
@@ -1413,8 +1413,8 @@ async fn fitbit_activities_db(
 
     let offset = query.offset.unwrap_or(0);
     let limit = query.limit.unwrap_or(10);
-    let start_date = query.start_date.map(Into::into);
-    let end_date = query.end_date.map(Into::into);
+    let start_date = query.start_date;
+    let end_date = query.end_date;
 
     let total = FitbitActivity::get_total(&state.db, start_date, end_date)
         .await
@@ -1500,8 +1500,8 @@ async fn heartrate_statistics_summary_db(
 
     let offset = query.offset.unwrap_or(0);
     let limit = query.limit.unwrap_or(10);
-    let start_date = query.start_date.map(Into::into);
-    let end_date = query.end_date.map(Into::into);
+    let start_date = query.start_date;
+    let end_date = query.end_date;
 
     let total = FitbitStatisticsSummary::get_total(&state.db, start_date, end_date)
         .await
@@ -1648,7 +1648,7 @@ async fn race_result_flag(
 ) -> WarpResult<RaceResultFlagResponse> {
     let Query(query) = query;
 
-    let result = if let Some(mut result) = RaceResults::get_result_by_id(query.id.into(), &state.db)
+    let result = if let Some(mut result) = RaceResults::get_result_by_id(query.id, &state.db)
         .await
         .map_err(Into::<Error>::into)?
     {

@@ -63,11 +63,9 @@ impl StravaSyncRequest {
 
         let start_datetime = self
             .start_datetime
-            .map(Into::into)
             .or_else(|| Some(OffsetDateTime::now_utc() - Duration::days(15)));
         let end_datetime = self
             .end_datetime
-            .map(Into::into)
             .or_else(|| Some(OffsetDateTime::now_utc()));
 
         let client = StravaClient::with_auth(config.clone()).await?;
@@ -96,7 +94,7 @@ impl FitbitHeartrateCacheRequest {
     pub async fn get_cache(self, config: &GarminConfig) -> Result<Vec<FitbitHeartRate>, Error> {
         let config = config.clone();
         spawn_blocking(move || {
-            FitbitHeartRate::read_avro_by_date(&config, self.date.into()).map_err(Into::into)
+            FitbitHeartRate::read_avro_by_date(&config, self.date).map_err(Into::into)
         })
         .await?
     }
@@ -149,17 +147,16 @@ impl ScaleMeasurementRequest {
                 None => Some(
                     (OffsetDateTime::now_utc() - Duration::days(ndays))
                         .to_timezone(local)
-                        .date()
-                        .into(),
+                        .date(),
                 ),
             },
             end_date: match self.end_date {
                 Some(d) => Some(d),
-                None => Some(OffsetDateTime::now_utc().date().into()),
+                None => Some(OffsetDateTime::now_utc().date()),
             },
             button_date: match self.button_date {
                 Some(d) => Some(d),
-                None => Some(OffsetDateTime::now_utc().date().into()),
+                None => Some(OffsetDateTime::now_utc().date()),
             },
             offset: self.offset,
             limit: self.limit,
@@ -250,14 +247,12 @@ impl StravaActivitiesRequest {
         config: &GarminConfig,
     ) -> Result<Vec<StravaActivity>, Error> {
         let client = StravaClient::with_auth(config.clone()).await?;
-        let start_date = self.start_date.map(|s| {
-            let d: Date = s.into();
-            d.with_time(time!(00:00:00)).assume_utc()
-        });
-        let end_date = self.end_date.map(|s| {
-            let d: Date = s.into();
-            d.with_time(time!(23:59:59)).assume_utc()
-        });
+        let start_date = self
+            .start_date
+            .map(|d| d.with_time(time!(00:00:00)).assume_utc());
+        let end_date = self
+            .end_date
+            .map(|d| d.with_time(time!(23:59:59)).assume_utc());
         client
             .get_all_strava_activites(start_date, end_date)
             .await
@@ -330,7 +325,7 @@ impl StravaUpdateRequest {
                 &self.title,
                 self.description.as_ref().map(StackString::as_str),
                 sport,
-                self.start_time.map(Into::into),
+                self.start_time,
             )
             .await?;
         Ok(body)
@@ -385,7 +380,7 @@ impl AddGarminCorrectionRequest {
     pub async fn add_corrections(self, pool: &PgPool) -> Result<StackString, Error> {
         let mut corr_map = GarminCorrectionLap::read_corrections_from_db(pool).await?;
         corr_map.shrink_to_fit();
-        let start_time: OffsetDateTime = self.start_time.into();
+        let start_time: OffsetDateTime = self.start_time;
         let start_time = start_time.into();
         let unique_key = CorrectionKey {
             datetime: start_time,

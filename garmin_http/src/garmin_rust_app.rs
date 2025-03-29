@@ -179,7 +179,7 @@ pub async fn start_app() -> Result<(), Error> {
         }
     });
 
-    run_app(&config, &pool).await.map_err(Into::into)
+    run_app(&config, &pool).await
 }
 
 async fn run_app(config: &GarminConfig, pool: &PgPool) -> Result<(), Error> {

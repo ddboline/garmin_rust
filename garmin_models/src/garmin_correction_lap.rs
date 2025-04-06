@@ -172,7 +172,7 @@ impl GarminCorrectionLap {
                         corr,
                     )),
                     Err(e) => {
-                        debug!("Error {}", e);
+                        debug!("Error {e}",);
                         None
                     }
                 })

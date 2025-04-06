@@ -99,7 +99,7 @@ impl TelegramBot {
             if let MessageKind::Text { ref data, .. } = message.kind {
                 FAILURE_COUNT.check()?;
                 // Print received text message to stdout.
-                debug!("{:?}", message);
+                debug!("{message:?}",);
 
                 func(
                     &message,
@@ -169,7 +169,7 @@ impl TelegramBot {
         mut meas: ScaleMeasurement,
     ) -> Result<ScaleMeasurement, Error> {
         if meas.insert_into_db(&self.pool).await.is_ok() {
-            debug!("{:?}", meas);
+            debug!("{meas:?}",);
             LAST_WEIGHT.store(Some(meas));
             FAILURE_COUNT.reset()?;
         } else {

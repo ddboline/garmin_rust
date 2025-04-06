@@ -69,10 +69,10 @@ impl GarminParse {
             .to_string_lossy();
         let cache_file = cache_dir.join(format_sstr!("{filename}.avro"));
 
-        debug!("Get md5sum {} ", filename);
+        debug!("Get md5sum {filename} ",);
         let md5sum = get_md5sum(filepath)?;
 
-        debug!("{} Found md5sum {} ", filename, md5sum);
+        debug!("{filename} Found md5sum {md5sum} ",);
         let gfile = GarminParse::new().with_file(filepath, corr_map)?;
         let filename = &gfile.filename;
         match gfile.laps.first() {

@@ -136,7 +136,7 @@ impl FitbitHeartRate {
             })
             .collect();
         fitbit_files.shrink_to_fit();
-        info!("fitbit_files {:?}", fitbit_files);
+        info!("fitbit_files {fitbit_files:?}",);
         let futures = days.iter().map(|date| async move {
             let constraint = format_sstr!("date(begin_datetime at time zone 'utc') = '{date}'");
             let files: Vec<_> = get_list_of_files_from_db(&constraint, pool)
@@ -169,9 +169,9 @@ impl FitbitHeartRate {
         let results: Result<Vec<_>, Error> = fitbit_files
             .into_par_iter()
             .map(|input_path| {
-                info!("read file {:?}", input_path);
+                info!("read file {input_path:?}",);
                 let values = Self::read_avro(input_path)?;
-                info!("values {:?} {}", input_path, values.len());
+                info!("values {input_path:?} {}", values.len());
                 Ok(values)
             })
             .collect();
@@ -251,7 +251,7 @@ impl FitbitHeartRate {
                 let pool = pool.clone();
                 async move {
                     Self::calculate_summary_statistics(&config, &pool, date).await?;
-                    debug!("{}", date);
+                    debug!("{date}",);
                     Ok(())
                 }
             })
@@ -291,7 +291,7 @@ impl FitbitHeartRate {
     pub fn read_avro_by_date(config: &GarminConfig, date: Date) -> Result<Vec<Self>, Error> {
         let date_str = StackString::from_display(date);
         let input_filename = config.fitbit_cachedir.join(date_str).with_extension("avro");
-        debug!("avro {:?}", input_filename);
+        debug!("avro {input_filename:?}",);
         if input_filename.exists() {
             Self::read_avro(&input_filename)
         } else {
@@ -516,8 +516,7 @@ pub fn import_garmin_heartrate_file(
     );
 
     info!(
-        "timestamps {} {} heartrates {} {}",
-        min_timestamp, max_timestamp, min_timestamp16, max_timestamp16
+        "timestamps {min_timestamp} {max_timestamp} heartrates {min_timestamp16} {max_timestamp16}",
     );
 
     let heartrates: BTreeMap<i64, FitbitHeartRate> = heartrates

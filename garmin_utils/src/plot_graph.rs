@@ -65,10 +65,7 @@ pub fn generate_plot_data(opts: &PlotOpts, data: &[DataPoint]) -> Option<Scatter
             if let Some(x) = bins.get_mut(&(xindex, yindex)) {
                 *x += 1;
             } else {
-                debug!(
-                    "missing {} {} {} {} {} {} {} {}",
-                    xindex, yindex, x, y, xmin, ymin, xmax, ymax
-                );
+                debug!("missing {xindex} {yindex} {x} {y} {xmin} {ymin} {xmax} {ymax}",);
             }
         }
 

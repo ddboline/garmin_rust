@@ -285,7 +285,7 @@ pub async fn get_list_of_files_from_db(
         "
     );
 
-    debug!("{}", query);
+    debug!("{query}",);
     let query = query_dyn!(&query)?;
     let conn = pool.get().await?;
     query
@@ -335,7 +335,7 @@ pub async fn get_list_of_activities_from_db(
     };
 
     let query = format_sstr!("SELECT begin_datetime, filename FROM garmin_summary {constr}",);
-    debug!("{}", query);
+    debug!("{query}",);
     let query = query_dyn!(&query)?;
     let conn = pool.get().await?;
     query

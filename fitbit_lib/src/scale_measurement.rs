@@ -312,7 +312,7 @@ impl ScaleMeasurement {
             query.push_str(&format_sstr!(" LIMIT {limit}"));
         }
         query_bindings.shrink_to_fit();
-        debug!("query:\n{}", query);
+        debug!("query:\n{query}",);
         query_dyn!(&query, ..query_bindings)
     }
 
@@ -382,10 +382,10 @@ impl ScaleMeasurement {
                 let measurement_set = measurement_set.clone();
                 async move {
                     if measurement_set.contains(&meas.datetime) {
-                        debug!("measurement exists {:?}", meas);
+                        debug!("measurement exists {meas:?}",);
                     } else {
                         meas.insert_into_db(pool).await?;
-                        debug!("measurement inserted {:?}", meas);
+                        debug!("measurement inserted {meas:?}",);
                     }
                     Ok(())
                 }

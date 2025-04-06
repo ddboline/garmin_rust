@@ -151,7 +151,7 @@ pub fn get_file_list(path: &Path) -> Vec<PathBuf> {
             })
             .collect(),
         Err(err) => {
-            debug!("{}", err);
+            debug!("{err}",);
             Vec::new()
         }
     }

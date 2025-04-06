@@ -1,6 +1,6 @@
 #![allow(clippy::needless_pass_by_value)]
 
-use axum::http::{Method, StatusCode};
+use axum::http::{header::CONTENT_TYPE, Method, StatusCode};
 use log::{debug, error, info};
 use maplit::hashset;
 use notify::{
@@ -195,7 +195,7 @@ async fn run_app(config: &GarminConfig, pool: &PgPool) -> Result<(), Error> {
 
     let cors = CorsLayer::new()
         .allow_methods([Method::GET, Method::POST])
-        .allow_headers(["content-type".try_into()?, "jwt".try_into()?])
+        .allow_headers([CONTENT_TYPE])
         .allow_origin(Any);
 
     let (router, api) = OpenApiRouter::with_openapi(ApiDoc::openapi())
@@ -211,7 +211,7 @@ async fn run_app(config: &GarminConfig, pool: &PgPool) -> Result<(), Error> {
             axum::routing::get(|| async move {
                 (
                     StatusCode::OK,
-                    [("content-type", "application/json")],
+                    [(CONTENT_TYPE, mime::APPLICATION_JSON.essence_str())],
                     spec_json,
                 )
             }),
@@ -219,7 +219,7 @@ async fn run_app(config: &GarminConfig, pool: &PgPool) -> Result<(), Error> {
         .route(
             "/garmin/openapi/yaml",
             axum::routing::get(|| async move {
-                (StatusCode::OK, [("content-type", "text/yaml")], spec_yaml)
+                (StatusCode::OK, [(CONTENT_TYPE, "text/yaml")], spec_yaml)
             }),
         )
         .layer(cors);

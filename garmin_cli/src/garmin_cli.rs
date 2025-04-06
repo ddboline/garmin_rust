@@ -239,7 +239,7 @@ impl GarminCli {
         ];
 
         let futures = options.into_iter().map(|(title, local_dir, s3_bucket)| {
-            debug!("{}", title);
+            debug!("{title}",);
             let pool = self.pool.clone();
             let gsync = gsync.clone();
             async move { gsync.sync_dir(title, local_dir, s3_bucket, &pool).await }
@@ -314,7 +314,7 @@ impl GarminCli {
                 self.stdout.send(generate_txt_report(&gfile)?.join("\n"));
             }
             _ => {
-                debug!("{:?}", options);
+                debug!("{options:?}",);
                 let txt_result = create_report_query(&pg_conn, options, constraints)
                     .await?
                     .get_text_entries()?

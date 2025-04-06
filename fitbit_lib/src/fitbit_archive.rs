@@ -247,7 +247,7 @@ fn get_fitbit_parquet_files(
         })
         .collect();
     fitbit_files.shrink_to_fit();
-    info!("fitbit_files {:?}", fitbit_files);
+    info!("fitbit_files {fitbit_files:?}",);
     fitbit_files
 }
 

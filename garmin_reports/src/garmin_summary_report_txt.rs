@@ -187,7 +187,7 @@ impl GarminReportTrait for FileSummaryReport {
         let weekdayname = WEEKDAY_NAMES[self.isodow as usize];
         let datetime = convert_datetime_to_str(self.datetime);
 
-        debug!("{} {:?}", datetime, self);
+        debug!("{datetime} {self:?}",);
 
         let mut tmp_vec = Vec::new();
 
@@ -451,7 +451,7 @@ impl GarminReportTrait for DaySummaryReport {
     fn get_text_entry(&self) -> Result<Vec<GarminTextEntry>, Error> {
         let weekdayname = WEEKDAY_NAMES[self.isodow as usize - 1];
 
-        debug!("{:?}", self);
+        debug!("{self:?}",);
 
         let mut tmp_vec = Vec::new();
 
@@ -579,7 +579,7 @@ async fn day_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<DaySummar
         ORDER BY sport, date, week, isodow
     "
     );
-    debug!("{}", query);
+    debug!("{query}",);
     let query = query_dyn!(&query)?;
     let conn = pool.get().await?;
     query.fetch(&conn).await.map_err(Into::into)
@@ -602,7 +602,7 @@ impl GarminReportTrait for WeekSummaryReport {
     fn get_text_entry(&self) -> Result<Vec<GarminTextEntry>, Error> {
         let total_days = 7;
 
-        debug!("{:?}", self);
+        debug!("{self:?}",);
 
         let mut tmp_vec = vec![(
             format_sstr!(
@@ -726,7 +726,7 @@ async fn week_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<WeekSumm
         ORDER BY sport, year, week
     "
     );
-    debug!("{}", query);
+    debug!("{query}",);
     let query = query_dyn!(&query)?;
     let conn = pool.get().await?;
     query.fetch(&conn).await.map_err(Into::into)
@@ -749,7 +749,7 @@ impl GarminReportTrait for MonthSummaryReport {
     fn get_text_entry(&self) -> Result<Vec<GarminTextEntry>, Error> {
         let total_days = days_in_month(self.year, self.month as u32);
 
-        debug!("{:?}", self);
+        debug!("{self:?}",);
 
         let mut tmp_vec = vec![(
             format_sstr!(
@@ -877,7 +877,7 @@ async fn month_summary_report(
         ORDER BY sport, year, month
     "
     );
-    debug!("{}", query);
+    debug!("{query}",);
     let query = query_dyn!(&query)?;
     let conn = pool.get().await?;
     query.fetch(&conn).await.map_err(Into::into)
@@ -895,7 +895,7 @@ pub struct SportSummaryReport {
 
 impl GarminReportTrait for SportSummaryReport {
     fn get_text_entry(&self) -> Result<Vec<GarminTextEntry>, Error> {
-        debug!("{:?}", self);
+        debug!("{self:?}",);
         let mut tmp_vec = vec![
             (format_sstr!("{:10} \t", self.sport), None),
             (
@@ -1009,7 +1009,7 @@ async fn sport_summary_report(
         ORDER BY sport
         "
     );
-    debug!("{}", query);
+    debug!("{query}",);
     let query = query_dyn!(&query)?;
     let conn = pool.get().await?;
     query.fetch(&conn).await.map_err(Into::into)
@@ -1031,7 +1031,7 @@ impl GarminReportTrait for YearSummaryReport {
     fn get_text_entry(&self) -> Result<Vec<GarminTextEntry>, Error> {
         let total_days = days_in_year(self.year);
 
-        debug!("{:?}", self);
+        debug!("{self:?}",);
 
         let mut tmp_vec = vec![
             (format_sstr!("{:5} {:10} \t", self.year, self.sport,), None),
@@ -1154,7 +1154,7 @@ async fn year_summary_report(pool: &PgPool, constr: &str) -> Result<Vec<YearSumm
         ORDER BY sport, year
         "
     );
-    debug!("{}", query);
+    debug!("{query}",);
     let query = query_dyn!(&query)?;
     let conn = pool.get().await?;
     query.fetch(&conn).await.map_err(Into::into)

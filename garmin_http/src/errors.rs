@@ -1,7 +1,7 @@
 use axum::{
     extract::{multipart::MultipartError, Json},
     http::{
-        header::{InvalidHeaderName, InvalidHeaderValue, ToStrError},
+        header::{InvalidHeaderName, InvalidHeaderValue, ToStrError, CONTENT_TYPE},
         StatusCode,
     },
     response::{IntoResponse, Response},
@@ -126,12 +126,21 @@ impl IntoResponse for ErrorMessage {
 impl IntoResponse for ServiceError {
     fn into_response(self) -> Response {
         match self {
-            Self::Unauthorized => (StatusCode::OK, LOGIN_HTML).into_response(),
-            Self::BadRequest(message) => {
-                (StatusCode::BAD_REQUEST, ErrorMessage { message }).into_response()
-            }
+            Self::Unauthorized => (
+                StatusCode::OK,
+                [(CONTENT_TYPE, mime::TEXT_HTML.essence_str())],
+                LOGIN_HTML,
+            )
+                .into_response(),
+            Self::BadRequest(message) => (
+                StatusCode::BAD_REQUEST,
+                [(CONTENT_TYPE, mime::APPLICATION_JSON.essence_str())],
+                ErrorMessage { message },
+            )
+                .into_response(),
             e => (
                 StatusCode::INTERNAL_SERVER_ERROR,
+                [(CONTENT_TYPE, mime::APPLICATION_JSON.essence_str())],
                 ErrorMessage {
                     message: format_sstr!("Internal Server Error: {e}"),
                 },
@@ -155,21 +164,25 @@ impl IntoResponses for ServiceError {
                 ResponseBuilder::new()
                     .description("Not Authorized")
                     .content(
-                        "text/html",
+                        mime::TEXT_HTML.essence_str(),
                         ContentBuilder::new().schema(Some(String::schema())).build(),
                     ),
             )
             .response(
                 StatusCode::BAD_REQUEST.as_str(),
-                ResponseBuilder::new()
-                    .description("Bad Request")
-                    .content("application/json", error_message_content.clone()),
+                ResponseBuilder::new().description("Bad Request").content(
+                    mime::APPLICATION_JSON.essence_str(),
+                    error_message_content.clone(),
+                ),
             )
             .response(
                 StatusCode::INTERNAL_SERVER_ERROR.as_str(),
                 ResponseBuilder::new()
                     .description("Internal Server Error")
-                    .content("application/json", error_message_content.clone()),
+                    .content(
+                        mime::APPLICATION_JSON.essence_str(),
+                        error_message_content.clone(),
+                    ),
             )
             .build()
             .into()

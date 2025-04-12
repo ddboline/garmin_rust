@@ -6,7 +6,7 @@ use time::{macros::time, Date, Duration, OffsetDateTime};
 use time_tz::OffsetDateTimeExt;
 use tokio::task::spawn_blocking;
 use url::Url;
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 
 use fitbit_lib::{
     fitbit_heartrate::FitbitHeartRate, fitbit_statistics_summary::FitbitStatisticsSummary,
@@ -45,7 +45,7 @@ impl From<GarminHtmlRequest> for GarminListRequest {
     }
 }
 
-#[derive(Serialize, Deserialize, ToSchema)]
+#[derive(Serialize, Deserialize, ToSchema, IntoParams)]
 pub struct StravaSyncRequest {
     pub start_datetime: Option<OffsetDateTime>,
     pub end_datetime: Option<OffsetDateTime>,
@@ -83,7 +83,7 @@ impl StravaSyncRequest {
     }
 }
 
-#[derive(Serialize, Deserialize, ToSchema)]
+#[derive(Serialize, Deserialize, ToSchema, IntoParams)]
 pub struct FitbitHeartrateCacheRequest {
     date: Date,
 }
@@ -124,17 +124,17 @@ pub struct FitbitTcxSyncRequest {
     pub start_date: Option<Date>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, ToSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, ToSchema, IntoParams)]
 pub struct ScaleMeasurementRequest {
-    // Start Date")]
+    // Start Date
     pub start_date: Option<Date>,
-    // End Date")]
+    // End Date
     pub end_date: Option<Date>,
-    // Button Date")]
+    // Button Date
     pub button_date: Option<Date>,
-    // Offset")]
+    // Offset
     pub offset: Option<usize>,
-    // Limit")]
+    // Limit
     pub limit: Option<usize>,
 }
 
@@ -227,15 +227,15 @@ pub struct ScaleMeasurementUpdateRequest {
     pub measurements: Vec<ScaleMeasurementWrapper>,
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, IntoParams)]
 pub struct StravaActivitiesRequest {
-    // Start Date")]
+    // Start Date
     pub start_date: Option<Date>,
-    // End Date")]
+    // End Date
     pub end_date: Option<Date>,
-    // Offset")]
+    // Offset
     pub offset: Option<usize>,
-    // Limit")]
+    // Limit
     pub limit: Option<usize>,
 }
 
@@ -262,15 +262,19 @@ impl StravaActivitiesRequest {
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct StravaUploadRequest {
-    // File Name")]
+    // File Name
+    #[schema(inline)]
     pub filename: StackString,
-    // Title")]
+    // Title
+    #[schema(inline)]
     pub title: StackString,
-    // Activity Type")]
+    // Activity Type
+    #[schema(inline)]
     pub activity_type: StackString,
-    // Description")]
+    // Description
+    #[schema(inline)]
     pub description: Option<StackString>,
-    // Privacy Flag")]
+    // Privacy Flag
     pub is_private: Option<bool>,
 }
 
@@ -297,17 +301,20 @@ impl StravaUploadRequest {
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct StravaUpdateRequest {
-    // Strava Activity ID")]
+    // Strava Activity ID
     pub activity_id: u64,
-    // Title")]
+    // Title
+    #[schema(inline)]
     pub title: StackString,
-    // Activity Type")]
+    // Activity Type
+    #[schema(inline)]
     pub activity_type: StackString,
-    // Description")]
+    // Description
+    #[schema(inline)]
     pub description: Option<StackString>,
-    // Privacy Flag")]
+    // Privacy Flag
     pub is_private: Option<bool>,
-    // Start DateTime")]
+    // Start DateTime
     pub start_time: Option<OffsetDateTime>,
 }
 
@@ -332,8 +339,10 @@ impl StravaUpdateRequest {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, IntoParams)]
 pub struct StravaCreateRequest {
+    #[schema(inline)]
+    #[param(inline)]
     pub filename: StackString,
 }
 
@@ -362,15 +371,15 @@ impl StravaCreateRequest {
 
 #[derive(Serialize, Deserialize, ToSchema)]
 pub struct AddGarminCorrectionRequest {
-    // Start DateTime")]
+    // Start DateTime
     pub start_time: OffsetDateTime,
-    // Lap Number")]
+    // Lap Number
     pub lap_number: i32,
-    // Distance (m)")]
+    // Distance (m)
     pub distance: Option<f64>,
-    // Duration (s)")]
+    // Duration (s)
     pub duration: Option<f64>,
-    // Sport")]
+    // Sport
     pub sport: Option<SportTypesWrapper>,
 }
 

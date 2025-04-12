@@ -1,118 +1,22 @@
-openapi: 3.0.1
+openapi: '3.1.0'
 info:
   title: Fitness Activity WebApp
   description: Web Frontend for Fitness Activities
-  version: 0.14.7
+  contact:
+    name: Daniel Boline
+    email: ddboline@gmail.com
+  license:
+    name: ''
+  version: '0.16.1'
 paths:
-  /garmin/index.html:
-    get:
-      parameters:
-      - name: filter
-        in: query
-        required: false
-        schema:
-          nullable: true
-          type: string
-      responses:
-        '200':
-          description: Main Page
-          content:
-            text/html:
-              schema:
-                type: string
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-  /garmin/demo.html:
-    get:
-      parameters:
-      - name: filter
-        in: query
-        required: false
-        schema:
-          nullable: true
-          type: string
-      responses:
-        '200':
-          description: Main Page
-          content:
-            text/html:
-              schema:
-                type: string
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-  /garmin/upload_file:
-    post:
-      responses:
-        '201':
-          description: Upload Response
-          content:
-            text/html:
-              schema:
-                type: string
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
   /garmin/add_garmin_correction:
     post:
+      operationId: add_garmin_correction
       requestBody:
         content:
           application/json:
             schema:
-              properties:
-                start_time:
-                  description: Start DateTime
-                  format: date-time
-                  type: string
-                lap_number:
-                  description: Lap Number
-                  type: integer
-                distance:
-                  description: Distance (m)
-                  nullable: true
-                  type: number
-                duration:
-                  description: Duration (s)
-                  nullable: true
-                  type: number
-                sport:
-                  description: Sport
-                  nullable: true
-                  type: string
-                  enum:
-                  - running
-                  - biking
-                  - walking
-                  - hiking
-                  - ultimate
-                  - elliptical
-                  - stairs
-                  - lifting
-                  - swimming
-                  - other
-                  - snowshoeing
-                  - skiing
-                  - none
-              type: object
-              required:
-              - start_time
-              - lap_number
+              $ref: '#/components/schemas/AddGarminCorrectionRequest'
         required: true
       responses:
         '201':
@@ -123,780 +27,204 @@ paths:
                 type: string
         '400':
           description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-  /garmin/garmin_connect_activities_db:
-    get:
-      parameters:
-      - name: start_date
-        in: query
-        required: false
-        schema:
-          description: Start Date
-          format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
-      - name: end_date
-        in: query
-        required: false
-        schema:
-          description: End Date
-          format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
-      responses:
-        '200':
-          description: Garmin Connect Activities
           content:
             application/json:
               schema:
-                items:
-                  $ref: '#/components/schemas/GarminConnectActivity'
-                type: array
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-    post:
-      requestBody:
-        content:
-          application/json:
-            schema:
-              properties:
-                updates:
-                  items:
-                    $ref: '#/components/schemas/GarminConnectActivity'
-                  type: array
-              type: object
-              required:
-              - updates
-        required: true
-      responses:
-        '201':
-          description: Garmin Connect Activities
-          content:
-            text/html:
-              schema:
-                type: string
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-  /garmin/garmin_sync:
-    get:
-      responses:
-        '200':
-          description: Garmin Sync
-          content:
-            text/html:
-              schema:
-                type: string
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-  /garmin/strava_sync:
-    get:
-      parameters:
-      - name: start_datetime
-        in: query
-        required: false
-        schema:
-          format: date-time
-          nullable: true
-          type: string
-      - name: end_datetime
-        in: query
-        required: false
-        schema:
-          format: date-time
-          nullable: true
-          type: string
-      responses:
-        '200':
-          description: Strava Sync
-          content:
-            text/html:
-              schema:
-                type: string
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-  /garmin/fitbit/auth:
-    get:
-      responses:
-        '200':
-          description: Fitbit Auth
-          content:
-            text/html:
-              schema:
-                type: string
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-  /garmin/fitbit/refresh_auth:
-    get:
-      responses:
-        '200':
-          description: Fitbit Refresh Auth
-          content:
-            text/html:
-              schema:
-                type: string
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-  /garmin/fitbit/callback:
-    get:
-      parameters:
-      - name: code
-        in: query
-        required: true
-        schema:
-          description: Authorization Code
-          type: string
-      - name: state
-        in: query
-        required: true
-        schema:
-          description: CSRF State
-          type: string
-      responses:
-        '200':
-          description: Fitbit Callback
-          content:
-            text/html:
-              schema:
-                type: string
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-  /garmin/fitbit/heartrate_api:
-    get:
-      parameters:
-      - name: date
-        in: query
-        required: true
-        schema:
-          format: date
-          example: 2023-01-01
-          type: string
-      responses:
-        '200':
-          description: Fitbit Heartrate
-          content:
-            application/json:
-              schema:
-                items:
-                  $ref: '#/components/schemas/FitbitHeartrate'
-                type: array
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-  /garmin/fitbit/heartrate_cache:
-    get:
-      parameters:
-      - name: date
-        in: query
-        required: true
-        schema:
-          format: date
-          example: 2023-01-01
-          type: string
-      responses:
-        '200':
-          description: Fitbit Heartrate
-          content:
-            application/json:
-              schema:
-                items:
-                  $ref: '#/components/schemas/FitbitHeartrate'
-                type: array
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-    post:
-      requestBody:
-        content:
-          application/json:
-            schema:
-              properties:
-                updates:
-                  items:
-                    $ref: '#/components/schemas/FitbitHeartrate'
-                  type: array
-              type: object
-              required:
-              - updates
-        required: true
-      responses:
-        '201':
-          description: Fitbit Heartrate Update
-          content:
-            text/html:
-              schema:
-                type: string
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-  /garmin/fitbit/sync:
-    get:
-      parameters:
-      - name: date
-        in: query
-        required: true
-        schema:
-          format: date
-          example: 2023-01-01
-          type: string
-      responses:
-        '200':
-          description: Fitbit Sync
-          content:
-            text/html:
-              schema:
-                type: string
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-  /garmin/fitbit/bodyweight:
-    get:
-      responses:
-        '200':
-          description: Fitbit Body Weight
-          content:
-            application/json:
-              schema:
-                items:
-                  $ref: '#/components/schemas/FitbitBodyWeightFat'
-                type: array
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-  /garmin/fitbit/bodyweight_sync:
-    get:
-      responses:
-        '200':
-          description: Fitbit Body Weight Sync
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/FitbitBodyWeightFatUpdate'
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-  /garmin/fitbit/plots:
-    get:
-      parameters:
-      - name: start_date
-        in: query
-        required: false
-        schema:
-          description: Start Date
-          format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
-      - name: end_date
-        in: query
-        required: false
-        schema:
-          description: End Date
-          format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
-      - name: button_date
-        in: query
-        required: false
-        schema:
-          description: Button Date
-          format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
-      - name: offset
-        in: query
-        required: false
-        schema:
-          description: Offset
-          nullable: true
-          type: integer
-          minimum: 0
-      responses:
-        '200':
-          description: Scale Measurement Plots
-          content:
-            text/html:
-              schema:
-                type: string
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-  /garmin/fitbit/plots_demo:
-    get:
-      parameters:
-      - name: start_date
-        in: query
-        required: false
-        schema:
-          description: Start Date
-          format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
-      - name: end_date
-        in: query
-        required: false
-        schema:
-          description: End Date
-          format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
-      - name: button_date
-        in: query
-        required: false
-        schema:
-          description: Button Date
-          format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
-      - name: offset
-        in: query
-        required: false
-        schema:
-          description: Offset
-          nullable: true
-          type: integer
-          minimum: 0
-      responses:
-        '200':
-          description: Scale Measurement Plots
-          content:
-            text/html:
-              schema:
-                type: string
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-  /garmin/fitbit/heartrate_statistics_plots:
-    get:
-      parameters:
-      - name: start_date
-        in: query
-        required: false
-        schema:
-          description: Start Date
-          format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
-      - name: end_date
-        in: query
-        required: false
-        schema:
-          description: End Date
-          format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
-      - name: button_date
-        in: query
-        required: false
-        schema:
-          description: Button Date
-          format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
-      - name: offset
-        in: query
-        required: false
-        schema:
-          description: Offset
-          nullable: true
-          type: integer
-          minimum: 0
-      responses:
-        '200':
-          description: Fitbit Heartrate Statistics Plots
-          content:
-            text/html:
-              schema:
-                type: string
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-  /garmin/fitbit/heartrate_statistics_plots_demo:
-    get:
-      parameters:
-      - name: start_date
-        in: query
-        required: false
-        schema:
-          description: Start Date
-          format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
-      - name: end_date
-        in: query
-        required: false
-        schema:
-          description: End Date
-          format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
-      - name: button_date
-        in: query
-        required: false
-        schema:
-          description: Button Date
-          format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
-      - name: offset
-        in: query
-        required: false
-        schema:
-          description: Offset
-          nullable: true
-          type: integer
-          minimum: 0
-      responses:
-        '200':
-          description: Fitbit Heartrate Statistics Plots
-          content:
-            text/html:
-              schema:
-                type: string
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-  /garmin/fitbit/heartrate_plots:
-    get:
-      parameters:
-      - name: start_date
-        in: query
-        required: false
-        schema:
-          description: Start Date
-          format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
-      - name: end_date
-        in: query
-        required: false
-        schema:
-          description: End Date
-          format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
-      - name: button_date
-        in: query
-        required: false
-        schema:
-          description: Button Date
-          format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
-      - name: offset
-        in: query
-        required: false
-        schema:
-          description: Offset
-          nullable: true
-          type: integer
-          minimum: 0
-      responses:
-        '200':
-          description: Fitbit Heartrate Plots
-          content:
-            text/html:
-              schema:
-                type: string
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-  /garmin/fitbit/heartrate_plots_demo:
-    get:
-      parameters:
-      - name: start_date
-        in: query
-        required: false
-        schema:
-          description: Start Date
-          format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
-      - name: end_date
-        in: query
-        required: false
-        schema:
-          description: End Date
-          format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
-      - name: button_date
-        in: query
-        required: false
-        schema:
-          description: Button Date
-          format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
-      - name: offset
-        in: query
-        required: false
-        schema:
-          description: Offset
-          nullable: true
-          type: integer
-          minimum: 0
-      responses:
-        '200':
-          description: Fitbit Heartrate Plots
-          content:
-            text/html:
-              schema:
-                type: string
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-  /garmin/fitbit/fitbit_tcx_sync:
-    get:
-      parameters:
-      - name: start_date
-        in: query
-        required: false
-        schema:
-          format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
-      responses:
-        '200':
-          description: Fitbit Tcx Sync
-          content:
-            application/json:
-              schema:
-                items:
-                  type: string
-                type: array
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-  /garmin/fitbit/fitbit_activity_types:
-    get:
-      responses:
-        '200':
-          description: Fitbit Activity Types
-          content:
-            application/json:
-              schema:
-                additionalProperties:
-                  type: string
                 type: object
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
         '500':
           description: Internal Server Error
-  /garmin/fitbit/fitbit_activities:
-    get:
-      parameters:
-      - name: start_date
-        in: query
-        required: false
-        schema:
-          format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
-      responses:
-        '200':
-          description: Fitbit Activities
           content:
             application/json:
               schema:
-                items:
-                  $ref: '#/components/schemas/FitbitActivity'
-                type: array
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+  /garmin/connect/profile:
+    get:
+      operationId: garmin_connect_profile
+      responses:
+        '200':
+          description: Garmin Connect Profile
+          content:
+            text/html:
+              schema:
+                type: string
         '400':
           description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
         '500':
           description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+  /garmin/demo.html:
+    get:
+      operationId: garmin_demo
+      parameters:
+      - name: filter
+        in: query
+        required: false
+        schema:
+          oneOf:
+          - type: 'null'
+          - type: string
+      responses:
+        '200':
+          description: Main Page
+          content:
+            text/html:
+              schema:
+                type: string
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
   /garmin/fitbit/fitbit_activities_db:
     get:
+      operationId: fitbit_activities_db
       parameters:
       - name: start_date
         in: query
         required: false
         schema:
-          description: Start Date
+          type:
+          - string
+          - 'null'
           format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
       - name: end_date
         in: query
         required: false
         schema:
-          description: End Date
+          type:
+          - string
+          - 'null'
           format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
       responses:
         '200':
           description: Fitbit Activities
           content:
-            application/json:
+            text/html:
               schema:
-                items:
-                  $ref: '#/components/schemas/FitbitActivity'
-                type: array
+                type: object
+                required:
+                - pagination
+                - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FitbitActivity'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
         '400':
           description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
         '500':
           description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
     post:
+      operationId: fitbit_activities_db_update
       requestBody:
         content:
           application/json:
             schema:
-              properties:
-                updates:
-                  items:
-                    $ref: '#/components/schemas/FitbitActivity'
-                  type: array
-              type: object
-              required:
-              - updates
+              $ref: '#/components/schemas/FitbitActivitiesDBUpdateRequest'
         required: true
       responses:
         '201':
@@ -907,63 +235,526 @@ paths:
                 type: string
         '400':
           description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
         '500':
           description: Internal Server Error
-  /garmin/fitbit/heartrate_statistics_summary_db:
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+  /garmin/fitbit/heartrate_cache:
     get:
+      operationId: fitbit_heartrate_cache
+      parameters:
+      - name: date
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date
+      responses:
+        '200':
+          description: Fitbit Heartrate
+          content:
+            text/html:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FitbitHeartRate'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+    post:
+      operationId: fitbit_heartrate_cache_update
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FitbitHeartrateUpdateRequest'
+        required: true
+      responses:
+        '201':
+          description: Fitbit Heartrate Update
+          content:
+            text/html:
+              schema:
+                type: string
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+  /garmin/fitbit/heartrate_plots:
+    get:
+      operationId: heartrate_plots
       parameters:
       - name: start_date
         in: query
         required: false
         schema:
-          description: Start Date
+          type:
+          - string
+          - 'null'
           format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
       - name: end_date
         in: query
         required: false
         schema:
-          description: End Date
+          type:
+          - string
+          - 'null'
           format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
+      - name: button_date
+        in: query
+        required: false
+        schema:
+          type:
+          - string
+          - 'null'
+          format: date
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+      responses:
+        '200':
+          description: Fitbit Heartrate Plots
+          content:
+            text/html:
+              schema:
+                type: string
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+  /garmin/fitbit/heartrate_plots_demo:
+    get:
+      operationId: heartrate_plots_demo
+      parameters:
+      - name: start_date
+        in: query
+        required: false
+        schema:
+          type:
+          - string
+          - 'null'
+          format: date
+      - name: end_date
+        in: query
+        required: false
+        schema:
+          type:
+          - string
+          - 'null'
+          format: date
+      - name: button_date
+        in: query
+        required: false
+        schema:
+          type:
+          - string
+          - 'null'
+          format: date
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+      responses:
+        '200':
+          description: Fitbit Heartrate Plots
+          content:
+            text/html:
+              schema:
+                type: string
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+  /garmin/fitbit/heartrate_statistics_plots:
+    get:
+      operationId: heartrate_statistics_plots
+      parameters:
+      - name: start_date
+        in: query
+        required: false
+        schema:
+          type:
+          - string
+          - 'null'
+          format: date
+      - name: end_date
+        in: query
+        required: false
+        schema:
+          type:
+          - string
+          - 'null'
+          format: date
+      - name: button_date
+        in: query
+        required: false
+        schema:
+          type:
+          - string
+          - 'null'
+          format: date
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+      responses:
+        '200':
+          description: Fitbit Heartrate Statistics Plots
+          content:
+            text/html:
+              schema:
+                type: string
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+  /garmin/fitbit/heartrate_statistics_plots_demo:
+    get:
+      operationId: heartrate_statistics_plots_demo
+      parameters:
+      - name: start_date
+        in: query
+        required: false
+        schema:
+          type:
+          - string
+          - 'null'
+          format: date
+      - name: end_date
+        in: query
+        required: false
+        schema:
+          type:
+          - string
+          - 'null'
+          format: date
+      - name: button_date
+        in: query
+        required: false
+        schema:
+          type:
+          - string
+          - 'null'
+          format: date
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+      responses:
+        '200':
+          description: Fitbit Heartrate Statistics Plots
+          content:
+            text/html:
+              schema:
+                type: string
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+  /garmin/fitbit/heartrate_statistics_summary_db:
+    get:
+      operationId: heartrate_statistics_summary_db
+      parameters:
+      - name: start_date
+        in: query
+        required: false
+        schema:
+          type:
+          - string
+          - 'null'
+          format: date
+      - name: end_date
+        in: query
+        required: false
+        schema:
+          type:
+          - string
+          - 'null'
+          format: date
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
       responses:
         '200':
           description: Heartrate Statistics
           content:
-            application/json:
+            text/html:
               schema:
-                items:
-                  $ref: '#/components/schemas/FitbitStatisticsSummary'
-                type: array
+                type: object
+                required:
+                - pagination
+                - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FitbitStatisticsSummary'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
         '400':
           description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
         '500':
           description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
     post:
+      operationId: heartrate_statistics_summary_db_update
       requestBody:
         content:
           application/json:
             schema:
-              properties:
-                updates:
-                  items:
-                    $ref: '#/components/schemas/FitbitStatisticsSummary'
-                  type: array
-              type: object
-              required:
-              - updates
+              $ref: '#/components/schemas/HeartrateStatisticsSummaryDBUpdateRequest'
         required: true
       responses:
         '201':
@@ -974,513 +765,408 @@ paths:
                 type: string
         '400':
           description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-  /garmin/fitbit/profile:
-    get:
-      responses:
-        '200':
-          description: Fitbit Profile
           content:
-            text/plain:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
               schema:
                 type: string
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
         '500':
           description: Internal Server Error
-  /garmin/scale_measurements:
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+  /garmin/fitbit/plots:
     get:
+      operationId: fitbit_plots
       parameters:
       - name: start_date
         in: query
         required: false
         schema:
-          description: Start Date
+          type:
+          - string
+          - 'null'
           format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
       - name: end_date
         in: query
         required: false
         schema:
-          description: End Date
+          type:
+          - string
+          - 'null'
           format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
       - name: button_date
         in: query
         required: false
         schema:
-          description: Button Date
+          type:
+          - string
+          - 'null'
           format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
       - name: offset
         in: query
         required: false
         schema:
-          description: Offset
-          nullable: true
-          type: integer
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type:
+          - integer
+          - 'null'
           minimum: 0
       responses:
         '200':
-          description: Scale Measurements
+          description: Scale Measurement Plots
+          content:
+            text/html:
+              schema:
+                type: string
+        '400':
+          description: Bad Request
           content:
             application/json:
               schema:
-                items:
-                  $ref: '#/components/schemas/ScaleMeasurement'
-                type: array
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-    post:
-      requestBody:
-        content:
-          application/json:
-            schema:
-              properties:
-                measurements:
-                  items:
-                    $ref: '#/components/schemas/ScaleMeasurement'
-                  type: array
-              type: object
-              required:
-              - measurements
-        required: true
-      responses:
-        '201':
-          description: Scale Measurements Update
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
           content:
             text/html:
               schema:
                 type: string
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
         '500':
           description: Internal Server Error
-  /garmin/scale_measurements/manual:
-    post:
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ScaleMeasurementManualRequest'
-        required: true
-      responses:
-        '201':
-          description: Scale Measurement Manual Input Post
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ScaleMeasurement'
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-  /garmin/scale_measurements/manual/input:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+  /garmin/fitbit/plots_demo:
     get:
-      responses:
-        '200':
-          description: Scale Measurement Manual Input
-          content:
-            text/plain:
-              schema:
-                type: string
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-  /garmin/strava/auth:
-    get:
-      responses:
-        '200':
-          description: Strava Auth
-          content:
-            text/html:
-              schema:
-                type: string
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-  /garmin/strava/refresh_auth:
-    get:
-      responses:
-        '200':
-          description: Strava Refresh Auth
-          content:
-            text/html:
-              schema:
-                type: string
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-  /garmin/strava/callback:
-    get:
-      parameters:
-      - name: code
-        in: query
-        required: true
-        schema:
-          description: Authorization Code
-          type: string
-      - name: state
-        in: query
-        required: true
-        schema:
-          description: CSRF State
-          type: string
-      responses:
-        '200':
-          description: Strava Callback
-          content:
-            text/html:
-              schema:
-                type: string
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-  /garmin/strava/activities:
-    get:
+      operationId: fitbit_plots_demo
       parameters:
       - name: start_date
         in: query
         required: false
         schema:
-          description: Start Date
+          type:
+          - string
+          - 'null'
           format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
       - name: end_date
         in: query
         required: false
         schema:
-          description: End Date
+          type:
+          - string
+          - 'null'
           format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
+      - name: button_date
+        in: query
+        required: false
+        schema:
+          type:
+          - string
+          - 'null'
+          format: date
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
       responses:
         '200':
-          description: Strava Activities
+          description: Scale Measurement Plots
           content:
-            application/json:
-              schema:
-                items:
-                  $ref: '#/components/schemas/StravaActivity'
-                type: array
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-  /garmin/strava/athlete:
-    get:
-      responses:
-        '200':
-          description: Strava Athlete
-          content:
-            text/plain:
+            text/html:
               schema:
                 type: string
         '400':
           description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
         '500':
           description: Internal Server Error
-  /garmin/strava/activities_db:
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+  /garmin/garmin_connect_activities_db:
     get:
+      operationId: garmin_connect_activities_db
       parameters:
       - name: start_date
         in: query
         required: false
         schema:
-          description: Start Date
+          type:
+          - string
+          - 'null'
           format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
       - name: end_date
         in: query
         required: false
         schema:
-          description: End Date
+          type:
+          - string
+          - 'null'
           format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
-      responses:
-        '200':
-          description: Strava Activities
-          content:
-            application/json:
-              schema:
-                items:
-                  $ref: '#/components/schemas/StravaActivity'
-                type: array
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-    post:
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/StravaActiviesDBUpdateRequest'
-        required: true
-      responses:
-        '201':
-          description: Strava Activities Update
-          content:
-            text/html:
-              schema:
-                type: string
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-  /garmin/strava/upload:
-    post:
-      requestBody:
-        content:
-          application/json:
-            schema:
-              properties:
-                filename:
-                  description: File Name
-                  type: string
-                title:
-                  description: Title
-                  type: string
-                activity_type:
-                  description: Activity Type
-                  type: string
-                description:
-                  description: Description
-                  nullable: true
-                  type: string
-                is_private:
-                  description: Privacy Flag
-                  nullable: true
-                  type: boolean
-              type: object
-              required:
-              - filename
-              - title
-              - activity_type
-        required: true
-      responses:
-        '201':
-          description: Strava Upload
-          content:
-            text/html:
-              schema:
-                type: string
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-  /garmin/strava/update:
-    post:
-      requestBody:
-        content:
-          application/json:
-            schema:
-              properties:
-                activity_id:
-                  description: Strava Activity ID
-                  type: integer
-                  minimum: 0
-                title:
-                  description: Title
-                  type: string
-                activity_type:
-                  description: Activity Type
-                  type: string
-                description:
-                  description: Description
-                  nullable: true
-                  type: string
-                is_private:
-                  description: Privacy Flag
-                  nullable: true
-                  type: boolean
-                start_time:
-                  description: Start DateTime
-                  format: date-time
-                  nullable: true
-                  type: string
-              type: object
-              required:
-              - activity_id
-              - title
-              - activity_type
-        required: true
-      responses:
-        '201':
-          description: Strava Update
-          content:
-            text/html:
-              schema:
-                type: string
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-  /garmin/strava/create:
-    post:
-      parameters:
-      - name: filename
-        in: query
-        required: true
-        schema:
-          type: string
-      responses:
-        '201':
-          description: Strava Create
-          content:
-            text/html:
-              schema:
-                type: string
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-  /garmin/user:
-    get:
-      responses:
-        '200':
-          description: Logged in User
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/LoggedUser'
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
-        '500':
-          description: Internal Server Error
-  /garmin/race_result_plot:
-    get:
-      parameters:
-      - name: race_type
-        in: query
-        required: true
-        schema:
-          description: Race Type
-          type: string
-          enum:
-          - personal
-          - world_record_men
-          - world_record_women
-      - name: demo
+      - name: offset
         in: query
         required: false
         schema:
-          description: Demo Flag
-          nullable: true
-          type: boolean
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
       responses:
         '200':
-          description: Race Result Plot
+          description: Garmin Connect Activities
+          content:
+            text/html:
+              schema:
+                type: object
+                required:
+                - pagination
+                - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GarminConnectActivity'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+    post:
+      operationId: garmin_connect_activities_db_update
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GarminConnectActivitiesDBUpdateRequest'
+        required: true
+      responses:
+        '201':
+          description: Garmin Connect Activities
           content:
             text/html:
               schema:
                 type: string
         '400':
           description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
         '500':
           description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+  /garmin/garmin_sync:
+    post:
+      operationId: garmin_sync
+      responses:
+        '200':
+          description: Garmin Sync
+          content:
+            text/html:
+              schema:
+                type: string
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+  /garmin/index.html:
+    get:
+      operationId: garmin
+      parameters:
+      - name: filter
+        in: query
+        required: false
+        schema:
+          oneOf:
+          - type: 'null'
+          - type: string
+      responses:
+        '200':
+          description: Main Page
+          content:
+            text/html:
+              schema:
+                type: string
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
   /garmin/race_result_flag:
     get:
+      operationId: race_result_flag
       parameters:
       - name: id
         in: query
         required: true
         schema:
-          format: uuid
-          example: 334518f4-1bfd-4f20-9978-bfad0dc033e1
           type: string
+          format: uuid
       responses:
         '200':
           description: Race Result Plot
@@ -1490,14 +1176,35 @@ paths:
                 type: string
         '400':
           description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
         '500':
           description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
   /garmin/race_result_import:
     get:
+      operationId: race_result_import
       parameters:
       - name: filename
         in: query
@@ -1513,32 +1220,48 @@ paths:
                 type: string
         '400':
           description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
         '500':
           description: Internal Server Error
-  /garmin/race_result_plot_demo:
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+  /garmin/race_result_plot:
     get:
+      operationId: race_result_plot
       parameters:
       - name: race_type
         in: query
         required: true
         schema:
-          description: Race Type
-          type: string
-          enum:
-          - personal
-          - world_record_men
-          - world_record_women
+          $ref: '#/components/schemas/RaceType'
       - name: demo
         in: query
         required: false
         schema:
-          description: Demo Flag
-          nullable: true
-          type: boolean
+          type:
+          - boolean
+          - 'null'
       responses:
         '200':
           description: Race Result Plot
@@ -1548,44 +1271,133 @@ paths:
                 type: string
         '400':
           description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
         '500':
           description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+  /garmin/race_result_plot_demo:
+    get:
+      operationId: race_result_plot_demo
+      parameters:
+      - name: race_type
+        in: query
+        required: true
+        schema:
+          $ref: '#/components/schemas/RaceType'
+      - name: demo
+        in: query
+        required: false
+        schema:
+          type:
+          - boolean
+          - 'null'
+      responses:
+        '200':
+          description: Race Result Plot
+          content:
+            text/html:
+              schema:
+                type: string
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
   /garmin/race_results_db:
     get:
+      operationId: race_results_db
       parameters:
       - name: race_type
         in: query
         required: false
         schema:
-          description: Race Type
-          nullable: true
-          type: string
-          enum:
-          - personal
-          - world_record_men
-          - world_record_women
+          oneOf:
+          - type: 'null'
+          - $ref: '#/components/schemas/RaceType'
       responses:
         '200':
           description: Race Results
           content:
-            application/json:
+            text/html:
               schema:
+                type: array
                 items:
                   $ref: '#/components/schemas/RaceResults'
-                type: array
         '400':
           description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
         '500':
           description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
     post:
+      operationId: race_results_db_update
       requestBody:
         content:
           application/json:
@@ -1601,14 +1413,284 @@ paths:
                 type: string
         '400':
           description: Bad Request
-        '404':
-          description: Not Found
-        '405':
-          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
         '500':
           description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+  /garmin/scale_measurements:
+    get:
+      operationId: scale_measurement
+      parameters:
+      - name: start_date
+        in: query
+        required: false
+        schema:
+          type:
+          - string
+          - 'null'
+          format: date
+      - name: end_date
+        in: query
+        required: false
+        schema:
+          type:
+          - string
+          - 'null'
+          format: date
+      - name: button_date
+        in: query
+        required: false
+        schema:
+          type:
+          - string
+          - 'null'
+          format: date
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+      responses:
+        '200':
+          description: Scale Measurements
+          content:
+            text/html:
+              schema:
+                type: object
+                required:
+                - pagination
+                - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ScaleMeasurement'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+    post:
+      operationId: scale_measurement_update
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScaleMeasurementUpdateRequest'
+        required: true
+      responses:
+        '201':
+          description: Scale Measurements Update
+          content:
+            text/html:
+              schema:
+                type: string
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+  /garmin/scale_measurements/manual:
+    post:
+      operationId: scale_measurement_manual
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScaleMeasurementManualRequest'
+        required: true
+      responses:
+        '201':
+          description: Scale Measurement Manual Input Post
+          content:
+            text/html:
+              schema:
+                type: object
+                required:
+                - id
+                - datetime
+                - mass
+                - fat_pct
+                - water_pct
+                - muscle_pct
+                - bone_pct
+                properties:
+                  bone_pct:
+                    type: number
+                    format: double
+                  connect_primary_key:
+                    type:
+                    - integer
+                    - 'null'
+                    format: int64
+                  datetime:
+                    type: string
+                    format: date-time
+                  fat_pct:
+                    type: number
+                    format: double
+                  id:
+                    type: string
+                    format: uuid
+                  mass:
+                    type: number
+                    format: double
+                  muscle_pct:
+                    type: number
+                    format: double
+                  water_pct:
+                    type: number
+                    format: double
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+  /garmin/scale_measurements/manual/input:
+    post:
+      operationId: scale_measurement_manual_input
+      responses:
+        '200':
+          description: Scale Measurement Manual Input
+          content:
+            text/html:
+              schema:
+                type: string
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
   /garmin/scripts/garmin_scripts.js:
     get:
+      operationId: garmin_scripts_js
       responses:
         '200':
           description: Javascript
@@ -1618,42 +1700,7 @@ paths:
                 type: string
   /garmin/scripts/garmin_scripts_demo.js:
     get:
-      responses:
-        '200':
-          description: Javascript
-          content:
-            text/javascript:
-              schema:
-                type: string
-  /garmin/scripts/line_plot.js:
-    get:
-      responses:
-        '200':
-          description: Javascript
-          content:
-            text/javascript:
-              schema:
-                type: string
-  /garmin/scripts/scatter_plot.js:
-    get:
-      responses:
-        '200':
-          description: Javascript
-          content:
-            text/javascript:
-              schema:
-                type: string
-  /garmin/scripts/scatter_plot_with_lines.js:
-    get:
-      responses:
-        '200':
-          description: Javascript
-          content:
-            text/javascript:
-              schema:
-                type: string
-  /garmin/scripts/time_series.js:
-    get:
+      operationId: garmin_scripts_demo_js
       responses:
         '200':
           description: Javascript
@@ -1663,6 +1710,7 @@ paths:
                 type: string
   /garmin/scripts/initialize_map.js:
     get:
+      operationId: initialize_map_js
       responses:
         '200':
           description: Javascript
@@ -1670,231 +1718,765 @@ paths:
             text/javascript:
               schema:
                 type: string
+  /garmin/scripts/line_plot.js:
+    get:
+      operationId: line_plot_js
+      responses:
+        '200':
+          description: Javascript
+          content:
+            text/javascript:
+              schema:
+                type: string
+  /garmin/scripts/scatter_plot.js:
+    get:
+      operationId: scatter_plot_js
+      responses:
+        '200':
+          description: Javascript
+          content:
+            text/javascript:
+              schema:
+                type: string
+  /garmin/scripts/scatter_plot_with_lines.js:
+    get:
+      operationId: scatter_plot_with_lines_js
+      responses:
+        '200':
+          description: Javascript
+          content:
+            text/javascript:
+              schema:
+                type: string
+  /garmin/scripts/time_series.js:
+    get:
+      operationId: time_series_js
+      responses:
+        '200':
+          description: Javascript
+          content:
+            text/javascript:
+              schema:
+                type: string
+  /garmin/strava/activities:
+    get:
+      operationId: strava_activities
+      parameters:
+      - name: start_date
+        in: query
+        required: false
+        schema:
+          type:
+          - string
+          - 'null'
+          format: date
+      - name: end_date
+        in: query
+        required: false
+        schema:
+          type:
+          - string
+          - 'null'
+          format: date
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+      responses:
+        '200':
+          description: Strava Activities
+          content:
+            text/html:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StravaActivity'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+  /garmin/strava/activities_db:
+    get:
+      operationId: strava_activities_db
+      parameters:
+      - name: start_date
+        in: query
+        required: false
+        schema:
+          type:
+          - string
+          - 'null'
+          format: date
+      - name: end_date
+        in: query
+        required: false
+        schema:
+          type:
+          - string
+          - 'null'
+          format: date
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+      responses:
+        '200':
+          description: Strava DB Activities
+          content:
+            text/html:
+              schema:
+                type: object
+                required:
+                - pagination
+                - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StravaActivity'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+    post:
+      operationId: strava_activities_db_update
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StravaActiviesDBUpdateRequest'
+        required: true
+      responses:
+        '201':
+          description: Strava Activities Update
+          content:
+            text/html:
+              schema:
+                type: string
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+  /garmin/strava/athlete:
+    get:
+      operationId: strava_athlete
+      responses:
+        '200':
+          description: Strava Athlete
+          content:
+            text/html:
+              schema:
+                type: string
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+  /garmin/strava/auth:
+    get:
+      operationId: strava_auth
+      responses:
+        '200':
+          description: Strava Auth
+          content:
+            text/html:
+              schema:
+                type: string
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+  /garmin/strava/callback:
+    get:
+      operationId: strava_callback
+      parameters:
+      - name: code
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: state
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Strava Callback
+          content:
+            text/html:
+              schema:
+                type: string
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+  /garmin/strava/create:
+    post:
+      operationId: strava_create
+      parameters:
+      - name: filename
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        '201':
+          description: Strava Create
+          content:
+            text/html:
+              schema:
+                type: string
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+  /garmin/strava/refresh_auth:
+    get:
+      operationId: strava_refresh
+      responses:
+        '200':
+          description: Strava Refresh Auth
+          content:
+            text/html:
+              schema:
+                type: string
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+  /garmin/strava/update:
+    post:
+      operationId: strava_update
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StravaUpdateRequest'
+        required: true
+      responses:
+        '201':
+          description: Strava Update
+          content:
+            text/html:
+              schema:
+                type: string
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+  /garmin/strava/upload:
+    post:
+      operationId: strava_upload
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StravaUploadRequest'
+        required: true
+      responses:
+        '201':
+          description: Strava Upload
+          content:
+            text/html:
+              schema:
+                type: string
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+  /garmin/strava_sync:
+    post:
+      operationId: strava_sync
+      parameters:
+      - name: start_datetime
+        in: query
+        required: false
+        schema:
+          type:
+          - string
+          - 'null'
+          format: date-time
+      - name: end_datetime
+        in: query
+        required: false
+        schema:
+          type:
+          - string
+          - 'null'
+          format: date-time
+      responses:
+        '200':
+          description: Strava Sync
+          content:
+            text/html:
+              schema:
+                type: string
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+  /garmin/upload_file:
+    post:
+      operationId: garmin_upload
+      requestBody:
+        content:
+          multipart/form-data: {}
+      responses:
+        '201':
+          description: Upload Response
+          content:
+            text/html:
+              schema:
+                type: string
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Not Authorized
+          content:
+            text/html:
+              schema:
+                type: string
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - message
+                properties:
+                  message:
+                    type: string
+  /garmin/user:
+    get:
+      operationId: user
+      responses:
+        '200':
+          description: Logged in User
+          content:
+            text/html:
+              schema:
+                type: object
+                required:
+                - email
+                - session
+                - secret_key
+                - created_at
+                properties:
+                  created_at:
+                    type: string
+                    format: date-time
+                  email:
+                    type: string
+                  secret_key:
+                    type: string
+                  session:
+                    type: string
+                    format: uuid
 components:
   schemas:
-    GarminConnectActivity:
+    AddGarminCorrectionRequest:
+      type: object
+      required:
+      - start_time
+      - lap_number
       properties:
-        activity_id:
-          description: Activity ID
-          type: integer
-        activity_name:
-          description: Activity Name
-          nullable: true
-          type: string
-        description:
-          description: Description
-          nullable: true
-          type: string
-        start_time_gmt:
-          description: Start Time UTC
-          format: date-time
-          type: string
         distance:
-          description: Distance (m)
-          nullable: true
-          type: number
+          type:
+          - number
+          - 'null'
+          format: double
         duration:
-          description: Duration (s)
-          type: number
-        elapsed_duration:
-          description: Elapsed Duration (s)
-          nullable: true
-          type: number
-        moving_duration:
-          description: Moving Duration (s)
-          nullable: true
-          type: number
-        steps:
-          description: Number of Steps
-          nullable: true
+          type:
+          - number
+          - 'null'
+          format: double
+        lap_number:
           type: integer
-        calories:
-          description: Calories (kCal)
-          nullable: true
-          type: number
-        average_hr:
-          description: Average Heartrate
-          nullable: true
-          type: number
-        max_hr:
-          description: Max Heartrate
-          nullable: true
-          type: number
-      type: object
-      required:
-      - activity_id
-      - start_time_gmt
-      - duration
-    FitbitCallbackRequest:
-      properties:
-        code:
-          description: Authorization Code
-          type: string
-        state:
-          description: CSRF State
-          type: string
-      type: object
-      required:
-      - code
-      - state
-    FitbitHeartrate:
-      properties:
-        datetime:
-          description: DateTime
-          format: date-time
-          type: string
-        value:
-          description: Heartrate Value (bpm)
-          type: integer
-      type: object
-      required:
-      - datetime
-      - value
-    FitbitBodyWeightFat:
-      properties:
-        datetime:
-          description: DateTime
-          format: date-time
-          type: string
-        weight:
-          description: Weight (lbs)
-          type: number
-        fat:
-          description: Fat %
-          type: number
-      type: object
-      required:
-      - datetime
-      - weight
-      - fat
-    FitbitBodyWeightFatUpdate:
-      properties:
-        measurements:
-          description: Measurements
-          items:
-            $ref: '#/components/schemas/ScaleMeasurement'
-          type: array
-        activities:
-          description: Activity DateTimes
-          items:
-            format: date-time
-            type: string
-          type: array
-        duplicates:
-          description: Duplicate Messages
-          items:
-            type: string
-          type: array
-      type: object
-      required:
-      - measurements
-      - activities
-      - duplicates
-    ScaleMeasurement:
-      properties:
-        id:
-          description: Scale Measurement ID
-          format: uuid
-          example: 334518f4-1bfd-4f20-9978-bfad0dc033e1
-          type: string
-        datetime:
-          description: DateTime
-          format: date-time
-          type: string
-        mass:
-          description: Mass (lbs)
-          type: number
-        fat_pct:
-          description: Fat %
-          type: number
-        water_pct:
-          description: Water %
-          type: number
-        muscle_pct:
-          description: Muscle %
-          type: number
-        bone_pct:
-          description: Bone %
-          type: number
-      type: object
-      required:
-      - id
-      - datetime
-      - mass
-      - fat_pct
-      - water_pct
-      - muscle_pct
-      - bone_pct
-    FitbitActivity:
-      properties:
-        log_type:
-          description: Log Type
-          type: string
+          format: int32
+        sport:
+          oneOf:
+          - type: 'null'
+          - $ref: '#/components/schemas/SportTypesWrapper'
         start_time:
-          description: Start Datetime
+          type: string
           format: date-time
-          type: string
-        tcx_link:
-          description: TCX Link
-          nullable: true
-          type: string
-        activity_type_id:
-          description: Activity Type ID
-          nullable: true
-          type: integer
-        activity_name:
-          description: Activity Name
-          nullable: true
-          type: string
-        duration:
-          description: Duration (ms)
-          type: integer
-        distance:
-          description: Distance (mi)
-          nullable: true
-          type: number
-        distance_unit:
-          description: Distance Unit
-          nullable: true
-          type: string
-        steps:
-          description: Number of Steps
-          nullable: true
-          type: integer
-        log_id:
-          description: Log ID
-          type: integer
+    FitbitActivitiesDBUpdateRequest:
+      type: object
+      required:
+      - updates
+      properties:
+        updates:
+          type: array
+          items:
+            $ref: '#/components/schemas/FitbitActivity'
+    FitbitActivity:
       type: object
       required:
       - log_type
       - start_time
       - duration
       - log_id
-    FitbitStatisticsSummary:
       properties:
-        date:
-          description: Date
-          format: date
-          example: 2023-01-01
-          type: string
-        min_heartrate:
-          description: Minimum Heartrate
-          type: number
-        max_heartrate:
-          description: Maximum Heartrate
-          type: number
-        mean_heartrate:
-          description: Mean Heartrate
-          type: number
-        median_heartrate:
-          description: Median Heartrate
-          type: number
-        stdev_heartrate:
-          description: Heartrate Standard Deviation
-          type: number
-        number_of_entries:
-          description: Number of Entries
+        activity_name:
+          oneOf:
+          - type: 'null'
+          - type: string
+        activity_type_id:
+          type:
+          - integer
+          - 'null'
+          format: int64
+        distance:
+          type:
+          - number
+          - 'null'
+          format: double
+        distance_unit:
+          oneOf:
+          - type: 'null'
+          - type: string
+        duration:
           type: integer
+          format: int64
+        log_id:
+          type: integer
+          format: int64
+        log_type:
+          type: string
+        start_time:
+          type: string
+          format: date-time
+        steps:
+          type:
+          - integer
+          - 'null'
+          format: int64
+        tcx_link:
+          oneOf:
+          - type: 'null'
+          - type: string
+    FitbitHeartRate:
+      type: object
+      required:
+      - datetime
+      - value
+      properties:
+        datetime:
+          type: string
+          format: date-time
+        value:
+          type: integer
+          format: int32
+    FitbitHeartrateUpdateRequest:
+      type: object
+      required:
+      - updates
+      properties:
+        updates:
+          type: array
+          items:
+            $ref: '#/components/schemas/FitbitHeartRate'
+    FitbitStatisticsSummary:
       type: object
       required:
       - date
@@ -1904,195 +2486,140 @@ components:
       - median_heartrate
       - stdev_heartrate
       - number_of_entries
-    ScaleMeasurementManualRequest:
       properties:
-        weight_in_lbs:
-          description: Weight in lbs
-          example: '189.0'
-          type: number
-        body_fat_percent:
-          description: Body fat percent
-          example: '20.3'
-          type: number
-        muscle_mass_lbs:
-          description: Muscle mass in lbs
-          example: '153.0'
-          type: number
-        body_water_percent:
-          description: Body water percent
-          example: '63.0'
-          type: number
-        bone_mass_lbs:
-          description: Bone mass in lbs
-          example: '63.0'
-          type: number
-      type: object
-      required:
-      - weight_in_lbs
-      - body_fat_percent
-      - muscle_mass_lbs
-      - body_water_percent
-      - bone_mass_lbs
-    StravaCallbackRequest:
-      properties:
-        code:
-          description: Authorization Code
+        date:
           type: string
-        state:
-          description: CSRF State
-          type: string
-      type: object
-      required:
-      - code
-      - state
-    StravaActivity:
-      properties:
-        name:
-          description: Activity Name
-          type: string
-        start_date:
-          description: Start Date
-          format: date-time
-          type: string
-        id:
-          description: Activity ID
+          format: date
+        max_heartrate:
+          type: number
+          format: double
+        mean_heartrate:
+          type: number
+          format: double
+        median_heartrate:
+          type: number
+          format: double
+        min_heartrate:
+          type: number
+          format: double
+        number_of_entries:
           type: integer
-        distance:
-          description: Distance (m)
-          nullable: true
+          format: int32
+        stdev_heartrate:
           type: number
-        moving_time:
-          description: Moving Time (s)
-          nullable: true
-          type: integer
-        elapsed_time:
-          description: Elapsed Time (s)
-          type: integer
-        total_elevation_gain:
-          description: Total Elevation Gain (m)
-          nullable: true
-          type: number
-        elev_high:
-          description: Maximum Elevation
-          nullable: true
-          type: number
-        elev_low:
-          description: Minimum Elevation
-          nullable: true
-          type: number
-        activity_type:
-          description: Activity Type
-          type: string
-          enum:
-          - running
-          - biking
-          - walking
-          - hiking
-          - ultimate
-          - elliptical
-          - stairs
-          - lifting
-          - swimming
-          - other
-          - snowshoeing
-          - skiing
-          - none
-        timezone:
-          description: Time Zone
-          format: timezone
-          type: string
-      type: object
-      required:
-      - name
-      - start_date
-      - id
-      - elapsed_time
-      - activity_type
-      - timezone
-    StravaActiviesDBUpdateRequest:
-      properties:
-        updates:
-          items:
-            $ref: '#/components/schemas/StravaActivity'
-          type: array
+          format: double
+    GarminConnectActivitiesDBUpdateRequest:
       type: object
       required:
       - updates
-    LoggedUser:
       properties:
-        email:
-          description: Email Address
+        updates:
+          type: array
+          items:
+            $ref: '#/components/schemas/GarminConnectActivity'
+    GarminConnectActivity:
+      type: object
+      required:
+      - activity_id
+      - start_time_gmt
+      - duration
+      properties:
+        activity_id:
+          type: integer
+          format: int64
+        activity_name:
+          oneOf:
+          - type: 'null'
+          - type: string
+        average_hr:
+          type:
+          - number
+          - 'null'
+          format: double
+        calories:
+          type:
+          - number
+          - 'null'
+          format: double
+        description:
+          oneOf:
+          - type: 'null'
+          - type: string
+        distance:
+          type:
+          - number
+          - 'null'
+          format: double
+        duration:
+          type: number
+          format: double
+        elapsed_duration:
+          type:
+          - number
+          - 'null'
+          format: double
+        max_hr:
+          type:
+          - number
+          - 'null'
+          format: double
+        moving_duration:
+          type:
+          - number
+          - 'null'
+          format: double
+        start_time_gmt:
           type: string
-        session:
-          description: Session UUID
-          format: uuid
-          example: 334518f4-1bfd-4f20-9978-bfad0dc033e1
-          type: string
-        secret_key:
-          description: Secret Key
-          type: string
+          format: date-time
+        steps:
+          type:
+          - integer
+          - 'null'
+          format: int64
+    HeartrateStatisticsSummaryDBUpdateRequest:
+      type: object
+      required:
+      - updates
+      properties:
+        updates:
+          type: array
+          items:
+            $ref: '#/components/schemas/FitbitStatisticsSummary'
+    LoggedUser:
       type: object
       required:
       - email
       - session
       - secret_key
-    RaceResultPlotRequest:
+      - created_at
       properties:
-        race_type:
-          description: Race Type
+        created_at:
           type: string
-          enum:
-          - personal
-          - world_record_men
-          - world_record_women
-        demo:
-          description: Demo Flag
-          nullable: true
-          type: boolean
+          format: date-time
+        email:
+          type: string
+        secret_key:
+          type: string
+        session:
+          type: string
+          format: uuid
+    Pagination:
       type: object
       required:
-      - race_type
-    RaceResults:
+      - total
+      - offset
+      - limit
       properties:
-        id:
-          description: Race Result ID
-          format: uuid
-          example: 334518f4-1bfd-4f20-9978-bfad0dc033e1
-          type: string
-        race_type:
-          description: Race Type
-          type: string
-          enum:
-          - personal
-          - world_record_men
-          - world_record_women
-        race_date:
-          description: Race Date
-          format: date
-          nullable: true
-          example: 2023-01-01
-          type: string
-        race_name:
-          description: Race Name
-          nullable: true
-          type: string
-        race_distance:
-          description: Race Distance (m)
+        limit:
           type: integer
-        race_time:
-          description: Race Duration (s)
-          type: number
-        race_flag:
-          description: Race Flag
-          type: boolean
-        race_summary_ids:
-          description: Race Summary IDs
-          items:
-            format: uuid
-            nullable: true
-            example: 334518f4-1bfd-4f20-9978-bfad0dc033e1
-            type: string
-          type: array
+          minimum: 0
+        offset:
+          type: integer
+          minimum: 0
+        total:
+          type: integer
+          minimum: 0
+    RaceResults:
       type: object
       required:
       - id
@@ -2101,12 +2628,245 @@ components:
       - race_time
       - race_flag
       - race_summary_ids
-    RaceResultsDBUpdateRequest:
       properties:
-        updates:
-          items:
-            $ref: '#/components/schemas/RaceResults'
+        id:
+          type: string
+          format: uuid
+        race_date:
+          type:
+          - string
+          - 'null'
+          format: date
+        race_distance:
+          type: integer
+          format: int32
+        race_flag:
+          type: boolean
+        race_name:
+          oneOf:
+          - type: 'null'
+          - type: string
+        race_summary_ids:
           type: array
+          items:
+            type:
+            - string
+            - 'null'
+            format: uuid
+        race_time:
+          type: number
+          format: double
+        race_type:
+          $ref: '#/components/schemas/RaceType'
+    RaceResultsDBUpdateRequest:
       type: object
       required:
       - updates
+      properties:
+        updates:
+          type: array
+          items:
+            $ref: '#/components/schemas/RaceResults'
+    RaceType:
+      type: string
+      enum:
+      - personal
+      - world_record_men
+      - world_record_women
+    ScaleMeasurement:
+      type: object
+      required:
+      - id
+      - datetime
+      - mass
+      - fat_pct
+      - water_pct
+      - muscle_pct
+      - bone_pct
+      properties:
+        bone_pct:
+          type: number
+          format: double
+        connect_primary_key:
+          type:
+          - integer
+          - 'null'
+          format: int64
+        datetime:
+          type: string
+          format: date-time
+        fat_pct:
+          type: number
+          format: double
+        id:
+          type: string
+          format: uuid
+        mass:
+          type: number
+          format: double
+        muscle_pct:
+          type: number
+          format: double
+        water_pct:
+          type: number
+          format: double
+    ScaleMeasurementManualRequest:
+      type: object
+      required:
+      - weight_in_lbs
+      - body_fat_percent
+      - muscle_mass_lbs
+      - body_water_percent
+      - bone_mass_lbs
+      properties:
+        body_fat_percent:
+          type: number
+          format: double
+        body_water_percent:
+          type: number
+          format: double
+        bone_mass_lbs:
+          type: number
+          format: double
+        muscle_mass_lbs:
+          type: number
+          format: double
+        weight_in_lbs:
+          type: number
+          format: double
+    ScaleMeasurementUpdateRequest:
+      type: object
+      required:
+      - measurements
+      properties:
+        measurements:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScaleMeasurement'
+    SportTypesWrapper:
+      type: string
+      enum:
+      - running
+      - biking
+      - walking
+      - hiking
+      - ultimate
+      - elliptical
+      - stairs
+      - lifting
+      - swimming
+      - other
+      - snowshoeing
+      - skiing
+      - none
+    StravaActiviesDBUpdateRequest:
+      type: object
+      required:
+      - updates
+      properties:
+        updates:
+          type: array
+          items:
+            $ref: '#/components/schemas/StravaActivity'
+    StravaActivity:
+      type: object
+      required:
+      - name
+      - start_date
+      - id
+      - elapsed_time
+      - activity_type
+      - timezone
+      properties:
+        activity_type:
+          $ref: '#/components/schemas/SportTypesWrapper'
+        distance:
+          type:
+          - number
+          - 'null'
+          format: double
+        elapsed_time:
+          type: integer
+          format: int64
+        elev_high:
+          type:
+          - number
+          - 'null'
+          format: double
+        elev_low:
+          type:
+          - number
+          - 'null'
+          format: double
+        id:
+          type: integer
+          format: int64
+        moving_time:
+          type:
+          - integer
+          - 'null'
+          format: int64
+        name:
+          type: string
+        start_date:
+          type: string
+          format: date-time
+        timezone:
+          $ref: '#/components/schemas/timezone'
+        total_elevation_gain:
+          type:
+          - number
+          - 'null'
+          format: double
+    StravaUpdateRequest:
+      type: object
+      required:
+      - activity_id
+      - title
+      - activity_type
+      properties:
+        activity_id:
+          type: integer
+          format: int64
+          minimum: 0
+        activity_type:
+          type: string
+        description:
+          oneOf:
+          - type: 'null'
+          - type: string
+        is_private:
+          type:
+          - boolean
+          - 'null'
+        start_time:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        title:
+          type: string
+    StravaUploadRequest:
+      type: object
+      required:
+      - filename
+      - title
+      - activity_type
+      properties:
+        activity_type:
+          type: string
+        description:
+          oneOf:
+          - type: 'null'
+          - type: string
+        filename:
+          type: string
+        is_private:
+          type:
+          - boolean
+          - 'null'
+        title:
+          type: string
+    timezone:
+      type: string
+      format: timezone

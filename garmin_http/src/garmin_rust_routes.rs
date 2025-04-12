@@ -12,7 +12,7 @@ use time::Date;
 use time_tz::OffsetDateTimeExt;
 use tokio::{fs::File, io::AsyncWriteExt, task::spawn_blocking};
 use tokio_stream::StreamExt;
-use utoipa::{OpenApi, ToSchema};
+use utoipa::{IntoParams, OpenApi, ToSchema};
 use utoipa_axum::{router::OpenApiRouter, routes};
 use utoipa_helper::{
     html_response::HtmlResponse as HtmlBase, json_response::JsonResponse as JsonBase,
@@ -71,8 +71,10 @@ use crate::{
 
 type WarpResult<T> = Result<T, Error>;
 
-#[derive(Deserialize, ToSchema)]
+#[derive(Deserialize, ToSchema, IntoParams)]
 struct FilterRequest {
+    #[schema(inline)]
+    #[param(inline)]
     filter: Option<StackString>,
 }
 
@@ -108,8 +110,13 @@ fn proc_pattern_wrapper<T: AsRef<str>>(
 #[rustfmt::skip]
 struct IndexResponse(HtmlBase::<StackString>);
 
-#[utoipa::path(get, path = "/garmin/index.html", responses(IndexResponse, Error))]
-// Main Page")]
+#[utoipa::path(
+    get,
+    path = "/garmin/index.html",
+    params(FilterRequest),
+    responses(IndexResponse, Error)
+)]
+// Main Page
 async fn garmin(
     state: State<Arc<AppState>>,
     query: Query<FilterRequest>,
@@ -201,8 +208,13 @@ async fn get_index_body(
     }
 }
 
-#[utoipa::path(get, path = "/garmin/demo.html", responses(IndexResponse, Error))]
-// Demo Main Page")]
+#[utoipa::path(
+    get,
+    path = "/garmin/demo.html",
+    params(FilterRequest),
+    responses(IndexResponse, Error)
+)]
+// Demo Main Page
 async fn garmin_demo(
     state: State<Arc<AppState>>,
     query: Query<FilterRequest>,
@@ -235,7 +247,7 @@ async fn garmin_demo(
 struct JsResponse(HtmlBase::<&'static str>);
 
 #[utoipa::path(get, path = "/garmin/scripts/garmin_scripts.js", responses(JsResponse))]
-// Scripts")]
+// Scripts
 async fn garmin_scripts_js() -> JsResponse {
     HtmlBase::new(include_str!("../../templates/garmin_scripts.js")).into()
 }
@@ -245,7 +257,7 @@ async fn garmin_scripts_js() -> JsResponse {
     path = "/garmin/scripts/garmin_scripts_demo.js",
     responses(JsResponse)
 )]
-// Demo Scripts")]
+// Demo Scripts
 async fn garmin_scripts_demo_js() -> JsResponse {
     HtmlBase::new(include_str!("../../templates/garmin_scripts_demo.js")).into()
 }
@@ -284,7 +296,12 @@ async fn initialize_map_js() -> JsResponse {
 #[rustfmt::skip]
 struct UploadResponse(HtmlBase::<StackString>);
 
-#[utoipa::path(post, path = "/garmin/upload_file", responses(UploadResponse, Error))]
+#[utoipa::path(
+    post,
+    path = "/garmin/upload_file",
+    request_body(content_type = "multipart/form-data"),
+    responses(UploadResponse, Error)
+)]
 async fn garmin_upload(
     state: State<Arc<AppState>>,
     user: LoggedUser,
@@ -377,6 +394,7 @@ struct StravaSyncResponse(HtmlBase::<StackString>);
 #[utoipa::path(
     post,
     path = "/garmin/strava_sync",
+    params(StravaSyncRequest),
     responses(StravaSyncResponse, Error)
 )]
 async fn strava_sync(
@@ -448,12 +466,16 @@ async fn strava_refresh(
     Ok(HtmlBase::new(body).into())
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-// StravaCallbackRequest")]
+#[derive(Debug, Serialize, Deserialize, ToSchema, IntoParams)]
+// StravaCallbackRequest
 struct StravaCallbackRequest {
-    // Authorization Code")]
+    // Authorization Code
+    #[schema(inline)]
+    #[param(inline)]
     code: StackString,
-    // CSRF State")]
+    // CSRF State
+    #[schema(inline)]
+    #[param(inline)]
     state: StackString,
 }
 
@@ -465,6 +487,7 @@ struct StravaCallbackResponse(HtmlBase::<StackString>);
 #[utoipa::path(
     get,
     path = "/garmin/strava/callback",
+    params(StravaCallbackRequest),
     responses(StravaCallbackResponse, Error)
 )]
 async fn strava_callback(
@@ -500,6 +523,7 @@ struct StravaActivitiesResponse(JsonBase::<StravaActivityList>);
 #[utoipa::path(
     get,
     path = "/garmin/strava/activities",
+    params(StravaActivitiesRequest),
     responses(StravaActivitiesResponse, Error)
 )]
 async fn strava_activities(
@@ -518,18 +542,18 @@ async fn strava_activities(
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
-// Pagination")]
+// Pagination
 struct Pagination {
-    // Total Number of Entries")]
+    // Total Number of Entries
     total: usize,
-    // Number of Entries to Skip")]
+    // Number of Entries to Skip
     offset: usize,
-    // Number of Entries Returned")]
+    // Number of Entries Returned
     limit: usize,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
-// PaginatedStravaActivity")]
+// PaginatedStravaActivity
 struct PaginatedStravaActivity {
     pagination: Pagination,
     data: Vec<StravaActivityWrapper>,
@@ -543,6 +567,7 @@ struct StravaActivitiesDBResponse(JsonBase::<PaginatedStravaActivity>);
 #[utoipa::path(
     get,
     path = "/garmin/strava/activities_db",
+    params(StravaActivitiesRequest),
     responses(StravaActivitiesDBResponse, Error)
 )]
 async fn strava_activities_db(
@@ -580,7 +605,7 @@ async fn strava_activities_db(
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
-// StravaActiviesDBUpdateRequest")]
+// StravaActiviesDBUpdateRequest
 struct StravaActiviesDBUpdateRequest {
     updates: Vec<StravaActivityWrapper>,
 }
@@ -597,6 +622,7 @@ struct StravaActivitiesUpdateResponse(HtmlBase::<StackString>);
 #[utoipa::path(
     post,
     path = "/garmin/strava/activities_db",
+    request_body = StravaActiviesDBUpdateRequest,
     responses(StravaActivitiesUpdateResponse, Error)
 )]
 async fn strava_activities_db_update(
@@ -626,6 +652,7 @@ struct StravaUploadResponse(HtmlBase::<StackString>);
 #[utoipa::path(
     post,
     path = "/garmin/strava/upload",
+    request_body = StravaUploadRequest,
     responses(StravaUploadResponse, Error)
 )]
 async fn strava_upload(
@@ -646,6 +673,7 @@ struct StravaUpdateResponse(HtmlBase::<StackString>);
 #[utoipa::path(
     post,
     path = "/garmin/strava/update",
+    request_body = StravaUpdateRequest,
     responses(StravaUpdateResponse, Error)
 )]
 async fn strava_update(
@@ -666,6 +694,7 @@ struct StravaCreateResponse(HtmlBase::<StackString>);
 #[utoipa::path(
     post,
     path = "/garmin/strava/create",
+    params(StravaCreateRequest),
     responses(StravaCreateResponse, Error)
 )]
 async fn strava_create(
@@ -689,6 +718,7 @@ struct FitbitHeartRateResponse(JsonBase::<FitbitHeartRateList>);
 #[utoipa::path(
     get,
     path = "/garmin/fitbit/heartrate_cache",
+    params(FitbitHeartrateCacheRequest),
     responses(FitbitHeartRateResponse, Error)
 )]
 async fn fitbit_heartrate_cache(
@@ -719,6 +749,7 @@ struct FitbitHeartrateUpdateResponse(HtmlBase::<StackString>);
 #[utoipa::path(
     post,
     path = "/garmin/fitbit/heartrate_cache",
+    request_body = FitbitHeartrateUpdateRequest,
     responses(FitbitHeartrateUpdateResponse, Error)
 )]
 async fn fitbit_heartrate_cache_update(
@@ -762,6 +793,7 @@ struct FitbitStatisticsPlotResponse(HtmlBase::<StackString>);
 #[utoipa::path(
     get,
     path = "/garmin/fitbit/heartrate_statistics_plots",
+    params(ScaleMeasurementRequest),
     responses(FitbitStatisticsPlotResponse, Error)
 )]
 async fn heartrate_statistics_plots(
@@ -806,6 +838,7 @@ async fn heartrate_statistics_plots(
 #[utoipa::path(
     get,
     path = "/garmin/fitbit/heartrate_statistics_plots_demo",
+    params(ScaleMeasurementRequest),
     responses(FitbitStatisticsPlotResponse, Error)
 )]
 async fn heartrate_statistics_plots_demo(
@@ -858,6 +891,7 @@ struct ScaleMeasurementResponse(HtmlBase::<StackString>);
 #[utoipa::path(
     get,
     path = "/garmin/fitbit/plots",
+    params(ScaleMeasurementRequest),
     responses(ScaleMeasurementResponse, Error)
 )]
 async fn fitbit_plots(
@@ -901,6 +935,7 @@ async fn fitbit_plots(
 #[utoipa::path(
     get,
     path = "/garmin/fitbit/plots_demo",
+    params(ScaleMeasurementRequest),
     responses(ScaleMeasurementResponse, Error)
 )]
 async fn fitbit_plots_demo(
@@ -950,6 +985,7 @@ struct FitbitHeartratePlotResponse(HtmlBase::<StackString>);
 #[utoipa::path(
     get,
     path = "/garmin/fitbit/heartrate_plots",
+    params(ScaleMeasurementRequest),
     responses(FitbitHeartratePlotResponse, Error)
 )]
 async fn heartrate_plots(
@@ -1018,6 +1054,7 @@ async fn heartrate_plots(
 #[utoipa::path(
     get,
     path = "/garmin/fitbit/heartrate_plots_demo",
+    params(ScaleMeasurementRequest),
     responses(FitbitHeartratePlotResponse, Error)
 )]
 async fn heartrate_plots_demo(
@@ -1063,7 +1100,7 @@ async fn heartrate_plots_demo(
 struct FitbitTcxSyncResponse(JsonBase::<Vec<String>>);
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
-// PaginatedScaleMeasurement")]
+// PaginatedScaleMeasurement
 struct PaginatedScaleMeasurement {
     pagination: Pagination,
     data: Vec<ScaleMeasurementWrapper>,
@@ -1077,6 +1114,7 @@ struct ScaleMeasurementsResponse(JsonBase::<PaginatedScaleMeasurement>);
 #[utoipa::path(
     get,
     path = "/garmin/scale_measurements",
+    params(ScaleMeasurementRequest),
     responses(ScaleMeasurementsResponse, Error)
 )]
 async fn scale_measurement(
@@ -1129,6 +1167,7 @@ struct ScaleMeasurementsUpdateResponse(HtmlBase::<&'static str>);
 #[utoipa::path(
     post,
     path = "/garmin/scale_measurements",
+    request_body = ScaleMeasurementUpdateRequest,
     responses(ScaleMeasurementsUpdateResponse, Error)
 )]
 async fn scale_measurement_update(
@@ -1150,7 +1189,7 @@ async fn scale_measurement_update(
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
-// ScaleMeasurementManualRequest")]
+// ScaleMeasurementManualRequest
 struct ScaleMeasurementManualRequest {
     // Weight in lbs", example = r#""189.0""#)]
     weight_in_lbs: f64,
@@ -1175,6 +1214,7 @@ struct ScaleMeasurementManualResponse(JsonBase::<ScaleMeasurementWrapper>);
 #[utoipa::path(
     post,
     path = "/garmin/scale_measurements/manual",
+    request_body = ScaleMeasurementManualRequest,
     responses(ScaleMeasurementManualResponse, Error)
 )]
 async fn scale_measurement_manual(
@@ -1255,6 +1295,7 @@ struct AddGarminCorrectionResponse(HtmlBase::<&'static str>);
 #[utoipa::path(
     post,
     path = "/garmin/add_garmin_correction",
+    request_body = AddGarminCorrectionRequest,
     responses(AddGarminCorrectionResponse, Error)
 )]
 async fn add_garmin_correction(
@@ -1303,7 +1344,7 @@ async fn strava_athlete(
 struct FitbitProfileResponse(HtmlBase::<StackString>);
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
-// PaginatedGarminConnectActivity")]
+// PaginatedGarminConnectActivity
 struct PaginatedGarminConnectActivity {
     pagination: Pagination,
     data: Vec<GarminConnectActivityWrapper>,
@@ -1317,6 +1358,7 @@ struct GarminConnectActivitiesResponse(JsonBase::<PaginatedGarminConnectActivity
 #[utoipa::path(
     get,
     path = "/garmin/garmin_connect_activities_db",
+    params(StravaActivitiesRequest),
     responses(GarminConnectActivitiesResponse, Error)
 )]
 async fn garmin_connect_activities_db(
@@ -1369,6 +1411,7 @@ struct GarminConnectActivitiesUpdateResponse(HtmlBase::<StackString>);
 #[utoipa::path(
     post,
     path = "/garmin/garmin_connect_activities_db",
+    request_body = GarminConnectActivitiesDBUpdateRequest,
     responses(GarminConnectActivitiesUpdateResponse, Error)
 )]
 async fn garmin_connect_activities_db_update(
@@ -1388,7 +1431,7 @@ async fn garmin_connect_activities_db_update(
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
-// PaginatedFitbitActivity")]
+// PaginatedFitbitActivity
 struct PaginatedFitbitActivity {
     pagination: Pagination,
     data: Vec<FitbitActivityWrapper>,
@@ -1402,6 +1445,7 @@ struct FitbitActivitiesDBResponse(JsonBase::<PaginatedFitbitActivity>);
 #[utoipa::path(
     get,
     path = "/garmin/fitbit/fitbit_activities_db",
+    params(StravaActivitiesRequest),
     responses(FitbitActivitiesDBResponse, Error)
 )]
 async fn fitbit_activities_db(
@@ -1453,6 +1497,7 @@ struct FitbitActivitiesDBUpdateResponse(HtmlBase::<StackString>);
 #[utoipa::path(
     post,
     path = "/garmin/fitbit/fitbit_activities_db",
+    request_body = FitbitActivitiesDBUpdateRequest,
     responses(FitbitActivitiesDBUpdateResponse, Error)
 )]
 async fn fitbit_activities_db_update(
@@ -1475,7 +1520,7 @@ async fn fitbit_activities_db_update(
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
-// PaginatedFitbitStatisticsSummary")]
+// PaginatedFitbitStatisticsSummary
 struct PaginatedFitbitStatisticsSummary {
     pagination: Pagination,
     data: Vec<FitbitStatisticsSummaryWrapper>,
@@ -1489,6 +1534,7 @@ struct HeartrateStatisticsResponse(JsonBase::<PaginatedFitbitStatisticsSummary>)
 #[utoipa::path(
     get,
     path = "/garmin/fitbit/heartrate_statistics_summary_db",
+    params(StravaActivitiesRequest),
     responses(HeartrateStatisticsResponse, Error)
 )]
 async fn heartrate_statistics_summary_db(
@@ -1545,6 +1591,7 @@ struct HeartrateStatisticsUpdateResponse(HtmlBase::<StackString>);
 #[utoipa::path(
     post,
     path = "/garmin/fitbit/heartrate_statistics_summary_db",
+    request_body = HeartrateStatisticsSummaryDBUpdateRequest,
     responses(HeartrateStatisticsUpdateResponse, Error)
 )]
 async fn heartrate_statistics_summary_db_update(
@@ -1557,12 +1604,12 @@ async fn heartrate_statistics_summary_db_update(
     Ok(HtmlBase::new(body).into())
 }
 
-#[derive(Serialize, Deserialize, ToSchema)]
-// RaceResultPlotRequest")]
+#[derive(Serialize, Deserialize, ToSchema, IntoParams)]
+// RaceResultPlotRequest
 struct RaceResultPlotRequest {
-    // Race Type")]
+    // Race Type
     race_type: RaceTypeWrapper,
-    // Demo Flag")]
+    // Demo Flag
     demo: Option<bool>,
 }
 
@@ -1595,6 +1642,7 @@ struct RaceResultPlotResponse(HtmlBase::<StackString>);
 #[utoipa::path(
     get,
     path = "/garmin/race_result_plot",
+    params(RaceResultPlotRequest),
     responses(RaceResultPlotResponse, Error)
 )]
 async fn race_result_plot(
@@ -1612,6 +1660,7 @@ async fn race_result_plot(
 #[utoipa::path(
     get,
     path = "/garmin/race_result_plot_demo",
+    params(RaceResultPlotRequest),
     responses(RaceResultPlotResponse, Error)
 )]
 async fn race_result_plot_demo(
@@ -1626,7 +1675,7 @@ async fn race_result_plot_demo(
     Ok(HtmlBase::new(body).into())
 }
 
-#[derive(Serialize, Deserialize, ToSchema)]
+#[derive(Serialize, Deserialize, ToSchema, IntoParams)]
 struct RaceResultFlagRequest {
     id: Uuid,
 }
@@ -1639,6 +1688,7 @@ struct RaceResultFlagResponse(HtmlBase::<StackString>);
 #[utoipa::path(
     get,
     path = "/garmin/race_result_flag",
+    params(RaceResultFlagRequest),
     responses(RaceResultFlagResponse, Error)
 )]
 async fn race_result_flag(
@@ -1665,8 +1715,10 @@ async fn race_result_flag(
     Ok(HtmlBase::new(result).into())
 }
 
-#[derive(Serialize, Deserialize, ToSchema)]
+#[derive(Serialize, Deserialize, ToSchema, IntoParams)]
 struct RaceResultImportRequest {
+    #[schema(inline)]
+    #[param(inline)]
     filename: StackString,
 }
 
@@ -1678,6 +1730,7 @@ struct RaceResultImportResponse(HtmlBase::<&'static str>);
 #[utoipa::path(
     get,
     path = "/garmin/race_result_import",
+    params(RaceResultImportRequest),
     responses(RaceResultImportResponse, Error)
 )]
 async fn race_result_import(
@@ -1715,9 +1768,9 @@ async fn race_result_import(
     Ok(HtmlBase::new("Finished").into())
 }
 
-#[derive(Serialize, Deserialize, ToSchema)]
+#[derive(Serialize, Deserialize, ToSchema, IntoParams)]
 struct RaceResultsDBRequest {
-    // Race Type")]
+    // Race Type
     race_type: Option<RaceTypeWrapper>,
 }
 
@@ -1732,6 +1785,7 @@ struct RaceResultsResponse(JsonBase::<RaceResultsList>);
 #[utoipa::path(
     get,
     path = "/garmin/race_results_db",
+    params(RaceResultsDBRequest),
     responses(RaceResultsResponse, Error)
 )]
 async fn race_results_db(
@@ -1755,7 +1809,7 @@ async fn race_results_db(
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]
-// RaceResultsDBUpdateRequest")]
+// RaceResultsDBUpdateRequest
 struct RaceResultsDBUpdateRequest {
     updates: Vec<RaceResultsWrapper>,
 }
@@ -1772,6 +1826,7 @@ struct RaceResultsUpdateResponse(HtmlBase::<&'static str>);
 #[utoipa::path(
     post,
     path = "/garmin/race_results_db",
+    request_body = RaceResultsDBUpdateRequest,
     responses(RaceResultsUpdateResponse, Error)
 )]
 async fn race_results_db_update(
@@ -1873,6 +1928,6 @@ pub fn get_garmin_path(app: &AppState) -> OpenApiRouter {
         title = "Fitness Activity WebApp",
         description = "Web Frontend for Fitness Activities",
     ),
-    components(schemas(LoggedUser))
+    components(schemas(LoggedUser, Pagination))
 )]
 pub struct ApiDoc;

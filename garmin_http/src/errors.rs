@@ -27,6 +27,7 @@ use utoipa::{
     IntoResponses, PartialSchema, ToSchema,
 };
 use uuid::Error as ParseError;
+use reqwest::Error as ReqwestError;
 
 use authorized_users::errors::AuthUsersError;
 use garmin_lib::errors::GarminError;
@@ -35,6 +36,8 @@ use crate::logged_user::LOGIN_HTML;
 
 #[derive(Error, Debug)]
 pub enum ServiceError {
+    #[error("ReqwestError {0}")]
+    ReqwestError(#[from] ReqwestError),
     #[error("AddrParseError {0}")]
     AddrParseError(#[from] AddrParseError),
     #[error("MultipartError {0}")]
@@ -114,6 +117,7 @@ impl From<GarminError> for ServiceError {
 
 #[derive(Serialize, ToSchema)]
 struct ErrorMessage {
+    #[schema(inline)]
     message: StackString,
 }
 
@@ -200,6 +204,7 @@ mod test {
     use std::{fmt::Error as FmtError, net::AddrParseError};
     use time_tz::system::Error as TzError;
     use tokio::task::JoinError;
+    use reqwest::Error as ReqwestError;
 
     use axum::{
         extract::multipart::MultipartError,
@@ -253,6 +258,7 @@ mod test {
         println!("Base64DecodeError {}", std::mem::size_of::<DecodeError>());
         println!("FromUtf8Error {}", std::mem::size_of::<FromUtf8Error>());
         println!("GarminError {}", std::mem::size_of::<GarminError>());
+        println!("ReqwestError {}", std::mem::size_of::<ReqwestError>());
 
         assert_eq!(std::mem::size_of::<Error>(), 32);
     }

@@ -73,11 +73,12 @@ derive_utoipa_schema!(FitbitHeartRateWrapper, _FitbitHeartRateWrapper);
 
 #[allow(dead_code)]
 #[derive(ToSchema)]
-// FitbitHeartrate")]
+#[schema(as = FitbitHeartRate)]
+// FitbitHeartrate
 struct _FitbitHeartRateWrapper {
-    // DateTime")]
+    // DateTime
     datetime: OffsetDateTime,
-    // Heartrate Value (bpm)")]
+    // Heartrate Value (bpm)
     value: i32,
 }
 
@@ -88,29 +89,31 @@ derive_utoipa_schema!(StravaActivityWrapper, _StravaActivityWrapper);
 
 #[allow(dead_code)]
 #[derive(ToSchema)]
-// StravaActivity")]
+#[schema(as = StravaActivity)]
+// StravaActivity
 struct _StravaActivityWrapper {
-    // Activity Name")]
+    // Activity Name
+    #[schema(inline)]
     name: StackString,
-    // Start Date")]
+    // Start Date
     start_date: OffsetDateTime,
-    // Activity ID")]
+    // Activity ID
     id: i64,
-    // Distance (m)")]
+    // Distance (m)
     distance: Option<f64>,
-    // Moving Time (s)")]
+    // Moving Time (s)
     moving_time: Option<i64>,
-    // Elapsed Time (s)")]
+    // Elapsed Time (s)
     elapsed_time: i64,
-    // Total Elevation Gain (m)")]
+    // Total Elevation Gain (m)
     total_elevation_gain: Option<f64>,
-    // Maximum Elevation")]
+    // Maximum Elevation
     elev_high: Option<f64>,
-    // Minimum Elevation")]
+    // Minimum Elevation
     elev_low: Option<f64>,
-    // Activity Type")]
+    // Activity Type
     activity_type: SportTypesWrapper,
-    // Time Zone")]
+    // Time Zone
     timezone: StravaTimeZoneWrapper,
 }
 
@@ -121,13 +124,14 @@ derive_utoipa_schema!(FitbitBodyWeightFatWrapper, _FitbitBodyWeightFatWrapper);
 
 #[allow(dead_code)]
 #[derive(ToSchema)]
-// FitbitBodyWeightFat")]
+#[schema(as = FitbitBodyWeightFat)]
+// FitbitBodyWeightFat
 struct _FitbitBodyWeightFatWrapper {
-    // DateTime")]
+    // DateTime
     datetime: OffsetDateTime,
-    // Weight (lbs)")]
+    // Weight (lbs)
     weight: f64,
-    // Fat %")]
+    // Fat %
     fat: f64,
 }
 
@@ -138,23 +142,24 @@ derive_utoipa_schema!(ScaleMeasurementWrapper, _ScaleMeasurementWrapper);
 
 #[allow(dead_code)]
 #[derive(ToSchema)]
-// ScaleMeasurement")]
+#[schema(as = ScaleMeasurement)]
+// ScaleMeasurement
 struct _ScaleMeasurementWrapper {
-    // Scale Measurement ID")]
+    // Scale Measurement ID
     id: Uuid,
-    // DateTime")]
+    // DateTime
     datetime: OffsetDateTime,
-    // Mass (lbs)")]
+    // Mass (lbs)
     mass: f64,
-    // Fat %")]
+    // Fat %
     fat_pct: f64,
-    // Water %")]
+    // Water %
     water_pct: f64,
-    // Muscle %")]
+    // Muscle %
     muscle_pct: f64,
-    // Bone %")]
+    // Bone %
     bone_pct: f64,
-    // Connect Primary Key")]
+    // Connect Primary Key
     connect_primary_key: Option<i64>,
 }
 
@@ -164,27 +169,32 @@ pub struct FitbitActivityWrapper(FitbitActivity);
 derive_utoipa_schema!(FitbitActivityWrapper, _FitbitActivityWrapper);
 
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema)]
-// FitbitActivity")]
+// FitbitActivity
+#[schema(as = FitbitActivity)]
 struct _FitbitActivityWrapper {
-    // Log Type")]
+    // Log Type
+    #[schema(inline)]
     log_type: StackString,
-    // Start Datetime")]
+    // Start Datetime
     start_time: OffsetDateTime,
-    // TCX Link")]
+    // TCX Link
+    #[schema(inline)]
     tcx_link: Option<StackString>,
-    // Activity Type ID")]
+    // Activity Type ID
     activity_type_id: Option<i64>,
-    // Activity Name")]
+    // Activity Name
+    #[schema(inline)]
     activity_name: Option<StackString>,
-    // Duration (ms)")]
+    // Duration (ms)
     duration: i64,
-    // Distance (mi)")]
+    // Distance (mi)
     distance: Option<f64>,
-    // Distance Unit")]
+    // Distance Unit
+    #[schema(inline)]
     distance_unit: Option<StackString>,
-    // Number of Steps")]
+    // Number of Steps
     steps: Option<i64>,
-    // Log ID")]
+    // Log ID
     log_id: i64,
 }
 
@@ -195,31 +205,34 @@ derive_utoipa_schema!(GarminConnectActivityWrapper, _GarminConnectActivityWrappe
 
 #[allow(dead_code)]
 #[derive(ToSchema)]
-// GarminConnectActivity")]
+// GarminConnectActivity
+#[schema(as = GarminConnectActivity)]
 struct _GarminConnectActivityWrapper {
-    // Activity ID")]
+    // Activity ID
     activity_id: i64,
-    // Activity Name")]
+    // Activity Name
+    #[schema(inline)]
     activity_name: Option<StackString>,
-    // Description")]
+    // Description
+    #[schema(inline)]
     description: Option<StackString>,
-    // Start Time UTC")]
+    // Start Time UTC
     start_time_gmt: OffsetDateTime,
-    // Distance (m)")]
+    // Distance (m)
     distance: Option<f64>,
-    // Duration (s)")]
+    // Duration (s)
     duration: f64,
-    // Elapsed Duration (s)")]
+    // Elapsed Duration (s)
     elapsed_duration: Option<f64>,
-    // Moving Duration (s)")]
+    // Moving Duration (s)
     moving_duration: Option<f64>,
-    // Number of Steps")]
+    // Number of Steps
     steps: Option<i64>,
-    // Calories (kCal)")]
+    // Calories (kCal)
     calories: Option<f64>,
-    // Average Heartrate")]
+    // Average Heartrate
     average_hr: Option<f64>,
-    // Max Heartrate")]
+    // Max Heartrate
     max_hr: Option<f64>,
 }
 
@@ -233,21 +246,22 @@ derive_utoipa_schema!(
 
 #[allow(dead_code)]
 #[derive(ToSchema)]
-// FitbitStatisticsSummary")]
+#[schema(as = FitbitStatisticsSummary)]
+// FitbitStatisticsSummary
 struct _FitbitStatisticsSummaryWrapper {
-    // Date")]
+    // Date
     date: Date,
-    // Minimum Heartrate")]
+    // Minimum Heartrate
     min_heartrate: f64,
-    // Maximum Heartrate")]
+    // Maximum Heartrate
     max_heartrate: f64,
-    // Mean Heartrate")]
+    // Mean Heartrate
     mean_heartrate: f64,
-    // Median Heartrate")]
+    // Median Heartrate
     median_heartrate: f64,
-    // Heartrate Standard Deviation")]
+    // Heartrate Standard Deviation
     stdev_heartrate: f64,
-    // Number of Entries")]
+    // Number of Entries
     number_of_entries: i32,
 }
 
@@ -258,6 +272,7 @@ derive_utoipa_schema!(RaceTypeWrapper, _RaceTypeWrapper);
 
 #[allow(dead_code)]
 #[derive(Serialize, ToSchema)]
+#[schema(as = RaceType)]
 enum _RaceTypeWrapper {
     #[serde(rename = "personal")]
     Personal,
@@ -274,23 +289,25 @@ derive_utoipa_schema!(RaceResultsWrapper, _RaceResultsWrapper);
 
 #[allow(dead_code)]
 #[derive(ToSchema)]
-// RaceResults")]
+#[schema(as = RaceResults)]
+// RaceResults
 struct _RaceResultsWrapper {
-    // Race Result ID")]
+    // Race Result ID
     id: Uuid,
-    // Race Type")]
+    // Race Type
     race_type: RaceTypeWrapper,
-    // Race Date")]
+    // Race Date
     race_date: Option<Date>,
-    // Race Name")]
+    // Race Name
+    #[schema(inline)]
     race_name: Option<StackString>,
-    // Race Distance (m)")]
+    // Race Distance (m)
     race_distance: i32, // distance in meters
-    // Race Duration (s)")]
+    // Race Duration (s)
     race_time: f64,
-    // Race Flag")]
+    // Race Flag
     race_flag: bool,
-    // Race Summary IDs")]
+    // Race Summary IDs
     race_summary_ids: Vec<Option<Uuid>>,
 }
 
@@ -301,6 +318,7 @@ derive_utoipa_schema!(FitbitActivityTypesWrapper, _FitbitActivityTypesWrapper);
 
 #[allow(dead_code)]
 #[derive(ToSchema)]
+#[schema(as = FitbitActivityTypes)]
 struct _FitbitActivityTypesWrapper(HashMap<String, StackString>);
 
 #[cfg(test)]

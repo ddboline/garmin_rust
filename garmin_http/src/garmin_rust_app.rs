@@ -178,11 +178,12 @@ pub async fn start_app() -> Result<(), Error> {
             check_downloads(cli, notifier).await;
         }
     });
+    let port = config.port;
 
-    run_app(&config, &pool).await
+    run_app(&config, &pool, port).await
 }
 
-async fn run_app(config: &GarminConfig, pool: &PgPool) -> Result<(), Error> {
+async fn run_app(config: &GarminConfig, pool: &PgPool, port: u32) -> Result<(), Error> {
     let app = AppState {
         config: config.clone(),
         db: pool.clone(),
@@ -225,7 +226,6 @@ async fn run_app(config: &GarminConfig, pool: &PgPool) -> Result<(), Error> {
         .layer(cors);
 
     let host = &config.host;
-    let port = config.port;
 
     let addr: SocketAddr = format_sstr!("{host}:{port}").parse()?;
     debug!("{addr:?}");
@@ -233,4 +233,65 @@ async fn run_app(config: &GarminConfig, pool: &PgPool) -> Result<(), Error> {
     axum::serve(listener, router.into_make_service())
         .await
         .map_err(Into::into)
+}
+
+#[cfg(test)]
+mod tests {
+    use stack_string::format_sstr;
+    use std::env::{remove_var, set_var};
+
+    use garmin_lib::garmin_config::GarminConfig;
+    use garmin_utils::pgpool::PgPool;
+
+    use crate::{
+        errors::ServiceError as Error,
+        garmin_rust_app::run_app,
+        logged_user::{JWT_SECRET, KEY_LENGTH, SECRET_KEY, get_random_key},
+    };
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_run_app() -> Result<(), Error> {
+        unsafe {
+            set_var("TESTENV", "true");
+        }
+
+        let mut secret_key = [0u8; KEY_LENGTH];
+        secret_key.copy_from_slice(&get_random_key());
+
+        JWT_SECRET.set(secret_key);
+        SECRET_KEY.set(secret_key);
+
+        let test_port: u32 = 12345;
+        unsafe {
+            set_var("PORT", test_port.to_string());
+        }
+        let config = GarminConfig::get_config(None)?;
+
+        let pool = PgPool::new(&config.pgurl)?;
+
+        tokio::task::spawn(async move {
+            env_logger::init();
+            run_app(&config, &pool, test_port).await.unwrap()
+        });
+
+        tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+
+        let client = reqwest::Client::builder().cookie_store(true).build()?;
+
+        let url = format_sstr!("http://localhost:{test_port}/garmin/openapi/yaml");
+        let spec_yaml = client
+            .get(url.as_str())
+            .send()
+            .await?
+            .error_for_status()?
+            .text()
+            .await?;
+
+        std::fs::write("../scripts/openapi.yaml", &spec_yaml)?;
+
+        unsafe {
+            remove_var("TESTENV");
+        }
+        Ok(())
+    }
 }

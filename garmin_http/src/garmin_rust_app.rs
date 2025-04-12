@@ -246,7 +246,7 @@ mod tests {
     use crate::{
         errors::ServiceError as Error,
         garmin_rust_app::run_app,
-        logged_user::{JWT_SECRET, KEY_LENGTH, SECRET_KEY, get_random_key},
+        logged_user::{get_random_key, JWT_SECRET, KEY_LENGTH, SECRET_KEY},
     };
 
     #[tokio::test(flavor = "multi_thread")]

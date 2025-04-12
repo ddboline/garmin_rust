@@ -10,6 +10,7 @@ use base64::DecodeError;
 use handlebars::RenderError;
 use log::error;
 use postgres_query::Error as PqError;
+use reqwest::Error as ReqwestError;
 use serde::Serialize;
 use stack_string::{format_sstr, StackString};
 use std::{
@@ -27,7 +28,6 @@ use utoipa::{
     IntoResponses, PartialSchema, ToSchema,
 };
 use uuid::Error as ParseError;
-use reqwest::Error as ReqwestError;
 
 use authorized_users::errors::AuthUsersError;
 use garmin_lib::errors::GarminError;
@@ -198,13 +198,13 @@ mod test {
     use axum::http::header::InvalidHeaderName;
     use handlebars::RenderError;
     use postgres_query::Error as PqError;
+    use reqwest::Error as ReqwestError;
     use serde_json::Error as SerdeJsonError;
     use serde_yml::Error as SerdeYamlError;
     use stack_string::StackString;
     use std::{fmt::Error as FmtError, net::AddrParseError};
     use time_tz::system::Error as TzError;
     use tokio::task::JoinError;
-    use reqwest::Error as ReqwestError;
 
     use axum::{
         extract::multipart::MultipartError,

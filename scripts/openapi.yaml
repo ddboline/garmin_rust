@@ -7,7 +7,7 @@ info:
     email: ddboline@gmail.com
   license:
     name: ''
-  version: '0.16.1'
+  version: '0.16.2'
 paths:
   /garmin/add_garmin_correction:
     post:

@@ -1,7 +1,6 @@
 use crossbeam_utils::atomic::AtomicCell;
 use log::warn;
 use maplit::hashmap;
-use once_cell::sync::Lazy;
 use reqwest::{
     header::HeaderMap,
     multipart::{Form, Part},
@@ -10,7 +9,7 @@ use reqwest::{
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use stack_string::{format_sstr, StackString};
-use std::path::Path;
+use std::{path::Path, sync::LazyLock};
 use tempfile::Builder;
 use time::{macros::format_description, OffsetDateTime};
 use time_tz::{OffsetDateTimeExt, Tz};
@@ -34,7 +33,8 @@ use garmin_utils::{
     sport_types::SportTypes,
 };
 
-static CSRF_TOKEN: Lazy<AtomicCell<Option<StackString>>> = Lazy::new(|| AtomicCell::new(None));
+static CSRF_TOKEN: LazyLock<AtomicCell<Option<StackString>>> =
+    LazyLock::new(|| AtomicCell::new(None));
 
 #[derive(Debug, Copy, Clone)]
 pub enum StravaAuthType {

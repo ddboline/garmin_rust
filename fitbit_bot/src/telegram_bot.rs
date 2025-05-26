@@ -2,9 +2,11 @@ use arc_swap::ArcSwap;
 use crossbeam_utils::atomic::AtomicCell;
 use futures::{StreamExt, TryStreamExt};
 use log::debug;
-use once_cell::sync::Lazy;
 use stack_string::{format_sstr, StackString};
-use std::{collections::HashSet, sync::Arc};
+use std::{
+    collections::HashSet,
+    sync::{Arc, LazyLock},
+};
 use telegram_bot::{
     types::refs::UserId, Api, CanReplySendMessage, Message, MessageKind, Update, UpdateKind,
 };
@@ -22,10 +24,11 @@ use super::failure_count::FailureCount;
 type WeightLock = AtomicCell<Option<ScaleMeasurement>>;
 type Userids = ArcSwap<HashSet<UserId>>;
 
-static LAST_WEIGHT: Lazy<WeightLock> = Lazy::new(|| AtomicCell::new(None));
-static USERIDS: Lazy<Userids> = Lazy::new(|| ArcSwap::new(Arc::new(HashSet::new())));
-static FAILURE_COUNT: Lazy<FailureCount> = Lazy::new(|| FailureCount::new(5));
+static LAST_WEIGHT: LazyLock<WeightLock> = LazyLock::new(|| AtomicCell::new(None));
+static USERIDS: LazyLock<Userids> = LazyLock::new(|| ArcSwap::new(Arc::new(HashSet::new())));
+static FAILURE_COUNT: LazyLock<FailureCount> = LazyLock::new(|| FailureCount::new(5));
 
+#[allow(clippy::struct_field_names)]
 #[derive(Clone)]
 pub struct TelegramBot {
     telegram_bot_token: StackString,

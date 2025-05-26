@@ -1,8 +1,7 @@
 use apache_avro::{from_value, Codec, Reader, Schema, Writer};
-use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
-use std::{collections::HashMap, fs::File, path::Path};
+use std::{collections::HashMap, fs::File, path::Path, sync::LazyLock};
 use time::macros::format_description;
 use tokio::task::spawn_blocking;
 
@@ -15,7 +14,7 @@ use crate::{
     garmin_point::{GarminPoint, GARMIN_POINT_AVRO_SCHEMA},
 };
 
-static GARMIN_FILE_AVRO_SCHEMA: Lazy<StackString> = Lazy::new(GarminFile::get_avro_schema);
+static GARMIN_FILE_AVRO_SCHEMA: LazyLock<StackString> = LazyLock::new(GarminFile::get_avro_schema);
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GarminFile {

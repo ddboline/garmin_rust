@@ -270,7 +270,7 @@ impl GarminReportTrait for FileSummaryReport {
                     None,
                 ));
             }
-        };
+        }
         if self.total_hr_dur > self.total_hr_dis {
             tmp_vec.push((
                 format_sstr!(
@@ -532,7 +532,7 @@ impl GarminReportTrait for DaySummaryReport {
                     None,
                 ));
             }
-        };
+        }
         if self.total_hr_dur > self.total_hr_dis {
             tmp_vec.push((
                 format_sstr!(
@@ -680,7 +680,7 @@ impl GarminReportTrait for WeekSummaryReport {
             ));
         } else {
             tmp_vec.push((format_sstr!(" {:7} {:2}", "", ""), None));
-        };
+        }
         tmp_vec.push((
             format_sstr!(
                 "{:16}",
@@ -810,7 +810,7 @@ impl GarminReportTrait for MonthSummaryReport {
             _ => {
                 tmp_vec.push((format_sstr!(" {:10} \t", ""), None));
             }
-        };
+        }
         tmp_vec.push((
             format_sstr!(" {:10} \t", print_h_m_s(self.total_duration, true)?),
             None,
@@ -827,7 +827,7 @@ impl GarminReportTrait for MonthSummaryReport {
             ));
         } else {
             tmp_vec.push((format_sstr!(" {:7} {:2}", " ", " "), None));
-        };
+        }
 
         tmp_vec.push((
             format_sstr!(
@@ -954,7 +954,7 @@ impl GarminReportTrait for SportSummaryReport {
                 ));
             }
             _ => (),
-        };
+        }
 
         tmp_vec.push((
             format_sstr!(" {:10} \t", print_h_m_s(self.total_duration, true)?),
@@ -1091,7 +1091,7 @@ impl GarminReportTrait for YearSummaryReport {
                 ));
             }
             _ => (),
-        };
+        }
 
         tmp_vec.push((
             format_sstr!(" {:10} \t", print_h_m_s(self.total_duration, true)?),

@@ -24,10 +24,10 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<StackString>, Error
     let mut mi_per_hr = 0.0;
     if gfile.total_distance > 0.0 {
         min_mile = (gfile.total_duration / 60.) / (gfile.total_distance / METERS_PER_MILE);
-    };
+    }
     if gfile.total_duration > 0.0 {
         mi_per_hr = (gfile.total_distance / METERS_PER_MILE) / (gfile.total_duration / 60. / 60.);
-    };
+    }
 
     let mut tmp_str = Vec::new();
     if sport_type == SportTypes::Running {
@@ -54,7 +54,7 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<StackString>, Error
             "{:.2} bpm",
             (gfile.total_hr_dur / gfile.total_hr_dis) as i32
         ));
-    };
+    }
     return_vec.push(tmp_str.join(" ").into());
     return_vec.push("".into());
     return_vec.push(print_splits(gfile, METERS_PER_MILE, "mi"));
@@ -181,7 +181,7 @@ fn print_lap_string(glap: &GarminLap, sport: SportTypes) -> Result<StackString, 
             false,
         )?);
         outstr.push("/ km".into());
-    };
+    }
     if let Some(x) = glap.lap_avg_hr {
         if x > 0.0 {
             outstr.push(format_sstr!("{x} bpm"));
@@ -308,7 +308,7 @@ pub fn get_splits(
 
             prev_split_time = cur_split_time;
             avg_hrt_rate = 0.0;
-        };
+        }
         last_point_me = cur_point_me;
         last_point_time = cur_point_time;
     }

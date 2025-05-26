@@ -167,14 +167,14 @@ async fn get_index_body(
             let avro_file = config.cache_dir.join(file_name.as_str());
 
             let gfile = if let Ok(g) = garmin_file::GarminFile::read_avro_async(&avro_file).await {
-                debug!("Cached avro file read: {:?}", &avro_file);
+                debug!("Cached avro file read: {}", avro_file.display());
                 g
             } else {
                 let gps_file = config.gps_dir.join(file_name.as_str());
                 let mut corr_map = GarminCorrectionLap::read_corrections_from_db(pool).await?;
                 corr_map.shrink_to_fit();
 
-                debug!("Reading gps_file: {:?}", &gps_file);
+                debug!("Reading gps_file: {}", gps_file.display());
                 spawn_blocking(move || GarminParse::new().with_file(&gps_file, &corr_map)).await??
             };
             let sport: StackString = gfile.sport.into();

@@ -169,9 +169,9 @@ impl FitbitHeartRate {
         let results: Result<Vec<_>, Error> = fitbit_files
             .into_par_iter()
             .map(|input_path| {
-                info!("read file {input_path:?}",);
+                info!("read file {}", input_path.display());
                 let values = Self::read_avro(input_path)?;
-                info!("values {input_path:?} {}", values.len());
+                info!("values {} {}", input_path.display(), values.len());
                 Ok(values)
             })
             .collect();
@@ -291,7 +291,7 @@ impl FitbitHeartRate {
     pub fn read_avro_by_date(config: &GarminConfig, date: Date) -> Result<Vec<Self>, Error> {
         let date_str = StackString::from_display(date);
         let input_filename = config.fitbit_cachedir.join(date_str).with_extension("avro");
-        debug!("avro {input_filename:?}",);
+        debug!("avro {}", input_filename.display());
         if input_filename.exists() {
             Self::read_avro(&input_filename)
         } else {

@@ -226,11 +226,11 @@ impl GarminConfig {
 
         let conf: GarminConfigInner = envy::from_env()?;
 
-        if &conf.pgurl == "" {
+        if conf.pgurl.is_empty() {
             Err(Error::StaticCustomError("No PGURL specified"))
-        } else if &conf.gps_bucket == "" {
+        } else if conf.gps_bucket.is_empty() {
             Err(Error::StaticCustomError("No GPS_BUCKET specified"))
-        } else if &conf.cache_bucket == "" {
+        } else if conf.cache_bucket.is_empty() {
             Err(Error::StaticCustomError("No CACHE_BUCKET specified"))
         } else {
             Ok(Self(Arc::new(conf)))

@@ -88,37 +88,37 @@ pub fn extract_report_objects_from_file(gfile: &GarminFile) -> ReportObjects {
                     report_objs.hr_values.push(DataPoint { x: xval, y: hr });
                 }
             }
-        };
+        }
         if let Some(alt) = point.altitude {
             if (alt > 0.0) & (alt < 10000.0) {
                 report_objs.alt_vals.push(alt);
                 report_objs.alt_values.push(DataPoint { x: xval, y: alt });
             }
-        };
+        }
         if (point.speed_mph > 0.0) & (point.speed_mph < 20.0) {
             report_objs.mph_speed_values.push(DataPoint {
                 x: xval,
                 y: point.speed_mph,
             });
-        };
+        }
         if (point.avg_speed_value_permi > 0.0) & (point.avg_speed_value_permi < 20.0) {
             report_objs.avg_speed_values.push(DataPoint {
                 x: xval,
                 y: point.avg_speed_value_permi,
             });
-        };
+        }
         if point.avg_speed_value_mph > 0.0 {
             report_objs.avg_mph_speed_values.push(DataPoint {
                 x: xval,
                 y: point.avg_speed_value_mph,
             });
-        };
+        }
         if let Some(lat) = point.latitude {
             if let Some(lon) = point.longitude {
                 report_objs.lat_vals.push(lat);
                 report_objs.lon_vals.push(lon);
             }
-        };
+        }
     }
 
     if report_objs.sum_time > 0.0 {
@@ -128,7 +128,7 @@ pub fn extract_report_objects_from_file(gfile: &GarminFile) -> ReportObjects {
             .iter()
             .max_by_key(|&h| *h as i64)
             .unwrap_or(&0.0);
-    };
+    }
 
     report_objs
 }
@@ -146,7 +146,7 @@ pub fn get_plot_opts(report_objs: &ReportObjects) -> Vec<PlotOpts> {
                 .with_marker("o")
                 .with_labels("mi", "min/mi"),
         );
-    };
+    }
 
     if !report_objs.hr_values.is_empty() {
         plot_opts.push(
@@ -160,7 +160,7 @@ pub fn get_plot_opts(report_objs: &ReportObjects) -> Vec<PlotOpts> {
                 .with_data(&report_objs.hr_values)
                 .with_labels("mi", "bpm"),
         );
-    };
+    }
 
     if !report_objs.alt_values.is_empty() {
         plot_opts.push(
@@ -170,7 +170,7 @@ pub fn get_plot_opts(report_objs: &ReportObjects) -> Vec<PlotOpts> {
                 .with_data(&report_objs.alt_values)
                 .with_labels("mi", "height [m]"),
         );
-    };
+    }
 
     if !report_objs.speed_values.is_empty() {
         plot_opts.push(
@@ -188,7 +188,7 @@ pub fn get_plot_opts(report_objs: &ReportObjects) -> Vec<PlotOpts> {
                 .with_data(&report_objs.mph_speed_values)
                 .with_labels("mi", "mph"),
         );
-    };
+    }
 
     if !report_objs.heart_rate_speed.is_empty() {
         plot_opts.push(
@@ -199,7 +199,7 @@ pub fn get_plot_opts(report_objs: &ReportObjects) -> Vec<PlotOpts> {
                 .with_scatter()
                 .with_labels("hrt", "min/mi"),
         );
-    };
+    }
 
     if !report_objs.avg_speed_values.is_empty() {
         let avg_speed_value = report_objs.avg_speed_values.last().map_or(0f64, |d| d.y);
@@ -219,7 +219,7 @@ pub fn get_plot_opts(report_objs: &ReportObjects) -> Vec<PlotOpts> {
                 .with_scatter()
                 .with_labels("mi", "min/mi"),
         );
-    };
+    }
 
     if !report_objs.avg_mph_speed_values.is_empty() {
         let avg_mph_speed_value = report_objs
@@ -235,7 +235,7 @@ pub fn get_plot_opts(report_objs: &ReportObjects) -> Vec<PlotOpts> {
                 .with_scatter()
                 .with_labels("mi", "min/mi"),
         );
-    };
+    }
 
     plot_opts
 }

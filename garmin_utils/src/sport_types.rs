@@ -1,13 +1,13 @@
 use bytes::BytesMut;
-use once_cell::sync::Lazy;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use stack_string::{format_sstr, StackString};
-use std::{collections::HashMap, fmt, str::FromStr};
+use std::{collections::HashMap, fmt, str::FromStr, sync::LazyLock};
 use tokio_postgres::types::{FromSql, IsNull, ToSql, Type};
 
 use garmin_lib::errors::GarminError as Error;
 
-static SPORT_TYPE_MAP: Lazy<HashMap<&'static str, SportTypes>> = Lazy::new(init_sport_type_map);
+static SPORT_TYPE_MAP: LazyLock<HashMap<&'static str, SportTypes>> =
+    LazyLock::new(init_sport_type_map);
 
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(into = "StackString", try_from = "StackString")]

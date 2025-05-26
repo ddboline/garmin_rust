@@ -167,7 +167,7 @@ impl GarminSync {
                             let mut key_item = KeyItemCache::from_keyitem(key, bucket)?;
                             key_item.do_download = true;
                             key_item.insert(pool).await?;
-                        };
+                        }
                     }
                 }
             }
@@ -271,7 +271,7 @@ impl GarminSync {
                     tasks.push(task);
                 }
             } else {
-                error!("invalid extension {ext:?} for {f:?}");
+                error!("invalid extension {} for {}", ext.display(), f.display());
             }
         }
         for (_, mut missing) in file_map {

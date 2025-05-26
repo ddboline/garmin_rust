@@ -432,7 +432,7 @@ pub fn apply_lap_corrections<S: BuildHasher + Sync>(
                                     debug!("change sport {} {:?} {}", lap_start, lap.lap_type, s);
                                     new_sport = s;
                                 }
-                            };
+                            }
                             new_lap.lap_duration = match &corr.duration {
                                 Some(dur) => {
                                     debug!(

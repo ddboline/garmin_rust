@@ -83,9 +83,9 @@ impl GarminParse {
             }
             Some(_) => (),
             None => return Err(Error::CustomError(format_sstr!("{filename} has no laps?"))),
-        };
+        }
         gfile.dump_avro(&cache_file)?;
-        debug!("{filepath:?} Found md5sum {md5sum} success");
+        debug!("{} Found md5sum {md5sum} success", filepath.display());
         Ok(GarminSummary::new(&gfile, &md5sum))
     }
 
@@ -101,7 +101,7 @@ impl GarminParse {
         let mut results = get_file_list(path)
             .into_par_iter()
             .map(|input_file| {
-                debug!("Process {:?}", &input_file);
+                debug!("Process {}", input_file.display());
                 let filename = input_file
                     .file_name()
                     .ok_or_else(|| {
@@ -126,7 +126,7 @@ impl GarminParse {
                             "{input_file:?} {filename:?} has no laps?"
                         )));
                     }
-                };
+                }
                 gfile.dump_avro(&cache_file)?;
                 Ok(GarminSummary::new(&gfile, &md5sum))
             })

@@ -1,14 +1,14 @@
 [package]
 name = "garmin_parser"
-version = "0.16.3"
+version = "0.16.4"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-aws-config = {version="1.6", features=["behavior-version-latest"]}
-aws-sdk-s3 = "1.80"
+aws-config = {version="1.8", features=["behavior-version-latest"]}
+aws-sdk-s3 = "1.98"
 fitparser = {git="https://github.com/ddboline/fitparse-rs.git", branch="time-0.3-0.5.2"}
 flate2 = "1.0"
 garmin_lib = {path="../garmin_lib"}

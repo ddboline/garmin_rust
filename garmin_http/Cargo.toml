@@ -1,11 +1,11 @@
 [package]
 name = "garmin_http"
-version = "0.16.3"
+version = "0.16.4"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2021"
 
 [dependencies]
-authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.13.1"}
+authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.13.2"}
 axum = { version = "0.8", features = ["multipart"] }
 axum-extra = {version="0.10", features=["cookie"]}
 base64 = "0.22"
@@ -43,7 +43,7 @@ tempfile = "3.12"
 thiserror = "2.0"
 time = {version="0.3", features=["serde-human-readable", "macros", "formatting", "parsing"]}
 time-tz = {version="2.0", features=["system"]}
-tokio = {version="1.44", features=["rt", "macros", "rt-multi-thread"]}
+tokio = {version="1.46", features=["rt", "macros", "rt-multi-thread"]}
 tokio-stream = "0.1"
 tower-http = {version="0.6", features=["cors"]}
 url = "2.3"

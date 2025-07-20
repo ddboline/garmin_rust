@@ -1,6 +1,6 @@
 pub use authorized_users::{
-    get_random_key, get_secrets, token::Token, AuthorizedUser as ExternalUser, AUTHORIZED_USERS,
-    JWT_SECRET, KEY_LENGTH, LOGIN_HTML, SECRET_KEY,
+    get_random_key, get_secrets, token::Token, AuthInfo, AuthorizedUser as ExternalUser,
+    AUTHORIZED_USERS, JWT_SECRET, KEY_LENGTH, LOGIN_HTML, SECRET_KEY,
 };
 use axum::{
     extract::{FromRequestParts, OptionalFromRequestParts},
@@ -132,10 +132,10 @@ impl LoggedUser {
 impl From<ExternalUser> for LoggedUser {
     fn from(user: ExternalUser) -> Self {
         Self {
-            email: user.email,
-            session: user.session,
-            secret_key: user.secret_key,
-            created_at: user.created_at,
+            email: user.get_email().into(),
+            session: user.get_session(),
+            secret_key: user.get_secret_key().into(),
+            created_at: user.get_created_at(),
         }
     }
 }
@@ -232,19 +232,14 @@ impl Session {
 pub async fn fill_from_db(pool: &PgPool) -> Result<(), Error> {
     if let Ok("true") = var("TESTENV").as_ref().map(String::as_str) {
         AUTHORIZED_USERS.update_users(hashmap! {
-            "user@test".into() => ExternalUser {
-                email: "user@test".into(),
-                session: Uuid::new_v4(),
-                secret_key: StackString::default(),
-                created_at: OffsetDateTime::now_utc()
-            }
+            "user@test".into() => ExternalUser::new("user@test", Uuid::new_v4(), "")
         });
         return Ok(());
     }
     let (created_at, deleted_at) = AuthorizedUsers::get_most_recent(pool).await?;
     let most_recent_user_db = created_at.max(deleted_at);
     let existing_users = AUTHORIZED_USERS.get_users();
-    let most_recent_user = existing_users.values().map(|i| i.created_at).max();
+    let most_recent_user = existing_users.values().map(AuthInfo::get_created_at).max();
     debug!("most_recent_user_db {most_recent_user_db:?} most_recent_user {most_recent_user:?}");
     if most_recent_user_db.is_some()
         && most_recent_user.is_some()
@@ -258,12 +253,7 @@ pub async fn fill_from_db(pool: &PgPool) -> Result<(), Error> {
         .map_ok(|u| {
             (
                 u.email.clone(),
-                ExternalUser {
-                    email: u.email,
-                    session: Uuid::new_v4(),
-                    secret_key: StackString::default(),
-                    created_at: u.created_at,
-                },
+                ExternalUser::new(&u.email, Uuid::new_v4(), ""),
             )
         })
         .try_collect()

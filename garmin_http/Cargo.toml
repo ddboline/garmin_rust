@@ -1,6 +1,6 @@
 [package]
 name = "garmin_http"
-version = "0.16.4"
+version = "0.16.5"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2021"
 
@@ -43,7 +43,7 @@ tempfile = "3.12"
 thiserror = "2.0"
 time = {version="0.3", features=["serde-human-readable", "macros", "formatting", "parsing"]}
 time-tz = {version="2.0", features=["system"]}
-tokio = {version="1.46", features=["rt", "macros", "rt-multi-thread"]}
+tokio = {version="1.47", features=["rt", "macros", "rt-multi-thread"]}
 tokio-stream = "0.1"
 tower-http = {version="0.6", features=["cors"]}
 url = "2.3"

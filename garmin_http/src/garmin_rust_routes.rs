@@ -64,7 +64,7 @@ use crate::{
     },
     garmin_rust_app::AppState,
     logged_user::{LoggedUser, Session},
-    FitbitActivityTypesWrapper, FitbitActivityWrapper, FitbitHeartRateWrapper,
+    FitbitActivityWrapper, FitbitHeartRateWrapper,
     FitbitStatisticsSummaryWrapper, GarminConnectActivityWrapper, RaceResultsWrapper,
     RaceTypeWrapper, ScaleMeasurementWrapper, StravaActivityWrapper,
 };
@@ -765,25 +765,10 @@ async fn fitbit_heartrate_cache_update(
 #[derive(ToSchema, Serialize, Into, From)]
 struct FitbitActivityList(Vec<FitbitActivityWrapper>);
 
-#[derive(UtoipaResponse)]
-#[response(description = "Fitbit Activities")]
-#[rustfmt::skip]
-struct FitbitActivitiesResponse(JsonBase::<FitbitActivityList>);
-
-#[derive(UtoipaResponse)]
-#[response(description = "Fitbit Callback", content = "text/html")]
-#[rustfmt::skip]
-struct FitbitCallbackResponse(HtmlBase::<StackString>);
-
 #[derive(Serialize, Deserialize, ToSchema)]
 struct FitbitSyncRequest {
     date: Date,
 }
-
-#[derive(UtoipaResponse)]
-#[response(description = "Fitbit Sync", content = "text/html")]
-#[rustfmt::skip]
-struct FitbitSyncResponse(HtmlBase::<StackString>);
 
 #[derive(UtoipaResponse)]
 #[response(description = "Fitbit Heartrate Statistics Plots", content = "text/html")]
@@ -1094,11 +1079,6 @@ async fn heartrate_plots_demo(
     Ok(HtmlBase::new(body).into())
 }
 
-#[derive(UtoipaResponse)]
-#[response(description = "Fitbit Tcx Sync")]
-#[rustfmt::skip]
-struct FitbitTcxSyncResponse(JsonBase::<Vec<String>>);
-
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 // PaginatedScaleMeasurement
 struct PaginatedScaleMeasurement {
@@ -1309,11 +1289,6 @@ async fn add_garmin_correction(
 }
 
 #[derive(UtoipaResponse)]
-#[response(description = "Fitbit Activity Types")]
-#[rustfmt::skip]
-struct FitbitActivityTypesResponse(JsonBase::<FitbitActivityTypesWrapper>);
-
-#[derive(UtoipaResponse)]
 #[response(description = "Strava Athlete")]
 #[rustfmt::skip]
 struct StravaAthleteResponse(HtmlBase::<StackString>);
@@ -1337,11 +1312,6 @@ async fn strava_athlete(
     let body = strava_body(result)?.into();
     Ok(HtmlBase::new(body).into())
 }
-
-#[derive(UtoipaResponse)]
-#[response(description = "Fitbit Profile")]
-#[rustfmt::skip]
-struct FitbitProfileResponse(HtmlBase::<StackString>);
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 // PaginatedGarminConnectActivity

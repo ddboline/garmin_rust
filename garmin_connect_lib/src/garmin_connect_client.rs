@@ -564,7 +564,7 @@ impl GarminConnectClient {
         Some(ticket.into())
     }
 
-    fn get_secrets(&self) -> Secrets {
+    fn get_secrets(&self) -> Secrets<'_> {
         Secrets::new(self.consumer_key.as_str(), self.consumer_secret.as_str())
     }
 

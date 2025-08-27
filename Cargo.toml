@@ -1,6 +1,6 @@
 [package]
 name = "garmin_rust"
-version = "0.16.5"
+version = "0.16.6"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2021"
 
@@ -24,7 +24,7 @@ garmin_models = {path="garmin_models"}
 garmin_utils = {path="garmin_utils"}
 log = "0.4"
 stack-string = { version="1.1", features=["postgres_types"] }
-tempfile = "3.19"
+tempfile = "3.21"
 tokio = {version="1.47", features=["rt", "macros", "rt-multi-thread"]}
 
 [workspace]

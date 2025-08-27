@@ -64,9 +64,9 @@ use crate::{
     },
     garmin_rust_app::AppState,
     logged_user::{LoggedUser, Session},
-    FitbitActivityWrapper, FitbitHeartRateWrapper,
-    FitbitStatisticsSummaryWrapper, GarminConnectActivityWrapper, RaceResultsWrapper,
-    RaceTypeWrapper, ScaleMeasurementWrapper, StravaActivityWrapper,
+    FitbitActivityWrapper, FitbitHeartRateWrapper, FitbitStatisticsSummaryWrapper,
+    GarminConnectActivityWrapper, RaceResultsWrapper, RaceTypeWrapper, ScaleMeasurementWrapper,
+    StravaActivityWrapper,
 };
 
 type WarpResult<T> = Result<T, Error>;

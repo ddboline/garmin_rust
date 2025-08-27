@@ -1,6 +1,6 @@
 [package]
 name = "garmin_parser"
-version = "0.16.5"
+version = "0.16.6"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2021"
 
@@ -8,7 +8,7 @@ edition = "2021"
 
 [dependencies]
 aws-config = {version="1.8", features=["behavior-version-latest"]}
-aws-sdk-s3 = "1.98"
+aws-sdk-s3 = "1.103"
 fitparser = {git="https://github.com/ddboline/fitparse-rs.git", branch="time-0.3-0.5.2"}
 flate2 = "1.0"
 garmin_lib = {path="../garmin_lib"}
@@ -20,7 +20,7 @@ rayon = "1.5"
 roxmltree = "0.20"
 serde = {version="1.0", features=["derive"]}
 serde_json = "1.0"
-smallvec = "1.6"
+smallvec = "1.15"
 stack-string = { version="1.1", features=["postgres_types"] }
 time = {version="0.3", features=["serde-human-readable", "macros", "formatting", "parsing"]}
 

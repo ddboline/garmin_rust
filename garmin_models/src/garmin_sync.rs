@@ -227,9 +227,9 @@ impl GarminSync {
             if filename.starts_with(".tmp") {
                 continue;
             }
-            let ext = f
-                .extension()
-                .ok_or_else(|| Error::CustomError(format_sstr!("cannot extract extension {}", f.display())))?;
+            let ext = f.extension().ok_or_else(|| {
+                Error::CustomError(format_sstr!("cannot extract extension {}", f.display()))
+            })?;
             if allowed_extensions.contains(&ext) {
                 let metadata = fs::metadata(&f)?;
                 let modified = metadata

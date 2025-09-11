@@ -6,8 +6,8 @@ use garmin_lib::errors::GarminError as Error;
 use crate::garmin_connect_activity::GarminConnectActivity;
 
 const ACTIVITY_URL: &str =
-    "https://connect.garmin.com/activitylist-service/activities/search/activities";
-const HEARTRATE_URL: &str = "https://connect.garmin.com/wellness-service/wellness/dailyHeartRate";
+    "https://connect.garmin.com/gc-api/activitylist-service/activities/search/activities";
+const HEARTRATE_URL: &str = "https://connect.garmin.com/gc-api/wellness-service/wellness/dailyHeartRate";
 
 #[derive(Deserialize)]
 pub struct GarminConnectHarFile {

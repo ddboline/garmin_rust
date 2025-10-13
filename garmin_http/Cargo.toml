@@ -45,7 +45,7 @@ time = {version="0.3", features=["serde-human-readable", "macros", "formatting",
 time-tz = {version="2.0", features=["system"]}
 tokio = {version="1.47", features=["rt", "macros", "rt-multi-thread"]}
 tokio-stream = "0.1"
-tower-http = {version="0.6", features=["cors"]}
+tower-http = {version="0.6", features=["cors", "limit"]}
 url = "2.3"
 utoipa = { version = "5.3", features = ["axum_extras", "yaml", "time", "uuid", "smallvec", "url", "openapi_extensions", "decimal"] }
 utoipa-helper = "0.1"

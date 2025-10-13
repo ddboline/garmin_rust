@@ -1,5 +1,5 @@
 #![allow(clippy::needless_pass_by_value)]
-use axum::extract::{multipart::Field, Json, Multipart, Query, State};
+use axum::extract::{multipart::Field, Json, Multipart, Query, State, DefaultBodyLimit};
 use derive_more::{From, Into};
 use futures::{future::try_join_all, TryStreamExt};
 use itertools::Itertools;
@@ -1838,11 +1838,13 @@ async fn garmin_connect_profile(
 
 pub fn get_garmin_path(app: &AppState) -> OpenApiRouter {
     let app = Arc::new(app.clone());
+    let (upload_schema, upload_paths, upload_router) = routes!(garmin_upload);
+    let upload_router = upload_router.layer(DefaultBodyLimit::disable());
 
     OpenApiRouter::new()
         .routes(routes!(garmin))
         .routes(routes!(garmin_demo))
-        .routes(routes!(garmin_upload))
+        .routes((upload_schema, upload_paths, upload_router))
         .routes(routes!(add_garmin_correction))
         .routes(routes!(garmin_connect_activities_db))
         .routes(routes!(garmin_connect_activities_db_update))

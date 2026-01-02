@@ -5,15 +5,16 @@ authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2021"
 
 [dependencies]
-authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.13.3"}
+authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.13.5"}
 axum = { version = "0.8", features = ["multipart"] }
-axum-extra = {version="0.10", features=["cookie"]}
+axum-extra = {version="0.12", features=["cookie"]}
 base64 = "0.22"
 cookie = {version="0.18", features=["percent-encode"]}
-derive_more = {version="2.0", features=["full"]}
-dioxus = "0.6"
-dioxus-core = "0.6"
-dioxus-ssr = "0.6"
+derive_more = {version="2.1", features=["full"]}
+dioxus = "0.7"
+dioxus-core = "0.7"
+dioxus-signals = "0.7"
+dioxus-ssr = "0.7"
 fitbit_lib = {path="../fitbit_lib/"}
 futures = "0.3"
 garmin_cli = {path = "../garmin_cli"}
@@ -23,34 +24,34 @@ garmin_models = {path="../garmin_models"}
 garmin_parser = {path="../garmin_parser"}
 garmin_reports = {path="../garmin_reports"}
 garmin_utils = {path="../garmin_utils"}
-handlebars = "6.1"
+handlebars = "6.4"
 itertools = "0.14"
 log = "0.4"
 maplit = "1.0"
 mime = "0.3"
-notify = "8.0"
+notify = "8.2"
 parking_lot = "0.12"
 postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.8", features=["deadpool"]}
 race_result_analysis = {path="../race_result_analysis"}
-reqwest = {version="0.12", features=["cookies", "json", "rustls-tls", "stream"], default-features=false}
+reqwest = {version="0.13", features=["cookies", "json", "stream"]}
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
-serde_yml = "0.0.12"
+serde_yaml_ng = "0.10"
 stack-string = { version="1.1", features=["postgres_types", "utoipa_types", "axum_types"] }
 strava_lib = {path="../strava_lib/"}
-tempfile = "3.12"
+tempfile = "3.24"
 thiserror = "2.0"
 time = {version="0.3", features=["serde-human-readable", "macros", "formatting", "parsing"]}
 time-tz = {version="2.0", features=["system"]}
-tokio = {version="1.47", features=["rt", "macros", "rt-multi-thread"]}
+tokio = {version="1.48", features=["rt", "macros", "rt-multi-thread"]}
 tokio-stream = "0.1"
 tower-http = {version="0.6", features=["cors", "limit"]}
-url = "2.3"
-utoipa = { version = "5.3", features = ["axum_extras", "yaml", "time", "uuid", "smallvec", "url", "openapi_extensions", "decimal"] }
+url = "2.5"
+utoipa = { version = "5.4", features = ["axum_extras", "yaml", "time", "uuid", "smallvec", "url", "openapi_extensions", "decimal"] }
 utoipa-helper = "0.1"
 utoipa-axum = { version = "0.2" }
-uuid = "1.18"
+uuid = "1.19"
 
 [dev-dependencies]
 env_logger = "0.11"

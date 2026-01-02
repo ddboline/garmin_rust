@@ -11,7 +11,6 @@ use fitparser::Error as FitParserError;
 use glob::{GlobError, PatternError};
 use http::header::InvalidHeaderValue;
 use json::Error as JsonError;
-use log::error;
 use notify::Error as NotifyError;
 use polars::error::PolarsError;
 use postgres_query::{extract::Error as PqExtractError, Error as PqError};
@@ -21,7 +20,7 @@ use reqwest::Error as ReqwestError;
 use reqwest_oauth1::Error as ReqwestOauth1Error;
 use roxmltree::Error as RoXmlTreeError;
 use serde_json::Error as SerdeJsonError;
-use serde_yml::Error as YamlError;
+use serde_yaml_ng::Error as YamlError;
 use stack_string::StackString;
 use std::{
     fmt::{Debug, Error as FmtError},
@@ -250,7 +249,7 @@ mod test {
     use reqwest_oauth1::Error as ReqwestOauth1Error;
     use roxmltree::Error as RoXmlTreeError;
     use serde_json::Error as SerdeJsonError;
-    use serde_yml::{Error as YamlError, Error as SerdeYamlError};
+    use serde_yaml_ng::{Error as YamlError, Error as SerdeYamlError};
     use stack_string::StackString;
     use std::{
         fmt::Error as FmtError,

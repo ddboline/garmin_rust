@@ -200,7 +200,7 @@ mod test {
     use postgres_query::Error as PqError;
     use reqwest::Error as ReqwestError;
     use serde_json::Error as SerdeJsonError;
-    use serde_yml::Error as SerdeYamlError;
+    use serde_yaml_ng::Error as SerdeYamlError;
     use stack_string::StackString;
     use std::{fmt::Error as FmtError, net::AddrParseError};
     use time_tz::system::Error as TzError;

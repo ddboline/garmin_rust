@@ -282,7 +282,7 @@ impl GarminConnectClient {
         headers.insert("User-Agent", HTTP_USER_AGENT.parse()?);
         headers.insert("referer", referer.parse()?);
 
-        let text = self
+        let text: String = self
             .client
             .post(url)
             .headers(headers)

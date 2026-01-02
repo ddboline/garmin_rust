@@ -446,7 +446,7 @@ impl From<GarminSummary> for RaceResults {
 mod tests {
     use futures::TryStreamExt;
     use log::debug;
-    use once_cell::sync::Lazy;
+    use std::sync::LazyLock;
     use parking_lot::Mutex;
     use stack_string::format_sstr;
     use std::collections::HashMap;
@@ -462,7 +462,7 @@ mod tests {
     const WORLD_RECORD_ENTRIES: usize = 24;
     const TEST_RACE_ENTRIES: usize = 214;
 
-    static DB_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
+    static DB_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 
     fn get_test_race_result() -> RaceResults {
         RaceResults {

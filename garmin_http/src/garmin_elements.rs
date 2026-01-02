@@ -1,13 +1,10 @@
-use dioxus::prelude::{component, dioxus_elements, rsx, Element, IntoDynNode, Props, VirtualDom};
+use dioxus::prelude::{component, dioxus_elements, rsx, Element, Props, VirtualDom};
 use itertools::Itertools;
 use serde::Serialize;
 use stack_string::{format_sstr, StackString};
 use std::{collections::HashMap, fmt::Write};
 use time::{macros::format_description, Date, Duration, OffsetDateTime};
 use time_tz::OffsetDateTimeExt;
-
-#[cfg(debug_assertions)]
-use dioxus::prelude::{GlobalSignal, Readable};
 
 use fitbit_lib::{
     fitbit_heartrate::FitbitHeartRate,

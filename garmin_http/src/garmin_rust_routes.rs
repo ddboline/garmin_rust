@@ -8,7 +8,6 @@ use serde::{Deserialize, Serialize};
 use stack_string::{format_sstr, StackString};
 use std::sync::Arc;
 use tempfile::TempDir;
-use time::Date;
 use time_tz::OffsetDateTimeExt;
 use tokio::{fs::File, io::AsyncWriteExt, task::spawn_blocking};
 use tokio_stream::StreamExt;
@@ -764,11 +763,6 @@ async fn fitbit_heartrate_cache_update(
 
 #[derive(ToSchema, Serialize, Into, From)]
 struct FitbitActivityList(Vec<FitbitActivityWrapper>);
-
-#[derive(Serialize, Deserialize, ToSchema)]
-struct FitbitSyncRequest {
-    date: Date,
-}
 
 #[derive(UtoipaResponse)]
 #[response(description = "Fitbit Heartrate Statistics Plots", content = "text/html")]

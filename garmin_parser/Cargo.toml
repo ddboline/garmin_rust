@@ -8,16 +8,16 @@ edition = "2021"
 
 [dependencies]
 aws-config = {version="1.8", features=["behavior-version-latest"]}
-aws-sdk-s3 = "1.103"
+aws-sdk-s3 = "1.119"
 fitparser = {git="https://github.com/ddboline/fitparse-rs.git", branch="time-0.3-0.5.2"}
-flate2 = "1.0"
+flate2 = "1.1"
 garmin_lib = {path="../garmin_lib"}
 garmin_models = {path="../garmin_models"}
 garmin_utils = {path="../garmin_utils"}
 log = "0.4"
 postgres-types = {version="0.2", features=["with-time-0_3", "with-uuid-1", "with-serde_json-1", "derive"]}
-rayon = "1.5"
-roxmltree = "0.20"
+rayon = "1.11"
+roxmltree = "0.21"
 serde = {version="1.0", features=["derive"]}
 serde_json = "1.0"
 smallvec = "1.15"

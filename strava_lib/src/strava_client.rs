@@ -36,16 +36,11 @@ use garmin_utils::{
 static CSRF_TOKEN: LazyLock<AtomicCell<Option<StackString>>> =
     LazyLock::new(|| AtomicCell::new(None));
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Default)]
 pub enum StravaAuthType {
+    #[default]
     Read,
     Write,
-}
-
-impl Default for StravaAuthType {
-    fn default() -> Self {
-        Self::Read
-    }
 }
 
 #[derive(Default, Debug)]

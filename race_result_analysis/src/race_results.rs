@@ -446,10 +446,9 @@ impl From<GarminSummary> for RaceResults {
 mod tests {
     use futures::TryStreamExt;
     use log::debug;
-    use std::sync::LazyLock;
     use parking_lot::Mutex;
     use stack_string::format_sstr;
-    use std::collections::HashMap;
+    use std::{collections::HashMap, sync::LazyLock};
     use time::{macros::date, OffsetDateTime};
     use uuid::Uuid;
 

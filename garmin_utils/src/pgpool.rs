@@ -28,7 +28,7 @@ impl PgPool {
         let mut config = Config::default();
 
         if let tokio_postgres::config::Host::Tcp(s) = &pgconf.get_hosts()[0] {
-            config.host.replace(s.to_string());
+            config.host.replace(s.clone());
         }
         if let Some(u) = pgconf.get_user() {
             config.user.replace(u.to_string());

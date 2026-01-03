@@ -9,7 +9,7 @@ use garmin_lib::errors::GarminError as Error;
 static SPORT_TYPE_MAP: LazyLock<HashMap<&'static str, SportTypes>> =
     LazyLock::new(init_sport_type_map);
 
-#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq, Serialize, Deserialize, Default)]
 #[serde(into = "StackString", try_from = "StackString")]
 pub enum SportTypes {
     Running,
@@ -24,13 +24,8 @@ pub enum SportTypes {
     Other,
     Snowshoeing,
     Skiing,
+    #[default]
     None,
-}
-
-impl Default for SportTypes {
-    fn default() -> Self {
-        Self::None
-    }
 }
 
 impl fmt::Display for SportTypes {

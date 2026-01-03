@@ -21,22 +21,27 @@ static YM_REG: LazyLock<Regex> =
 static Y_REG: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?P<year>\d{4})").expect("Bad regex"));
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub enum GarminConstraint {
+    #[default]
     Latest,
-    IsoWeek { year: i32, week: u8 },
+    IsoWeek {
+        year: i32,
+        week: u8,
+    },
     Filename(StackString),
     DateTime(OffsetDateTime),
-    YearMonthDay { year: i32, month: u8, day: u8 },
-    YearMonth { year: i32, month: u8 },
+    YearMonthDay {
+        year: i32,
+        month: u8,
+        day: u8,
+    },
+    YearMonth {
+        year: i32,
+        month: u8,
+    },
     Year(i32),
     Query(StackString),
-}
-
-impl Default for GarminConstraint {
-    fn default() -> Self {
-        Self::Latest
-    }
 }
 
 impl GarminConstraint {

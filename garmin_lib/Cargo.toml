@@ -23,7 +23,6 @@ http = "1.4"
 json = "0.12"
 log = "0.4"
 notify = "8.2"
-planus = "1.2"
 polars = {version="0.52", features=["timezones", "parquet", "lazy"]}
 postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.8", features=["deadpool"]}
 postgres-types = {version="0.2", features=["with-time-0_3", "with-uuid-1", "with-serde_json-1", "derive"]}

@@ -21,7 +21,6 @@ glob = "0.3"
 itertools = "0.14"
 log = "0.4"
 maplit = "1.0"
-planus = "1.2"
 polars = {version="0.52", features=["timezones", "parquet", "lazy"]}
 postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.8", features=["deadpool"]}
 rand = "0.9"

@@ -300,18 +300,14 @@ impl GarminCliOpts {
                 end_date,
             }) => {
                 let mut buf = cli.proc_everything().await?;
-                let output = if data_directory.is_some() {
-                    Self::sync_with_garmin_connect(
+                let output = Self::sync_with_garmin_connect(
                         cli,
                         data_directory,
                         *start_date,
                         *end_date,
                         true,
                     )
-                    .await?
-                } else {
-                    Self::sync_with_garmin_connect_api(cli, *start_date, *end_date).await?
-                };
+                    .await?;
                 let GarminConnectSyncOutput {
                     filenames,
                     input_files,

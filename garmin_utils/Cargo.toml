@@ -29,6 +29,7 @@ tokio = {version="1.48", features=["rt", "macros", "rt-multi-thread"]}
 tokio-postgres = {version = "0.7", features = ["with-time-0_3", "with-uuid-1"]}
 url = "2.5"
 uuid = { version = "1.19", features = ["serde", "v4"] }
+lzma-rust2 = {version="0.15.4"}
 zip = {version = "7.0", default-features = false, features=["aes-crypto", "bzip2", "deflate", "deflate64", "lzma", "time", "zstd"]}
 
 [dev-dependencies]

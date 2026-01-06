@@ -1,6 +1,6 @@
 [package]
 name = "fitbit_lib"
-version = "0.16.8"
+version = "0.16.9"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2021"
 

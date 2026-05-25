@@ -129,7 +129,7 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<StackString>, Error
         .iter()
         .filter_map(|point| match point.altitude {
             Some(alt) => {
-                if (alt > 0.0) & (alt < 10000.0) {
+                if (alt > 0.0) && (alt < 10000.0) {
                     cur_alt = alt;
                     vertical_climb += cur_alt - last_alt;
                     last_alt = cur_alt;
@@ -170,7 +170,7 @@ fn print_lap_string(glap: &GarminLap, sport: SportTypes) -> Result<StackString, 
         glap.lap_duration / 60.
     )];
 
-    if (sport == SportTypes::Running) & (glap.lap_distance > 0.0) {
+    if (sport == SportTypes::Running) && (glap.lap_distance > 0.0) {
         outstr.push(print_h_m_s(
             glap.lap_duration / (glap.lap_distance / METERS_PER_MILE),
             false,

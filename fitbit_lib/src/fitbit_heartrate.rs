@@ -136,7 +136,7 @@ impl FitbitHeartRate {
             })
             .collect();
         fitbit_files.shrink_to_fit();
-        info!("fitbit_files {fitbit_files:?}",);
+        info!("fitbit_files {fitbit_files:?}");
         let futures = days.iter().map(|date| async move {
             let constraint = format_sstr!("date(begin_datetime at time zone 'utc') = '{date}'");
             let files: Vec<_> = get_list_of_files_from_db(&constraint, pool)
@@ -251,7 +251,7 @@ impl FitbitHeartRate {
                 let pool = pool.clone();
                 async move {
                     Self::calculate_summary_statistics(&config, &pool, date).await?;
-                    debug!("{date}",);
+                    debug!("{date}");
                     Ok(())
                 }
             })

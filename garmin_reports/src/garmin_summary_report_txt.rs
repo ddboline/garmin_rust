@@ -187,7 +187,7 @@ impl GarminReportTrait for FileSummaryReport {
         let weekdayname = WEEKDAY_NAMES[self.isodow as usize];
         let datetime = convert_datetime_to_str(self.datetime);
 
-        debug!("{datetime} {self:?}",);
+        debug!("{datetime} {self:?}");
 
         let mut tmp_vec = Vec::new();
 
@@ -451,7 +451,7 @@ impl GarminReportTrait for DaySummaryReport {
     fn get_text_entry(&self) -> Result<Vec<GarminTextEntry>, Error> {
         let weekdayname = WEEKDAY_NAMES[self.isodow as usize - 1];
 
-        debug!("{self:?}",);
+        debug!("{self:?}");
 
         let mut tmp_vec = Vec::new();
 

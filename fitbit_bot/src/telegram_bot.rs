@@ -66,7 +66,7 @@ impl TelegramBot {
             FAILURE_COUNT.check()?;
 
             match Box::pin(tokio::time::timeout(
-                tokio::time::Duration::from_secs(3600),
+                tokio::time::Duration::from_hours(1),
                 self.telegram_worker(),
             ))
             .await
@@ -102,7 +102,7 @@ impl TelegramBot {
             if let MessageKind::Text { ref data, .. } = message.kind {
                 FAILURE_COUNT.check()?;
                 // Print received text message to stdout.
-                debug!("{message:?}",);
+                debug!("{message:?}");
 
                 func(
                     &message,
@@ -172,7 +172,7 @@ impl TelegramBot {
         mut meas: ScaleMeasurement,
     ) -> Result<ScaleMeasurement, Error> {
         if meas.insert_into_db(&self.pool).await.is_ok() {
-            debug!("{meas:?}",);
+            debug!("{meas:?}");
             LAST_WEIGHT.store(Some(meas));
             FAILURE_COUNT.reset()?;
         } else {
@@ -190,7 +190,7 @@ impl TelegramBot {
             } else {
                 FAILURE_COUNT.increment()?;
             }
-            sleep(Duration::from_secs(60)).await;
+            sleep(Duration::from_mins(1)).await;
         }
     }
 

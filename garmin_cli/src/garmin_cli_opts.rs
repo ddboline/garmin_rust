@@ -301,13 +301,13 @@ impl GarminCliOpts {
             }) => {
                 let mut buf = cli.proc_everything().await?;
                 let output = Self::sync_with_garmin_connect(
-                        cli,
-                        data_directory,
-                        *start_date,
-                        *end_date,
-                        true,
-                    )
-                    .await?;
+                    cli,
+                    data_directory,
+                    *start_date,
+                    *end_date,
+                    true,
+                )
+                .await?;
                 let GarminConnectSyncOutput {
                     filenames,
                     input_files,

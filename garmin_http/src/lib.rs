@@ -327,12 +327,12 @@ mod test {
     use utoipa_helper::derive_utoipa_test;
 
     use crate::{
-        FitbitActivityWrapper, FitbitBodyWeightFatWrapper, FitbitHeartRateWrapper,
-        FitbitStatisticsSummaryWrapper, GarminConnectActivityWrapper, RaceResultsWrapper,
-        RaceTypeWrapper, ScaleMeasurementWrapper, StravaActivityWrapper, _FitbitActivityWrapper,
-        _FitbitBodyWeightFatWrapper, _FitbitHeartRateWrapper, _FitbitStatisticsSummaryWrapper,
-        _GarminConnectActivityWrapper, _RaceResultsWrapper, _RaceTypeWrapper,
-        _ScaleMeasurementWrapper, _StravaActivityWrapper,
+        _FitbitActivityWrapper, _FitbitBodyWeightFatWrapper, _FitbitHeartRateWrapper,
+        _FitbitStatisticsSummaryWrapper, _GarminConnectActivityWrapper, _RaceResultsWrapper,
+        _RaceTypeWrapper, _ScaleMeasurementWrapper, _StravaActivityWrapper, FitbitActivityWrapper,
+        FitbitBodyWeightFatWrapper, FitbitHeartRateWrapper, FitbitStatisticsSummaryWrapper,
+        GarminConnectActivityWrapper, RaceResultsWrapper, RaceTypeWrapper, ScaleMeasurementWrapper,
+        StravaActivityWrapper,
     };
 
     #[test]

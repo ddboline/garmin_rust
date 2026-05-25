@@ -456,48 +456,32 @@ impl GarminReportTrait for DaySummaryReport {
         let mut tmp_vec = Vec::new();
 
         match self.sport.as_str() {
-            "running" | "walking" => {
-                if self.total_distance > 0.0 {
-                    tmp_vec.push((
+            "running" | "walking" if self.total_distance > 0.0 => {
+                tmp_vec.push((
+                    format_sstr!(
+                        "{:17} {:10} {:10} {:10} {:10} {:10} {:10}",
+                        format_sstr!("{:10} {:02} {:3}", self.date, self.week, weekdayname),
+                        self.sport,
+                        format_sstr!("{:.2} mi", self.total_distance / METERS_PER_MILE),
+                        format_sstr!("{} cal", self.total_calories),
                         format_sstr!(
-                            "{:17} {:10} {:10} {:10} {:10} {:10} {:10}",
-                            format_sstr!("{:10} {:02} {:3}", self.date, self.week, weekdayname),
-                            self.sport,
-                            format_sstr!("{:.2} mi", self.total_distance / METERS_PER_MILE),
-                            format_sstr!("{} cal", self.total_calories),
-                            format_sstr!(
-                                "{} / mi",
-                                print_h_m_s(
-                                    self.total_duration / (self.total_distance / METERS_PER_MILE),
-                                    false
-                                )?
-                            ),
-                            format_sstr!(
-                                "{} / km",
-                                print_h_m_s(
-                                    self.total_duration / (self.total_distance / 1000.),
-                                    false
-                                )?
-                            ),
-                            print_h_m_s(self.total_duration, true)?
+                            "{} / mi",
+                            print_h_m_s(
+                                self.total_duration / (self.total_distance / METERS_PER_MILE),
+                                false
+                            )?
                         ),
-                        None,
-                    ));
-                } else {
-                    tmp_vec.push((
                         format_sstr!(
-                            "{:17} {:10} {:10} {:10} {:10} {:10} {:10}",
-                            format_sstr!("{:10} {:02} {:3}", self.date, self.week, weekdayname),
-                            self.sport,
-                            format_sstr!("{:.2} mi", self.total_distance / METERS_PER_MILE),
-                            format_sstr!("{} cal", self.total_calories),
-                            "",
-                            "",
-                            print_h_m_s(self.total_duration, true)?
+                            "{} / km",
+                            print_h_m_s(
+                                self.total_duration / (self.total_distance / 1000.),
+                                false
+                            )?
                         ),
-                        None,
-                    ));
-                }
+                        print_h_m_s(self.total_duration, true)?
+                    ),
+                    None,
+                ));
             }
             "biking" => {
                 tmp_vec.push((

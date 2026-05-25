@@ -5,7 +5,7 @@ authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2021"
 
 [dependencies]
-authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.13.5"}
+authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.13.9"}
 axum = { version = "0.8", features = ["multipart"] }
 axum-extra = {version="0.12", features=["cookie"]}
 base64 = "0.22"
@@ -31,7 +31,7 @@ maplit = "1.0"
 mime = "0.3"
 notify = "8.2"
 parking_lot = "0.12"
-postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.8", features=["deadpool"]}
+postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.9", features=["deadpool"]}
 race_result_analysis = {path="../race_result_analysis"}
 reqwest = {version="0.13", features=["cookies", "json", "stream"]}
 serde = "1.0"
@@ -40,18 +40,18 @@ serde_json = "1.0"
 serde_yaml_ng = "0.10"
 stack-string = { version="1.1", features=["postgres_types", "utoipa_types", "axum_types"] }
 strava_lib = {path="../strava_lib/"}
-tempfile = "3.24"
+tempfile = "3.27"
 thiserror = "2.0"
 time = {version="0.3", features=["serde-human-readable", "macros", "formatting", "parsing"]}
 time-tz = {version="2.0", features=["system"]}
-tokio = {version="1.48", features=["rt", "macros", "rt-multi-thread"]}
+tokio = {version="1.52", features=["rt", "macros", "rt-multi-thread"]}
 tokio-stream = "0.1"
 tower-http = {version="0.6", features=["cors", "limit"]}
 url = "2.5"
 utoipa = { version = "5.4", features = ["axum_extras", "yaml", "time", "uuid", "smallvec", "url", "openapi_extensions", "decimal"] }
 utoipa-helper = "0.1"
 utoipa-axum = { version = "0.2" }
-uuid = "1.19"
+uuid = "1.23"
 
 [dev-dependencies]
 env_logger = "0.11"

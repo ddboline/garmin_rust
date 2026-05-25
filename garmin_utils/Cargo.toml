@@ -17,20 +17,20 @@ futures = "0.3"
 garmin_lib = { path = "../garmin_lib" }
 log = "0.4"
 num-traits = "0.2"
-postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.8", features=["deadpool"]}
-rand = "0.9"
+postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.9", features=["deadpool"]}
+rand = "0.10"
 serde = {version="1.0", features=["derive"]}
 smallvec = "1.15"
 stack-string = { version="1.1", features=["postgres_types"] }
-tempfile = "3.24"
+tempfile = "3.27"
 time = {version="0.3", features=["serde-human-readable", "macros", "formatting", "parsing"]}
 time-tz = {version="2.0", features=["system"]}
-tokio = {version="1.48", features=["rt", "macros", "rt-multi-thread"]}
+tokio = {version="1.52", features=["rt", "macros", "rt-multi-thread"]}
 tokio-postgres = {version = "0.7", features = ["with-time-0_3", "with-uuid-1"]}
 url = "2.5"
-uuid = { version = "1.19", features = ["serde", "v4"] }
-lzma-rust2 = {version="0.15.4"}
-zip = {version = "7.0", default-features = false, features=["aes-crypto", "bzip2", "deflate", "deflate64", "lzma", "time", "zstd"]}
+uuid = { version = "1.23", features = ["serde", "v4"] }
+lzma-rust2 = {version="0.16"}
+zip = {version = "8.6", default-features = false, features=["aes-crypto", "bzip2", "deflate", "deflate64", "lzma", "time", "zstd"]}
 
 [dev-dependencies]
 garmin_lib = {path="../garmin_lib"}

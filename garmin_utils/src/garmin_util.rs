@@ -8,7 +8,7 @@ use num_traits::pow::Pow;
 use postgres_query::{query, Error as PqError, FromSqlRow};
 use rand::{
     distr::{Alphanumeric, Distribution, Uniform},
-    rng, Rng,
+    rng, RngExt,
 };
 use smallvec::SmallVec;
 use stack_string::{format_sstr, StackString};

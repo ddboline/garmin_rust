@@ -211,7 +211,7 @@ mod tests {
     use once_cell::sync::Lazy;
     use parking_lot::Mutex;
     use postgres_query::query;
-    use rand::{distr::Alphanumeric, rng, Rng};
+    use rand::{distr::Alphanumeric, rng, RngExt};
     use stack_string::{format_sstr, StackString};
     use std::{collections::HashSet, sync::Arc};
     use telegram_bot::UserId;

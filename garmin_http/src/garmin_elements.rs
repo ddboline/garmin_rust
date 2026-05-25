@@ -1205,7 +1205,7 @@ fn IndexElement(
                 }
                 let mut zoom_value = StackString::new();
                 for (zoom, thresh) in &latlon_thresholds {
-                    if (latlon_min < *thresh) | (*zoom == 10) {
+                    if (latlon_min < *thresh) || (*zoom == 10) {
                         zoom_value = StackString::from_display(zoom);
                         break;
                     }

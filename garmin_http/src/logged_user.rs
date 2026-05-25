@@ -96,7 +96,7 @@ impl LoggedUser {
         )
         .await?;
 
-        debug!("Got session {session:?}",);
+        debug!("Got session {session:?}");
         match session {
             Some(session) => Ok(Session {
                 history: session.history.unwrap_or_default(),
@@ -147,7 +147,7 @@ impl TryFrom<Token> for LoggedUser {
             if AUTHORIZED_USERS.is_authorized(&user) {
                 return Ok(user.into());
             }
-            debug!("NOT AUTHORIZED {user:?}",);
+            debug!("NOT AUTHORIZED {user:?}");
         }
         Err(Error::Unauthorized)
     }

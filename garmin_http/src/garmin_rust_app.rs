@@ -87,8 +87,8 @@ impl EventHandler for Notifier {
     fn handle_event(&mut self, event: NotifyResult<Event>) {
         match event {
             Ok(event) => match event.kind {
-                EventKind::Any | EventKind::Create(_) | EventKind::Modify(_) => {
-                    if event.paths.iter().any(|p| self.paths_to_check.contains(p)) {
+                EventKind::Any | EventKind::Create(_) | EventKind::Modify(_)
+                    if event.paths.iter().any(|p| self.paths_to_check.contains(p)) => {
                         info!("got event kind {:?} paths {:?}", event.kind, event.paths);
                         let new_paths: HashSet<_> = event
                             .paths
@@ -97,7 +97,6 @@ impl EventHandler for Notifier {
                             .collect();
                         self.send.send_replace(new_paths);
                     }
-                }
                 _ => (),
             },
             Err(e) => error!("Error {e}"),
@@ -116,7 +115,7 @@ impl EventHandler for Notifier {
 /// Returns error if server init fails
 pub async fn start_app() -> Result<(), Error> {
     async fn update_db(pool: PgPool) {
-        let mut i = interval(std::time::Duration::from_secs(60));
+        let mut i = interval(std::time::Duration::from_mins(1));
         loop {
             fill_from_db(&pool).await.unwrap_or(());
             i.tick().await;

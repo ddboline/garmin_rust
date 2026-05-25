@@ -90,18 +90,18 @@ pub fn extract_report_objects_from_file(gfile: &GarminFile) -> ReportObjects {
             }
         }
         if let Some(alt) = point.altitude {
-            if (alt > 0.0) & (alt < 10000.0) {
+            if (alt > 0.0) && (alt < 10000.0) {
                 report_objs.alt_vals.push(alt);
                 report_objs.alt_values.push(DataPoint { x: xval, y: alt });
             }
         }
-        if (point.speed_mph > 0.0) & (point.speed_mph < 20.0) {
+        if (point.speed_mph > 0.0) && (point.speed_mph < 20.0) {
             report_objs.mph_speed_values.push(DataPoint {
                 x: xval,
                 y: point.speed_mph,
             });
         }
-        if (point.avg_speed_value_permi > 0.0) & (point.avg_speed_value_permi < 20.0) {
+        if (point.avg_speed_value_permi > 0.0) && (point.avg_speed_value_permi < 20.0) {
             report_objs.avg_speed_values.push(DataPoint {
                 x: xval,
                 y: point.avg_speed_value_permi,

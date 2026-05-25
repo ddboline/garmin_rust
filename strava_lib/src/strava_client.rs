@@ -587,7 +587,7 @@ pub struct StravaAthlete {
     pub city: StackString,
     pub state: StackString,
     pub sex: StackString,
-    pub weight: f64,
+    pub weight: Option<f64>,
     pub created_at: DateTimeWrapper,
     pub updated_at: DateTimeWrapper,
     pub follower_count: Option<u64>,

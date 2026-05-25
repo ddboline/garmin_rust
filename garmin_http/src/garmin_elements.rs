@@ -2006,7 +2006,7 @@ fn StravaElement(athlete: StravaAthlete) -> Element {
     let city = &athlete.city;
     let state = &athlete.state;
     let sex = &athlete.sex;
-    let weight = athlete.weight * LBS_PER_KG;
+    let weight = athlete.weight.unwrap_or(0.0) * LBS_PER_KG;
     let created_at = athlete.created_at;
     let updated_at = athlete.updated_at;
     let follower_count = athlete.follower_count.map(|follower_count| {

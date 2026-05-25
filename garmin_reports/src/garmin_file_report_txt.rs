@@ -65,42 +65,24 @@ pub fn generate_txt_report(gfile: &GarminFile) -> Result<Vec<StackString>, Error
         .points
         .iter()
         .map(|point| match point.heart_rate {
-            Some(hr) => {
-                if hr > 0.0 {
-                    hr * point.duration_from_last
-                } else {
-                    0.0
-                }
-            }
-            None => 0.0,
+            Some(hr) if hr > 0.0 => hr * point.duration_from_last,
+            _ => 0.0,
         })
         .sum();
     let sum_time: f64 = gfile
         .points
         .iter()
         .map(|point| match point.heart_rate {
-            Some(hr) => {
-                if hr > 0.0 {
-                    point.duration_from_last
-                } else {
-                    0.0
-                }
-            }
-            None => 0.0,
+            Some(hr) if hr > 0.0 => point.duration_from_last,
+            _ => 0.0,
         })
         .sum();
     let mut hr_vals: Vec<_> = gfile
         .points
         .iter()
         .map(|point| match point.heart_rate {
-            Some(hr) => {
-                if hr > 0.0 {
-                    hr
-                } else {
-                    0.0
-                }
-            }
-            None => 0.0,
+            Some(hr) if hr > 0.0 => hr,
+            _ => 0.0,
         })
         .collect();
     hr_vals.shrink_to_fit();

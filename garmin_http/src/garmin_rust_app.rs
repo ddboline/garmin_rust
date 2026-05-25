@@ -88,15 +88,16 @@ impl EventHandler for Notifier {
         match event {
             Ok(event) => match event.kind {
                 EventKind::Any | EventKind::Create(_) | EventKind::Modify(_)
-                    if event.paths.iter().any(|p| self.paths_to_check.contains(p)) => {
-                        info!("got event kind {:?} paths {:?}", event.kind, event.paths);
-                        let new_paths: HashSet<_> = event
-                            .paths
-                            .into_iter()
-                            .filter(|p| self.paths_to_check.contains(p))
-                            .collect();
-                        self.send.send_replace(new_paths);
-                    }
+                    if event.paths.iter().any(|p| self.paths_to_check.contains(p)) =>
+                {
+                    info!("got event kind {:?} paths {:?}", event.kind, event.paths);
+                    let new_paths: HashSet<_> = event
+                        .paths
+                        .into_iter()
+                        .filter(|p| self.paths_to_check.contains(p))
+                        .collect();
+                    self.send.send_replace(new_paths);
+                }
                 _ => (),
             },
             Err(e) => error!("Error {e}"),

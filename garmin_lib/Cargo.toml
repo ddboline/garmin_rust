@@ -7,8 +7,8 @@ edition = "2021"
 [dependencies]
 apache-avro = {version = "0.21", features = ["snappy"]}
 aws-smithy-runtime-api = "1.12"
-aws-smithy-types = "1.4"
-aws-sdk-s3 = "1.133"
+aws-smithy-types = "1.5"
+aws-sdk-s3 = "1.137"
 base64 = "0.22"
 bytes = "1.11"
 deadpool = "0.12"

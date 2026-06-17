@@ -18,7 +18,7 @@ garmin_models={path="../garmin_models"}
 garmin_parser={path="../garmin_parser"}
 garmin_reports = {path="../garmin_reports"}
 garmin_utils={path="../garmin_utils"}
-itertools = "0.14"
+itertools = "0.15"
 log = "0.4"
 notify = "8.2"
 race_result_analysis = {path="../race_result_analysis"}

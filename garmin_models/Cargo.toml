@@ -9,12 +9,12 @@ edition = "2021"
 [dependencies]
 apache-avro = {version = "0.21", features = ["snappy"]}
 aws-config = {version="1.8", features=["behavior-version-latest"]}
-aws-sdk-s3 = "1.133"
+aws-sdk-s3 = "1.137"
 fitparser = {git="https://github.com/ddboline/fitparse-rs.git", branch="time-0.3-0.5.2"}
 futures = "0.3"
 garmin_lib = {path="../garmin_lib"}
 garmin_utils = {path="../garmin_utils"}
-itertools = "0.14"
+itertools = "0.15"
 json = "0.12"
 log = "0.4"
 once_cell = "1.21"

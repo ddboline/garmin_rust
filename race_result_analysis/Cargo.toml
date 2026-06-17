@@ -12,7 +12,7 @@ futures = "0.3"
 garmin_lib = {path="../garmin_lib"}
 garmin_models = {path="../garmin_models"}
 garmin_utils = {path="../garmin_utils"}
-itertools = "0.14"
+itertools = "0.15"
 log = "0.4"
 ndarray = "0.17"
 parking_lot = "0.12"

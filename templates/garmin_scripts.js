@@ -7,12 +7,16 @@ function processFormData() {
     send_command( 'filter=' + garmin_filter.value );
 }
 function processStravaData(filename, activity_type) {
+    var title = document.getElementById( 'default_name' ).text;
     let strava_title = document.getElementById( 'strava_upload' );
+    if ( strava_title.value != "" ) {
+        title = strava_title.value;
+    }
     let url = '/garmin/strava/upload';
     let data = JSON.stringify(
         {
             "filename": filename,
-            "title": strava_title.value,
+            "title": title,
             "activity_type": activity_type
         }
     );
@@ -32,12 +36,16 @@ function processStravaData(filename, activity_type) {
     document.getElementById("garminconnectoutput").innerHTML = "uploading";
 }
 function processStravaUpdate(activity_id, activity_type, start_time) {
+    var title = document.getElementById( 'default_name' ).text;
     let strava_title = document.getElementById( 'strava_upload' );
+    if ( strava_title.value != "" ) {
+        title = strava_title.value;
+    }
     let url = '/garmin/strava/update';
     let data = JSON.stringify(
         {
             "activity_id": activity_id,
-            "title": strava_title.value,
+            "title": title,
             "activity_type": activity_type,
             "start_time": start_time,
         }

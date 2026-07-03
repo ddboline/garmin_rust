@@ -385,6 +385,7 @@ fn IndexElement(
     let mut table_box: Option<Element> = None;
     let mut image_box: Option<Element> = None;
     let local = DateTimeWrapper::local_tz();
+    let mut datetime_element: Option<Element> = None;
 
     if let Some(model) = model {
         script_box.replace(create_analysis_plot(&model, is_demo));
@@ -1145,22 +1146,40 @@ fn IndexElement(
                     (11, 0.20),
                     (10, 0.4),
                 ];
+                let dt = gfile.begin_datetime;
+                datetime_element.replace(rsx! {
+                    div {
+                        id: "datetime",
+                        "{dt}",
+                    }
+                });
+
                 let sport_str = gfile.sport.to_str();
                 let sport_title_link = if let Some(strava_activity) = &strava_activity {
                     let id = strava_activity.id;
                     let name = &strava_activity.name;
-                    let dt = gfile.begin_datetime;
                     rsx! {
                         a {
                             href: "https://www.strava.com/activities/{id}",
                             target: "_blank",
-                            "{name} {dt}",
+                            id: "default_name",
+                            "{name}",
                         }
                     }
                 } else {
                     let s = titlecase(sport_str);
                     let dt = gfile.begin_datetime;
-                    rsx! {"Garmin Event {s} on {dt}"}
+                    let name = format_sstr!("Garmin Event {s} at {dt}");
+                    let name = connect_activity
+                        .as_ref()
+                        .and_then(|ca| ca.activity_name.as_ref())
+                        .unwrap_or(&name);
+                    rsx! {
+                        div {
+                            id: "default_name",
+                            "{name}"
+                        }
+                    }
                 };
                 sport_title.replace(sport_title_link);
                 if !is_demo {
@@ -1339,6 +1358,10 @@ fn IndexElement(
                 style: "text-align: center",
                 b { {sport_title} },
             },
+            h2 {
+                style: "text-align: center",
+                b { {datetime_element} },
+            }
             script {src: "https://d3js.org/d3.v4.min.js"},
             script {src: "/garmin/scripts/garmin_scripts.js"},
             script {src: "/garmin/scripts/line_plot.js"},

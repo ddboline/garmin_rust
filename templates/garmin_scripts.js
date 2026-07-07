@@ -7,7 +7,7 @@ function processFormData() {
     send_command( 'filter=' + garmin_filter.value );
 }
 function processStravaData(filename, activity_type) {
-    var title = document.getElementById( 'default_name' ).text;
+    var title = document.getElementById( 'default_name' ).innerText;
     let strava_title = document.getElementById( 'strava_upload' );
     if ( strava_title.value != "" ) {
         title = strava_title.value;
@@ -36,7 +36,7 @@ function processStravaData(filename, activity_type) {
     document.getElementById("garminconnectoutput").innerHTML = "uploading";
 }
 function processStravaUpdate(activity_id, activity_type, start_time) {
-    var title = document.getElementById( 'default_name' ).text;
+    var title = document.getElementById( 'default_name' ).innerText;
     let strava_title = document.getElementById( 'strava_upload' );
     if ( strava_title.value != "" ) {
         title = strava_title.value;

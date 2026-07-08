@@ -1146,7 +1146,7 @@ fn IndexElement(
                     (11, 0.20),
                     (10, 0.4),
                 ];
-                let dt = gfile.begin_datetime;
+                let dt = gfile.begin_datetime.to_timezone(local);
                 datetime_element.replace(rsx! {
                     div {
                         id: "datetime",
@@ -1168,7 +1168,7 @@ fn IndexElement(
                     }
                 } else {
                     let s = titlecase(sport_str);
-                    let dt = gfile.begin_datetime;
+                    let dt = gfile.begin_datetime.to_timezone(local);
                     let name = format_sstr!("Garmin Event {s} at {dt}");
                     let name = connect_activity
                         .as_ref()

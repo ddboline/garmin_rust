@@ -7,7 +7,8 @@ use url::Url;
 use uuid::Uuid;
 
 use garmin_lib::{
-    date_time_wrapper::iso8601::convert_datetime_to_str, errors::GarminError as Error,
+    date_time_wrapper::iso8601::{convert_datetime_to_str, convert_to_local_datetime_str},
+    errors::GarminError as Error,
 };
 use garmin_models::{
     fitbit_activity::FitbitActivity, garmin_connect_activity::GarminConnectActivity,
@@ -185,7 +186,7 @@ pub struct FileSummaryReport {
 impl GarminReportTrait for FileSummaryReport {
     fn get_text_entry(&self) -> Result<Vec<GarminTextEntry>, Error> {
         let weekdayname = WEEKDAY_NAMES[self.isodow as usize];
-        let datetime = convert_datetime_to_str(self.datetime);
+        let datetime = convert_to_local_datetime_str(self.datetime);
 
         debug!("{datetime} {self:?}");
 

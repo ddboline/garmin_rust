@@ -72,8 +72,9 @@ pub mod iso8601 {
         format_description::well_known::Rfc3339, macros::format_description, OffsetDateTime,
         UtcOffset,
     };
+    use time_tz::OffsetDateTimeExt;
 
-    use crate::errors::GarminError as Error;
+    use crate::{date_time_wrapper::DateTimeWrapper, errors::GarminError as Error};
 
     #[must_use]
     pub fn convert_datetime_to_str(datetime: OffsetDateTime) -> StackString {
@@ -81,6 +82,19 @@ pub mod iso8601 {
             .to_offset(UtcOffset::UTC)
             .format(format_description!(
                 "[year]-[month]-[day]T[hour]:[minute]:[second]Z"
+            ))
+            .unwrap_or_else(|_| String::new())
+            .into()
+    }
+
+    #[must_use]
+    pub fn convert_to_local_datetime_str(datetime: OffsetDateTime) -> StackString {
+        let local = DateTimeWrapper::local_tz();
+        datetime
+            .to_timezone(local)
+            .format(format_description!(
+                "[year]-[month]-[day]T[hour]:[minute]:[second][offset_hour \
+                 sign:mandatory]:[offset_minute]"
             ))
             .unwrap_or_else(|_| String::new())
             .into()

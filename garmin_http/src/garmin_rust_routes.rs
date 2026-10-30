@@ -162,7 +162,7 @@ async fn get_index_body(
             let file_name = file_list
                 .first()
                 .ok_or_else(|| GarminError::StaticCustomError("This shouldn't be happening..."))?;
-            debug!("{}", &file_name);
+            debug!("{}", file_name);
             let avro_file = config.cache_dir.join(file_name.as_str());
 
             let gfile = if let Ok(g) = garmin_file::GarminFile::read_avro_async(&avro_file).await {
@@ -362,7 +362,7 @@ async fn save_file<'a>(file_path: &'a str, mut field: Field<'a>) -> Result<u64, 
         file.write_all(&chunk).await?;
     }
     let file_size = file.metadata().await?.len();
-    debug_assert!(buf_size as u64 == file_size);
+    debug_assert_eq!(buf_size as u64, file_size);
     Ok(file_size)
 }
 

@@ -6,6 +6,7 @@
 #![allow(clippy::cast_possible_wrap)]
 #![allow(clippy::similar_names)]
 #![allow(clippy::unsafe_derive_deserialize)]
+#![allow(clippy::redundant_field_names)]
 
 pub mod fitbit_activity;
 pub mod garmin_connect_activity;

@@ -5,6 +5,7 @@
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::cast_possible_wrap)]
 #![allow(clippy::similar_names)]
+#![allow(clippy::redundant_field_names)]
 
 pub mod race_result_analysis;
 pub mod race_results;

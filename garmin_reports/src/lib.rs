@@ -4,6 +4,7 @@
 #![allow(clippy::cast_sign_loss)]
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::cast_possible_wrap)]
+#![allow(clippy::redundant_field_names)]
 
 pub mod garmin_constraints;
 pub mod garmin_file_report_txt;

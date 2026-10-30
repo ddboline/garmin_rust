@@ -288,7 +288,7 @@ impl GarminCli {
                 let file_name = file_list
                     .first()
                     .ok_or_else(|| Error::StaticCustomError("This shouldn't be happening..."))?;
-                debug!("{}", &file_name);
+                debug!("{}", file_name);
                 let avro_file = self
                     .get_config()
                     .cache_dir

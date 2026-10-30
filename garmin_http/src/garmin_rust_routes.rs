@@ -162,7 +162,7 @@ async fn get_index_body(
             let file_name = file_list
                 .first()
                 .ok_or_else(|| GarminError::StaticCustomError("This shouldn't be happening..."))?;
-            debug!("{}", file_name);
+            debug!("{file_name}");
             let avro_file = config.cache_dir.join(file_name.as_str());
 
             let gfile = if let Ok(g) = garmin_file::GarminFile::read_avro_async(&avro_file).await {

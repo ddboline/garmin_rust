@@ -253,12 +253,12 @@ pub fn get_splits(
 
             debug!(
                 "get splits 0 {} {} {} {} {} {} ",
-                &last_point_time,
-                &cur_point_time,
-                &cur_point_me,
-                &last_point_me,
-                &cur_split_me,
-                &last_point_me
+                last_point_time,
+                cur_point_time,
+                cur_point_me,
+                last_point_me,
+                cur_split_me,
+                last_point_me
             );
 
             let cur_split_time = last_point_time
@@ -284,7 +284,7 @@ pub fn get_splits(
                 }
             };
 
-            debug!("get splits 1 {:?}", &tmp_vector);
+            debug!("get splits 1 {:?}", tmp_vector);
 
             split_vector.push(tmp_vector);
 

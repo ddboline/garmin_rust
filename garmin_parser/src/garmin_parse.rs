@@ -305,14 +305,16 @@ mod tests {
             GarminCorrectionLap::corr_list_from_json("../tests/data/garmin_corrections.json")?;
         let gfile = garmin_parse_fit::GarminParseFit::new()
             .with_file(Path::new("../tests/data/test.fit"), &corr_map)?;
+        println!("gfile: {}", gfile.filename);
         match gfile.dump_avro(Path::new("temp.avro")) {
             Ok(()) => {
                 writeln!(stdout(), "Success")?;
             }
             Err(e) => {
-                writeln!(stdout(), "{}", e)?;
+                writeln!(stdout(), "Failure {}", e)?;
             }
         }
+        println!("got here");
 
         match garmin_file::GarminFile::read_avro(Path::new("temp.avro")) {
             Ok(g) => {

@@ -378,6 +378,6 @@ mod test {
         println!("PqExtractError {}", std::mem::size_of::<PqExtractError>());
         println!("TimeParseError {}", std::mem::size_of::<TimeParseError>());
 
-        assert_eq!(std::mem::size_of::<Error>(), 40);
+        assert_eq!(std::mem::size_of::<Error>(), 48);
     }
 }

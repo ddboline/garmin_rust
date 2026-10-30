@@ -319,8 +319,8 @@ pub fn get_heartrate_values(
     let mut values: BTreeMap<i64, Vec<i32>> = BTreeMap::new();
     for file in &fitbit_files {
         let df = ParquetReader::new(File::open(file)?).finish()?;
-        let timestamp_iter = df.column("timestamp")?.i64()?.into_iter();
-        let value_iter = df.column("value")?.i32()?.into_iter();
+        let timestamp_iter = df.column("timestamp")?.i64()?.iter();
+        let value_iter = df.column("value")?.i32()?.iter();
 
         for (t, v) in timestamp_iter
             .zip(value_iter)

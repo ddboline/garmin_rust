@@ -1,14 +1,14 @@
 [package]
 name = "garmin_http"
-version = "0.16.14"
+version = "0.17.0"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2021"
 
 [dependencies]
-authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.13.9"}
+authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.14.0"}
 axum = { version = "0.8", features = ["multipart"] }
 axum-extra = {version="0.12", features=["cookie"]}
-base64 = "0.22"
+base64 = "0.23"
 cookie = {version="0.18", features=["percent-encode"]}
 derive_more = {version="2.1", features=["full"]}
 dioxus = "0.7"
@@ -30,7 +30,7 @@ log = "0.4"
 maplit = "1.0"
 mime = "0.3"
 notify = "8.2"
-parking_lot = "0.12"
+parking_lot = "0.13"
 postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.9", features=["deadpool"]}
 race_result_analysis = {path="../race_result_analysis"}
 reqwest = {version="0.13", features=["cookies", "json", "stream"]}
@@ -38,20 +38,20 @@ serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
 serde_yaml_ng = "0.10"
-stack-string = { version="1.1", features=["postgres_types", "utoipa_types", "axum_types"] }
+stack-string = { version="1.2", features=["postgres_types", "utoipa_types", "axum_types"] }
 strava_lib = {path="../strava_lib/"}
 tempfile = "3.27"
 thiserror = "2.0"
 time = {version="0.3", features=["serde-human-readable", "macros", "formatting", "parsing"]}
 time-tz = {version="2.0", features=["system"]}
-tokio = {version="1.52", features=["rt", "macros", "rt-multi-thread"]}
+tokio = {version="1.54", features=["rt", "macros", "rt-multi-thread"]}
 tokio-stream = "0.1"
 tower-http = {version="0.7", features=["cors", "limit"]}
 url = "2.5"
-utoipa = { version = "5.4", features = ["axum_extras", "yaml", "time", "uuid", "smallvec", "url", "openapi_extensions", "decimal"] }
-utoipa-helper = "0.1"
-utoipa-axum = { version = "0.2" }
-uuid = "1.23"
+utoipa = { version = "6.0", features = ["axum_extras", "yaml", "time", "uuid", "smallvec", "url", "openapi_extensions", "decimal"] }
+utoipa-helper = "0.2"
+utoipa-axum = { version = "0.3" }
+uuid = "1.29"
 
 [dev-dependencies]
 env_logger = "0.11"

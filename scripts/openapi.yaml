@@ -7,7 +7,7 @@ info:
     email: ddboline@gmail.com
   license:
     name: ''
-  version: 0.16.14
+  version: 0.17.0
 paths:
   /garmin/add_garmin_correction:
     post:
@@ -100,8 +100,8 @@ paths:
         required: false
         schema:
           oneOf:
-          - type: 'null'
           - type: string
+          - type: 'null'
       responses:
         '200':
           description: Main Page
@@ -1120,8 +1120,8 @@ paths:
         required: false
         schema:
           oneOf:
-          - type: 'null'
           - type: string
+          - type: 'null'
       responses:
         '200':
           description: Main Page
@@ -1357,8 +1357,8 @@ paths:
         required: false
         schema:
           oneOf:
-          - type: 'null'
           - $ref: '#/components/schemas/RaceType'
+          - type: 'null'
       responses:
         '200':
           description: Race Results
@@ -2395,8 +2395,8 @@ components:
           format: int32
         sport:
           oneOf:
-          - type: 'null'
           - $ref: '#/components/schemas/SportTypesWrapper'
+          - type: 'null'
         start_time:
           type: string
           format: date-time
@@ -2419,8 +2419,8 @@ components:
       properties:
         activity_name:
           oneOf:
-          - type: 'null'
           - type: string
+          - type: 'null'
         activity_type_id:
           type:
           - integer
@@ -2433,8 +2433,8 @@ components:
           format: double
         distance_unit:
           oneOf:
-          - type: 'null'
           - type: string
+          - type: 'null'
         duration:
           type: integer
           format: int64
@@ -2453,8 +2453,8 @@ components:
           format: int64
         tcx_link:
           oneOf:
-          - type: 'null'
           - type: string
+          - type: 'null'
     FitbitHeartRate:
       type: object
       required:
@@ -2529,8 +2529,8 @@ components:
           format: int64
         activity_name:
           oneOf:
-          - type: 'null'
           - type: string
+          - type: 'null'
         average_hr:
           type:
           - number
@@ -2543,8 +2543,8 @@ components:
           format: double
         description:
           oneOf:
-          - type: 'null'
           - type: string
+          - type: 'null'
         distance:
           type:
           - number
@@ -2644,8 +2644,8 @@ components:
           type: boolean
         race_name:
           oneOf:
-          - type: 'null'
           - type: string
+          - type: 'null'
         race_summary_ids:
           type: array
           items:
@@ -2833,8 +2833,8 @@ components:
           type: string
         description:
           oneOf:
-          - type: 'null'
           - type: string
+          - type: 'null'
         is_private:
           type:
           - boolean
@@ -2857,8 +2857,8 @@ components:
           type: string
         description:
           oneOf:
-          - type: 'null'
           - type: string
+          - type: 'null'
         filename:
           type: string
         is_private:

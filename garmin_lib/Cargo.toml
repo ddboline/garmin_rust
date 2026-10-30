@@ -1,51 +1,51 @@
 [package]
 name = "garmin_lib"
-version = "0.16.14"
+version = "0.17.0"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2021"
 
 [dependencies]
 apache-avro = {version = "0.21", features = ["snappy"]}
-aws-smithy-runtime-api = "1.12"
-aws-smithy-types = "1.5"
-aws-sdk-s3 = "1.137"
-base64 = "0.22"
-bytes = "1.11"
-deadpool = "0.12"
+aws-smithy-runtime-api = "1.19"
+aws-smithy-types = "1.9"
+aws-sdk-s3 = "1.156"
+base64 = "0.23"
+bytes = "1.12"
+deadpool = "0.13"
 deadpool-postgres = "0.14"
 derive_more = {version="2.1", features=["full"]}
-dirs = "6.0"
+dirs = "7.0"
 dotenvy = "0.15"
 envy = "0.4"
 fitparser = {git="https://github.com/ddboline/fitparse-rs.git", branch="time-0.3-0.5.2"}
 glob = "0.3"
-http = "1.4"
+http = "1.5"
 json = "0.12"
 log = "0.4"
 notify = "8.2"
-polars = {version="0.53", features=["timezones", "parquet", "lazy"]}
+polars = {version="0.55", features=["timezones", "parquet", "lazy"]}
 postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.9", features=["deadpool"]}
 postgres-types = {version="0.2", features=["with-time-0_3", "with-uuid-1", "with-serde_json-1", "derive"]}
 rand = "0.10"
-refinery = {version="0.9", features=["tokio-postgres"]}
+refinery = {version="0.10", features=["tokio-postgres"]}
 reqwest = {version="0.13", features=["cookies", "json", "stream", "multipart"]}
 reqwest-oauth1 = {git = "https://github.com/ddboline/reqwest-oauth1.git"}
 roxmltree = "0.21"
 serde = {version="1.0", features=["derive"]}
 serde_json = "1.0"
 serde_yaml_ng = "0.10"
-smallvec = "1.15"
-stack-string = { version="1.1", features=["postgres_types"] }
+smallvec = "1.16"
+stack-string = { version="1.2", features=["postgres_types"] }
 stdout-channel = "0.6"
 thiserror = "2.0"
 telegram-bot = {git = "https://github.com/ddboline/telegram-bot.git", tag="0.9.0-4", default-features=false}
 time = {version="0.3", features=["serde-human-readable", "macros", "formatting", "parsing"]}
 time-tz = {version="2.0", features=["system"]}
-tokio = {version="1.52", features=["rt", "macros", "rt-multi-thread"]}
+tokio = {version="1.54", features=["rt", "macros", "rt-multi-thread"]}
 tokio-postgres = {version = "0.7", features = ["with-time-0_3", "with-uuid-1"]}
-uuid = { version = "1.23", features = ["serde", "v4"] }
+uuid = { version = "1.29", features = ["serde", "v4"] }
 url = "2.5"
-zip = {version = "8.6", default-features = false, features=["aes-crypto", "bzip2", "deflate", "deflate64", "lzma", "time", "zstd"]}
+zip = {version = "9.1", default-features = false, features=["aes-crypto", "bzip2", "deflate", "deflate64", "lzma", "time", "zstd"]}
 
 [dev-dependencies]
 approx = "0.5"

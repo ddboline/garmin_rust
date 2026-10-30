@@ -191,7 +191,7 @@ fn extract_zip(filename: &Path, ziptmpdir: &Path) -> Result<Vec<PathBuf>, Error>
     (0..zip.len())
         .map(|i| {
             let mut f = zip.by_index(i)?;
-            let fpath = ziptmpdir.join(f.name());
+            let fpath = ziptmpdir.join(format_sstr!("{}", f.name()?));
             let mut g = File::create(&fpath)?;
             std::io::copy(&mut f, &mut g)?;
             Ok(fpath)

@@ -103,7 +103,8 @@ impl GarminFile {
         let output_file = File::create(output_filename)?;
 
         let mut writer = Writer::with_codec(&schema, output_file, Codec::Snappy);
-        writer.append_ser(self)?;
+        let bytes = writer.append_ser(self)?;
+        println!("bytes: {bytes}");
         writer.flush()?;
         Ok(())
     }

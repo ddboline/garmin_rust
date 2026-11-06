@@ -1,6 +1,6 @@
 [package]
 name = "garmin_lib"
-version = "0.17.0"
+version = "0.17.1"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2021"
 
@@ -8,7 +8,7 @@ edition = "2021"
 apache-avro = {version = "0.21", features = ["snappy"]}
 aws-smithy-runtime-api = "1.19"
 aws-smithy-types = "1.9"
-aws-sdk-s3 = "1.156"
+aws-sdk-s3 = "1.157"
 base64 = "0.23"
 bytes = "1.12"
 deadpool = "0.13"
@@ -45,7 +45,7 @@ tokio = {version="1.54", features=["rt", "macros", "rt-multi-thread"]}
 tokio-postgres = {version = "0.7", features = ["with-time-0_3", "with-uuid-1"]}
 uuid = { version = "1.29", features = ["serde", "v4"] }
 url = "2.5"
-zip = {version = "9.1", default-features = false, features=["aes-crypto", "bzip2", "deflate", "deflate64", "lzma", "time", "zstd"]}
+zip = {version = "9.4", default-features = false, features=["aes-crypto", "bzip2", "deflate", "deflate64", "lzma", "time", "zstd"]}
 
 [dev-dependencies]
 approx = "0.5"

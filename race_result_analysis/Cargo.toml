@@ -1,13 +1,13 @@
 [package]
 name = "race_result_analysis"
-version = "0.17.0"
+version = "0.17.1"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bytes = "1.11"
+bytes = "1.12"
 futures = "0.3"
 garmin_lib = {path="../garmin_lib"}
 garmin_models = {path="../garmin_models"}
@@ -25,4 +25,4 @@ time = {version="0.3", features=["serde-human-readable", "macros", "formatting",
 time-tz = {version="2.0", features=["system"]}
 tokio = {version="1.54", features=["rt", "macros", "rt-multi-thread"]}
 tokio-postgres = {version = "0.7", features = ["with-time-0_3", "with-uuid-1"]}
-uuid = { version = "1.23", features = ["serde", "v4"] }
+uuid = { version = "1.29", features = ["serde", "v4"] }

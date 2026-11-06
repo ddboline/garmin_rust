@@ -1,6 +1,6 @@
 [package]
 name = "garmin_utils"
-version = "0.17.0"
+version = "0.17.1"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2021"
 
@@ -28,9 +28,9 @@ time-tz = {version="2.0", features=["system"]}
 tokio = {version="1.54", features=["rt", "macros", "rt-multi-thread"]}
 tokio-postgres = {version = "0.7", features = ["with-time-0_3", "with-uuid-1"]}
 url = "2.5"
-uuid = { version = "1.23", features = ["serde", "v4"] }
-lzma-rust2 = {version="0.24"}
-zip = {version = "9.1", default-features = false, features=["aes-crypto", "bzip2", "deflate", "deflate64", "lzma", "time", "zstd"]}
+uuid = { version = "1.29", features = ["serde", "v4"] }
+lzma-rust2 = {version="0.25"}
+zip = {version = "9.4", default-features = false, features=["aes-crypto", "bzip2", "deflate", "deflate64", "lzma", "time", "zstd"]}
 
 [dev-dependencies]
 garmin_lib = {path="../garmin_lib"}

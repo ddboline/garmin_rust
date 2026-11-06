@@ -1,11 +1,11 @@
 [package]
 name = "garmin_http"
-version = "0.17.0"
+version = "0.17.1"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2021"
 
 [dependencies]
-authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.14.0"}
+authorized_users = { git = "https://github.com/ddboline/auth_server_rust.git", tag="0.14.1"}
 axum = { version = "0.8", features = ["multipart"] }
 axum-extra = {version="0.12", features=["cookie"]}
 base64 = "0.23"
